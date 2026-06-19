@@ -149,7 +149,10 @@ export function getDigestUpdateStatus(
   slots: CronSlot[],
   runs: DigestCronRunStatusInput[],
 ): DigestUpdateStatus {
-  const activeRun = runs.find(isDigestRunInflight);
+  const activeRun = runs.find((run) => {
+    if (!isDigestRunInflight(run)) return false;
+    return cronJob?.status === "active" ? run.source === "cron" : true;
+  });
   if (activeRun) {
     return {
       key: "building",

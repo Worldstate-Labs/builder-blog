@@ -455,7 +455,7 @@ function isRunInflight(
   cronJob?: LibraryCronJobStatus | null,
 ): boolean {
   if (run.source === "cron" && cronJob && cronJob.status !== "active") return false;
-  if (jobRun && !isActiveJobRun(jobRun)) return false;
+  if (jobRun && (!isActiveJobRun(jobRun) || isStalledJobRun(jobRun))) return false;
   if (!jobRun) {
     const ageMs = Date.now() - Date.parse(run.startedAt);
     if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
@@ -1001,7 +1001,7 @@ export function FetchLogPanel({
   );
 }
 
-function getFetchUpdateStatus(
+export function getFetchUpdateStatus(
   cronJob: LibraryCronJobStatus | null,
   slots: CronSlot[],
   runs: LibraryFetchRunListItem[],
@@ -1053,9 +1053,12 @@ function getFetchUpdateStatus(
     };
   }
   const jobsByInstanceId = jobRunByInstanceId(jobRuns);
-  const activeRun = runs.find((run) =>
-    isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null, cronJob),
-  );
+  const activeRun = runs.find((run) => {
+    const jobRun = run.jobRunId ? jobsByInstanceId.get(run.jobRunId) ?? null : null;
+    if (jobRun && jobRun.trigger !== "scheduled") return false;
+    if (!jobRun && run.source !== "cron") return false;
+    return isRunInflight(run, jobRun, cronJob);
+  });
   if (activeRun) {
     return {
       key: "syncing",

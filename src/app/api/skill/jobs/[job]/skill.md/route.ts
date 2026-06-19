@@ -8,6 +8,42 @@ import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ job: string }> };
 
+type ExistingCronRecord = {
+  status: string;
+  startedAt: Date;
+  frequencyLabel: string;
+  runtime: string | null;
+  hostname: string | null;
+  updatedAt: Date;
+};
+
+function safePromptText(value: string | null | undefined): string {
+  return String(value ?? "")
+    .replace(/[`|\r\n]/g, " ")
+    .trim();
+}
+
+function buildExistingCronWarning(job: string, serverActiveCron: ExistingCronRecord | null): string {
+  if (!serverActiveCron || serverActiveCron.status !== "active") return "";
+  const label = job.startsWith("digest") ? "AI Digest" : "Fetch sources";
+  const runner = [serverActiveCron.runtime, serverActiveCron.hostname]
+    .map(safePromptText)
+    .filter(Boolean)
+    .join(" · ");
+  return [
+    "**Existing active schedule recorded by FollowBrief.**",
+    `FollowBrief web currently records an active ${label} schedule for this account.`,
+    `- Frequency: ${safePromptText(serverActiveCron.frequencyLabel) || "unknown"}`,
+    `- Started: ${serverActiveCron.startedAt.toISOString()}`,
+    `- Runner: ${runner || "unknown"}`,
+    "",
+    "Treat this as an existing schedule even if this machine's local launchd/crontab",
+    "check prints `(none found)`. STOP: report this server-side active schedule and",
+    "ask the user whether to override. Only continue after the user explicitly",
+    "confirms. If they decline, stop and change nothing.",
+  ].join("\n");
+}
+
 // Source-type-aware credential prep for the library cron setup prompt. The web
 // copy-prompt flow resolves the account from the exchange code, so we can tell
 // the agent up front which sources need a local API token in secrets.json —
@@ -252,6 +288,39 @@ export async function GET(request: Request, { params }: Params) {
     // instead of only when it surfaces an *_token_missing notice.
     if (content.includes("{{SOURCE_CREDENTIAL_PREP}}")) {
       credentialPrep = await buildSourceCredentialPrep(record.agentToken.user.id);
+    }
+
+    if (job === "library-cron-setup" || job === "digest-cron-setup") {
+      const serverActiveCron = job === "library-cron-setup"
+        ? await prisma.libraryCronJob.findUnique({
+            where: { userId: record.agentToken.user.id },
+            select: {
+              status: true,
+              startedAt: true,
+              frequencyLabel: true,
+              runtime: true,
+              hostname: true,
+              updatedAt: true,
+            },
+          })
+        : await prisma.digestCronJob.findUnique({
+            where: { userId: record.agentToken.user.id },
+            select: {
+              status: true,
+              startedAt: true,
+              frequencyLabel: true,
+              runtime: true,
+              hostname: true,
+              updatedAt: true,
+            },
+          });
+      const existingCronWarning = buildExistingCronWarning(job, serverActiveCron);
+      if (existingCronWarning) {
+        content = content.replace(
+          "3. Before changing anything,",
+          `${existingCronWarning}\n\n3. Before changing anything,`,
+        );
+      }
     }
 
     // Bake the resolved account into every `${BUILDER_BLOG_ACCOUNT}` in the

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -26,6 +27,39 @@ const CronJobSchema = z.object({
   regenerateDigest: z.boolean().optional(),
   startedAt: z.string().datetime().optional(),
 });
+
+async function recordCronJobStatusEvent({
+  request,
+  userId,
+  job,
+  status,
+  runtime,
+  details,
+}: {
+  request: Request;
+  userId: string;
+  job: z.infer<typeof CronJobSchema>["job"];
+  status: z.infer<typeof CronJobSchema>["status"];
+  runtime: string | null;
+  details: Prisma.InputJsonValue;
+}) {
+  try {
+    await prisma.cronJobStatusEvent.create({
+      data: {
+        userId,
+        job,
+        eventType: "cron_status_applied",
+        status,
+        runtime,
+        hostname: request.headers.get("x-machine-hostname"),
+        platform: request.headers.get("x-machine-platform"),
+        details,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to record cron job status event", error);
+  }
+}
 
 export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
@@ -55,11 +89,27 @@ export async function POST(request: Request) {
         where: { userId: user.id },
         data: { status: "stopped", stoppedAt: new Date() },
       });
+      await recordCronJobStatusEvent({
+        request,
+        userId: user.id,
+        job: parsed.data.job,
+        status: "stopped",
+        runtime: parsed.data.runtime ?? null,
+        details: { updated: stopped.count },
+      });
       return NextResponse.json({ status: "stopped", updated: stopped.count });
     }
     const stopped = await prisma.libraryCronJob.updateMany({
       where: { userId: user.id },
       data: { status: "stopped", stoppedAt: new Date() },
+    });
+    await recordCronJobStatusEvent({
+      request,
+      userId: user.id,
+      job: parsed.data.job,
+      status: "stopped",
+      runtime: parsed.data.runtime ?? null,
+      details: { updated: stopped.count },
     });
     return NextResponse.json({ status: "stopped", updated: stopped.count });
   }
@@ -105,6 +155,21 @@ export async function POST(request: Request) {
       },
     });
 
+    await recordCronJobStatusEvent({
+      request,
+      userId: user.id,
+      job: parsed.data.job,
+      status: "active",
+      runtime: parsed.data.runtime ?? null,
+      details: {
+        frequencyKey,
+        frequencyLabel: record.frequencyLabel,
+        schedule: record.schedule,
+        intervalMinutes: record.intervalMinutes,
+        regenerateDigest: record.regenerateDigest,
+      },
+    });
+
     return NextResponse.json({
       job: {
         id: record.id,
@@ -147,6 +212,21 @@ export async function POST(request: Request) {
       overrideFetched: Boolean(parsed.data.overrideFetched),
       hostname: request.headers.get("x-machine-hostname"),
       platform: request.headers.get("x-machine-platform"),
+    },
+  });
+
+  await recordCronJobStatusEvent({
+    request,
+    userId: user.id,
+    job: parsed.data.job,
+    status: "active",
+    runtime: parsed.data.runtime ?? null,
+    details: {
+      frequencyKey,
+      frequencyLabel: record.frequencyLabel,
+      schedule: record.schedule,
+      intervalMinutes: record.intervalMinutes,
+      overrideFetched: record.overrideFetched,
     },
   });
 

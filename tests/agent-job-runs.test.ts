@@ -34,7 +34,8 @@ test("Prisma schema stores local agent job runs separately from business logs", 
   ]) {
     assert.match(schema, new RegExp(`\\n\\s*${field}\\s+`), `AgentJobRun is missing ${field}`);
   }
-  assert.match(schema, /@@unique\(\[userId, instanceId\]\)/);
+  assert.match(schema, /@@unique\(\[userId, jobType, instanceId\]\)/);
+  assert.match(schema, /@@index\(\[userId, instanceId\]\)/);
   assert.match(schema, /@@index\(\[userId, jobType, startedAt\(sort: Desc\)\]\)/);
   assert.match(schema, /@@index\(\[userId, scheduleJob, expectedAt\(sort: Desc\)\]\)/);
 
@@ -53,7 +54,11 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
     route,
     /z\.enum\(\["starting", "running", "succeeded", "failed", "timed_out", "killed", "replaced", "stale"\]\)/,
   );
-  assert.match(route, /agentJobRun\.upsert/);
+  assert.match(route, /agentJobRun\.findFirst/);
+  assert.match(route, /userId: user\.id,[\s\S]*jobType: parsed\.data\.jobType,[\s\S]*instanceId: parsed\.data\.instanceId/);
+  assert.match(route, /agentJobRun\.update/);
+  assert.match(route, /agentJobRun\.create/);
+  assert.doesNotMatch(route, /userId_instanceId/);
   assert.match(route, /MAX_DETAILS_BYTES = 50_000/);
 
   assert.match(cli, /job-run-start/);
@@ -123,6 +128,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /run_cron_supervisor/);
   assert.match(runner, /run_cron_scheduler_tick/);
   assert.match(runner, /run_cron_worker/);
+  assert.match(runner, /payload_prompt_file/);
+  assert.match(runner, /digest-once\)[\s\S]*jobs\/digest-cron\.md/);
   assert.match(runner, /BUILDER_BLOG_WORKER_MODE=1/);
   assert.match(runner, /BUILDER_BLOG_SCHEDULER_TICK/);
   assert.match(runner, /due_expected_at/);

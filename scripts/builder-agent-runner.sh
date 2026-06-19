@@ -1115,8 +1115,18 @@ run_job_payload() {
         return "$?"
       fi
       ;;
+    digest-once)
+      PROMPT_FILE="$(payload_prompt_file)"
+      ;;
   esac
   run_selected_runtime
+}
+
+payload_prompt_file() {
+  case "$JOB_NAME" in
+    digest-once) printf '%s\n' "$AGENT_DIR/jobs/digest-cron.md" ;;
+    *) printf '%s\n' "$AGENT_DIR/jobs/$JOB_NAME.md" ;;
+  esac
 }
 
 # Sharded library run: the runner owns every deterministic step (fetch, shard,

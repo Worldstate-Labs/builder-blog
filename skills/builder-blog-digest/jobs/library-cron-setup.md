@@ -56,7 +56,18 @@ already exists on this machine. Run the check for this machine's OS — run
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
-launchctl list 2>/dev/null | awk '{ print $3 }' | grep -x "$LABEL" || echo "(none found)"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+FOUND=0
+if launchctl list 2>/dev/null | awk '{ print $3 }' | grep -x "$LABEL"; then
+  FOUND=1
+fi
+if [ -f "$PLIST" ]; then
+  echo "LaunchAgent plist exists: $PLIST"
+  FOUND=1
+fi
+if [ "$FOUND" -eq 0 ]; then
+  echo "(none found)"
+fi
 ```
 
 ### Linux / other
@@ -255,6 +266,7 @@ with "Not logged in".
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
@@ -282,8 +294,17 @@ cat > "$PLIST" <<PLISTEOF
 </dict>
 </plist>
 PLISTEOF
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason setup_replace
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
+BOOTOUT_CODE="$?"
+node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason "exit_$BOOTOUT_CODE"
+if launchctl bootstrap "gui/$(id -u)" "$PLIST"; then
+  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootstrap_succeeded --label "$LABEL" --plist-exists 1 --reason setup_install
+else
+  BOOTSTRAP_CODE="$?"
+  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootstrap_failed --label "$LABEL" --plist-exists 1 --reason "exit_$BOOTSTRAP_CODE"
+  exit "$BOOTSTRAP_CODE"
+fi
 launchctl enable "gui/$(id -u)/$LABEL"
 launchctl print "gui/$(id -u)/$LABEL" | grep -E "state =|program ="
 ```
@@ -296,6 +317,7 @@ job:
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/%s.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" "$LABEL" ) | crontab -
+BUILDER_BLOG_ACCOUNT="$ACCT" node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-audit --job library-cron --event crontab_install_succeeded --label "$LABEL" --reason setup_install
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 

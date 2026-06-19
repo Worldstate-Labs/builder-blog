@@ -72,14 +72,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const existingRun = await prisma.agentJobRun.findUnique({
+  const existingRun = await prisma.agentJobRun.findFirst({
     where: {
-      userId_instanceId: {
-        userId: user.id,
-        instanceId: parsed.data.instanceId,
-      },
+      userId: user.id,
+      jobType: parsed.data.jobType,
+      instanceId: parsed.data.instanceId,
     },
-    select: { details: true },
+    select: { id: true, details: true },
   });
   const detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
   let detailsJson = "";
@@ -94,54 +93,41 @@ export async function POST(request: Request) {
 
   const now = new Date();
   const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
-  const record = await prisma.agentJobRun.upsert({
-    where: {
-      userId_instanceId: {
-        userId: user.id,
-        instanceId: parsed.data.instanceId,
-      },
-    },
-    update: {
-      status: parsed.data.status,
-      scheduleJob: parsed.data.scheduleJob ?? null,
-      expectedAt: parsed.data.expectedAt ? new Date(parsed.data.expectedAt) : null,
-      heartbeatAt: parsed.data.heartbeatAt ? new Date(parsed.data.heartbeatAt) : now,
-      finishedAt,
-      exitCode: parsed.data.exitCode ?? null,
-      signal: parsed.data.signal ?? null,
-      runtime: parsed.data.runtime ?? null,
-      runnerPid: parsed.data.runnerPid ?? null,
-      workerPid: parsed.data.workerPid ?? null,
-      hostname: parsed.data.hostname ?? request.headers.get("x-machine-hostname"),
-      platform: parsed.data.platform ?? request.headers.get("x-machine-platform"),
-      stage: parsed.data.stage ?? null,
-      summary: parsed.data.summary ?? null,
-      details: detailsValue as object,
-    },
-    create: {
-      userId: user.id,
-      jobType: parsed.data.jobType,
-      trigger: parsed.data.trigger,
-      scheduleJob: parsed.data.scheduleJob ?? null,
-      instanceId: parsed.data.instanceId,
-      expectedAt: parsed.data.expectedAt ? new Date(parsed.data.expectedAt) : null,
-      startedAt: new Date(parsed.data.startedAt),
-      heartbeatAt: parsed.data.heartbeatAt ? new Date(parsed.data.heartbeatAt) : now,
-      finishedAt,
-      status: parsed.data.status,
-      exitCode: parsed.data.exitCode ?? null,
-      signal: parsed.data.signal ?? null,
-      runtime: parsed.data.runtime ?? null,
-      runnerPid: parsed.data.runnerPid ?? null,
-      workerPid: parsed.data.workerPid ?? null,
-      hostname: parsed.data.hostname ?? request.headers.get("x-machine-hostname"),
-      platform: parsed.data.platform ?? request.headers.get("x-machine-platform"),
-      stage: parsed.data.stage ?? null,
-      summary: parsed.data.summary ?? null,
-      details: detailsValue as object,
-    },
-    select: { id: true, instanceId: true, status: true },
-  });
+  const runData = {
+    status: parsed.data.status,
+    scheduleJob: parsed.data.scheduleJob ?? null,
+    expectedAt: parsed.data.expectedAt ? new Date(parsed.data.expectedAt) : null,
+    heartbeatAt: parsed.data.heartbeatAt ? new Date(parsed.data.heartbeatAt) : now,
+    finishedAt,
+    exitCode: parsed.data.exitCode ?? null,
+    signal: parsed.data.signal ?? null,
+    runtime: parsed.data.runtime ?? null,
+    runnerPid: parsed.data.runnerPid ?? null,
+    workerPid: parsed.data.workerPid ?? null,
+    hostname: parsed.data.hostname ?? request.headers.get("x-machine-hostname"),
+    platform: parsed.data.platform ?? request.headers.get("x-machine-platform"),
+    stage: parsed.data.stage ?? null,
+    summary: parsed.data.summary ?? null,
+    details: detailsValue as object,
+  };
+
+  const record = existingRun
+    ? await prisma.agentJobRun.update({
+        where: { id: existingRun.id },
+        data: runData,
+        select: { id: true, instanceId: true, status: true },
+      })
+    : await prisma.agentJobRun.create({
+        data: {
+          userId: user.id,
+          jobType: parsed.data.jobType,
+          trigger: parsed.data.trigger,
+          instanceId: parsed.data.instanceId,
+          startedAt: new Date(parsed.data.startedAt),
+          ...runData,
+        },
+        select: { id: true, instanceId: true, status: true },
+      });
 
   return NextResponse.json({ id: record.id, instanceId: record.instanceId, status: record.status });
 }

@@ -6671,10 +6671,121 @@ async function status() {
   );
 }
 
+function normalizeCronJob(job) {
+  return job === "digest-cron" ? "digest-cron" : "library-cron";
+}
+
+function cronAuditLabel(job) {
+  const kind = normalizeCronJob(job) === "digest-cron" ? "digest" : "library";
+  return `com.followbrief.${kind}.${accountSlug()}`;
+}
+
+function cronAuditLogPath(job) {
+  return join(agentDir(), "tmp", "accounts", accountSlug(), normalizeCronJob(job), "cron-events.jsonl");
+}
+
+function parseAuditBoolean(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes"].includes(normalized)) return true;
+  if (["0", "false", "no"].includes(normalized)) return false;
+  return null;
+}
+
+function parseAuditStatus(value) {
+  return value === "active" || value === "stopped" ? value : null;
+}
+
+function parseAuditDetails(value) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { value: parsed };
+  } catch {
+    return { value };
+  }
+}
+
+async function appendCronAuditLocal(event) {
+  const path = cronAuditLogPath(event.job);
+  await mkdir(dirname(path), { recursive: true });
+  const record = {
+    at: new Date().toISOString().replace(".000Z", "Z"),
+    account: process.env.BUILDER_BLOG_ACCOUNT ?? null,
+    accountSlug: accountSlug(),
+    pid: process.pid,
+    hostname: RUN_HOSTNAME,
+    platform: RUN_PLATFORM,
+    ...event,
+  };
+  await writeFile(path, `${JSON.stringify(record)}\n`, { flag: "a", mode: 0o600 });
+  return path;
+}
+
+async function postCronAuditEvent(config, event) {
+  if (webSyncDisabled() || !config?.token || !config?.appUrl) return null;
+  return postJson(
+    `${config.appUrl}/api/skill/cron-events`,
+    event,
+    config.token,
+    {
+      label: "cron audit event",
+      retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
+      timeoutMs: HTTP_SYNC_TIMEOUT_MS,
+    },
+  );
+}
+
+async function recordCronAuditEvent(config, event) {
+  const normalized = {
+    ...event,
+    job: normalizeCronJob(event.job),
+    localLabel: event.localLabel || cronAuditLabel(event.job),
+    details: event.details && typeof event.details === "object" && !Array.isArray(event.details)
+      ? event.details
+      : {},
+  };
+  const localLogPath = await appendCronAuditLocal(normalized);
+  try {
+    const server = await postCronAuditEvent(config, normalized);
+    return { localLogPath, serverLogged: Boolean(server?.id), serverEventId: server?.id ?? null };
+  } catch (error) {
+    return {
+      localLogPath,
+      serverLogged: false,
+      error: httpSyncErrorSummary(error),
+    };
+  }
+}
+
+async function cronAudit(args) {
+  const config = await readConfig();
+  const job = normalizeCronJob(argValue(args, "--job", "library-cron"));
+  const localLabel = argValue(args, "--label", cronAuditLabel(job));
+  const plistExistsArg = parseAuditBoolean(argValue(args, "--plist-exists"));
+  const launchctlLoaded = parseAuditBoolean(argValue(args, "--launchctl-loaded"));
+  const plistPath = join(homedir(), "Library", "LaunchAgents", `${localLabel}.plist`);
+  const result = await recordCronAuditEvent(config, {
+    job,
+    eventType: argValue(args, "--event", "manual_audit"),
+    status: parseAuditStatus(argValue(args, "--status")),
+    reason: argValue(args, "--reason", null),
+    runtime: argValue(args, "--runtime") || process.env.BUILDER_BLOG_RUNTIME || null,
+    localLabel,
+    localPlistExists: plistExistsArg ?? existsSync(plistPath),
+    launchctlLoaded,
+    details: {
+      cliVersion: CLI_VERSION,
+      ...parseAuditDetails(argValue(args, "--details")),
+    },
+  });
+  console.log(JSON.stringify(result, null, 2));
+}
+
 async function cronStatus(args) {
   const config = await readConfig();
   requireLoggedIn(config);
-  const job = argValue(args, "--job", "library-cron");
+  const job = normalizeCronJob(argValue(args, "--job", "library-cron"));
   const statusValue = argValue(args, "--status", "active");
   const freq = argValue(args, "--freq");
   const schedule = argValue(args, "--schedule");
@@ -6684,25 +6795,57 @@ async function cronStatus(args) {
   const regenerateValue = argValue(args, "--regenerate", "0");
   const startedAt = argValue(args, "--started-at") || new Date().toISOString();
 
-  const result = await postJson(
-    `${config.appUrl}/api/skill/cron-jobs`,
-    {
+  const payload = {
+    job,
+    status: statusValue,
+    frequencyKey: freq,
+    frequencyLabel: label,
+    schedule,
+    runtime,
+    overrideFetched: forceValue === "1",
+    regenerateDigest: regenerateValue === "1",
+    startedAt,
+  };
+
+  await recordCronAuditEvent(config, {
+    job,
+    eventType: "cron_status_sync_start",
+    status: parseAuditStatus(statusValue),
+    reason: "cron_status_command",
+    runtime,
+    details: { frequencyKey: freq ?? null, schedule: schedule ?? null },
+  });
+
+  let result;
+  try {
+    result = await postJson(
+      `${config.appUrl}/api/skill/cron-jobs`,
+      payload,
+      config.token,
+      {
+        label: "cron status sync",
+        retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
+      },
+    );
+  } catch (error) {
+    await recordCronAuditEvent(config, {
       job,
-      status: statusValue,
-      frequencyKey: freq,
-      frequencyLabel: label,
-      schedule,
+      eventType: "cron_status_sync_failed",
+      status: parseAuditStatus(statusValue),
+      reason: httpSyncErrorSummary(error),
       runtime,
-      overrideFetched: forceValue === "1",
-      regenerateDigest: regenerateValue === "1",
-      startedAt,
-    },
-    config.token,
-    {
-      label: "cron status sync",
-      retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
-    },
-  );
+      details: { message: error instanceof Error ? error.message : String(error) },
+    });
+    throw error;
+  }
+  await recordCronAuditEvent(config, {
+    job,
+    eventType: "cron_status_sync_succeeded",
+    status: parseAuditStatus(statusValue),
+    reason: "cron_status_command",
+    runtime,
+    details: { result },
+  });
   console.log(JSON.stringify(result, null, 2));
 }
 
@@ -6811,6 +6954,16 @@ async function fetchStatusAudit() {
     },
   ];
   const ok = checks.every((check) => check.ok);
+  if (cronJob?.status === "active" && !localAnchor && !localLastFired && !localCurrent) {
+    await recordCronAuditEvent(config, {
+      job: "library-cron",
+      eventType: "local_scheduler_missing",
+      status: "active",
+      reason: "fetch_status_audit",
+      runtime: cronJob.runtime ?? null,
+      details: { checks },
+    });
+  }
   console.log(JSON.stringify({
     status: ok ? "ok" : "needs_attention",
     appUrl: config.appUrl,
@@ -6909,6 +7062,16 @@ async function digestStatusAudit() {
     },
   ];
   const ok = checks.every((check) => check.ok);
+  if (cronJob?.status === "active" && !localAnchor && !localLastFired && !localCurrent) {
+    await recordCronAuditEvent(config, {
+      job: "digest-cron",
+      eventType: "local_scheduler_missing",
+      status: "active",
+      reason: "digest_status_audit",
+      runtime: cronJob.runtime ?? null,
+      details: { checks },
+    });
+  }
   console.log(JSON.stringify({
     status: ok ? "ok" : "needs_attention",
     appUrl: config.appUrl,
@@ -6956,6 +7119,7 @@ async function main() {
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "render-digest") await renderDigest(args);
   else if (command === "sync") await sync(args);
+  else if (command === "cron-audit") await cronAudit(args);
   else if (command === "cron-status") await cronStatus(args);
   else if (command === "fetch-status-audit") await fetchStatusAudit();
   else if (command === "digest-status-audit") await digestStatusAudit();

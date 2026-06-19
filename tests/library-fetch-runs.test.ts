@@ -284,7 +284,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /cronJobRef/);
   assert.match(panel, /run\.source === "cron" && cronJob && cronJob\.status !== "active"/);
-  assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null, cronJob\)/);
+  assert.match(panel, /if \(jobRun && \(!isActiveJobRun\(jobRun\) \|\| isStalledJobRun\(jobRun\)\)\) return false/);
+  assert.match(panel, /if \(jobRun && jobRun\.trigger !== "scheduled"\) return false/);
+  assert.match(panel, /if \(!jobRun && run\.source !== "cron"\) return false/);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
   assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{resolvedJobRun \?\? undefined\} run=\{run\} \/>/);
   assert.match(panel, /interruptedFetchRunStatus/);

@@ -51,11 +51,17 @@ label printed in step 1.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 [ -n "$ACCT" ] && LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 # If BUILDER_BLOG_ACCOUNT is unset, replace the line above with the label from
 # step 1, e.g. LABEL="com.followbrief.library.jie_worldstatelabs_com"
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason stop_cron
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
+BOOTOUT_CODE="$?"
+node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason "exit_$BOOTOUT_CODE"
+rm -f "$PLIST"
+node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason stop_cron
 launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL PRESENT: $LABEL" || echo "removed: $LABEL"
 ```
 
@@ -68,6 +74,7 @@ if [ -n "$ACCT" ]; then
 else
   crontab -l 2>/dev/null | grep -v "# FollowBrief library cron" | grep -v "builder-agent-runner.sh library-cron" | crontab -
 fi
+BUILDER_BLOG_ACCOUNT="$ACCT" node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-audit --job library-cron --event crontab_remove_succeeded --reason stop_cron
 crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh library-cron' && echo "STILL PRESENT" || echo "removed"
 ```
 
