@@ -27,6 +27,8 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
 
   assert.match(fallbackBlock, /Your AI Digest collection/);
   assert.match(fallbackBlock, /Imported AI Digest collections/);
+  assert.match(fallbackBlock, /className="your-digest-section your-digest-panel library-section-panel"/);
+  assert.match(fallbackBlock, /className="imported-digest-section imported-digest-panel library-section-panel"/);
   assert.doesNotMatch(fallbackBlock, /Imported AI Digest issues/);
   assert.match(fallbackBlock, /aria-label="Loading your AI Digest collection"/);
   assert.match(fallbackBlock, /aria-label="Loading imported AI Digest collections"/);

@@ -163,9 +163,12 @@ async function DigestSourcesSection({
 
   return (
     <section className="digest-source-management">
-      <section className="your-digest-section" aria-labelledby="sources-digest-section-title">
-        <div className="library-hub-toolbar">
-          <div className="library-hub-toolbar-copy">
+      <section
+        className="your-digest-section your-digest-panel library-section-panel"
+        aria-labelledby="sources-digest-section-title"
+      >
+        <div className="library-section-summary library-section-summary--static">
+          <div className="library-section-summary-copy">
             <h2 id="sources-digest-section-title" className="fb-section-heading">
               Your AI Digest collection
             </h2>
@@ -173,28 +176,30 @@ async function DigestSourcesSection({
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
         </div>
 
-        <OwnDigestPipelineUpdatesCard
-          actions={
-            <SkillPromptActions
-              activeSchedule={data.digestCronJob}
-              compactOnly
-              context="digest"
-              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-              showStop={showStopDigestCron}
-              summaryLanguage={data.summaryLanguage}
-              tokens={data.activeTokens}
-            />
-          }
-          initialCronJob={data.digestCronJob}
-          initialCronRuns={data.digestCronRuns}
-          initialJobRuns={data.digestJobRuns}
-          initialRuns={data.digestRuns}
-          initialScheduledJobRuns={data.digestScheduledJobRuns}
-          pipeline={data.ownDigestPipeline}
-        />
+        <div className="library-section-body">
+          <OwnDigestPipelineUpdatesCard
+            actions={
+              <SkillPromptActions
+                activeSchedule={data.digestCronJob}
+                compactOnly
+                context="digest"
+                digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+                showStop={showStopDigestCron}
+                summaryLanguage={data.summaryLanguage}
+                tokens={data.activeTokens}
+              />
+            }
+            initialCronJob={data.digestCronJob}
+            initialCronRuns={data.digestCronRuns}
+            initialJobRuns={data.digestJobRuns}
+            initialRuns={data.digestRuns}
+            initialScheduledJobRuns={data.digestScheduledJobRuns}
+            pipeline={data.ownDigestPipeline}
+          />
+        </div>
       </section>
 
-      <DigestPipelineImportForm mode="imported" pipelines={data.hubDigestPipelines} />
+      <DigestPipelineImportForm mode="imported" panel pipelines={data.hubDigestPipelines} />
     </section>
   );
 }
@@ -203,9 +208,12 @@ function DigestSourcesFallback() {
   return (
     <section className="digest-source-management" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading AI Digest controls</span>
-      <section className="your-digest-section" aria-label="Loading your AI Digest collection">
-        <div className="library-hub-toolbar">
-          <div className="library-hub-toolbar-copy">
+      <section
+        className="your-digest-section your-digest-panel library-section-panel"
+        aria-label="Loading your AI Digest collection"
+      >
+        <div className="library-section-summary library-section-summary--static">
+          <div className="library-section-summary-copy">
             <h2 className="fb-section-heading">
               Your AI Digest collection
             </h2>
@@ -213,18 +221,25 @@ function DigestSourcesFallback() {
           </div>
           <div className="source-section-skeleton-chip" />
         </div>
-        <div className="source-sync-skeleton-panel" />
+        <div className="library-section-body">
+          <div className="source-sync-skeleton-panel" />
+        </div>
       </section>
-      <section className="digest-source-management" aria-label="Loading imported AI Digest collections">
-        <div className="library-hub-toolbar">
-          <div className="library-hub-toolbar-copy">
+      <section
+        className="imported-digest-section imported-digest-panel library-section-panel"
+        aria-label="Loading imported AI Digest collections"
+      >
+        <div className="imported-digest-head">
+          <div className="imported-digest-copy">
             <h2 className="fb-section-heading">
               Imported AI Digest collections
             </h2>
             <div className="source-sync-skeleton-line" />
           </div>
         </div>
-        <div className="source-sync-skeleton-panel" />
+        <div className="imported-digest-body">
+          <div className="source-sync-skeleton-panel" />
+        </div>
       </section>
     </section>
   );

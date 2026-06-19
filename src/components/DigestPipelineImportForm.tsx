@@ -55,6 +55,7 @@ type DigestPipelinePreviewData = Pick<
 
 type DigestPipelineImportFormProps = {
   mode?: "hub" | "imported";
+  panel?: boolean;
   pipelines: HubDigestPipeline[];
 };
 
@@ -62,6 +63,7 @@ const HUB_DIGEST_HEADLINE_LINES = 6;
 
 export function DigestPipelineImportForm({
   mode = "hub",
+  panel = false,
   pipelines,
 }: DigestPipelineImportFormProps) {
   const sharedPipelines = useMemo(
@@ -103,7 +105,7 @@ export function DigestPipelineImportForm({
     mode === "imported" ? "Imported AI Digest collections" : "Shared AI Digest collections";
   const description =
     mode === "imported"
-      ? "Imported collections are available in AI Digest."
+      ? "Collections you've imported from Hub."
       : "Import AI Digest collections shared by others.";
   const emptyTitle =
     mode === "imported"
@@ -228,17 +230,8 @@ export function DigestPipelineImportForm({
     removeImported(pipelineId);
   }
 
-  return (
-    <section>
-      <div className="library-hub-toolbar">
-        <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">{title}</h2>
-          <p className="hub-section-copy">
-            {description}
-          </p>
-        </div>
-      </div>
-
+  const body = (
+    <>
       {error ? (
         <p className="hub-form-error" role="status">
           {error}
@@ -281,6 +274,23 @@ export function DigestPipelineImportForm({
           />
         ) : null}
       </div>
+    </>
+  );
+
+  return (
+    <section
+      className={panel ? "imported-digest-section imported-digest-panel library-section-panel" : undefined}
+    >
+      <div className={panel ? "imported-digest-head" : "library-hub-toolbar"}>
+        <div className={panel ? "imported-digest-copy" : "library-hub-toolbar-copy"}>
+          <h2 className="fb-section-heading">{title}</h2>
+          <p className={panel ? "library-section-copy" : "hub-section-copy"}>
+            {description}
+          </p>
+        </div>
+      </div>
+
+      {panel ? <div className="imported-digest-body">{body}</div> : body}
 
       <dialog
         aria-labelledby="hub-remove-ai-digest-title"

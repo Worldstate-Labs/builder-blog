@@ -5935,6 +5935,52 @@ summary.library-section-summary::after {
   gap: 1rem;
 }
 
+.your-digest-panel,
+.imported-digest-panel {
+  gap: 0;
+}
+
+.your-digest-panel > .library-section-body {
+  padding: 1rem 1.125rem 1.125rem;
+}
+
+.your-digest-panel .own-digest-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+.imported-digest-head {
+  align-items: start;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 1.125rem 1.25rem;
+}
+
+.imported-digest-copy {
+  max-width: var(--copy-max);
+  min-width: 0;
+}
+
+.imported-digest-body {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.875rem;
+  min-width: 0;
+  padding: 1rem 1.125rem 1.125rem;
+}
+
+.imported-digest-body .hub-list-count-row {
+  margin: 0;
+}
+
+.imported-digest-body .hub-list-stack {
+  margin: 0;
+}
+
 .your-digest-section .library-hub-toolbar,
 .your-library-section .library-hub-toolbar {
   align-items: center;
@@ -12430,7 +12476,8 @@ body {
     font-size: 0.9375rem;
   }
 
-  .imported-libraries-head {
+  .imported-libraries-head,
+  .imported-digest-head {
     grid-template-columns: 1fr;
   }
 
