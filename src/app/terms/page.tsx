@@ -1,26 +1,10 @@
-import Link from "next/link";
-import { BrandMark } from "@/components/BrandMark";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { PublicHeader } from "@/components/PublicHeader";
 
 export default function TermsPage() {
   return (
-    <main className="fb-landing-grid min-h-screen">
-      <nav className="fb-public-nav">
-        <Link href="/" className="fb-brand">
-          <BrandMark />
-          <span className="fb-brand-name">FollowBrief</span>
-        </Link>
-        <div className="fb-public-nav-actions">
-          <ThemeToggle />
-          <Link className="fb-btn light" href="/privacy">
-            Privacy
-          </Link>
-          <Link className="fb-btn dark" href="/login">
-            Sign in
-          </Link>
-        </div>
-      </nav>
-
+    <>
+      <PublicHeader current="terms" />
+      <main className="fb-landing-grid min-h-screen">
       <section className="fb-public-section">
         <div>
           <span className="fb-section-label">Terms</span>
@@ -58,7 +42,8 @@ export default function TermsPage() {
           />
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
 

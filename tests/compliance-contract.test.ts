@@ -17,8 +17,7 @@ function assertFile(path: string) {
 test("public legal pages disclose privacy, terms, AI, third-party, sharing, and rights", () => {
   const privacyPage = assertFile("src/app/privacy/page.tsx");
   const termsPage = assertFile("src/app/terms/page.tsx");
-  const homePage = source("src/app/page.tsx");
-  const loginPage = source("src/app/login/page.tsx");
+  const publicHeader = source("src/components/PublicHeader.tsx");
   const userMenu = source("src/components/UserMenu.tsx");
 
   for (const page of [privacyPage, termsPage]) {
@@ -37,7 +36,7 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(termsPage, /Local Agent|access key|AI Digest/);
   assert.match(termsPage, /Do not|must not/i);
 
-  for (const surface of [homePage, loginPage, userMenu]) {
+  for (const surface of [publicHeader, userMenu]) {
     assert.match(surface, /href="\/privacy"/);
     assert.match(surface, /href="\/terms"/);
   }

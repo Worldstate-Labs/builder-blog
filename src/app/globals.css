@@ -4633,6 +4633,26 @@ summary.library-section-summary::after {
   width: 1.875rem;
 }
 
+.fb-public-top-inner {
+  grid-template-columns: var(--side-rail-width) minmax(0, 1fr);
+}
+
+.fb-public-top-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  margin-right: var(--workspace-gutter);
+  min-width: 0;
+}
+
+.fb-public-header-primary {
+  min-height: 2.25rem;
+  padding-inline: 0.95rem;
+}
+
 .fb-brand {
   align-items: center;
   display: inline-flex;
@@ -11888,6 +11908,32 @@ mark.fb-mark-highlight {
 
 .fb-m-top .fb-brand-name {
   font-size: 0.875rem;
+}
+
+.fb-public-mobile-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.fb-public-mobile-actions .fb-login-nav-link,
+.fb-public-mobile-actions .fb-public-header-primary {
+  font-size: 0.75rem;
+  min-height: 2rem;
+  padding-inline: 0.625rem;
+  white-space: nowrap;
+}
+
+.fb-public-mobile-actions .fb-icon-btn {
+  flex-shrink: 0;
+}
+
+@media (max-width: 380px) {
+  .fb-public-m-top .fb-brand-name {
+    display: none;
+  }
 }
 
 .fb-m-icon {
