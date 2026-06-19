@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/PageHeader";
+
 export default function LibraryHubLoading() {
   return (
     <div
@@ -5,7 +7,10 @@ export default function LibraryHubLoading() {
       aria-live="polite"
       className="page-pad hub-loading"
     >
-      <h1 className="sr-only">Loading Hub</h1>
+      <PageHeader
+        title="Hub"
+        description="Browse and import shared source libraries and AI Digest collections."
+      />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <div className="workspace-top-tabs-row">
           <div

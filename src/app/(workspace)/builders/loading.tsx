@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/PageHeader";
+
 export default function BuildersLoading() {
   return (
     <div
@@ -5,7 +7,10 @@ export default function BuildersLoading() {
       aria-live="polite"
       className="page-pad sources-loading"
     >
-      <h1 className="sr-only">Loading Sources</h1>
+      <PageHeader
+        title="Sources"
+        description="Follow sources, fetch updates, and choose what feeds AI Digest and Following."
+      />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
           <div className="workspace-top-tabs-row">

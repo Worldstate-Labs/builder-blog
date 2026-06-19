@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/PageHeader";
+
 export default function DashboardLoading() {
   return (
     <div
@@ -5,7 +7,10 @@ export default function DashboardLoading() {
       aria-live="polite"
       className="page-pad page-pad--reading home-page home-loading"
     >
-      <h1 className="sr-only">Loading Today</h1>
+      <PageHeader
+        title="Today"
+        description="Read AI Digest issues and Following posts, then save or open originals."
+      />
       <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
         <div className="workspace-top-tabs-row">
           <div
