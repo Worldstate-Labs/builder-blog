@@ -3685,7 +3685,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-summary-item\.is-mobile-hidden\s*{[\s\S]*display:\s*none/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{[\s\S]*padding:\s*0\.8rem var\(--hierarchy-inset\) 0/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-type-groups\s*{[\s\S]*padding-inline:\s*var\(--hierarchy-inset-mobile\)/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-preview\s*{/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
@@ -3954,6 +3955,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /className="grid gap-3"/);
   assert.doesNotMatch(buildersPage, /mt-1 text-sm text-\[var\(--muted-strong\)\]/);
   assert.match(buildersPage, /library-section-panel-indented/);
+  assert.match(cssRule(globals, ".library-section-panel-indented"), /margin-inline:\s*var\(--hierarchy-inset\)/);
+  assert.doesNotMatch(cssRule(globals, ".library-section-panel-indented"), /margin-left/);
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
@@ -4111,7 +4114,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(globals, /\.library-source-list-shell/);
   assert.doesNotMatch(globals, /\.library-source-list-tools/);
   assert.doesNotMatch(globals, /\.source-library-control-area/);
-  assert.match(cssRule(globals, ".source-library-items-area"), /padding:\s*1rem 1\.125rem 1\.125rem/);
+  assert.match(cssRule(globals, ".source-library-items-area"), /padding:\s*var\(--hierarchy-inset\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.source-library-items-area\s*{[\s\S]*padding:\s*var\(--hierarchy-inset-mobile\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-body\s*{[\s\S]*padding:\s*0 0\.75rem 0\.75rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-body:has\(\.source-library-items-area\)\s*{[\s\S]*padding:\s*0/);
   assert.match(cssRule(globals, ".source-library-items-toolbar"), /border:\s*1px solid/);
   assert.match(cssRule(globals, ".source-library-items-toolbar"), /border-radius:\s*8px/);
   assert.match(cssRule(globals, ".source-library-items-toolbar"), /background:\s*transparent/);
