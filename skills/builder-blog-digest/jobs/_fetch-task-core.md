@@ -26,7 +26,10 @@ Lifecycle vocabulary for this contract:
 - Summarize = generate exactly one single-post summary from
   `task.summaryInstructions.prompt`.
 - Sync = validate and upload the item or a `taskOutcomes` terminal outcome to
-  FollowBrief. Use "sync" for this step; do not call it "save".
+  FollowBrief. Use "sync" for this step; do not call it "save". The sync command
+  applies source-specific raw retention policy before the server stores a row:
+  full raw content may be used locally for summarization, but only the durable
+  body allowed for that source type is uploaded/stored.
 
 How to execute each `fetchTask`:
 - Read `task.id`; the finished item must set `rawJson.fetchTaskId` to exactly
@@ -72,11 +75,18 @@ How to execute each `fetchTask`:
 - Build one output item under the copied builder. Copy stable item fields from
   `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
   `sourceName`), set `body`, set `summary`, and set `rawJson`.
+- Treat `body` in this local sync payload as the final primary content used for
+  validation and summarization. Do not put raw HTML, full transcripts, raw API
+  responses, or large copied source text into `rawJson`; `rawJson` is for
+  provenance and execution proof only. The CLI will scrub high-risk raw content
+  from the upload according to source type.
 - For every output item, include `rawJson.fetchTaskId`. For `requires_agent`,
   also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`; for YouTube
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
-  transcript source is used.
+  transcript source is used. Also include `rawJson.acquisition` when known:
+  `{ provider, method, processedLocally: true, rawPersistedRequested,
+  rightsBasis }`.
 
 Per-task independence and accountability (CRITICAL):
 - Process EACH task on its own. NEVER infer one task's content or availability

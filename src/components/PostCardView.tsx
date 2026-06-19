@@ -164,6 +164,7 @@ export function PostCardView({
     : null;
 
   const authorName = builder?.name ?? post.sourceName ?? null;
+  const authorHandle = detailAuthorHandle(builder, authorName);
   const authorAvatarSource = authorName
     ? {
         avatarDataUrl: builder?.avatarDataUrl ?? null,
@@ -190,12 +191,17 @@ export function PostCardView({
   const showMetaSourceBadge = showSourceBadge && !showOriginalAction;
   const showReadIndicator = Boolean(dataRead && !isDetail);
   const showMetaRow = Boolean(
-    (showBuilderRow && authorName) ||
-      showMetaSourceBadge ||
-      hasAlternateChannels ||
-      showReadIndicator ||
-      extraMeta,
+    !isDetail &&
+      ((showBuilderRow && authorName) ||
+        showMetaSourceBadge ||
+        hasAlternateChannels ||
+        showReadIndicator ||
+        extraMeta),
   );
+  const detailPublishedLabel = post.publishedAt
+    ? formatDetailDate(post.publishedAt, hydrated)
+    : "Date unknown";
+  const detailReadTime = readingTimeLabel(`${detailSummary || ""} ${post.body || ""}`);
 
   return (
     <article
@@ -203,11 +209,68 @@ export function PostCardView({
       data-read={dataRead ? "true" : undefined}
     >
       <div className="post-copy">
-        {/* Line 1: Title */}
         {isDetail ? (
-          <h1 className="post-detail-title">
-            {titleContent ?? title}
-          </h1>
+          <header className="post-detail-head">
+            <div className="post-detail-kicker-row" aria-label="Post metadata">
+              <SourceBadge
+                builder={builder}
+                sourceType={builder?.sourceType ?? post.sourceType ?? null}
+              />
+              <span className="post-detail-dot" aria-hidden="true">·</span>
+              <span>{detailPublishedLabel}</span>
+              <span className="post-detail-dot" aria-hidden="true">·</span>
+              <span>{detailReadTime}</span>
+            </div>
+            <h1 className="post-detail-title">
+              {titleContent ?? title}
+            </h1>
+            <div className="post-detail-byline">
+              {authorName ? (
+                <div className="post-detail-author">
+                  {authorAvatarSource ? (
+                    <SourceAvatar
+                      className="post-detail-author-avatar"
+                      imageSize={36}
+                      source={authorAvatarSource}
+                    />
+                  ) : null}
+                  <div className="post-detail-author-copy">
+                    {authorHref ? (
+                      <LinkComponent
+                        className="post-detail-author-name"
+                        href={authorHref}
+                        onClick={noteInteraction}
+                      >
+                        {authorName}
+                      </LinkComponent>
+                    ) : (
+                      <span className="post-detail-author-name">{authorName}</span>
+                    )}
+                    {authorHandle ? (
+                      <span className="post-detail-author-handle">{authorHandle}</span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              <div
+                aria-label={actionLabel("Post actions", actionContext)}
+                className="post-detail-actions"
+                onClickCapture={noteInteraction}
+                role="group"
+              >
+                {extraActions}
+                {showOriginalAction ? (
+                  <OriginalSourceAction
+                    ariaLabel={actionLabel("Original", actionContext)}
+                    builder={builder}
+                    href={post.url}
+                    onClick={noteInteraction}
+                    sourceType={builder?.sourceType ?? post.sourceType ?? null}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </header>
         ) : (
           <h3 className="fetched-post-title">{titleContent ?? title}</h3>
         )}
@@ -281,39 +344,9 @@ export function PostCardView({
                 <p>{detailSummary}</p>
               </section>
             ) : null}
-            <section
-              className={`post-detail-raw${rawExpanded ? " post-detail-raw--expanded" : ""}`}
-              aria-label="Original content"
-            >
-              <div className="post-detail-raw-head">
-                <div className="post-detail-raw-copy">
-                  <h2 className="post-detail-section-label">Original content</h2>
-                  <p className="post-detail-section-desc">
-                    Saved by Fetch sources.
-                  </p>
-                </div>
-                <button
-                  aria-controls={rawRegionId}
-                  aria-expanded={rawExpanded}
-                  className="post-detail-raw-toggle"
-                  onClick={() => setRawExpanded((expanded) => !expanded)}
-                  type="button"
-                >
-                  <BookOpen aria-hidden="true" className="post-detail-raw-toggle-icon" />
-                  {rawExpanded ? "Hide original content" : "Show original content"}
-                </button>
-              </div>
-              {rawExpanded ? (
-                <div
-                  aria-label="Original content"
-                  className="post-detail-body"
-                  id={rawRegionId}
-                  role="region"
-                >
-                  {post.body}
-                </div>
-              ) : null}
-            </section>
+            <div className="post-detail-body">
+              {post.body}
+            </div>
           </>
         ) : (
           <div
@@ -350,86 +383,87 @@ export function PostCardView({
 
         {context}
 
-        {/* Footer row: timestamp (left) · action icons (right) */}
-        <div
-          className="post-footer"
-          data-stack-actions={stackActionsOnMobile ? "true" : undefined}
-        >
-          {showPublishedDate ? (
-            post.publishedAt ? (
-              <time className="post-footer-published" dateTime={post.publishedAt}>
-                {formatDate(post.publishedAt, hydrated)}
-              </time>
-            ) : (
-              <span className="post-footer-published">Date unknown</span>
-            )
-          ) : (
-            <span />
-          )}
-
+        {!isDetail ? (
           <div
-            aria-label={actionLabel("Post actions", actionContext)}
-            className="post-actions"
-            onClickCapture={noteInteraction}
-            role="group"
+            className="post-footer"
+            data-stack-actions={stackActionsOnMobile ? "true" : undefined}
           >
-            {/* External platform action: keep the platform icon, but use one stable label. */}
-            {showOriginalAction ? (
-              <OriginalSourceAction
-                ariaLabel={actionLabel("Original", actionContext)}
-                builder={builder}
-                href={post.url}
-                onClick={noteInteraction}
-                sourceType={builder?.sourceType ?? post.sourceType ?? null}
-              />
-            ) : null}
+            {showPublishedDate ? (
+              post.publishedAt ? (
+                <time className="post-footer-published" dateTime={post.publishedAt}>
+                  {formatDate(post.publishedAt, hydrated)}
+                </time>
+              ) : (
+                <span className="post-footer-published">Date unknown</span>
+              )
+            ) : (
+              <span />
+            )}
 
-            {canReadRawContent && post.detailUrl ? (
-              <LinkComponent
-                aria-label={actionLabel("Read", actionContext)}
-                className="post-raw-content-action post-read-action"
-                href={post.detailUrl}
-                onClick={noteInteraction}
-                title="Read"
-              >
-                <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
-                <span className="sr-only">Read</span>
-              </LinkComponent>
-            ) : canReadRawContent ? (
-              <button
-                aria-controls={rawRegionId}
-                aria-label={actionLabel(rawContentLabel, actionContext)}
-                aria-expanded={rawExpanded}
-                className={`post-raw-content-action${rawExpanded ? " post-raw-content-action--active" : ""}`}
-                onClick={() => {
-                  setRawExpanded((v) => !v);
-                  if (!rawExpanded) noteInteraction();
-                }}
-                title={rawContentLabel}
-                type="button"
-              >
-                <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
-                <span className="sr-only">
-                  {rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}
-                </span>
-              </button>
-            ) : null}
+            <div
+              aria-label={actionLabel("Post actions", actionContext)}
+              className="post-actions"
+              onClickCapture={noteInteraction}
+              role="group"
+            >
+              {/* External platform action: keep the platform icon, but use one stable label. */}
+              {showOriginalAction ? (
+                <OriginalSourceAction
+                  ariaLabel={actionLabel("Original", actionContext)}
+                  builder={builder}
+                  href={post.url}
+                  onClick={noteInteraction}
+                  sourceType={builder?.sourceType ?? post.sourceType ?? null}
+                />
+              ) : null}
 
-            {extraActions}
+              {canReadRawContent && post.detailUrl ? (
+                <LinkComponent
+                  aria-label={actionLabel("Read", actionContext)}
+                  className="post-raw-content-action post-read-action"
+                  href={post.detailUrl}
+                  onClick={noteInteraction}
+                  title="Read"
+                >
+                  <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
+                  <span className="sr-only">Read</span>
+                </LinkComponent>
+              ) : canReadRawContent ? (
+                <button
+                  aria-controls={rawRegionId}
+                  aria-label={actionLabel(rawContentLabel, actionContext)}
+                  aria-expanded={rawExpanded}
+                  className={`post-raw-content-action${rawExpanded ? " post-raw-content-action--active" : ""}`}
+                  onClick={() => {
+                    setRawExpanded((v) => !v);
+                    if (!rawExpanded) noteInteraction();
+                  }}
+                  title={rawContentLabel}
+                  type="button"
+                >
+                  <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
+                  <span className="sr-only">
+                    {rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}
+                  </span>
+                </button>
+              ) : null}
 
-            {showDebugActions && (post.fetchTool || post.createdAt) ? (
-              <FetchMethodPopover
-                accessibleLabel={actionLabel("Summary method", actionContext)}
-                fetchTool={post.fetchTool}
-                summarizedAt={post.createdAt}
-              />
-            ) : null}
+              {extraActions}
 
-            {showDebugActions && reasons && reasons.length > 0 ? (
-              <RecommendationReasonsPopover reasons={reasons} />
-            ) : null}
+              {showDebugActions && (post.fetchTool || post.createdAt) ? (
+                <FetchMethodPopover
+                  accessibleLabel={actionLabel("Summary method", actionContext)}
+                  fetchTool={post.fetchTool}
+                  summarizedAt={post.createdAt}
+                />
+              ) : null}
+
+              {showDebugActions && reasons && reasons.length > 0 ? (
+                <RecommendationReasonsPopover reasons={reasons} />
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Original content collapsible region */}
         {!isDetail && rawExpanded && rawContent ? (
@@ -456,6 +490,66 @@ function formatDate(value: string, hydrated: boolean) {
     day: "numeric",
     timeZone: "UTC",
   }).format(new Date(value));
+}
+
+function formatDetailDate(value: string, hydrated: boolean) {
+  const date = new Date(value);
+  if (!hydrated) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+  }
+
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const dayDiff = Math.round((startOfToday - startOfDate) / 86_400_000);
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff > 1 && dayDiff < 7) return `${dayDiff} days ago`;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function readingTimeLabel(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.ceil(words / 220));
+  return `${minutes} min read`;
+}
+
+function detailAuthorHandle(builder: FetchedPostBuilder | null, authorName: string | null) {
+  const handle = handleFromSourceUrl(builder);
+  if (!handle) return null;
+  const normalizedName = authorName?.replace(/^@+/, "").trim().toLowerCase();
+  const normalizedHandle = handle.replace(/^@+/, "").trim().toLowerCase();
+  return normalizedName && normalizedName === normalizedHandle ? null : handle;
+}
+
+function handleFromSourceUrl(builder: FetchedPostBuilder | null) {
+  if (!builder) return null;
+  const sourceType = builder.sourceType?.trim().toLowerCase();
+  const url = builder.sourceUrl || builder.fetchUrl;
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const firstSegment = parsed.pathname.split("/").filter(Boolean)[0] ?? "";
+    if (!firstSegment) return null;
+    if ((sourceType === "x" || builder.kind === "X" || /(?:^|\.)x\.com$|(?:^|\.)twitter\.com$/.test(host))) {
+      return `@${firstSegment.replace(/^@+/, "")}`;
+    }
+    if (sourceType === "youtube" && firstSegment.startsWith("@")) {
+      return firstSegment;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function firstLine(body: string) {

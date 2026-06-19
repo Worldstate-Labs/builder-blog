@@ -180,8 +180,8 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/page.tsx", /<PublicHeader current="home" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
     ["src/app/login/page.tsx", /<PublicHeader current="login" \/>[\s\S]*className="fb-dark-frame"/],
     ["src/app/not-found.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
-    ["src/app/privacy/page.tsx", /<PublicHeader current="privacy" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
-    ["src/app/terms/page.tsx", /<PublicHeader current="terms" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
+    ["src/app/privacy/page.tsx", /<PublicHeader current="privacy" session=\{session\} \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
+    ["src/app/terms/page.tsx", /<PublicHeader current="terms" session=\{session\} \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
   ] as const;
   for (const [path, pattern] of publicRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered public shell`);
@@ -271,11 +271,13 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(postDetailLoading, /className="page-pad page-pad--reading reading-page post-detail-loading"/);
   assert.match(postDetailLoading, /className="reading-page-toolbar"/);
   assert.match(postDetailLoading, /className="fb-breadcrumb-link post-detail-loading-back"/);
-  assert.match(postDetailLoading, /className="reading-source-label post-detail-loading-source"/);
   assert.match(postDetailLoading, /className="feed-card fetched-post-card post-detail-card post-detail-loading-card"/);
+  assert.match(postDetailLoading, /className="post-detail-head"/);
+  assert.match(postDetailLoading, /className="post-detail-kicker-row"/);
+  assert.match(postDetailLoading, /className="post-detail-byline"/);
   assert.match(postDetailLoading, /className="post-detail-summary"/);
   assert.match(postDetailLoading, /className="post-detail-raw"/);
-  assert.match(postDetailLoading, /className="post-footer"/);
+  assert.doesNotMatch(postDetailLoading, /reading-source-label post-detail-loading-source|className="post-footer"/);
   assert.match(postDetailLoading, /<span className="sr-only">Loading post<\/span>/);
   assert.doesNotMatch(postDetailLoading, /RouteLoading|PageHeader/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), false);
@@ -496,6 +498,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(publicHeader, /className="fb-public-top-actions"/);
   assert.match(publicHeader, /className="fb-public-mobile-actions"/);
   assert.match(publicHeader, /ThemeToggle/);
+  assert.match(publicHeader, /UserMenu/);
+  assert.match(publicHeader, /const isLegalPage = current === "privacy" \|\| current === "terms"/);
+  assert.match(publicHeader, /<UserMenu compact session=\{session\} \/>/);
   assert.match(publicHeader, /href="\/privacy"/);
   assert.match(publicHeader, /href="\/terms"/);
   assert.match(publicHeader, /href="\/login"/);
@@ -3715,7 +3720,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
-  const digestContent = source("src/components/DigestContent.tsx");
+  const digestContent = source("src/components/DigestContentView.tsx");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   const recentPostsList = source("src/components/RecentPostsList.tsx");
   const recommendationFeed = source("src/components/RecommendationFeed.tsx");
@@ -3724,7 +3729,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const postDetailPage = source("src/components/PostDetailPage.tsx");
   const postFavoriteControl = source("src/components/PostFavoriteControl.tsx");
   const legacyRecommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
-  const postCard = source("src/components/PostCard.tsx");
+  const postCard = source("src/components/PostCardView.tsx");
   const globals = source("src/app/globals.css");
   const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
   const personalBuilderUpdateRoute = source("src/app/api/builders/[builderId]/personal/route.ts");
@@ -4183,22 +4188,26 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /showBuilderRow=\{false\}/);
   assert.match(builderFeedItems, /showSourceBadge=\{false\}/);
   assert.match(postCard, /Summary/);
-  assert.match(postCard, /export function PostCard/);
+  assert.match(postCard, /export function PostCardView/);
   assert.match(postCard, /titleContent\?: ReactNode/);
   assert.match(postCard, /summaryContent\?: ReactNode/);
   assert.match(postCard, /post-detail-card/);
+  assert.match(postCard, /post-detail-head/);
+  assert.match(postCard, /post-detail-kicker-row/);
+  assert.match(postCard, /post-detail-byline/);
+  assert.match(postCard, /post-detail-actions/);
   assert.match(postCard, /post-detail-title/);
   assert.match(postCard, /post-detail-summary/);
-  assert.match(postCard, /post-detail-raw/);
-  assert.match(postCard, /className="post-detail-raw-head"/);
-  assert.match(postCard, /className="post-detail-raw-copy"/);
-  assert.match(postCard, /className="post-detail-section-desc"/);
-  assert.match(postCard, /Saved by Fetch sources\./);
+  assert.match(postCard, /className="post-detail-body"/);
+  assert.match(postCard, /formatDetailDate/);
+  assert.match(postCard, /readingTimeLabel/);
+  assert.match(postCard, /detailAuthorHandle/);
+  assert.doesNotMatch(postCard, /Saved by Fetch sources\./);
   assert.doesNotMatch(postCard, /Full content from Fetch sources\.|Full content from Fetch sources, collapsed until needed\./);
   assert.doesNotMatch(postCard, /It stays collapsed until[\s\S]*you need the original text\./);
-  assert.match(postCard, /className="post-detail-raw-toggle"/);
-  assert.match(postCard, /\{rawExpanded \? "Hide original content" : "Show original content"\}/);
-  assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
+  assert.doesNotMatch(postCard, /className="post-detail-raw-toggle"/);
+  assert.doesNotMatch(postCard, /\{rawExpanded \? "Hide original content" : "Show original content"\}/);
+  assert.doesNotMatch(postCard, /aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
   assert.match(postCard, /const detailSummary = displaySummaryText\(post\.summary, post\.url\)/);
@@ -4342,27 +4351,19 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postDetailPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(postDetailPage, /title="Post"/);
   assert.match(postDetailPage, /className="reading-page-toolbar"/);
-  assert.match(postDetailPage, /className="reading-source-label"/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*border:\s*1px solid/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*min-height:\s*2rem/);
-  assert.match(globals, /\.reading-source-label \.source-badge-mark\s*{[\s\S]*height:\s*1\.15rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.reading-source-label\s*{[\s\S]*justify-self:\s*start/);
-  assert.match(postDetailPage, /@\/components\/SourceBadge/);
-  assert.match(postDetailPage, /const sourceBuilder = item\.builder/);
-  assert.match(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} \/>/);
-  assert.doesNotMatch(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} decorative showLabel=\{false\} \/>/);
-  assert.match(postDetailPage, /className="reading-source-kicker"[\s\S]*>\s*Source\s*<\/span>/);
-  assert.match(postDetailPage, /className="reading-source-copy"/);
-  assert.match(postDetailPage, /className="reading-source-copy"[\s\S]*>\s*\{sourceLabel\}\s*<\/span>/);
+  assert.doesNotMatch(postDetailPage, /className="reading-source-label"|@\/components\/SourceBadge/);
+  assert.match(postCard, /<SourceBadge[\s\S]*builder=\{builder\}/);
+  assert.match(postCard, /className="post-detail-kicker-row"/);
+  assert.match(postCard, /className="post-detail-author-name"/);
+  assert.match(postCard, /className="post-detail-author-handle"/);
+  assert.match(postCard, /className="post-detail-actions"/);
   assert.doesNotMatch(postDetailPage, /Source profile: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /View source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /Source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /className="reading-source-label"[\s\S]*>\s*\{sourceLabel\}\s*<\/Link>/);
   assert.match(postDetailPage, /const sourceLabel = item\.builder\?\.name \?\? item\.sourceName \?\? "Post"/);
-  assert.match(postDetailPage, /const sourceHref = `\/builder\/\$\{entityId\}`/);
-  assert.match(postDetailPage, /aria-label=\{`View \$\{sourceLabel\} source profile`\}/);
-  assert.match(postDetailPage, /href=\{sourceHref\}/);
+  assert.doesNotMatch(postDetailPage, /const sourceHref = `\/builder\/\$\{entityId\}`/);
+  assert.doesNotMatch(postDetailPage, /aria-label=\{`View \$\{sourceLabel\} source profile`\}|href=\{sourceHref\}/);
   assert.doesNotMatch(postDetailPage, /Saved post/);
   assert.match(postDetailPage, /ChevronLeft/);
   assert.match(postDetailPage, /className="fb-breadcrumb-link reading-back-link"/);
@@ -4403,19 +4404,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.fb-breadcrumb-link\s*{[\s\S]*width:\s*fit-content/);
   assert.match(globals, /\.fb-breadcrumb-link:hover,[\s\S]*\.fb-breadcrumb-link:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.doesNotMatch(globals, /\.reading-back-link\s*{/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*font-size:\s*0\.8125rem/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*max-width:\s*min\(100%,\s*var\(--copy-max\)\)/);
-  assert.match(globals, /\.reading-source-label \.source-badge\s*{[\s\S]*background:\s*transparent/);
-  assert.match(globals, /\.reading-source-kicker\s*{[\s\S]*font-family:\s*var\(--font-mono\)/);
-  assert.match(globals, /\.reading-source-kicker\s*{[\s\S]*text-transform:\s*uppercase/);
-  assert.match(globals, /\.reading-source-copy\s*{[\s\S]*text-overflow:\s*ellipsis/);
-  assert.match(globals, /\.reading-source-label\s*{[\s\S]*text-overflow:\s*ellipsis/);
-  assert.match(globals, /a\.reading-source-label:hover,[\s\S]*a\.reading-source-label:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.post-detail-head\s*{[\s\S]*border-bottom:\s*1px solid/);
+  assert.match(globals, /\.post-detail-kicker-row\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.post-detail-byline\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.post-detail-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.doesNotMatch(globals, /\.reading-page-head\s*{/);
   assert.match(globals, /\.post-detail-card\.feed-card/);
-  assert.match(globals, /\.post-detail-card \.post-footer\s*{[\s\S]*border-top:/);
+  assert.doesNotMatch(globals, /\.post-detail-card \.post-footer\s*{[\s\S]*border-top:/);
   assert.match(globals, /\.post-detail-loading-line,[\s\S]*\.post-detail-loading-source-mark\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.post-detail-loading-card\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.post-detail-loading-line--title\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-title-max\)\)/);
@@ -4448,10 +4444,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 });
 
 test("digest posts use source detail headings and unified original links", () => {
-  const digestContent = source("src/components/DigestContent.tsx");
+  const digestContent = source("src/components/DigestContentView.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestSourceLinks = source("src/lib/digest-source-links.ts");
-  const postCard = source("src/components/PostCard.tsx");
+  const postCard = source("src/components/PostCardView.tsx");
   const fetchMethodPopover = source("src/components/FetchMethodPopover.tsx");
   const recommendationReasonsPopover = source("src/components/RecommendationReasonsPopover.tsx");
   const sourceBadge = source("src/components/SourceBadge.tsx");
@@ -4525,7 +4521,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /aria-expanded=\{rawExpanded\}/);
   assert.doesNotMatch(postCard, /<button[\s\S]{0,420}<BookOpen aria-hidden="true" className="post-raw-content-action-icon" \/>[\s\S]{0,60}<\/button>/);
-  assert.match(postCard, /aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
+  assert.match(postCard, /<div className="post-detail-body">[\s\S]*\{post\.body\}[\s\S]*<\/div>/);
+  assert.doesNotMatch(postCard, /aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /Same post available via other source libraries/);
   assert.match(postCard, /additional source library/);
   assert.match(postCard, /additional source libraries/);

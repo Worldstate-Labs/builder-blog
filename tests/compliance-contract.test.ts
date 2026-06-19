@@ -23,16 +23,20 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   for (const page of [privacyPage, termsPage]) {
     assert.match(page, /FollowBrief/);
     assert.match(page, /Privacy|Terms/);
+    assert.match(page, /getCurrentSession\(\)/);
+    assert.match(page, /<PublicHeader current="(?:privacy|terms)" session=\{session\} \/>/);
   }
 
   assert.match(privacyPage, /OAuth profile|email|read history|favorites|access keys|IP address|User-Agent/);
   assert.match(privacyPage, /Local Agent|AI Digest|summar/i);
+  assert.match(privacyPage, /temporarily process crawled source content|source type policy/i);
   assert.match(privacyPage, /Google|GitHub|Apple|X|YouTube|Product Hunt|OpenAI/);
   assert.match(privacyPage, /access|export|correct|delete/);
   assert.match(privacyPage, /retention|retain|delete/i);
   assert.match(privacyPage, /Hub|shared source libraries|AI Digest collections/);
 
   assert.match(termsPage, /third-party sources|third-party APIs|platform terms/i);
+  assert.match(termsPage, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
   assert.match(termsPage, /Local Agent|access key|AI Digest/);
   assert.match(termsPage, /Do not|must not/i);
 

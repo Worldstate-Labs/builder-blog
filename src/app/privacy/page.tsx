@@ -1,9 +1,12 @@
 import { PublicHeader } from "@/components/PublicHeader";
+import { getCurrentSession } from "@/lib/auth";
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const session = await getCurrentSession();
+
   return (
     <>
-      <PublicHeader current="privacy" />
+      <PublicHeader current="privacy" session={session} />
       <main className="fb-landing-grid min-h-screen">
       <section className="fb-public-section">
         <div>
@@ -28,6 +31,10 @@ export default function PrivacyPage() {
           <PolicyBlock
             title="AI and third parties"
             copy="Source content may be summarized by AI services. FollowBrief also connects with third-party sources and APIs such as Google, GitHub, Apple, X, YouTube, Product Hunt, RSS feeds, websites, and OpenAI-style model providers when you choose those workflows."
+          />
+          <PolicyBlock
+            title="Source content processing"
+            copy="Your Local Agent may temporarily process crawled source content on your machine to generate summaries. FollowBrief stores durable raw content only when the source type policy allows it; higher-risk sources may retain only summaries, short excerpts, structured facts, source links, and processing provenance."
           />
           <PolicyBlock
             title="Hub sharing"

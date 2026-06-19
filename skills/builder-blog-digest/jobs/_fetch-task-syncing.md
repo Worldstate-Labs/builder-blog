@@ -35,15 +35,17 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-bu
   --tasks "$TMP_DIR/library-fetch-result.json"
 ```
 
-A fetchTask is complete ONLY when its item is synced with real crawled content
-(`body` meeting the source's `minimumContentQuality`) AND a non-empty `summary`.
-The server enforces both: a post with no/insufficient content, or with no
-summary, is refused and recorded in the fetch log as a FAILURE (reason
-`content_missing` / `content_too_short` / `summary_missing`) — not a partial
-success. So summarize every task you fetch before syncing — do not silently drop a
-task from the sync payload because you couldn't summarize it. If a specific task
-genuinely cannot be summarized, write the concrete reason {{REPORT_TARGET}} and
-continue with the rest; the server will mark that one failed.
+A fetchTask is complete ONLY when its local sync item has real crawled content
+for validation/summarization AND a non-empty `summary`. `sync-builders` then
+applies source-specific raw retention before upload: for some source types the
+server stores only a summary, excerpt, or structured facts instead of the full
+raw body. The server still refuses missing summaries, and it refuses
+insufficient durable content for source types whose policy allows durable raw
+storage. So summarize every task you fetch before syncing — do not silently drop
+a task from the sync payload because you couldn't summarize it. If a specific
+task genuinely cannot be summarized, write the concrete reason
+{{REPORT_TARGET}} and continue with the rest; the server will mark that one
+as a FAILURE.
 
 Run `validate-agent-sync` over the FULL fetch-result file (not a subset) before
 `sync-builders`, and stop if it reports errors — it checks that every planned

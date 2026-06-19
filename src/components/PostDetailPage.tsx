@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
 import { PostFavoriteControl } from "@/components/PostFavoriteControl";
-import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { canFavoritePost } from "@/lib/feed-favorites";
@@ -44,15 +43,6 @@ export async function PostDetailPage({
   const canFavorite = await canFavoritePost(session.user.id, item.id);
   const entityId = item.builder.entityId;
   const sourceLabel = item.builder?.name ?? item.sourceName ?? "Post";
-  const sourceHref = `/builder/${entityId}`;
-  const sourceBuilder = item.builder
-    ? {
-        kind: item.builder.kind,
-        sourceType: item.builder.sourceType,
-        sourceUrl: item.builder.sourceUrl,
-        fetchUrl: item.builder.fetchUrl,
-      }
-    : null;
   const [existing, favorite] = await Promise.all([
     prisma.feedRead.findFirst({
       where: {
@@ -100,15 +90,6 @@ export async function PostDetailPage({
         >
           <ChevronLeft aria-hidden="true" />
           {backLink.label}
-        </Link>
-        <Link
-          aria-label={`View ${sourceLabel} source profile`}
-          className="reading-source-label"
-          href={sourceHref}
-        >
-          <SourceBadge builder={sourceBuilder} />
-          <span className="reading-source-kicker">Source</span>
-          <span className="reading-source-copy">{sourceLabel}</span>
         </Link>
       </nav>
 

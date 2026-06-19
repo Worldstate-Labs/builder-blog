@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
 import { parseSkillBuilderSyncPayload } from "@/lib/skill-contracts";
+import { prepareFeedItemStorage } from "@/lib/source-content-policy";
 import { getUserFromBearer } from "@/lib/tokens";
 
 export async function POST(request: Request) {
@@ -143,34 +144,9 @@ export async function POST(request: Request) {
       }
       payloadItemKeys.add(key);
       const fetchTaskId = readFetchTaskId(item.rawJson);
-      // Gate 1 — real crawled content. A post with no body (or junk/too-short
-      // text below the source's floor) is a FAILURE: the agent didn't actually
-      // fetch usable content. Mirrors the client validate length check so it
-      // can't be bypassed by skipping validate. Recorded, not silently dropped.
-      const contentVerdict = checkBodyContentQuality(item.body, contentStandards);
-      if (!contentVerdict.ok) {
-        skippedFeedItems += 1;
-        if (fetchTaskId) {
-          itemResults.push({
-            fetchTaskId,
-            kind: item.kind,
-            externalId: item.externalId,
-            status: "failed",
-            reason: contentVerdict.reason,
-          });
-        }
-        continue;
-      }
-      // Gate 2 — a post without a summary is not useful to the reader and
-      // must not occupy a DB row. Empty / whitespace-only summaries are
-      // treated as "missing". This rule applies to both fresh inserts
-      // and incremental updates — if a new payload arrives without a
-      // valid summary, we skip the write instead of clobbering or
-      // creating a half-baked row. Existing rows with stale summaries
-      // are left alone here; the companion migration deletes them.
-      // Crucially this is recorded as a FAILURE (not a silent skip) so the
-      // fetch log can show why the post never landed.
       const summary = typeof item.summary === "string" ? item.summary.trim() : "";
+      // A post without a summary is not useful to the reader and must not
+      // occupy a DB row. This is recorded as a FAILURE, not a silent skip.
       if (!summary) {
         skippedFeedItems += 1;
         if (fetchTaskId) {
@@ -184,12 +160,39 @@ export async function POST(request: Request) {
         }
         continue;
       }
+      const storage = prepareFeedItemStorage({
+        sourceType: input.sourceType,
+        body: item.body,
+        summary,
+        rawJson: item.rawJson,
+      });
+      // Gate 1 — real crawled content. A post with no body (or junk/too-short
+      // text below the source's floor) is a FAILURE: the agent didn't actually
+      // fetch usable content. Mirrors the client validate length check so it
+      // can't be bypassed by skipping validate. Recorded, not silently dropped.
+      if (storage.policy.durableRawMode === "full" || storage.policy.durableRawMode === "excerpt") {
+        const contentVerdict = checkBodyContentQuality(item.body, contentStandards);
+        if (!contentVerdict.ok) {
+          skippedFeedItems += 1;
+          if (fetchTaskId) {
+            itemResults.push({
+              fetchTaskId,
+              kind: item.kind,
+              externalId: item.externalId,
+              status: "failed",
+              reason: contentVerdict.reason,
+            });
+          }
+          continue;
+        }
+      }
       const fetchTool =
         item.fetchTool ?? fetchToolFromRawJson(item.rawJson) ?? parsed.data.fetchTool;
       if (!parsed.data.force && existingItemKeys.has(key)) {
         const updateData = {
           summary,
-          ...(item.rawJson === undefined ? {} : { rawJson: JSON.stringify(item.rawJson) }),
+          body: storage.body,
+          rawJson: JSON.stringify(storage.rawJson),
         };
         await prisma.feedItem.updateMany({
           where: {
@@ -230,7 +233,7 @@ export async function POST(request: Request) {
         },
         update: {
           title: item.title,
-          body: item.body,
+          body: storage.body,
           summary,
           url: item.url,
           // Only overwrite when the source supplied a real date. Otherwise
@@ -239,14 +242,14 @@ export async function POST(request: Request) {
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : undefined,
           sourceName: item.sourceName ?? input.name,
           fetchTool,
-          rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
+          rawJson: JSON.stringify(storage.rawJson),
         },
         create: {
           builderId: builder.id,
           kind: item.kind,
           externalId: item.externalId,
           title: item.title,
-          body: item.body,
+          body: storage.body,
           summary,
           url: item.url,
           // Fall back to fetch time when the source has no parseable date.
@@ -256,7 +259,7 @@ export async function POST(request: Request) {
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : new Date(),
           sourceName: item.sourceName ?? input.name,
           fetchTool,
-          rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
+          rawJson: JSON.stringify(storage.rawJson),
         },
       });
       feedItems += 1;
