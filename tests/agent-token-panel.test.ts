@@ -90,8 +90,8 @@ test("access key mobile rows match device plus last connection summary", () => {
     });
 
     assert.equal(describeAccessDevice(mobileToken), "iOS 26.6 iPhone");
-    assert.equal(formatRelativeCompact(mobileToken.lastUsedAt!, true), "19h");
-    assert.equal(describeAccessStatus(mobileToken, true), "Last connected 19h");
+    assert.equal(formatRelativeCompact(mobileToken.lastUsedAt!, true), "19 hr ago");
+    assert.equal(describeAccessStatus(mobileToken, true), "Last connected 19 hr ago");
   } finally {
     Date.now = originalNow;
   }

@@ -993,11 +993,11 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.skill-prompt-manual-text\s*{[\s\S]*font-family:\s*var\(--font-geist-mono\)/);
   assert.match(globals, /\.skill-prompt-manual-error\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.token-picker-form\s*{[\s\S]*min-width:\s*0/);
-  assert.match(digestDetails, /useHydrated/);
-  // Timestamp formatting now lives in the shared settings field module; both
-  // admin forms render UTC timestamps through it.
-  assert.match(settingsFields, /formatUtcDateTime/);
-  assert.match(settingsFields, /timeZone:\s*"UTC"/);
+  assert.match(digestDetails, /<RelativeTime value=\{digest\.createdAt\}/);
+  // Timestamps now render through the shared smart <RelativeTime>; the settings
+  // field module renders rule "updated" times the same way.
+  assert.match(settingsFields, /RelativeTime/);
+  assert.doesNotMatch(settingsFields, /formatUtcDateTime/);
   assert.match(settingsFields, /optional\?: boolean/);
   assert.match(settingsFields, /placeholder\?: string/);
   assert.match(settingsFields, /OptionalBadge/);
@@ -1291,7 +1291,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /className="ai-digest-stack"/);
   assert.doesNotMatch(dashboardPage, /className="ai-digest-titleblock"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading ai-digest-imported-title"/);
-  assert.match(buildersPage, /className="your-digest-section"/);
+  assert.match(buildersPage, /className="your-digest-section your-digest-panel library-section-panel"/);
   assert.doesNotMatch(buildersPage, /className="your-digest-panel fb-panel"/);
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
@@ -1528,10 +1528,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailLoading, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
   assert.match(builderDetailLoading, /className="builder-detail-avatar builder-detail-loading-avatar"/);
-  assert.match(builderDetailPage, /function formatFetchedAt\(value: Date \| null\)/);
-  assert.match(builderDetailPage, /return value \? `fetched \$\{dateFormatter\.format\(value\)\}` : "not fetched yet"/);
-  assert.match(builderDetailPage, /\{formatFetchedAt\(channel\.lastFetchedAt\)\}/);
-  assert.match(builderDetailPage, /: "not fetched yet"/);
+  assert.match(builderDetailPage, /<RelativeTime[\s\S]*?prefix="fetched "[\s\S]*?value=\{channel\.lastFetchedAt\}[\s\S]*?fallback="not fetched yet"/);
+  assert.match(builderDetailPage, /not fetched yet/);
+  assert.doesNotMatch(builderDetailPage, /function formatFetchedAt/);
   assert.doesNotMatch(builderDetailPage, /: "Not fetched"/);
   assert.doesNotMatch(builderDetailPage, /latest at \$\{dateFormatter\.format\(channel\.lastFetchedAt\)\}/);
   assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "—"/);
@@ -1554,7 +1553,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /where: \{ builderId: \{ in: builderIds \} \}/);
   assert.doesNotMatch(builderDetailPage, /where: \{ builder: \{ entityId \} \}/);
   assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
-  assert.match(builderDetailPage, /\{formatFetchedAt\(lastFetchedMax\)\}/);
+  assert.match(builderDetailPage, /<RelativeTime[\s\S]*?value=\{lastFetchedMax\}/);
   assert.doesNotMatch(builderDetailPage, /latest at \{dateFormatter\.format\(lastFetchedMax\)\}/);
   assert.doesNotMatch(builderDetailPage, /Last summarized/);
   assert.match(builderDetailPage, /className="builder-detail-control-row"/);
@@ -1951,10 +1950,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /No more unread Following posts\./);
   assert.doesNotMatch(recommendationFeed, /No more unread Following posts to load|No unread Following posts left/);
   assert.doesNotMatch(recommendationFeed, /Could not load posts\.|No new unread posts left|No new unread recommendations left/);
-  assert.match(recommendationFeed, /useHydrated/);
-  assert.match(recommendationFeed, /formatDate\(snapshot\.createdAt, hydrated\)/);
-  assert.match(recommendationFeed, /month:\s*"short"/);
-  assert.match(recommendationFeed, /timeZone:\s*"UTC"/);
+  assert.match(recommendationFeed, /<RelativeTime value=\{snapshot\.createdAt\}/);
+  assert.doesNotMatch(recommendationFeed, /formatDate\(snapshot\.createdAt/);
   assert.doesNotMatch(recommendationFeed, /toLocaleString\(\)|second:\s*"2-digit"/);
   assert.match(followingSection, /@\/components\/FeedState/);
   assert.match(followingSection, /FeedLoadingState/);
@@ -2645,7 +2642,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestPipelineSelector, /pipelineOwnerLine\(pipeline\)/);
   assert.match(dashboardPage, /DigestArchivePicker/);
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
-  assert.match(digestArchivePicker, /formatDigestPickerDate/);
+  assert.match(digestArchivePicker, /<RelativeTime className="digest-picker-date" value=\{digest\.createdAt\}/);
   assert.match(digestArchivePicker, /CountMeta/);
   assert.match(digestArchivePicker, /digest\.itemCount === 1 \? "post" : "posts"/);
   assert.match(digestDetails, /digest\.itemCount === 1 \? "post" : "posts"/);
@@ -2714,7 +2711,10 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(buildersPage, /Your AI Digest collection/);
   assert.doesNotMatch(buildersPage, /Your AI Digest archive/);
   assert.doesNotMatch(buildersPage, />\s*Your AI Digest\s*<\/h2>/);
-  assert.match(buildersPage, /<section className="your-digest-section"/);
+  assert.match(buildersPage, /className="your-digest-section your-digest-panel library-section-panel"/);
+  assert.match(buildersPage, /<DigestPipelineImportForm mode="imported" panel pipelines=\{data\.hubDigestPipelines\}/);
+  assert.match(digestPipelineForm, /Collections you've imported from Hub\./);
+  assert.match(digestPipelineForm, /imported-digest-section imported-digest-panel library-section-panel/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*beforePreview=\{/);
   assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*cronStatusControl=\{/);
@@ -2761,7 +2761,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
   assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
-  assert.match(buildersPage, /<DigestPipelineImportForm mode="imported" pipelines=\{data\.hubDigestPipelines\}/);
+  assert.match(buildersPage, /<DigestPipelineImportForm mode="imported" panel pipelines=\{data\.hubDigestPipelines\}/);
   assert.match(buildersPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(buildersPage, /activeSchedule=\{data\.digestCronJob\}/);
@@ -2781,9 +2781,8 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestArchivePicker, /role="option"/);
   assert.match(digestArchivePicker, /aria-selected=\{selected\}/);
   assert.match(digestArchivePicker, /aria-current=\{selected \? "page" : undefined\}/);
-  assert.match(digestArchivePicker, /useHydrated/);
-  assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
-  assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);
+  assert.match(digestArchivePicker, /useNow/);
+  assert.match(digestArchivePicker, /relativeTime\(digest\.createdAt, now/);
   assert.match(globals, /\.digest-picker-icon\s*{/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-picker-static\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
@@ -3561,11 +3560,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /label=\{group\.postCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fetchedPostCount|label=\{library\.itemCount === 1 \? "source" : "sources"\}|label=\{fetchedPostCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /"fetched post"|"fetched posts"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /formatFetchStatusLabel/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched \$\{formatted\}/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /new Intl\.DateTimeFormat\("en-US", \{[\s\S]*timeZone:\s*"UTC"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<RelativeTime prefix="fetched " value=/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /formatFetchStatusLabel/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /not fetched yet/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetch date unknown/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fetch date unknown/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /latest at \$\{formatted\}|latest date unknown|Latest fetch/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-text/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /more source types/);
@@ -3580,7 +3578,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{library\.importCount === 1 \? "import" : "imports"\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{library\.viewCount === 1 \? "view" : "views"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stat-row"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /formatFetchStatusLabel\(latestFetchedAt\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<RelativeTime prefix="fetched " value=\{latestFetchedAt\}/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-stats--source-library\s*{[\s\S]*display:\s*flex/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-card-stat-row\s*{/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.hub-metric/);
@@ -3628,7 +3626,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /Latest issue/);
   assert.doesNotMatch(digestPipelineForm, /Latest AI Digest/);
   assert.doesNotMatch(digestPipelineForm, /\?\s*`Latest AI Digest \$\{formatDate\(pipeline\.latestDigestAt\)\}`/);
-  assert.match(digestPipelineForm, /new Intl\.DateTimeFormat\("en-US", \{[\s\S]*timeZone:\s*"UTC"/);
+  assert.match(digestPipelineForm, /<RelativeTime value=\{pipeline\.latestDigestAt\}/);
   assert.doesNotMatch(digestPipelineForm, /new Intl\.DateTimeFormat\(undefined/);
   assert.match(digestPipelineForm, /Status \/ log/);
   assert.doesNotMatch(digestPipelineForm, /Schedule status/);
@@ -3786,9 +3784,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(personalBuilderUpdateRoute, /This source already exists in a library/);
   assert.match(buildersPage, /name:\s*data\.sessionUserName/);
   assert.match(buildersPage, /email:\s*data\.sessionUserEmail/);
-  assert.match(postCard, /useHydrated/);
-  assert.match(postCard, /formatDate\(post\.publishedAt, hydrated\)/);
-  assert.match(postCard, /timeZone:\s*"UTC"/);
+  assert.match(postCard, /<RelativeTime className="post-footer-published" value=\{post\.publishedAt\}/);
+  assert.doesNotMatch(postCard, /formatDate\(post\.publishedAt/);
   assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{fetchSyncSection\}[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
   assert.doesNotMatch(buildersPage, /title="Your library"|\bYour library\b/);
@@ -4135,6 +4132,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-section\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.your-digest-panel,[\s\S]*\.imported-digest-panel\s*{[\s\S]*gap:\s*0/);
+  assert.match(globals, /\.your-digest-panel > \.library-section-body\s*{[\s\S]*padding:\s*1rem 1\.125rem 1\.125rem/);
+  assert.match(globals, /\.imported-digest-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(cssRule(globals, ".sources-sync-panel > .library-section-body"), /padding:\s*1rem 1\.125rem 1\.125rem/);
   assert.match(cssRule(globals, ".sources-sync-section .source-fetch-overview"), /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(cssRule(globals, ".fb-hub-digest-meta.source-fetch-meta"), /grid-template-columns:\s*repeat\(4,\s*minmax\(8\.75rem,\s*1fr\)\)/);
@@ -4219,7 +4219,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /post-detail-title/);
   assert.match(postCard, /post-detail-summary/);
   assert.match(postCard, /className="post-detail-body"/);
-  assert.match(postCard, /formatDetailDate/);
+  assert.match(postCard, /<RelativeTime value=\{post\.publishedAt\} fallback="Date unknown"/);
   assert.match(postCard, /readingTimeLabel/);
   assert.match(postCard, /detailAuthorHandle/);
   assert.doesNotMatch(postCard, /Saved by Fetch sources\./);
@@ -4948,7 +4948,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest collections/);
   assert.match(digestPipelineForm, /Import AI Digest collections shared by others\./);
-  assert.match(digestPipelineForm, /Imported collections are available in AI Digest\./);
+  assert.match(digestPipelineForm, /Collections you've imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest tab|Import shared AI Digest collections\.|Import shared collections\.|Import shared AI Digest collections into AI Digest\.|Available in AI Digest\.|Already in AI Digest\.|Collections already in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Archives already in AI Digest\.|Archives already available in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives shared to Hub\.|AI Digest archives already imported from Hub\./);

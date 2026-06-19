@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { KeyRound, Laptop, Plus, Smartphone } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
+import { relativeTime } from "@/lib/relative-time";
 
 export type AgentTokenListItem = {
   id: string;
@@ -518,25 +519,10 @@ function formatDate(value: string) {
 }
 
 export function formatRelativeCompact(value: string, hydrated: boolean) {
+  // Pre-hydration: render the precise absolute timestamp (stable for SSR).
+  // After hydration: the unified smart relative label ("19 hr ago").
   if (!hydrated) return formatDate(value);
-  const ms = Date.now() - Date.parse(value);
-  if (!Number.isFinite(ms) || ms < 0) {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-    }).format(new Date(value));
-  }
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return "now";
-  if (min < 60) return `${min}m`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day}d`;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value));
+  return relativeTime(value, Date.now());
 }
 
 function TokenRow({

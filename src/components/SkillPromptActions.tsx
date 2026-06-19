@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { languageOptions } from "@/components/settings/SettingsFields";
 import { useHydrated } from "@/components/ThemeToggle";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
+import { relativeTime } from "@/lib/relative-time";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
@@ -857,16 +858,7 @@ function formatScheduleDate(value: string | null, hydrated: boolean) {
       minute: "2-digit",
     }).format(date);
   }
-  const diffMs = date.getTime() - Date.now();
-  const absMs = Math.abs(diffMs);
-  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-  if (absMs < 60 * 60 * 1000) {
-    return formatter.format(Math.round(diffMs / 60_000), "minute");
-  }
-  if (absMs < 36 * 60 * 60 * 1000) {
-    return formatter.format(Math.round(diffMs / (60 * 60 * 1000)), "hour");
-  }
-  return formatter.format(Math.round(diffMs / (24 * 60 * 60 * 1000)), "day");
+  return relativeTime(value, Date.now());
 }
 
 function TokenPickerDialog({
