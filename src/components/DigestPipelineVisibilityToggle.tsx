@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 type DigestPipelineVisibilityToggleProps = {
   initialShared: boolean;
@@ -11,14 +11,27 @@ export function DigestPipelineVisibilityToggle({
 }: DigestPipelineVisibilityToggleProps) {
   const [shared, setShared] = useState(initialShared);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  function updateVisibility() {
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (confirmOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!confirmOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [confirmOpen]);
+
+  function updateVisibility(nextShared = !shared) {
     if (isPending) return;
 
-    const nextShared = !shared;
     setShared(nextShared);
     setError(null);
+    setConfirmOpen(false);
 
     startTransition(async () => {
       try {
@@ -48,7 +61,14 @@ export function DigestPipelineVisibilityToggle({
         aria-busy={isPending}
         className="hub-share-button"
         disabled={isPending}
-        onClick={updateVisibility}
+        onClick={() => {
+          if (!shared) {
+            setError(null);
+            setConfirmOpen(true);
+            return;
+          }
+          updateVisibility(false);
+        }}
         type="button"
       >
         <span className="hub-share-label">
@@ -60,6 +80,45 @@ export function DigestPipelineVisibilityToggle({
           {error}
         </span>
       ) : null}
+      <dialog
+        ref={dialogRef}
+        className="fb-dialog"
+        onCancel={(event) => {
+          event.preventDefault();
+          setConfirmOpen(false);
+        }}
+        onClose={() => setConfirmOpen(false)}
+      >
+        <div className="fb-dialog-inner settings-dialog-stack">
+          <div>
+            <h3 className="fb-section-heading">Share AI Digest collection?</h3>
+            <p className="settings-dialog-copy">
+              Sharing publishes this AI Digest collection to Hub. Other users
+              can see the latest AI Digest metadata, title, headline,
+              description, import counts, and public Hub activity until you
+              remove it.
+            </p>
+          </div>
+          <div className="settings-dialog-actions">
+            <button
+              className="fb-btn light"
+              disabled={isPending}
+              onClick={() => setConfirmOpen(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="fb-btn dark"
+              disabled={isPending}
+              onClick={() => updateVisibility(true)}
+              type="button"
+            >
+              Continue sharing
+            </button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }

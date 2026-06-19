@@ -165,6 +165,8 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/loading.tsx",
     "src/app/login/page.tsx",
     "src/app/page.tsx",
+    "src/app/privacy/page.tsx",
+    "src/app/terms/page.tsx",
   ]);
 
   const appShell = source("src/components/AppShell.tsx");
@@ -178,6 +180,8 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
     ["src/app/login/page.tsx", /className="fb-dark-frame"[\s\S]*fb-login-nav/],
     ["src/app/not-found.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
+    ["src/app/privacy/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
+    ["src/app/terms/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
   ] as const;
   for (const [path, pattern] of publicRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered public shell`);

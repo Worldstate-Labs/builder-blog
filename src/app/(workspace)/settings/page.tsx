@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
+import { AccountDataPanel } from "@/components/AccountDataPanel";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { AgentTokenPanelSkeleton } from "@/components/AgentTokenPanelSkeleton";
 import { CountMeta } from "@/components/Count";
@@ -42,6 +43,7 @@ export default async function SettingsPage() {
           <Suspense fallback={<AgentTokenPanelSkeleton />}>
             <AgentTokenSlot userId={userId} />
           </Suspense>
+          <AccountDataPanel />
         </div>
 
         <Suspense fallback={<SettingsRulesSkeleton />}>

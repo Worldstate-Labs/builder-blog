@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type RefObject } from "react";
 
 type LibraryVisibilityToggleProps = {
   compact?: boolean;
@@ -20,14 +20,27 @@ export function LibraryVisibilityToggle({
   const disabledReasonId = useId();
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  function updateVisibility() {
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (confirmOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!confirmOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [confirmOpen]);
+
+  function updateVisibility(nextIsPublic = !isPublic) {
     if (disabled || isPending) return;
 
-    const nextIsPublic = !isPublic;
     setIsPublic(nextIsPublic);
     setError(null);
+    setConfirmOpen(false);
 
     startTransition(async () => {
       try {
@@ -64,7 +77,14 @@ export function LibraryVisibilityToggle({
           aria-busy={isPending}
           className="hub-share-button"
           disabled={disabled || isPending}
-          onClick={updateVisibility}
+          onClick={() => {
+            if (!isPublic) {
+              setError(null);
+              setConfirmOpen(true);
+              return;
+            }
+            updateVisibility(false);
+          }}
           type="button"
         >
           <span className="hub-share-label">
@@ -81,6 +101,12 @@ export function LibraryVisibilityToggle({
             Add a source to share.
           </span>
         ) : null}
+        <ShareLibraryDialog
+          dialogRef={dialogRef}
+          isPending={isPending}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => updateVisibility(true)}
+        />
       </div>
     );
   }
@@ -103,7 +129,14 @@ export function LibraryVisibilityToggle({
         aria-pressed={isPublic}
         className={`library-visibility-toggle ${isPublic ? "is-on" : ""}`}
         disabled={disabled || isPending}
-        onClick={updateVisibility}
+        onClick={() => {
+          if (!isPublic) {
+            setError(null);
+            setConfirmOpen(true);
+            return;
+          }
+          updateVisibility(false);
+        }}
         type="button"
       >
         <span className="library-visibility-track" aria-hidden="true">
@@ -111,6 +144,65 @@ export function LibraryVisibilityToggle({
         </span>
         <span>{isPending ? "Updating" : isPublic ? "Shared" : "Private"}</span>
       </button>
+      <ShareLibraryDialog
+        dialogRef={dialogRef}
+        isPending={isPending}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => updateVisibility(true)}
+      />
     </div>
+  );
+}
+
+function ShareLibraryDialog({
+  dialogRef,
+  isPending,
+  onCancel,
+  onConfirm,
+}: {
+  dialogRef: RefObject<HTMLDialogElement | null>;
+  isPending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <dialog
+      ref={dialogRef}
+      className="fb-dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+      onClose={onCancel}
+    >
+      <div className="fb-dialog-inner settings-dialog-stack">
+        <div>
+          <h3 className="fb-section-heading">Share source library?</h3>
+          <p className="settings-dialog-copy">
+            Sharing publishes this source library to Hub. Other users can see
+            source names, source links, the library name, description, counts,
+            and public Hub activity until you remove it.
+          </p>
+        </div>
+        <div className="settings-dialog-actions">
+          <button
+            className="fb-btn light"
+            disabled={isPending}
+            onClick={onCancel}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="fb-btn dark"
+            disabled={isPending}
+            onClick={onConfirm}
+            type="button"
+          >
+            Continue sharing
+          </button>
+        </div>
+      </div>
+    </dialog>
   );
 }

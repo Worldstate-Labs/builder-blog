@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
-import { LogOut, Moon, Settings, ShieldCheck, Sun } from "lucide-react";
+import { FileText, LogOut, Moon, Scale, Settings, ShieldCheck, Sun } from "lucide-react";
 import { setTheme, useHydrated, useTheme } from "@/components/ThemeToggle";
 
 export function UserMenu({
@@ -128,6 +128,22 @@ export function UserMenu({
         >
           <Settings className="user-menu-icon" />
           Settings
+        </Link>
+        <Link
+          className="user-menu-item"
+          href="/privacy"
+          onClick={() => closeMenu()}
+        >
+          <FileText className="user-menu-icon" />
+          Privacy
+        </Link>
+        <Link
+          className="user-menu-item"
+          href="/terms"
+          onClick={() => closeMenu()}
+        >
+          <Scale className="user-menu-icon" />
+          Terms
         </Link>
         <button
           className="user-menu-item"

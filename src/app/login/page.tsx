@@ -28,6 +28,12 @@ export default async function LoginPage({
           <Link className="fb-login-nav-link" href="/">
             Home
           </Link>
+          <Link className="fb-login-nav-link" href="/privacy">
+            Privacy
+          </Link>
+          <Link className="fb-login-nav-link" href="/terms">
+            Terms
+          </Link>
         </div>
       </nav>
 
@@ -69,6 +75,11 @@ export default async function LoginPage({
           <div className="fb-login-auth">
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
+          <p className="fb-login-panel-copy">
+            By signing in, you can review the{" "}
+            <Link href="/privacy">Privacy Policy</Link> and{" "}
+            <Link href="/terms">Terms</Link>.
+          </p>
         </section>
       </div>
     </main>

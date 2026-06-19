@@ -18,6 +18,12 @@ export default async function Home() {
         </Link>
         <div className="fb-public-nav-actions">
           <ThemeToggle />
+          <Link className="fb-login-nav-link" href="/privacy">
+            Privacy
+          </Link>
+          <Link className="fb-login-nav-link" href="/terms">
+            Terms
+          </Link>
           <Link className="fb-btn dark" href="/login">
             Sign in
           </Link>
@@ -194,6 +200,16 @@ export default async function Home() {
           />
         </div>
       </section>
+      <footer className="fb-public-section">
+        <div className="fb-public-nav-actions">
+          <Link className="fb-login-nav-link" href="/privacy">
+            Privacy
+          </Link>
+          <Link className="fb-login-nav-link" href="/terms">
+            Terms
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
