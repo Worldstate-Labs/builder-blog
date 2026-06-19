@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
 import { postDetailHref } from "@/lib/navigation";
@@ -32,18 +32,18 @@ type BuilderFeedItem = {
 type BuilderFeedItemsProps = {
   builder: BuilderSummary;
   builderId: string;
-  latestPostCreatedAt?: string | null;
+  isOpen: boolean;
+  listId: string;
   totalCount: number;
 };
 
 export function BuilderFeedItems({
   builder,
   builderId,
-  latestPostCreatedAt,
+  isOpen,
+  listId,
   totalCount,
 }: BuilderFeedItemsProps) {
-  const listId = useId();
-  const [isOpen, setIsOpen] = useState(false);
   const [itemState, setItemState] = useState<{
     builderId: string;
     totalCount: number;
@@ -55,74 +55,44 @@ export function BuilderFeedItems({
     itemState.builderId === builderId && itemState.totalCount === totalCount
       ? itemState.items
       : null;
-  const visibleCount = items ? items.length : totalCount;
-  const postCountLabel = `${visibleCount} ${visibleCount === 1 ? "post" : "posts"}`;
-  const latestDateLabel = latestPostCreatedAt
-    ? formatPostDate(new Date(latestPostCreatedAt))
-    : null;
-  const postsSummaryLabel = latestDateLabel
-    ? `${builder.name} posts, ${postCountLabel}, latest at ${latestDateLabel}`
-    : `${builder.name} posts, ${postCountLabel}`;
   const returnHref = builder.entityId ? `/builder/${builder.entityId}` : "/builders";
   const returnLabel = builder.entityId ? builder.name : "Sources";
 
   useEffect(() => {
     if (!isOpen) return;
-    void loadItems(true, { force: true });
-    // loadItems intentionally stays local; this effect only reacts to server props changing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [builderId, totalCount, isOpen]);
+    let cancelled = false;
 
-  async function loadItems(open: boolean, options: { force?: boolean } = {}) {
-    if (!open || (items && !options.force) || isLoading) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/builders/${builderId}/feed-items`, {
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Could not load summarized posts.");
-      const payload = (await response.json()) as { items?: BuilderFeedItem[] };
-      setItemState({ builderId, totalCount, items: payload.items ?? [] });
-    } catch {
-      setError("Could not load summarized posts.");
-    } finally {
-      setIsLoading(false);
+    async function loadItems() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/builders/${builderId}/feed-items`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Could not load summarized posts.");
+        const payload = (await response.json()) as { items?: BuilderFeedItem[] };
+        if (!cancelled) {
+          setItemState({ builderId, totalCount, items: payload.items ?? [] });
+        }
+      } catch {
+        if (!cancelled) {
+          setError("Could not load summarized posts.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     }
-  }
 
-  function toggleOpen() {
-    const nextOpen = !isOpen;
-    setIsOpen(nextOpen);
-    void loadItems(nextOpen);
-  }
+    void loadItems();
+    return () => {
+      cancelled = true;
+    };
+  }, [builderId, totalCount, isOpen]);
 
   return (
     <div className="builder-posts">
-      <button
-        aria-controls={listId}
-        aria-expanded={isOpen}
-        aria-label={postsSummaryLabel}
-        className="builder-posts-summary"
-        onClick={toggleOpen}
-        type="button"
-      >
-        <span className="builder-posts-count">
-          <span>{postCountLabel}</span>
-          {latestDateLabel ? (
-            <>
-              <span aria-hidden="true" className="builder-posts-dot">·</span>
-              <time
-                className="builder-posts-latest"
-                dateTime={latestPostCreatedAt ?? undefined}
-                title={`Latest post ${latestDateLabel}`}
-              >
-                latest at {latestDateLabel}
-              </time>
-            </>
-          ) : null}
-        </span>
-      </button>
       <div className="builder-post-list" hidden={!isOpen} id={listId}>
         {isLoading ? (
           <div className="builder-post-loading" role="status">
@@ -159,12 +129,4 @@ export function BuilderFeedItems({
       </div>
     </div>
   );
-}
-
-function formatPostDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(value);
 }

@@ -3779,7 +3779,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
   assert.doesNotMatch(buildersPage, /title="Your library"|\bYour library\b/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
-  assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
+  assert.doesNotMatch(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
   assert.doesNotMatch(builderLibraryList, /CountMeta/);
   assert.doesNotMatch(builderLibraryList, /\{builder\.feedItemCount\}\s*items/);
   assert.doesNotMatch(builderLibraryList, /feedItemCount\}\s*items|Latest \{formatCompactDate|latest \{formatCompactDate/);
@@ -3824,7 +3824,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /className="builder-library-info-head"/);
   assert.match(builderLibraryList, /className="builder-library-name"/);
   assert.match(builderLibraryList, /className="builder-library-card-main"/);
-  assert.match(builderLibraryList, /<BuilderInfo builder=\{builder\}>[\s\S]*<BuilderFeedItems/);
+  assert.match(builderLibraryList, /onClick=\{onCardClick\}/);
+  assert.match(builderLibraryList, /function shouldIgnoreSourceToggleTarget/);
+  assert.match(builderLibraryList, /target\.closest\([\s\S]*a, button, input, select, textarea, summary, \[role='button'\]/);
+  assert.match(builderLibraryList, /className="builder-posts-summary"/);
+  assert.match(builderLibraryList, /aria-expanded=\{postsOpen\}/);
+  assert.match(builderLibraryList, /className="builder-library-card-posts"/);
+  assert.match(builderLibraryList, /<BuilderFeedItems[\s\S]*isOpen=\{postsOpen\}[\s\S]*listId=\{postsListId\}/);
   assert.match(builderLibraryList, /<div className="builder-library-card-actions">[\s\S]*\{actions\}/);
   assert.match(builderLibraryList, /<SourceAvatar[\s\S]*<div className="builder-library-card-main">[\s\S]*<BuilderInfo[\s\S]*<div className="builder-library-card-actions">/);
   assert.doesNotMatch(builderLibraryList, /actions=\{actions\}/);
@@ -3886,21 +3892,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /const postCountLabel = `\$\{visibleCount\} \$\{visibleCount === 1 \? "post" : "posts"\}`/,
+    /hidden=\{!isOpen\}/,
   );
-  assert.match(
-    builderFeedItems,
-    /const postsSummaryLabel = latestDateLabel[\s\S]*\$\{builder\.name\} posts, \$\{postCountLabel\}, latest at \$\{latestDateLabel\}/,
-  );
-  assert.match(
-    builderFeedItems,
-    /<button[\s\S]*aria-expanded=\{isOpen\}[\s\S]*aria-label=\{postsSummaryLabel\}[\s\S]*className="builder-posts-summary"[\s\S]*className="builder-posts-count"[\s\S]*\{postCountLabel\}[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*latest at \{latestDateLabel\}/,
-  );
+  assert.doesNotMatch(builderFeedItems, /latestPostCreatedAt|latestDateLabel|latest at|builder-posts-latest|formatPostDate/);
+  assert.doesNotMatch(builderFeedItems, /<button[\s\S]*className="builder-posts-summary"/);
   assert.doesNotMatch(builderFeedItems, /actions\?: ReactNode/);
   assert.match(builderFeedItems, /className="builder-post-list" hidden=\{!isOpen\}/);
   assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
   assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);
-  assert.match(builderFeedItems, /function formatPostDate/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderEditDialog, /Could not save source\./);
   assert.doesNotMatch(builderEditDialog, /HTTP \$\{response\.status\}/);
@@ -3923,7 +3922,6 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /No summarized posts have been stored for this source yet/);
   assert.doesNotMatch(builderFeedItems, /bg-black\/10|className="h-/);
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
-  assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
   assert.match(buildersPage, /Shared source libraries imported from Hub\./);
@@ -4183,7 +4181,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /detailUrl: postDetailHref\(item\.id, "\/builders", "Sources"\)/);
   // UI copy avoids "Fetched" in the row; detailed content still renders
   // through PostCard.
-  assert.match(builderFeedItems, /className="builder-posts-count"/);
+  assert.match(builderLibraryList, /className="builder-posts-count"/);
   assert.match(builderFeedItems, /PostCard/);
   assert.match(builderFeedItems, /showBuilderRow=\{false\}/);
   assert.match(builderFeedItems, /showSourceBadge=\{false\}/);
@@ -5476,10 +5474,11 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.(?:action|empty)-panel\s*{/);
   assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
   const builderPostsSummaryRule = cssRule(css, ".builder-posts-summary");
-  const builderPostsLatestRule = cssRule(css, ".builder-posts-latest");
-  assert.match(builderPostsLatestRule, /white-space:\s*nowrap/);
-  assert.doesNotMatch(builderPostsLatestRule, /margin-left:\s*auto/);
-  assert.doesNotMatch(builderPostsLatestRule, /order:\s*2/);
+  const builderLibraryCardPostsRule = cssRule(css, ".builder-library-card-posts");
+  assert.match(builderLibraryCardPostsRule, /grid-column:\s*2 \/ -1/);
+  assert.match(builderLibraryCardPostsRule, /min-width:\s*0/);
+  assert.match(css, /\.builder-library-card\[data-expandable="true"\]\s*{[\s\S]*cursor:\s*pointer/);
+  assert.doesNotMatch(css, /\.builder-posts-latest\s*{/);
   assert.doesNotMatch(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
   assert.doesNotMatch(css, /\.builder-posts > summary/);
   assert.doesNotMatch(css, /\.builder-posts-summary::after/);
@@ -5488,7 +5487,6 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(cssRule(css, ".builder-posts-count"), /border-radius/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*gap:\s*0\.35rem/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*overflow:\s*hidden/);
-  assert.match(css, /\.builder-posts-latest\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(css, /\.builder-posts-summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(builderPostsSummaryRule, /display:\s*inline-flex/);
@@ -5513,7 +5511,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(builderLibraryList, /px-4|py-3\.5|border-\[var\(--line\)\]|grid items-center|flex flex-shrink-0|gap-3|truncate/);
   assert.doesNotMatch(builderLibraryList, /BuilderStats/);
   assert.match(builderLibraryList, /builder-library-row-tools/);
-  assert.match(source("src/components/BuilderFeedItems.tsx"), /className="builder-posts-summary"/);
+  assert.match(builderLibraryList, /className="builder-posts-summary"/);
   assert.match(builderActions, /fb-follow-button/);
   assert.doesNotMatch(builderActions, /builder-library-follow-toggle/);
   assert.match(settingsPage, /AgentTokenPanel/);

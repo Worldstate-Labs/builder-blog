@@ -3040,7 +3040,6 @@ summary.library-section-summary::after {
 }
 
 .builder-posts {
-  display: contents;
   min-width: 0;
 }
 
@@ -3093,19 +3092,6 @@ summary.library-section-summary::after {
 
 .builder-posts-count > span:first-child {
   white-space: nowrap;
-}
-
-.builder-posts-dot,
-.builder-posts-latest {
-  color: var(--muted);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.builder-posts-latest {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .builder-post-list {
@@ -7802,6 +7788,20 @@ summary.library-section-summary::after {
   background: color-mix(in oklch, var(--rail) 26%, transparent);
 }
 
+.builder-library-card[data-expandable="true"] {
+  cursor: pointer;
+}
+
+.builder-library-card[data-expandable="true"] a,
+.builder-library-card[data-expandable="true"] button {
+  cursor: pointer;
+}
+
+.builder-library-card:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--accent) 44%, transparent);
+  outline-offset: 2px;
+}
+
 .builder-library-see-more {
   align-items: center;
   background: transparent;
@@ -7857,6 +7857,11 @@ summary.library-section-summary::after {
   align-items: center;
   display: flex;
   justify-content: flex-end;
+  min-width: 0;
+}
+
+.builder-library-card-posts {
+  grid-column: 2 / -1;
   min-width: 0;
 }
 

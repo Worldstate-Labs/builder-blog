@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
@@ -253,6 +262,24 @@ function BuilderCard({
   removeError?: string;
 }) {
   const canEdit = Boolean(editableSourceOptions && builder.allowRemove);
+  const postsListId = useId();
+  const [postsOpen, setPostsOpen] = useState(false);
+  const hasPosts = builder.feedItemCount > 0;
+  const postCountLabel = `${builder.feedItemCount} ${
+    builder.feedItemCount === 1 ? "post" : "posts"
+  }`;
+  const postsSummaryLabel = `${builder.name} posts, ${postCountLabel}`;
+
+  function togglePosts() {
+    if (!hasPosts) return;
+    setPostsOpen((current) => !current);
+  }
+
+  function onCardClick(event: MouseEvent<HTMLElement>) {
+    if (!hasPosts || shouldIgnoreSourceToggleTarget(event.target, event.currentTarget)) return;
+    togglePosts();
+  }
+
   const actions = (
     <div className="builder-library-actions">
       {canEdit && editableSourceOptions ? (
@@ -284,19 +311,27 @@ function BuilderCard({
   );
   return (
     <article
-      id={builder.id}
       className="builder-library-card"
+      data-expandable={hasPosts ? "true" : undefined}
+      id={builder.id}
+      onClick={onCardClick}
     >
       <SourceAvatar className="builder-library-avatar" imageSize={40} source={builder} />
       <div className="builder-library-card-main">
         <BuilderInfo builder={builder}>
-          {builder.feedItemCount > 0 ? (
-            <BuilderFeedItems
-              builder={builder}
-              builderId={builder.id}
-              latestPostCreatedAt={builder.latestPostCreatedAt}
-              totalCount={builder.feedItemCount}
-            />
+          {hasPosts ? (
+            <button
+              aria-controls={postsListId}
+              aria-expanded={postsOpen}
+              aria-label={postsSummaryLabel}
+              className="builder-posts-summary"
+              onClick={togglePosts}
+              type="button"
+            >
+              <span className="builder-posts-count">
+                <span>{postCountLabel}</span>
+              </span>
+            </button>
           ) : (
             <span className="builder-library-posts-placeholder">
               No summarized posts yet
@@ -312,8 +347,28 @@ function BuilderCard({
       <div className="builder-library-card-actions">
         {actions}
       </div>
+      {hasPosts ? (
+        <div className="builder-library-card-posts">
+          <BuilderFeedItems
+            builder={builder}
+            builderId={builder.id}
+            isOpen={postsOpen}
+            listId={postsListId}
+            totalCount={builder.feedItemCount}
+          />
+        </div>
+      ) : null}
     </article>
   );
+}
+
+function shouldIgnoreSourceToggleTarget(target: EventTarget, currentTarget: HTMLElement) {
+  if (!(target instanceof Element)) return true;
+  if (target.closest(".builder-library-card-posts")) return true;
+  const interactiveTarget = target.closest(
+    "a, button, input, select, textarea, summary, [role='button'], [data-source-toggle-ignore='true']",
+  );
+  return Boolean(interactiveTarget && interactiveTarget !== currentTarget);
 }
 
 /**
