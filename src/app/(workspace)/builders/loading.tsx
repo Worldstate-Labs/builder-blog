@@ -63,7 +63,7 @@ export default function BuildersLoading() {
                 </section>
               </section>
 
-              <section className="imported-libraries-section">
+              <section className="imported-libraries-section imported-libraries-panel library-section-panel">
                 <div className="imported-libraries-head">
                   <div className="imported-libraries-copy">
                     <h2 className="fb-section-heading">Imported source libraries</h2>
@@ -71,7 +71,9 @@ export default function BuildersLoading() {
                   </div>
                   <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
                 </div>
-                <div className="source-sync-skeleton-panel" />
+                <div className="imported-library-stack">
+                  <div className="source-sync-skeleton-panel" />
+                </div>
               </section>
             </section>
           </section>

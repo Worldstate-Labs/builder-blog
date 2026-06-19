@@ -377,7 +377,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="library-section-summary-copy source-section-skeleton-copy"/);
   assert.match(buildersLoading, /className="source-section-skeleton-row"/);
   assert.match(buildersLoading, /className="source-section-skeleton-card"/);
-  assert.match(buildersLoading, /className="imported-libraries-section"/);
+  assert.match(buildersLoading, /className="imported-libraries-section imported-libraries-panel library-section-panel"/);
+  assert.match(buildersLoading, /className="imported-library-stack"[\s\S]*className="source-sync-skeleton-panel"/);
   assert.match(buildersLoading, /className="source-sync-skeleton-panel"/);
   assert.doesNotMatch(buildersLoading, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);
   const hubLoading = source("src/app/(workspace)/library-hub/loading.tsx");
@@ -3928,7 +3929,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\.|Source libraries imported from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
-  assert.match(buildersPage, /className="imported-libraries-section"/);
+  assert.match(buildersPage, /className="imported-libraries-section imported-libraries-panel library-section-panel"/);
   assert.match(buildersPage, /className="imported-libraries-head"/);
   assert.match(buildersPage, /className="imported-libraries-copy"/);
   assert.match(buildersPage, /data\.importedLibrarySections\.length > 0 \? \(/);
@@ -4121,6 +4122,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-section\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.imported-libraries-panel\s*{[\s\S]*gap:\s*0/);
+  assert.match(globals, /\.imported-libraries-panel \.imported-libraries-head\s*{[\s\S]*padding:\s*1\.125rem 1\.25rem/);
+  assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
+  assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*padding:\s*1rem 1\.125rem 1\.125rem/);
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.imported-libraries-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /@media \(max-width:\s*1023\.99px\)[\s\S]*\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*1fr/);

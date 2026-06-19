@@ -2974,6 +2974,19 @@ summary.library-section-summary::after {
   gap: 0.875rem;
 }
 
+.imported-libraries-panel {
+  gap: 0;
+}
+
+.imported-libraries-panel .imported-libraries-head {
+  padding: 1.125rem 1.25rem;
+}
+
+.imported-libraries-panel .imported-library-stack {
+  border-top: 1px solid var(--line);
+  padding: 1rem 1.125rem 1.125rem;
+}
+
 .imported-libraries-head {
   align-items: start;
   display: grid;
