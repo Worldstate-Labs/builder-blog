@@ -12,7 +12,8 @@ import {
 } from "react";
 import { ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
-import { useHydrated } from "@/components/ThemeToggle";
+import { RelativeTime, useNow } from "@/components/RelativeTime";
+import { relativeTime } from "@/lib/relative-time";
 
 type PickerFocusDirection = "first" | "last" | "selected" | "next" | "previous";
 
@@ -64,7 +65,7 @@ export function DigestArchivePickerView({
   linkComponent: LinkComponent = DefaultLink,
 }: DigestArchivePickerViewProps) {
   const [open, setOpen] = useState(false);
-  const hydrated = useHydrated();
+  const now = useNow();
   const menuId = useId();
   const pickerRef = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
@@ -72,7 +73,7 @@ export function DigestArchivePickerView({
   const selectedLabel = selectedDigest
     ? digestArchiveLabel({
         digest: selectedDigest,
-        hydrated,
+        now,
         isLatest: selectedDigest.id === latestDigestId,
       })
     : "";
@@ -95,7 +96,6 @@ export function DigestArchivePickerView({
       <div className="digest-picker-static" aria-label={`AI Digest issue: ${selectedLabel}`}>
         <DigestPickerItem
           digest={selectedDigest}
-          hydrated={hydrated}
           isLatest={selectedDigest.id === latestDigestId}
         />
       </div>
@@ -160,7 +160,6 @@ export function DigestArchivePickerView({
         <span className="sr-only">AI Digest issue</span>
         <DigestPickerItem
           digest={selectedDigest}
-          hydrated={hydrated}
           isLatest={selectedDigest.id === latestDigestId}
         />
         <ChevronDown aria-hidden="true" className="digest-picker-icon" />
@@ -183,7 +182,6 @@ export function DigestArchivePickerView({
             >
               <DigestPickerItem
                 digest={digest}
-                hydrated={hydrated}
                 isLatest={digest.id === latestDigestId}
               />
             </LinkComponent>
@@ -208,16 +206,14 @@ function focusDirectionForKey(key: string): PickerFocusDirection {
 
 function DigestPickerItem({
   digest,
-  hydrated,
   isLatest,
 }: {
   digest: DigestArchivePickerOption;
-  hydrated: boolean;
   isLatest: boolean;
 }) {
   return (
     <span className="digest-picker-item">
-      <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt, hydrated)}</span>
+      <RelativeTime className="digest-picker-date" value={digest.createdAt} />
       <CountMeta label={digest.itemCount === 1 ? "post" : "posts"} value={digest.itemCount} />
       {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
     </span>
@@ -226,16 +222,16 @@ function DigestPickerItem({
 
 function digestArchiveLabel({
   digest,
-  hydrated,
+  now,
   isLatest,
 }: {
   digest: DigestArchivePickerOption;
-  hydrated: boolean;
+  now: number | null;
   isLatest: boolean;
 }) {
   const postLabel = `${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"}`;
   return [
-    formatDigestPickerDate(digest.createdAt, hydrated),
+    relativeTime(digest.createdAt, now ?? Date.now()),
     postLabel,
     isLatest ? "Latest" : "",
   ].filter(Boolean).join(", ");
@@ -253,25 +249,4 @@ function digestHref({
   const params = new URLSearchParams({ tab: "ai-digest", digest: digestId });
   if (!isOwnPipeline) params.set("pipeline", selectedPipelineId);
   return `/dashboard?${params.toString()}`;
-}
-
-function formatDigestPickerDate(value: string, hydrated: boolean) {
-  if (hydrated) {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(new Date(value));
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(new Date(value));
 }

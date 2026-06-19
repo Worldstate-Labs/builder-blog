@@ -5,6 +5,7 @@ import {
   ORIGINAL_CONTENT_LANGUAGE_LABEL,
   ORIGINAL_CONTENT_LANGUAGE_VALUE,
 } from "@/lib/language-preference";
+import { RelativeTime } from "@/components/RelativeTime";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
 export type SaveStatusState = { kind: SaveStatusKind; message?: string };
@@ -17,17 +18,6 @@ export function clampRatio(v: string): number {
   return Math.min(1, Math.max(0, n));
 }
 
-export function formatUtcDateTime(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(new Date(value));
-}
 
 export function Section({
   step,
@@ -437,7 +427,7 @@ export function FooterBar({
       ) : null}
       <SaveStatus status={status} onAutoDismiss={onStatusAutoDismiss} />
       <span className="settings-footer-updated">
-        Updated {formatUtcDateTime(updatedAt)}
+        Updated <RelativeTime value={updatedAt} />
       </span>
     </div>
   );

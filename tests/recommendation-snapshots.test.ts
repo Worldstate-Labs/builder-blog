@@ -410,6 +410,9 @@ test("post detail keeps source actions with the source row without a top source 
   assert.match(bylineHtml, /post-detail-actions/);
   assert.match(bylineHtml, /post-favorite-control[\s\S]*post-source-original/);
   assert.doesNotMatch(globals, /\.post-detail-byline\s*{[\s\S]{0,140}display:\s*grid/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-detail-byline\s*{[\s\S]*flex-wrap:\s*nowrap/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-detail-author-copy\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.post-detail-author-name,[\s\S]*\.post-detail-author-handle\s*{[\s\S]*text-overflow:\s*ellipsis/);
 });
 
 test("post card action controls include the post title in accessible names", () => {

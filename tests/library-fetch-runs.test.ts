@@ -770,6 +770,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
   assert.match(buildersPage, /actions=\{/);
   assert.match(buildersPage, /compactOnly/);
+  assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /libraryCronJob\?\.status === "active"/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
@@ -778,6 +779,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /context="digest"/);
+  assert.match(buildersPage, /activeSchedule=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.digestCronRuns\}/);

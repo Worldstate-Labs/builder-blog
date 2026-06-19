@@ -219,16 +219,16 @@ export async function GET(request: Request, { params }: Params) {
       ? String(Math.min(90, Math.floor(daysRaw)))
       : "30";
 
-  // Library worker fan-out. Closed numeric range; absent/invalid keeps the
-  // conservative single-agent behavior so old copied prompts do not change.
-  const parallelRaw = Number(url.searchParams.get("parallel") ?? "1");
+  // Library worker fan-out. Closed numeric range; absent/invalid uses the
+  // current UI default.
+  const parallelRaw = Number(url.searchParams.get("parallel") ?? "5");
   const parallelWorkers =
     job.startsWith("library") &&
     Number.isFinite(parallelRaw) &&
     Number.isInteger(parallelRaw) &&
     parallelRaw >= 1
       ? String(Math.min(8, Math.floor(parallelRaw)))
-      : "1";
+      : "5";
 
   let content = await readFile(join(process.cwd(), path), "utf8");
   // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before

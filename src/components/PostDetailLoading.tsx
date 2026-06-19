@@ -19,7 +19,6 @@ export function PostDetailLoading() {
         <div className="post-copy">
           <header className="post-detail-head">
             <div className="post-detail-kicker-row">
-              <span className="post-detail-loading-source-mark" />
               <span className="post-detail-loading-line post-detail-loading-line--meta" />
               <span className="post-detail-dot" aria-hidden="true">·</span>
               <span className="post-detail-loading-line post-detail-loading-line--meta-short" />

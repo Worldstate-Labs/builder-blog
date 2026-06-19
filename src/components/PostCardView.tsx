@@ -5,11 +5,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { BookOpen, ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { OriginalSourceAction } from "@/components/OriginalSourceAction";
+import { RelativeTime } from "@/components/RelativeTime";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
 import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
-import { useHydrated } from "@/components/ThemeToggle";
 import { decodeHtmlEntities } from "@/lib/decode-entities";
 
 export type PostCardLinkProps = {
@@ -116,7 +116,6 @@ export function PostCardView({
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [summaryCanExpand, setSummaryCanExpand] = useState(false);
   const [rawExpanded, setRawExpanded] = useState(false);
-  const hydrated = useHydrated();
   const interactionSentRef = useRef(false);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
   const builder = post.builder ?? fallbackBuilder ?? null;
@@ -198,9 +197,6 @@ export function PostCardView({
         showReadIndicator ||
         extraMeta),
   );
-  const detailPublishedLabel = post.publishedAt
-    ? formatDetailDate(post.publishedAt, hydrated)
-    : "Date unknown";
   const detailReadTime = readingTimeLabel(`${detailSummary || ""} ${post.body || ""}`);
 
   return (
@@ -212,7 +208,11 @@ export function PostCardView({
         {isDetail ? (
           <header className="post-detail-head">
             <div className="post-detail-kicker-row" aria-label="Post metadata">
-              <span>{detailPublishedLabel}</span>
+              {post.publishedAt ? (
+                <RelativeTime value={post.publishedAt} fallback="Date unknown" />
+              ) : (
+                <span>Date unknown</span>
+              )}
               <span className="post-detail-dot" aria-hidden="true">·</span>
               <span>{detailReadTime}</span>
             </div>
@@ -385,9 +385,7 @@ export function PostCardView({
           >
             {showPublishedDate ? (
               post.publishedAt ? (
-                <time className="post-footer-published" dateTime={post.publishedAt}>
-                  {formatDate(post.publishedAt, hydrated)}
-                </time>
+                <RelativeTime className="post-footer-published" value={post.publishedAt} />
               ) : (
                 <span className="post-footer-published">Date unknown</span>
               )
@@ -476,40 +474,6 @@ export function PostCardView({
   );
 }
 
-
-function formatDate(value: string, hydrated: boolean) {
-  if (hydrated) return new Date(value).toLocaleDateString();
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
-}
-
-function formatDetailDate(value: string, hydrated: boolean) {
-  const date = new Date(value);
-  if (!hydrated) {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    }).format(date);
-  }
-
-  const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const dayDiff = Math.round((startOfToday - startOfDate) / 86_400_000);
-  if (dayDiff === 0) return "Today";
-  if (dayDiff === 1) return "Yesterday";
-  if (dayDiff > 1 && dayDiff < 7) return `${dayDiff} days ago`;
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
 
 function readingTimeLabel(value: string) {
   const words = value.trim().split(/\s+/).filter(Boolean).length;

@@ -6,6 +6,7 @@ import { formatCount } from "@/components/Count";
 import { FeedEmptyState } from "@/components/FeedState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
+import { RelativeTime } from "@/components/RelativeTime";
 import { postDetailHref } from "@/lib/navigation";
 
 export type FavoritePostListItem = {
@@ -111,7 +112,7 @@ export function FavoritePostsList({
               <>
                 <span className="post-meta-dot" aria-hidden="true">·</span>
                 <span className="favorite-saved-at">
-                  Saved {formatDate(item.favoritedAt)}
+                  Saved <RelativeTime value={item.favoritedAt} />
                 </span>
               </>
             }
@@ -133,12 +134,4 @@ function sortFavoriteItems(items: FavoritePostListItem[]) {
 
 function favoritePostLabel(post: PostCardPost) {
   return post.title?.trim() || post.sourceName?.trim() || "this post";
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
 }

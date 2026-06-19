@@ -46,9 +46,8 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
 // jobs/[job]/skill.md route, which maps each to a fixed cron expression.
 type CronFrequency = "30m" | "1h" | "12h" | "daily" | "weekly";
 type ScheduleFrequency = "once" | CronFrequency;
-// `overrideFetched` = re-fetch posts already in the library (pass --force to
-// fetch-personal, which ignores both the fetchedAt cutoff and the externalId
-// dedup). Library context only — the digest job doesn't fetch personal items.
+// `overrideFetched` = one-time re-fetch/reuse behavior. Cron schedules never
+// carry it because recurring jobs should keep normal incremental boundaries.
 type CronConfig = {
   runtime: AgentRuntime;
   freq: CronFrequency;
@@ -77,6 +76,13 @@ type CopyExtras = {
   parallelWorkers: number;
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
+export type ActiveScheduleInfo = {
+  frequencyLabel: string;
+  runtime: string | null;
+  startedAt: string;
+  hostname: string | null;
+  platform: string | null;
+};
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
 const promptDialogDescription = () => "Set frequency, runtime, language, and lookback.";
 
@@ -141,7 +147,7 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
 // own language.
 const DEFAULT_PROMPT_WINDOW_DAYS = 30;
 const MAX_PROMPT_WINDOW_DAYS = 90;
-const DEFAULT_PARALLEL_WORKERS = 1;
+const DEFAULT_PARALLEL_WORKERS = 5;
 const MAX_PARALLEL_WORKERS = 8;
 
 // The override toggle reuses one URL channel (?force=1) but means different
@@ -151,19 +157,15 @@ const MAX_PARALLEL_WORKERS = 8;
 // replaces past ones).
 const OVERRIDE_COPY: Record<
   SkillPromptContext,
-  { name: string; cronHint: string; onceHint: string }
+  { name: string; onceHint: string }
 > = {
   library: {
     name: "Re-fetch existing posts",
-    cronHint:
-      "Re-fetch existing source posts each run. Leave off for normal updates.",
     onceHint:
       "Re-fetch existing source posts once.",
   },
   digest: {
     name: "Reuse posts from past issues",
-    cronHint:
-      "Reuse posts from past issues each run.",
     onceHint:
       "Reuse posts from past issues once.",
   },
@@ -297,7 +299,7 @@ const PROMPT_CONFIG = {
     onceJob: "library-once",
     cronJob: "library-cron-setup",
     stopJob: "library-cron-stop",
-    stopLabel: "Copy stop prompt",
+    stopLabel: "Stop fetching",
   },
   digest: {
     title: "Build AI Digest",
@@ -306,7 +308,7 @@ const PROMPT_CONFIG = {
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
     stopJob: "digest-cron-stop",
-    stopLabel: "Copy stop prompt",
+    stopLabel: "Stop AI Digest",
   },
 } satisfies Record<
   SkillPromptContext,
@@ -322,6 +324,7 @@ const PROMPT_CONFIG = {
 >;
 
 export function SkillPromptActions({
+  activeSchedule = null,
   context,
   tokens = [],
   summaryLanguage = null,
@@ -329,6 +332,7 @@ export function SkillPromptActions({
   compactOnly = false,
   showStop = true,
 }: {
+  activeSchedule?: ActiveScheduleInfo | null;
   context: SkillPromptContext;
   tokens?: AgentTokenListItem[];
   // Current account-wide summary language (null = default zh). Set in the
@@ -348,12 +352,13 @@ export function SkillPromptActions({
   // The `in` narrow keeps this typed against the per-context literal config
   // shapes if a future context omits stop support.
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
-  const stopLabel = "stopLabel" in config ? config.stopLabel : "Copy stop prompt";
+  const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop fetching";
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [manualCopyPrompt, setManualCopyPrompt] = useState<ManualCopyPrompt | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
+  const [stopDialogOpen, setStopDialogOpen] = useState(false);
   // Job dialog: pick one-time or recurring cadence before the token picker.
   // Both flows include runtime URL params. Recurring setup pins the runtime;
   // one-time prompts pass it as a per-run env override without touching pins.
@@ -552,26 +557,35 @@ export function SkillPromptActions({
     setPickerTarget(target);
   }
 
-  // Stop flows report "stopped" back to the server after local removal, so they
-  // need a token-backed prompt just like setup.
-  async function copyStopCommand() {
+  function openStopDialog() {
     if (!stopJob) return;
     setStatus(null);
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: missingAccessMessage });
       return;
     }
-    if (activeTokens.length === 1) {
-      await copyForToken("stop", activeTokens[0].id, {
-        cron: null,
-        runtime: RUNTIME_OPTIONS[0].id,
-        force: false,
-        fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
-        parallelWorkers: DEFAULT_PARALLEL_WORKERS,
-      });
-      return;
+    setStopDialogOpen(true);
+  }
+
+  // Stop flows report "stopped" back to the server after local removal, so they
+  // need a token-backed prompt just like setup. Use the most-recent active key
+  // to keep the stop confirmation dialog to Cancel + Copy.
+  async function copyStopCommand() {
+    if (!stopJob) return false;
+    const token = activeTokens[0];
+    if (!token) {
+      setStatus({ kind: "info", text: missingAccessMessage });
+      return false;
     }
-    setPickerTarget("stop");
+    const copied = await copyForToken("stop", token.id, {
+      cron: null,
+      runtime: RUNTIME_OPTIONS[0].id,
+      force: false,
+      fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+      parallelWorkers: DEFAULT_PARALLEL_WORKERS,
+    });
+    setStopDialogOpen(false);
+    return copied;
   }
 
   return (
@@ -597,7 +611,7 @@ export function SkillPromptActions({
       {stopJob && showStop ? (
         <button
           className="fb-btn light compact"
-          onClick={copyStopCommand}
+          onClick={openStopDialog}
           type="button"
         >
           {copiedTarget === "stop" ? (
@@ -669,6 +683,15 @@ export function SkillPromptActions({
         }}
       />
 
+      <StopScheduleDialog
+        open={stopDialogOpen}
+        context={context}
+        schedule={activeSchedule}
+        title={stopLabel}
+        onCancel={() => setStopDialogOpen(false)}
+        onConfirm={copyStopCommand}
+      />
+
       {manualCopyPrompt ? (
         <ManualCopyPromptPanel
           key={manualCopyPrompt.text}
@@ -678,6 +701,172 @@ export function SkillPromptActions({
       ) : null}
     </div>
   );
+}
+
+function StopScheduleDialog({
+  open,
+  context,
+  schedule,
+  title,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  context: SkillPromptContext;
+  schedule: ActiveScheduleInfo | null;
+  title: string;
+  onCancel: () => void;
+  onConfirm: () => boolean | void | Promise<boolean | void>;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const hydrated = useHydrated();
+  const taskLabel = context === "digest" ? "AI Digest schedule" : "source fetching schedule";
+  const machineLabel = formatScheduleMachine(schedule);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    if (open && !d.open) {
+      try {
+        d.showModal();
+      } catch {
+        // showModal throws if already open; ignore.
+      }
+    } else if (!open && d.open) {
+      d.close();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    const onClose = () => {
+      setSubmitting(false);
+      onCancel();
+    };
+    d.addEventListener("close", onClose);
+    return () => d.removeEventListener("close", onClose);
+  }, [onCancel]);
+
+  async function confirm() {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="stop-schedule-title"
+      className="token-picker-dialog"
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onCancel();
+      }}
+    >
+      <form
+        className="token-picker-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void confirm();
+        }}
+      >
+        <header className="token-picker-header">
+          <h2 id="stop-schedule-title" className="token-picker-title">
+            {title}
+          </h2>
+          <p className="token-picker-sub">
+            Copy this prompt and send it to your Local Agent to stop this schedule.
+          </p>
+        </header>
+
+        <div className="stop-schedule-body">
+          <dl className="stop-schedule-details">
+            <div className="stop-schedule-detail">
+              <dt>Task</dt>
+              <dd>{taskLabel}</dd>
+            </div>
+            <div className="stop-schedule-detail">
+              <dt>Frequency</dt>
+              <dd>{schedule?.frequencyLabel ?? "Active schedule"}</dd>
+            </div>
+            <div className="stop-schedule-detail">
+              <dt>Runtime</dt>
+              <dd>{formatScheduleRuntime(schedule?.runtime ?? null)}</dd>
+            </div>
+            <div className="stop-schedule-detail">
+              <dt>Started</dt>
+              <dd>{formatScheduleDate(schedule?.startedAt ?? null, hydrated)}</dd>
+            </div>
+            {machineLabel ? (
+              <div className="stop-schedule-detail">
+                <dt>Machine</dt>
+                <dd>{machineLabel}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+
+        <footer className="token-picker-footer">
+          <button
+            type="button"
+            className="fb-btn light compact"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="fb-btn dark compact"
+            disabled={submitting}
+          >
+            <Copy aria-hidden="true" />
+            {submitting ? "Copying" : "Copy"}
+          </button>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+function formatScheduleRuntime(runtime: string | null) {
+  if (!runtime) return "Default runtime";
+  return RUNTIME_OPTIONS.find((option) => option.id === runtime)?.label ?? runtime;
+}
+
+function formatScheduleMachine(schedule: ActiveScheduleInfo | null) {
+  if (!schedule) return null;
+  const parts = [schedule.hostname, schedule.platform].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function formatScheduleDate(value: string | null, hydrated: boolean) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  if (!hydrated) {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  }
+  const diffMs = date.getTime() - Date.now();
+  const absMs = Math.abs(diffMs);
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  if (absMs < 60 * 60 * 1000) {
+    return formatter.format(Math.round(diffMs / 60_000), "minute");
+  }
+  if (absMs < 36 * 60 * 60 * 1000) {
+    return formatter.format(Math.round(diffMs / (60 * 60 * 1000)), "hour");
+  }
+  return formatter.format(Math.round(diffMs / (24 * 60 * 60 * 1000)), "day");
 }
 
 function TokenPickerDialog({
@@ -1020,7 +1209,7 @@ function CronConfigDialog({
           cron: {
             runtime: pickedRuntime,
             freq: pickedFreq,
-            overrideFetched,
+            overrideFetched: false,
             fetchDays,
             parallelWorkers,
           },
@@ -1115,7 +1304,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Use 1 to reduce rate-limit errors.
+                Controls how many source fetch tasks run at the same time.
               </p>
             </>
           ) : null}
@@ -1153,21 +1342,23 @@ function CronConfigDialog({
             </>
           )}
 
-          <label className="cron-check">
-            <input
-              type="checkbox"
-              name="override-fetched"
-              checked={overrideFetched}
-              onChange={(e) => setOverrideFetched(e.target.checked)}
-              className="cron-check-input"
-            />
-            <span className="cron-check-body">
-              <span className="cron-check-name">{override.name}</span>
-              <span className="cron-field-hint">
-                {isOneTime ? override.onceHint : override.cronHint}
+          {isOneTime ? (
+            <label className="cron-check">
+              <input
+                type="checkbox"
+                name="override-fetched"
+                checked={overrideFetched}
+                onChange={(e) => setOverrideFetched(e.target.checked)}
+                className="cron-check-input"
+              />
+              <span className="cron-check-body">
+                <span className="cron-check-name">{override.name}</span>
+                <span className="cron-field-hint">
+                  {override.onceHint}
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          ) : null}
 
           {error ? <p className="cron-field-error">{error}</p> : null}
         </div>

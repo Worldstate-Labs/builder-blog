@@ -5,7 +5,7 @@ import { Loader2, RefreshCcw } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
-import { useHydrated } from "@/components/ThemeToggle";
+import { RelativeTime } from "@/components/RelativeTime";
 import { markPostRead } from "@/lib/mark-read";
 import { postDetailHref } from "@/lib/navigation";
 
@@ -54,7 +54,6 @@ export function RecommendationFeed({
   showAdminActions?: boolean;
 }) {
   const [snapshots, setSnapshots] = useState(() => nonEmptySnapshots(initialSnapshots));
-  const hydrated = useHydrated();
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
   const [loadErrorDirection, setLoadErrorDirection] = useState<"append" | "prepend" | null>(null);
   const [favoriteError, setFavoriteError] = useState("");
@@ -187,7 +186,7 @@ export function RecommendationFeed({
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
               <span>Following update</span>
-              <span>{formatDate(snapshot.createdAt, hydrated)}</span>
+              <RelativeTime value={snapshot.createdAt} />
               <CountMeta
                 label={snapshot.items.length === 1 ? "post" : "posts"}
                 value={snapshot.items.length}
@@ -311,16 +310,4 @@ function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {
 
 function nonEmptySnapshots(snapshots: RecommendationSnapshotEntry[]) {
   return snapshots.filter((snapshot) => snapshot.items.length > 0);
-}
-
-function formatDate(value: string, hydrated: boolean) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    ...(hydrated ? {} : { timeZone: "UTC", timeZoneName: "short" }),
-  }).format(new Date(value));
 }

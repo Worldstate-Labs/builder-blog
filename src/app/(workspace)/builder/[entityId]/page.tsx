@@ -15,15 +15,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { RecentPostsList } from "@/components/RecentPostsList";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
+import { RelativeTime } from "@/components/RelativeTime";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
 
 type ChannelInfo = {
   builderId: string;
@@ -56,9 +51,6 @@ function formatChannelLibraryName(channel: Pick<ChannelInfo, "isAdminCommunity" 
     : `${channel.libraryName} · ${label}`;
 }
 
-function formatFetchedAt(value: Date | null) {
-  return value ? `fetched ${dateFormatter.format(value)}` : "not fetched yet";
-}
 
 export default async function BuilderDetailPage({ params }: Params) {
   const session = await getCurrentSession();
@@ -177,9 +169,11 @@ export default async function BuilderDetailPage({ params }: Params) {
                   {lastFetchedMax ? (
                     <>
                       <span className="source-latest-dot source-meta-dot">·</span>
-                      <span className="source-latest-meta">
-                        {formatFetchedAt(lastFetchedMax)}
-                      </span>
+                      <RelativeTime
+                        className="source-latest-meta"
+                        prefix="fetched "
+                        value={lastFetchedMax}
+                      />
                     </>
                   ) : null}
                 </span>
@@ -346,7 +340,11 @@ async function ChannelsListSlot({
               ) : null}
             </div>
             <div className="builder-detail-channel-date mono">
-              {formatFetchedAt(channel.lastFetchedAt)}
+              <RelativeTime
+                prefix="fetched "
+                value={channel.lastFetchedAt}
+                fallback="not fetched yet"
+              />
             </div>
             <ChannelPreferenceToggle
               entityId={entityId}

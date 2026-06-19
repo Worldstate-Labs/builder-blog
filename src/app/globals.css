@@ -1487,6 +1487,7 @@ details:not([open]) > :not(summary) {
 .post-detail-author {
   align-items: center;
   display: flex;
+  flex: 1 1 auto;
   gap: 0.65rem;
   min-width: 0;
 }
@@ -1536,6 +1537,7 @@ details:not([open]) > :not(summary) {
   flex-wrap: wrap;
   gap: 0.6rem;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .post-detail-summary,
@@ -3224,6 +3226,7 @@ summary.library-section-summary::after {
     display: flex;
     gap: 0.65rem;
     justify-content: space-between;
+    flex-wrap: nowrap;
   }
 
   .post-detail-actions {
@@ -3232,8 +3235,18 @@ summary.library-section-summary::after {
   }
 
   .post-detail-author-copy {
-    display: grid;
-    gap: 0.18rem;
+    align-items: baseline;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .post-detail-author-name,
+  .post-detail-author-handle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .post-footer[data-stack-actions="true"] {
@@ -8550,6 +8563,49 @@ a.builder-library-name:hover {
   padding: 0.75rem 1rem;
 }
 
+.stop-schedule-body {
+  min-width: 0;
+  padding: 1rem 1.25rem;
+}
+
+.stop-schedule-details {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+}
+
+.stop-schedule-detail {
+  align-items: start;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+  padding: 0.75rem 0.875rem;
+}
+
+.stop-schedule-detail + .stop-schedule-detail {
+  border-top: 1px solid var(--line);
+}
+
+.stop-schedule-detail dt {
+  color: var(--muted);
+  font-family: var(--font-geist-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.stop-schedule-detail dd {
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* Cron config dialog — compact field rows (selects) so many settings fit
    in one window without a long radio-list scroll. */
 .cron-config-body {
@@ -8663,6 +8719,13 @@ a.builder-library-name:hover {
   .cron-field-select {
     font-size: 1rem;
     padding-block: 0.55rem;
+  }
+  .stop-schedule-body {
+    padding-inline: 1rem;
+  }
+  .stop-schedule-detail {
+    gap: 0.25rem;
+    grid-template-columns: 1fr;
   }
 }
 

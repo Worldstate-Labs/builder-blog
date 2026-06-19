@@ -274,6 +274,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(postDetailLoading, /className="feed-card fetched-post-card post-detail-card post-detail-loading-card"/);
   assert.match(postDetailLoading, /className="post-detail-head"/);
   assert.match(postDetailLoading, /className="post-detail-kicker-row"/);
+  assert.doesNotMatch(postDetailLoading, /post-detail-kicker-row[\s\S]{0,160}post-detail-loading-source-mark/);
   assert.match(postDetailLoading, /className="post-detail-byline"/);
   assert.match(postDetailLoading, /className="post-detail-summary"/);
   assert.match(postDetailLoading, /className="post-detail-raw"/);
@@ -877,6 +878,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="token-picker-form"/);
   assert.match(skillPromptActions, />\s*Choose access key\s*<\/h2>/);
   assert.match(skillPromptActions, /Setup code expires in 10 minutes/);
+  assert.match(skillPromptActions, /StopScheduleDialog/);
+  assert.match(skillPromptActions, /Stop fetching/);
+  assert.match(skillPromptActions, /Copy this prompt and send it to your Local Agent to stop this schedule/);
+  assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
+  assert.match(skillPromptActions, /const token = activeTokens\[0\]/);
+  assert.doesNotMatch(skillPromptActions, /Copy stop prompt/);
   assert.doesNotMatch(skillPromptActions, /Creates a setup code that expires in 10 minutes|Creates a 10-minute setup code for this key|We&rsquo;ll create a 10-minute setup code for this key/);
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
   assert.match(skillPromptActions, /if \(completed\) setCronConfigOpen\(false\);/);
@@ -914,10 +921,11 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
   assert.match(skillPromptActions, /Parallel tasks/);
+  assert.match(skillPromptActions, /const DEFAULT_PARALLEL_WORKERS = 5;/);
   assert.match(skillPromptActions, /1 task/);
   assert.match(skillPromptActions, /\`\$\{count\} tasks\`/);
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
-  assert.match(skillPromptActions, /Use 1 to reduce rate-limit errors/);
+  assert.match(skillPromptActions, /Controls how many source fetch tasks run at the same time/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
   assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Set frequency, runtime, language, and lookback\."/);
   assert.match(skillPromptActions, />\s*Runtime\s*<\/label>/);
@@ -2756,6 +2764,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(buildersPage, /<DigestPipelineImportForm mode="imported" pipelines=\{data\.hubDigestPipelines\}/);
   assert.match(buildersPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(buildersPage, /context="digest"/);
+  assert.match(buildersPage, /activeSchedule=\{data\.digestCronJob\}/);
   assert.match(digestUpdatesCard, /<DigestLogPanel/);
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.digestCronRuns\}/);
@@ -3754,7 +3763,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /className="sources-sync-section sources-sync-panel library-section-panel"/);
   assert.match(buildersPage, /className="library-section-summary library-section-summary--static"[\s\S]*id="source-syncing-section-title"/);
-  assert.match(buildersPage, /Copy a Fetch sources prompt for your Local Agent to fetch and[\s\S]*summarize source updates\./);
+  assert.match(buildersPage, /Copy a prompt for your Local Agent to fetch and summarize source[\s\S]*updates from your own library\./);
   assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
   assert.match(buildersPage, /Source syncing/);
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
@@ -4419,6 +4428,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-detail-kicker-row\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.post-detail-byline\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.post-detail-actions\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-detail-byline\s*{[\s\S]*flex-wrap:\s*nowrap/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-detail-author-copy\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.post-detail-author-name,[\s\S]*\.post-detail-author-handle\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.doesNotMatch(globals, /\.reading-page-head\s*{/);
   assert.match(globals, /\.post-detail-card\.feed-card/);

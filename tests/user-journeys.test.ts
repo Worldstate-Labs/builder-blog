@@ -359,9 +359,11 @@ test("web app serves the agent skill and setup command", () => {
   // SkillPromptActions, which references the bootstrap route directly.
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="library"/);
+  assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="digest"/);
+  assert.match(buildersPage, /activeSchedule=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
   assert.match(dashboardPage, /function DigestEmptyState/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
@@ -377,6 +379,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Update sources/);
   assert.match(skillPromptActions, /Build AI Digest/);
   assert.doesNotMatch(skillPromptActions, /Build digest/);
+  assert.match(skillPromptActions, /Stop fetching/);
+  assert.match(skillPromptActions, /StopScheduleDialog/);
+  assert.match(skillPromptActions, /Copy this prompt and send it to your Local Agent to stop this schedule/);
+  assert.match(skillPromptActions, /Task/);
+  assert.match(skillPromptActions, /Frequency/);
+  assert.match(skillPromptActions, /Runtime/);
+  assert.match(skillPromptActions, /Started/);
+  assert.match(skillPromptActions, /Machine/);
+  assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
+  assert.match(skillPromptActions, /const token = activeTokens\[0\]/);
+  assert.doesNotMatch(skillPromptActions, /Copy stop prompt/);
   assert.doesNotMatch(skillPromptActions, /Run or schedule/);
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
@@ -402,15 +415,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /params\.set\("runtime"/);
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
-  // The override toggle adds ?force=1; its copy is context-specific (library
-  // re-fetches posts already in the source library, digest re-includes posts already used in
-  // AI Digest issues additively — the digest job never fetches and never deletes past
-  // AI Digest issues).
-  // Both cron + once dialogs expose it for both contexts, defaulting off.
+  // The override toggle adds ?force=1 only for one-time prompts; cron schedules
+  // keep normal incremental boundaries.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Re-fetch existing posts/);
-  assert.match(skillPromptActions, /Re-fetch existing source posts each run/);
+  assert.match(skillPromptActions, /Re-fetch existing source posts once/);
+  assert.match(skillPromptActions, /isOneTime \? \(/);
+  assert.match(skillPromptActions, /overrideFetched: false/);
   assert.doesNotMatch(skillPromptActions, /Includes posts already in your source library|Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
+  assert.doesNotMatch(skillPromptActions, /Re-fetch existing source posts each run|Reuse posts from past issues each run/);
   assert.match(skillPromptActions, /Reuse posts from past issues/);
   assert.doesNotMatch(skillPromptActions, /Reuse past AI Digest posts|Reuse posts from AI Digest issues|Include posts already used in AI Digest issues|Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);

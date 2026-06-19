@@ -176,6 +176,7 @@ async function DigestSourcesSection({
         <OwnDigestPipelineUpdatesCard
           actions={
             <SkillPromptActions
+              activeSchedule={data.digestCronJob}
               compactOnly
               context="digest"
               digestMaxPostAgeDays={data.digestMaxPostAgeDays}
@@ -694,8 +695,8 @@ async function FetchSourcesSection({
             Source syncing
           </h2>
           <p className="library-section-copy">
-            Copy a Fetch sources prompt for your Local Agent to fetch and
-            summarize source updates.
+            Copy a prompt for your Local Agent to fetch and summarize source
+            updates from your own library.
           </p>
         </div>
       </div>
@@ -704,6 +705,7 @@ async function FetchSourcesSection({
           actionsPlacement="start"
           actions={
             <SkillPromptActions
+              activeSchedule={data.libraryCronJob}
               compactOnly
               context="library"
               showStop={showStopLibraryCron}

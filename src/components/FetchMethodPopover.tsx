@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Info } from "lucide-react";
+import { RelativeTime } from "@/components/RelativeTime";
 
 type ParsedFetchTool = {
   runtime: string | null;
@@ -45,9 +46,6 @@ export function FetchMethodPopover({
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
   const parsed = parseFetchTool(fetchTool);
-  const summarizedDate = summarizedAt
-    ? new Date(summarizedAt).toLocaleDateString()
-    : null;
 
   useEffect(() => {
     if (!open) return;
@@ -103,10 +101,10 @@ export function FetchMethodPopover({
               <span>{parsed.raw}</span>
             </div>
           ) : null}
-          {summarizedDate ? (
+          {summarizedAt ? (
             <div className="fb-popover-row">
               <span className="fb-popover-label">Summarized</span>
-              <span>{summarizedDate}</span>
+              <RelativeTime value={summarizedAt} />
             </div>
           ) : null}
         </div>

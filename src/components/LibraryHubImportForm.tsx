@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Download } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
@@ -561,7 +562,7 @@ function HubCard({
                             label={item.builder._count.feedItems === 1 ? "post" : "posts"}
                             value={item.builder._count.feedItems}
                           />
-                          <span> · {formatFetchStatusLabel(item.builder.lastFetchedAt)}</span>
+                          <span> · <RelativeTime prefix="fetched " value={item.builder.lastFetchedAt} fallback="not fetched yet" /></span>
                         </span>
                       </li>
                     );
@@ -584,7 +585,7 @@ function HubCard({
         <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
         <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
         <div className="fb-hub-card-fetch-date">
-          {formatFetchStatusLabel(latestFetchedAt)}
+          <RelativeTime prefix="fetched " value={latestFetchedAt} fallback="not fetched yet" />
         </div>
       </div>
     </article>
@@ -727,25 +728,4 @@ function maxIso(a: string | null, b: string | null) {
   if (!a) return b;
   if (!b) return a;
   return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
-}
-
-const fetchDateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
-function formatFetchDate(value: string | null) {
-  if (!value) return "never";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "unknown";
-  return fetchDateFormatter.format(date);
-}
-
-function formatFetchStatusLabel(value: string | null) {
-  if (!value) return "not fetched yet";
-  const formatted = formatFetchDate(value);
-  if (formatted === "unknown") return "fetch date unknown";
-  return `fetched ${formatted}`;
 }

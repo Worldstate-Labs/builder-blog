@@ -9,7 +9,7 @@ import {
   type DigestFavoriteStateByUrl,
 } from "@/components/DigestContent";
 import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
-import { useHydrated } from "@/components/ThemeToggle";
+import { RelativeTime } from "@/components/RelativeTime";
 import { digestPreviewFromContent } from "@/lib/digest-headline";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { displayLanguagePreference } from "@/lib/language-preference";
@@ -50,7 +50,6 @@ export function DigestDetails({
   sourceLinks?: DigestSourceLink[];
 }) {
   const digestId = digest.id;
-  const hydrated = useHydrated();
   const stateKey = `${digestId}:${defaultOpen ? "open" : "closed"}:${mode}`;
   const initialStatus = defaultOpen || mode === "today" ? "loading" : "idle";
   const initialState: DigestLoadState = useMemo(
@@ -237,7 +236,7 @@ export function DigestDetails({
         <summary className="item-summary">
           <span className="item-summary-copy">
             <span className="item-kicker">
-              <span>{formatDateTime(digest.createdAt, hydrated)}</span>
+              <RelativeTime value={digest.createdAt} />
               <CountMeta label={digest.itemCount === 1 ? "post" : "posts"} value={digest.itemCount} />
               <span>{displayLanguagePreference(digest.language)}</span>
             </span>
@@ -420,15 +419,4 @@ function cleanFavoriteStateByUrl(value: unknown): DigestFavoriteStateByUrl {
     return feedItemId ? [[url, { feedItemId, favoritedAt }] as const] : [];
   });
   return Object.fromEntries(entries);
-}
-
-function formatDateTime(value: string, hydrated: boolean) {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    ...(hydrated ? {} : { timeZone: "UTC", timeZoneName: "short" }),
-  }).format(new Date(value));
 }

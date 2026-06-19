@@ -8,6 +8,7 @@ import { CountMeta, CountRange, formatCount } from "@/components/Count";
 import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
+import { RelativeTime } from "@/components/RelativeTime";
 import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
@@ -518,10 +519,16 @@ function DigestPipelineMetaGrid({
         label="Language"
         value={formatLanguage(pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh")}
       />
-      <DigestPipelineMetaItem
-        label="Latest issue"
-        value={pipeline.latestDigestAt ? formatDate(pipeline.latestDigestAt) : "None yet"}
-      />
+      <div className="fb-hub-digest-meta-item">
+        <dt>Latest issue</dt>
+        <dd>
+          {pipeline.latestDigestAt ? (
+            <RelativeTime value={pipeline.latestDigestAt} />
+          ) : (
+            "None yet"
+          )}
+        </dd>
+      </div>
       <div className="fb-hub-digest-meta-item">
         <dt>Status / log</dt>
         <dd>
@@ -553,14 +560,4 @@ function DigestPipelineMetaItem({
 
 function formatLanguage(value: string) {
   return displayLanguagePreference(value);
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(new Date(value));
 }

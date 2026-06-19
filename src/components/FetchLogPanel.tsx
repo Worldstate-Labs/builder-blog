@@ -14,6 +14,7 @@ import {
 } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { formatCount } from "@/components/Count";
+import { relativeTime } from "@/lib/relative-time";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
@@ -253,22 +254,8 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Failed",
 };
 
-const RELATIVE_FORMATTER =
-  typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl
-    ? new Intl.RelativeTimeFormat(undefined, { numeric: "auto" })
-    : null;
-
 function formatRelative(iso: string): string {
-  if (!RELATIVE_FORMATTER) return formatAbsolute(iso);
-  const diffMs = Date.parse(iso) - Date.now();
-  const abs = Math.abs(diffMs);
-  const minute = 60_000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (abs < minute) return RELATIVE_FORMATTER.format(Math.round(diffMs / 1000), "second");
-  if (abs < hour) return RELATIVE_FORMATTER.format(Math.round(diffMs / minute), "minute");
-  if (abs < day) return RELATIVE_FORMATTER.format(Math.round(diffMs / hour), "hour");
-  return RELATIVE_FORMATTER.format(Math.round(diffMs / day), "day");
+  return relativeTime(iso, Date.now());
 }
 
 function formatAbsolute(iso: string): string {
