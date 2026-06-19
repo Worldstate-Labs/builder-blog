@@ -10252,10 +10252,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .settings-access-grid {
-  align-items: start;
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-inline: auto;
   max-width: var(--settings-max);
   width: 100%;
@@ -12604,10 +12602,6 @@ body {
     font-size: 0.78125rem;
     line-height: 1.5;
     padding: 0.65rem 0.7rem;
-  }
-
-  .settings-access-grid {
-    grid-template-columns: 1fr;
   }
 
   .access-keys-panel {
