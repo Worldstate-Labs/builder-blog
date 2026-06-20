@@ -423,8 +423,6 @@ function DigestPipelineCard({
       {pending === "import" ? "Importing" : "Import"}
     </button>
   );
-  const description = panel ? null : digestPipelineCardDescription(pipeline);
-
   return (
     <DigestPipelineInfoCard
       actionGroupLabel={`AI Digest collection actions for ${pipeline.title}`}
@@ -434,10 +432,9 @@ function DigestPipelineCard({
           ? "fb-hub-card digest-pipeline-card is-sources-panel"
           : "fb-hub-card digest-pipeline-card"
       }
-      description={description}
       headerClassName="fb-hub-card-head"
       pipeline={pipeline}
-      statsClassName={panel ? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"}
+      statsClassName="fb-hub-card-stats fb-hub-card-stats--with-owner"
       stats={
         <>
           <CountMeta
@@ -445,14 +442,9 @@ function DigestPipelineCard({
             value={pipeline.digestCount}
           />
           <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-          {!panel ? (
-            <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
-          ) : null}
-          {panel ? (
-            <span className="fb-hub-card-owner">
-              by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>
-            </span>
-          ) : null}
+          <span className="fb-hub-card-owner">
+            by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>
+          </span>
         </>
       }
       titleBlock={
@@ -460,11 +452,6 @@ function DigestPipelineCard({
           <h3 className="fb-hub-title">
             {pipeline.title}
           </h3>
-          {panel ? null : (
-            <p className="fb-hub-card-byline">
-              <DigestPipelineByline ownerLabel={pipeline.ownerLabel} />
-            </p>
-          )}
         </div>
       }
     />
@@ -535,21 +522,6 @@ function DigestPipelineInfoCard({
         </div>
       ) : null}
     </article>
-  );
-}
-
-function digestPipelineCardDescription(pipeline: HubDigestPipeline) {
-  const description = pipeline.description?.trim();
-  if (description) return description;
-  return null;
-}
-
-function DigestPipelineByline({ ownerLabel }: { ownerLabel: string }) {
-  const prefix = /^Curated by\s+/i.test(ownerLabel.trim()) ? "Curated by" : "By";
-  return (
-    <>
-      {prefix} <UserName>{digestPipelineOwnerName(ownerLabel)}</UserName>
-    </>
   );
 }
 
