@@ -1859,6 +1859,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   const globals = source("src/app/globals.css");
   const timelineRoute = source("src/app/api/recommendations/timeline/route.ts");
   const serializer = source("src/lib/recommendation-view-model.ts");
+  const recommendationSnapshotHeaderRule = cssRule(globals, ".recommendation-snapshot-header");
+  const recommendationSnapshotMetaRule = cssRule(globals, ".recommendation-snapshot-meta");
 
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.doesNotMatch(dashboardPage, /RecommendationFeed/);
@@ -1943,6 +1945,12 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(recommendationFeed, /Following update/);
   assert.match(recommendationFeed, /snapshots\.map\(\(snapshot,\s*index\) =>/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-meta"/);
+  assert.match(recommendationSnapshotHeaderRule, /justify-content:\s*space-between/);
+  assert.doesNotMatch(recommendationSnapshotHeaderRule, /text-transform:\s*uppercase/);
+  assert.doesNotMatch(recommendationSnapshotHeaderRule, /letter-spacing:\s*0\.08em/);
+  assert.match(recommendationSnapshotMetaRule, /font-size:\s*var\(--text-role-meta-size\)/);
+  assert.match(recommendationSnapshotMetaRule, /font-weight:\s*var\(--text-role-label-weight\)/);
+  assert.match(recommendationSnapshotMetaRule, /letter-spacing:\s*var\(--text-role-tracking\)/);
   assert.match(recommendationFeed, /index === 0 \? \(/);
   assert.match(recommendationFeed, /className="fb-btn light compact recommendation-refresh-button"/);
   assert.doesNotMatch(recommendationFeed, /Following snapshot/);

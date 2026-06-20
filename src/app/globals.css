@@ -3548,23 +3548,22 @@ summary.library-section-summary::after {
 
 .recommendation-snapshot-header {
   align-items: center;
-  color: var(--muted);
   display: flex;
   flex-wrap: wrap;
-  font-size: 0.72rem;
-  font-weight: 850;
   gap: 0.5rem;
   justify-content: space-between;
-  letter-spacing: 0.08em;
   min-width: 0;
-  text-transform: uppercase;
 }
 
 .recommendation-snapshot-meta {
   align-items: center;
+  color: var(--muted-strong);
   display: inline-flex;
+  font-size: var(--text-role-meta-size);
+  font-weight: var(--text-role-label-weight);
   flex-wrap: wrap;
   gap: 0.5rem;
+  letter-spacing: var(--text-role-tracking);
   min-width: 0;
 }
 
