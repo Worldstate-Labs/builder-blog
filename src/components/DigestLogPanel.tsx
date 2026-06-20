@@ -10,7 +10,6 @@ import {
   type CSSProperties,
   type ReactNode,
   type SetStateAction,
-  type UIEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
@@ -81,7 +80,6 @@ function formatDay(iso: string): string {
 
 const VISIBLE_SOURCE_LIMIT = 4;
 const DIGEST_TIMELINE_LIMIT = 12;
-const LOG_WINDOW_SIZE = 6;
 
 type DigestCronSlot = CronSlot<DigestRunListItem>;
 
@@ -247,17 +245,6 @@ function buildDigestTimeline({
   return entries
     .sort((a, b) => Date.parse(a.time) - Date.parse(b.time))
     .slice(-DIGEST_TIMELINE_LIMIT);
-}
-
-function clampLogWindowStart(start: number, total: number): number {
-  return Math.min(Math.max(0, start), Math.max(0, total - LOG_WINDOW_SIZE));
-}
-
-function visibleLogWindowStart(container: HTMLDivElement, total: number): number {
-  const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-sync-log-row='true']"));
-  const visibleTop = container.getBoundingClientRect().top + 1;
-  const firstVisibleIndex = rows.findIndex((row) => row.getBoundingClientRect().bottom > visibleTop);
-  return clampLogWindowStart(firstVisibleIndex === -1 ? rows.length - 1 : firstVisibleIndex, total);
 }
 
 export function DigestLogPanel({
@@ -585,32 +572,7 @@ function DigestStatusPanel({
   onOpenLog: (logRef: DigestLogRef) => void;
 }) {
   const hydrated = useHydrated();
-  const entriesKey = useMemo(() => entries.map((entry) => entry.key).join("\n"), [entries]);
-  const [logWindow, setLogWindow] = useState({ key: "", start: 0 });
   const rowEntries = useMemo(() => entries.slice().reverse(), [entries]);
-  const logWindowStart = logWindow.key === entriesKey
-    ? clampLogWindowStart(logWindow.start, rowEntries.length)
-    : 0;
-  const visibleRowEntries = rowEntries.slice(logWindowStart, logWindowStart + LOG_WINDOW_SIZE);
-  const visibleGraphEntries = visibleRowEntries.slice().reverse();
-  const graphStartLabel = visibleGraphEntries[0]
-    ? hydrated
-      ? formatRelative(visibleGraphEntries[0].time)
-      : formatAbsolute(visibleGraphEntries[0].time)
-    : "";
-  const graphEndLabel = visibleGraphEntries.at(-1)
-    ? hydrated
-      ? formatRelative(visibleGraphEntries.at(-1)!.time)
-      : formatAbsolute(visibleGraphEntries.at(-1)!.time)
-    : "";
-  const handleLogScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
-    const nextStart = visibleLogWindowStart(event.currentTarget, rowEntries.length);
-    setLogWindow((current) =>
-      current.key === entriesKey && current.start === nextStart
-        ? current
-        : { key: entriesKey, start: nextStart },
-    );
-  }, [entriesKey, rowEntries.length]);
   if (!cronJob && entries.length === 0) {
     return (
       <EmptyState
@@ -698,30 +660,7 @@ function DigestStatusPanel({
 
         {entries.length > 0 ? (
           <div className="sync-panel-column">
-            <div className="sync-panel-timeline-head">
-              <div className="sync-panel-timeline-divider" aria-hidden="true" />
-            </div>
-            <div className="sync-panel-timeline-axis" aria-hidden="true">
-              <span>{graphStartLabel}</span>
-              <span>{graphEndLabel}</span>
-            </div>
-            <div className="sync-panel-status-graph" aria-label="AI Digest build status graph, oldest to newest">
-              {visibleGraphEntries.map((entry) => (
-                <DigestTimelineBar
-                  key={entry.key}
-                  onSelect={() => {
-                    if (entry.logRef) {
-                      onOpenLog(entry.logRef);
-                      return;
-                    }
-                    const id = entry.slot ? slotDomId(entry.slot) : null;
-                    if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  entry={entry}
-                />
-              ))}
-            </div>
-            <div className="sync-panel-slot-rows is-scrollable" onScroll={handleLogScroll}>
+            <div className="sync-panel-slot-rows is-scrollable is-timeline">
               {rowEntries.map((entry) => (
                 <DigestTimelineRow
                   key={entry.key}
@@ -746,31 +685,6 @@ function DigestStatusPanel({
 
 function cronSlotStyle(status: CronSlotStatus): ChipStyle {
   return statusStyle(scheduledWindowStyleStatus(status));
-}
-
-function DigestTimelineBar({ entry, onSelect }: { entry: DigestTimelineEntry; onSelect: () => void }) {
-  const style = cronSlotStyle(entry.status);
-  const heightClass =
-    entry.status === "ok"
-      ? "is-tall"
-      : entry.status === "waiting" || entry.status === "running"
-        ? "is-short"
-        : "is-medium";
-  const label = scheduledWindowStatusLabel(entry.status);
-  return (
-    <button
-      aria-label={`${label} ${entry.label} AI Digest build at ${formatAbsolute(entry.time)}`}
-      className={`sync-panel-slot-bar ${heightClass}`}
-      onClick={onSelect}
-      style={{
-        background: style.background,
-        borderColor: style.border,
-        color: style.color,
-      }}
-      title={`${label} · ${entry.label} · ${formatAbsolute(entry.time)}`}
-      type="button"
-    />
-  );
 }
 
 function DigestTimelineRow({
