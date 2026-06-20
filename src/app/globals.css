@@ -1506,8 +1506,10 @@ details:not([open]) > :not(summary) {
   color: var(--muted);
   display: flex;
   flex-wrap: wrap;
-  font-size: 0.8125rem;
+  font-size: var(--text-role-control-size);
+  font-weight: var(--text-role-label-weight);
   gap: 0.4rem;
+  letter-spacing: var(--text-role-tracking);
   line-height: 1.2;
 }
 
@@ -1517,10 +1519,10 @@ details:not([open]) > :not(summary) {
 
 .post-detail-title {
   color: var(--ink);
-  font-size: clamp(2rem, 4vw, 3.05rem);
-  font-weight: 760;
-  letter-spacing: 0;
-  line-height: 1.04;
+  font-size: var(--text-3xl);
+  font-weight: var(--text-role-title-weight);
+  letter-spacing: var(--text-role-tracking);
+  line-height: 1.08;
   margin: 0;
   max-width: var(--measure);
   overflow-wrap: anywhere;
@@ -1545,8 +1547,8 @@ details:not([open]) > :not(summary) {
 .post-detail-author-avatar.fb-src-icon {
   flex: 0 0 auto;
   font-family: var(--font-geist-sans);
-  font-size: 0.6875rem;
-  font-weight: 850;
+  font-size: var(--text-role-label-size);
+  font-weight: var(--text-role-value-weight);
   height: 1.5rem;
   width: 1.5rem;
 }
@@ -1561,8 +1563,9 @@ details:not([open]) > :not(summary) {
 
 .post-detail-author-name {
   color: var(--ink);
-  font-size: 1rem;
-  font-weight: 760;
+  font-size: var(--text-base);
+  font-weight: var(--text-role-title-weight);
+  letter-spacing: var(--text-role-tracking);
   min-width: 0;
   overflow-wrap: anywhere;
   text-decoration: none;
@@ -1576,8 +1579,9 @@ details:not([open]) > :not(summary) {
 
 .post-detail-author-handle {
   color: var(--muted);
-  font-size: 0.875rem;
-  font-weight: 520;
+  font-size: var(--text-sm);
+  font-weight: var(--text-role-label-weight);
+  letter-spacing: var(--text-role-tracking);
 }
 
 .post-detail-actions {
@@ -1591,14 +1595,16 @@ details:not([open]) > :not(summary) {
 }
 
 .post-detail-summary,
+.post-detail-raw,
 .post-detail-body {
   max-width: var(--measure);
 }
 
 .post-detail-summary {
   color: var(--ink);
-  font-size: 1.0625rem;
-  line-height: 1.68;
+  font-size: var(--text-base);
+  font-weight: var(--fw-regular);
+  line-height: 1.72;
   margin-top: 1.3rem;
 }
 
@@ -1630,10 +1636,9 @@ details:not([open]) > :not(summary) {
 
 .post-detail-section-label {
   color: var(--muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6875rem;
-  font-weight: 760;
-  letter-spacing: 0.08em;
+  font-size: var(--text-role-label-size);
+  font-weight: var(--text-role-label-weight);
+  letter-spacing: var(--text-role-tracking);
   line-height: 1.2;
   margin-bottom: 0.55rem;
   text-transform: uppercase;
@@ -1645,46 +1650,23 @@ details:not([open]) > :not(summary) {
 
 .post-detail-section-desc {
   color: var(--muted-strong);
-  font-size: 0.8125rem;
+  font-size: var(--text-role-control-size);
+  font-weight: var(--fw-regular);
+  letter-spacing: var(--text-role-tracking);
   line-height: 1.45;
   margin: 0;
   max-width: var(--copy-max);
 }
 
 .post-detail-raw-toggle {
-  align-items: center;
-  background: color-mix(in oklch, var(--accent) 8%, transparent);
-  border: 1px solid color-mix(in oklch, var(--accent) 22%, var(--line));
-  border-radius: 999px;
-  color: var(--accent);
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 0.75rem;
-  font-weight: 780;
-  gap: 0.38rem;
-  min-height: 1.9rem;
-  padding: 0.28rem 0.72rem;
-}
-
-.post-detail-raw-toggle:hover,
-.post-detail-raw-toggle:focus-visible {
-  background: color-mix(in oklch, var(--accent) 12%, transparent);
-}
-
-.post-detail-raw-toggle:focus-visible {
-  outline: 2px solid color-mix(in oklch, var(--accent) 50%, transparent);
-  outline-offset: 2px;
-}
-
-.post-detail-raw-toggle-icon {
-  height: 0.9rem;
-  width: 0.9rem;
+  flex: 0 0 auto;
 }
 
 .post-detail-body {
   color: var(--ink);
-  font-size: 1.0625rem;
-  line-height: 1.8;
+  font-size: var(--text-base);
+  font-weight: var(--fw-regular);
+  line-height: 1.72;
   margin-top: 1.35rem;
   max-width: var(--measure);
   overflow-wrap: anywhere;
@@ -3366,6 +3348,11 @@ summary.library-section-summary::after {
 
   .fetched-post-card {
     grid-template-columns: 1fr;
+  }
+
+  .post-detail-title {
+    font-size: var(--text-2xl);
+    line-height: 1.12;
   }
 
   .post-detail-byline {

@@ -352,11 +352,11 @@ export function PostCardView({
                   <button
                     aria-controls={rawRegionId}
                     aria-expanded={rawExpanded}
-                    className="post-detail-raw-toggle"
+                    className="post-inline-action post-inline-action--label post-raw-content-action post-detail-raw-toggle"
                     onClick={() => setRawExpanded((expanded) => !expanded)}
                     type="button"
                   >
-                    <BookOpen aria-hidden="true" className="post-detail-raw-toggle-icon" />
+                    <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
                     {rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}
                   </button>
                 </div>
