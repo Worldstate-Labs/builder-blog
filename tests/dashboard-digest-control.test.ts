@@ -61,7 +61,14 @@ test("home digest keeps collection and issue selection in a dedicated control ba
   assert.match(digestArchivePicker, /const pickerNavigationKeys = new Set\(\["ArrowDown", "ArrowUp", "Home", "End"\]\)/);
   assert.match(digestArchivePicker, /focusOption\(focusDirectionForKey\(event\.key\)\)/);
   assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest issues"/);
+  assert.match(digestArchivePicker, /issueNumber: number/);
+  assert.match(digestArchivePicker, /Issue #\{digest\.issueNumber\}/);
+  assert.doesNotMatch(digestArchivePicker, /CountMeta/);
+  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount/);
+  assert.match(dashboardPage, /selectedDigestIssueCount/);
+  assert.match(dashboardPage, /serializeDigestArchiveOption\(digest, digestIssueCount - index\)/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.digest-picker-issue,\s*\.digest-picker-date\s*{/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);
   assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|md:grid-cols-2|\[&_\.digest-picker/);

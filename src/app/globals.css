@@ -5460,6 +5460,7 @@ summary.library-section-summary::after {
   padding: 0.5rem 0.75rem;
 }
 
+.digest-control-picker .digest-picker-issue,
 .digest-control-picker .digest-picker-date {
   font-size: 0.875rem;
   font-weight: 800;
@@ -5863,6 +5864,7 @@ summary.library-section-summary::after {
   min-width: 0;
 }
 
+.digest-picker-issue,
 .digest-picker-date {
   color: var(--ink);
   font-size: 0.8125rem;

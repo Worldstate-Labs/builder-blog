@@ -2654,9 +2654,14 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestPipelineSelector, /<PipelineOwnerLine pipeline=\{pipeline\}/);
   assert.match(dashboardPage, /DigestArchivePicker/);
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
+  assert.match(dashboardPage, /selectedDigestIssueCount/);
+  assert.match(dashboardPage, /serializeDigestArchiveOption\(digest, digestIssueCount - index\)/);
+  assert.match(digestArchivePicker, /issueNumber: number/);
+  assert.match(digestArchivePicker, /className="digest-picker-issue">Issue #\{digest\.issueNumber\}/);
   assert.match(digestArchivePicker, /<RelativeTime className="digest-picker-date" value=\{digest\.createdAt\}/);
-  assert.match(digestArchivePicker, /CountMeta/);
-  assert.match(digestArchivePicker, /digest\.itemCount === 1 \? "post" : "posts"/);
+  assert.doesNotMatch(digestArchivePicker, /CountMeta/);
+  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "post" : "posts"/);
+  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount/);
   assert.match(digestDetails, /digest\.itemCount === 1 \? "post" : "posts"/);
   assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "item" : "items"/);
   assert.doesNotMatch(digestDetails, /digest\.itemCount === 1 \? "item" : "items"/);

@@ -203,9 +203,14 @@ async function AiDigestFeedSlot({
   const selectedDigest =
     digestSummaries.find((digest) => digest.id === digestId) ??
     latestDigest;
+  const selectedDigestIssueCount = Math.max(
+    digestCounts.find((row) => row.userId === digestOwnerUserId)?._count._all ?? 0,
+    digestSummaries.length,
+  );
 
   return (
     <AiDigestFeed
+      digestIssueCount={selectedDigestIssueCount}
       digestPipelineOptions={digestPipelineOptions}
       sourceLinks={digestSourceLinks}
       digestSummaries={digestSummaries}
@@ -225,6 +230,7 @@ function compareDigestPipelinePriority(a: DigestPipelineOption, b: DigestPipelin
 
 function AiDigestFeed({
   digestPipelineOptions,
+  digestIssueCount,
   sourceLinks,
   digestSummaries,
   latestDigest,
@@ -233,6 +239,7 @@ function AiDigestFeed({
   selectedPipeline,
 }: {
   digestPipelineOptions: DigestPipelineOption[];
+  digestIssueCount: number;
   sourceLinks: DigestSourceLink[];
   digestSummaries: DigestSummaryRow[];
   latestDigest: DigestSummaryRow | null;
@@ -241,7 +248,9 @@ function AiDigestFeed({
   selectedPipeline: DigestPipelineOption;
 }) {
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
-  const digestArchiveOptions = digestSummaries.map(serializeDigestArchiveOption);
+  const digestArchiveOptions = digestSummaries.map((digest, index) =>
+    serializeDigestArchiveOption(digest, digestIssueCount - index),
+  );
 
   return (
     <section className="ai-digest-stack">
@@ -422,11 +431,14 @@ function serializeDigestSummary(digest: DigestSummaryRow) {
   };
 }
 
-function serializeDigestArchiveOption(digest: DigestSummaryRow): DigestArchivePickerOption {
+function serializeDigestArchiveOption(
+  digest: DigestSummaryRow,
+  issueNumber: number,
+): DigestArchivePickerOption {
   return {
     createdAt: digest.createdAt.toISOString(),
     id: digest.id,
-    itemCount: digest.itemCount,
+    issueNumber: Math.max(1, issueNumber),
   };
 }
 

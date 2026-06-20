@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import { ChevronDown } from "lucide-react";
-import { CountMeta } from "@/components/Count";
 import { RelativeTime, useNow } from "@/components/RelativeTime";
 import { relativeTime } from "@/lib/relative-time";
 
@@ -22,7 +21,7 @@ const pickerNavigationKeys = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
 export type DigestArchivePickerOption = {
   id: string;
   createdAt: string;
-  itemCount: number;
+  issueNumber: number;
 };
 
 export type DigestPickerLinkProps = {
@@ -211,8 +210,8 @@ function DigestPickerItem({
 }) {
   return (
     <span className="digest-picker-item">
+      <span className="digest-picker-issue">Issue #{digest.issueNumber}</span>
       <RelativeTime className="digest-picker-date" value={digest.createdAt} />
-      <CountMeta label={digest.itemCount === 1 ? "post" : "posts"} value={digest.itemCount} />
       {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
     </span>
   );
@@ -227,10 +226,9 @@ function digestArchiveLabel({
   now: number | null;
   isLatest: boolean;
 }) {
-  const postLabel = `${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"}`;
   return [
+    `Issue #${digest.issueNumber}`,
     relativeTime(digest.createdAt, now ?? Date.now()),
-    postLabel,
     isLatest ? "Latest" : "",
   ].filter(Boolean).join(", ");
 }
