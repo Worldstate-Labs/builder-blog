@@ -72,11 +72,21 @@ test("home digest keeps collection and issue selection in a dedicated control ba
 
 test("home digest pipeline selector resets issue selection when changing collections", () => {
   const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
 
-  assert.match(digestPipelineSelector, /const href = pipeline\.isOwnPipeline/);
-  assert.match(digestPipelineSelector, /\? "\/dashboard\?tab=ai-digest"/);
+  assert.match(digestPipelineSelector, /const href = `\/dashboard\?tab=ai-digest&pipeline=\$\{pipeline\.id\}`/);
+  assert.match(dashboardPage, /id: "own"/);
+  assert.doesNotMatch(digestPipelineSelector, /pipeline\.isOwnPipeline[\s\S]{0,120}"\/dashboard\?tab=ai-digest"/);
   assert.match(digestPipelineSelector, /`\/dashboard\?tab=ai-digest&pipeline=\$\{pipeline\.id\}`/);
   assert.doesNotMatch(digestPipelineSelector, /&digest=\$\{digest/);
+});
+
+test("home digest issue selector preserves explicit own collection selection", () => {
+  const digestArchivePicker = source("src/components/DigestArchivePickerView.tsx");
+
+  assert.match(digestArchivePicker, /function digestHref/);
+  assert.match(digestArchivePicker, /params\.set\("pipeline", selectedPipelineId\)/);
+  assert.doesNotMatch(digestArchivePicker, /if \(!isOwnPipeline\) params\.set\("pipeline", selectedPipelineId\)/);
 });
 
 test("home digest pipeline selector labels the selected pipeline owner", () => {

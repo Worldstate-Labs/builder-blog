@@ -49,7 +49,6 @@ function DefaultLink({ href, children, ...rest }: DigestPickerLinkProps) {
 
 export type DigestArchivePickerViewProps = {
   digests: DigestArchivePickerOption[];
-  isOwnPipeline: boolean;
   latestDigestId: string | null;
   selectedDigestId: string | null;
   selectedPipelineId: string;
@@ -58,7 +57,6 @@ export type DigestArchivePickerViewProps = {
 
 export function DigestArchivePickerView({
   digests,
-  isOwnPipeline,
   latestDigestId,
   selectedDigestId,
   selectedPipelineId,
@@ -172,7 +170,7 @@ export function DigestArchivePickerView({
               aria-current={selected ? "page" : undefined}
               aria-selected={selected}
               className="digest-picker-option"
-              href={digestHref({ digestId: digest.id, isOwnPipeline, selectedPipelineId })}
+              href={digestHref({ digestId: digest.id, selectedPipelineId })}
               key={digest.id}
               onClick={(event) => {
                 setOpen(false);
@@ -239,14 +237,12 @@ function digestArchiveLabel({
 
 function digestHref({
   digestId,
-  isOwnPipeline,
   selectedPipelineId,
 }: {
   digestId: string;
-  isOwnPipeline: boolean;
   selectedPipelineId: string;
 }) {
   const params = new URLSearchParams({ tab: "ai-digest", digest: digestId });
-  if (!isOwnPipeline) params.set("pipeline", selectedPipelineId);
+  params.set("pipeline", selectedPipelineId);
   return `/dashboard?${params.toString()}`;
 }

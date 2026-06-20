@@ -14,7 +14,6 @@ const meta = {
   tags: ["autodocs"],
   args: {
     digests,
-    isOwnPipeline: true,
     latestDigestId: "d-3",
     selectedDigestId: "d-3",
     selectedPipelineId: "p-1",

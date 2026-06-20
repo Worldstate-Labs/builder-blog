@@ -247,7 +247,6 @@ function AiDigestFeed({
     <section className="ai-digest-stack">
       <DigestControlBar
         digestArchiveOptions={digestArchiveOptions}
-        isOwnPipeline={isOwnPipeline}
         latestDigestId={latestDigest?.id ?? null}
         options={digestPipelineOptions}
         selectedDigestId={selectedDigest?.id ?? null}
@@ -353,7 +352,6 @@ function DigestEmptyState({
 
 function DigestControlBar({
   digestArchiveOptions,
-  isOwnPipeline,
   latestDigestId,
   options,
   selectedDigestId,
@@ -361,7 +359,6 @@ function DigestControlBar({
   selectedPipelineId,
 }: {
   digestArchiveOptions: DigestArchivePickerOption[];
-  isOwnPipeline: boolean;
   latestDigestId: string | null;
   options: DigestPipelineOption[];
   selectedDigestId: string | null;
@@ -391,7 +388,6 @@ function DigestControlBar({
           <div className="digest-control-picker">
             <DigestArchivePicker
               digests={digestArchiveOptions}
-              isOwnPipeline={isOwnPipeline}
               latestDigestId={latestDigestId}
               selectedDigestId={selectedDigestId}
               selectedPipelineId={selectedPipelineId}

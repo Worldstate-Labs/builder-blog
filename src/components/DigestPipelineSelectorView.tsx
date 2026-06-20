@@ -167,9 +167,7 @@ export function DigestPipelineSelectorView({
       >
         {options.map((pipeline) => {
           const active = pipeline.id === selectedPipelineId;
-          const href = pipeline.isOwnPipeline
-            ? "/dashboard?tab=ai-digest"
-            : `/dashboard?tab=ai-digest&pipeline=${pipeline.id}`;
+          const href = `/dashboard?tab=ai-digest&pipeline=${pipeline.id}`;
           return (
             <LinkComponent
               aria-current={active ? "page" : undefined}
