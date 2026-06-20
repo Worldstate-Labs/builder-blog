@@ -2747,10 +2747,6 @@ details:not([open]) > :not(summary) {
   max-width: var(--copy-max);
 }
 
-.library-section-panel[open] .library-section-copy:has(.imported-library-collapsed-meta) {
-  display: none;
-}
-
 .library-section-panel-imported > .library-section-summary {
   align-items: start;
   grid-template-areas:
@@ -6794,9 +6790,15 @@ summary.library-section-summary::after {
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 0.78125rem;
+  display: grid;
+  gap: 0.45rem;
   line-height: 1.45;
   margin-top: 0.5rem;
   padding: 0.45rem 0.6rem;
+}
+
+.sync-panel-run-card-verdict-text {
+  margin: 0;
 }
 
 .sync-panel-run-card-verdict.is-ok {
@@ -6815,6 +6817,40 @@ summary.library-section-summary::after {
   background: color-mix(in oklch, var(--danger) 9%, var(--paper-strong));
   border-color: color-mix(in oklch, var(--danger) 24%, var(--line));
   color: var(--danger);
+}
+
+.sync-panel-run-card-diagnostics {
+  border-top: 1px solid color-mix(in oklch, currentColor 16%, transparent);
+  display: grid;
+  gap: 0.3rem 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  margin: 0;
+  padding-top: 0.45rem;
+}
+
+.sync-panel-run-card-diagnostics div {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.sync-panel-run-card-diagnostics dt {
+  color: color-mix(in oklch, currentColor 68%, var(--muted));
+  font-size: 0.625rem;
+  font-weight: var(--text-role-label-weight);
+  letter-spacing: var(--text-role-tracking);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.sync-panel-run-card-diagnostics dd {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: var(--text-role-value-weight);
+  line-height: 1.35;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sync-panel-run-card-funnel {
@@ -6907,12 +6943,6 @@ summary.library-section-summary::after {
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.sync-panel-run-card-stage {
-  color: var(--muted-strong);
-  font-size: 0.71875rem;
-  margin-top: 0.5rem;
 }
 
 .sync-panel-live-progress {
@@ -13104,7 +13134,7 @@ body {
   }
 
   .fb-hub-digest-meta.source-fetch-meta {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sources-sync-section .digest-updates-main {

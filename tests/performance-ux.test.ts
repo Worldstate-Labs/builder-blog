@@ -2066,7 +2066,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /<dt>Schedule enabled<\/dt>/);
   assert.doesNotMatch(fetchLogPanel, /<dt>Next scheduled run<\/dt>/);
   assert.match(fetchLogPanel, /<dt>Runner<\/dt>/);
-  assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
+  assert.match(fetchLogPanel, /function RunCardVerdict/);
+  assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{tone\}`\}/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card-diagnostics"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
   assert.doesNotMatch(fetchLogPanel, /const LOG_WINDOW_SIZE = 6/);
   assert.doesNotMatch(fetchLogPanel, /function visibleLogWindowStart/);
@@ -2091,7 +2093,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-primary"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-secondary"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-side"/);
-  assert.match(fetchLogPanel, /className="sync-panel-slot-row-status"/);
+  assert.match(fetchLogPanel, /className=\{`sync-panel-slot-row-status \$\{statusToneClass\(tone\)\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-dot"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-kind"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-time"/);
@@ -2104,7 +2106,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /slice\(0, 6\)/);
   assert.match(fetchLogPanel, /className="sync-panel-stopped-time"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-see-more-label"/);
-  assert.match(fetchLogPanel, /className=\{inflight \? "fb-chip sync-panel-live-chip" : "fb-chip"\}/);
+  assert.match(fetchLogPanel, /className=\{`fb-chip \$\{statusToneClass\(displayStatus\.tone\)\}\$\{inflight \? " sync-panel-live-chip" : ""\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /Updating…/);
   assert.doesNotMatch(digestLogPanel, /className="sync-panel-see-more-label"/);
   assert.match(digestLogPanel, /DigestLogDialog/);
@@ -2165,7 +2167,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /runs=\{dialogRuns\}/);
   assert.match(fetchLogPanel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(fetchLogPanel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(fetchLogPanel, /taskWorkerGroups\(postTasks, liveTasks\)/);
+  assert.match(fetchLogPanel, /taskWorkerGroups\(postTasks, liveTasks, fallbackTaskWorkerName\(liveProgress\)\)/);
   assert.match(fetchLogPanel, /Post task details/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-count"/);
   assert.doesNotMatch(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);
@@ -2237,11 +2239,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-chev fb-task-chev"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-type"/);
   assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-task-source-type"/);
-  assert.match(fetchLogPanel, /className="sync-panel-task-status-pill"/);
+  assert.match(fetchLogPanel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-task-title"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-builder"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-body"/);
-  assert.match(fetchLogPanel, /className="sync-panel-task-banner"/);
+  assert.match(fetchLogPanel, /className=\{`sync-panel-task-banner is-\$\{banner\.tone\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-lifecycle"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-lifecycle-detail"/);
@@ -2324,7 +2326,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-slot-row-primary"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-secondary"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-side"/);
-  assert.match(digestLogPanel, /className="sync-panel-slot-row-status"/);
+  assert.match(digestLogPanel, /className=\{`sync-panel-slot-row-status \$\{toneClass\(tone\)\}`\}/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-dot"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-kind"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-time"/);
@@ -2337,7 +2339,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /slice\(0, 6\)/);
   assert.match(digestLogPanel, /className="sync-panel-funnel-arrow"/);
   assert.match(digestLogPanel, /className="sync-panel-funnel-stat"/);
-  assert.match(digestLogPanel, /className="mono sync-panel-funnel-stat-value"/);
+  assert.match(digestLogPanel, /className=\{`mono sync-panel-funnel-stat-value\$\{tone \? ` is-\$\{tone\}` : ""\}`\}/);
   assert.match(digestLogPanel, /className="sync-panel-funnel-stat-label"/);
   assert.doesNotMatch(digestLogPanel, /aria-label="Digest update views"|>Digest updates<|Show digest update details|Hide digest update details|aria-label="Digest schedule status graph"|scheduled digest run|already digested items|past items|new items|not save a digest|Untitled digest|Prepared, no digest saved|Previous digest|Found, digest not saved yet|Used in the digest/);
   assert.doesNotMatch(digestLogPanel, /className="mt-1\.5 text-\[13px\] leading-relaxed text-\[var\(--muted-strong\)\]"/);
@@ -2392,6 +2394,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.fb-hub-digest-meta\.source-fetch-meta\s*{[\s\S]*padding-bottom:\s*0/);
   assert.match(globals, /\.source-fetch-status-item dd\s*{[\s\S]*overflow:\s*visible/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.source-fetch-overview\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-digest-meta\.source-fetch-meta\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(globals, /\.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.sync-panel-schedule-summary\s*{[\s\S]*line-height:\s*1\.55/);
@@ -2407,7 +2410,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /@media \(max-width: 640px\)[\s\S]*\.sync-panel-slot-row-secondary\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-slot-row-status,[\s\S]*\.sync-panel-slot-row-kind\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.sync-panel-slot-row:target\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
-  assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*max-height:\s*calc\(6 \* 3\.25rem \+ 5 \* 0\.25rem\)/);
+  assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*--sync-panel-visible-log-rows:\s*3/);
+  assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*max-height:\s*calc\(var\(--sync-panel-visible-log-rows\) \* 3\.25rem\)/);
   assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*overflow-y:\s*auto/);
   assert.match(globals, /\.sync-panel-stopped-time\s*{[\s\S]*font-size:\s*0\.78125rem/);
   assert.match(globals, /\.sync-panel-live-chip\s*{[\s\S]*gap:\s*0\.375rem/);
@@ -2834,7 +2838,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.doesNotMatch(digestDetails, /HTTP \$\{response\.status\}/);
   assert.match(digestHeadlineSummary, /aria-label="AI Digest headlines"/);
   assert.match(digestDetails, /<RelativeTime value=\{digest\.createdAt\}/);
-  assert.match(digestDetails, /month:\s*"short"/);
+  assert.doesNotMatch(digestDetails, /month:\s*"short"/);
   assert.doesNotMatch(digestDetails, /toLocaleString\(\)|second:\s*"2-digit"/);
   assert.match(digestDetails, /digest-loading-chip/);
   assert.match(digestDetails, /digest-load-error/);
@@ -3648,9 +3652,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card own-digest-card"/);
   assert.doesNotMatch(digestPipelineForm, /DigestPipelineVisibilityToggle/);
   assert.doesNotMatch(digestPipelineForm, />\s*Shared archive\s*</);
-  assert.match(digestPipelineForm, /className="library-hub-toolbar-copy"/);
+  assert.match(digestPipelineForm, /className=\{panel \? "imported-digest-copy" : "library-hub-toolbar-copy"\}/);
   assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
-  assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
+  assert.match(digestPipelineForm, /headerClassName="fb-hub-card-head"/);
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card-byline"/);
   assert.doesNotMatch(digestPipelineForm, /<DigestPipelineByline ownerLabel=\{pipeline\.ownerLabel\}/);
   assert.doesNotMatch(digestPipelineForm, /digestPipelineKindBadge\(pipeline\)/);
@@ -3683,8 +3687,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-stats"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card digest-pipeline-card"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /statsClassName="fb-hub-card-stats/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /"fb-hub-card digest-pipeline-card is-sources-panel"[\s\S]*"fb-hub-card digest-pipeline-card"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Import AI Digest collection \$\{pipeline\.title\}/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
@@ -3725,7 +3729,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-desc\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-strip\s*{[\s\S]*display:\s*flex/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon\s*{/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon,\s*\.fb-hub-source-summary-avatar-more\s*{[\s\S]*height:\s*2rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon \+ \.fb-hub-source-summary-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.62rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-more\s*{[\s\S]*font-size:\s*var\(--text-role-control-size\)[\s\S]*font-weight:\s*var\(--text-role-value-weight\)[\s\S]*letter-spacing:\s*var\(--text-role-tracking\)/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-summary-item/);
@@ -4001,6 +4005,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /showCount=\{false\}/);
   assert.match(buildersPage, /function ImportedLibraryCollapsedMeta/);
   assert.match(buildersPage, /const visibleBuilders = builders\.slice\(0, 4\)/);
+  assert.match(buildersPage, /`View \$\{formatCount\(builders\.length\)\} \$\{builders\.length === 1 \? "source" : "sources"\}`/);
   assert.match(buildersPage, /className="imported-library-collapsed-meta"/);
   assert.match(buildersPage, /className="imported-library-avatar-stack"/);
   assert.match(buildersPage, /imageSize=\{32\}/);
@@ -4022,7 +4027,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /library-section-panel-indented/);
   assert.match(cssRule(globals, ".library-section-panel-indented"), /margin-inline:\s*var\(--hierarchy-inset\)/);
   assert.doesNotMatch(cssRule(globals, ".library-section-panel-indented"), /margin-left/);
-  assert.match(globals, /\.library-section-panel\[open\] \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*none/);
+  assert.doesNotMatch(globals, /\.library-section-panel\[open\] \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.imported-library-collapsed-meta\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.library-section-panel-imported > \.library-section-summary\s*{[\s\S]*align-items:\s*start[\s\S]*grid-template-areas:[\s\S]*"title action"[\s\S]*"toggle toggle"[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.library-section-panel-imported > \.library-section-summary::after\s*{[\s\S]*content:\s*none[\s\S]*display:\s*none/);
@@ -4224,7 +4229,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(cssRule(globals, ".sources-sync-panel > .library-section-body"), /padding:\s*1rem 1\.125rem 1\.125rem/);
   assert.match(cssRule(globals, ".sources-sync-section .source-fetch-overview"), /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(cssRule(globals, ".fb-hub-digest-meta.source-fetch-meta"), /grid-template-columns:\s*repeat\(4,\s*minmax\(8\.75rem,\s*1fr\)\)/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-digest-meta\.source-fetch-meta\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-digest-meta\.source-fetch-meta\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(globals, /\.imported-libraries-panel\s*{[\s\S]*gap:\s*0/);
   assert.match(globals, /\.imported-libraries-panel \.imported-libraries-head\s*{[\s\S]*padding:\s*1\.125rem 1\.25rem/);
   assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);

@@ -305,6 +305,11 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /label: "Stopped"/);
   assert.match(panel, /isStalledJobRun\(jobRun\)[\s\S]*label: "Stalled"/);
   assert.match(panel, /Local Agent stopped reporting before final sync outcomes arrived\./);
+  assert.match(panel, /type JobRunDiagnosticItem/);
+  assert.match(panel, /function RunCardVerdict/);
+  assert.match(panel, /className="sync-panel-run-card-verdict-text"/);
+  assert.match(panel, /className="sync-panel-run-card-diagnostics"/);
+  assert.doesNotMatch(panel, /className="mono sync-panel-run-card-stage"/);
   assert.match(panel, /const displayStatus = inflight/);
   assert.match(panel, /displayStatus\.label/);
   assert.match(panel, /statusToneClass\(displayStatus\.tone\)/);
@@ -330,10 +335,13 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /No Fetch sources run started in the latest scheduled window/);
   assert.doesNotMatch(panel, /The latest scheduled Fetch sources run did not report back/);
   assert.match(panel, /timeoutSeconds/);
-  assert.match(panel, /cleanup failed/);
+  assert.match(panel, /Timed out after \$\{formatDuration\(details\.timeoutSeconds \* 1000\)\}/);
+  assert.match(panel, /Cleanup did not finish/);
   assert.match(panel, /function isInternalJobRunReason/);
   assert.match(panel, /reason === "heartbeat"/);
-  assert.match(panel, /!isInternalJobRunReason\(details\.reason\)/);
+  assert.match(panel, /reason === "timeout_seconds_for_job"/);
+  assert.match(panel, /const reason = isInternalJobRunReason\(details\.reason\) \? null : humanizeJobRunCode\(details\.reason\)/);
+  assert.doesNotMatch(panel, /timedOutWorkerPid \? `pid/);
   assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
   assert.doesNotMatch(panel, /className="sync-panel-metrics"/);
   assert.doesNotMatch(panel, /CountMetric/);
@@ -436,6 +444,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-run-card-head-meta"/);
   assert.match(panel, /className="sync-panel-run-card-summary"/);
   assert.doesNotMatch(panel, /className="mono sync-panel-run-card-meta"/);
+  assert.doesNotMatch(panel, /sync-panel-run-card-stage/);
   assert.match(panel, /className="sync-panel-run-card-details"/);
   assert.match(panel, /className="sync-panel-run-card-details-summary"/);
   assert.match(panel, /className="sync-panel-run-card-details-body"/);
@@ -449,7 +458,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /<dt>Schedule enabled<\/dt>/);
   assert.doesNotMatch(panel, /<dt>Next scheduled run<\/dt>/);
   assert.match(panel, /<dt>Runner<\/dt>/);
-  assert.match(panel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
+  assert.match(panel, /<RunCardVerdict details=\{diagnostic\} text=\{verdict\.text\} tone=\{verdict\.tone\} \/>/);
+  assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-diagnostics\s*{/);
+  assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-verdict-text\s*{/);
   assert.doesNotMatch(panel, /className="sync-panel-run-card-funnel"/);
   assert.doesNotMatch(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);
@@ -559,7 +570,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /Open log/);
   assert.match(panel, /rowEntries\.map/);
   assert.doesNotMatch(panel, /entries\.slice\(\)\.reverse\(\)\.slice\(0, 6\)/);
-  assert.match(panel, /if \(jobRun\.status === "succeeded"\) return null;/);
+  assert.match(panel, /if \(jobRun\.status === "succeeded"\) return \[\];/);
   assert.match(panel, /const showRuntimeState = isActiveJobRun\(jobRun\) \|\| jobRun\.status !== "succeeded";/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   // Editorial design tokens — panel chrome and chips are reused.

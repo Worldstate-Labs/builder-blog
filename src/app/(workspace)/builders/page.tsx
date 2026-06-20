@@ -970,7 +970,7 @@ function ImportedLibraryCollapsedMeta({
 }) {
   const visibleBuilders = builders.slice(0, 4);
   const hiddenBuilderCount = Math.max(0, builders.length - visibleBuilders.length);
-  const sourceLabel = builders.length === 1 ? "1 source" : `${formatCount(builders.length)} sources`;
+  const sourceLabel = `View ${formatCount(builders.length)} ${builders.length === 1 ? "source" : "sources"}`;
   return (
     <>
       <span

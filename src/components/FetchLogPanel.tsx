@@ -1566,23 +1566,36 @@ function runHeaderMeta(...parts: Array<string | null | undefined>): string {
 }
 
 function isInternalJobRunReason(reason: string | null | undefined): boolean {
-  return reason === "heartbeat";
+  return reason === "heartbeat" || reason === "timeout_seconds_for_job";
 }
 
-function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
-  if (jobRun.status === "succeeded") return null;
+type JobRunDiagnosticItem = {
+  label: string;
+  value: string;
+};
+
+function humanizeJobRunCode(value: string | null | undefined): string | null {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/_/g, " ");
+}
+
+function jobRunDiagnostic(jobRun: AgentJobRunListItem): JobRunDiagnosticItem[] {
+  if (jobRun.status === "succeeded") return [];
   const details = readJobRunDetails(jobRun.details);
-  const parts = [
-    details.timeoutSeconds ? `timeout ${formatDuration(details.timeoutSeconds * 1000)}` : null,
-    details.timeoutStage ? details.timeoutStage.replace(/_/g, " ") : null,
-    details.timedOutWorker ? `Local Agent ${details.timedOutWorker}` : null,
-    details.timedOutWorkerPid ? `pid ${details.timedOutWorkerPid}` : null,
-    details.termination === "still_alive_after_kill" ? "cleanup failed" : details.termination,
-    details.reason && details.reason !== "timeout_seconds_for_job" && !isInternalJobRunReason(details.reason)
-      ? details.reason.replace(/_/g, " ")
+  const timeoutStage = humanizeJobRunCode(details.timeoutStage);
+  const reason = isInternalJobRunReason(details.reason) ? null : humanizeJobRunCode(details.reason);
+  return [
+    details.timeoutSeconds
+      ? { label: "Timeout", value: `Timed out after ${formatDuration(details.timeoutSeconds * 1000)}` }
       : null,
-  ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
+    timeoutStage ? { label: "Stage", value: timeoutStage } : null,
+    details.timedOutWorker ? { label: "Worker", value: details.timedOutWorker } : null,
+    details.termination === "still_alive_after_kill"
+      ? { label: "Cleanup", value: "Cleanup did not finish" }
+      : null,
+    reason ? { label: "Reason", value: reason } : null,
+  ].filter((item): item is JobRunDiagnosticItem => Boolean(item));
 }
 
 function jobRunStageLabel(stage: string | null): string | null {
@@ -1669,6 +1682,32 @@ function fetchRunVerdict({
     tone: "ok",
     text: "Completed. Sources were checked and no post work needed to continue.",
   };
+}
+
+function RunCardVerdict({
+  details = [],
+  text,
+  tone,
+}: {
+  details?: JobRunDiagnosticItem[];
+  text: string;
+  tone: "ok" | "warn" | "fail";
+}) {
+  return (
+    <div className={`sync-panel-run-card-verdict is-${tone}`}>
+      <p className="sync-panel-run-card-verdict-text">{text}</p>
+      {details.length > 0 ? (
+        <dl className="sync-panel-run-card-diagnostics">
+          {details.map((item) => (
+            <div key={`${item.label}:${item.value}`}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  );
 }
 
 function lifecycleTone(done: number, total: number, {
@@ -1837,6 +1876,15 @@ function JobRunCard({
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
   const runtimeStageLabel = jobRunStageLabel(jobRun.stage);
+  const runtimeDetails = showRuntimeState && runtimeStageLabel
+    ? [
+        {
+          label: jobRun.finishedAt ? "Last stage" : "Current stage",
+          value: runtimeStageLabel,
+        },
+      ]
+    : [];
+  const statusDetails = [...runtimeDetails, ...diagnostic];
   return (
     <article className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
@@ -1858,15 +1906,14 @@ function JobRunCard({
         {jobRun.summary || fallbackSummary}
       </p>
       <JobLifecycle details={{}} progress={liveProgress} />
-      {showRuntimeState && runtimeStageLabel ? (
-        <div className="mono sync-panel-run-card-stage">
-          {runtimeStageLabel} · {jobRun.finishedAt ? "finished" : "active"}
-        </div>
-      ) : null}
-      {diagnostic ? (
-        <div className="mono sync-panel-run-card-stage">
-          {diagnostic}
-        </div>
+      {statusDetails.length > 0 ? (
+        <RunCardVerdict
+          details={statusDetails}
+          text={isActiveJobRun(jobRun)
+            ? "Fetch is running. Stages update as Local Agent reports work."
+            : "Local Agent stopped before FollowBrief received a fetch log."}
+          tone={tone === "failed" ? "fail" : "warn"}
+        />
       ) : null}
       {onOpenLog ? (
         <div className="sync-panel-run-card-actions">
@@ -1913,11 +1960,11 @@ function RunCard({
     runHeaderHost(jobRun?.hostname ?? run.hostname),
   );
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
-  const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : null;
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
   const displaySummary = fetchRunDisplaySummary(run, stats, liveProgress);
   const verdict = fetchRunVerdict({ displayStatus, inflight, stats });
+  const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : [];
   const postTaskCount = Array.isArray(details.fetchTasks)
     ? details.fetchTasks.filter(isPlannedPostTask).length
     : 0;
@@ -1955,16 +2002,9 @@ function RunCard({
         {displaySummary}
       </p>
 
-      <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
-        {verdict.text}
-      </p>
+      <RunCardVerdict details={diagnostic} text={verdict.text} tone={verdict.tone} />
 
       <JobLifecycle details={details} progress={liveProgress} run={run} />
-      {diagnostic ? (
-        <div className="mono sync-panel-run-card-stage">
-          {diagnostic}
-        </div>
-      ) : null}
       {onOpenLog ? (
         <div className="sync-panel-run-card-actions">
           <button className="fb-btn light compact" onClick={onOpenLog} type="button">
