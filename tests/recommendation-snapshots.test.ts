@@ -422,6 +422,11 @@ test("post detail keeps source actions with the source row without a top source 
   assert.match(bylineHtml, /post-detail-author/);
   assert.match(bylineHtml, /post-detail-actions/);
   assert.match(bylineHtml, /post-favorite-control[\s\S]*post-source-original/);
+  assert.match(html, /<section aria-label="Original content" class="post-detail-raw post-detail-raw--expanded">/);
+  assert.match(html, /<h2 class="post-detail-section-label">Original content<\/h2>/);
+  assert.match(html, /<p class="post-detail-section-desc">Saved by Fetch sources\.<\/p>/);
+  assert.match(html, /aria-expanded="true"[\s\S]*Hide original content/);
+  assert.match(html, /<div aria-label="Original content" class="post-detail-body" id="[^"]+-raw-content" role="region">Fetched raw body\.<\/div>/);
   assert.doesNotMatch(globals, /\.post-detail-byline\s*{[\s\S]{0,140}display:\s*grid/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-detail-byline\s*{[\s\S]*flex-wrap:\s*nowrap/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-detail-author-copy\s*{[\s\S]*display:\s*flex/);

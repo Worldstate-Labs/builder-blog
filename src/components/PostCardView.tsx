@@ -115,7 +115,7 @@ export function PostCardView({
 }: PostCardViewProps) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [summaryCanExpand, setSummaryCanExpand] = useState(false);
-  const [rawExpanded, setRawExpanded] = useState(false);
+  const [rawExpanded, setRawExpanded] = useState(variant === "detail");
   const interactionSentRef = useRef(false);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
   const builder = post.builder ?? fallbackBuilder ?? null;
@@ -339,9 +339,39 @@ export function PostCardView({
                 <p>{detailSummary}</p>
               </section>
             ) : null}
-            <div className="post-detail-body">
-              {post.body}
-            </div>
+            {detailRawContent ? (
+              <section
+                aria-label={rawContentLabel}
+                className={`post-detail-raw${rawExpanded ? " post-detail-raw--expanded" : ""}`}
+              >
+                <div className="post-detail-raw-head">
+                  <div className="post-detail-raw-copy">
+                    <h2 className="post-detail-section-label">{rawContentLabel}</h2>
+                    <p className="post-detail-section-desc">Saved by Fetch sources.</p>
+                  </div>
+                  <button
+                    aria-controls={rawRegionId}
+                    aria-expanded={rawExpanded}
+                    className="post-detail-raw-toggle"
+                    onClick={() => setRawExpanded((expanded) => !expanded)}
+                    type="button"
+                  >
+                    <BookOpen aria-hidden="true" className="post-detail-raw-toggle-icon" />
+                    {rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}
+                  </button>
+                </div>
+                {rawExpanded ? (
+                  <div
+                    aria-label={rawContentLabel}
+                    className="post-detail-body"
+                    id={rawRegionId}
+                    role="region"
+                  >
+                    {post.body}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
           </>
         ) : (
           <div
