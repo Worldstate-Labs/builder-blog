@@ -680,7 +680,10 @@ function buildCronStatus(
 }
 
 function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunListItem | null, nowMs = Date.now()): CronSlotStatus {
-  if (jobRun) return jobRunSlotStatus(jobRun, nowMs);
+  if (run.status !== "ok") return "failed";
+  if (jobRun && isStalledJobRun(jobRun, nowMs)) return "stalled";
+  if (isRunInflight(run, jobRun, null)) return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "running";
+  if (jobRun && !isActiveJobRun(jobRun) && jobRun.status !== "succeeded") return jobRunSlotStatus(jobRun, nowMs);
   if (run.status === "ok") return "ok";
   return "failed";
 }
@@ -690,9 +693,7 @@ function runMatchesJobRun(run: LibraryFetchRunListItem | null, jobRun: AgentJobR
 }
 
 function timelineSlotRun(slot: CronSlot): LibraryFetchRunListItem | null {
-  if (!slot.run) return null;
-  if (!slot.jobRun) return slot.run;
-  return runMatchesJobRun(slot.run, slot.jobRun) ? slot.run : null;
+  return slot.run;
 }
 
 function timelineSlotLogRef(slot: CronSlot, run: LibraryFetchRunListItem | null): FetchLogRef | null {
@@ -779,6 +780,7 @@ export function buildFetchTimeline({
   const matchedJobInstances = new Set<string>();
   const entries: FetchTimelineEntry[] = slots.map((slot) => {
     const run = timelineSlotRun(slot);
+    const runJob = runMatchesJobRun(run, slot.jobRun) ? slot.jobRun : null;
     const logRef = timelineSlotLogRef(slot, run);
     if (run) matchedRunIds.add(run.id);
     if (slot.run) matchedRunIds.add(slot.run.id);
@@ -787,10 +789,10 @@ export function buildFetchTimeline({
     return {
       key: `slot:${slot.expectedAt}`,
       time: slot.expectedAt,
-      status: slot.status,
+      status: run ? fetchRunSlotStatus(run, runJob, nowMs) : slot.status,
       label: triggerLabel,
       note: timelineSlotRunNote(slot, run),
-      syncSummary: timelineSlotSyncSummary(run, slot.jobRun),
+      syncSummary: timelineSlotSyncSummary(run, run ? runJob : slot.jobRun),
       run,
       jobRun: slot.jobRun,
       slot,

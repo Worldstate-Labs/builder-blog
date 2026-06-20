@@ -232,3 +232,84 @@ test("fetch timeline opens the specific run bound to a scheduled slot", () => {
 
   assert.deepEqual(olderEntry?.logRef, { kind: "run", runId: "run_1hr" });
 });
+
+test("fetch timeline status follows the concrete run bound to a scheduled slot", () => {
+  const activeJob: AgentJobRunListItem = {
+    id: "job_active",
+    jobType: "library-fetch",
+    trigger: "scheduled",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-active",
+    expectedAt: "2026-06-20T13:00:00.000Z",
+    startedAt: "2026-06-20T13:00:10.000Z",
+    heartbeatAt: "2026-06-20T13:04:00.000Z",
+    finishedAt: null,
+    status: "running",
+    exitCode: null,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 123,
+    workerPid: 123,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    stage: "runtime_agent_started",
+    summary: "Runtime heartbeat.",
+    details: {
+      progress: {
+        counters: {
+          tasksPlanned: 2,
+          synced: 2,
+        },
+      },
+    },
+    updatedAt: "2026-06-20T13:04:00.000Z",
+  };
+  const failedRun: LibraryFetchRunListItem = {
+    id: "run_failed",
+    startedAt: "2026-06-20T12:00:10.000Z",
+    finishedAt: "2026-06-20T12:01:00.000Z",
+    durationMs: 50_000,
+    status: "failed",
+    source: "cron",
+    jobRunId: null,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 6,
+    itemsFetched: 5,
+    tasksGenerated: 7,
+    userActionsCount: 0,
+    errorCount: 2,
+    summary: "Read 5 posts from 6 sources · 7 posts planned · 2 posts failed",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:1", status: "synced" },
+        { id: "fetch_post:2", status: "synced" },
+        { id: "fetch_post:3", status: "synced" },
+        { id: "fetch_post:4", status: "synced" },
+        { id: "fetch_post:5", status: "synced" },
+        { id: "fetch_post:6", status: "failed" },
+        { id: "fetch_post:7", status: "failed" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [activeJob],
+    runs: [failedRun],
+    slots: [
+      {
+        expectedAt: "2026-06-20T12:00:00.000Z",
+        windowEnd: "2026-06-20T13:00:00.000Z",
+        status: "running",
+        run: failedRun,
+        jobRun: activeJob,
+      },
+    ],
+    nowMs: Date.parse("2026-06-20T13:05:00.000Z"),
+  });
+
+  assert.equal(entries[0]?.status, "failed");
+  assert.equal(entries[0]?.syncSummary, "5/7 saved");
+  assert.equal(entries[0]?.run?.id, "run_failed");
+});
