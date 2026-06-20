@@ -525,7 +525,7 @@ function jobRunByInstanceId(jobRuns: AgentJobRunListItem[]): Map<string, AgentJo
 function mergeFetchRunLists(...runLists: LibraryFetchRunListItem[][]): LibraryFetchRunListItem[] {
   const byId = new Map<string, LibraryFetchRunListItem>();
   for (const run of runLists.flat()) {
-    if (!byId.has(run.id)) byId.set(run.id, run);
+    byId.set(run.id, run);
   }
   return Array.from(byId.values()).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
 }
@@ -533,7 +533,12 @@ function mergeFetchRunLists(...runLists: LibraryFetchRunListItem[][]): LibraryFe
 function mergeAgentJobRunLists(...runLists: AgentJobRunListItem[][]): AgentJobRunListItem[] {
   const byId = new Map<string, AgentJobRunListItem>();
   for (const run of runLists.flat()) {
-    if (!byId.has(run.id)) byId.set(run.id, run);
+    const existing = byId.get(run.id);
+    const existingUpdatedMs = existing ? Date.parse(existing.updatedAt) : Number.NEGATIVE_INFINITY;
+    const runUpdatedMs = Date.parse(run.updatedAt);
+    if (!existing || !Number.isFinite(existingUpdatedMs) || !Number.isFinite(runUpdatedMs) || runUpdatedMs >= existingUpdatedMs) {
+      byId.set(run.id, run);
+    }
   }
   return Array.from(byId.values()).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
 }
@@ -2112,6 +2117,7 @@ function taskWorkerId(
 function taskWorkerGroups(
   fetchTasks: FetchTaskLog[],
   liveTasks: Map<string, FetchTaskProgress>,
+  fallbackWorkerName: string,
 ): FetchTaskWorkerGroup[] {
   const groups = new Map<string, FetchTaskWorkerGroup>();
   for (const task of fetchTasks) {
@@ -2122,7 +2128,7 @@ function taskWorkerGroups(
     if (!group) {
       group = {
         key,
-        name: workerId ?? "Main Local Agent",
+        name: workerId ?? fallbackWorkerName,
         sourceGroups: [],
         tasks: [],
       };
@@ -2135,6 +2141,11 @@ function taskWorkerGroups(
     group.sourceGroups = taskSourceGroups(group.tasks);
   }
   return [...groups.values()];
+}
+
+function fallbackTaskWorkerName(liveProgress: FetchJobProgress | null): string {
+  const stage = String(liveProgress?.stage ?? "").toLowerCase();
+  return stage.includes("worker") ? "Worker assignment pending" : "Local Agent";
 }
 
 function groupedTaskStats(tasks: FetchTaskLog[]) {
@@ -2159,7 +2170,7 @@ function DetailsBody({
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
   const postTasks = fetchTasks.filter(isPlannedPostTask);
   const liveTasks = fetchTaskProgressMap(liveProgress);
-  const taskGroups = taskWorkerGroups(postTasks, liveTasks);
+  const taskGroups = taskWorkerGroups(postTasks, liveTasks, fallbackTaskWorkerName(liveProgress));
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
       ? details.prompts

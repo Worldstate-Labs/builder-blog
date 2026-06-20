@@ -255,11 +255,16 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /className="sync-panel-run-list sync-panel-run-list-scroll"/);
   assert.match(panel, /fallback\?:/);
   assert.match(panel, /function mergeFetchRunLists/);
+  assert.doesNotMatch(panel, /if \(!byId\.has\(run\.id\)\) byId\.set\(run\.id, run\)/);
+  assert.match(panel, /byId\.set\(run\.id, run\)/);
   assert.match(panel, /const dialogRuns = useMemo\(\(\) => mergeFetchRunLists\(runs, cronRuns\), \[runs, cronRuns\]\)/);
   assert.match(panel, /runs=\{dialogRuns\}/);
   assert.match(panel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks\)/);
+  assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks, fallbackTaskWorkerName\(liveProgress\)\)/);
+  assert.match(panel, /function fallbackTaskWorkerName/);
+  assert.match(panel, /Worker assignment pending/);
+  assert.doesNotMatch(panel, /Main Local Agent/);
   assert.match(panel, /Post task details/);
   assert.match(panel, /className="sync-panel-run-card-details-count"/);
   assert.doesNotMatch(panel, /Post tasks \(\{postTasks\.length\}\)/);
@@ -639,6 +644,10 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /<RunCard domId=\{null\} jobRun=\{jobRun \?\? undefined\} run=\{run\} \/>/);
   assert.match(panel, /AI Digest job lifecycle/);
+  assert.match(panel, /function isStalledDigestJobRun/);
+  assert.match(panel, /if \(isStalledDigestJobRun\(jobRun, nowMs\)\) return "stalled"/);
+  assert.match(panel, /if \(isStalledDigestJobRun\(jobRun\)\) return "Stalled"/);
+  assert.match(panel, /Local Agent stopped reporting before the AI Digest was saved\./);
   assert.match(panel, /Prepare candidates/);
   assert.match(panel, /Generate AI Digest/);
   assert.match(panel, /Render AI Digest/);

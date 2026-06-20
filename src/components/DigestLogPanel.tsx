@@ -130,11 +130,15 @@ export type DigestLogPanelProps = {
 
 function digestJobRunSlotStatus(jobRun: AgentJobRunListItem, nowMs = Date.now()): CronSlotStatus {
   if (jobRun.status === "succeeded") return "ok";
-  if (isActiveDigestJobRun(jobRun)) {
-    const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);
-    return Number.isFinite(heartbeatMs) && nowMs - heartbeatMs > 2 * 60_000 ? "stalled" : "running";
-  }
+  if (isStalledDigestJobRun(jobRun, nowMs)) return "stalled";
+  if (isActiveDigestJobRun(jobRun)) return "running";
   return "failed";
+}
+
+function isStalledDigestJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
+  if (!isActiveDigestJobRun(jobRun)) return false;
+  const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);
+  return Number.isFinite(heartbeatMs) && nowMs - heartbeatMs > 2 * 60_000;
 }
 
 function digestRunSlotStatus(
@@ -766,11 +770,13 @@ function jobRunLabel(jobRun: AgentJobRunListItem): string {
 
 function jobRunStatusStyle(jobRun: AgentJobRunListItem): ChipStyle {
   if (jobRun.status === "succeeded") return statusStyle("ok");
+  if (isStalledDigestJobRun(jobRun)) return statusStyle("failed");
   if (jobRun.status === "running" || jobRun.status === "starting") return statusStyle("partial");
   return statusStyle("failed");
 }
 
 function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
+  if (isStalledDigestJobRun(jobRun)) return "Stalled";
   return scheduledJobRunStatusLabel(jobRun.status);
 }
 
@@ -827,6 +833,12 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
 }
 
 function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
+  if (isStalledDigestJobRun(jobRun)) {
+    return {
+      tone: "fail",
+      text: "Local Agent stopped reporting before the AI Digest was saved.",
+    };
+  }
   if (jobRun.status === "starting" || jobRun.status === "running") {
     return {
       tone: "warn",
@@ -858,7 +870,7 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem):
       text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} eligible posts to FollowBrief.`,
     };
   }
-  if (jobRun && !["starting", "running", "succeeded"].includes(jobRun.status)) {
+  if (jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status))) {
     return {
       tone: "fail",
       text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before saving. ${jobRunFailureReason(jobRun)}`,
@@ -992,7 +1004,7 @@ function DigestLifecycle({
 }) {
   const hasRun = Boolean(run);
   const synced = run?.status === "synced";
-  const failedJob = Boolean(jobRun && !["starting", "running", "succeeded"].includes(jobRun.status));
+  const failedJob = Boolean(jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status)));
   const digestSaved = synced && Boolean(run?.digestTitle);
   const steps: DigestLifecycleStep[] = [
     {
