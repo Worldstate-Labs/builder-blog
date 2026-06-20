@@ -184,25 +184,20 @@ async function AiDigestFeedSlot({
     digestPipelineOptions[0];
   const digestOwnerUserId = selectedPipeline.ownerUserId;
 
-  const [
-    digestSummaries,
-    digestSourceLinks,
-  ] = await Promise.all([
-      // The digest picker lists the latest AI Digest plus previous issues in one
-      // control. Keep this as summaries only; the body is fetched on demand.
-      prisma.digest.findMany({
-        where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
-        orderBy: { createdAt: "desc" },
-        take: digestPickerSize,
-        select: digestSummarySelect,
-      }),
-      digestSourceLinksForUser(digestOwnerUserId),
-    ]);
+  // The digest picker lists the latest AI Digest plus previous issues in one
+  // control. Keep this as summaries only; the body is fetched on demand.
+  const digestSummaries = await prisma.digest.findMany({
+    where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
+    orderBy: { createdAt: "desc" },
+    take: digestPickerSize,
+    select: digestSummarySelect,
+  });
 
   const latestDigest = digestSummaries[0] ?? null;
   const selectedDigest =
     digestSummaries.find((digest) => digest.id === digestId) ??
     latestDigest;
+  const digestSourceLinks = await digestSourceLinksForUser(digestOwnerUserId, selectedDigest?.id);
   const selectedDigestIssueCount = Math.max(
     digestCounts.find((row) => row.userId === digestOwnerUserId)?._count._all ?? 0,
     digestSummaries.length,

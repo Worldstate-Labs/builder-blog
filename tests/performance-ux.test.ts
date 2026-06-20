@@ -4623,6 +4623,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestSourceLinks, /avatarUrl:\s*builder\.avatarUrl/);
   assert.match(digestSourceLinks, /avatarDataUrl:\s*builder\.avatarDataUrl/);
   assert.match(digestSourceLinks, /sourceType:\s*builder\.sourceType/);
+  assert.match(digestSourceLinks, /prisma\.digestedItem\.findMany/);
+  assert.match(digestSourceLinks, /digestId/);
+  assert.match(dashboardPage, /digestSourceLinksForUser\(digestOwnerUserId,\s*selectedDigest\?\.id\)/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
   assert.match(fetchMethodPopover, /useId/);

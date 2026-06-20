@@ -43,7 +43,6 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
       const [
         digestCount,
         latestDigest,
-        sourceLinks,
         feedPreference,
         rawCronJob,
         rawRuns,
@@ -57,10 +56,10 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
             content: true,
             createdAt: true,
             headlineSummary: true,
+            id: true,
             language: true,
           },
         }),
-        digestSourceLinksForUser(ownerUserId),
         prisma.userFeedPreference.findUnique({
           where: { userId: ownerUserId },
           select: { summaryLanguage: true },
@@ -87,6 +86,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
           take: 25,
         }),
       ]);
+      const sourceLinks = await digestSourceLinksForUser(ownerUserId, latestDigest?.id);
 
       const cronJob = serializeDigestCronJob(rawCronJob);
       const runs: DigestCronRunStatusInput[] = rawRuns.map((run) => ({

@@ -13,7 +13,7 @@ export type DigestSourceLink = {
   fetchUrl?: string | null;
 };
 
-export async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLink[]> {
+export async function digestSourceLinksForUser(userId: string, digestId?: string | null): Promise<DigestSourceLink[]> {
   const subscriptions = await prisma.subscription.findMany({
     where: { userId },
     include: {
@@ -49,5 +49,88 @@ export async function digestSourceLinksForUser(userId: string): Promise<DigestSo
       sourceType: builder.sourceType,
     });
   }
+
+  if (digestId) {
+    const digestedItems = await prisma.digestedItem.findMany({
+      where: {
+        userId,
+        digestId,
+        feedItemId: { not: null },
+        feedItem: {
+          is: {
+            builder: {
+              is: {
+                entityId: { not: "" },
+              },
+            },
+          },
+        },
+      },
+      select: {
+        feedItem: {
+          select: {
+            sourceName: true,
+            builder: {
+              select: {
+                avatarUrl: true,
+                avatarDataUrl: true,
+                entityId: true,
+                fetchUrl: true,
+                handle: true,
+                name: true,
+                sourceType: true,
+                sourceUrl: true,
+                entity: {
+                  select: {
+                    handle: true,
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { digestedAt: "asc" },
+    });
+
+    for (const item of digestedItems) {
+      const builder = item.feedItem?.builder;
+      const entity = builder?.entity;
+      const entityId = entity?.id ?? builder?.entityId;
+      if (!builder || !entityId) continue;
+      const aliases = uniqueSourceAliases([builder.name, item.feedItem?.sourceName]);
+      const existing = byEntityId.get(entityId);
+      if (existing) {
+        existing.aliases = uniqueSourceAliases([...(existing.aliases ?? []), ...aliases]);
+        continue;
+      }
+      byEntityId.set(entityId, {
+        aliases,
+        avatarUrl: builder.avatarUrl,
+        avatarDataUrl: builder.avatarDataUrl,
+        entityId,
+        fetchUrl: builder.fetchUrl,
+        handle: entity?.handle ?? builder.handle,
+        href: `/builder/${entityId}`,
+        name: entity?.name || builder.name,
+        sourceUrl: builder.sourceUrl,
+        sourceType: builder.sourceType,
+      });
+    }
+  }
   return [...byEntityId.values()];
+}
+
+function uniqueSourceAliases(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const aliases: string[] = [];
+  for (const value of values) {
+    const alias = value?.trim();
+    if (!alias || seen.has(alias)) continue;
+    seen.add(alias);
+    aliases.push(alias);
+  }
+  return aliases;
 }
