@@ -2393,7 +2393,7 @@ details:not([open]) > :not(summary) {
 }
 
 .digest-headline-item {
-  align-items: center;
+  align-items: start;
   display: grid;
   gap: 0.72rem;
   grid-template-columns: 1.5rem minmax(0, 1fr);
@@ -7954,7 +7954,7 @@ summary.library-section-summary::after {
   z-index: 1;
 }
 
-.imported-library-post-count {
+.imported-library-source-count {
   color: var(--muted-strong);
   font-size: 0.8125rem;
   font-weight: 720;

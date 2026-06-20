@@ -449,7 +449,8 @@ function isRunInflight(
   }
   const tasks = readDetails(run.details).fetchTasks;
   if (!Array.isArray(tasks) || tasks.length === 0) return false;
-  return tasks.some((task) => task?.status === "pending" || task?.status === "fetched");
+  const postTasks = tasks.filter(isPlannedPostTask);
+  return postTasks.some((task) => task?.status === "pending" || task?.status === "fetched");
 }
 
 const FETCH_LOG_PAGE_SIZE = 10;
@@ -1561,6 +1562,12 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
+function jobRunStageLabel(stage: string | null): string | null {
+  const normalized = String(stage ?? "").trim();
+  if (!normalized || normalized === "heartbeat") return null;
+  return normalized.replace(/_/g, " ");
+}
+
 function ratioText(done: number, total: number, unit: string): string {
   if (total <= 0) return `${formatCount(done)} ${unit}${done === 1 ? "" : "s"}`;
   return `${formatCount(done)} / ${formatCount(total)} ${unit}${total === 1 ? "" : "s"}`;
@@ -1807,6 +1814,7 @@ function JobRunCard({
   const fallbackSummary = isActiveJobRun(jobRun)
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
+  const runtimeStageLabel = jobRunStageLabel(jobRun.stage);
   return (
     <article className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
@@ -1835,9 +1843,9 @@ function JobRunCard({
         {jobRun.summary || fallbackSummary}
       </p>
       <JobLifecycle details={{}} progress={liveProgress} />
-      {showRuntimeState ? (
+      {showRuntimeState && runtimeStageLabel ? (
         <div className="mono sync-panel-run-card-stage">
-          {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
+          {runtimeStageLabel} · {jobRun.finishedAt ? "finished" : "active"}
         </div>
       ) : null}
       {diagnostic ? (

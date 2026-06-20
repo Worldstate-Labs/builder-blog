@@ -116,6 +116,10 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(panel, /tasksDone/);
   assert.match(panel, /recentEvents/);
   assert.match(panel, /actionNeeded/);
+  assert.match(panel, /function jobRunStageLabel/);
+  assert.match(panel, /normalized === "heartbeat"/);
+  assert.match(panel, /showRuntimeState && runtimeStageLabel/);
+  assert.doesNotMatch(panel, /\{jobRun\.stage \|\| "runtime"\} ·/);
   assert.match(route, /function mergeAgentJobRunDetails/);
   assert.match(route, /existingRun\?\.details/);
   assert.match(route, /merged\.progress = current\.progress/);

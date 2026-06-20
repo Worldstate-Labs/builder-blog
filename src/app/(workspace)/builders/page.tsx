@@ -799,6 +799,7 @@ async function FetchSourcesSection({
             title={library.name}
             detail={<ImportedLibraryCollapsedMeta builders={library.builders} />}
             count={library.builders.length}
+            showCount={false}
             indented
             action={
               <LibraryImportRemoveButton
@@ -921,6 +922,7 @@ function LibrarySection({
   count,
   defaultOpen = false,
   indented = false,
+  showCount = true,
   action,
   children,
 }: {
@@ -930,6 +932,7 @@ function LibrarySection({
   count: number;
   defaultOpen?: boolean;
   indented?: boolean;
+  showCount?: boolean;
   action?: ReactNode;
   children: ReactNode;
 }) {
@@ -945,7 +948,7 @@ function LibrarySection({
         </div>
         <div className={`library-section-meta${badge ? "" : " library-section-meta--no-badge"}`}>
           {badge ? <span className="fb-kind-pill">{badge}</span> : null}
-          <CountMeta label={count === 1 ? "source" : "sources"} value={count} />
+          {showCount ? <CountMeta label={count === 1 ? "source" : "sources"} value={count} /> : null}
           {action}
         </div>
       </summary>
@@ -963,12 +966,10 @@ function ImportedLibraryCollapsedMeta({
 }) {
   const visibleBuilders = builders.slice(0, 5);
   const hiddenBuilderCount = Math.max(0, builders.length - visibleBuilders.length);
-  const postCount = builders.reduce((count, builder) => count + builder._count.feedItems, 0);
-  const postLabel = `${formatCount(postCount)} ${postCount === 1 ? "post" : "posts"}`;
   const sourceLabel = builders.length === 1 ? "1 source" : `${formatCount(builders.length)} sources`;
   return (
     <span
-      aria-label={`${sourceLabel}, ${postLabel}`}
+      aria-label={sourceLabel}
       className="imported-library-collapsed-meta"
     >
       {visibleBuilders.length > 0 ? (
@@ -988,7 +989,7 @@ function ImportedLibraryCollapsedMeta({
           ) : null}
         </span>
       ) : null}
-      <span className="imported-library-post-count">{postLabel}</span>
+      <span className="imported-library-source-count">{sourceLabel}</span>
     </span>
   );
 }

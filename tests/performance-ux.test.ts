@@ -3985,12 +3985,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /<h3 className="fb-section-heading">\{title\}<\/h3>/);
   assert.doesNotMatch(buildersPage, /<h2 className="fb-section-heading">\{title\}<\/h2>/);
   assert.match(buildersPage, /detail=\{<ImportedLibraryCollapsedMeta builders=\{library\.builders\} \/>\}/);
+  assert.match(buildersPage, /showCount=\{false\}/);
   assert.match(buildersPage, /function ImportedLibraryCollapsedMeta/);
   assert.match(buildersPage, /className="imported-library-collapsed-meta"/);
   assert.match(buildersPage, /className="imported-library-avatar-stack"/);
   assert.match(buildersPage, /className="imported-library-avatar"/);
-  assert.match(buildersPage, /className="imported-library-post-count"/);
-  assert.match(buildersPage, /const postLabel = `\$\{formatCount\(postCount\)\} \$\{postCount === 1 \? "post" : "posts"\}`/);
+  assert.match(buildersPage, /className="imported-library-source-count"/);
+  assert.match(buildersPage, /aria-label=\{sourceLabel\}/);
+  assert.doesNotMatch(buildersPage, /className="imported-library-post-count"|const postLabel = `\$\{formatCount\(postCount\)\}/);
   assert.doesNotMatch(buildersPage, /importedLibraryDetail/);
   assert.doesNotMatch(buildersPage, /detail=\{importedLibraryDetail\(library\)\}/);
   assert.match(globals, /\.imported-library-stack \.library-section-summary h3\s*{[\s\S]*font-size:\s*0\.9375rem/);
@@ -4006,6 +4008,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.imported-library-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.imported-library-avatar\.fb-src-icon,[\s\S]*\.imported-library-avatar-more\s*{[\s\S]*height:\s*1\.5rem/);
   assert.match(globals, /\.imported-library-avatar\.fb-src-icon \+ \.imported-library-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.45rem/);
+  assert.match(globals, /\.imported-library-source-count\s*{[\s\S]*white-space:\s*nowrap/);
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
