@@ -22,6 +22,7 @@ type Params = { params: Promise<{ entityId: string }> };
 
 type ChannelInfo = {
   builderId: string;
+  name: string;
   libraryName: string;
   libraryId: string | null;
   isAdminCommunity: boolean;
@@ -71,6 +72,7 @@ export default async function BuilderDetailPage({ params }: Params) {
         : channel.owner?.name ?? channel.owner?.email ?? "Unknown");
     return {
       builderId: channel.id,
+      name: channel.name,
       libraryName,
       libraryId: channel.hubItems[0]?.hubEntry.id ?? null,
       isAdminCommunity: isAdmin,
@@ -104,6 +106,7 @@ export default async function BuilderDetailPage({ params }: Params) {
   // we don't double-count duplicated copies across channels.
   const primaryChannel =
     channels.find((c) => c.isOwnChannel) ?? channels[0] ?? null;
+  const displaySourceName = primaryChannel?.name?.trim() || entity.name;
   const headerAvatarUrl =
     primaryChannel?.avatarUrl ??
     channels.find((c) => c.avatarUrl)?.avatarUrl ??
@@ -131,7 +134,7 @@ export default async function BuilderDetailPage({ params }: Params) {
     <div className="page-pad page-pad--reading builder-detail-page">
       <PageHeader
         className="builder-detail-page-head"
-        title={entity.name}
+        title={displaySourceName}
       >
         <div className="builder-detail-head-stack">
           <Link className="fb-breadcrumb-link builder-detail-breadcrumb" href="/builders?tab=fetch">
@@ -146,14 +149,14 @@ export default async function BuilderDetailPage({ params }: Params) {
                 avatarDataUrl: headerAvatarDataUrl,
                 avatarUrl: headerAvatarUrl,
                 fetchUrl: primaryChannel?.fetchUrl ?? null,
-                name: entity.name,
+                name: displaySourceName,
                 sourceType: headerSourceType ?? "",
                 sourceUrl: primaryChannel?.sourceUrl ?? null,
               }}
             />
             <div className="builder-detail-title-stack">
               <div className="builder-detail-title-row">
-                <h1 className="fb-title">{entity.name}</h1>
+                <h1 className="fb-title">{displaySourceName}</h1>
               </div>
               <div className="fb-src-meta builder-detail-meta-row">
                 <span className="builder-detail-meta-group">
@@ -187,14 +190,14 @@ export default async function BuilderDetailPage({ params }: Params) {
             <Suspense fallback={<BuilderActionsSkeleton />}>
               <BuilderDetailActionsSlot
                 entityId={entityId}
-                sourceName={entity.name}
+                sourceName={displaySourceName}
                 userId={userId}
                 channelIds={channelIds}
               />
             </Suspense>
             {headerSourceUrl ? (
               <OriginalSourceAction
-                ariaLabel={`Original: ${entity.name}`}
+                ariaLabel={`Original: ${displaySourceName}`}
                 href={headerSourceUrl}
                 sourceType={headerSourceType}
               />
@@ -210,7 +213,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             <RecentPostsSlot
               userId={userId}
               entityId={entityId}
-              sourceName={entity.name}
+              sourceName={displaySourceName}
               channels={channels}
             />
           </Suspense>
@@ -229,7 +232,7 @@ export default async function BuilderDetailPage({ params }: Params) {
           <Suspense fallback={<ChannelsListSkeleton />}>
             <ChannelsListSlot
               entityId={entityId}
-              sourceName={entity.name}
+              sourceName={displaySourceName}
               userId={userId}
               channels={channels}
             />

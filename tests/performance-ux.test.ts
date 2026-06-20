@@ -1527,7 +1527,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailLoading, /@\/components\/PageHeader/);
   assert.match(builderDetailPage, /className="page-pad page-pad--reading builder-detail-page"/);
   assert.match(builderDetailLoading, /className="page-pad page-pad--reading builder-detail-page builder-detail-loading"/);
-  assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
+  assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{displaySourceName\}/);
   assert.match(builderDetailLoading, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title="Loading source"/);
   assert.match(builderDetailPage, /getEntityWithReachableChannels\(entityId, userId\)/);
   assert.doesNotMatch(builderDetailPage, /getEntityWithChannels\(entityId\)/);
@@ -1559,7 +1559,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
   assert.match(builderDetailLoading, /className="builder-detail-title-row"/);
   assert.match(builderDetailLoading, /className="builder-detail-loading-title"/);
-  assert.match(builderDetailPage, /<h1 className="fb-title">\{entity\.name\}<\/h1>/);
+  assert.match(builderDetailPage, /<h1 className="fb-title">\{displaySourceName\}<\/h1>/);
   assert.doesNotMatch(builderDetailPage, /<h1 className="builder-detail/);
   assert.doesNotMatch(builderDetailPage, /suppressLabelWhen=\{entity\.name\}/);
   assert.doesNotMatch(builderDetailPage, /source-kind-meta fb-kind-pill/);
@@ -1585,7 +1585,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-control-row\s*{[\s\S]*justify-self:\s*end/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-control-row\s*{[\s\S]*justify-self:\s*start/);
   assert.match(builderDetailPage, /@\/components\/OriginalSourceAction/);
-  assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{entity\.name\}`\}/);
+  assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{displaySourceName\}`\}/);
   assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{sourceName\}`\}/);
   assert.match(builderDetailPage, /const channelSourceHref = channel\.sourceUrl \|\| channel\.fetchUrl/);
   assert.match(builderDetailPage, /href=\{channelSourceHref\}/);
@@ -1607,7 +1607,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailActions, /Could not update Following for \$\{sourceName\}\./);
   assert.doesNotMatch(builderDetailActions, /Could not update following/);
   assert.doesNotMatch(builderDetailActions, /Could not update follow state\./);
-  assert.match(builderDetailPage, /sourceName=\{entity\.name\}/);
+  assert.match(builderDetailPage, /const displaySourceName = primaryChannel\?\.name\?\.trim\(\) \|\| entity\.name/);
+  assert.match(builderDetailPage, /sourceName=\{displaySourceName\}/);
+  assert.doesNotMatch(builderDetailPage, /sourceName=\{entity\.name\}/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
   assert.doesNotMatch(builderDetailActions, /className="grid gap-2"|flex flex-wrap items-center gap-3|text-xs text-\[var\(--danger\)\]/);
   assert.match(builderDetailPage, /className="builder-detail-section builder-detail-channels"/);
@@ -1859,6 +1861,32 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(source("src/components/RecentPostsList.tsx"), /className="recent-post-list"/);
   assert.doesNotMatch(globals, /\.fb-rail/);
+});
+
+test("source name display prefers channel Builder.name before BuilderEntity.name", () => {
+  const builderEntities = source("src/lib/builder-entities.ts");
+  const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
+  const digestSourceLinks = source("src/lib/digest-source-links.ts");
+  const skillContextRoute = source("src/app/api/skill/context/route.ts");
+
+  assert.match(builderEntities, /name:\s*true/);
+  assert.match(builderDetailPage, /name:\s*channel\.name/);
+  assert.match(builderDetailPage, /const displaySourceName = primaryChannel\?\.name\?\.trim\(\) \|\| entity\.name/);
+  assert.match(builderDetailPage, /title=\{displaySourceName\}/);
+  assert.match(builderDetailPage, /<h1 className="fb-title">\{displaySourceName\}<\/h1>/);
+  assert.match(builderDetailPage, /returnLabel=\{sourceName\}/);
+  assert.doesNotMatch(builderDetailPage, /title=\{entity\.name\}|<h1 className="fb-title">\{entity\.name\}<\/h1>|sourceName=\{entity\.name\}/);
+
+  assert.match(digestSourceLinks, /name:\s*builder\.name \|\| builder\.entity\.name/);
+  assert.match(digestSourceLinks, /name:\s*builder\?\.name \|\| entity\?\.name \|\| itemEntityId/);
+  assert.doesNotMatch(digestSourceLinks, /name:\s*builder\.entity\.name \|\| builder\.name/);
+  assert.doesNotMatch(digestSourceLinks, /name:\s*entity\?\.name \|\| builder\?\.name \|\| itemEntityId/);
+
+  assert.match(skillContextRoute, /const entityDisplayNameById = new Map<string, string>\(\)/);
+  assert.match(skillContextRoute, /const builderName = sub\.builder\?\.name\?\.trim\(\)/);
+  assert.match(skillContextRoute, /source:\s*it\.builder\?\.name \?\? it\.sourceName \?\? entityDisplayNameById\.get\(it\.entityId\) \?\? null/);
+  assert.match(skillContextRoute, /name:\s*entityDisplayNameById\.get\(id\) \?\? "Unknown source"/);
+  assert.doesNotMatch(skillContextRoute, /entityNameById/);
 });
 
 test("dashboard defers heavy recommendation timeline work to a client island", () => {
@@ -4687,7 +4715,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(source("src/lib/builder-channel-resolver.ts"), /kind:\s*true/);
   assert.match(builderDetailPage, /kind:\s*item\.builder\.kind/);
   assert.doesNotMatch(builderDetailPage, /kind:\s*item\.builder\.sourceType as/);
-  assert.match(builderDetailPage, /sourceName=\{entity\.name\}/);
+  assert.match(builderDetailPage, /sourceName=\{displaySourceName\}/);
+  assert.doesNotMatch(builderDetailPage, /sourceName=\{entity\.name\}/);
   assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{sourceName\}`\}/);
   assert.match(builderDetailPage, /returnHref=\{`\/builder\/\$\{entityId\}`\}/);
   assert.match(builderDetailPage, /returnLabel=\{sourceName\}/);

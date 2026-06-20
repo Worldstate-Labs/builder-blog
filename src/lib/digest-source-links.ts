@@ -45,7 +45,7 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
       fetchUrl: builder.fetchUrl,
       handle: builder.entity.handle ?? builder.handle,
       href: `/builder/${builder.entity.id}`,
-      name: builder.entity.name || builder.name,
+      name: builder.name || builder.entity.name,
       sourceUrl: builder.sourceUrl,
       sourceType: builder.sourceType,
     });
@@ -116,7 +116,7 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
         fetchUrl: builder?.fetchUrl ?? null,
         handle: entity?.handle ?? builder?.handle ?? null,
         href: `/builder/${entityId}`,
-        name: entity?.name || builder?.name || itemEntityId,
+        name: builder?.name || entity?.name || itemEntityId,
         sourceUrl: builder?.sourceUrl ?? null,
         sourceType: builder?.sourceType ?? null,
       });

@@ -271,10 +271,12 @@ export async function GET(request: Request) {
   // the agent was handed — the input that the produced digest is judged
   // against. The subsequent `sync` call links back via this run id. Best-effort:
   // a logging failure must never break the digest the user actually wants.
-  const entityNameById = new Map<string, string>();
+  const entityDisplayNameById = new Map<string, string>();
   for (const sub of subscriptions) {
     const ent = sub.builder?.entity;
-    if (ent && !entityNameById.has(ent.id)) entityNameById.set(ent.id, ent.name);
+    if (!ent || entityDisplayNameById.has(ent.id)) continue;
+    const builderName = sub.builder?.name?.trim();
+    entityDisplayNameById.set(ent.id, builderName || ent.name);
   }
   const candidateSnapshot = items.map((it) => ({
     entityId: it.entityId,
@@ -284,12 +286,12 @@ export async function GET(request: Request) {
     sourceType: it.builder?.sourceType ?? null,
     title: it.title ?? null,
     url: it.url ?? null,
-    source: it.sourceName ?? entityNameById.get(it.entityId) ?? null,
+    source: it.builder?.name ?? it.sourceName ?? entityDisplayNameById.get(it.entityId) ?? null,
     publishedAt: it.publishedAt ? new Date(it.publishedAt).toISOString() : null,
   }));
   const subscriptionSnapshot = subscribedEntityIds.map((id) => ({
     entityId: id,
-    name: entityNameById.get(id) ?? "Unknown source",
+    name: entityDisplayNameById.get(id) ?? "Unknown source",
   }));
   let runId: string | null = null;
   if (isDigest && !dryRun) {
@@ -348,7 +350,14 @@ export async function GET(request: Request) {
       .map((s) => s.builder)
       .filter((b): b is NonNullable<typeof b> => Boolean(b)),
     subscriptionEntities: subscriptions
-      .map((s) => s.builder?.entity ?? null)
+      .map((s) => {
+        const entity = s.builder?.entity ?? null;
+        if (!entity) return null;
+        return {
+          ...entity,
+          name: s.builder?.name?.trim() || entity.name,
+        };
+      })
       .filter((e): e is NonNullable<typeof e> => Boolean(e)),
     subscribedEntityIds,
     subscriptionCount: subscribedEntityIds.length,

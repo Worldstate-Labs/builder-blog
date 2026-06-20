@@ -215,6 +215,7 @@ const builderEntityWithChannelsSelect = {
   builders: {
     select: {
       id: true,
+      name: true,
       ownerUserId: true,
       sourceType: true,
       sourceUrl: true,
