@@ -295,6 +295,9 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /variant="row"/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showBuilderRow=\{false\}/);
   assert.match(source("src/components/PostCardView.tsx"), /showDebugActions = false/);
+  assert.match(source("src/components/PostCardView.tsx"), /className="post-actions"/);
+  assert.match(source("src/components/PostCardView.tsx"), /className="post-inline-action post-inline-action--label post-raw-content-action post-read-action"/);
+  assert.match(source("src/components/PostCardView.tsx"), /className=\{`post-inline-action post-inline-action--icon post-raw-content-action\$\{rawExpanded \? " post-inline-action--active post-raw-content-action--active" : ""\}`\}/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /PostCard/);
   assert.doesNotMatch(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /builder-library-source-list/);
@@ -303,8 +306,16 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
   assert.match(source("src/components/FetchMethodPopover.tsx"), /className="post-action-popover-icon"/);
   assert.match(source("src/components/RecommendationReasonsPopover.tsx"), /className="post-action-popover-icon"/);
+  assert.match(source("src/components/FetchMethodPopover.tsx"), /className=\{`post-action-btn post-inline-action post-inline-action--icon\$\{open \? " post-inline-action--active post-action-btn--active" : ""\}`\}/);
+  assert.match(source("src/components/RecommendationReasonsPopover.tsx"), /className=\{`post-action-btn post-inline-action post-inline-action--icon\$\{open \? " post-inline-action--active post-action-btn--active" : ""\}`\}/);
+  assert.match(source("src/components/OriginalSourceAction.tsx"), /className="post-inline-action post-inline-action--label post-source-original"/);
+  assert.match(source("src/components/PostFavoriteButton.tsx"), /post-inline-action post-inline-action--icon post-action-btn post-favorite-btn/);
   assert.doesNotMatch(source("src/components/FetchMethodPopover.tsx"), /h-4 w-4|h-3\.5 w-3\.5/);
   assert.doesNotMatch(source("src/components/RecommendationReasonsPopover.tsx"), /h-4 w-4|h-3\.5 w-3\.5/);
+  assert.match(source("src/app/globals.css"), /\.post-inline-action\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
+  assert.match(source("src/app/globals.css"), /\.post-inline-action:hover,[\s\S]*\.post-inline-action--active\s*{[\s\S]*background:\s*color-mix\(in oklch, var\(--accent\) 10%, transparent\)/);
+  assert.match(source("src/app/globals.css"), /\.post-inline-action--icon\s*{[\s\S]*width:\s*2rem/);
+  assert.match(source("src/app/globals.css"), /\.post-inline-action \.sr-only\s*{[\s\S]*position:\s*absolute/);
   assert.match(source("src/app/globals.css"), /\.post-action-popover-icon\s*{[\s\S]*height:\s*1rem/);
 });
 
@@ -338,9 +349,9 @@ test("post card suppresses duplicate source labels across meta and footer action
   const metaHtml = html.match(/<div class="post-meta">([\s\S]*?)<\/div>/)?.[1] ?? "";
   assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
   assert.doesNotMatch(metaHtml, /class="source-badge"/);
-  assert.match(html, /class="post-source-original"/);
-  assert.match(html, /class="post-source-original"[\s\S]*class="source-badge"/);
-  assert.doesNotMatch(html, /class="post-source-original"[\s\S]*aria-label="Product Hunt Top Products"/);
+  assert.match(html, /class="post-inline-action post-inline-action--label post-source-original"/);
+  assert.match(html, /class="post-inline-action post-inline-action--label post-source-original"[\s\S]*class="source-badge"/);
+  assert.doesNotMatch(html, /class="post-inline-action post-inline-action--label post-source-original"[\s\S]*aria-label="Product Hunt Top Products"/);
   assert.match(html, />Original</);
 });
 

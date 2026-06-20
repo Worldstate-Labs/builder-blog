@@ -268,7 +268,7 @@ export function MarkdownEditor({
           <button
             key={id}
             aria-label={label}
-            className="settings-markdown-tool"
+            className="settings-markdown-tool settings-icon-button"
             onClick={() => applyAction(id)}
             onMouseDown={(event) => event.preventDefault()}
             title={label}
@@ -283,7 +283,7 @@ export function MarkdownEditor({
             key={id}
             aria-label={label}
             aria-pressed={mode === id}
-            className="settings-markdown-tool"
+            className="settings-markdown-tool settings-icon-button"
             onClick={() => setMode(id)}
             onMouseDown={(event) => event.preventDefault()}
             title={label}

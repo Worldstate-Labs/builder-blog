@@ -59,7 +59,8 @@ export function DigestPipelineVisibilityToggle({
       <button
         aria-label={actionLabel}
         aria-busy={isPending}
-        className="hub-share-button"
+        aria-pressed={shared}
+        className={`fb-stateful-action hub-share-button ${shared ? "is-on" : "is-off"}`}
         disabled={isPending}
         onClick={() => {
           if (!shared) {

@@ -17,7 +17,8 @@ test("source follow controls use one button that toggles Follow and Unfollow", (
     assert.match(component, /aria-pressed=\{subscribed\}/);
     assert.match(component, /aria-label=\{`\$\{subscribed \? "Unfollow" : "Follow"\} \$\{(?:builderName|sourceName)\}`\}/);
     assert.match(component, /subscribed \? "Following" : "Follow"/);
-    assert.match(component, /fb-follow-button/);
+    assert.match(component, /fb-stateful-action fb-follow-button/);
+    assert.match(component, /subscribed \? " is-on is-following" : " is-off is-follow"/);
     assert.doesNotMatch(component, /fb-toggle/);
     assert.doesNotMatch(component, /builder-library-follow-toggle/);
     assert.doesNotMatch(component, /✓ Following/);

@@ -71,7 +71,7 @@ export function FetchMethodPopover({
         aria-controls={popoverId}
         aria-expanded={open}
         aria-label={accessibleLabel}
-        className="post-action-btn"
+        className={`post-action-btn post-inline-action post-inline-action--icon${open ? " post-inline-action--active post-action-btn--active" : ""}`}
         onClick={() => setOpen((v) => !v)}
         title="Summary method"
         type="button"

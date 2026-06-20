@@ -413,20 +413,20 @@ export function PostCardView({
               {canReadRawContent && post.detailUrl ? (
                 <LinkComponent
                   aria-label={actionLabel("Read", actionContext)}
-                  className="post-raw-content-action post-read-action"
+                  className="post-inline-action post-inline-action--label post-raw-content-action post-read-action"
                   href={post.detailUrl}
                   onClick={noteInteraction}
                   title="Read"
                 >
                   <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
-                  <span className="sr-only">Read</span>
+                  <span>Read</span>
                 </LinkComponent>
               ) : canReadRawContent ? (
                 <button
                   aria-controls={rawRegionId}
                   aria-label={actionLabel(rawContentLabel, actionContext)}
                   aria-expanded={rawExpanded}
-                  className={`post-raw-content-action${rawExpanded ? " post-raw-content-action--active" : ""}`}
+                  className={`post-inline-action post-inline-action--icon post-raw-content-action${rawExpanded ? " post-inline-action--active post-raw-content-action--active" : ""}`}
                   onClick={() => {
                     setRawExpanded((v) => !v);
                     if (!rawExpanded) noteInteraction();

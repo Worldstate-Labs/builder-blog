@@ -59,7 +59,7 @@ export function BuilderDetailActions({
           aria-pressed={subscribed}
           aria-label={`${subscribed ? "Unfollow" : "Follow"} ${sourceName}`}
           onClick={() => follow(!subscribed)}
-          className={`fb-follow-button${subscribed ? " is-following" : " is-follow"}`}
+          className={`fb-stateful-action fb-follow-button${subscribed ? " is-on is-following" : " is-off is-follow"}`}
         >
           {isPending ? "Updating" : subscribed ? "Following" : "Follow"}
         </button>

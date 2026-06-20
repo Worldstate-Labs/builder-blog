@@ -75,7 +75,8 @@ export function LibraryVisibilityToggle({
           aria-label={actionLabel}
           aria-describedby={disabled ? disabledReasonId : undefined}
           aria-busy={isPending}
-          className="hub-share-button"
+          aria-pressed={isPublic}
+          className={`fb-stateful-action hub-share-button ${isPublic ? "is-on" : "is-off"}`}
           disabled={disabled || isPending}
           onClick={() => {
             if (!isPublic) {

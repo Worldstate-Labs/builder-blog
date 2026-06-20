@@ -38,7 +38,7 @@ export function RecommendationReasonsPopover({
         aria-controls={popoverId}
         aria-expanded={open}
         aria-label="Why recommended"
-        className="post-action-btn"
+        className={`post-action-btn post-inline-action post-inline-action--icon${open ? " post-inline-action--active post-action-btn--active" : ""}`}
         onClick={() => setOpen((v) => !v)}
         title="Why recommended"
         type="button"

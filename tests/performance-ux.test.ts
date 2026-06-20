@@ -1012,6 +1012,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /className="settings-footer-bar"/);
   assert.match(settingsFields, /className="settings-save-status is-saved"/);
   assert.match(settingsFields, /\{isPending \? "Saving" : "Save changes"\}/);
+  assert.match(settingsFields, /import \{ ArrowDown, ArrowUp, X \} from "lucide-react"/);
+  assert.match(settingsFields, /className="settings-token-remove settings-icon-button"/);
+  assert.match(settingsFields, /className="settings-order-button settings-icon-button"/);
+  assert.doesNotMatch(settingsFields, />\s*[↑↓×]\s*<\/button>/);
+  assert.match(markdownEditor, /className="settings-markdown-tool settings-icon-button"/);
+  assert.match(globals, /\.settings-icon-button\s*{[\s\S]*height:\s*1\.875rem/);
   assert.doesNotMatch(settingsFields, /Saving…/);
   assert.match(settingsFields, /onStatusAutoDismiss\?: \(\) => void/);
   assert.match(settingsFields, /onAutoDismiss=\{onStatusAutoDismiss\}/);
@@ -2692,7 +2698,8 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
   assert.match(digestPipelineVisibilityToggle, /Remove from Hub/);
   assert.match(digestPipelineVisibilityToggle, /className="hub-share-control"/);
-  assert.match(digestPipelineVisibilityToggle, /className="hub-share-button"/);
+  assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
+  assert.match(digestPipelineVisibilityToggle, /className=\{`fb-stateful-action hub-share-button \$\{shared \? "is-on" : "is-off"\}`\}/);
   assert.match(digestPipelineVisibilityToggle, /className="hub-share-label"/);
   assert.doesNotMatch(digestPipelineVisibilityToggle, /fb-toggle/);
   assert.match(digestPipelineVisibilityToggle, /className="hub-share-error"/);
@@ -2702,7 +2709,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestPipelineVisibilityToggle, /Could not update AI Digest collection sharing\./);
   assert.doesNotMatch(digestPipelineVisibilityToggle, /AI Digest archive/);
   assert.doesNotMatch(digestPipelineVisibilityToggle, /Unable to update AI Digest sharing|Unable to update digest pipeline sharing/);
-  assert.doesNotMatch(digestPipelineVisibilityToggle, /aria-pressed/);
+  assert.doesNotMatch(digestPipelineVisibilityToggle, /className="hub-share-button"/);
   assert.match(dashboardPage, /displayDigestPipelineTitle\(ownPipelineShare\?\.title \?\? "AI Digest"\)/);
   assert.match(dashboardPage, /function displayDigestTitle\(title: string\)[\s\S]*return displayDigestPipelineTitle\(title\)/);
   assert.match(dashboardPage, /ownerLabel: "Your AI Digest collection"/);
@@ -4323,8 +4330,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /<OriginalSourceAction/);
   assert.match(postCard, /post-raw-content-action/);
   assert.match(postCard, /aria-label=\{actionLabel\("Read", actionContext\)\}/);
-  assert.match(postCard, /className="post-raw-content-action post-read-action"/);
-  assert.match(postCard, /<span className="sr-only">Read<\/span>/);
+  assert.match(postCard, /className="post-inline-action post-inline-action--label post-raw-content-action post-read-action"/);
+  assert.match(postCard, /<span>Read<\/span>/);
   assert.match(postCard, /aria-label=\{actionLabel\("Post actions", actionContext\)\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*role="group"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
@@ -4399,7 +4406,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);
   assert.equal(existsSync(join(root, "src/components/PostDetailFavoriteControl.tsx")), false);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
-  assert.match(globals, /\.post-source-original\s*{[\s\S]*min-height:\s*2rem/);
+  assert.match(globals, /\.post-inline-action\s*{[\s\S]*min-height:\s*2rem/);
   assert.match(globals, /\.post-source-original \.source-badge\s*{[\s\S]*min-height:\s*0/);
   assert.match(globals, /\.post-detail-summary\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(globals, /\.post-detail-raw\s*{[\s\S]*border-top:\s*1px solid/);
@@ -4407,12 +4414,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-detail-section-label\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.post-detail-section-desc\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.post-action-btn:disabled\s*{[\s\S]*cursor:\s*not-allowed/);
-  assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
+  assert.match(globals, /\.post-inline-action--icon\s*{[\s\S]*min-width:\s*2rem/);
   assert.match(globals, /\.post-favorite-btn\.post-action-btn--active \.post-action-icon\s*{[\s\S]*fill:\s*currentColor/);
   assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
-  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
-  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*min-width:\s*2rem/);
-  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*padding:\s*0\.26rem/);
+  assert.match(globals, /\.post-inline-action\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
+  assert.match(globals, /\.post-inline-action:hover,[\s\S]*\.post-inline-action--active\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.post-inline-action--icon\s*{[\s\S]*padding:\s*0\.26rem/);
   assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
@@ -4585,7 +4592,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(sourceBadge, /aria-hidden=\{decorative \|\| labelSuppressedByDuplicate \? "true" : undefined\}/);
   assert.match(sourceBadge, /aria-label=\{!decorative && !shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(sourceBadge, /className="source-badge-icon"/);
-  assert.match(source("src/components/OriginalSourceAction.tsx"), /className="post-source-original"/);
+  assert.match(source("src/components/OriginalSourceAction.tsx"), /className="post-inline-action post-inline-action--label post-source-original"/);
   assert.match(source("src/components/OriginalSourceAction.tsx"), /<SourceBadge[\s\S]*decorative[\s\S]*showLabel=\{false\}/);
   assert.doesNotMatch(sourceBadge, /h-3\.5 w-3\.5|h-4 w-4/);
   assert.match(globals, /\.source-badge-icon\s*{[\s\S]*height:\s*0\.875rem/);
@@ -4728,7 +4735,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /library-visibility-toggle/);
   assert.match(visibilityToggle, /useId/);
   assert.match(visibilityToggle, /className="hub-share-control"/);
-  assert.match(visibilityToggle, /className="hub-share-button"/);
+  assert.match(visibilityToggle, /aria-pressed=\{isPublic\}/);
+  assert.match(visibilityToggle, /className=\{`fb-stateful-action hub-share-button \$\{isPublic \? "is-on" : "is-off"\}`\}/);
   assert.match(visibilityToggle, /aria-label=\{actionLabel\}/);
   assert.match(visibilityToggle, /aria-describedby=\{disabled \? disabledReasonId : undefined\}/);
   assert.match(visibilityToggle, /className="hub-share-label"/);
@@ -4896,6 +4904,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.hub-card-action-button\.is-imported\s*{/);
   assert.doesNotMatch(globals, /\.hub-card-action-row\s*{/);
   assert.match(globals, /\.hub-share-control\s*{[\s\S]*align-items:\s*flex-end/);
+  assert.match(globals, /\.fb-stateful-action\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.fb-stateful-action\.is-off\s*{[\s\S]*color:\s*var\(--on-accent\)/);
+  assert.match(globals, /\.fb-stateful-action\.is-on\s*{[\s\S]*border-color:\s*var\(--line\)/);
   assert.match(globals, /\.hub-share-button\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.hub-share-button\s*{[\s\S]*border:\s*1px solid/);
   assert.match(globals, /\.hub-share-button\s*{[\s\S]*border-radius:\s*999px/);
@@ -5607,6 +5618,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(builderLibraryList, /builder-library-row-tools/);
   assert.match(builderLibraryList, /className="builder-posts-summary"/);
   assert.match(builderActions, /fb-follow-button/);
+  assert.match(builderActions, /fb-stateful-action fb-follow-button/);
   assert.doesNotMatch(builderActions, /builder-library-follow-toggle/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /fb-btn/);

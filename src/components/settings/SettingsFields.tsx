@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import {
   ORIGINAL_CONTENT_LANGUAGE_LABEL,
   ORIGINAL_CONTENT_LANGUAGE_VALUE,
@@ -337,10 +338,10 @@ export function ChipListField({
                 <button
                   type="button"
                   aria-label={`Remove ${v}`}
-                  className="settings-token-remove"
+                  className="settings-token-remove settings-icon-button"
                   onClick={() => onChange(values.filter((x) => x !== v))}
                 >
-                  ×
+                  <X size={14} strokeWidth={2.4} aria-hidden="true" />
                 </button>
               </span>
             ))
@@ -574,28 +575,28 @@ export function OrderedChoiceField({
                 <button
                   type="button"
                   aria-label={`Move ${labelFor(v)} up`}
-                  className="fb-btn light compact"
+                  className="settings-order-button settings-icon-button"
                   disabled={i === 0}
                   onClick={() => move(i, -1)}
                 >
-                  ↑
+                  <ArrowUp size={14} strokeWidth={2.4} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   aria-label={`Move ${labelFor(v)} down`}
-                  className="fb-btn light compact"
+                  className="settings-order-button settings-icon-button"
                   disabled={i === value.length - 1}
                   onClick={() => move(i, 1)}
                 >
-                  ↓
+                  <ArrowDown size={14} strokeWidth={2.4} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   aria-label={`Remove ${labelFor(v)}`}
-                  className="fb-btn light compact"
+                  className="settings-order-button settings-icon-button"
                   onClick={() => onChange(value.filter((x) => x !== v))}
                 >
-                  ×
+                  <X size={14} strokeWidth={2.4} aria-hidden="true" />
                 </button>
               </li>
             ))}

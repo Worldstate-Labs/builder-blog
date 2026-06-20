@@ -19,7 +19,7 @@ export function PostFavoriteButton({
     <button
       aria-label={accessibleLabel}
       aria-pressed={isFavorite}
-      className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
+      className={`post-inline-action post-inline-action--icon post-action-btn post-favorite-btn${isFavorite ? " post-inline-action--active post-action-btn--active" : ""}`}
       disabled={disabled}
       onClick={onToggle}
       title={accessibleLabel}

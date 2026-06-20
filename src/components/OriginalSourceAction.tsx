@@ -22,7 +22,7 @@ export function OriginalSourceAction({
   return (
     <a
       aria-label={ariaLabel}
-      className="post-source-original"
+      className="post-inline-action post-inline-action--label post-source-original"
       href={href}
       onClick={onClick}
       rel="noreferrer"
