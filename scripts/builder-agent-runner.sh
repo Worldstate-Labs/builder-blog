@@ -1404,12 +1404,13 @@ try {
 NODE
 )"
 
-  # Validate-and-repair loop. In the single-agent path the runtime agent sees
-  # validate-agent-sync errors itself and fixes them before syncing; sharded
-  # workers are forbidden from validating, so the runner closes that loop here:
-  # on failure it hands the exact error list to one repair agent that fixes
-  # ONLY the failing items in the merged payload, then re-validates. Bounded at
-  # 2 rounds so a hopeless payload still fails fast instead of looping.
+  # Validate-and-repair loop. Each sharded worker validates its own slice before
+  # reporting, but the runner must still validate the merged payload because
+  # workers can time out, crash, miss a task, or leave invalid JSON despite the
+  # prompt contract. On failure, the runner hands the exact error list to one
+  # repair agent that fixes ONLY the failing items in the merged payload, then
+  # re-validates. Bounded at 2 rounds so a hopeless payload still fails fast
+  # instead of looping.
   # validate-agent-sync exits non-zero when any task fails validation; capture
   # the exit code (instead of letting set -e abort) so the validation details
   # always land in the job log before we refuse to sync.
@@ -1429,6 +1430,28 @@ NODE
     fi
     if [ "$_repair_round" -ge 2 ]; then
       echo "validate-agent-sync still failing after $_repair_round repair round(s) (exit $_validate_code); not syncing." >&2
+      _failed_payload="$JOB_TMP_DIR/validation-failed-payload.json"
+      _failed_tasks="$JOB_TMP_DIR/validation-failed-tasks.json"
+      node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
+        --tasks "$_result_file" \
+        --tasks-out "$_failed_tasks" \
+        --out "$_failed_payload" \
+        --exclude-task-ids-file "$_checkpoint_synced_ids_file" \
+        --reason "validation_failed" \
+        --message "validate-agent-sync still failing after $_repair_round repair round(s); marking unfinished tasks failed"
+      _failed_stdout="$JOB_TMP_DIR/validation-failed-sync.out"
+      _failed_stderr="$JOB_TMP_DIR/validation-failed-sync.err"
+      set +e
+      node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+        --file "$_failed_payload" \
+        --tasks "$_failed_tasks" > "$_failed_stdout" 2> "$_failed_stderr"
+      _failed_code="$?"
+      set -e
+      [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
+      [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
+      if [ "$_failed_code" -ne 0 ]; then
+        echo "Failed to patch validation-failed outcomes (exit $_failed_code)." >&2
+      fi
       return 65
     fi
     _repair_round=$(( _repair_round + 1 ))

@@ -330,6 +330,7 @@ function BuilderCard({
             >
               <span className="builder-posts-count">
                 <span>{postCountLabel}</span>
+                <ChevronDown aria-hidden="true" className="builder-posts-chevron" />
               </span>
             </button>
           ) : (

@@ -244,7 +244,7 @@ function usage() {
   shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ --out library-agent-sync.json
   split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/
-  fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--reason slice_sync_failed] [--message "..."]
+  fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5]
@@ -1930,6 +1930,11 @@ function singlePostSummaryPrompt(source) {
     languageInstruction,
     "",
     source.commonSummaryRules,
+    "",
+    "Hard validation rules for the output `summary` string:",
+    "- Keep `summary` between 40 and 1200 characters. If it is over 1200 characters, shorten it before writing JSON; otherwise validation fails with `summary_too_long`.",
+    "- Do not duplicate the title; otherwise validation fails with `summary_duplicates_title`.",
+    "- Do not copy the beginning of the source body as the whole summary; otherwise validation fails with `summary_copies_body_prefix`.",
     "",
     `Source-specific rules (${source.label}):`,
     source.body,
@@ -5660,19 +5665,32 @@ async function splitSyncSlices(args) {
 async function failSyncSlice(args) {
   const tasksFile = argValue(args, "--tasks");
   const outFile = argValue(args, "--out");
+  const tasksOutFile = argValue(args, "--tasks-out", null);
+  const excludeTaskIdsFile = argValue(args, "--exclude-task-ids-file", null);
   const reason = argValue(args, "--reason", "slice_sync_failed");
   const message = argValue(args, "--message", "");
   if (!tasksFile) throw new Error("Missing --tasks slice-tasks.json");
   if (!outFile) throw new Error("Missing --out failed-payload.json");
 
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
-  const payload = failedSyncPayloadForTasks(fetchResult, { reason, message });
+  const excluded = await readIdSetFile(excludeTaskIdsFile);
+  const selectedIds = new Set(
+    extractFetchTasks(fetchResult)
+      .map(taskIdForSync)
+      .filter((id) => !excluded.has(id)),
+  );
+  const tasksOut = filterFetchResultToTaskIds(fetchResult, selectedIds);
+  const payload = failedSyncPayloadForTasks(tasksOut, { reason, message });
   await writeFile(outFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  if (tasksOutFile) {
+    await writeFile(tasksOutFile, `${JSON.stringify(tasksOut, null, 2)}\n`, "utf8");
+  }
   console.log(
     JSON.stringify(
       {
         status: "ok",
         out: outFile,
+        ...(tasksOutFile ? { tasksOut: tasksOutFile } : {}),
         taskOutcomes: payload.taskOutcomes.length,
       },
       null,

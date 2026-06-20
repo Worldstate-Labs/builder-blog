@@ -1442,6 +1442,10 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
     assert.match(task.summaryInstructions.prompt, /do not read external prompt files/i);
     assert.match(task.summaryInstructions.prompt, /Summarize exactly one supplied task item/);
     assert.match(task.summaryInstructions.prompt, /Use task\.item\.body as the primary content/);
+    assert.match(task.summaryInstructions.prompt, /Keep `summary` between 40 and 1200 characters/);
+    assert.match(task.summaryInstructions.prompt, /summary_too_long/);
+    assert.match(task.summaryInstructions.prompt, /summary_duplicates_title/);
+    assert.match(task.summaryInstructions.prompt, /summary_copies_body_prefix/);
     assert.match(task.summaryInstructions.prompt, /Source-specific rules \(/);
   }
   assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X\/Twitter\):/);
@@ -2393,17 +2397,21 @@ test("fail-sync-slice marks only non-user-action tasks failed", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-fail-sync-slice-"));
   const tasksFile = join(tmp, "slice-tasks.json");
   const outFile = join(tmp, "failed-payload.json");
+  const tasksOutFile = join(tmp, "failed-tasks.json");
+  const excludeFile = join(tmp, "synced-task-ids.txt");
   await writeFile(
     tasksFile,
     `${JSON.stringify({
       status: "ok",
       fetchTasks: [
+        { id: "already_synced", agentWorkType: "fetch_post", builderSync: { builderId: "b0" } },
         { id: "work", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
         { id: "token", agentWorkType: "x_token_missing", builderSync: { builderId: "b2" } },
       ],
     })}\n`,
     "utf8",
   );
+  await writeFile(excludeFile, "already_synced\n", "utf8");
 
   await execFileAsync(
     process.execPath,
@@ -2414,6 +2422,10 @@ test("fail-sync-slice marks only non-user-action tasks failed", async () => {
       tasksFile,
       "--out",
       outFile,
+      "--tasks-out",
+      tasksOutFile,
+      "--exclude-task-ids-file",
+      excludeFile,
       "--reason",
       "slice_sync_failed",
       "--message",
@@ -2422,6 +2434,7 @@ test("fail-sync-slice marks only non-user-action tasks failed", async () => {
     { cwd: process.cwd() },
   );
   const payload = JSON.parse(await readFile(outFile, "utf8"));
+  const failedTasks = JSON.parse(await readFile(tasksOutFile, "utf8"));
 
   assert.deepEqual(payload.builders, []);
   assert.deepEqual(
@@ -2431,6 +2444,10 @@ test("fail-sync-slice marks only non-user-action tasks failed", async () => {
       outcome.evidence.message,
     ]),
     [["work", "slice_sync_failed", "slice upload failed"]],
+  );
+  assert.deepEqual(
+    failedTasks.fetchTasks.map((task: { id: string }) => task.id),
+    ["work", "token"],
   );
 });
 

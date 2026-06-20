@@ -2191,6 +2191,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /statusBanner\(task, liveTask\)/);
   assert.match(fetchLogPanel, /Waiting for Local Agent/);
   assert.match(fetchLogPanel, /Read has not completed yet, so summary has not started\./);
+  assert.match(fetchLogPanel, /\$\{countNoun\(unfinished, "planned post"\)\} did not finish before sync finished\./);
+  assert.match(fetchLogPanel, /Local Agent stopped before FollowBrief received final sync outcomes\./);
+  assert.doesNotMatch(fetchLogPanel, /stats\.failed \|\| 1/);
   assert.match(fetchLogPanel, /planned[\s\S]*read[\s\S]*summarized[\s\S]*synced/);
   assert.doesNotMatch(fetchLogPanel, /Post tasks/);
   assert.match(fetchLogPanel, /Fetch sources job lifecycle/);
@@ -3578,8 +3581,20 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
     source("src/components/LibraryHubImportForm.tsx"),
     /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
   );
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceAvatar/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-source-list"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-source-row"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-avatar"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-card-main"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-name"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-meta"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-source-link"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-posts-count"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-source-fetched-at"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /postCountLabel = `\$\{formatCount\(postCount\)\} \$\{postCount === 1 \? "post" : "posts"\}`/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceOriginLabel\(value: string\)/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /builder-library-card-actions|BuilderLibraryActions/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-meta/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /group\.postCount|group\.latestFetchedAt/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-meta/);
@@ -3597,8 +3612,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceToggleLabel = formatSourceToggleLabel\(library\.itemCount\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function formatSourceToggleLabel\(sourceCount: number\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /`View \$\{formatCount\(sourceCount\)\} \$\{sourceCount === 1 \? "source" : "sources"\}`/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`View \$\{item\.builder\.name\} source site`\}/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /title="View source site"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Open source site for \$\{item\.builder\.name\}`\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /See more/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /label=\{group\.postCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fetchedPostCount|label=\{library\.itemCount === 1 \? "source" : "sources"\}|label=\{fetchedPostCount === 1 \? "post" : "posts"\}/);
@@ -3734,8 +3748,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon \+ \.fb-hub-source-summary-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.62rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-more\s*{[\s\S]*font-size:\s*var\(--text-role-control-size\)[\s\S]*font-weight:\s*var\(--text-role-value-weight\)[\s\S]*letter-spacing:\s*var\(--text-role-tracking\)/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-summary-item/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
-  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*var\(--source-list-avatar-size\) minmax\(0,\s*1fr\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row \+ \.fb-hub-source-row\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-fetched-at\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{[\s\S]*padding:\s*0\.8rem var\(--hierarchy-inset\) 0/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-type-groups\s*{[\s\S]*padding-inline:\s*var\(--hierarchy-inset-mobile\)/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-preview\s*{/);
@@ -3894,6 +3909,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /target\.closest\([\s\S]*a, button, input, select, textarea, summary, \[role='button'\]/);
   assert.match(builderLibraryList, /className="builder-posts-summary"/);
   assert.match(builderLibraryList, /aria-expanded=\{postsOpen\}/);
+  assert.match(builderLibraryList, /className="builder-posts-chevron"/);
   assert.match(builderLibraryList, /className="builder-library-card-posts"/);
   assert.match(builderLibraryList, /<BuilderFeedItems[\s\S]*isOpen=\{postsOpen\}[\s\S]*listId=\{postsListId\}/);
   assert.match(builderLibraryList, /<div className="builder-library-card-actions">[\s\S]*\{actions\}/);
@@ -5628,6 +5644,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(cssRule(css, ".builder-posts-count"), /border-radius/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*gap:\s*0\.35rem/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*overflow:\s*hidden/);
+  assert.match(css, /\.builder-posts-chevron\s*{[\s\S]*height:\s*0\.875rem[\s\S]*transition:\s*transform 140ms ease/);
+  assert.match(css, /\.builder-posts-summary\[aria-expanded="true"\] \.builder-posts-chevron\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(css, /\.builder-posts-summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(builderPostsSummaryRule, /display:\s*inline-flex/);

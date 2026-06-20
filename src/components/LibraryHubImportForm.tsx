@@ -6,7 +6,6 @@ import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Cou
 import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
-import { SourceBadge } from "@/components/SourceBadge";
 import { UserName } from "@/components/UserName";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
@@ -530,46 +529,65 @@ function HubCard({
             </span>
           </summary>
           <div className="fb-hub-source-type-groups">
-            {sourceGroups.map((group) => (
-              <section className="fb-hub-source-type-group" key={group.sourceType}>
-                <div className="fb-hub-source-type-heading">
-                  <SourceBadge sourceType={group.sourceType} />
-                </div>
-                <ul className="fb-hub-source-list">
-                  {group.items.map((item) => {
-                    const sourceHref = sourceUrlForBuilder(item.builder);
-                    return (
-                      <li
-                        key={item.builderId}
-                        className="fb-hub-source-row"
-                      >
-                        {sourceHref ? (
-                          <a
-                            aria-label={`View ${item.builder.name} source site`}
-                            className="fb-hub-source-name"
-                            href={sourceHref}
-                            rel="noreferrer"
-                            target="_blank"
-                            title="View source site"
-                          >
-                            {item.builder.name}
-                          </a>
-                        ) : (
-                          <span className="fb-hub-source-name">{item.builder.name}</span>
-                        )}
-                        <span className="fb-hub-source-row-meta">
-                          <CountMeta
-                            label={item.builder._count.feedItems === 1 ? "post" : "posts"}
-                            value={item.builder._count.feedItems}
-                          />
-                          <span> · <RelativeTime prefix="fetched " value={item.builder.lastFetchedAt} fallback="not fetched yet" /></span>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
+            <ul className="fb-hub-source-list">
+              {library.items.map((item) => {
+                const sourceHref = sourceUrlForBuilder(item.builder);
+                const sourceLabel = sourceHref ? sourceOriginLabel(sourceHref) : null;
+                const sourceType = sourceTypeForBuilder(item.builder);
+                const postCount = item.builder._count.feedItems;
+                const postCountLabel = `${formatCount(postCount)} ${postCount === 1 ? "post" : "posts"}`;
+                return (
+                  <li
+                    key={item.builderId}
+                    className="fb-hub-source-row"
+                  >
+                    <SourceAvatar
+                      className="builder-library-avatar"
+                      imageSize={40}
+                      source={{
+                        avatarDataUrl: item.builder.avatarDataUrl,
+                        avatarUrl: item.builder.avatarUrl,
+                        fetchUrl: item.builder.fetchUrl,
+                        name: item.builder.name,
+                        sourceType,
+                        sourceUrl: item.builder.sourceUrl,
+                      }}
+                    />
+                    <div className="builder-library-card-main">
+                      <div className="builder-library-info">
+                        <div className="builder-library-info-head">
+                          <div className="builder-library-name">{item.builder.name}</div>
+                        </div>
+                        <div className="builder-library-meta">
+                          {sourceHref && sourceLabel ? (
+                            <a
+                              aria-label={`Open source site for ${item.builder.name}`}
+                              className="builder-library-source-link"
+                              href={sourceHref}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {sourceLabel}
+                            </a>
+                          ) : null}
+                          <span className="builder-posts-count">
+                            <span>{postCountLabel}</span>
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span className="fb-hub-source-fetched-at">
+                            <RelativeTime
+                              prefix="fetched "
+                              value={item.builder.lastFetchedAt}
+                              fallback="not fetched yet"
+                            />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
             {library.itemCount > library.items.length ? (
               <div className="fb-hub-source-overflow">
                 <CountRange>
@@ -660,6 +678,15 @@ function sourceTypeForBuilder(builder: HubLibraryBuilder) {
 
 function sourceUrlForBuilder(builder: HubLibraryBuilder) {
   return builder.sourceUrl ?? builder.fetchUrl;
+}
+
+function sourceOriginLabel(value: string) {
+  try {
+    const url = new URL(value);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return value.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || value;
+  }
 }
 
 function selectSourceSummaryItems(

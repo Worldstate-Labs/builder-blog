@@ -190,6 +190,9 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /worker_shard_timeout/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
+  assert.match(runner, /validation-failed-payload\.json/);
+  assert.match(runner, /--exclude-task-ids-file "\$_checkpoint_synced_ids_file"/);
+  assert.match(runner, /--reason "validation_failed"/);
   assert.match(runner, /still_alive_after_kill/);
   assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);
@@ -508,8 +511,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className=\{`sync-panel-task-banner is-\$\{liveTone\}`\}/);
   assert.match(panel, /Fetch is running\. Stages update as Local Agent reports work\./);
   assert.match(panel, /Completed\. Planned posts were read, summarized, and synced or accounted for\./);
+  assert.match(panel, /\$\{countNoun\(unfinished, "planned post"\)\} did not finish before sync finished\./);
+  assert.match(panel, /Local Agent stopped before FollowBrief received final sync outcomes\./);
   assert.match(panel, /Planned posts recorded; some still lack final sync outcomes\./);
-  assert.doesNotMatch(panel, /Fetch is still running|Stage progress below|explicitly accounted for|Planned posts were recorded, but some still lack a final sync outcome|Run recorded planned posts, but not every post has a final sync outcome yet/);
+  assert.doesNotMatch(panel, /stats\.failed \|\| 1|Fetch is still running|Stage progress below|explicitly accounted for|Planned posts were recorded, but some still lack a final sync outcome|Run recorded planned posts, but not every post has a final sync outcome yet/);
   assert.match(panel, /className="sync-panel-lifecycle"/);
   assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);

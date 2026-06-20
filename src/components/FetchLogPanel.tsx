@@ -1642,6 +1642,7 @@ function fetchRunVerdict({
   stats: FetchRunStats;
 }): { tone: "ok" | "warn" | "fail"; text: string } {
   const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  const unfinished = Math.max(0, stats.planned - accounted);
   if (inflight) {
     return {
       tone: "warn",
@@ -1655,9 +1656,27 @@ function fetchRunVerdict({
     };
   }
   if (stats.failed > 0 || ["Failed", "Stalled", "Timed out"].includes(displayStatus.label)) {
+    if (stats.failed > 0 && unfinished > 0) {
+      return {
+        tone: "fail",
+        text: `${countNoun(stats.failed, "planned post")} failed; ${countNoun(unfinished, "planned post")} did not finish before sync finished.`,
+      };
+    }
+    if (stats.failed > 0) {
+      return {
+        tone: "fail",
+        text: `${countNoun(stats.failed, "planned post")} failed before sync finished.`,
+      };
+    }
+    if (unfinished > 0) {
+      return {
+        tone: "fail",
+        text: `${countNoun(unfinished, "planned post")} did not finish before sync finished.`,
+      };
+    }
     return {
       tone: "fail",
-      text: `${formatCount(stats.failed || 1)} planned ${stats.failed === 1 ? "post" : "posts"} failed before sync finished.`,
+      text: "Local Agent stopped before FollowBrief received final sync outcomes.",
     };
   }
   if (stats.actionNeeded > 0) {
