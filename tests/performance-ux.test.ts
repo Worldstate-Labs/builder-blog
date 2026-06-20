@@ -2237,8 +2237,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-card fb-task"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-summary fb-task-summary"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-chev fb-task-chev"/);
-  assert.match(fetchLogPanel, /className="sync-panel-task-source-type"/);
-  assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-task-source-type"/);
+  assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-source-type"/);
+  assert.doesNotMatch(fetchLogPanel, /\{group\.sourceType\}<\/span>/);
+  assert.match(fetchLogPanel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.read\} read, \$\{stats\.summarized\} summarized, \$\{stats\.synced\} synced`\}/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-task-title"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-builder"/);

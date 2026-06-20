@@ -497,8 +497,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-card fb-task"/);
   assert.match(panel, /className="sync-panel-task-summary fb-task-summary"/);
   assert.match(panel, /className="sync-panel-task-chev fb-task-chev"/);
-  assert.match(panel, /className="sync-panel-task-source-type"/);
-  assert.doesNotMatch(panel, /className="mono sync-panel-task-source-type"/);
+  assert.doesNotMatch(panel, /className="sync-panel-task-source-type"/);
+  assert.doesNotMatch(panel, /\{group\.sourceType\}<\/span>/);
+  assert.match(panel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.read\} read, \$\{stats\.summarized\} summarized, \$\{stats\.synced\} synced`\}/);
   assert.match(panel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-title"/);
   assert.doesNotMatch(panel, /className="sync-panel-task-builder"/);

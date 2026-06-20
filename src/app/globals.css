@@ -7328,11 +7328,6 @@ summary.library-section-summary::after {
   min-width: 0;
 }
 
-.sync-panel-task-source-type {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 .sync-panel-task-source-stat {
   align-items: baseline;
   display: inline-flex;
@@ -7363,10 +7358,6 @@ summary.library-section-summary::after {
   .sync-panel-task-source-meta {
     justify-self: start;
     width: 100%;
-  }
-
-  .sync-panel-task-source-type {
-    flex: 1 1 100%;
   }
 
   .sync-panel-run-list-scroll {
@@ -7459,16 +7450,6 @@ summary.library-section-summary::after {
   flex-shrink: 0;
   height: 0.875rem;
   width: 0.875rem;
-}
-
-.sync-panel-task-source-type {
-  color: var(--muted-strong);
-  flex-shrink: 0;
-  font-size: 0.6875rem;
-  max-width: 11rem;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .sync-panel-task-status-pill,
@@ -7745,10 +7726,6 @@ summary.library-section-summary::after {
   .sync-panel-task-summary {
     align-items: flex-start;
     flex-wrap: wrap;
-  }
-
-  .sync-panel-task-source-type {
-    max-width: calc(100% - 5rem);
   }
 
   .sync-panel-task-title {

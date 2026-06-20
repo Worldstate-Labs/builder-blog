@@ -2256,10 +2256,9 @@ function DetailsBody({
                               <summary className="sync-panel-task-source-summary">
                                 <span className="sync-panel-task-source-name">{group.name}</span>
                                 <span
-                                  aria-label={`${group.sourceType}: ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
+                                  aria-label={`${group.name}: ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
                                   className="mono sync-panel-task-source-meta"
                                 >
-                                  <span className="sync-panel-task-source-type">{group.sourceType}</span>
                                   <span className="sync-panel-task-source-stat">
                                     <strong>{formatCount(stats.planned)}</strong> planned
                                   </span>
