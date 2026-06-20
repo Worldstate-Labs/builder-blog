@@ -397,7 +397,12 @@ function liveTaskWasSummarized(task: FetchTaskProgress): boolean {
   return (typeof task.summaryChars === "number" && task.summaryChars > 0) || status === "summarized" || status === "synced";
 }
 
-function fetchRunStats({
+function isLivePostTask(task: FetchTaskProgress): boolean {
+  const id = String(task.id ?? task.taskId ?? "");
+  return id.startsWith("fetch_post:");
+}
+
+export function fetchRunStats({
   details,
   liveProgress,
   run,
@@ -411,26 +416,44 @@ function fetchRunStats({
   const counters = liveProgress?.counters ?? {};
   const liveTasks = liveProgress?.tasks ?? [];
   const plannedTasks = fetchTasks.filter(isPlannedPostTask);
-  const planned = Math.max(
-    counters.tasksPlanned ?? 0,
-    plannedTasks.length,
-    run?.tasksGenerated ?? 0,
-  );
-  const read = Math.max(
-    plannedTasks.filter(isReadForStats).length,
-    liveTasks.filter(liveTaskWasRead).length,
-    run?.itemsFetched ?? 0,
-  );
-  const summarized = Math.max(
-    plannedTasks.filter(isSummarizedForStats).length,
-    liveTasks.filter(liveTaskWasSummarized).length,
-  );
-  const synced = counters.synced ?? plannedTasks.filter((task) => task.status === "synced").length;
-  const skipped = counters.skipped ?? plannedTasks.filter((task) => task.status === "skipped").length;
-  const failed = counters.failed ?? plannedTasks.filter((task) => task.status === "failed").length;
-  const actionNeeded =
-    counters.actionNeeded ??
-    plannedTasks.filter((task) => task.status === "action_needed" || isBlocked(task)).length;
+  const livePostTasks = liveTasks.filter(isLivePostTask);
+  const hasDetailedPostTasks = plannedTasks.length > 0;
+  const hasLivePostTasks = livePostTasks.length > 0;
+  const planned = hasDetailedPostTasks
+    ? plannedTasks.length
+    : hasLivePostTasks
+    ? livePostTasks.length
+    : Math.max(counters.tasksPlanned ?? 0, run?.tasksGenerated ?? 0);
+  const read = hasDetailedPostTasks
+    ? plannedTasks.filter(isReadForStats).length
+    : hasLivePostTasks
+    ? livePostTasks.filter(liveTaskWasRead).length
+    : Math.max(liveTasks.filter(liveTaskWasRead).length, run?.itemsFetched ?? 0);
+  const summarized = hasDetailedPostTasks
+    ? plannedTasks.filter(isSummarizedForStats).length
+    : hasLivePostTasks
+    ? livePostTasks.filter(liveTaskWasSummarized).length
+    : liveTasks.filter(liveTaskWasSummarized).length;
+  const synced = hasDetailedPostTasks
+    ? plannedTasks.filter((task) => task.status === "synced").length
+    : hasLivePostTasks
+    ? livePostTasks.filter((task) => task.status === "synced").length
+    : counters.synced ?? 0;
+  const skipped = hasDetailedPostTasks
+    ? plannedTasks.filter((task) => task.status === "skipped").length
+    : hasLivePostTasks
+    ? livePostTasks.filter((task) => task.status === "skipped").length
+    : counters.skipped ?? 0;
+  const failed = hasDetailedPostTasks
+    ? plannedTasks.filter((task) => task.status === "failed").length
+    : hasLivePostTasks
+    ? livePostTasks.filter((task) => task.status === "failed").length
+    : counters.failed ?? 0;
+  const actionNeeded = hasDetailedPostTasks
+    ? plannedTasks.filter((task) => task.status === "action_needed" || isBlocked(task)).length
+    : hasLivePostTasks
+    ? livePostTasks.filter((task) => task.status === "action_needed").length
+    : counters.actionNeeded ?? 0;
 
   return {
     sourcesScanned:
@@ -742,7 +765,10 @@ function fetchRunSyncSummary(
       liveProgress,
       run,
     });
-    const planned = Math.max(stats.planned, run.tasksGenerated, run.itemsFetched, stats.synced);
+    const hasDetailedPostTasks = Array.isArray(details.fetchTasks) && details.fetchTasks.filter(isPlannedPostTask).length > 0;
+    const planned = hasDetailedPostTasks
+      ? Math.max(stats.planned, stats.synced)
+      : Math.max(stats.planned, run.tasksGenerated, run.itemsFetched, stats.synced);
     const hasLiveSyncedCounter = typeof liveProgress?.counters?.synced === "number";
     const synced =
       stats.synced > 0 ||
@@ -3046,7 +3072,7 @@ function TaskRow({
               value={
                 <span className="sync-panel-task-muted">
                   {isDiscovery
-                    ? "The Local Agent hasn't expanded this discovery task yet."
+                    ? "The Local Agent hasn't expanded this discovery entry yet."
                     : sumRes.label === "Not reached"
                       ? readDone
                         ? "Summary has not started yet."

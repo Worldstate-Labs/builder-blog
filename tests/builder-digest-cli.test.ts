@@ -2349,6 +2349,101 @@ test("x token action tasks are logged and sharded as user actions", async () => 
   assert.deepEqual(shards.flatMap((shard: { tasks: { id: string }[] }) => shard.tasks.map((task) => task.id)), ["work"]);
 });
 
+test("candidate discovery tasks stay out of fetch log post task details", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "candidate_discovery:product-hunt",
+        type: "candidate_discovery",
+        agentWorkType: "candidate_discovery_fallback",
+        sourceType: "product_hunt_top_products",
+        builderSync: { builderId: "product-hunt" },
+      },
+      {
+        id: "fetch_post:product-hunt:1",
+        type: "fetch_post",
+        agentWorkType: "product_hunt_top_product_report",
+        sourceType: "product_hunt_top_products",
+        contentStatus: "requires_agent",
+        item: { title: "#1 WorkClaw", url: "https://www.producthunt.com/posts/workclaw" },
+      },
+      {
+        id: "fetch_post:product-hunt:2",
+        type: "fetch_post",
+        agentWorkType: "product_hunt_top_product_report",
+        sourceType: "product_hunt_top_products",
+        contentStatus: "requires_agent",
+        item: { title: "#2 Reframe", url: "https://www.producthunt.com/posts/reframe" },
+      },
+    ],
+  };
+
+  const { slimFetchTasks } = cli.summarizeFetchTasksForLog(fetchResult.fetchTasks);
+
+  assert.deepEqual(
+    slimFetchTasks.map((task: { id: string }) => task.id),
+    ["fetch_post:product-hunt:1", "fetch_post:product-hunt:2"],
+  );
+  assert.equal(
+    slimFetchTasks.some((task: { agentWorkType: string }) => task.agentWorkType === "candidate_discovery_fallback"),
+    false,
+  );
+});
+
+test("candidate discovery outcomes do not count as post task progress", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const progress = {
+    version: 1,
+    stage: "syncing",
+    counters: {
+      sourcesTotal: 6,
+      sourcesChecked: 6,
+      tasksPlanned: 0,
+      tasksDone: 0,
+      synced: 0,
+      skipped: 0,
+      failed: 0,
+      actionNeeded: 0,
+    },
+    tasks: [],
+    recentEvents: [],
+    completedTaskIds: [],
+  };
+  const taskIds = [
+    "candidate_discovery:product-hunt",
+    "fetch_post:product-hunt:1",
+    "fetch_post:product-hunt:2",
+    "fetch_post:product-hunt:3",
+  ];
+  const taskOutcomes = taskIds.map((fetchTaskId) => ({
+    fetchTaskId,
+    status: "synced",
+  }));
+
+  cli.applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds);
+
+  assert.deepEqual(progress.counters, {
+    sourcesTotal: 6,
+    sourcesChecked: 6,
+    tasksPlanned: 3,
+    tasksDone: 3,
+    synced: 3,
+    skipped: 0,
+    failed: 0,
+    actionNeeded: 0,
+  });
+  assert.deepEqual(
+    progress.tasks.map((task: { id: string }) => task.id),
+    ["fetch_post:product-hunt:1", "fetch_post:product-hunt:2", "fetch_post:product-hunt:3"],
+  );
+  assert.deepEqual(
+    progress.completedTaskIds,
+    ["fetch_post:product-hunt:1", "fetch_post:product-hunt:2", "fetch_post:product-hunt:3"],
+  );
+});
+
 test("split-sync-slices isolates synced items and outcomes by source", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {

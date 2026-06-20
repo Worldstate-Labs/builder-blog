@@ -4,7 +4,7 @@ pre-pass.
 This is an unattended pre-pass launched by the FollowBrief runner before fetch
 tasks are sharded across parallel workers. Do not ask the user questions.
 
-Complete ONLY the `candidate_discovery_fallback` tasks in the fetch result,
+Complete ONLY the `candidate_discovery_fallback` discovery entries in the fetch result,
 expand them with the CLI, and stop. Do NOT complete normal post fetch tasks,
 do NOT summarize posts, and do NOT run `validate-agent-sync` or
 `sync-builders` — the parallel workers and the runner handle everything after
@@ -22,7 +22,7 @@ TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/libra
 cat "$TMP_DIR/library-fetch-result.json"
 ```
 
-2. Complete the discovery tasks and expand them exactly as specified below.
+2. Complete the discovery entries and expand them exactly as specified below.
 
 {{INCLUDE:fetch-task-discovery TMP_JOB="library-cron"}}
 

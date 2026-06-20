@@ -161,11 +161,12 @@ This command:
   `{ "items": [...] }`;
 - records the fetching tool as the local agent runtime, model, and concrete
   fetcher path, for example `Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (YouTube RSS + captions)`;
-- reports `fetchTasks` for every newly discovered post, plus occasional
-  pre-post candidate discovery fallback tasks for sources whose deterministic
-  candidate discovery failed. Discovery fallback tasks must be expanded with the
-  CLI before syncing; normal post tasks must be synced only after they have both
-  `body` and `summary`. For
+- reports normal post `fetchTasks` for every newly discovered post. In a
+  pre-expansion fetch result, sources whose deterministic candidate discovery
+  failed may include `candidate_discovery_fallback` discovery entries; those
+  entries are not post tasks and must be expanded with the CLI before syncing.
+  Normal post tasks must be synced only after they have both `body` and
+  `summary`. For
   `contentStatus="ready"`, the normal fetcher already produced
   `task.item.body`; copy it and generate only the summary. For
   `contentStatus="requires_agent"`, first obtain real primary content with the

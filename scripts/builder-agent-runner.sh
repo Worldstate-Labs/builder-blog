@@ -1285,7 +1285,7 @@ run_sharded_library() {
   cat "$_result_file"
 
   if grep -q '"candidate_discovery_fallback"' "$_result_file"; then
-    echo "Discovery tasks present; running the discovery agent pre-pass."
+    echo "Discovery entries present; running the discovery agent pre-pass."
     if ! ( if [ "$PINNED_RUNTIME" = "openclaw" ]; then
              OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-discovery' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" | tr -c 'a-zA-Z0-9_.@+-' '_')"
              export OPENCLAW_SESSION_ID
@@ -1293,7 +1293,7 @@ run_sharded_library() {
            PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
            IS_CRON_JOB=1
            run_selected_runtime ); then
-      echo "Discovery pre-pass failed; un-expanded discovery tasks will be reported as failed." >&2
+      echo "Discovery pre-pass failed; un-expanded discovery entries will be left out of post-task sync." >&2
     fi
   fi
 

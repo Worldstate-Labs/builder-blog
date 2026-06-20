@@ -188,6 +188,29 @@ export function isUserActionAgentWorkType(kind) {
   return value.startsWith("user_action_") || value === "x_token_missing" || value === "x_token_invalid";
 }
 
+export function isCandidateDiscoveryAgentWorkType(kind) {
+  return String(kind || "") === "candidate_discovery_fallback";
+}
+
+function isCandidateDiscoveryTaskId(id) {
+  return String(id || "").startsWith("candidate_discovery:");
+}
+
+function isCandidateDiscoveryFetchTask(task) {
+  return (
+    isCandidateDiscoveryAgentWorkType(task?.agentWorkType) ||
+    task?.type === "candidate_discovery" ||
+    isCandidateDiscoveryTaskId(task?.id)
+  );
+}
+
+function isCandidateDiscoveryOutcome(outcome) {
+  return (
+    isCandidateDiscoveryTaskId(outcome?.fetchTaskId) ||
+    isCandidateDiscoveryFetchTask(outcome?.plannedTask)
+  );
+}
+
 export function timedSourceFetchForTest(input, init = {}, fetchImpl = fetch) {
   return timedSourceFetch(input, init, fetchImpl);
 }
@@ -891,8 +914,17 @@ function formatProgressCount(value) {
   return Number.isFinite(n) ? String(Math.max(0, Math.floor(n))) : "0";
 }
 
-function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
+export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
   if (!progress) return;
+  const discoveryOutcomeIds = new Set(
+    (Array.isArray(taskOutcomes) ? taskOutcomes : [])
+      .filter(isCandidateDiscoveryOutcome)
+      .map((outcome) => String(outcome?.fetchTaskId ?? ""))
+      .filter(Boolean),
+  );
+  const postTaskIds = taskIds
+    .map((id) => String(id))
+    .filter((id) => id && !isCandidateDiscoveryTaskId(id) && !discoveryOutcomeIds.has(id));
   const completed = new Set(
     Array.isArray(progress.completedTaskIds)
       ? progress.completedTaskIds.map((id) => String(id)).filter(Boolean)
@@ -902,6 +934,7 @@ function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
   for (const outcome of taskOutcomes) {
     const id = String(outcome?.fetchTaskId ?? "");
     if (!id) continue;
+    if (isCandidateDiscoveryOutcome(outcome)) continue;
     const alreadyCompleted = completed.has(id);
     if (!alreadyCompleted) {
       completed.add(id);
@@ -931,11 +964,10 @@ function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
     });
   }
   const counters = progress.counters ?? {};
-  const tasksPlanned = Math.max(
-    counters.tasksPlanned ?? 0,
-    taskIds.length,
-    completed.size,
-  );
+  const tasksPlanned =
+    postTaskIds.length > 0
+      ? Math.max(postTaskIds.length, completed.size)
+      : Math.max(counters.tasksPlanned ?? 0, completed.size);
   progress.completedTaskIds = [...completed];
   progress.counters = {
     ...counters,
@@ -1113,6 +1145,7 @@ async function fetchPersonal(args) {
         sourceType: sourceTypeIdForBuilder(builder),
         itemsFetched: 0,
         tasksGenerated: 0,
+        discoveryTasksGenerated: 0,
       };
       builderStats.set(builder.id, builderStat);
 
@@ -1148,7 +1181,8 @@ async function fetchPersonal(args) {
               commonSummaryRules,
             });
             fetchTasks.push(task);
-            builderStat.tasksGenerated += 1;
+            if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
+            else builderStat.tasksGenerated += 1;
             continue;
           }
           const filtered = filterFetchedItems(externalItems, {
@@ -1178,7 +1212,8 @@ async function fetchPersonal(args) {
           fetchTaskFromAgentTask(task, builderSync, sources, commonFetchRules, commonSummaryRules),
         );
         fetchTasks.push(...fetchTasksFromAgentTasks);
-        builderStat.tasksGenerated += fetchTasksFromAgentTasks.length;
+        builderStat.tasksGenerated += fetchTasksFromAgentTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
+        builderStat.discoveryTasksGenerated += fetchTasksFromAgentTasks.filter(isCandidateDiscoveryFetchTask).length;
         builders.push({ ...builderSync, items });
         builderStat.itemsFetched += items.length;
         builderStat.sourceType = source.id;
@@ -1200,7 +1235,8 @@ async function fetchPersonal(args) {
           errorCount += 1;
         }
         fetchTasks.push(task);
-        builderStat.tasksGenerated += 1;
+        if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
+        else builderStat.tasksGenerated += 1;
       } finally {
         const checked = (fetchProgress.counters.sourcesChecked ?? 0) + 1;
         const sourceStatus = builderStat.error
@@ -1226,6 +1262,7 @@ async function fetchPersonal(args) {
             status: sourceStatus,
             itemsFetched: builderStat.itemsFetched,
             tasksGenerated: builderStat.tasksGenerated,
+            discoveryTasksGenerated: builderStat.discoveryTasksGenerated,
             error: builderStat.error ?? null,
           },
           event: {
@@ -1233,7 +1270,7 @@ async function fetchPersonal(args) {
             builderId: builderStat.builderId,
             status: sourceStatus,
             reason: builderStat.error ?? builderStat.fallback?.reason ?? null,
-            message: `${builderStat.name}: ${builderStat.itemsFetched} post${builderStat.itemsFetched === 1 ? "" : "s"}, ${builderStat.tasksGenerated} task${builderStat.tasksGenerated === 1 ? "" : "s"}.`,
+            message: sourceProgressMessage(builderStat),
           },
         });
       }
@@ -1247,9 +1284,10 @@ async function fetchPersonal(args) {
     // per item, so totals belong to the final tasks array, not the
     // partial counters above. We keep builderStat per-builder counts
     // separately for the UI's per-builder breakdown.
-    const agentTasks = fetchTasks.filter((task) => task?.contentStatus !== "ready");
+    const postFetchTasks = fetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
+    const agentTasks = postFetchTasks.filter((task) => task?.contentStatus !== "ready");
     itemsFetched = builders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0);
-    tasksGenerated = fetchTasks.length;
+    tasksGenerated = postFetchTasks.length;
     await emitFetchJobProgress(config, fetchProgress, {
       stage: "tasks_planned",
       counters: {
@@ -1364,7 +1402,8 @@ export function summarizeFetchTasksForLog(
   commonFetchRules = DEFAULT_FETCH_GUIDANCE,
   commonSummaryRules = "",
 ) {
-  const slimFetchTasks = fetchTasks.map((task) => {
+  const logFetchTasks = fetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
+  const slimFetchTasks = logFetchTasks.map((task) => {
     const ready = task?.contentStatus === "ready";
     const isUserAction = isUserActionAgentWorkType(task?.agentWorkType);
     // Stage 1: fetch-personal knows the plan and, for `ready` posts, the body
@@ -1391,7 +1430,7 @@ export function summarizeFetchTasksForLog(
     };
   });
   const sourceTypesUsed = new Set();
-  for (const task of fetchTasks) {
+  for (const task of logFetchTasks) {
     if (task?.sourceType) sourceTypesUsed.add(task.sourceType);
   }
   // Emit the *composed* prompt strings — exactly what the agent reads
@@ -1443,6 +1482,18 @@ function sourceFallbackNotice(task, reason) {
     message: `Direct discovery was blocked${status ? ` (HTTP ${status})` : ""}; using Local Agent discovery.`,
     reason,
   };
+}
+
+function sourceProgressMessage(builderStat) {
+  const posts = `${builderStat.itemsFetched} post${builderStat.itemsFetched === 1 ? "" : "s"}`;
+  const tasks = `${builderStat.tasksGenerated} post task${builderStat.tasksGenerated === 1 ? "" : "s"}`;
+  if ((builderStat.discoveryTasksGenerated ?? 0) > 0 && builderStat.tasksGenerated === 0) {
+    return `${builderStat.name}: ${posts}, candidate discovery queued.`;
+  }
+  if ((builderStat.discoveryTasksGenerated ?? 0) > 0) {
+    return `${builderStat.name}: ${posts}, ${tasks}, candidate discovery queued.`;
+  }
+  return `${builderStat.name}: ${posts}, ${tasks}.`;
 }
 
 function buildFetchRunSummary({
@@ -4833,9 +4884,8 @@ async function shardTasks(args) {
       {
         status: "ok",
         shards: shardFiles,
-        // Leftover discovery tasks mean the pre-pass failed or was skipped;
-        // they are excluded from shards and merge-task-results reports them
-        // as failed outcomes so validation still sees a terminal state.
+        // Leftover discovery entries mean the pre-pass failed or was skipped;
+        // they are excluded from post-task worker shards.
         discoveryTasks: discoveryTasks.map((task) => task.id || fetchTaskId(task)),
         userActions: userActionTasks.map((task) => ({
           fetchTaskId: task.id || fetchTaskId(task),
@@ -4933,7 +4983,7 @@ function stampOutcomeWorkerId(outcome, workerId) {
 }
 
 export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) {
-  const planned = extractFetchTasks(fetchResult);
+  const planned = extractFetchTasks(fetchResult).filter((task) => !isCandidateDiscoveryFetchTask(task));
   const taskTypeById = new Map(
     planned.map((task) => [String(task?.id || fetchTaskId(task)), task?.agentWorkType || ""]),
   );
@@ -4999,6 +5049,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     let outcomeCount = 0;
     for (const outcome of shard.payload?.taskOutcomes ?? []) {
       if (!outcome?.fetchTaskId) continue;
+      if (isCandidateDiscoveryOutcome(outcome)) continue;
       const id = String(outcome.fetchTaskId);
       if (accounted.has(id)) continue;
       accounted.add(id);
@@ -5026,8 +5077,8 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     }
   }
 
-  // Terminal-state backstop: every planned task a worker never reported
-  // (worker crash, timeout, missing result file, un-expanded discovery)
+  // Terminal-state backstop: every planned post task a worker never reported
+  // (worker crash, timeout, missing result file)
   // becomes a failed outcome so validate-agent-sync still passes coverage and
   // the fetch log records the loss instead of silently dropping the task.
   let backfilled = 0;
@@ -5040,10 +5091,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       taskOutcomes.push({
         fetchTaskId: id,
         status: "failed",
-        reason:
-          task?.agentWorkType === "candidate_discovery_fallback"
-            ? "discovery_not_expanded"
-            : "worker_missing_result",
+        reason: "worker_missing_result",
         evidence: missingShardEvidence(
           task,
           shardPlanByTaskId.get(id),
@@ -5202,6 +5250,7 @@ function progressFromWorkerProgressEntry(entry, plannedById) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const id = String(payload.fetchTaskId ?? payload.id ?? "");
   if (!id) return null;
+  if (isCandidateDiscoveryTaskId(id)) return null;
   const planned = plannedById.get(id) ?? {};
   return {
     ...planned,
@@ -5226,6 +5275,7 @@ function progressFromWorkerProgressEntry(entry, plannedById) {
 function progressFromCheckpointItem(item, builder, entry, plannedById) {
   const id = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : "";
   if (!id) return null;
+  if (isCandidateDiscoveryTaskId(id)) return null;
   const planned = plannedById.get(id) ?? {};
   const bodyStats = textStats(item?.body);
   const summaryStats = textStats(item?.summary);
@@ -5251,6 +5301,7 @@ function progressFromCheckpointItem(item, builder, entry, plannedById) {
 function progressFromCheckpointOutcome(outcome, entry, plannedById) {
   const id = String(outcome?.fetchTaskId ?? "");
   if (!id) return null;
+  if (isCandidateDiscoveryOutcome(outcome)) return null;
   const planned = plannedById.get(id) ?? {};
   const status = outcome.status ?? "done";
   return {
@@ -5282,7 +5333,9 @@ async function emitCheckpointProgress(args) {
   if (!progress) return;
   const config = await loadConfig();
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
-  const planned = extractFetchTasks(fetchResult).map(plannedTaskSummary);
+  const planned = extractFetchTasks(fetchResult)
+    .filter((task) => !isCandidateDiscoveryFetchTask(task))
+    .map(plannedTaskSummary);
   const plannedById = new Map(planned.map((task) => [task.id, task]));
   const updates = [];
 
@@ -6468,12 +6521,13 @@ async function syncBuilders(args) {
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
   const { plannedTasks, plannedTaskOutcomes, discoveryExpansions } = await readPlannedFetchResult(tasksFile);
+  const plannedPostTasks = plannedTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
   const fetchProgress =
     (await readFetchProgressState()) ??
     createFetchProgressState({
       stage: "syncing",
       counters: {
-        tasksPlanned: plannedTasks.length,
+        tasksPlanned: plannedPostTasks.length,
         tasksDone: 0,
       },
     });
@@ -6494,7 +6548,7 @@ async function syncBuilders(args) {
   await emitFetchJobProgress(config, fetchProgress, {
     stage: "syncing",
     counters: {
-      tasksPlanned: Math.max(fetchProgress.counters.tasksPlanned ?? 0, plannedTasks.length),
+      tasksPlanned: Math.max(fetchProgress.counters.tasksPlanned ?? 0, plannedPostTasks.length),
     },
     current: { task: null },
     event: {
@@ -6869,29 +6923,27 @@ async function patchFetchRunOutcomes(
       : [...new Set([...serverByTaskId.keys(), ...sizesByTaskId.keys(), ...discoveryExpansionById.keys()])];
 
   const taskOutcomes = [];
+  const discoveryProgressEvents = [];
   for (const id of taskIds) {
     const planned = plannedById.get(id);
     const agentOutcome = agentOutcomeById.get(id);
+    const discoveryExpansion = discoveryExpansionById.get(id);
+    if (discoveryExpansion) {
+      discoveryProgressEvents.push({
+        type: "discovery_expanded",
+        taskId: id,
+        status: "synced",
+        message: `Candidate discovery expanded into ${formatProgressCount(discoveryExpansion.fetchTasks ?? 0)} post task${Number(discoveryExpansion.fetchTasks ?? 0) === 1 ? "" : "s"}.`,
+      });
+      continue;
+    }
+    if (isCandidateDiscoveryFetchTask(planned) || isCandidateDiscoveryOutcome(agentOutcome)) continue;
     const plannedTaskPatch = planned
       ? fetchTaskLogPatch(planned, id)
       : agentOutcome?.plannedTask && typeof agentOutcome.plannedTask === "object"
         ? agentOutcome.plannedTask
         : null;
     const work = String(planned?.agentWorkType || "");
-    const discoveryExpansion = discoveryExpansionById.get(id);
-    if (discoveryExpansion) {
-      taskOutcomes.push({
-        fetchTaskId: id,
-        status: "synced",
-        evidence: {
-          discoveryExpanded: true,
-          candidates: discoveryExpansion.candidates ?? null,
-          fetchTasks: discoveryExpansion.fetchTasks ?? null,
-          sourceType: discoveryExpansion.sourceType ?? null,
-        },
-      });
-      continue;
-    }
     // Informational user-action tasks (e.g. x_token_missing) aren't failures.
     if (work === "x_token_missing" || work.startsWith("user_action_")) {
       taskOutcomes.push({
@@ -6944,6 +6996,7 @@ async function patchFetchRunOutcomes(
     });
   }
   if (fetchProgress) {
+    for (const event of discoveryProgressEvents) appendFetchProgressEvent(fetchProgress, event);
     applyFetchProgressTaskOutcomes(fetchProgress, taskOutcomes, taskIds);
   }
   if (taskOutcomes.length === 0) {

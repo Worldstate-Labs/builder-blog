@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildFetchTimeline,
+  fetchRunStats,
   getFetchUpdateStatus,
   type LibraryCronJobStatus,
   type LibraryFetchRunListItem,
@@ -312,4 +313,75 @@ test("fetch timeline status follows the concrete run bound to a scheduled slot",
   assert.equal(entries[0]?.status, "failed");
   assert.equal(entries[0]?.syncSummary, "5/7 saved");
   assert.equal(entries[0]?.run?.id, "run_failed");
+});
+
+test("fetch run stats use detailed post tasks before aggregate run counters", () => {
+  const run: LibraryFetchRunListItem = {
+    id: "run_product_hunt",
+    startedAt: "2026-06-20T13:31:00.000Z",
+    finishedAt: "2026-06-20T13:32:00.000Z",
+    durationMs: 60_000,
+    status: "ok",
+    source: "cron",
+    jobRunId: "runtime-product-hunt",
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 6,
+    itemsFetched: 4,
+    tasksGenerated: 4,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 4 posts from 6 sources",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:1", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80 },
+        { id: "fetch_post:2", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80 },
+        { id: "fetch_post:3", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80 },
+      ],
+    },
+  };
+
+  const stats = fetchRunStats({
+    details: run.details as Parameters<typeof fetchRunStats>[0]["details"],
+    liveProgress: {
+      counters: {
+        sourcesChecked: 6,
+        sourcesTotal: 6,
+        tasksPlanned: 4,
+        synced: 4,
+      },
+    },
+    run,
+  });
+
+  assert.equal(stats.planned, 3);
+  assert.equal(stats.read, 3);
+  assert.equal(stats.summarized, 3);
+  assert.equal(stats.synced, 3);
+});
+
+test("fetch run stats exclude candidate discovery from live post counters", () => {
+  const stats = fetchRunStats({
+    details: {},
+    liveProgress: {
+      counters: {
+        sourcesChecked: 6,
+        sourcesTotal: 6,
+        tasksPlanned: 4,
+        synced: 4,
+      },
+      tasks: [
+        { id: "candidate_discovery:source:product_hunt_top_products", status: "synced", phase: "synced" },
+        { id: "fetch_post:source:one", status: "synced", phase: "synced" },
+        { id: "fetch_post:source:two", status: "synced", phase: "synced" },
+        { id: "fetch_post:source:three", status: "synced", phase: "synced" },
+      ],
+    },
+  });
+
+  assert.equal(stats.planned, 3);
+  assert.equal(stats.read, 3);
+  assert.equal(stats.summarized, 3);
+  assert.equal(stats.synced, 3);
 });

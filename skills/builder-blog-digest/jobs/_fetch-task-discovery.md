@@ -10,10 +10,11 @@
       {{INCLUDE:fetch-task-discovery TMP_JOB="..."}}
 -->
 Fetch task boundary:
-- `fetchTasks` are the only work items. Normal `fetch_post` tasks represent one
-  post that must end as one synced item with both `body` and `summary`.
-- A task with `agentWorkType="candidate_discovery_fallback"` is a pre-post
-  discovery task, not a feed item. Complete all such tasks first by following
+- Normal `fetch_post` entries represent post-level work: one post that must end
+  as one synced item with both `body` and `summary`.
+- An entry with `agentWorkType="candidate_discovery_fallback"` may appear only
+  in the pre-expansion fetch result. It is a pre-post discovery entry, not a
+  post task or feed item. Complete all such entries first by following
   `task.discoveryInstructions.prompt` and writing a strict JSON payload to:
 
 ```text
@@ -40,4 +41,4 @@ mv "$TMP_DIR/library-fetch-expanded.json" "$TMP_DIR/library-fetch-result.json"
 
   Continue this contract against the expanded `library-fetch-result.json`.
   The CLI guarantees the expanded `fetchTasks` array contains only normal
-  post tasks; discovery tasks are not synced directly.
+  post tasks; discovery entries are not synced directly.

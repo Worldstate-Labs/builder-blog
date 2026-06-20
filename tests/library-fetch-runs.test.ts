@@ -156,11 +156,12 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /agentWorkType === "fetch_builder_fallback"/);
   assert.match(cli, /Initial source scan stopped; Local Agent fallback was queued\./);
   assert.match(cli, /else \{[\s\S]*builderStat\.error = message;[\s\S]*errorCount \+= 1;/);
-  // Expanded candidate discovery is reconciled back onto the original
-  // discovery task, otherwise the initial fetch-log row stays pending forever.
+  // Expanded candidate discovery is a pre-post event, not a post task outcome
+  // patched into details.fetchTasks.
   assert.match(cli, /discoveryExpansions/);
   assert.match(cli, /discoveryExpansionById/);
-  assert.match(cli, /discoveryExpanded: true/);
+  assert.match(cli, /discovery_expanded/);
+  assert.doesNotMatch(cli, /discoveryExpanded: true/);
 });
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
@@ -381,7 +382,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /\.slice\(-CRON_SLOT_LIMIT\)/);
   assert.match(panel, /function formatRunSyncSummary\(done: number \| undefined, total: number \| undefined\): string/);
   assert.match(panel, /return `\$\{formatCount\(synced\)\}\/\$\{formatCount\(planned\)\} saved`/);
-  assert.match(panel, /const planned = Math\.max\(stats\.planned, run\.tasksGenerated, run\.itemsFetched, stats\.synced\)/);
+  assert.match(panel, /const hasDetailedPostTasks = Array\.isArray\(details\.fetchTasks\) && details\.fetchTasks\.filter\(isPlannedPostTask\)\.length > 0/);
+  assert.match(panel, /\? Math\.max\(stats\.planned, stats\.synced\)[\s\S]*: Math\.max\(stats\.planned, run\.tasksGenerated, run\.itemsFetched, stats\.synced\)/);
   assert.doesNotMatch(panel, /if \(planned <= 0 && synced <= 0\) return null/);
   assert.doesNotMatch(panel, /cronSlotRunNote/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);

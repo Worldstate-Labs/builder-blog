@@ -2183,7 +2183,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /function fetchRunDisplaySummary/);
   assert.match(fetchLogPanel, /const stats = fetchRunStats\(\{ details, liveProgress, run \}\)/);
   assert.match(fetchLogPanel, /const displaySummary = fetchRunDisplaySummary\(run, stats, liveProgress\)/);
-  assert.match(fetchLogPanel, /const planned = Math\.max\([\s\S]*counters\.tasksPlanned \?\? 0,[\s\S]*plannedTasks\.length,[\s\S]*run\?\.tasksGenerated \?\? 0,[\s\S]*\)/);
+  assert.match(fetchLogPanel, /const hasDetailedPostTasks = plannedTasks\.length > 0/);
+  assert.match(fetchLogPanel, /hasDetailedPostTasks[\s\S]*\? plannedTasks\.length[\s\S]*: Math\.max\(counters\.tasksPlanned \?\? 0, run\?\.tasksGenerated \?\? 0\)/);
   assert.match(fetchLogPanel, /outcome: ratioText\(stats\.read, stats\.planned, "post"\)/);
   assert.match(fetchLogPanel, /outcome: ratioText\(stats\.planned, stats\.planned, "post"\)/);
   assert.match(fetchLogPanel, /Action needed/);
