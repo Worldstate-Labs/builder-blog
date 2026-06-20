@@ -769,6 +769,7 @@ details:not([open]) > :not(summary) {
 }
 
 .fb-user-name.user-menu-name {
+  font-size: 0.8125rem;
   justify-self: start;
   max-width: 100%;
 }
@@ -9768,41 +9769,23 @@ a.builder-library-name:hover {
 }
 
 .fb-user-name {
-  align-items: center;
-  background: color-mix(in oklch, var(--accent) 7%, transparent);
-  border: 1px solid color-mix(in oklch, var(--accent) 16%, var(--line));
-  border-radius: 999px;
-  color: color-mix(in oklch, var(--accent) 54%, var(--ink));
-  display: inline-flex;
-  font-size: 0.71875rem;
-  font-weight: var(--text-role-value-weight);
-  gap: 0.3rem;
-  line-height: 1.2;
+  color: var(--ink);
+  display: inline-block;
+  font-family: var(--font-geist-mono);
+  font-size: 0.92em;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: inherit;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  padding: 0.125rem 0.45rem;
   text-overflow: ellipsis;
   vertical-align: baseline;
   white-space: nowrap;
 }
 
-.fb-user-name::before {
-  background: color-mix(in oklch, var(--accent) 58%, var(--paper));
-  border-radius: 999px;
-  content: "";
-  flex: 0 0 auto;
-  height: 0.36rem;
-  width: 0.36rem;
-}
-
 .fb-user-name > * {
   min-width: 0;
-}
-
-.fb-hub-card-byline .fb-user-name,
-.library-section-copy .fb-user-name {
-  margin-left: 0.25rem;
 }
 
 .fb-hub-card-desc {
@@ -9913,6 +9896,20 @@ a.builder-library-name:hover {
 
 .fb-hub-source-row + .fb-hub-source-row {
   border-top: 1px solid var(--line);
+}
+
+.fb-hub-source-row:hover,
+.fb-hub-source-row:focus-within {
+  background: color-mix(in oklch, var(--rail) 26%, transparent);
+}
+
+.fb-hub-source-row[data-expandable="true"] {
+  cursor: pointer;
+}
+
+.fb-hub-source-row[data-expandable="true"] a,
+.fb-hub-source-row[data-expandable="true"] button {
+  cursor: pointer;
 }
 
 .fb-hub-source-fetched-at {

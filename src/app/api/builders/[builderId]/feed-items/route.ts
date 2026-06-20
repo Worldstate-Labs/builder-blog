@@ -15,8 +15,11 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const { builderId } = await params;
-  const poolBuilderIds = await activePoolBuilderIds(session.user.id);
-  if (!poolBuilderIds.includes(builderId)) {
+  const hasAccess = await canReadBuilderFeedItems({
+    builderId,
+    userId: session.user.id,
+  });
+  if (!hasAccess) {
     return NextResponse.json({ error: "Source is not in your source library." }, { status: 404 });
   }
 
@@ -69,4 +72,21 @@ export async function GET(_request: Request, { params }: Params) {
       { status: 500 },
     );
   }
+}
+
+async function canReadBuilderFeedItems({
+  builderId,
+  userId,
+}: {
+  builderId: string;
+  userId: string;
+}) {
+  const poolBuilderIds = await activePoolBuilderIds(userId);
+  if (poolBuilderIds.includes(builderId)) return true;
+
+  const hubItem = await prisma.libraryHubItem.findFirst({
+    where: { builderId },
+    select: { builderId: true },
+  });
+  return Boolean(hubItem);
 }

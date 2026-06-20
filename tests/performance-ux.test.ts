@@ -3562,7 +3562,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.owned\) return "Your source library"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.isCommunity\) return "Curated by FollowBrief"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Your Library"|return "By Community"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<>By <UserName>\{sourceLibraryOwnerName\(library\.ownerLabel\)\}<\/UserName><\/>/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<>by <UserName>\{sourceLibraryOwnerName\(library\.ownerLabel\)\}<\/UserName><\/>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /import \{ UserName \} from "@\/components\/UserName"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-card-kicker|fb-hub-card-topic|kindBadge\(library\)|topicLabel\(library\)/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your private source library\.|return "private"|return "Personal"/);
@@ -3582,15 +3582,25 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
     /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
   );
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /BuilderFeedItems/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceAvatar/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function HubSourceRow/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /const postsListId = useId\(\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /const \[postsOpen, setPostsOpen\] = useState\(false\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-source-list"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-source-row"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /data-expandable=\{hasPosts \? "true" : undefined\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-avatar"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-card-main"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-name"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-meta"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-source-link"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-posts-summary"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-posts-count"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-posts-chevron"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="builder-library-card-posts"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<BuilderFeedItems[\s\S]*builder=\{builder\}[\s\S]*isOpen=\{postsOpen\}[\s\S]*listId=\{postsListId\}/);
+  assert.match(source("src/app/(workspace)/library-hub/page.tsx"), /entityId:\s*true/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-source-fetched-at"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /postCountLabel = `\$\{formatCount\(postCount\)\} \$\{postCount === 1 \? "post" : "posts"\}`/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceOriginLabel\(value: string\)/);
@@ -3612,7 +3622,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceToggleLabel = formatSourceToggleLabel\(library\.itemCount\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function formatSourceToggleLabel\(sourceCount: number\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /`View \$\{formatCount\(sourceCount\)\} \$\{sourceCount === 1 \? "source" : "sources"\}`/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Open source site for \$\{item\.builder\.name\}`\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Open source site for \$\{builder\.name\}`\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /See more/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /label=\{group\.postCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fetchedPostCount|label=\{library\.itemCount === 1 \? "source" : "sources"\}|label=\{fetchedPostCount === 1 \? "post" : "posts"\}/);
@@ -3750,6 +3760,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-summary-item/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*var\(--source-list-avatar-size\) minmax\(0,\s*1fr\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row \+ \.fb-hub-source-row\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\[data-expandable="true"\]\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-fetched-at\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{[\s\S]*padding:\s*0\.8rem var\(--hierarchy-inset\) 0/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-type-groups\s*{[\s\S]*padding-inline:\s*var\(--hierarchy-inset-mobile\)/);
@@ -4554,6 +4565,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-detail-loading-source-mark,[\s\S]*animation:\s*none/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
+  assert.match(feedItemsRoute, /canReadBuilderFeedItems/);
+  assert.match(feedItemsRoute, /prisma\.libraryHubItem\.findFirst/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
   assert.match(feedItemsRoute, /Could not load summarized posts\./);
   assert.doesNotMatch(feedItemsRoute, /Failed to load summarized posts/);
@@ -4878,6 +4891,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubPage, /lg:grid-cols-2/);
   assert.match(hubPage, /digestPipelineShare\.findMany/);
   assert.match(hubPage, /digestPipelineImport\.findMany/);
+  assert.match(hubPage, /visibleDigestPipelineShares = digestPipelineShares\.filter/);
+  assert.match(hubPage, /metadata\.digestCount > 0/);
+  assert.match(hubPage, /recordDigestPipelineHubViews\(\s*visibleDigestPipelineShares/);
+  assert.doesNotMatch(hubPage, /recordDigestPipelineHubViews\(\s*digestPipelineShares/);
   assert.match(hubPage, /Number\(b\.owned\) - Number\(a\.owned\)/);
   assert.match(hubPage, /adminCommunityLibraryName/);
   assert.match(source("src/lib/library-hub.ts"), /adminCommunityLibraryName = "Community source library"/);
@@ -5119,9 +5136,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /propImportedIds/);
   assert.match(digestPipelineForm, /importedPipelines = sharedPipelines\.filter/);
   assert.match(digestPipelineForm, /visiblePipelines = mode === "imported" \? importedPipelines : sharedPipelines/);
-  assert.match(digestPipelineForm, /CountRange/);
-  assert.match(digestPipelineForm, /formatCount\(visiblePipelines\.length\)/);
-  assert.match(digestPipelineForm, /className="hub-list-count-row at-desktop"/);
+  assert.doesNotMatch(digestPipelineForm, /CountRange/);
+  assert.doesNotMatch(digestPipelineForm, /formatCount\(visiblePipelines\.length\)/);
+  assert.doesNotMatch(digestPipelineForm, /className="hub-list-count-row at-desktop"/);
   assert.match(digestPipelineForm, /visiblePipelines\.map/);
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);

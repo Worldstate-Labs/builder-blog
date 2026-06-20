@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type MouseEvent,
+} from "react";
 import { CheckCircle2, ChevronDown, Download } from "lucide-react";
+import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
@@ -14,6 +23,7 @@ const sourceLibraryImportDescription =
 
 type HubLibraryBuilder = {
   id: string;
+  entityId: string | null;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
   name: string;
@@ -525,61 +535,7 @@ function HubCard({
           <div className="fb-hub-source-type-groups">
             <ul className="fb-hub-source-list">
               {library.items.map((item) => {
-                const sourceHref = sourceUrlForBuilder(item.builder);
-                const sourceLabel = sourceHref ? sourceOriginLabel(sourceHref) : null;
-                const sourceType = sourceTypeForBuilder(item.builder);
-                const postCount = item.builder._count.feedItems;
-                const postCountLabel = `${formatCount(postCount)} ${postCount === 1 ? "post" : "posts"}`;
-                return (
-                  <li
-                    key={item.builderId}
-                    className="fb-hub-source-row"
-                  >
-                    <SourceAvatar
-                      className="builder-library-avatar"
-                      imageSize={40}
-                      source={{
-                        avatarDataUrl: item.builder.avatarDataUrl,
-                        avatarUrl: item.builder.avatarUrl,
-                        fetchUrl: item.builder.fetchUrl,
-                        name: item.builder.name,
-                        sourceType,
-                        sourceUrl: item.builder.sourceUrl,
-                      }}
-                    />
-                    <div className="builder-library-card-main">
-                      <div className="builder-library-info">
-                        <div className="builder-library-info-head">
-                          <div className="builder-library-name">{item.builder.name}</div>
-                        </div>
-                        <div className="builder-library-meta">
-                          {sourceHref && sourceLabel ? (
-                            <a
-                              aria-label={`Open source site for ${item.builder.name}`}
-                              className="builder-library-source-link"
-                              href={sourceHref}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              {sourceLabel}
-                            </a>
-                          ) : null}
-                          <span className="builder-posts-count">
-                            <span>{postCountLabel}</span>
-                          </span>
-                          <span aria-hidden="true">·</span>
-                          <span className="fb-hub-source-fetched-at">
-                            <RelativeTime
-                              prefix="fetched "
-                              value={item.builder.lastFetchedAt}
-                              fallback="not fetched yet"
-                            />
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                );
+                return <HubSourceRow item={item} key={item.builderId} />;
               })}
             </ul>
             {library.itemCount > library.items.length ? (
@@ -602,6 +558,121 @@ function HubCard({
       </div>
     </article>
   );
+}
+
+function HubSourceRow({
+  item,
+}: {
+  item: HubLibrary["items"][number];
+}) {
+  const postsListId = useId();
+  const [postsOpen, setPostsOpen] = useState(false);
+  const builder = item.builder;
+  const sourceHref = sourceUrlForBuilder(builder);
+  const sourceLabel = sourceHref ? sourceOriginLabel(sourceHref) : null;
+  const sourceType = sourceTypeForBuilder(builder);
+  const postCount = builder._count.feedItems;
+  const hasPosts = postCount > 0;
+  const postCountLabel = `${formatCount(postCount)} ${postCount === 1 ? "post" : "posts"}`;
+  const postsSummaryLabel = `${builder.name} posts, ${postCountLabel}`;
+
+  function togglePosts() {
+    if (!hasPosts) return;
+    setPostsOpen((current) => !current);
+  }
+
+  function onRowClick(event: MouseEvent<HTMLLIElement>) {
+    if (!hasPosts || shouldIgnoreSourceToggleTarget(event.target, event.currentTarget)) return;
+    togglePosts();
+  }
+
+  return (
+    <li
+      className="fb-hub-source-row"
+      data-expandable={hasPosts ? "true" : undefined}
+      onClick={onRowClick}
+    >
+      <SourceAvatar
+        className="builder-library-avatar"
+        imageSize={40}
+        source={{
+          avatarDataUrl: builder.avatarDataUrl,
+          avatarUrl: builder.avatarUrl,
+          fetchUrl: builder.fetchUrl,
+          name: builder.name,
+          sourceType,
+          sourceUrl: builder.sourceUrl,
+        }}
+      />
+      <div className="builder-library-card-main">
+        <div className="builder-library-info">
+          <div className="builder-library-info-head">
+            <div className="builder-library-name">{builder.name}</div>
+          </div>
+          <div className="builder-library-meta">
+            {sourceHref && sourceLabel ? (
+              <a
+                aria-label={`Open source site for ${builder.name}`}
+                className="builder-library-source-link"
+                href={sourceHref}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {sourceLabel}
+              </a>
+            ) : null}
+            {hasPosts ? (
+              <button
+                aria-controls={postsListId}
+                aria-expanded={postsOpen}
+                aria-label={postsSummaryLabel}
+                className="builder-posts-summary"
+                onClick={togglePosts}
+                type="button"
+              >
+                <span className="builder-posts-count">
+                  <span>{postCountLabel}</span>
+                  <ChevronDown aria-hidden="true" className="builder-posts-chevron" />
+                </span>
+              </button>
+            ) : (
+              <span className="builder-library-posts-placeholder">
+                No summarized posts yet
+              </span>
+            )}
+            <span aria-hidden="true">·</span>
+            <span className="fb-hub-source-fetched-at">
+              <RelativeTime
+                prefix="fetched "
+                value={builder.lastFetchedAt}
+                fallback="not fetched yet"
+              />
+            </span>
+          </div>
+        </div>
+      </div>
+      {hasPosts ? (
+        <div className="builder-library-card-posts">
+          <BuilderFeedItems
+            builder={builder}
+            builderId={builder.id}
+            isOpen={postsOpen}
+            listId={postsListId}
+            totalCount={postCount}
+          />
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+function shouldIgnoreSourceToggleTarget(target: EventTarget, currentTarget: HTMLElement) {
+  if (!(target instanceof Element)) return true;
+  if (target.closest(".builder-library-card-posts")) return true;
+  const interactiveTarget = target.closest(
+    "a, button, input, select, textarea, summary, [role='button'], [data-source-toggle-ignore='true']",
+  );
+  return Boolean(interactiveTarget && interactiveTarget !== currentTarget);
 }
 
 function sourceLibraryListCopy(filter: FilterKey) {
@@ -638,13 +709,14 @@ function sourceLibraryListCopy(filter: FilterKey) {
 function sourceLibraryByline(library: HubLibrary) {
   if (library.owned) return "Your source library";
   if (library.isCommunity) return "Curated by FollowBrief";
-  return <>By <UserName>{sourceLibraryOwnerName(library.ownerLabel)}</UserName></>;
+  return <>by <UserName>{sourceLibraryOwnerName(library.ownerLabel)}</UserName></>;
 }
 
 function sourceLibraryOwnerName(ownerLabel: string) {
   const label = ownerLabel
     .trim()
     .replace(/^Shared by\s+/i, "")
+    .replace(/^By\s+/i, "")
     .replace(/[.。]+$/u, "");
   return label || "a FollowBrief user";
 }

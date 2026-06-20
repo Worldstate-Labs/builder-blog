@@ -45,7 +45,7 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.match(digestHeadlineSummary, />Headlines</);
   assert.doesNotMatch(digestHeadlineSummary, /Latest headlines/);
   assert.match(cssRule(globals, ".digest-headline-item"), /align-items:\s*start/);
-  assert.match(digestPipelineForm, /panel \? null : \(\s*<div className="hub-list-count-row at-desktop">/);
+  assert.doesNotMatch(digestPipelineForm, /className="hub-list-count-row at-desktop"/);
   assert.match(digestPipelineForm, /panel=\{panel\}/);
   assert.doesNotMatch(digestPipelineForm, /digestPipelineCardDescription/);
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card-byline"/);
@@ -62,7 +62,17 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.doesNotMatch(digestPipelineForm, /\$\{formatCount\(pipeline\.digestCount\)\} \$\{issueLabel\}/);
   assert.match(globals, /\.fb-hub-card-stats--with-owner\s*{[\s\S]*gap:\s*0\.5rem 1rem/);
   assert.match(globals, /\.fb-hub-card-owner\s*{[\s\S]*margin-left:\s*auto/);
-  assert.match(globals, /\.fb-user-name\s*{[\s\S]*border-radius:\s*999px/);
+  const userNameRule = globals.match(/(?:^|\n)\.fb-user-name\s*{[^}]*}/)?.[0] ?? "";
+  assert.ok(userNameRule);
+  assert.match(userNameRule, /display:\s*inline-block/);
+  assert.match(userNameRule, /font-family:\s*var\(--font-geist-mono\)/);
+  assert.match(userNameRule, /color:\s*var\(--ink\)/);
+  assert.doesNotMatch(userNameRule, /background:/);
+  assert.doesNotMatch(userNameRule, /border:/);
+  assert.doesNotMatch(userNameRule, /border-radius:/);
+  assert.doesNotMatch(userNameRule, /padding:/);
+  assert.doesNotMatch(userNameRule, /text-decoration:/);
+  assert.doesNotMatch(globals, /\.fb-user-name::before/);
   assert.match(cssRule(globals, ".library-section-summary--static"), /grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(cssRule(globals, ".imported-digest-head"), /grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(cssRule(globals, ".digest-source-management .digest-pipeline-card .fb-hub-card-head"), /flex-wrap:\s*nowrap/);

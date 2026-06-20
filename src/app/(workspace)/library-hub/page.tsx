@@ -122,6 +122,7 @@ async function loadSourceLibraryHubPageData() {
             builder: {
               select: {
                 id: true,
+                entityId: true,
                 kind: true,
                 sourceType: true,
                 name: true,
@@ -207,19 +208,24 @@ async function loadDigestPipelineHubPageData() {
       select: { pipelineId: true },
     }),
   ]);
-  await recordDigestPipelineHubViews(
-    digestPipelineShares
-      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
-      .map((pipeline) => pipeline.id),
-  );
-
   const importedDigestPipelineIds = new Set(
     digestPipelineImports.map((item) => item.pipelineId),
   );
   const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds(
     digestPipelineShares.map((pipeline) => pipeline.ownerUserId),
   );
-  const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
+  const visibleDigestPipelineShares = digestPipelineShares.filter((pipeline) => {
+    const metadata =
+      digestMetadataByOwnerId.get(pipeline.ownerUserId) ?? emptyDigestPipelineMetadata();
+    return metadata.digestCount > 0;
+  });
+  await recordDigestPipelineHubViews(
+    visibleDigestPipelineShares
+      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
+      .map((pipeline) => pipeline.id),
+  );
+
+  const hubDigestPipelines: HubDigestPipeline[] = visibleDigestPipelineShares
     .map((pipeline) => {
       const owned = pipeline.ownerUserId === session.user.id;
       const owner = pipeline.owner;
