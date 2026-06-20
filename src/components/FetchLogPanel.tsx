@@ -610,6 +610,17 @@ function buildCronStatus(
     }
     cursor = addScheduleInterval(cursor, cronJob, -1);
   }
+  const nextExpectedMs = nextExpected.getTime();
+  const expectedTimes = new Set(expected.map((date) => date.getTime()));
+  if (
+    Number.isFinite(firstExpectedMs) &&
+    Number.isFinite(nextExpectedMs) &&
+    nextExpectedMs >= firstExpectedMs &&
+    nextExpectedMs > nowMs &&
+    !expectedTimes.has(nextExpectedMs)
+  ) {
+    expected.push(nextExpected);
+  }
 
   const slots = expected.map((expectedAt) => {
     const windowEnd = addScheduleInterval(expectedAt, cronJob);
@@ -719,6 +730,14 @@ function fetchRunSyncSummary(
   return formatRunSyncSummary(liveProgress?.counters?.synced, liveProgress?.counters?.tasksPlanned);
 }
 
+function timelineSlotSyncSummary(
+  run: LibraryFetchRunListItem | null,
+  jobRun: AgentJobRunListItem | null,
+): string | null {
+  if (!run && !jobRun) return null;
+  return fetchRunSyncSummary(run, jobRun);
+}
+
 function buildFetchTimeline({
   jobRuns,
   runs,
@@ -745,7 +764,7 @@ function buildFetchTimeline({
       status: slot.status,
       label: triggerLabel,
       note: timelineSlotRunNote(slot, run),
-      syncSummary: fetchRunSyncSummary(run, slot.jobRun),
+      syncSummary: timelineSlotSyncSummary(run, slot.jobRun),
       run,
       jobRun: slot.jobRun,
       slot,
@@ -1146,7 +1165,8 @@ export function getFetchUpdateStatus(
     };
   }
 
-  const latestSlot = slots.at(-1) ?? null;
+  const latestDueSlot = slots.slice().reverse().find((slot) => Date.parse(slot.expectedAt) <= Date.now()) ?? null;
+  const latestSlot = latestDueSlot ?? null;
   if (latestSlot?.status === "running") {
     return {
       key: "syncing",

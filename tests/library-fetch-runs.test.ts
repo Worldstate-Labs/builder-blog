@@ -313,6 +313,12 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /The current scheduled Fetch sources run is still in progress/);
   assert.match(panel, /latestSlot\?\.status === "stalled"/);
   assert.match(panel, /FollowBrief lost contact with the latest scheduled Fetch sources run/);
+  assert.match(panel, /const nextExpectedMs = nextExpected\.getTime\(\)/);
+  assert.match(panel, /nextExpectedMs > nowMs/);
+  assert.match(panel, /expected\.push\(nextExpected\)/);
+  assert.match(panel, /function timelineSlotSyncSummary/);
+  assert.match(panel, /if \(!run && !jobRun\) return null/);
+  assert.match(panel, /const latestDueSlot = slots\.slice\(\)\.reverse\(\)\.find\(\(slot\) => Date\.parse\(slot\.expectedAt\) <= Date\.now\(\)\) \?\? null/);
   assert.doesNotMatch(panel, /sync-panel-status-graph/);
   assert.doesNotMatch(panel, /sync-panel-slot-bar/);
   assert.doesNotMatch(panel, /FetchTimelineBar/);
@@ -331,6 +337,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /function timelineSlotRun/);
   assert.match(panel, /function timelineSlotLogRef/);
   assert.match(panel, /function timelineSlotRunNote/);
+  assert.match(panel, /function timelineSlotSyncSummary/);
   assert.match(panel, /const run = timelineSlotRun\(slot\)/);
   assert.match(panel, /const logRef = timelineSlotLogRef\(slot, run\)/);
   assert.match(panel, /if \(run\) matchedRunIds\.add\(run\.id\)/);
