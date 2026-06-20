@@ -4650,7 +4650,13 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestSourceLinks, /sourceType:\s*builder\.sourceType/);
   assert.match(digestSourceLinks, /prisma\.digestedItem\.findMany/);
   assert.match(digestSourceLinks, /digestId/);
+  assert.doesNotMatch(digestSourceLinks, /feedItemId:\s*\{\s*not:\s*null\s*\}/);
   assert.match(digestRoute, /sourceEntityIdsForDigestPosts/);
+  assert.match(digestRoute, /sourceIdentitiesForDigestPosts/);
+  assert.match(digestRoute, /matchDigestPostsToSourceIdentities/);
+  assert.match(digestRoute, /digestPostExternalIdCandidates/);
+  assert.match(digestRoute, /youtubeVideoId/);
+  assert.match(digestRoute, /matches:\s*matchedSourceIdentities/);
   assert.match(digestRoute, /sourceEntityIdsByPostKey/);
   assert.match(dashboardPage, /digestSourceLinksForUser\(digestOwnerUserId,\s*selectedDigest\?\.id\)/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);

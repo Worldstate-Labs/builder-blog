@@ -19,6 +19,16 @@ type DigestFeedItem = {
   builder: { entityId: string | null; name: string } | null;
   createdAt: Date;
 };
+type DigestSourceIdentity = {
+  entityId: string;
+  externalId: string;
+  kind: FeedItemKind;
+  sourceName: string | null;
+  title: string | null;
+  url: string | null;
+  builderName: string | null;
+  entityName: string | null;
+};
 
 export async function GET(_request: Request, { params }: Params) {
   const session = await getCurrentSession();
@@ -65,6 +75,8 @@ export async function GET(_request: Request, { params }: Params) {
     userId: session.user.id,
   });
   const matchedFeedItems = matchDigestPostsToFeedItems(digestPosts, feedItems);
+  const sourceIdentities = await sourceIdentitiesForDigestPosts(digest.id);
+  const matchedSourceIdentities = matchDigestPostsToSourceIdentities(digestPosts, sourceIdentities);
   const favoriteState = await favoriteStateForDigestPosts({
     matches: matchedFeedItems,
     posts: digestPosts,
@@ -75,7 +87,7 @@ export async function GET(_request: Request, { params }: Params) {
     posts: digestPosts,
   });
   const sourceEntityIdsByPostKey = sourceEntityIdsForDigestPosts({
-    matches: matchedFeedItems,
+    matches: matchedSourceIdentities,
     posts: digestPosts,
   });
 
@@ -89,6 +101,45 @@ export async function GET(_request: Request, { params }: Params) {
     originalSummariesByUrl: originalSummaries.byUrl,
     sourceEntityIdsByPostKey,
   });
+}
+
+async function sourceIdentitiesForDigestPosts(digestId: string) {
+  const items = await prisma.digestedItem.findMany({
+    where: { digestId },
+    select: {
+      entityId: true,
+      externalId: true,
+      kind: true,
+      entity: { select: { name: true } },
+      feedItem: {
+        select: {
+          sourceName: true,
+          title: true,
+          url: true,
+          builder: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { digestedAt: "asc" },
+  });
+
+  return items
+    .map((item): DigestSourceIdentity | null => {
+      const entityId = item.entityId.trim();
+      const externalId = item.externalId.trim();
+      if (!entityId || !externalId) return null;
+      return {
+        builderName: item.feedItem?.builder?.name ?? null,
+        entityId,
+        entityName: item.entity.name,
+        externalId,
+        kind: item.kind,
+        sourceName: item.feedItem?.sourceName ?? null,
+        title: item.feedItem?.title ?? null,
+        url: item.feedItem?.url ?? null,
+      };
+    })
+    .filter((item): item is DigestSourceIdentity => Boolean(item));
 }
 
 async function feedItemsForDigestPosts({
@@ -258,15 +309,67 @@ function sourceEntityIdsForDigestPosts({
   matches,
   posts,
 }: {
-  matches: Map<string, DigestFeedItem>;
+  matches: Map<string, DigestSourceIdentity>;
   posts: DigestPostEntry[];
 }) {
   const byPostKey = new Map<string, string>();
   for (const post of posts) {
-    const entityId = matches.get(post.key)?.builder?.entityId?.trim();
+    const entityId = matches.get(post.key)?.entityId.trim();
     if (entityId) byPostKey.set(post.key, entityId);
   }
   return Object.fromEntries(byPostKey);
+}
+
+function matchDigestPostsToSourceIdentities(posts: DigestPostEntry[], identities: DigestSourceIdentity[]) {
+  const byExternalId = new Map<string, DigestSourceIdentity[]>();
+  const byUrl = new Map<string, DigestSourceIdentity>();
+  const byTitle = new Map<string, DigestSourceIdentity[]>();
+  const byTitleAndSource = new Map<string, DigestSourceIdentity[]>();
+
+  for (const identity of identities) {
+    appendIdentityMatch(byExternalId, identity.externalId, identity);
+    if (identity.url && !byUrl.has(identity.url)) byUrl.set(identity.url, identity);
+
+    const title = digestMatchKey(identity.title);
+    if (!title) continue;
+    appendIdentityMatch(byTitle, title, identity);
+    for (const source of digestSourceIdentitySources(identity)) {
+      appendIdentityMatch(byTitleAndSource, `${title}:${source}`, identity);
+    }
+  }
+
+  const matches = new Map<string, DigestSourceIdentity>();
+  for (const post of posts) {
+    const urlMatch = byUrl.get(post.url);
+    if (urlMatch) {
+      matches.set(post.key, urlMatch);
+      continue;
+    }
+
+    const externalIdMatch = uniqueSourceIdentity(
+      digestPostExternalIdCandidates(post).flatMap((candidate) => byExternalId.get(candidate) ?? []),
+    );
+    if (externalIdMatch) {
+      matches.set(post.key, externalIdMatch);
+      continue;
+    }
+
+    const title = digestMatchKey(post.title);
+    if (!title) continue;
+
+    const source = digestMatchKey(post.source);
+    const sourceMatches = source ? byTitleAndSource.get(`${title}:${source}`) ?? [] : [];
+    const sourceMatch = uniqueSourceIdentity(sourceMatches);
+    if (sourceMatch) {
+      matches.set(post.key, sourceMatch);
+      continue;
+    }
+
+    const titleMatch = uniqueSourceIdentity(byTitle.get(title) ?? []);
+    if (titleMatch) matches.set(post.key, titleMatch);
+  }
+
+  return matches;
 }
 
 function matchDigestPostsToFeedItems(posts: DigestPostEntry[], feedItems: DigestFeedItem[]) {
@@ -337,6 +440,37 @@ function digestFeedItemSources(item: DigestFeedItem) {
     .filter((value): value is string => Boolean(value));
 }
 
+function digestSourceIdentitySources(item: DigestSourceIdentity) {
+  return [item.sourceName, item.builderName, item.entityName]
+    .map(digestMatchKey)
+    .filter((value): value is string => Boolean(value));
+}
+
+function digestPostExternalIdCandidates(post: DigestPostEntry) {
+  const candidates = new Set<string>();
+  const url = post.url.trim();
+  if (url) candidates.add(url);
+  const youtubeId = youtubeVideoId(url);
+  if (youtubeId) candidates.add(youtubeId);
+  return [...candidates];
+}
+
+function youtubeVideoId(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return parsed.pathname.slice(1).split("/")[0] || null;
+    if (host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com")) {
+      if (parsed.pathname === "/watch") return parsed.searchParams.get("v");
+      const match = parsed.pathname.match(/^\/(embed|shorts|live)\/([^/?#]+)/);
+      return match?.[2] ?? null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function digestMatchKey(value: string | null | undefined) {
   return (value ?? "")
     .normalize("NFKC")
@@ -349,8 +483,19 @@ function appendMatch(matches: Map<string, DigestFeedItem[]>, key: string, item: 
   matches.set(key, [...(matches.get(key) ?? []), item]);
 }
 
+function appendIdentityMatch(matches: Map<string, DigestSourceIdentity[]>, key: string, item: DigestSourceIdentity) {
+  const matchKey = key.trim();
+  if (!matchKey) return;
+  matches.set(matchKey, [...(matches.get(matchKey) ?? []), item]);
+}
+
 function uniqueFeedItem(items: DigestFeedItem[]) {
   const unique = new Map(items.map((item) => [item.id, item]));
+  return unique.size === 1 ? [...unique.values()][0] : null;
+}
+
+function uniqueSourceIdentity(items: DigestSourceIdentity[]) {
+  const unique = new Map(items.map((item) => [`${item.entityId}:${item.kind}:${item.externalId}`, item]));
   return unique.size === 1 ? [...unique.values()][0] : null;
 }
 

@@ -12,6 +12,7 @@ export type DigestSourceLink = {
   sourceType?: string | null;
   fetchUrl?: string | null;
 };
+type DigestSourceBuilder = Awaited<ReturnType<typeof builderRowsForEntities>>[number];
 
 export async function digestSourceLinksForUser(userId: string, digestId?: string | null): Promise<DigestSourceLink[]> {
   const subscriptions = await prisma.subscription.findMany({
@@ -55,18 +56,16 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
       where: {
         userId,
         digestId,
-        feedItemId: { not: null },
-        feedItem: {
-          is: {
-            builder: {
-              is: {
-                entityId: { not: "" },
-              },
-            },
-          },
-        },
       },
       select: {
+        entityId: true,
+        entity: {
+          select: {
+            handle: true,
+            id: true,
+            name: true,
+          },
+        },
         feedItem: {
           select: {
             sourceName: true,
@@ -94,13 +93,16 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
       },
       orderBy: { digestedAt: "asc" },
     });
+    const digestedEntityIds = [...new Set(digestedItems.map((item) => item.entityId.trim()).filter(Boolean))];
+    const buildersByEntityId = await buildersForEntities(digestedEntityIds);
 
     for (const item of digestedItems) {
-      const builder = item.feedItem?.builder;
-      const entity = builder?.entity;
-      const entityId = entity?.id ?? builder?.entityId;
-      if (!builder || !entityId) continue;
-      const aliases = uniqueSourceAliases([builder.name, item.feedItem?.sourceName]);
+      const itemEntityId = item.entityId.trim();
+      const builder = item.feedItem?.builder ?? buildersByEntityId.get(itemEntityId) ?? null;
+      const entity = item.entity ?? builder?.entity;
+      const entityId = entity?.id ?? builder?.entityId ?? itemEntityId;
+      if (!entityId) continue;
+      const aliases = uniqueSourceAliases([builder?.name, item.feedItem?.sourceName, entity?.name]);
       const existing = byEntityId.get(entityId);
       if (existing) {
         existing.aliases = uniqueSourceAliases([...(existing.aliases ?? []), ...aliases]);
@@ -108,19 +110,55 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
       }
       byEntityId.set(entityId, {
         aliases,
-        avatarUrl: builder.avatarUrl,
-        avatarDataUrl: builder.avatarDataUrl,
+        avatarUrl: builder?.avatarUrl ?? null,
+        avatarDataUrl: builder?.avatarDataUrl ?? null,
         entityId,
-        fetchUrl: builder.fetchUrl,
-        handle: entity?.handle ?? builder.handle,
+        fetchUrl: builder?.fetchUrl ?? null,
+        handle: entity?.handle ?? builder?.handle ?? null,
         href: `/builder/${entityId}`,
-        name: entity?.name || builder.name,
-        sourceUrl: builder.sourceUrl,
-        sourceType: builder.sourceType,
+        name: entity?.name || builder?.name || itemEntityId,
+        sourceUrl: builder?.sourceUrl ?? null,
+        sourceType: builder?.sourceType ?? null,
       });
     }
   }
   return [...byEntityId.values()];
+}
+
+async function buildersForEntities(entityIds: string[]) {
+  if (entityIds.length === 0) return new Map<string, DigestSourceBuilder>();
+  const builders = await builderRowsForEntities(entityIds);
+  const byEntityId = new Map<string, DigestSourceBuilder>();
+  for (const builder of builders) {
+    if (!byEntityId.has(builder.entityId)) byEntityId.set(builder.entityId, builder);
+  }
+  return byEntityId;
+}
+
+async function builderRowsForEntities(entityIds: string[]) {
+  return prisma.builder.findMany({
+    where: {
+      entityId: { in: entityIds },
+    },
+    select: {
+      avatarUrl: true,
+      avatarDataUrl: true,
+      entityId: true,
+      fetchUrl: true,
+      handle: true,
+      name: true,
+      sourceType: true,
+      sourceUrl: true,
+      entity: {
+        select: {
+          handle: true,
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: [{ ownerUserId: "asc" }, { updatedAt: "desc" }],
+  });
 }
 
 function uniqueSourceAliases(values: Array<string | null | undefined>) {
