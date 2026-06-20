@@ -1594,12 +1594,6 @@ details:not([open]) > :not(summary) {
   margin-left: auto;
 }
 
-.post-detail-summary,
-.post-detail-raw,
-.post-detail-body {
-  max-width: var(--measure);
-}
-
 .post-detail-summary {
   color: var(--ink);
   font-size: var(--text-base);
@@ -1668,7 +1662,6 @@ details:not([open]) > :not(summary) {
   font-weight: var(--fw-regular);
   line-height: 1.72;
   margin-top: 1.35rem;
-  max-width: var(--measure);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }

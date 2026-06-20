@@ -4499,7 +4499,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-detail-summary\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(cssRule(globals, ".post-detail-summary"), /font-size:\s*var\(--text-base\)/);
   assert.match(cssRule(globals, ".post-detail-summary"), /font-weight:\s*var\(--fw-regular\)/);
-  assert.match(globals, /\.post-detail-summary,[\s\S]*\.post-detail-raw,[\s\S]*\.post-detail-body\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.doesNotMatch(globals, /\.post-detail-summary,[\s\S]*\.post-detail-raw,[\s\S]*\.post-detail-body\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.doesNotMatch(cssRule(globals, ".post-detail-body"), /max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.post-detail-raw\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.post-detail-raw-copy\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.post-detail-section-label\s*{[\s\S]*text-transform:\s*uppercase/);
