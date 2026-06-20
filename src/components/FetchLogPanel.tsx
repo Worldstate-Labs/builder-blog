@@ -696,6 +696,7 @@ function timelineSlotRun(slot: CronSlot): LibraryFetchRunListItem | null {
 }
 
 function timelineSlotLogRef(slot: CronSlot, run: LibraryFetchRunListItem | null): FetchLogRef | null {
+  if (slot.run) return { kind: "run", runId: slot.run.id };
   if (run) return { kind: "run", runId: run.id };
   if (slot.jobRun) return { kind: "job", instanceId: slot.jobRun.instanceId };
   return null;
@@ -762,7 +763,7 @@ function timelineSlotSyncSummary(
   return fetchRunSyncSummary(run, jobRun);
 }
 
-function buildFetchTimeline({
+export function buildFetchTimeline({
   jobRuns,
   runs,
   slots,
@@ -780,6 +781,7 @@ function buildFetchTimeline({
     const run = timelineSlotRun(slot);
     const logRef = timelineSlotLogRef(slot, run);
     if (run) matchedRunIds.add(run.id);
+    if (slot.run) matchedRunIds.add(slot.run.id);
     if (slot.jobRun) matchedJobInstances.add(slot.jobRun.instanceId);
     const triggerLabel = scheduledRunTriggerLabel(slot.jobRun ?? null, "library-cron", run?.source ?? "cron");
     return {
