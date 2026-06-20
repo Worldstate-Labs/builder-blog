@@ -158,6 +158,10 @@ function isStalledDigestJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()):
   return Number.isFinite(heartbeatMs) && nowMs - heartbeatMs > 2 * 60_000;
 }
 
+function hasFailedDigestJob(jobRun?: AgentJobRunListItem | null): boolean {
+  return Boolean(jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status)));
+}
+
 function digestRunSlotStatus(
   run: DigestRunListItem,
   jobRun?: AgentJobRunListItem | null,
@@ -847,6 +851,12 @@ function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
 }
 
 function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem): RunVerdict {
+  if (hasFailedDigestJob(jobRun) && run.status === "synced") {
+    return {
+      tone: "fail",
+      text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} posts, but Local Agent marked the run failed. ${jobRunFailureReason(jobRun!)}`,
+    };
+  }
   if (run.status === "synced" && run.candidateCount === 0) {
     return {
       tone: "ok",
@@ -859,10 +869,10 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem):
       text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} eligible posts to FollowBrief.`,
     };
   }
-  if (jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status))) {
+  if (hasFailedDigestJob(jobRun)) {
     return {
       tone: "fail",
-      text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before saving. ${jobRunFailureReason(jobRun)}`,
+      text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before saving. ${jobRunFailureReason(jobRun!)}`,
     };
   }
   return {
@@ -983,15 +993,17 @@ function DigestLifecycle({
 }) {
   const hasRun = Boolean(run);
   const synced = run?.status === "synced";
-  const failedJob = Boolean(jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status)));
+  const failedJob = hasFailedDigestJob(jobRun);
   const digestSaved = synced && Boolean(run?.digestTitle);
   const emptySyncedRun = Boolean(synced && run?.candidateCount === 0);
   const activeJob = Boolean(jobRun && isActiveDigestJobRun(jobRun));
   const selectedOutcome = run
     ? run.candidateCount === 0
       ? "No new posts"
-      : synced
-        ? `${formatCount(run.includedCount ?? 0)} selected`
+      : failedJob && synced
+        ? `${formatCount(run.includedCount ?? 0)} selected · runtime failed`
+        : synced
+          ? `${formatCount(run.includedCount ?? 0)} selected`
         : activeJob
           ? "Generating"
           : "No save reported"
@@ -1013,7 +1025,7 @@ function DigestLifecycle({
       key: "generate",
       label: "Run Local Agent",
       outcome: selectedOutcome,
-      tone: synced || (run && run.candidateCount === 0) ? "ok" : failedJob ? "fail" : "idle",
+      tone: failedJob ? "fail" : synced || (run && run.candidateCount === 0) ? "ok" : "idle",
     },
     {
       key: "render",
@@ -1056,7 +1068,13 @@ function DigestLifecycle({
   );
 }
 
-function statusChip(run: DigestRunListItem): { label: string; tone: StatusTone } {
+function statusChip(run: DigestRunListItem, jobRun?: AgentJobRunListItem): { label: string; tone: StatusTone } {
+  if (hasFailedDigestJob(jobRun)) {
+    return {
+      label: "Failed",
+      tone: "failed",
+    };
+  }
   if (run.status !== "synced") {
     return {
       label: "Not saved",
@@ -1087,7 +1105,7 @@ function RunCard({
   const hydrated = useHydrated();
   const stampIso = run.syncedAt ?? run.preparedAt;
   const timeLabel = hydrated ? formatRelative(stampIso) : formatAbsolute(stampIso);
-  const chip = statusChip(run);
+  const chip = statusChip(run, jobRun);
 
   const windowLabel = run.lookbackCutoff
     ? `${formatDay(run.lookbackCutoff)} → ${formatDay(run.preparedAt)}`

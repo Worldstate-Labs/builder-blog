@@ -1101,7 +1101,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /digest_output_completed\(\)/);
   assert.match(runner, /Digest job did not produce required artifact/);
-  assert.match(runner, /runtime output did not include a successful web sync/);
+  assert.match(runner, /builder-blog-digest-sync-result\.json/);
+  assert.match(runner, /JSON\.parse\(fs\.readFileSync\(path, "utf8"\)\)/);
+  assert.match(runner, /result\?\.status === "ok"/);
+  assert.match(runner, /result\?\.digest\?\.status === "SYNCED"/);
+  assert.doesNotMatch(runner, /runtime output did not include a successful web sync/);
   assert.match(runner, /"SYNCED"/);
   assert.match(runner, /if \[ "\$_codex_code" -eq 0 \] && ! digest_output_completed "\$_codex_output"/);
   assert.match(runner, /local-agent-timeouts\.json/);
@@ -1319,6 +1323,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronPrompt, /render-digest/);
   assert.match(digestCronExpanded, /headlineSummary/);
   assert.match(digestCronPrompt, /builder-blog-digest-headlines\.txt/);
+  assert.match(digestCronPrompt, /builder-blog-digest-sync-result\.json/);
+  assert.match(digestCronPrompt, /> "\$TMP_DIR\/builder-blog-digest-sync-result\.json"/);
+  assert.match(digestCronPrompt, /cat "\$TMP_DIR\/builder-blog-digest-sync-result\.json"/);
   assert.match(digestCronPrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
   assert.doesNotMatch(digestCronExpanded, /summarize-tweets\.md/);
   assert.doesNotMatch(digestCronExpanded, /context\.prompts/);

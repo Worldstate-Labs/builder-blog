@@ -706,10 +706,14 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /Timed out after \$\{formatCount\(timeoutSeconds\)\} seconds/);
   assert.match(panel, /Local Agent is preparing candidates and saving the AI Digest/);
   assert.match(panel, /Local Agent finished without saving an AI Digest/);
+  assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} posts, but Local Agent marked the run failed/);
   assert.match(panel, /Prepared \$\{formatCount\(run\.candidateCount\)\} candidates\. Local Agent stopped before saving/);
   assert.match(panel, /Waiting for Local Agent to save the AI Digest/);
   assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} eligible posts to FollowBrief/);
   assert.match(panel, /DigestLifecycle/);
+  assert.match(panel, /function hasFailedDigestJob/);
+  assert.match(panel, /statusChip\(run, jobRun\)/);
+  assert.match(panel, /runtime failed/);
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
   assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest|digest build record|The Local Agent is running|Waiting for the Local Agent to save AI Digest|Runtime job did not create/);

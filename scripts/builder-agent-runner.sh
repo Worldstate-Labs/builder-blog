@@ -281,16 +281,37 @@ digest_output_completed() {
     return 1
   fi
 
+  _sync_result="$JOB_TMP_DIR/builder-blog-digest-sync-result.json"
+  if [ -s "$_sync_result" ]; then
+    node - "$_sync_result" <<'NODE'
+const fs = require("fs");
+const path = process.argv[2];
+let result;
+try {
+  result = JSON.parse(fs.readFileSync(path, "utf8"));
+} catch (error) {
+  console.error(`Digest sync result is not valid JSON: ${error.message}`);
+  process.exit(1);
+}
+if (result?.status === "ok" && result?.digest?.status === "SYNCED" && result?.digest?.id) {
+  process.exit(0);
+}
+console.error("Digest sync result did not confirm a synced web digest.");
+process.exit(1);
+NODE
+    return "$?"
+  fi
+
   if [ -n "$_output_file" ] && [ -r "$_output_file" ]; then
     if grep -q '"status"[[:space:]]*:[[:space:]]*"ok"' "$_output_file" && \
        grep -q '"status"[[:space:]]*:[[:space:]]*"SYNCED"' "$_output_file"; then
       return 0
     fi
-    echo "Digest job produced local artifacts, but the runtime output did not include a successful web sync." >&2
+    echo "Digest job produced local artifacts, but no sync result file confirmed web sync." >&2
     return 1
   fi
 
-  echo "Digest job produced local artifacts, but no runtime output file was available to confirm web sync." >&2
+  echo "Digest job produced local artifacts, but no sync result file was available to confirm web sync." >&2
   return 1
 }
 

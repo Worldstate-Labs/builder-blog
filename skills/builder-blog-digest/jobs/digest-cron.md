@@ -54,7 +54,9 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --file "$TMP_DIR/builder-blog-digest.json" \
   --summary-file "$TMP_DIR/builder-blog-digest-headlines.txt" \
   --context "$TMP_DIR/builder-blog-context.json" \
-  --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-}
+  --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
+  > "$TMP_DIR/builder-blog-digest-sync-result.json"
+cat "$TMP_DIR/builder-blog-digest-sync-result.json"
 ```
 
 If the run cannot complete without a missing credential or unsupported local
