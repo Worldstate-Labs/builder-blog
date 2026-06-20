@@ -4902,6 +4902,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.fb-hub-card-stats\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.hub-card-action-button:disabled\s*{[\s\S]*cursor:\s*wait/);
   assert.match(globals, /\.hub-card-action-button\.is-imported\s*{/);
+  const importedActionRule = cssRule(globals, ".hub-card-action-button.is-imported");
+  assert.match(importedActionRule, /background:\s*color-mix\(in oklch, var\(--paper-strong\) 72%, transparent\)/);
+  assert.match(importedActionRule, /border-color:\s*var\(--line\)/);
+  assert.match(importedActionRule, /color:\s*var\(--ink\)/);
+  assert.doesNotMatch(importedActionRule, /--signal/);
   assert.doesNotMatch(globals, /\.hub-card-action-row\s*{/);
   assert.match(globals, /\.hub-share-control\s*{[\s\S]*align-items:\s*flex-end/);
   assert.match(globals, /\.fb-stateful-action\s*{[\s\S]*border-radius:\s*999px/);
@@ -4951,6 +4956,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportForm, /hub-card-imported-status/);
   assert.doesNotMatch(hubImportForm, /Trash2/);
   assert.match(hubImportForm, /className="fb-btn light compact hub-card-action-button is-imported"/);
+  assert.match(hubImportForm, /aria-pressed=\{true\}/);
+  assert.match(hubImportForm, /aria-pressed=\{false\}/);
   assert.match(hubImportForm, /\?\s*"Removing"\s*:\s*"Imported"/);
   assert.match(hubImportForm, />\s*Remove import\s*<\/button>/);
   assert.doesNotMatch(hubImportForm, />\s*Remove source library\s*<\/button>|Remove \$\{library\.name\} from imported source libraries/);
@@ -5094,6 +5101,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /actionGroupLabel=\{`AI Digest collection actions for \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(digestPipelineForm, /aria-label=\{`Import AI Digest collection \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /aria-pressed=\{false\}/);
   assert.match(digestPipelineForm, /\?\s*"Importing"\s*:\s*"Import"/);
   assert.doesNotMatch(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}|: "Import AI Digest archive"|Importing collection|Import collection|Importing AI Digest archive|Import archive/);
   assert.match(digestPipelineForm, /Imported/);
@@ -5114,6 +5122,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /hub-card-imported-status/);
   assert.match(digestPipelineForm, /className="fb-btn light compact hub-card-action-button is-imported"/);
   assert.match(digestPipelineForm, /aria-label=\{`Remove imported AI Digest collection \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /aria-pressed=\{true\}/);
   assert.match(digestPipelineForm, /\?\s*"Removing"\s*:\s*"Imported"/);
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
   assert.match(digestPipelineForm, /Could not import AI Digest collection/);

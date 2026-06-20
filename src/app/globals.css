@@ -9545,15 +9545,15 @@ a.builder-library-name:hover {
 }
 
 .hub-card-action-button.is-imported {
-  background: var(--signal-soft);
-  border-color: color-mix(in oklch, var(--signal) 45%, var(--line));
-  color: color-mix(in oklch, var(--signal) 70%, var(--ink));
+  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .hub-card-action-button.is-imported:hover {
-  background: color-mix(in oklch, var(--signal) 18%, var(--paper));
-  border-color: color-mix(in oklch, var(--signal) 58%, var(--line));
-  color: color-mix(in oklch, var(--signal) 78%, var(--ink));
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  color: var(--ink);
 }
 
 .fb-hub-title {

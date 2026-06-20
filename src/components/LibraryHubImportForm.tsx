@@ -443,6 +443,7 @@ function HubCard({
     <button
       aria-busy={pending === "remove" && isPending}
       aria-label={`Remove imported source library ${library.name}`}
+      aria-pressed={true}
       className="fb-btn light compact hub-card-action-button is-imported"
       disabled={isPending || pending !== null}
       onClick={() => onRemove(library.id)}
@@ -455,6 +456,7 @@ function HubCard({
     <button
       aria-busy={pending === "import" && isPending}
       aria-label={`Import source library ${library.name}`}
+      aria-pressed={false}
       className="fb-btn dark compact hub-card-action-button"
       disabled={isPending || pending !== null}
       onClick={() => onImport(library.id)}

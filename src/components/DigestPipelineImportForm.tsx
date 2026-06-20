@@ -402,6 +402,7 @@ function DigestPipelineCard({
     <button
       aria-busy={pending === "remove" && isPending}
       aria-label={`Remove imported AI Digest collection ${pipeline.title}`}
+      aria-pressed={true}
       className="fb-btn light compact hub-card-action-button is-imported"
       disabled={isPending || pending !== null}
       onClick={() => onRemove(pipeline.id)}
@@ -414,6 +415,7 @@ function DigestPipelineCard({
     <button
       aria-busy={pending === "import" && isPending}
       aria-label={`Import AI Digest collection ${pipeline.title}`}
+      aria-pressed={false}
       className="fb-btn dark compact hub-card-action-button"
       disabled={isPending || pending !== null}
       onClick={() => onImport(pipeline.id)}
