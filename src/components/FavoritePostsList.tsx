@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { formatCount } from "@/components/Count";
 import { FeedEmptyState } from "@/components/FeedState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
@@ -80,17 +79,6 @@ export function FavoritePostsList({
 
   return (
     <section className="feed-content-stack favorites-feed" aria-label="Favorite posts">
-      <div className="favorites-feed-head">
-        <div>
-          <h2 className="favorites-feed-title">Favorites</h2>
-          <p className="favorites-feed-desc">
-            Newest saved posts.
-          </p>
-        </div>
-        <span className="favorites-feed-count">
-          {formatCount(items.length)} {items.length === 1 ? "post" : "posts"}
-        </span>
-      </div>
       {error ? (
         <p className="favorites-feed-error" role="status">
           {error}

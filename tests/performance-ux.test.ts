@@ -1889,9 +1889,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.match(favoriteList, /Could not remove from Favorites\. Try again\./);
   assert.match(favoriteList, /aria-label="Favorite posts"/);
-  assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Newest saved posts\./);
+  assert.doesNotMatch(favoriteList, /favorites-feed-title|Newest saved posts\.|favorites-feed-count|formatCount\(items\.length\)/);
   assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post details\./);
   assert.doesNotMatch(favoriteList, /AI Digest issues, Following posts/);
   assert.doesNotMatch(favoriteList, /Starred posts|Star posts from AI Digest/);

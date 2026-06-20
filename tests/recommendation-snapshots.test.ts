@@ -144,11 +144,9 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteSection, /take:\s*favoritePostLimit/);
   assert.match(favoriteSection, /feedRead\.findMany/);
   assert.match(favoriteList, /aria-label="Favorite posts"/);
-  assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
-  assert.match(favoriteList, /Newest saved posts\./);
+  assert.doesNotMatch(favoriteList, /favorites-feed-title|Newest saved posts\.|favorites-feed-count/);
   assert.doesNotMatch(favoriteList, /Starred posts|Reading queue|Focused reading queue|Posts you starred for focused reading/);
-  assert.match(favoriteList, /@\/components\/Count/);
-  assert.match(favoriteList, /formatCount\(items\.length\)/);
+  assert.doesNotMatch(favoriteList, /@\/components\/Count|formatCount\(items\.length\)/);
   assert.match(favoriteList, /Open AI Digest/);
   assert.match(favoriteList, /href="\/dashboard\?tab=ai-digest"/);
   assert.match(favoriteList, /Open Following/);
