@@ -202,16 +202,13 @@ research.
    most one directly linked product page such as docs, pricing, about, or
    homepage content that explains the workflow. Do not browse beyond this
    official-site path.
-3. Do not use general web search. Do not search or open Reddit, Hacker News,
-   X/Twitter, blogs, review sites, news, or other third-party pages unless
-   Product Hunt itself links directly to them as the product's official site.
-4. Explain what the product concretely does from Product Hunt plus the official
+3. Explain what the product concretely does from Product Hunt plus the official
    site only. Identify target user, workflow, and outcome when visible.
-5. Explain why it is noteworthy using only visible evidence: Product Hunt rank,
+4. Explain why it is noteworthy using only visible evidence: Product Hunt rank,
    tagline, maker notes, visible comments/counts, official-site capabilities,
    and the known top-products context from task metadata. Mark any reasonable
    inference explicitly as inference.
-6. If a field is hidden, login-gated, blocked, or not visible, write "not
+5. If a field is hidden, login-gated, blocked, or not visible, write "not
    visible" instead of searching elsewhere.
 
 ## Body to return

@@ -1692,7 +1692,11 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /structured extraction, not open-ended product/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Official-site evidence:/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Not visible:/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Do not use general web search/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Do not use general web search/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Product Hunt itself links directly to them as the product's official site/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /3\. Explain what the product concretely does/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /4\. Explain why it is noteworthy/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /5\. If a field is hidden/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Use the product's official website and web search/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Hacker News, Reddit/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /creator\/manual captions/);
@@ -3040,6 +3044,21 @@ test("Product Hunt summary prompt migration removes label-value card output", ()
   assert.match(migration, /WHERE "sourceId" = 'product_hunt_top_products'\s+AND "summaryPromptBody" = \$\$# Product Hunt Top Product Summary Prompt/);
   assert.match(migration, /Product name:/);
   assert.match(migration, /What the product does:/);
+});
+
+test("Product Hunt fetch prompt migration removes the general web search ban from user prompts", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000071_product_hunt_fetch_prompt_remove_web_search_ban/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /UPDATE "SourceTypeConfig"[\s\S]*"sourceId" = 'product_hunt_top_products'/);
+  assert.match(migration, /UPDATE "UserSourceTypeConfig"[\s\S]*"sourceId" = 'product_hunt_top_products'/);
+  assert.match(migration, /replace\([\s\S]*Do not use general web search/);
+  assert.match(migration, /Product Hunt itself links directly to them as the product's official site/);
+  assert.match(migration, /\$\$4\. Explain what the product concretely does[\s\S]*\$\$3\. Explain what the product concretely does/);
+  assert.match(migration, /\$\$5\. Explain why it is noteworthy[\s\S]*\$\$4\. Explain why it is noteworthy/);
+  assert.match(migration, /\$\$6\. If a field is hidden[\s\S]*\$\$5\. If a field is hidden/);
 });
 
 test("source registry supports future source types without new BuilderKind enum values", () => {
