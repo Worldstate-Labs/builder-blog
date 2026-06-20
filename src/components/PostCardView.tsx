@@ -225,7 +225,7 @@ export function PostCardView({
                   {authorAvatarSource ? (
                     <SourceAvatar
                       className="post-detail-author-avatar"
-                      imageSize={36}
+                      imageSize={24}
                       source={authorAvatarSource}
                     />
                   ) : null}

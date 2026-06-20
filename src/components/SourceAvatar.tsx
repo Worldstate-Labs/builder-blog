@@ -26,6 +26,10 @@ function avatarMonogram(source: SourceAvatarSource): string {
   return first.toUpperCase();
 }
 
+function avatarLabelScaleClass(label: string): string {
+  return label.length > 1 ? " source-avatar-fallback--compact" : "";
+}
+
 function avatarFaviconUrl(source: SourceAvatarSource): string | null {
   // For X and YouTube every row shares the same platform host, so
   // the favicon would be the same generic logo for every account.
@@ -113,7 +117,12 @@ export function SourceAvatar({
 
   return (
     <span className={baseClassName} style={style}>
-      {monogram}
+      <span
+        aria-hidden="true"
+        className={`source-avatar-fallback${avatarLabelScaleClass(monogram)}`}
+      >
+        {monogram}
+      </span>
     </span>
   );
 }

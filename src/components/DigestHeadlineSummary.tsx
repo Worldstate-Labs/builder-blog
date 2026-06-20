@@ -162,7 +162,9 @@ function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
         className="fb-src-icon digest-headline-avatar digest-headline-avatar-combo"
         title={item.sourceName}
       >
-        {label}
+        <span className="source-avatar-fallback source-avatar-fallback--compact">
+          {label}
+        </span>
       </span>
     );
   }
@@ -170,7 +172,7 @@ function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
   return (
     <SourceAvatar
       className="digest-headline-avatar"
-      imageSize={32}
+      imageSize={24}
       source={{
         avatarDataUrl: item.sourceLink?.avatarDataUrl ?? null,
         avatarUrl: item.sourceLink?.avatarUrl ?? null,

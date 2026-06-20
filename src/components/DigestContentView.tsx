@@ -332,7 +332,7 @@ function DigestGroupHeading({
       <LinkComponent className="digest-group-source-link" href={sourceLink.href}>
         <SourceAvatar
           className="digest-group-source-avatar"
-          imageSize={28}
+          imageSize={24}
           source={{
             avatarDataUrl: sourceLink.avatarDataUrl ?? null,
             avatarUrl: sourceLink.avatarUrl ?? null,

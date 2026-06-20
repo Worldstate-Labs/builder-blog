@@ -2601,7 +2601,9 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestDetails, /headlineIsLoading \? \(/);
   assert.match(digestHeadlineSummary, /<SourceAvatar/);
   assert.match(digestHeadlineSummary, /DigestHeadlineAvatar/);
+  assert.match(digestHeadlineSummary, /className="digest-headline-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestHeadlineSummary, /sourceLinks\.length > 1/);
+  assert.match(digestHeadlineSummary, /source-avatar-fallback source-avatar-fallback--compact/);
   assert.match(digestHeadlineSummary, /splitCombinedHeadlineSourceLabel/);
   assert.match(digestHeadlineSummary, /digest-headline-item-line/);
   assert.match(digestHeadlineSummary, /digest-headline-source-name/);
@@ -2614,9 +2616,12 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(globals, /\.digest-headline-summary\s*{[\s\S]*border-left:\s*3px solid/);
   assert.match(globals, /\.digest-headline-top\s*{[\s\S]*border-bottom:/);
   assert.match(globals, /\.digest-headline-title-icon\s*{[\s\S]*height:\s*1rem/);
-  assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0, 1fr\)/);
+  assert.match(globals, /\.fb-src-icon\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.fb-src-icon\s*{[\s\S]*overflow:\s*hidden/);
+  assert.match(globals, /\.source-avatar-fallback--compact\s*{[\s\S]*font-size:\s*0\.82em/);
+  assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*1\.5rem minmax\(0, 1fr\)/);
   assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{/);
-  assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{[\s\S]*height:\s*2rem/);
+  assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{[\s\S]*height:\s*1\.5rem/);
   assert.match(globals, /\.digest-headline-avatar-combo\.fb-src-icon\s*{[\s\S]*letter-spacing:\s*0/);
   assert.match(globals, /\.digest-headline-item-line\s*{[\s\S]*line-height:\s*1\.5/);
   assert.match(globals, /\.digest-headline-source-name\s*{[\s\S]*font-weight:\s*780/);
@@ -4519,8 +4524,10 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /SourceBadge/);
   assert.match(digestContent, /digest-group-source-link/);
   assert.match(digestContent, /digest-group-source-avatar/);
+  assert.match(digestContent, /className="digest-group-source-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestContent, /sourceLinkForSource/);
   assert.match(digestContent, /PostCard/);
+  assert.match(postCard, /className="post-detail-author-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestContent, /originalSummariesByUrl/);
   assert.match(digestContent, /originalSummariesByPostKey/);
   assert.match(digestContent, /originalSummary/);
@@ -4608,9 +4615,10 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.doesNotMatch(globals, /fetched-post-original-summary/);
   assert.match(globals, /\.digest-group\s*{[\s\S]*border:\s*1px solid/);
   assert.match(globals, /\.digest-group\s*{[\s\S]*border-radius:\s*10px/);
-  assert.doesNotMatch(globals, /\.digest-group\s*{[\s\S]*border-left:/);
+  assert.doesNotMatch(cssRule(globals, ".digest-group"), /border-left:/);
   assert.match(globals, /\.digest-group-source-link/);
   assert.match(globals, /\.digest-group-source-avatar\.fb-src-icon/);
+  assert.match(globals, /\.digest-group-source-avatar\.fb-src-icon\s*{[\s\S]*height:\s*1\.5rem/);
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*color:\s*var\(--dr-ink\)/);
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*margin-inline:\s*1\.15rem/);
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*max-width:\s*none/);
