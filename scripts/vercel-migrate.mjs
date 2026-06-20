@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 // Build-time migration step for Vercel.
 //
-// Runs `prisma migrate deploy`, but classifies failures so a transient
-// database-connectivity problem (unreachable host, paused/plan-limited
-// Prisma Postgres instance) does NOT hard-fail the whole deployment —
-// while a genuine migration error (bad SQL, failed migration) still
-// blocks the build, because shipping code that expects a new schema
-// against an un-migrated database is worse than a failed deploy.
+// Runs `prisma migrate deploy`. Connectivity failures are diagnosed separately
+// from bad SQL, but both block the build by default: shipping code that expects
+// a new schema against an un-migrated database is worse than a failed deploy.
 //
-// Connectivity/plan failures exit 0 (build proceeds; apply migrations
-// once the DB is back). Everything else exits non-zero.
+// Set VERCEL_MIGRATE_ALLOW_CONNECTIVITY_SKIP=1 only for an intentional
+// emergency deploy where schema drift is acceptable and migrations will be
+// applied manually before traffic depends on them.
 import { spawnSync } from "node:child_process";
 
 // Markers that mean "couldn't reach / use the database server" rather
@@ -34,6 +32,7 @@ const ADVISORY_LOCK_MARKERS = [
 
 const MAX_ATTEMPTS = positiveInt(process.env.VERCEL_MIGRATE_MAX_ATTEMPTS, 6);
 const RETRY_DELAY_MS = positiveInt(process.env.VERCEL_MIGRATE_RETRY_DELAY_MS, 5000);
+const ALLOW_CONNECTIVITY_SKIP = process.env.VERCEL_MIGRATE_ALLOW_CONNECTIVITY_SKIP === "1";
 
 let result;
 let stdout = "";
@@ -71,13 +70,24 @@ for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
 const isConnectivity = CONNECTIVITY_MARKERS.some((m) => haystack.includes(m));
 
 if (isConnectivity) {
+  if (ALLOW_CONNECTIVITY_SKIP) {
+    console.warn(
+      "\n[vercel-migrate] WARNING: could not reach the database to apply " +
+        "migrations, but VERCEL_MIGRATE_ALLOW_CONNECTIVITY_SKIP=1 is set. " +
+        "Proceeding with a possible schema drift risk; run `npm run db:deploy` " +
+        "before traffic depends on the new schema.\n",
+    );
+    process.exit(0);
+  }
+
   console.warn(
     "\n[vercel-migrate] WARNING: could not reach the database to apply " +
-      "migrations (unreachable or plan-limited Prisma Postgres). Continuing " +
-      "the build anyway. Run `npm run db:deploy` once the database is back " +
-      "to apply any pending migrations.\n",
+      "migrations (unreachable or plan-limited Prisma Postgres). Failing " +
+      "the build to avoid shipping code against an unverified schema. Set " +
+      "VERCEL_MIGRATE_ALLOW_CONNECTIVITY_SKIP=1 only for an intentional " +
+      "manual override.\n",
   );
-  process.exit(0);
+  process.exit(1);
 }
 
 // Genuine migration failure (or prisma binary missing) — block the build.

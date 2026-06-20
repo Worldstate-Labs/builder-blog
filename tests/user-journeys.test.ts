@@ -1337,6 +1337,13 @@ test("vercel migration wrapper retries Prisma advisory lock timeouts", () => {
   assert.match(migrate, /Retrying \$\{attempt \+ 1\}\/\$\{MAX_ATTEMPTS\}/);
 });
 
+test("vercel migration wrapper blocks schema drift unless explicitly bypassed", () => {
+  const migrate = readFileSync("scripts/vercel-migrate.mjs", "utf8");
+  assert.match(migrate, /VERCEL_MIGRATE_ALLOW_CONNECTIVITY_SKIP/);
+  assert.match(migrate, /process\.exit\(1\)/);
+  assert.doesNotMatch(migrate, /Continuing the build anyway/);
+});
+
 test("digest sync user path requires structured digest items and derives digested marks", () => {
   const parsed = parseSkillDigestPayload({
     title: "Personal YouTube Builder Digest",
@@ -1593,6 +1600,11 @@ test("digest feed user path selects not-yet-digested posts within the configured
   const digestCreateRoute = readFileSync("src/app/api/skill/digests/route.ts", "utf8");
   assert.match(digestCreateRoute, /digestedItem\.upsert/);
   assert.match(digestCreateRoute, /userId_entityId_kind_externalId/);
+  assert.match(digestCreateRoute, /catch \(error\)/);
+  assert.match(digestCreateRoute, /console\.error\("Digest sync failed"/);
+  assert.match(digestCreateRoute, /Digest sync failed/);
+  assert.match(digestCreateRoute, /DIGEST_SYNC_TRANSACTION_OPTIONS/);
+  assert.match(digestCreateRoute, /timeout:\s*30_000/);
 
   // The CLI reads candidates from the prepared context file and sends them.
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");

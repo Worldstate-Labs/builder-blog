@@ -10,7 +10,21 @@ import {
 import { cleanStructuredDigestItems } from "@/lib/structured-digest";
 import { getUserFromBearer } from "@/lib/tokens";
 
+const DIGEST_SYNC_TRANSACTION_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 30_000,
+} as const;
+
 export async function POST(request: Request) {
+  try {
+    return await syncDigest(request);
+  } catch (error) {
+    console.error("Digest sync failed", error);
+    return NextResponse.json(digestSyncErrorResponse(error), { status: 500 });
+  }
+}
+
+async function syncDigest(request: Request) {
   const user = await getUserFromBearer(request);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -83,57 +97,57 @@ export async function POST(request: Request) {
     }
   }
 
-  const digest = await prisma.digest.create({
-    data: {
-      userId: user.id,
-      title: parsed.data.title,
-      items: digestItems,
-      headlineSummary: parsed.data.headlineSummary?.trim() || null,
-      language,
-      periodStart,
-      periodEnd,
-      itemCount: parsed.data.itemCount || digestItems.length,
-      source: "skill",
-      status: "SYNCED",
-    },
-  });
+  const digest = await prisma.$transaction(async (tx) => {
+    const createdDigest = await tx.digest.create({
+      data: {
+        userId: user.id,
+        title: parsed.data.title,
+        items: digestItems,
+        headlineSummary: parsed.data.headlineSummary?.trim() || null,
+        language,
+        periodStart,
+        periodEnd,
+        itemCount: parsed.data.itemCount || digestItems.length,
+        source: "skill",
+        status: "SYNCED",
+      },
+    });
 
-  // Mark every candidate post presented to this digest as digested for this
-  // user, so it won't participate in future digests (unless the user overrides).
-  // Keyed by canonical content identity (entityId, kind, externalId) — matches
-  // across channel variants. Idempotent: re-marking on an override run is a
-  // no-op via the unique key. Provenance: digestId + the presented feedItemId.
-  if (digestedItems.length > 0) {
-    await prisma.$transaction(
-      digestedItems.map((item) =>
-        prisma.digestedItem.upsert({
-          where: {
-            userId_entityId_kind_externalId: {
-              userId: user.id,
-              entityId: item.entityId,
-              kind: item.kind,
-              externalId: item.externalId,
-            },
-          },
-          create: {
+    // Mark every candidate post presented to this digest as digested for this
+    // user, so it won't participate in future digests (unless the user overrides).
+    // Keyed by canonical content identity (entityId, kind, externalId) — matches
+    // across channel variants. Idempotent: re-marking on an override run is a
+    // no-op via the unique key. Provenance: digestId + the presented feedItemId.
+    for (const item of digestedItems) {
+      await tx.digestedItem.upsert({
+        where: {
+          userId_entityId_kind_externalId: {
             userId: user.id,
             entityId: item.entityId,
             kind: item.kind,
             externalId: item.externalId,
-            feedItemId: item.feedItemId ?? null,
-            digestId: digest.id,
-            digestedAt: now,
           },
-          // On override the row already exists; refresh its provenance to the
-          // newest digest but keep the original first-digested timestamp.
-          update: {
-            feedItemId: item.feedItemId ?? null,
-            digestId: digest.id,
-          },
-        }),
-      ),
-    );
-  }
+        },
+        create: {
+          userId: user.id,
+          entityId: item.entityId,
+          kind: item.kind,
+          externalId: item.externalId,
+          feedItemId: item.feedItemId ?? null,
+          digestId: createdDigest.id,
+          digestedAt: now,
+        },
+        // On override the row already exists; refresh its provenance to the
+        // newest digest but keep the original first-digested timestamp.
+        update: {
+          feedItemId: item.feedItemId ?? null,
+          digestId: createdDigest.id,
+        },
+      });
+    }
+
+    return createdDigest;
+  }, DIGEST_SYNC_TRANSACTION_OPTIONS);
 
   // Complete the diagnostic funnel: link this digest back to the DigestRun that
   // recorded the candidate pool at `prepare`. includedKeys marks which
@@ -163,4 +177,25 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ status: "ok", digest });
+}
+
+function digestSyncErrorResponse(error: unknown) {
+  const code = readErrorField(error, "code");
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : "Unknown error";
+
+  return {
+    error: "Digest sync failed",
+    ...(code ? { code } : {}),
+    message,
+  };
+}
+
+function readErrorField(error: unknown, key: string): string | null {
+  if (!error || typeof error !== "object") return null;
+  const value = (error as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value : null;
 }

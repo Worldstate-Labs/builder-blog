@@ -2910,10 +2910,13 @@ test("AI Digest storage and rendering use structured items instead of markdown c
   const search = source("src/lib/user-search.ts");
   const cli = source("scripts/builder-digest.mjs");
   const migration = source("prisma/migrations/000072_structured_digest_items/migration.sql");
+  const cleanupMigration = source("prisma/migrations/000073_drop_digest_content/migration.sql");
 
-  assert.match(schema, /model Digest \{[\s\S]*content\s+String\s+@default\(""\)[\s\S]*items\s+Json\s+@default\("\[\]"\)/);
+  assert.match(schema, /model Digest \{[\s\S]*items\s+Json\s+@default\("\[\]"\)/);
+  assert.doesNotMatch(schema, /model Digest \{[\s\S]*content\s+String\s+@default\(""\)/);
   assert.match(migration, /ADD COLUMN "items" JSONB NOT NULL DEFAULT '\[\]'::jsonb/);
-  assert.doesNotMatch(migration, /DROP COLUMN "content"/);
+  assert.match(cleanupMigration, /DROP INDEX IF EXISTS "Digest_content_search_idx"/);
+  assert.match(cleanupMigration, /ALTER TABLE "Digest" DROP COLUMN IF EXISTS "content"/);
   assert.match(skillContracts, /SkillDigestItemSchema/);
   assert.match(skillContracts, /items:\s*z\.array\(SkillDigestItemSchema\)\.min\(1\)/);
   assert.doesNotMatch(skillContracts, /content:\s*z\.string\(\)\.min\(1\)/);
