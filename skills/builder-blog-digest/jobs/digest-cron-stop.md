@@ -1,7 +1,7 @@
 Stop the FollowBrief subscription digest scheduled job on this machine.
 
 This is an interactive local agent task. Do not ask the user questions except
-where step 1 requires it (more than one digest job is found and the account is
+where step 2 requires it (more than one digest job is found and the account is
 ambiguous), or when a scheduler permission blocks removal. Run the numbered
 steps exactly. If any command fails, stop and report the command, exit code, and
 stderr. Do not invoke any other skill, plugin, or subagent — run the numbered
@@ -13,7 +13,13 @@ digest cron worker if one is still running, then report that stopped state to
 FollowBrief. Do not delete any already-generated digests, and do not touch the
 library cron.
 
-1. Find the existing FollowBrief digest job(s) on this machine. Run the path for
+1. Install or refresh the skill so local audit/status commands are current:
+
+```bash
+/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
+```
+
+2. Find the existing FollowBrief digest job(s) on this machine. Run the path for
 this machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin)
@@ -41,7 +47,7 @@ which account to stop), list them and ask the user which to stop before
 continuing — removing all of them stops every FollowBrief account on this
 machine.
 
-2. Remove the schedule. Use the path for this machine's OS.
+3. Remove the schedule. Use the path for this machine's OS.
 
 ### macOS (`uname` is Darwin) → unload the LaunchAgent and delete its plist
 
@@ -54,7 +60,7 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 [ -n "$ACCT" ] && LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 # If BUILDER_BLOG_ACCOUNT is unset, replace the line above with the label from
-# step 1, e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
+# step 2, e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason stop_cron
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
@@ -78,7 +84,7 @@ BUILDER_BLOG_ACCOUNT="$ACCT" node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog
 crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh digest-cron' && echo "STILL PRESENT" || echo "removed"
 ```
 
-3. Stop this account's active digest cron worker instance, if one is still
+4. Stop this account's active digest cron worker instance, if one is still
 running. This matters because the LaunchAgent only prevents future scheduled
 fires; the current worker may already have been detached by the supervisor.
 
@@ -151,7 +157,7 @@ else
 fi
 ```
 
-4. Remove this account's per-job pin files so a future re-install starts clean
+5. Remove this account's per-job pin files so a future re-install starts clean
 (safe if they are absent):
 
 ```bash
@@ -161,7 +167,7 @@ rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOU
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
 ```
 
-5. Report the stopped status to FollowBrief so the web app can hide Stop cron
+6. Report the stopped status to FollowBrief so the web app can hide Stop cron
 and show the schedule as stopped:
 
 ```bash
@@ -171,8 +177,8 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
   --status stopped
 ```
 
-6. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
+7. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
 was removed (or that none existed), whether an active worker was stopped or no
-active worker was recorded, and that the step-2 verification line printed
+active worker was recorded, and that the step-3 verification line printed
 "removed". Tell the user they can resume later by re-running the digest cron
 setup prompt.

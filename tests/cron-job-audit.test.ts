@@ -70,6 +70,11 @@ test("cron setup and stop prompts audit scheduler mutations before web status sy
     ["library-cron", libraryStop],
     ["digest-cron", digestStop],
   ] as const) {
+    assert.match(prompt, /Install or refresh the skill/);
+    assert.ok(
+      prompt.indexOf("Install or refresh the skill") < prompt.indexOf("cron-audit"),
+      `${job} stop prompt must refresh the local CLI before using cron-audit`,
+    );
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_start`));
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_finished`));
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_remove_plist`));
