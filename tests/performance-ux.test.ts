@@ -2603,16 +2603,24 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestHeadlineSummary, /DigestHeadlineAvatar/);
   assert.match(digestHeadlineSummary, /sourceLinks\.length > 1/);
   assert.match(digestHeadlineSummary, /splitCombinedHeadlineSourceLabel/);
+  assert.match(digestHeadlineSummary, /digest-headline-item-line/);
   assert.match(digestHeadlineSummary, /digest-headline-source-name/);
   assert.match(digestHeadlineSummary, /title=\{item\.sourceName\}/);
   assert.match(digestHeadlineSummary, /\{item\.sourceName\}/);
+  assert.match(digestHeadlineSummary, /\{item\.summary\}/);
   assert.match(digestHeadlineSummary, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
   assert.match(globals, /\.digest-headline-list\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*1\.75rem minmax\(0, 1fr\)/);
+  assert.match(globals, /\.digest-headline-summary\s*{[\s\S]*border-left:\s*3px solid/);
+  assert.match(globals, /\.digest-headline-top\s*{[\s\S]*border-bottom:/);
+  assert.match(globals, /\.digest-headline-title-icon\s*{[\s\S]*height:\s*1rem/);
+  assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0, 1fr\)/);
   assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{/);
+  assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{[\s\S]*height:\s*2rem/);
   assert.match(globals, /\.digest-headline-avatar-combo\.fb-src-icon\s*{[\s\S]*letter-spacing:\s*0/);
-  assert.match(globals, /\.digest-headline-source-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(globals, /\.digest-headline-item-line\s*{[\s\S]*line-height:\s*1\.5/);
+  assert.match(globals, /\.digest-headline-source-name\s*{[\s\S]*font-weight:\s*780/);
+  assert.match(globals, /\.digest-headline-item-text\s*{[\s\S]*color:\s*color-mix\(in oklch, var\(--muted-strong\) 88%, var\(--ink\)\)/);
   assert.match(globals, /\.digest-headline-list-wrap\.is-expandable:not\(\.is-expanded\)::after\s*{/);
   assert.match(globals, /\.digest-headline-list-wrap\.is-line-clamped:not\(\.is-expanded\)\s*{[\s\S]*--digest-headline-collapsed-lines/);
   assert.match(globals, /\.digest-headline-toggle\s*{/);
@@ -3718,7 +3726,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
     assert.doesNotMatch(rule, /padding:/);
   }
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*background:\s*transparent/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*border-left:\s*3px solid/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*padding:\s*0\.72rem 0\.82rem 0\.66rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-kicker\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-meta\s*{[\s\S]*border-bottom:/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-digest-meta\s*{[\s\S]{0,180}border-top:/);

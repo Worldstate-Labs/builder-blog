@@ -42,8 +42,8 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.match(fallbackBlock, /aria-label="Loading imported AI Digest collections"/);
   assert.doesNotMatch(fallbackBlock, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);
 
-  assert.match(digestHeadlineSummary, /Latest headlines/);
-  assert.doesNotMatch(digestHeadlineSummary, />Headlines</);
+  assert.match(digestHeadlineSummary, />Headlines</);
+  assert.doesNotMatch(digestHeadlineSummary, /Latest headlines/);
   assert.match(digestPipelineForm, /panel \? null : \(\s*<div className="hub-list-count-row at-desktop">/);
   assert.match(digestPipelineForm, /panel=\{panel\}/);
   assert.doesNotMatch(digestPipelineForm, /digestPipelineCardDescription/);

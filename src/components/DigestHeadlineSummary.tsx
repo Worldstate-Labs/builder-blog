@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Newspaper } from "lucide-react";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { parseDigest } from "@/lib/digest-markdown";
@@ -95,7 +95,8 @@ export function DigestHeadlineSummary({
     >
       <div className="digest-headline-top">
         <div className="digest-headline-label-row">
-          <div className="digest-headline-kicker">Latest headlines</div>
+          <Newspaper aria-hidden="true" className="digest-headline-title-icon" />
+          <div className="digest-headline-kicker">Headlines</div>
         </div>
         {headerAction ? <div className="digest-headline-action">{headerAction}</div> : null}
       </div>
@@ -115,10 +116,12 @@ export function DigestHeadlineSummary({
               <li className="digest-headline-item" key={item.key}>
                 <DigestHeadlineAvatar item={item} />
                 <div className="digest-headline-item-body">
-                  <p className="digest-headline-source-name" title={item.sourceName}>
-                    {item.sourceName}
+                  <p className="digest-headline-item-line">
+                    <span className="digest-headline-source-name" title={item.sourceName}>
+                      {item.sourceName}
+                    </span>{" "}
+                    <span className="digest-headline-item-text">{item.summary}</span>
                   </p>
-                  <p className="digest-headline-item-text">{item.summary}</p>
                 </div>
               </li>
             ))}
@@ -167,7 +170,7 @@ function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
   return (
     <SourceAvatar
       className="digest-headline-avatar"
-      imageSize={28}
+      imageSize={32}
       source={{
         avatarDataUrl: item.sourceLink?.avatarDataUrl ?? null,
         avatarUrl: item.sourceLink?.avatarUrl ?? null,
