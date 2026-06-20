@@ -381,12 +381,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Build digest/);
   assert.match(skillPromptActions, /Stop fetching/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
-  assert.match(skillPromptActions, /Copy this prompt and send it to your Local Agent to stop this schedule/);
-  assert.match(skillPromptActions, /Task/);
+  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \{scheduleName\} in your Local Agent/);
+  assert.match(skillPromptActions, /Schedule/);
   assert.match(skillPromptActions, /Frequency/);
   assert.match(skillPromptActions, /Runtime/);
   assert.match(skillPromptActions, /Started/);
-  assert.match(skillPromptActions, /Machine/);
+  assert.match(skillPromptActions, /Device/);
+  assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
+  assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
   assert.match(skillPromptActions, /const token = activeTokens\[0\]/);
   assert.doesNotMatch(skillPromptActions, /Copy stop prompt/);

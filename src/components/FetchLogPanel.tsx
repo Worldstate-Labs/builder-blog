@@ -1132,7 +1132,7 @@ export function getFetchUpdateStatus(
     return {
       key: "stopped",
       label: "Stopped",
-      summary: "The recurring Fetch sources schedule is stopped.",
+      summary: "The recurring schedule for Fetch sources is stopped.",
       style: statusStyle("partial"),
     };
   }

@@ -722,7 +722,7 @@ function StopScheduleDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const hydrated = useHydrated();
-  const taskLabel = context === "digest" ? "AI Digest schedule" : "source fetching schedule";
+  const scheduleName = context === "digest" ? "AI Digest" : "Fetch sources";
   const machineLabel = formatScheduleMachine(schedule);
 
   useEffect(() => {
@@ -781,15 +781,15 @@ function StopScheduleDialog({
             {title}
           </h2>
           <p className="token-picker-sub">
-            Copy this prompt and send it to your Local Agent to stop this schedule.
+            Copy this prompt to stop the active schedule for {scheduleName} in your Local Agent.
           </p>
         </header>
 
         <div className="stop-schedule-body">
           <dl className="stop-schedule-details">
             <div className="stop-schedule-detail">
-              <dt>Task</dt>
-              <dd>{taskLabel}</dd>
+              <dt>Schedule</dt>
+              <dd>{scheduleName}</dd>
             </div>
             <div className="stop-schedule-detail">
               <dt>Frequency</dt>
@@ -805,7 +805,7 @@ function StopScheduleDialog({
             </div>
             {machineLabel ? (
               <div className="stop-schedule-detail">
-                <dt>Machine</dt>
+                <dt>Device</dt>
                 <dd>{machineLabel}</dd>
               </div>
             ) : null}

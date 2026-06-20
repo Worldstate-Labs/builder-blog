@@ -880,7 +880,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Setup code expires in 10 minutes/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Stop fetching/);
-  assert.match(skillPromptActions, /Copy this prompt and send it to your Local Agent to stop this schedule/);
+  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \{scheduleName\} in your Local Agent/);
+  assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
+  assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
   assert.match(skillPromptActions, /const token = activeTokens\[0\]/);
   assert.doesNotMatch(skillPromptActions, /Copy stop prompt/);
@@ -2129,10 +2131,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /No Fetch sources run yet/);
   assert.match(fetchLogPanel, /No Fetch sources run started in the latest scheduled window/);
+  assert.match(fetchLogPanel, /The recurring schedule for Fetch sources is stopped\./);
   assert.match(fetchLogPanel, /title="No Fetch sources history yet"/);
   assert.match(fetchLogPanel, /Copy a Fetch sources prompt to create history\./);
   assert.match(fetchLogPanel, /This run is no longer in the current fetch history\./);
-  assert.doesNotMatch(fetchLogPanel, /No Fetch sources run has reported yet|did not report back|title="No Fetch sources runs yet"|Started one-time and scheduled runs appear here|One-time and scheduled Fetch sources runs appear here|Scheduled and one-time Fetch sources runs will appear here|after a Local Agent reports them/);
+  assert.doesNotMatch(fetchLogPanel, /No Fetch sources run has reported yet|did not report back|title="No Fetch sources runs yet"|Started one-time and scheduled runs appear here|One-time and scheduled Fetch sources runs appear here|Scheduled and one-time Fetch sources runs will appear here|after a Local Agent reports them|recurring Fetch sources schedule/);
   assert.doesNotMatch(fetchLogPanel, /current fetch history response/);
   assert.match(fetchLogPanel, /Could not refresh\. Try again\./);
   assert.match(fetchLogPanel, /setError\(body\?\.error \?\? "Could not refresh\. Try again\."\)/);
