@@ -2622,6 +2622,8 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestHeadlineSummary, /DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = \[/);
   assert.match(digestDetails, /headlineIsLoading = status === "loading" && !content/);
   assert.match(digestDetails, /headlineIsLoading \? \(/);
+  assert.match(digestDetails, /sourceEntityIdsByPostKey/);
+  assert.match(digestDetails, /cleanSourceEntityIdsByPostKey/);
   assert.match(digestHeadlineSummary, /<SourceAvatar/);
   assert.match(digestHeadlineSummary, /DigestHeadlineAvatar/);
   assert.match(digestHeadlineSummary, /className="digest-headline-avatar"[\s\S]*imageSize=\{24\}/);
@@ -4604,6 +4606,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 test("digest posts use source detail headings and unified original links", () => {
   const digestContent = source("src/components/DigestContentView.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestSourceLinks = source("src/lib/digest-source-links.ts");
   const postCard = source("src/components/PostCardView.tsx");
   const fetchMethodPopover = source("src/components/FetchMethodPopover.tsx");
@@ -4619,6 +4622,10 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /digest-group-source-avatar/);
   assert.match(digestContent, /className="digest-group-source-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestContent, /sourceLinkForSource/);
+  assert.match(digestContent, /sourceLinkForGroup/);
+  assert.match(digestContent, /sourceLinkForPost/);
+  assert.match(digestContent, /sourceEntityIdsByPostKey/);
+  assert.match(digestContent, /sourceEntityKey/);
   assert.match(digestContent, /sourceLabelCandidates/);
   assert.match(digestContent, /\.split\(\/\[\(\)（）\]\|\[:：\]\|\[-–—\]\\s\+\/\)/);
   assert.match(digestContent, /PostCard/);
@@ -4638,6 +4645,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestSourceLinks, /sourceType:\s*builder\.sourceType/);
   assert.match(digestSourceLinks, /prisma\.digestedItem\.findMany/);
   assert.match(digestSourceLinks, /digestId/);
+  assert.match(digestRoute, /sourceEntityIdsForDigestPosts/);
+  assert.match(digestRoute, /sourceEntityIdsByPostKey/);
   assert.match(dashboardPage, /digestSourceLinksForUser\(digestOwnerUserId,\s*selectedDigest\?\.id\)/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);

@@ -33,6 +33,7 @@ type DigestLoadState = {
   originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
+  sourceEntityIdsByPostKey: Record<string, string>;
   status: "idle" | "loading" | "loaded" | "error";
 };
 
@@ -63,6 +64,7 @@ export function DigestDetails({
       originalSummariesByPostKey: {},
       originalSummariesByUrl: {},
       pendingFavoriteUrls: new Set<string>(),
+      sourceEntityIdsByPostKey: {},
       status: initialStatus,
     }),
     [defaultOpen, initialStatus, stateKey],
@@ -74,6 +76,7 @@ export function DigestDetails({
   const favoriteStateByUrl = currentState.favoriteStateByUrl;
   const originalSummariesByPostKey = currentState.originalSummariesByPostKey;
   const originalSummariesByUrl = currentState.originalSummariesByUrl;
+  const sourceEntityIdsByPostKey = currentState.sourceEntityIdsByPostKey;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
 
   const updateDigestState = useCallback((
@@ -105,6 +108,7 @@ export function DigestDetails({
         favoriteStateByUrl: cleanFavoriteStateByUrl(body.favoriteStateByUrl),
         originalSummariesByPostKey: cleanOriginalSummaries(body.originalSummariesByPostKey),
         originalSummariesByUrl: cleanOriginalSummaries(body.originalSummariesByUrl),
+        sourceEntityIdsByPostKey: cleanSourceEntityIdsByPostKey(body.sourceEntityIdsByPostKey),
         status: "loaded",
       }));
     } catch {
@@ -213,6 +217,7 @@ export function DigestDetails({
             originalSummariesByPostKey={originalSummariesByPostKey}
             originalSummariesByUrl={originalSummariesByUrl}
             pendingFavoriteUrls={pendingFavoriteUrls}
+            sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
             sourceLinks={sourceLinks}
             status={status}
             variant="today"
@@ -259,6 +264,7 @@ export function DigestDetails({
           originalSummariesByPostKey={originalSummariesByPostKey}
           originalSummariesByUrl={originalSummariesByUrl}
           pendingFavoriteUrls={pendingFavoriteUrls}
+          sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
           sourceLinks={sourceLinks}
           status={status}
         />
@@ -276,6 +282,7 @@ function DigestBody({
   originalSummariesByPostKey,
   originalSummariesByUrl,
   pendingFavoriteUrls,
+  sourceEntityIdsByPostKey,
   sourceLinks,
   status,
   variant = "archive",
@@ -288,6 +295,7 @@ function DigestBody({
   originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
+  sourceEntityIdsByPostKey: Record<string, string>;
   sourceLinks: DigestSourceLink[];
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
@@ -352,6 +360,7 @@ function DigestBody({
         pendingFavoriteUrls={pendingFavoriteUrls}
         showContents={false}
         showSectionCounts
+        sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
         sourceLinks={sourceLinks}
         tone="paper"
       />
@@ -368,6 +377,7 @@ function DigestBody({
         originalSummariesByPostKey={originalSummariesByPostKey}
         originalSummariesByUrl={originalSummariesByUrl}
         pendingFavoriteUrls={pendingFavoriteUrls}
+        sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
         sourceLinks={sourceLinks}
         tone="paper"
       />
@@ -418,5 +428,16 @@ function cleanFavoriteStateByUrl(value: unknown): DigestFavoriteStateByUrl {
         : null;
     return feedItemId ? [[url, { feedItemId, favoritedAt }] as const] : [];
   });
+  return Object.fromEntries(entries);
+}
+
+function cleanSourceEntityIdsByPostKey(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([postKey, entityId]) => [
+      postKey.trim(),
+      typeof entityId === "string" ? entityId.trim() : "",
+    ] as const)
+    .filter(([postKey, entityId]) => postKey.length > 0 && entityId.length > 0);
   return Object.fromEntries(entries);
 }

@@ -74,6 +74,10 @@ export async function GET(_request: Request, { params }: Params) {
     matches: matchedFeedItems,
     posts: digestPosts,
   });
+  const sourceEntityIdsByPostKey = sourceEntityIdsForDigestPosts({
+    matches: matchedFeedItems,
+    posts: digestPosts,
+  });
 
   return NextResponse.json({
     id: digest.id,
@@ -83,6 +87,7 @@ export async function GET(_request: Request, { params }: Params) {
     favoriteStateByUrl: favoriteState.byUrl,
     originalSummariesByPostKey: originalSummaries.byPostKey,
     originalSummariesByUrl: originalSummaries.byUrl,
+    sourceEntityIdsByPostKey,
   });
 }
 
@@ -247,6 +252,21 @@ function originalSummariesForDigestPosts({
     byPostKey: Object.fromEntries(byPostKey),
     byUrl: Object.fromEntries(byUrl),
   };
+}
+
+function sourceEntityIdsForDigestPosts({
+  matches,
+  posts,
+}: {
+  matches: Map<string, DigestFeedItem>;
+  posts: DigestPostEntry[];
+}) {
+  const byPostKey = new Map<string, string>();
+  for (const post of posts) {
+    const entityId = matches.get(post.key)?.builder?.entityId?.trim();
+    if (entityId) byPostKey.set(post.key, entityId);
+  }
+  return Object.fromEntries(byPostKey);
 }
 
 function matchDigestPostsToFeedItems(posts: DigestPostEntry[], feedItems: DigestFeedItem[]) {

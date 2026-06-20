@@ -55,6 +55,7 @@ export type DigestContentViewProps = {
   pendingFavoriteUrls?: Set<string>;
   showContents?: boolean;
   showSectionCounts?: boolean;
+  sourceEntityIdsByPostKey?: Record<string, string>;
   sourceLinks?: DigestSourceLink[];
   tone?: "paper" | "dark";
   linkComponent?: PostCardLinkComponent;
@@ -72,6 +73,7 @@ export function DigestContentView({
   originalSummariesByUrl = {},
   onFavoriteToggle,
   pendingFavoriteUrls = EMPTY_PENDING_FAVORITE_URLS,
+  sourceEntityIdsByPostKey = {},
   sourceLinks = [],
   tone = "paper",
   linkComponent = DefaultLink,
@@ -120,6 +122,7 @@ export function DigestContentView({
           originalSummariesByPostKey={originalSummariesByPostKey}
           originalSummariesByUrl={originalSummariesByUrl}
           pendingFavoriteUrls={pendingFavoriteUrls}
+          sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
           sourceType={sectionSourceTypes.get(section.id) ?? "website"}
           sourceLookup={sourceLookup}
         />
@@ -142,6 +145,7 @@ function SectionBlock({
   originalSummariesByPostKey,
   originalSummariesByUrl,
   pendingFavoriteUrls,
+  sourceEntityIdsByPostKey,
   sourceType,
   sourceLookup,
 }: {
@@ -154,6 +158,7 @@ function SectionBlock({
   originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
+  sourceEntityIdsByPostKey: Record<string, string>;
   sourceType: string;
   sourceLookup: Map<string, DigestSourceLink>;
 }) {
@@ -165,7 +170,7 @@ function SectionBlock({
           {group.source ? (
             <DigestGroupHeading
               source={group.source}
-              sourceLink={sourceLinkForSource(group.source, sourceLookup)}
+              sourceLink={sourceLinkForGroup(section, group, sourceLookup, sourceEntityIdsByPostKey)}
               linkComponent={linkComponent}
             />
           ) : null}
@@ -185,7 +190,7 @@ function SectionBlock({
               post={post}
               section={section}
               sectionSourceType={sectionSourceType}
-              sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
+              sourceLink={sourceLinkForPost(section, group, post, sourceLookup, sourceEntityIdsByPostKey)}
               favoriteErrorByUrl={favoriteErrorByUrl}
               favoriteStateByPostKey={favoriteStateByPostKey}
               favoriteStateByUrl={favoriteStateByUrl}
@@ -352,12 +357,44 @@ function DigestGroupHeading({
 function buildSourceLookup(sourceLinks: DigestSourceLink[]) {
   const lookup = new Map<string, DigestSourceLink>();
   for (const link of sourceLinks) {
+    const entityKey = sourceEntityKey(link.entityId);
+    if (entityKey && !lookup.has(entityKey)) lookup.set(entityKey, link);
     for (const value of sourceLinkKeys(link)) {
       const key = sourceKey(value);
       if (key && !lookup.has(key)) lookup.set(key, link);
     }
   }
   return lookup;
+}
+
+function sourceLinkForGroup(
+  section: DigestSection,
+  group: DigestGroup,
+  lookup: Map<string, DigestSourceLink>,
+  sourceEntityIdsByPostKey: Record<string, string>,
+) {
+  const linksByEntityId = new Map<string, DigestSourceLink>();
+  for (const post of group.posts) {
+    const link = sourceLinkForPost(section, group, post, lookup, sourceEntityIdsByPostKey);
+    if (link) linksByEntityId.set(link.entityId, link);
+  }
+  if (linksByEntityId.size === 1) return [...linksByEntityId.values()][0];
+  return group.source ? sourceLinkForSource(group.source, lookup) : undefined;
+}
+
+function sourceLinkForPost(
+  section: DigestSection,
+  group: DigestGroup,
+  post: DigestPost,
+  lookup: Map<string, DigestSourceLink>,
+  sourceEntityIdsByPostKey: Record<string, string>,
+) {
+  const entityId = sourceEntityIdsByPostKey[digestPostKey(section, group, post)]?.trim();
+  if (entityId) {
+    const match = lookup.get(sourceEntityKey(entityId));
+    if (match) return match;
+  }
+  return group.source ? sourceLinkForSource(group.source, lookup) : undefined;
 }
 
 function sourceLinkForSource(source: string, lookup: Map<string, DigestSourceLink>) {
@@ -406,6 +443,11 @@ function sourceLinkKeys(link: DigestSourceLink) {
     hostOf(link.fetchUrl ?? ""),
   ].filter(Boolean);
   return [...keys, ...keys.map((key) => key.replace(/^@/, ""))];
+}
+
+function sourceEntityKey(entityId: string) {
+  const normalized = entityId.trim();
+  return normalized ? `entity:${normalized}` : "";
 }
 
 function sourceKey(value: string) {

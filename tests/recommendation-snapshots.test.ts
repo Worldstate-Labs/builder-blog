@@ -562,13 +562,11 @@ Source: https://www.producthunt.com/products/lightfield`,
 });
 
 test("digest renderer links source headings that include an episode suffix", () => {
-  const html = renderToStaticMarkup(
-    createElement(DigestContent, {
-      content: `AI Digest - 6/20/2026
+  const content = `AI Digest - 6/20/2026
 
 ## Podcast
 
-### Unsupervised Learning: With Jacob Effron
+### With Jacob Effron
 
 这一组集中讨论模型如何变成可用的开发者工具和 agent。
 
@@ -576,10 +574,20 @@ test("digest renderer links source headings that include an episode suffix", () 
 
 Summary.
 
-Source: https://www.youtube.com/watch?v=episode123`,
+Source: https://www.youtube.com/watch?v=episode123`;
+  const doc = parseDigest(content);
+  const section = doc.sections[0];
+  const group = section.groups[0];
+  const post = group.posts[0];
+  const postKey = digestPostKey(section, group, post);
+  const html = renderToStaticMarkup(
+    createElement(DigestContent, {
+      content,
+      sourceEntityIdsByPostKey: {
+        [postKey]: "entity_unsupervised_learning",
+      },
       sourceLinks: [
         {
-          aliases: ["Unsupervised Learning"],
           entityId: "entity_unsupervised_learning",
           fetchUrl: "https://www.youtube.com/@UnsupervisedLearning",
           href: "/builder/entity_unsupervised_learning",
@@ -591,9 +599,9 @@ Source: https://www.youtube.com/watch?v=episode123`,
     }),
   );
 
-  assert.match(html, /href="\/builder\/entity_unsupervised_learning"[\s\S]*Unsupervised Learning: With Jacob Effron/);
+  assert.match(html, /href="\/builder\/entity_unsupervised_learning"[\s\S]*With Jacob Effron/);
   assert.match(html, /digest-group-source-avatar/);
-  assert.doesNotMatch(html, /<h4 class="digest-group-heading">Unsupervised Learning: With Jacob Effron<\/h4>/);
+  assert.doesNotMatch(html, /<h4 class="digest-group-heading">With Jacob Effron<\/h4>/);
 });
 
 test("recommendation snapshots request six posts at a time", () => {
@@ -605,7 +613,8 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.doesNotMatch(source("src/app/api/recommendations/route.ts"), /scope: recommendationScope/);
   const feed = source("src/components/RecommendationFeed.tsx");
   assert.match(feed, /limit=6/);
-  assert.match(feed, /Following update/);
+  assert.match(feed, />Update<\/span>/);
+  assert.doesNotMatch(feed, /Following update/);
   assert.doesNotMatch(feed, /Following snapshot/);
   assert.match(feed, /aria-label="Refresh Following posts"/);
   assert.match(feed, /Loading Following posts/);
