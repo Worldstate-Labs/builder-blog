@@ -12,11 +12,10 @@ const MAX_NAME = 240;
 const MAX_HANDLE = 240;
 const MAX_SOURCE_NAME = 240;
 const MAX_EXTERNAL_ID = 512;
-const MAX_DIGEST_SUMMARY = 20_000;
+const MAX_DIGEST_CONTENT = 200_000; // ~200 KB per digest
 const MAX_DIGEST_HEADLINE_SUMMARY = 1200;
 const MAX_ITEMS_PER_BUILDER = 500;
 const MAX_BUILDERS_PER_SYNC = 50;
-const MAX_DIGEST_ITEMS = 5_000;
 
 export const SkillFeedItemSchema = z.object({
   kind: z.enum(FeedItemKind),
@@ -78,41 +77,9 @@ export const SkillDigestedItemSchema = z.object({
   feedItemId: z.string().min(1).max(64).nullable().optional(),
 });
 
-export const SkillDigestItemSchema = z.object({
-  order: z.number().int().min(0).max(MAX_DIGEST_ITEMS),
-  section: z.object({
-    key: z.string().min(1).max(120),
-    label: z.string().min(1).max(160),
-    sourceType: z.string().min(1).max(80),
-  }),
-  source: z.object({
-    entityId: z.string().min(1).max(64),
-    name: z.string().min(1).max(MAX_SOURCE_NAME),
-    sourceType: z.string().min(1).max(80),
-    sourceUrl: z.string().url().max(MAX_URL).nullable().optional(),
-    fetchUrl: z.string().url().max(MAX_URL).nullable().optional(),
-    avatarUrl: z.string().url().max(MAX_URL).nullable().optional(),
-    avatarDataUrl: z.string().max(100_000).nullable().optional(),
-  }),
-  sourceSummary: z.string().max(MAX_DIGEST_SUMMARY).nullable().optional(),
-  post: z.object({
-    feedItemId: z.string().min(1).max(64),
-    entityId: z.string().min(1).max(64),
-    kind: z.enum(FeedItemKind),
-    externalId: z.string().min(1).max(MAX_EXTERNAL_ID),
-    title: z.string().max(MAX_TITLE).nullable().optional(),
-    url: z.string().url().max(MAX_URL),
-    sourceName: z.string().max(MAX_SOURCE_NAME).nullable().optional(),
-    sourceType: z.string().max(80).nullable().optional(),
-    publishedAt: z.string().datetime().nullable().optional(),
-    createdAt: z.string().datetime(),
-  }),
-  summary: z.string().min(1).max(MAX_DIGEST_SUMMARY),
-});
-
 export const SkillDigestSchema = z.object({
   title: z.string().min(1).max(180),
-  items: z.array(SkillDigestItemSchema).min(1).max(MAX_DIGEST_ITEMS),
+  content: z.string().min(1).max(MAX_DIGEST_CONTENT),
   headlineSummary: z.string().trim().min(1).max(MAX_DIGEST_HEADLINE_SUMMARY).nullable().optional(),
   language: z.string().max(16).default("zh"),
   periodStart: z.string().datetime().optional(),
@@ -122,10 +89,9 @@ export const SkillDigestSchema = z.object({
   // user's existing same-day digest(s) instead of stacking a duplicate. Set
   // by the digest "override" toggle (forwarded as `--regenerate` by the CLI).
   regenerate: z.boolean().default(false),
-  // Optional explicit marks remain available for internal callers, but normal
-  // digest sync derives these from structured items so rendering and provenance
-  // are driven by one payload.
-  digestedItems: z.array(SkillDigestedItemSchema).max(MAX_DIGEST_ITEMS).default([]),
+  // The candidate posts presented to this digest. The create route upserts a
+  // per-user DigestedItem for each so they don't participate in future digests.
+  digestedItems: z.array(SkillDigestedItemSchema).max(5_000).default([]),
   // Links this digest to the DigestRun recorded at `prepare`, so the diagnostic
   // funnel (candidate pool, window, source coverage) is completed with the
   // actual outcome. The CLI reads it from the same context file it already

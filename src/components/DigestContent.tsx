@@ -7,7 +7,7 @@ import {
 } from "@/components/DigestContentView";
 import type { PostCardLinkProps } from "@/components/PostCardView";
 
-export type { DigestFavoriteStateByFeedItemId } from "@/components/DigestContentView";
+export type { DigestFavoriteStateByUrl } from "@/components/DigestContentView";
 
 // Container: injects Next's Link so digest source links and the post cards keep
 // client-side navigation. All presentation lives in DigestContentView, which is

@@ -268,7 +268,7 @@ digest_output_completed() {
   for _artifact in \
     "$JOB_TMP_DIR/builder-blog-context.json" \
     "$JOB_TMP_DIR/builder-blog-digest-agent-output.json" \
-    "$JOB_TMP_DIR/builder-blog-digest.json" \
+    "$JOB_TMP_DIR/builder-blog-digest.md" \
     "$JOB_TMP_DIR/builder-blog-digest-headlines.txt"
   do
     if [ ! -s "$_artifact" ]; then

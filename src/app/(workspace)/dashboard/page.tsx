@@ -91,7 +91,7 @@ export default async function DashboardPage({
     <div className="page-pad page-pad--reading home-page">
       <PageHeader
         title="Today"
-        description="Catch up on AI Digest issues and Following posts."
+        description="Read AI Digest issues and Following posts, then save or open originals."
       />
 
       <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">

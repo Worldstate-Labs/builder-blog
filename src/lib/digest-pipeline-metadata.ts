@@ -53,6 +53,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
           where: { userId: ownerUserId, itemCount: { gt: 0 } },
           orderBy: { createdAt: "desc" },
           select: {
+            content: true,
             createdAt: true,
             headlineSummary: true,
             id: true,
@@ -103,6 +104,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
         latestDigestAt: latestDigest?.createdAt.toISOString() ?? null,
         latestDigestHeadline: latestDigest
           ? resolveDigestHeadlineSummary({
+              content: latestDigest.content,
               headlineSummary: latestDigest.headlineSummary,
             })
           : null,

@@ -6,7 +6,6 @@ import {
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { builderSourceLabel } from "@/lib/source-registry";
-import { cleanStructuredDigestItems, digestItemsSearchText } from "@/lib/structured-digest";
 import {
   candidateSearchTerms,
   normalizeSearchMode,
@@ -139,6 +138,7 @@ export async function searchUserLibrary({
     typeFilter && typeFilter !== "digest" ? Promise.resolve([]) : prisma.digest.findMany({
       where: {
         userId: { in: digestOwnerIds },
+        ...(hasCandidateTerms ? { OR: digestSearchConditions(terms) } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: searchLimits.digest,
@@ -219,7 +219,7 @@ export async function searchUserLibrary({
         id: digest.id,
         type: "digest",
         title: digest.title,
-        body: digestItemsSearchText(cleanStructuredDigestItems(digest.items)),
+        body: digest.content,
         url: pipeline
           ? `/dashboard?tab=ai-digest&pipeline=${pipeline.id}&digest=${digest.id}`
           : `/dashboard?tab=ai-digest&digest=${digest.id}`,
@@ -368,6 +368,15 @@ function feedSearchConditions(terms: string[]): Prisma.FeedItemWhereInput[] {
     { body: textContains(term) },
     { sourceName: textContains(term) },
     { url: textContains(term) },
+  ]);
+}
+
+function digestSearchConditions(terms: string[]): Prisma.DigestWhereInput[] {
+  return terms.flatMap((term) => [
+    { title: textContains(term) },
+    { content: textContains(term) },
+    { language: textContains(term) },
+    { source: textContains(term) },
   ]);
 }
 

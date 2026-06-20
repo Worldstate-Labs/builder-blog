@@ -39,7 +39,7 @@ TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/diges
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" render-digest \
   --context "$TMP_DIR/builder-blog-context.json" \
   --agent-output "$TMP_DIR/builder-blog-digest-agent-output.json" \
-  --out "$TMP_DIR/builder-blog-digest.json" \
+  --out "$TMP_DIR/builder-blog-digest.md" \
   --summary-out "$TMP_DIR/builder-blog-digest-headlines.txt"
 ```
 
@@ -51,7 +51,7 @@ ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
-  --file "$TMP_DIR/builder-blog-digest.json" \
+  --file "$TMP_DIR/builder-blog-digest.md" \
   --summary-file "$TMP_DIR/builder-blog-digest-headlines.txt" \
   --context "$TMP_DIR/builder-blog-context.json" \
   --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-}

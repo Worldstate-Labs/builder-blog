@@ -292,7 +292,7 @@ node ~/.builder-blog/builder-digest.mjs prepare
 - Prioritize launches, technical insights, business moves, strong opinions, and implementation details.
 - Do not browse the web or invent missing facts.
 
-4. Render and sync the structured digest to the web app:
+4. Sync the final digest to the web app:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
@@ -300,25 +300,17 @@ ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-once}"
 mkdir -p "$TMP_DIR"
 
-cat > "$TMP_DIR/builder-blog-digest-agent-output.json" <<'DIGEST'
-{
-  "headlineSummary": "<headline summary text>",
-  "sourceSummaries": [],
-  "postSummaries": [
-    { "feedItemId": "<context item.id>", "summary": "<rewritten post summary>" }
-  ]
-}
+cat > "$TMP_DIR/builder-blog-digest.md" <<'DIGEST'
+<final digest text>
 DIGEST
 
-node ~/.builder-blog/builder-digest.mjs render-digest \
-  --context "$TMP_DIR/builder-blog-context.json" \
-  --agent-output "$TMP_DIR/builder-blog-digest-agent-output.json" \
-  --out "$TMP_DIR/builder-blog-digest.json" \
-  --summary-out "$TMP_DIR/builder-blog-digest-headlines.txt"
+cat > "$TMP_DIR/builder-blog-digest-headlines.txt" <<'HEADLINES'
+<headline summary text>
+HEADLINES
 
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs sync \
-  --file "$TMP_DIR/builder-blog-digest.json" \
+  --file "$TMP_DIR/builder-blog-digest.md" \
   --summary-file "$TMP_DIR/builder-blog-digest-headlines.txt" \
   --context "$TMP_DIR/builder-blog-context.json" \
   --title "AI Builder Digest"

@@ -14,11 +14,16 @@ import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { postDetailHref } from "@/lib/navigation";
 import { normalizeSourceType } from "@/lib/source-display";
 import {
-  cleanStructuredDigestItems,
-  type StructuredDigestItem,
-} from "@/lib/structured-digest";
+  digestPostKey,
+  parseDigest,
+  type DigestDoc,
+  type DigestGroup,
+  type DigestInline,
+  type DigestPost,
+  type DigestSection,
+} from "@/lib/digest-markdown";
 
-export type DigestFavoriteStateByFeedItemId = Record<
+export type DigestFavoriteStateByUrl = Record<
   string,
   {
     feedItemId: string;
@@ -26,8 +31,11 @@ export type DigestFavoriteStateByFeedItemId = Record<
   }
 >;
 
-const EMPTY_PENDING_FAVORITE_IDS = new Set<string>();
+const EMPTY_PENDING_FAVORITE_URLS = new Set<string>();
 
+// Dependency-free default link. The DigestContent wrapper injects next/link to
+// keep client-side navigation; Storybook / design-sync use this anchor and the
+// same default flows into the PostCardView instances below.
 function DefaultLink({ href, children, ...rest }: PostCardLinkProps) {
   return (
     <a href={href} {...rest}>
@@ -37,79 +45,87 @@ function DefaultLink({ href, children, ...rest }: PostCardLinkProps) {
 }
 
 export type DigestContentViewProps = {
-  favoriteErrorByFeedItemId?: Record<string, string>;
-  favoriteStateByFeedItemId?: DigestFavoriteStateByFeedItemId;
-  items: StructuredDigestItem[];
-  onFavoriteToggle?: (feedItemId: string, nextFavorite: boolean) => void;
-  pendingFavoriteFeedItemIds?: Set<string>;
+  content: string;
+  favoriteErrorByUrl?: Record<string, string>;
+  favoriteStateByPostKey?: DigestFavoriteStateByUrl;
+  favoriteStateByUrl?: DigestFavoriteStateByUrl;
+  originalSummariesByPostKey?: Record<string, string>;
+  originalSummariesByUrl?: Record<string, string>;
+  onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  pendingFavoriteUrls?: Set<string>;
+  showContents?: boolean;
+  showSectionCounts?: boolean;
+  sourceEntityIdsByPostKey?: Record<string, string>;
   sourceLinks?: DigestSourceLink[];
   tone?: "paper" | "dark";
   linkComponent?: PostCardLinkComponent;
 };
 
+// Renders the CLI-produced digest markdown as a progressively-readable document:
+// source links, source-grouped sections, and the shared PostCardView for each
+// post. `tone` adapts it to the dark "today" hero vs the paper archive.
 export function DigestContentView({
-  favoriteErrorByFeedItemId = {},
-  favoriteStateByFeedItemId = {},
-  items,
+  content,
+  favoriteErrorByUrl = {},
+  favoriteStateByPostKey = {},
+  favoriteStateByUrl = {},
+  originalSummariesByPostKey = {},
+  originalSummariesByUrl = {},
   onFavoriteToggle,
-  pendingFavoriteFeedItemIds = EMPTY_PENDING_FAVORITE_IDS,
+  pendingFavoriteUrls = EMPTY_PENDING_FAVORITE_URLS,
+  sourceEntityIdsByPostKey = {},
   sourceLinks = [],
   tone = "paper",
   linkComponent = DefaultLink,
 }: DigestContentViewProps) {
-  const digestItems = useMemo(() => cleanStructuredDigestItems(items), [items]);
-  const sections = useMemo(() => groupStructuredDigestItems(digestItems), [digestItems]);
-  const sourceLinkByEntityId = useMemo(() => {
-    const links = new Map<string, DigestSourceLink>();
-    for (const link of sourceLinks) {
-      if (link.entityId) links.set(link.entityId, link);
-    }
-    return links;
-  }, [sourceLinks]);
+  const doc: DigestDoc = useMemo(() => parseDigest(content ?? ""), [content]);
+  const sourceLookup = useMemo(() => buildSourceLookup(sourceLinks), [sourceLinks]);
 
-  if (digestItems.length === 0) {
+  if (!doc.hasStructure) {
+    // Plain prose (e.g. a "no new updates" note) — render paragraphs cleanly.
     return (
       <div className={wrapClass(tone)}>
-        <p className="digest-prose">No AI Digest items yet.</p>
+        {doc.lead.length > 0 ? (
+          doc.lead.map((p, i) => (
+            <p key={i} className="digest-prose">
+              <Inline nodes={p} />
+            </p>
+          ))
+        ) : (
+          <p className="digest-prose">{content}</p>
+        )}
       </div>
     );
   }
 
+  const sectionSourceTypes = new Map(
+    doc.sections.map((section) => [section.id, sourceTypeForSection(section, sourceLookup)]),
+  );
+
   return (
     <div className={wrapClass(tone)}>
-      {sections.map((section) => (
-        <section className="digest-section" id={section.key} key={section.key}>
-          <div className="digest-section-body">
-            {section.groups.map((group) => (
-              <div className="digest-group" key={group.source.entityId}>
-                <DigestGroupHeading
-                  linkComponent={linkComponent}
-                  source={group.source}
-                  sourceLink={sourceLinkByEntityId.get(group.source.entityId)}
-                />
-                {group.sourceSummary ? (
-                  <div className="digest-source-summary">
-                    <p>{group.sourceSummary}</p>
-                  </div>
-                ) : null}
-                {group.items.map((item) => (
-                  <PostBlock
-                    favoriteError={favoriteErrorByFeedItemId[item.post.feedItemId] ?? ""}
-                    favoriteState={favoriteStateByFeedItemId[item.post.feedItemId] ?? {
-                      feedItemId: item.post.feedItemId,
-                      favoritedAt: null,
-                    }}
-                    item={item}
-                    key={item.post.feedItemId}
-                    linkComponent={linkComponent}
-                    onFavoriteToggle={onFavoriteToggle}
-                    pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </section>
+      {doc.lead.map((p, i) => (
+        <p key={`lead-${i}`} className="digest-lead-note">
+          <Inline nodes={p} />
+        </p>
+      ))}
+
+      {doc.sections.map((section) => (
+        <SectionBlock
+          key={section.id}
+          section={section}
+          favoriteErrorByUrl={favoriteErrorByUrl}
+          favoriteStateByPostKey={favoriteStateByPostKey}
+          favoriteStateByUrl={favoriteStateByUrl}
+          linkComponent={linkComponent}
+          onFavoriteToggle={onFavoriteToggle}
+          originalSummariesByPostKey={originalSummariesByPostKey}
+          originalSummariesByUrl={originalSummariesByUrl}
+          pendingFavoriteUrls={pendingFavoriteUrls}
+          sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
+          sourceType={sectionSourceTypes.get(section.id) ?? "website"}
+          sourceLookup={sourceLookup}
+        />
       ))}
     </div>
   );
@@ -119,61 +135,166 @@ function wrapClass(tone: "paper" | "dark"): string {
   return tone === "dark" ? "digest-rich on-dark" : "digest-rich";
 }
 
-function PostBlock({
-  favoriteError,
-  favoriteState,
-  item,
+function SectionBlock({
+  section,
+  favoriteErrorByUrl,
+  favoriteStateByPostKey,
+  favoriteStateByUrl,
   linkComponent,
   onFavoriteToggle,
-  pendingFavoriteFeedItemIds,
+  originalSummariesByPostKey,
+  originalSummariesByUrl,
+  pendingFavoriteUrls,
+  sourceEntityIdsByPostKey,
+  sourceType,
+  sourceLookup,
 }: {
-  favoriteError: string;
-  favoriteState: { feedItemId: string; favoritedAt: string | null };
-  item: StructuredDigestItem;
+  section: DigestSection;
+  favoriteErrorByUrl: Record<string, string>;
+  favoriteStateByPostKey: DigestFavoriteStateByUrl;
+  favoriteStateByUrl: DigestFavoriteStateByUrl;
   linkComponent: PostCardLinkComponent;
-  onFavoriteToggle?: (feedItemId: string, nextFavorite: boolean) => void;
-  pendingFavoriteFeedItemIds: Set<string>;
+  onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  originalSummariesByPostKey: Record<string, string>;
+  originalSummariesByUrl: Record<string, string>;
+  pendingFavoriteUrls: Set<string>;
+  sourceEntityIdsByPostKey: Record<string, string>;
+  sourceType: string;
+  sourceLookup: Map<string, DigestSourceLink>;
 }) {
-  const sourceType = normalizeSourceType(item.source.sourceType || item.post.sourceType) || "website";
+  const sectionSourceType = sourceType;
+  const body = (
+    <div className="digest-section-body">
+      {section.groups.map((group, gi) => (
+        <div key={gi} className="digest-group">
+          {group.source ? (
+            <DigestGroupHeading
+              source={group.source}
+              sourceLink={sourceLinkForGroup(section, group, sourceLookup, sourceEntityIdsByPostKey)}
+              linkComponent={linkComponent}
+            />
+          ) : null}
+          {group.summary.length > 0 ? (
+            <div className="digest-source-summary">
+              {group.summary.map((p, i) => (
+                <p key={i}>
+                  <Inline nodes={p} />
+                </p>
+              ))}
+            </div>
+          ) : null}
+          {group.posts.map((post) => (
+            <PostBlock
+              key={post.id}
+              group={group}
+              post={post}
+              section={section}
+              sectionSourceType={sectionSourceType}
+              sourceLink={sourceLinkForPost(section, group, post, sourceLookup, sourceEntityIdsByPostKey)}
+              favoriteErrorByUrl={favoriteErrorByUrl}
+              favoriteStateByPostKey={favoriteStateByPostKey}
+              favoriteStateByUrl={favoriteStateByUrl}
+              linkComponent={linkComponent}
+              onFavoriteToggle={onFavoriteToggle}
+              originalSummariesByPostKey={originalSummariesByPostKey}
+              originalSummariesByUrl={originalSummariesByUrl}
+              pendingFavoriteUrls={pendingFavoriteUrls}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <section id={section.id} className="digest-section">
+      {body}
+    </section>
+  );
+}
+
+function PostBlock({
+  group,
+  post,
+  section,
+  sectionSourceType,
+  sourceLink,
+  favoriteErrorByUrl,
+  favoriteStateByPostKey,
+  favoriteStateByUrl,
+  linkComponent,
+  onFavoriteToggle,
+  originalSummariesByPostKey,
+  originalSummariesByUrl,
+  pendingFavoriteUrls,
+}: {
+  group: DigestGroup;
+  post: DigestPost;
+  section: DigestSection;
+  sectionSourceType: string;
+  sourceLink?: DigestSourceLink;
+  favoriteErrorByUrl: Record<string, string>;
+  favoriteStateByPostKey: DigestFavoriteStateByUrl;
+  favoriteStateByUrl: DigestFavoriteStateByUrl;
+  linkComponent: PostCardLinkComponent;
+  onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  originalSummariesByPostKey: Record<string, string>;
+  originalSummariesByUrl: Record<string, string>;
+  pendingFavoriteUrls: Set<string>;
+}) {
+  const summary = [post.lede, ...post.paragraphs]
+    .filter((nodes): nodes is DigestInline[] => Boolean(nodes))
+    .map(inlineText)
+    .join("\n\n")
+    .trim();
+  const sourceType = normalizeSourceType(sourceLink?.sourceType) || sectionSourceType;
+  const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
+  const postKey = digestPostKey(section, group, post);
+  const originalSummary = originalSummariesByPostKey[postKey] ?? originalSummariesByUrl[url] ?? null;
+  const favoriteState = favoriteStateByUrl[url] ?? favoriteStateByPostKey[postKey];
+  const favoriteError = favoriteErrorByUrl[url] ?? "";
   const postCard: PostCardPost = {
-    id: `digest-${item.post.feedItemId}`,
-    title: item.post.title || item.source.name || "Untitled update",
-    body: item.summary,
-    summary: item.summary,
-    detailUrl: postDetailHref(item.post.feedItemId, "/dashboard?tab=ai-digest", "AI Digest"),
-    url: item.post.url,
-    publishedAt: item.post.publishedAt,
-    createdAt: item.post.createdAt,
-    sourceName: item.source.name,
+    id: `digest-${section.id}-${post.id}`,
+    title: post.title,
+    body: summary,
+    summary,
+    originalSummary,
+    detailUrl: favoriteState
+      ? postDetailHref(favoriteState.feedItemId, "/dashboard?tab=ai-digest", "AI Digest")
+      : null,
+    url,
+    publishedAt: null,
+    createdAt: new Date(0).toISOString(),
+    sourceName: group.source,
     sourceType,
     fetchTool: null,
-    builder: {
-      id: item.source.entityId,
-      entityId: item.source.entityId,
-      name: item.source.name,
-      kind: builderKindFromSourceType(sourceType),
-      sourceType,
-      sourceUrl: item.source.sourceUrl,
-      fetchUrl: item.source.fetchUrl,
-      avatarUrl: item.source.avatarUrl ?? null,
-      avatarDataUrl: item.source.avatarDataUrl ?? null,
-    },
+    builder: sourceLink
+      ? {
+          id: sourceLink.entityId,
+          entityId: sourceLink.entityId,
+          name: sourceLink.name,
+          kind: builderKindFromSourceType(sourceType),
+          sourceType,
+          sourceUrl: sourceLink.sourceUrl ?? null,
+          fetchUrl: sourceLink.fetchUrl ?? null,
+        }
+      : null,
   };
 
   return (
     <PostCardView
       extraActions={
-        onFavoriteToggle ? (
+        favoriteState && onFavoriteToggle ? (
           <span className="post-favorite-control">
             <PostFavoriteButton
               ariaLabel={postFavoriteActionLabel(
                 Boolean(favoriteState.favoritedAt),
                 digestFavoriteTargetLabel(postCard),
               )}
-              disabled={pendingFavoriteFeedItemIds.has(item.post.feedItemId)}
+              disabled={pendingFavoriteUrls.has(url)}
               isFavorite={Boolean(favoriteState.favoritedAt)}
               onToggle={() =>
-                onFavoriteToggle(item.post.feedItemId, !favoriteState.favoritedAt)
+                onFavoriteToggle(url, favoriteState.feedItemId, !favoriteState.favoritedAt)
               }
             />
             {favoriteError ? (
@@ -203,88 +324,165 @@ function DigestGroupHeading({
   sourceLink,
   linkComponent: LinkComponent,
 }: {
-  source: StructuredDigestItem["source"];
+  source: string;
   sourceLink?: DigestSourceLink;
   linkComponent: PostCardLinkComponent;
 }) {
-  const label = source.name || "Unknown source";
-  const avatar = (
-    <SourceAvatar
-      className="digest-group-source-avatar"
-      imageSize={24}
-      source={{
-        avatarDataUrl: source.avatarDataUrl ?? sourceLink?.avatarDataUrl ?? null,
-        avatarUrl: source.avatarUrl ?? sourceLink?.avatarUrl ?? null,
-        fetchUrl: source.fetchUrl ?? sourceLink?.fetchUrl ?? null,
-        name: label,
-        sourceType: source.sourceType ?? sourceLink?.sourceType ?? "website",
-        sourceUrl: source.sourceUrl ?? sourceLink?.sourceUrl ?? null,
-      }}
-    />
-  );
-
   if (!sourceLink) {
-    return (
-      <h4 className="digest-group-heading">
-        <span className="digest-group-source-link">
-          {avatar}
-          <span>{label}</span>
-        </span>
-      </h4>
-    );
+    return <h4 className="digest-group-heading">{source}</h4>;
   }
 
   return (
     <h4 className="digest-group-heading">
       <LinkComponent className="digest-group-source-link" href={sourceLink.href}>
-        {avatar}
-        <span>{label}</span>
+        <SourceAvatar
+          className="digest-group-source-avatar"
+          imageSize={24}
+          source={{
+            avatarDataUrl: sourceLink.avatarDataUrl ?? null,
+            avatarUrl: sourceLink.avatarUrl ?? null,
+            fetchUrl: sourceLink.fetchUrl ?? null,
+            name: sourceLink.name || source,
+            sourceType: sourceLink.sourceType ?? "website",
+            sourceUrl: sourceLink.sourceUrl ?? null,
+          }}
+        />
+        <span>{source}</span>
         <ArrowRight aria-hidden="true" className="digest-group-source-icon" />
       </LinkComponent>
     </h4>
   );
 }
 
-function groupStructuredDigestItems(items: StructuredDigestItem[]) {
-  const sections = new Map<
-    string,
-    {
-      key: string;
-      label: string;
-      groups: Map<
-        string,
-        {
-          source: StructuredDigestItem["source"];
-          sourceSummary: string | null;
-          items: StructuredDigestItem[];
-        }
-      >;
+function buildSourceLookup(sourceLinks: DigestSourceLink[]) {
+  const lookup = new Map<string, DigestSourceLink>();
+  for (const link of sourceLinks) {
+    const entityKey = sourceEntityKey(link.entityId);
+    if (entityKey && !lookup.has(entityKey)) lookup.set(entityKey, link);
+    for (const value of sourceLinkKeys(link)) {
+      const key = sourceKey(value);
+      if (key && !lookup.has(key)) lookup.set(key, link);
     }
-  >();
+  }
+  return lookup;
+}
 
-  for (const item of [...items].sort((a, b) => a.order - b.order)) {
-    const sectionKey = item.section.key || item.section.sourceType || "website";
-    const section = sections.get(sectionKey) ?? {
-      key: sectionKey,
-      label: item.section.label,
-      groups: new Map(),
-    };
-    const groupKey = item.source.entityId || item.source.name;
-    const group = section.groups.get(groupKey) ?? {
-      source: item.source,
-      sourceSummary: item.sourceSummary,
-      items: [],
-    };
-    group.items.push(item);
-    section.groups.set(groupKey, group);
-    sections.set(sectionKey, section);
+function sourceLinkForGroup(
+  section: DigestSection,
+  group: DigestGroup,
+  lookup: Map<string, DigestSourceLink>,
+  sourceEntityIdsByPostKey: Record<string, string>,
+) {
+  const linksByEntityId = new Map<string, DigestSourceLink>();
+  for (const post of group.posts) {
+    const link = sourceLinkForPost(section, group, post, lookup, sourceEntityIdsByPostKey);
+    if (link) linksByEntityId.set(link.entityId, link);
+  }
+  if (linksByEntityId.size === 1) return [...linksByEntityId.values()][0];
+  return group.source ? sourceLinkForSource(group.source, lookup) : undefined;
+}
+
+function sourceLinkForPost(
+  section: DigestSection,
+  group: DigestGroup,
+  post: DigestPost,
+  lookup: Map<string, DigestSourceLink>,
+  sourceEntityIdsByPostKey: Record<string, string>,
+) {
+  const entityId = sourceEntityIdsByPostKey[digestPostKey(section, group, post)]?.trim();
+  if (entityId) {
+    const match = lookup.get(sourceEntityKey(entityId));
+    if (match) return match;
+  }
+  return group.source ? sourceLinkForSource(group.source, lookup) : undefined;
+}
+
+function sourceLinkForSource(source: string, lookup: Map<string, DigestSourceLink>) {
+  const direct = lookup.get(sourceKey(source));
+  if (direct) return direct;
+
+  for (const part of sourceLabelCandidates(source)) {
+    const match = lookup.get(sourceKey(part));
+    if (match) return match;
+  }
+  return undefined;
+}
+
+function sourceLabelCandidates(source: string) {
+  return source
+    .normalize("NFKC")
+    .split(/[()（）]|[:：]|[-–—]\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function sourceTypeForSection(section: DigestSection, lookup: Map<string, DigestSourceLink>) {
+  return sourceTypeFromSourceLinksForSection(section, lookup) || sourceTypeFromSection(section.heading);
+}
+
+function sourceTypeFromSourceLinksForSection(section: DigestSection, lookup: Map<string, DigestSourceLink>) {
+  const sourceTypes = new Set<string>();
+  for (const group of section.groups) {
+    if (!group.source) continue;
+    const sourceType = normalizeSourceType(sourceLinkForSource(group.source, lookup)?.sourceType);
+    if (sourceType) sourceTypes.add(sourceType);
   }
 
-  return [...sections.values()].map((section) => ({
-    key: section.key,
-    label: section.label,
-    groups: [...section.groups.values()],
-  }));
+  if (sourceTypes.size === 1) return [...sourceTypes][0];
+
+  const sectionSourceType = normalizeSourceType(sourceLinkForSource(section.heading, lookup)?.sourceType);
+  return sectionSourceType || null;
+}
+
+function sourceLinkKeys(link: DigestSourceLink) {
+  const keys = [
+    link.name,
+    ...(link.aliases ?? []),
+    link.handle ?? "",
+    hostOf(link.sourceUrl ?? ""),
+    hostOf(link.fetchUrl ?? ""),
+  ].filter(Boolean);
+  return [...keys, ...keys.map((key) => key.replace(/^@/, ""))];
+}
+
+function sourceEntityKey(entityId: string) {
+  const normalized = entityId.trim();
+  return normalized ? `entity:${normalized}` : "";
+}
+
+function sourceKey(value: string) {
+  const normalized = value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/[()（）]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized;
+}
+
+function hostOf(value: string) {
+  if (!value) return "";
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function inlineText(nodes: DigestInline[]) {
+  return nodes.map((node) => node.value).join("").trim();
+}
+
+function sourceTypeFromSection(heading: string) {
+  const normalized = heading.toLowerCase();
+  if (normalized.includes("github trending")) return "github_trending";
+  if (normalized.includes("product hunt")) return "product_hunt_top_products";
+  if (normalized.includes("twitter") || normalized.includes("x /")) return "x";
+  if (normalized.includes("youtube") || normalized.includes("video") || normalized.includes("视频")) return "youtube";
+  if (normalized.includes("podcast") || normalized.includes("播客")) return "podcast";
+  if (normalized.includes("blog") || normalized.includes("博客")) return "blog";
+  return "website";
 }
 
 function builderKindFromSourceType(sourceType: string): "X" | "BLOG" | "PODCAST" | "WEBSITE" {
@@ -292,4 +490,21 @@ function builderKindFromSourceType(sourceType: string): "X" | "BLOG" | "PODCAST"
   if (sourceType === "blog") return "BLOG";
   if (sourceType === "youtube" || sourceType === "podcast") return "PODCAST";
   return "WEBSITE";
+}
+
+function Inline({ nodes }: { nodes: DigestInline[] }) {
+  return (
+    <>
+      {nodes.map((n, i) => {
+        if (n.type === "strong") return <strong key={i}>{n.value}</strong>;
+        if (n.type === "link")
+          return (
+            <a key={i} className="dr-inline-link" href={n.href} target="_blank" rel="noreferrer">
+              {n.value}
+            </a>
+          );
+        return <span key={i}>{n.value}</span>;
+      })}
+    </>
+  );
 }
