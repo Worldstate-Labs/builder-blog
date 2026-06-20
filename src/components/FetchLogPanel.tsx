@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   useTransition,
-  type CSSProperties,
   type UIEvent,
   type ReactNode,
 } from "react";
@@ -333,6 +332,31 @@ function statusStyle(status: string): {
         border: "var(--line)",
       };
   }
+}
+
+type StatusTone = "ok" | "partial" | "failed" | "muted";
+
+function statusTone(status: string): StatusTone {
+  if (status === "ok") return "ok";
+  if (status === "partial") return "partial";
+  if (status === "failed") return "failed";
+  return "muted";
+}
+
+function statusToneClass(tone: StatusTone): string {
+  return `is-${tone}`;
+}
+
+function jobRunStatusTone(jobRun: AgentJobRunListItem): StatusTone {
+  if (jobRun.status === "succeeded") return "ok";
+  if (
+    jobRun.status === "running" ||
+    jobRun.status === "starting" ||
+    jobRun.status === "killed" ||
+    jobRun.status === "stale" ||
+    jobRun.status === "replaced"
+  ) return "partial";
+  return "failed";
 }
 
 function readDetails(value: unknown): DetailsShape {
@@ -1328,6 +1352,7 @@ function FetchStatusPanel({
 }) {
   const hydrated = useHydrated();
   const rowEntries = useMemo(() => entries.slice().reverse(), [entries]);
+  const hasScrollCue = rowEntries.length > 3 || hasMoreHistory || isLoadingHistory;
   const handleLogScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     if (hasMoreHistory && !isLoadingHistory && shouldLoadMoreHistory(event.currentTarget)) {
       onLoadMoreHistory();
@@ -1412,21 +1437,23 @@ function FetchStatusPanel({
 
         {entries.length > 0 ? (
           <div className="sync-panel-column">
-            <div className="sync-panel-slot-rows is-scrollable is-timeline" onScroll={handleLogScroll}>
-              {rowEntries.map((entry) => (
-                <FetchTimelineRow
-                  entry={entry}
-                  hydrated={hydrated}
-                  key={entry.key}
-                  onOpenLog={onOpenLog}
-                />
-              ))}
-              {isLoadingHistory ? (
-                <div className="sync-panel-slot-loading" role="status">
-                  <span aria-hidden="true" className="sync-panel-slot-loading-line" />
-                  <span>Loading older logs</span>
-                </div>
-              ) : null}
+            <div className={`sync-panel-scroll-cue${hasScrollCue ? " has-more" : ""}`}>
+              <div className="sync-panel-slot-rows is-scrollable is-timeline" onScroll={handleLogScroll}>
+                {rowEntries.map((entry) => (
+                  <FetchTimelineRow
+                    entry={entry}
+                    hydrated={hydrated}
+                    key={entry.key}
+                    onOpenLog={onOpenLog}
+                  />
+                ))}
+                {isLoadingHistory ? (
+                  <div className="sync-panel-slot-loading" role="status">
+                    <span aria-hidden="true" className="sync-panel-slot-loading-line" />
+                    <span>Loading older logs</span>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         ) : (
@@ -1441,10 +1468,6 @@ function FetchStatusPanel({
   );
 }
 
-function cronSlotStyle(status: CronSlotStatus): { background: string; border: string; color: string } {
-  return statusStyle(scheduledWindowStyleStatus(status));
-}
-
 function FetchTimelineRow({
   entry,
   hydrated,
@@ -1454,7 +1477,7 @@ function FetchTimelineRow({
   hydrated: boolean;
   onOpenLog: (logRef: FetchLogRef) => void;
 }) {
-  const style = cronSlotStyle(entry.status);
+  const tone = statusTone(scheduledWindowStyleStatus(entry.status));
   const statusLabel = scheduledWindowStatusLabel(entry.status);
   const id = entry.slot ? slotDomId(entry.slot) : entry.run ? runDomId(entry.run.id) : entry.jobRun ? jobRunDomId(entry.jobRun.instanceId) : undefined;
   return (
@@ -1465,14 +1488,10 @@ function FetchTimelineRow({
     >
       <div className="sync-panel-slot-row-main">
         <div className="sync-panel-slot-row-primary">
-          <span
-            className="sync-panel-slot-row-status"
-            style={{ color: style.color }}
-          >
+          <span className={`sync-panel-slot-row-status ${statusToneClass(tone)}`}>
             <span
               aria-hidden="true"
               className="sync-panel-slot-row-dot"
-              style={{ background: style.color }}
             />
             {statusLabel}
           </span>
@@ -1510,18 +1529,6 @@ function jobRunLabel(jobRun: AgentJobRunListItem): string {
   return scheduledRunTriggerLabel(jobRun, "library-cron");
 }
 
-function jobRunStatusStyle(jobRun: AgentJobRunListItem): ReturnType<typeof statusStyle> {
-  if (jobRun.status === "succeeded") return statusStyle("ok");
-  if (
-    jobRun.status === "running" ||
-    jobRun.status === "starting" ||
-    jobRun.status === "killed" ||
-    jobRun.status === "stale" ||
-    jobRun.status === "replaced"
-  ) return statusStyle("partial");
-  return statusStyle("failed");
-}
-
 function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
   if (jobRun.status === "killed" || jobRun.status === "stale") return "Stopped";
   return scheduledJobRunStatusLabel(jobRun.status);
@@ -1530,19 +1537,20 @@ function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
 function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
   label: string;
   style: ReturnType<typeof statusStyle>;
+  tone: StatusTone;
 } | null {
   if (!jobRun || jobRun.status === "succeeded") return null;
   if (isStalledJobRun(jobRun)) {
-    return { label: "Stalled", style: statusStyle("failed") };
+    return { label: "Stalled", style: statusStyle("failed"), tone: "failed" };
   }
   if (isActiveJobRun(jobRun)) return null;
   if (jobRun.status === "killed") {
-    return { label: "Stopped", style: statusStyle("partial") };
+    return { label: "Stopped", style: statusStyle("partial"), tone: "partial" };
   }
   if (jobRun.status === "replaced") {
-    return { label: "Replaced", style: statusStyle("partial") };
+    return { label: "Replaced", style: statusStyle("partial"), tone: "partial" };
   }
-  return { label: jobRunStatusLabel(jobRun), style: statusStyle("failed") };
+  return { label: jobRunStatusLabel(jobRun), style: statusStyle("failed"), tone: "failed" };
 }
 
 function runHeaderHost(hostname: string | null | undefined): string | null {
@@ -1557,6 +1565,10 @@ function runHeaderMeta(...parts: Array<string | null | undefined>): string {
     .join(" · ");
 }
 
+function isInternalJobRunReason(reason: string | null | undefined): boolean {
+  return reason === "heartbeat";
+}
+
 function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
   if (jobRun.status === "succeeded") return null;
   const details = readJobRunDetails(jobRun.details);
@@ -1566,7 +1578,9 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
     details.timedOutWorker ? `Local Agent ${details.timedOutWorker}` : null,
     details.timedOutWorkerPid ? `pid ${details.timedOutWorkerPid}` : null,
     details.termination === "still_alive_after_kill" ? "cleanup failed" : details.termination,
-    details.reason && details.reason !== "timeout_seconds_for_job" ? details.reason.replace(/_/g, " ") : null,
+    details.reason && details.reason !== "timeout_seconds_for_job" && !isInternalJobRunReason(details.reason)
+      ? details.reason.replace(/_/g, " ")
+      : null,
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
 }
@@ -1684,7 +1698,6 @@ function LifecyclePipeline({
           <details
             className={`sync-panel-lifecycle-step is-${step.tone}`}
             open={step.open}
-            style={{ "--step-color": toneStyle(step.tone).color } as CSSProperties}
           >
             <summary className="sync-panel-lifecycle-summary">
               <span aria-hidden="true" className="sync-panel-lifecycle-dot" />
@@ -1810,7 +1823,7 @@ function JobRunCard({
   onOpenLog?: () => void;
 }) {
   const hydrated = useHydrated();
-  const style = jobRunStatusStyle(jobRun);
+  const tone = jobRunStatusTone(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   const diagnostic = jobRunDiagnostic(jobRun);
   const liveProgress = readFetchJobProgress(jobRun.details);
@@ -1828,14 +1841,7 @@ function JobRunCard({
     <article className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
         <div className="sync-panel-run-card-head-main">
-          <span
-            className="fb-chip"
-            style={{
-              background: style.background,
-              color: style.color,
-              borderColor: style.border,
-            }}
-          >
+          <span className={`fb-chip ${statusToneClass(tone)}`}>
             {jobRunStatusLabel(jobRun)}
           </span>
           <time
@@ -1893,10 +1899,10 @@ function RunCard({
   const inflight = isRunInflight(run, jobRun, cronJob);
   const interruptedStatus = interruptedFetchRunStatus(jobRun);
   const displayStatus = inflight
-    ? { label: "Syncing", style: statusStyle("partial") }
+    ? { label: "Syncing", style: statusStyle("partial"), tone: "partial" as const }
     : interruptedStatus
     ? interruptedStatus
-    : { label, style };
+    : { label, style, tone: statusTone(run.status) };
   // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
   const agentLabel =
@@ -1924,12 +1930,7 @@ function RunCard({
       <header className="sync-panel-run-card-head">
         <div className="sync-panel-run-card-head-main">
           <span
-            className={inflight ? "fb-chip sync-panel-live-chip" : "fb-chip"}
-            style={{
-              background: displayStatus.style.background,
-              color: displayStatus.style.color,
-              borderColor: displayStatus.style.border,
-            }}
+            className={`fb-chip ${statusToneClass(displayStatus.tone)}${inflight ? " sync-panel-live-chip" : ""}`}
           >
             {inflight ? (
               <span
@@ -2398,25 +2399,6 @@ function DetailsBody({
 
 type Tone = "ok" | "warn" | "fail" | "idle";
 
-function toneStyle(tone: Tone): { background: string; color: string } {
-  switch (tone) {
-    case "ok":
-      return {
-        background: "var(--signal-soft)",
-        color: "color-mix(in oklch, var(--signal) 72%, var(--ink))",
-      };
-    case "warn":
-      return {
-        background: "var(--warm-soft)",
-        color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
-      };
-    case "fail":
-      return { background: "var(--danger-soft)", color: "var(--danger)" };
-    default:
-      return { background: "var(--paper)", color: "var(--muted-strong)" };
-  }
-}
-
 type WorkInfo = {
   label: string;
   blurb: string | null;
@@ -2835,7 +2817,6 @@ function TaskRow({
     ? { label: "Candidates discovered", tone: "ok" as Tone }
     : statusBanner(task, liveTask);
   const readDone = hasReadSignal(task, liveTask);
-  const bannerStyle = toneStyle(banner.tone);
   const liveLabel = liveTaskLabel(liveTask);
   const liveTone = liveTaskTone(liveTask);
   const pill = discoveryState?.expanded
@@ -3055,8 +3036,7 @@ function TaskRow({
             className="sync-panel-task-chev fb-task-chev"
           />
           <span
-            className="sync-panel-task-status-pill"
-            style={toneStyle(pill.tone)}
+            className={`sync-panel-task-status-pill is-${pill.tone}`}
           >
             {pill.label}
           </span>
@@ -3067,8 +3047,7 @@ function TaskRow({
 
         <div className="sync-panel-task-body">
           <div
-            className="sync-panel-task-banner"
-            style={bannerStyle}
+            className={`sync-panel-task-banner is-${banner.tone}`}
           >
             {banner.label}
             {bannerBlurb ? (
@@ -3078,8 +3057,7 @@ function TaskRow({
 
           {liveLabel ? (
             <div
-              className="sync-panel-task-banner"
-              style={toneStyle(liveTone)}
+              className={`sync-panel-task-banner is-${liveTone}`}
             >
               {liveLabel}
               {liveTask?.message ? (

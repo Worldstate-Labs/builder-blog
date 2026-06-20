@@ -2,6 +2,7 @@ import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { CountMeta, formatCount } from "@/components/Count";
 import {
@@ -801,6 +802,7 @@ async function FetchSourcesSection({
             count={library.builders.length}
             showCount={false}
             indented
+            summaryClassName="library-section-panel-imported"
             action={
               <LibraryImportRemoveButton
                 libraryId={library.id}
@@ -922,6 +924,7 @@ function LibrarySection({
   count,
   defaultOpen = false,
   indented = false,
+  summaryClassName,
   showCount = true,
   action,
   children,
@@ -932,13 +935,14 @@ function LibrarySection({
   count: number;
   defaultOpen?: boolean;
   indented?: boolean;
+  summaryClassName?: string;
   showCount?: boolean;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <details
-      className={`library-section-panel${indented ? " library-section-panel-indented" : ""}`}
+      className={`library-section-panel${indented ? " library-section-panel-indented" : ""}${summaryClassName ? ` ${summaryClassName}` : ""}`}
       open={defaultOpen}
     >
       <summary className="library-section-summary">
@@ -964,7 +968,7 @@ function ImportedLibraryCollapsedMeta({
 }: {
   builders: BuilderWithCount[];
 }) {
-  const visibleBuilders = builders.slice(0, 5);
+  const visibleBuilders = builders.slice(0, 4);
   const hiddenBuilderCount = Math.max(0, builders.length - visibleBuilders.length);
   const sourceLabel = builders.length === 1 ? "1 source" : `${formatCount(builders.length)} sources`;
   return (
@@ -977,7 +981,7 @@ function ImportedLibraryCollapsedMeta({
           {visibleBuilders.map((builder) => (
             <SourceAvatar
               className="imported-library-avatar"
-              imageSize={24}
+              imageSize={32}
               key={builder.id}
               source={builder}
             />
@@ -989,7 +993,10 @@ function ImportedLibraryCollapsedMeta({
           ) : null}
         </span>
       ) : null}
-      <span className="imported-library-source-count">{sourceLabel}</span>
+      <span className="imported-library-count-row">
+        <span className="imported-library-source-count">{sourceLabel}</span>
+        <ChevronDown aria-hidden="true" className="imported-library-chevron" />
+      </span>
     </span>
   );
 }

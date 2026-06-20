@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   useTransition,
-  type CSSProperties,
   type ReactNode,
   type SetStateAction,
 } from "react";
@@ -24,8 +23,6 @@ import {
   getDigestUpdateStatus,
   isActiveDigestJobRun,
   isDigestRunInflight,
-  statusStyle,
-  type ChipStyle,
   type CronSlot,
   type CronSlotStatus,
   type DigestUpdateStatus,
@@ -80,6 +77,25 @@ function formatDay(iso: string): string {
 
 const VISIBLE_SOURCE_LIMIT = 4;
 const DIGEST_TIMELINE_LIMIT = 12;
+
+type StatusTone = "ok" | "partial" | "failed" | "muted";
+
+function toneClass(tone: StatusTone): string {
+  return `is-${tone}`;
+}
+
+function digestStatusTone(status: DigestUpdateStatus): StatusTone {
+  if (status.key === "healthy") return "ok";
+  if (status.key === "needs-attention") return "failed";
+  return "partial";
+}
+
+function jobRunStatusTone(jobRun: AgentJobRunListItem): StatusTone {
+  if (jobRun.status === "succeeded") return "ok";
+  if (isStalledDigestJobRun(jobRun)) return "failed";
+  if (jobRun.status === "running" || jobRun.status === "starting") return "partial";
+  return "failed";
+}
 
 type DigestCronSlot = CronSlot<DigestRunListItem>;
 
@@ -510,13 +526,8 @@ export function DigestStatusToggle({
     <button
       aria-controls="digest-update-details"
       aria-expanded={detailsOpen}
-      className="fb-chip digest-status-toggle"
+      className={`fb-chip digest-status-toggle ${toneClass(digestStatusTone(status))}`}
       onClick={onToggle}
-      style={{
-        background: status.style.background,
-        borderColor: status.style.border,
-        color: status.style.color,
-      }}
       title={detailsOpen ? "Hide AI Digest status log" : "Show AI Digest status log"}
       type="button"
     >
@@ -574,6 +585,7 @@ function DigestStatusPanel({
 }) {
   const hydrated = useHydrated();
   const rowEntries = useMemo(() => entries.slice().reverse(), [entries]);
+  const hasScrollCue = rowEntries.length > 3;
   if (!cronJob && entries.length === 0) {
     return (
       <EmptyState
@@ -653,15 +665,17 @@ function DigestStatusPanel({
 
         {entries.length > 0 ? (
           <div className="sync-panel-column">
-            <div className="sync-panel-slot-rows is-scrollable is-timeline">
-              {rowEntries.map((entry) => (
-                <DigestTimelineRow
-                  key={entry.key}
-                  entry={entry}
-                  hydrated={hydrated}
-                  onOpenLog={onOpenLog}
-                />
-              ))}
+            <div className={`sync-panel-scroll-cue${hasScrollCue ? " has-more" : ""}`}>
+              <div className="sync-panel-slot-rows is-scrollable is-timeline">
+                {rowEntries.map((entry) => (
+                  <DigestTimelineRow
+                    key={entry.key}
+                    entry={entry}
+                    hydrated={hydrated}
+                    onOpenLog={onOpenLog}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -676,10 +690,6 @@ function DigestStatusPanel({
   );
 }
 
-function cronSlotStyle(status: CronSlotStatus): ChipStyle {
-  return statusStyle(scheduledWindowStyleStatus(status));
-}
-
 function DigestTimelineRow({
   entry,
   hydrated,
@@ -689,7 +699,7 @@ function DigestTimelineRow({
   hydrated: boolean;
   onOpenLog: (logRef: DigestLogRef) => void;
 }) {
-  const style = cronSlotStyle(entry.status);
+  const tone = scheduledWindowStyleStatus(entry.status);
   const label = scheduledWindowStatusLabel(entry.status);
   const id = entry.slot
     ? slotDomId(entry.slot)
@@ -706,14 +716,10 @@ function DigestTimelineRow({
     >
       <div className="sync-panel-slot-row-main">
         <div className="sync-panel-slot-row-primary">
-          <span
-            className="sync-panel-slot-row-status"
-            style={{ color: style.color }}
-          >
+          <span className={`sync-panel-slot-row-status ${toneClass(tone)}`}>
             <span
               aria-hidden="true"
               className="sync-panel-slot-row-dot"
-              style={{ background: style.color }}
             />
             {label}
           </span>
@@ -755,13 +761,6 @@ function jobRunByInstanceId(jobRuns: AgentJobRunListItem[]): Map<string, AgentJo
 
 function jobRunLabel(jobRun: AgentJobRunListItem): string {
   return scheduledRunTriggerLabel(jobRun, "digest-cron");
-}
-
-function jobRunStatusStyle(jobRun: AgentJobRunListItem): ChipStyle {
-  if (jobRun.status === "succeeded") return statusStyle("ok");
-  if (isStalledDigestJobRun(jobRun)) return statusStyle("failed");
-  if (jobRun.status === "running" || jobRun.status === "starting") return statusStyle("partial");
-  return statusStyle("failed");
 }
 
 function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
@@ -886,7 +885,7 @@ function JobRunCard({
   domId?: string | null;
 }) {
   const hydrated = useHydrated();
-  const style = jobRunStatusStyle(jobRun);
+  const tone = jobRunStatusTone(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   const verdict = jobRunVerdict(jobRun);
   const reason = jobRunDetailString(jobRun, "reason");
@@ -897,10 +896,7 @@ function JobRunCard({
   return (
     <article className="sync-panel-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
-        <span
-          className="fb-chip"
-          style={{ background: style.background, color: style.color, borderColor: style.border }}
-        >
+        <span className={`fb-chip ${toneClass(tone)}`}>
           {jobRunStatusLabel(jobRun)}
         </span>
         <time
@@ -977,13 +973,6 @@ type DigestLifecycleStep = {
   meta?: string;
 };
 
-function digestLifecycleToneStyle(tone: DigestLifecycleTone): { color: string } {
-  if (tone === "ok") return { color: "color-mix(in oklch, var(--signal) 72%, var(--ink))" };
-  if (tone === "warn") return { color: "color-mix(in oklch, var(--warm) 72%, var(--ink))" };
-  if (tone === "fail") return { color: "var(--danger)" };
-  return { color: "var(--muted)" };
-}
-
 function DigestLifecycle({
   jobRun,
   run,
@@ -1040,10 +1029,7 @@ function DigestLifecycle({
     <ol aria-label="AI Digest job lifecycle" className="sync-panel-lifecycle">
       {steps.map((step, index) => (
         <li key={step.key} className="sync-panel-lifecycle-item">
-          <div
-            className={`sync-panel-lifecycle-step is-${step.tone}`}
-            style={{ "--step-color": digestLifecycleToneStyle(step.tone).color } as CSSProperties}
-          >
+          <div className={`sync-panel-lifecycle-step is-${step.tone}`}>
             <div className="sync-panel-lifecycle-summary">
               <span aria-hidden="true" className="sync-panel-lifecycle-dot" />
               <span className="sync-panel-lifecycle-copy">
@@ -1060,34 +1046,22 @@ function DigestLifecycle({
   );
 }
 
-function statusChip(run: DigestRunListItem): { label: string; style: ChipStyle } {
+function statusChip(run: DigestRunListItem): { label: string; tone: StatusTone } {
   if (run.status !== "synced") {
     return {
       label: "Not saved",
-      style: {
-        background: "color-mix(in oklch, var(--warm) 12%, var(--paper-strong))",
-        color: "color-mix(in oklch, var(--warm) 70%, var(--ink))",
-        border: "color-mix(in oklch, var(--warm) 30%, var(--line))",
-      },
+      tone: "partial",
     };
   }
   if (run.candidateCount === 0) {
     return {
       label: "Empty",
-      style: {
-        background: "var(--paper-strong)",
-        color: "var(--muted-strong)",
-        border: "var(--line)",
-      },
+      tone: "muted",
     };
   }
   return {
     label: "Saved",
-    style: {
-      background: "var(--signal-soft)",
-      color: "color-mix(in oklch, var(--signal) 72%, var(--ink))",
-      border: "color-mix(in oklch, var(--signal) 28%, var(--line))",
-    },
+    tone: "ok",
   };
 }
 
@@ -1121,10 +1095,7 @@ function RunCard({
     <article className="sync-panel-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <p className="sync-panel-run-card-title">{title}</p>
       <header className="sync-panel-run-card-head">
-        <span
-          className="fb-chip"
-          style={{ background: chip.style.background, color: chip.style.color, borderColor: chip.style.border }}
-        >
+        <span className={`fb-chip ${toneClass(chip.tone)}`}>
           {chip.label}
         </span>
         <time
@@ -1297,15 +1268,9 @@ function FunnelStat({
   label: string;
   tone?: "signal" | "muted";
 }) {
-  const color =
-    tone === "signal"
-      ? "color-mix(in oklch, var(--signal) 72%, var(--ink))"
-      : tone === "muted"
-        ? "var(--muted-strong)"
-        : "var(--ink)";
   return (
     <span className="sync-panel-funnel-stat">
-      <span className="mono sync-panel-funnel-stat-value" style={{ color }}>
+      <span className={`mono sync-panel-funnel-stat-value${tone ? ` is-${tone}` : ""}`}>
         {formatCount(value)}
       </span>
       <span className="sync-panel-funnel-stat-label">{label}</span>
@@ -1329,11 +1294,7 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
   // the run never synced — simply pending (no editorial decision was ever made,
   // so don't imply it was rejected).
   const outcome = !synced ? "pending" : item.included ? "used" : "not used";
-  const outcomeColor = !synced
-    ? "var(--muted)"
-    : item.included
-      ? "color-mix(in oklch, var(--signal) 70%, var(--ink))"
-      : "var(--muted)";
+  const outcomeTone = !synced ? "pending" : item.included ? "used" : "muted";
   const outcomeTitle = !synced
     ? "Found, AI Digest not saved yet"
     : item.included
@@ -1347,8 +1308,7 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
   return (
     <li className="sync-panel-candidate-row">
       <span
-        className="mono sync-panel-candidate-outcome"
-        style={{ color: outcomeColor }}
+        className={`mono sync-panel-candidate-outcome is-${outcomeTone}`}
         title={outcomeTitle}
       >
         {outcome}

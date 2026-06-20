@@ -433,6 +433,7 @@ function HubCard({
 }) {
   const sourceGroups = groupedSources(library.items);
   const sourceSummaryItems = selectSourceSummaryItems(library.items, sourceGroups, 4);
+  const hiddenSourceSummaryCount = Math.max(0, library.itemCount - sourceSummaryItems.length);
   const latestFetchedAt = latestIso(
     library.items.map((item) => item.builder.lastFetchedAt),
   );
@@ -495,20 +496,14 @@ function HubCard({
         <details className="fb-hub-sources">
           <summary className="fb-hub-sources-summary" aria-label={`${sourceToggleLabel} in ${library.name}`}>
             <div className="fb-hub-source-summary-strip">
-              {sourceSummaryItems.map((item, index) => {
-                const sourceType = sourceTypeForBuilder(item.builder);
-                return (
-                  <span
-                    className={[
-                      "fb-hub-source-summary-item",
-                      index >= 2 ? "is-mobile-hidden" : "",
-                      index >= 2 ? "is-desktop-only" : "",
-                    ].filter(Boolean).join(" ")}
-                    key={item.builderId}
-                  >
+              <span className="fb-hub-source-summary-avatar-stack" aria-hidden="true">
+                {sourceSummaryItems.map((item) => {
+                  const sourceType = sourceTypeForBuilder(item.builder);
+                  return (
                     <SourceAvatar
                       className="fb-hub-source-summary-avatar"
-                      imageSize={28}
+                      imageSize={32}
+                      key={item.builderId}
                       source={{
                         avatarDataUrl: item.builder.avatarDataUrl,
                         avatarUrl: item.builder.avatarUrl,
@@ -518,12 +513,14 @@ function HubCard({
                         sourceUrl: item.builder.sourceUrl,
                       }}
                     />
-                    <span className="fb-hub-source-summary-name">
-                      {item.builder.name}
-                    </span>
+                  );
+                })}
+                {hiddenSourceSummaryCount > 0 ? (
+                  <span className="fb-hub-source-summary-avatar-more">
+                    +{formatCount(hiddenSourceSummaryCount)}
                   </span>
-                );
-              })}
+                ) : null}
+              </span>
               <span className="fb-hub-source-summary-more">
                 {sourceToggleLabel}
               </span>
