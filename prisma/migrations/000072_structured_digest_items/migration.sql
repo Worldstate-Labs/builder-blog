@@ -1,0 +1,1 @@
+ALTER TABLE "Digest" ADD COLUMN "items" JSONB NOT NULL DEFAULT '[]'::jsonb;

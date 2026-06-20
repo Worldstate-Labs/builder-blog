@@ -12,12 +12,14 @@ function source(path: string) {
 test("hub page exposes Source libraries and AI Digest collections as subtabs", () => {
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const topTabs = source("src/components/WorkspaceTopTabs.tsx");
+  const topTabsView = source("src/components/WorkspaceTopTabsView.tsx");
 
   assert.match(hubPage, /type LibraryHubTab = "source-library" \| "ai-digests"/);
   assert.match(hubPage, /WorkspaceTopTabs/);
   assert.match(hubPage, /ariaLabel="Hub tabs"/);
   assert.doesNotMatch(hubPage, /ariaLabel="Hub sections"/);
-  assert.match(topTabs, /role="tablist"/);
+  assert.match(topTabs, /WorkspaceTopTabsView/);
+  assert.match(topTabsView, /role="tablist"/);
   assert.match(hubPage, /label:\s*"Source libraries"/);
   assert.match(hubPage, /label:\s*"AI Digest collections"/);
   assert.doesNotMatch(hubPage, /label:\s*"AI Digest issues"/);

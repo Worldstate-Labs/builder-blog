@@ -6,13 +6,16 @@ import { BookOpen, Loader2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import {
   DigestContent,
-  type DigestFavoriteStateByUrl,
+  type DigestFavoriteStateByFeedItemId,
 } from "@/components/DigestContent";
 import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
 import { RelativeTime } from "@/components/RelativeTime";
-import { digestPreviewFromContent } from "@/lib/digest-headline";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { displayLanguagePreference } from "@/lib/language-preference";
+import {
+  cleanStructuredDigestItems,
+  type StructuredDigestItem,
+} from "@/lib/structured-digest";
 
 export type DigestSummary = {
   id: string;
@@ -24,16 +27,12 @@ export type DigestSummary = {
 };
 
 type DigestLoadState = {
-  content: string | null;
-  favoriteErrorByUrl: Record<string, string>;
-  favoriteStateByPostKey: DigestFavoriteStateByUrl;
-  favoriteStateByUrl: DigestFavoriteStateByUrl;
+  favoriteErrorByFeedItemId: Record<string, string>;
+  favoriteStateByFeedItemId: DigestFavoriteStateByFeedItemId;
   isOpen: boolean;
+  items: StructuredDigestItem[];
   key: string;
-  originalSummariesByPostKey: Record<string, string>;
-  originalSummariesByUrl: Record<string, string>;
-  pendingFavoriteUrls: Set<string>;
-  sourceEntityIdsByPostKey: Record<string, string>;
+  pendingFavoriteFeedItemIds: Set<string>;
   status: "idle" | "loading" | "loaded" | "error";
 };
 
@@ -55,29 +54,21 @@ export function DigestDetails({
   const initialStatus = defaultOpen || mode === "today" ? "loading" : "idle";
   const initialState: DigestLoadState = useMemo(
     () => ({
-      content: null,
-      favoriteErrorByUrl: {},
-      favoriteStateByPostKey: {},
-      favoriteStateByUrl: {},
+      favoriteErrorByFeedItemId: {},
+      favoriteStateByFeedItemId: {},
       isOpen: defaultOpen,
+      items: [],
       key: stateKey,
-      originalSummariesByPostKey: {},
-      originalSummariesByUrl: {},
-      pendingFavoriteUrls: new Set<string>(),
-      sourceEntityIdsByPostKey: {},
+      pendingFavoriteFeedItemIds: new Set<string>(),
       status: initialStatus,
     }),
     [defaultOpen, initialStatus, stateKey],
   );
   const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
   const currentState = digestState.key === stateKey ? digestState : initialState;
-  const { content, favoriteErrorByUrl, isOpen, pendingFavoriteUrls, status } = currentState;
-  const favoriteStateByPostKey = currentState.favoriteStateByPostKey;
-  const favoriteStateByUrl = currentState.favoriteStateByUrl;
-  const originalSummariesByPostKey = currentState.originalSummariesByPostKey;
-  const originalSummariesByUrl = currentState.originalSummariesByUrl;
-  const sourceEntityIdsByPostKey = currentState.sourceEntityIdsByPostKey;
-  const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
+  const { favoriteErrorByFeedItemId, isOpen, items, pendingFavoriteFeedItemIds, status } = currentState;
+  const favoriteStateByFeedItemId = currentState.favoriteStateByFeedItemId;
+  const headerHeadline = resolveHeadlineSummary(digest.headlineSummary);
 
   const updateDigestState = useCallback((
     updater: (current: DigestLoadState) => Omit<DigestLoadState, "key">,
@@ -103,12 +94,8 @@ export function DigestDetails({
       }
       updateDigestState((current) => ({
         ...current,
-        content: String(body.content ?? ""),
-        favoriteStateByPostKey: cleanFavoriteStateByUrl(body.favoriteStateByPostKey),
-        favoriteStateByUrl: cleanFavoriteStateByUrl(body.favoriteStateByUrl),
-        originalSummariesByPostKey: cleanOriginalSummaries(body.originalSummariesByPostKey),
-        originalSummariesByUrl: cleanOriginalSummaries(body.originalSummariesByUrl),
-        sourceEntityIdsByPostKey: cleanSourceEntityIdsByPostKey(body.sourceEntityIdsByPostKey),
+        favoriteStateByFeedItemId: cleanFavoriteStateByFeedItemId(body.favoriteStateByFeedItemId),
+        items: cleanStructuredDigestItems(body.items),
         status: "loaded",
       }));
     } catch {
@@ -119,21 +106,21 @@ export function DigestDetails({
     }
   }, [digestId, updateDigestState]);
 
-  const toggleFavorite = useCallback(async (url: string, feedItemId: string, nextFavorite: boolean) => {
-    if (pendingFavoriteUrls.has(url)) return;
+  const toggleFavorite = useCallback(async (feedItemId: string, nextFavorite: boolean) => {
+    if (pendingFavoriteFeedItemIds.has(feedItemId)) return;
     const fallbackFavoritedAt = nextFavorite ? new Date().toISOString() : null;
-    const previousFavoritedAt = favoriteStateByUrl[url]?.favoritedAt ?? null;
+    const previousFavoritedAt = favoriteStateByFeedItemId[feedItemId]?.favoritedAt ?? null;
     updateDigestState((current) => ({
       ...current,
-      favoriteErrorByUrl: omitUrl(current.favoriteErrorByUrl, url),
-      favoriteStateByUrl: {
-        ...current.favoriteStateByUrl,
-        [url]: {
+      favoriteErrorByFeedItemId: omitFeedItemId(current.favoriteErrorByFeedItemId, feedItemId),
+      favoriteStateByFeedItemId: {
+        ...current.favoriteStateByFeedItemId,
+        [feedItemId]: {
           feedItemId,
           favoritedAt: fallbackFavoritedAt,
         },
       },
-      pendingFavoriteUrls: new Set([...current.pendingFavoriteUrls, url]),
+      pendingFavoriteFeedItemIds: new Set([...current.pendingFavoriteFeedItemIds, feedItemId]),
     }));
 
     try {
@@ -147,9 +134,9 @@ export function DigestDetails({
       const favoritedAt = typeof body?.favoritedAt === "string" ? body.favoritedAt : null;
       updateDigestState((current) => ({
         ...current,
-        favoriteStateByUrl: {
-          ...current.favoriteStateByUrl,
-          [url]: {
+        favoriteStateByFeedItemId: {
+          ...current.favoriteStateByFeedItemId,
+          [feedItemId]: {
             feedItemId,
             favoritedAt,
           },
@@ -158,13 +145,13 @@ export function DigestDetails({
     } catch {
       updateDigestState((current) => ({
         ...current,
-        favoriteErrorByUrl: {
-          ...current.favoriteErrorByUrl,
-          [url]: "Could not update Favorites. Try again.",
+        favoriteErrorByFeedItemId: {
+          ...current.favoriteErrorByFeedItemId,
+          [feedItemId]: "Could not update Favorites. Try again.",
         },
-        favoriteStateByUrl: {
-          ...current.favoriteStateByUrl,
-          [url]: {
+        favoriteStateByFeedItemId: {
+          ...current.favoriteStateByFeedItemId,
+          [feedItemId]: {
             feedItemId,
             favoritedAt: previousFavoritedAt,
           },
@@ -173,13 +160,13 @@ export function DigestDetails({
     } finally {
       updateDigestState((current) => ({
         ...current,
-        pendingFavoriteUrls: removeUrl(current.pendingFavoriteUrls, url),
+        pendingFavoriteFeedItemIds: removeFeedItemId(current.pendingFavoriteFeedItemIds, feedItemId),
       }));
     }
-  }, [favoriteStateByUrl, pendingFavoriteUrls, updateDigestState]);
+  }, [favoriteStateByFeedItemId, pendingFavoriteFeedItemIds, updateDigestState]);
 
   function loadDigest() {
-    if (content || status === "loading") return;
+    if (items.length > 0 || status === "loading") return;
     updateDigestState((current) => ({ ...current, status: "loading" }));
     void fetchDigest();
   }
@@ -192,7 +179,7 @@ export function DigestDetails({
   }, [defaultOpen, fetchDigest, mode]);
 
   if (mode === "today") {
-    const headlineIsLoading = status === "loading" && !content;
+    const headlineIsLoading = status === "loading" && items.length === 0;
     return (
       <article className="fb-digest">
         <div className="fb-digest-head">
@@ -200,7 +187,6 @@ export function DigestDetails({
             <DigestHeadlineSummary headerAction={headerAction} loading />
           ) : headerHeadline ? (
             <DigestHeadlineSummary
-              content={content}
               headerAction={headerAction}
               sourceLinks={sourceLinks}
               text={headerHeadline}
@@ -209,15 +195,11 @@ export function DigestDetails({
         </div>
         <div className="fb-digest-body">
           <DigestBody
-            content={content}
-            favoriteErrorByUrl={favoriteErrorByUrl}
-            favoriteStateByPostKey={favoriteStateByPostKey}
-            favoriteStateByUrl={favoriteStateByUrl}
+            favoriteErrorByFeedItemId={favoriteErrorByFeedItemId}
+            favoriteStateByFeedItemId={favoriteStateByFeedItemId}
+            items={items}
             onFavoriteToggle={toggleFavorite}
-            originalSummariesByPostKey={originalSummariesByPostKey}
-            originalSummariesByUrl={originalSummariesByUrl}
-            pendingFavoriteUrls={pendingFavoriteUrls}
-            sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
+            pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
             sourceLinks={sourceLinks}
             status={status}
             variant="today"
@@ -256,15 +238,11 @@ export function DigestDetails({
           </span>
         </summary>
         <DigestBody
-          content={content}
-          favoriteErrorByUrl={favoriteErrorByUrl}
-          favoriteStateByPostKey={favoriteStateByPostKey}
-          favoriteStateByUrl={favoriteStateByUrl}
+          favoriteErrorByFeedItemId={favoriteErrorByFeedItemId}
+          favoriteStateByFeedItemId={favoriteStateByFeedItemId}
+          items={items}
           onFavoriteToggle={toggleFavorite}
-          originalSummariesByPostKey={originalSummariesByPostKey}
-          originalSummariesByUrl={originalSummariesByUrl}
-          pendingFavoriteUrls={pendingFavoriteUrls}
-          sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
+          pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
           sourceLinks={sourceLinks}
           status={status}
         />
@@ -274,28 +252,20 @@ export function DigestDetails({
 }
 
 function DigestBody({
-  content,
-  favoriteErrorByUrl,
-  favoriteStateByPostKey,
-  favoriteStateByUrl,
+  favoriteErrorByFeedItemId,
+  favoriteStateByFeedItemId,
+  items,
   onFavoriteToggle,
-  originalSummariesByPostKey,
-  originalSummariesByUrl,
-  pendingFavoriteUrls,
-  sourceEntityIdsByPostKey,
+  pendingFavoriteFeedItemIds,
   sourceLinks,
   status,
   variant = "archive",
 }: {
-  content: string | null;
-  favoriteErrorByUrl: Record<string, string>;
-  favoriteStateByPostKey: DigestFavoriteStateByUrl;
-  favoriteStateByUrl: DigestFavoriteStateByUrl;
-  onFavoriteToggle: (url: string, feedItemId: string, nextFavorite: boolean) => void;
-  originalSummariesByPostKey: Record<string, string>;
-  originalSummariesByUrl: Record<string, string>;
-  pendingFavoriteUrls: Set<string>;
-  sourceEntityIdsByPostKey: Record<string, string>;
+  favoriteErrorByFeedItemId: Record<string, string>;
+  favoriteStateByFeedItemId: DigestFavoriteStateByFeedItemId;
+  items: StructuredDigestItem[];
+  onFavoriteToggle: (feedItemId: string, nextFavorite: boolean) => void;
+  pendingFavoriteFeedItemIds: Set<string>;
   sourceLinks: DigestSourceLink[];
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
@@ -350,17 +320,11 @@ function DigestBody({
   if (isToday) {
     return (
       <DigestContent
-        content={content ?? ""}
-        favoriteErrorByUrl={favoriteErrorByUrl}
-        favoriteStateByPostKey={favoriteStateByPostKey}
-        favoriteStateByUrl={favoriteStateByUrl}
+        favoriteErrorByFeedItemId={favoriteErrorByFeedItemId}
+        favoriteStateByFeedItemId={favoriteStateByFeedItemId}
+        items={items}
         onFavoriteToggle={onFavoriteToggle}
-        originalSummariesByPostKey={originalSummariesByPostKey}
-        originalSummariesByUrl={originalSummariesByUrl}
-        pendingFavoriteUrls={pendingFavoriteUrls}
-        showContents={false}
-        showSectionCounts
-        sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
+        pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
         sourceLinks={sourceLinks}
         tone="paper"
       />
@@ -369,15 +333,11 @@ function DigestBody({
   return (
     <div className="item-details">
       <DigestContent
-        content={content ?? ""}
-        favoriteErrorByUrl={favoriteErrorByUrl}
-        favoriteStateByPostKey={favoriteStateByPostKey}
-        favoriteStateByUrl={favoriteStateByUrl}
+        favoriteErrorByFeedItemId={favoriteErrorByFeedItemId}
+        favoriteStateByFeedItemId={favoriteStateByFeedItemId}
+        items={items}
         onFavoriteToggle={onFavoriteToggle}
-        originalSummariesByPostKey={originalSummariesByPostKey}
-        originalSummariesByUrl={originalSummariesByUrl}
-        pendingFavoriteUrls={pendingFavoriteUrls}
-        sourceEntityIdsByPostKey={sourceEntityIdsByPostKey}
+        pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
         sourceLinks={sourceLinks}
         tone="paper"
       />
@@ -387,57 +347,35 @@ function DigestBody({
 
 function resolveHeadlineSummary(
   headlineSummary: string | null,
-  content: string | null,
-  status: DigestLoadState["status"],
 ) {
   const stored = headlineSummary?.trim();
   if (stored) return stored;
-  if (status !== "loaded" || !content?.trim()) return null;
-  return digestPreviewFromContent(content);
+  return null;
 }
 
-function cleanOriginalSummaries(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const entries = Object.entries(value as Record<string, unknown>)
-    .map(([url, summary]) => [url, typeof summary === "string" ? summary.trim() : ""] as const)
-    .filter(([url, summary]) => url.length > 0 && summary.length > 0);
-  return Object.fromEntries(entries);
-}
-
-function omitUrl<T>(record: Record<string, T>, url: string): Record<string, T> {
+function omitFeedItemId<T>(record: Record<string, T>, feedItemId: string): Record<string, T> {
   const next = { ...record };
-  delete next[url];
+  delete next[feedItemId];
   return next;
 }
 
-function removeUrl(urls: Set<string>, url: string): Set<string> {
-  const next = new Set(urls);
-  next.delete(url);
+function removeFeedItemId(feedItemIds: Set<string>, feedItemId: string): Set<string> {
+  const next = new Set(feedItemIds);
+  next.delete(feedItemId);
   return next;
 }
 
-function cleanFavoriteStateByUrl(value: unknown): DigestFavoriteStateByUrl {
+function cleanFavoriteStateByFeedItemId(value: unknown): DigestFavoriteStateByFeedItemId {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const entries = Object.entries(value as Record<string, unknown>).flatMap(([url, state]) => {
-    if (!url || !state || typeof state !== "object" || Array.isArray(state)) return [];
+  const entries = Object.entries(value as Record<string, unknown>).flatMap(([feedItemIdKey, state]) => {
+    if (!feedItemIdKey || !state || typeof state !== "object" || Array.isArray(state)) return [];
     const record = state as Record<string, unknown>;
     const feedItemId = typeof record.feedItemId === "string" ? record.feedItemId.trim() : "";
     const favoritedAt =
       typeof record.favoritedAt === "string" && record.favoritedAt.trim()
         ? record.favoritedAt
         : null;
-    return feedItemId ? [[url, { feedItemId, favoritedAt }] as const] : [];
+    return feedItemId ? [[feedItemIdKey, { feedItemId, favoritedAt }] as const] : [];
   });
-  return Object.fromEntries(entries);
-}
-
-function cleanSourceEntityIdsByPostKey(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const entries = Object.entries(value as Record<string, unknown>)
-    .map(([postKey, entityId]) => [
-      postKey.trim(),
-      typeof entityId === "string" ? entityId.trim() : "",
-    ] as const)
-    .filter(([postKey, entityId]) => postKey.length > 0 && entityId.length > 0);
   return Object.fromEntries(entries);
 }
