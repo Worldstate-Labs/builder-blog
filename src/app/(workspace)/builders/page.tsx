@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
-import { CountMeta } from "@/components/Count";
+import { CountMeta, formatCount } from "@/components/Count";
 import {
   DigestPipelineImportForm,
   type HubDigestPipeline,
@@ -23,7 +23,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
-import { UserName } from "@/components/UserName";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
@@ -783,7 +783,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Source libraries you've imported from Hub.
+            {"Source libraries you've imported from Hub."}
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (
@@ -797,9 +797,8 @@ async function FetchSourcesSection({
           <LibrarySection
             key={library.id}
             title={library.name}
-            detail={importedLibraryDetail(library)}
+            detail={<ImportedLibraryCollapsedMeta builders={library.builders} />}
             count={library.builders.length}
-            defaultOpen
             indented
             action={
               <LibraryImportRemoveButton
@@ -942,7 +941,7 @@ function LibrarySection({
       <summary className="library-section-summary">
         <div className="library-section-summary-copy">
           <h3 className="fb-section-heading">{title}</h3>
-          <p className="library-section-copy">{detail}</p>
+          <div className="library-section-copy">{detail}</div>
         </div>
         <div className={`library-section-meta${badge ? "" : " library-section-meta--no-badge"}`}>
           {badge ? <span className="fb-kind-pill">{badge}</span> : null}
@@ -957,9 +956,41 @@ function LibrarySection({
   );
 }
 
-function importedLibraryDetail(library: { description: string | null; ownerName: string }) {
-  if (library.description) return library.description;
-  return <>Imported from <UserName>{library.ownerName}</UserName></>;
+function ImportedLibraryCollapsedMeta({
+  builders,
+}: {
+  builders: BuilderWithCount[];
+}) {
+  const visibleBuilders = builders.slice(0, 5);
+  const hiddenBuilderCount = Math.max(0, builders.length - visibleBuilders.length);
+  const postCount = builders.reduce((count, builder) => count + builder._count.feedItems, 0);
+  const postLabel = `${formatCount(postCount)} ${postCount === 1 ? "post" : "posts"}`;
+  const sourceLabel = builders.length === 1 ? "1 source" : `${formatCount(builders.length)} sources`;
+  return (
+    <span
+      aria-label={`${sourceLabel}, ${postLabel}`}
+      className="imported-library-collapsed-meta"
+    >
+      {visibleBuilders.length > 0 ? (
+        <span className="imported-library-avatar-stack" aria-hidden="true">
+          {visibleBuilders.map((builder) => (
+            <SourceAvatar
+              className="imported-library-avatar"
+              imageSize={24}
+              key={builder.id}
+              source={builder}
+            />
+          ))}
+          {hiddenBuilderCount > 0 ? (
+            <span className="imported-library-avatar-more">
+              +{formatCount(hiddenBuilderCount)}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
+      <span className="imported-library-post-count">{postLabel}</span>
+    </span>
+  );
 }
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {

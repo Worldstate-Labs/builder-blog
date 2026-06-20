@@ -3984,6 +3984,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /className="library-section-summary-copy"/);
   assert.match(buildersPage, /<h3 className="fb-section-heading">\{title\}<\/h3>/);
   assert.doesNotMatch(buildersPage, /<h2 className="fb-section-heading">\{title\}<\/h2>/);
+  assert.match(buildersPage, /detail=\{<ImportedLibraryCollapsedMeta builders=\{library\.builders\} \/>\}/);
+  assert.match(buildersPage, /function ImportedLibraryCollapsedMeta/);
+  assert.match(buildersPage, /className="imported-library-collapsed-meta"/);
+  assert.match(buildersPage, /className="imported-library-avatar-stack"/);
+  assert.match(buildersPage, /className="imported-library-avatar"/);
+  assert.match(buildersPage, /className="imported-library-post-count"/);
+  assert.match(buildersPage, /const postLabel = `\$\{formatCount\(postCount\)\} \$\{postCount === 1 \? "post" : "posts"\}`/);
+  assert.doesNotMatch(buildersPage, /importedLibraryDetail/);
+  assert.doesNotMatch(buildersPage, /detail=\{importedLibraryDetail\(library\)\}/);
   assert.match(globals, /\.imported-library-stack \.library-section-summary h3\s*{[\s\S]*font-size:\s*0\.9375rem/);
   assert.doesNotMatch(globals, /\.imported-library-stack \.library-section-summary h2\s*{/);
   assert.match(buildersPage, /className="library-section-copy"/);
@@ -3992,6 +4001,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /library-section-panel-indented/);
   assert.match(cssRule(globals, ".library-section-panel-indented"), /margin-inline:\s*var\(--hierarchy-inset\)/);
   assert.doesNotMatch(cssRule(globals, ".library-section-panel-indented"), /margin-left/);
+  assert.match(globals, /\.library-section-panel\[open\] \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*none/);
+  assert.match(globals, /\.imported-library-collapsed-meta\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.imported-library-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.imported-library-avatar\.fb-src-icon,[\s\S]*\.imported-library-avatar-more\s*{[\s\S]*height:\s*1\.5rem/);
+  assert.match(globals, /\.imported-library-avatar\.fb-src-icon \+ \.imported-library-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.45rem/);
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
