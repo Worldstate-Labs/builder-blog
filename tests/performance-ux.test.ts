@@ -2739,7 +2739,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.doesNotMatch(buildersPage, />\s*Your AI Digest\s*<\/h2>/);
   assert.match(buildersPage, /className="your-digest-section your-digest-panel library-section-panel"/);
   assert.match(buildersPage, /<DigestPipelineImportForm mode="imported" panel pipelines=\{data\.hubDigestPipelines\}/);
-  assert.match(digestPipelineForm, /Collections you've imported from Hub\./);
+  assert.match(digestPipelineForm, /Digest collections imported from Hub\./);
   assert.match(digestPipelineForm, /imported-digest-section imported-digest-panel library-section-panel/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*beforePreview=\{/);
@@ -3971,8 +3971,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Source libraries you've imported from Hub\./);
-  assert.doesNotMatch(buildersPage, /Shared source libraries imported from Hub\.|Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\.|Source libraries imported from Hub\./);
+  assert.match(buildersPage, /Source libraries imported from Hub\./);
+  assert.doesNotMatch(buildersPage, /Source libraries you've imported from Hub\.|Shared source libraries imported from Hub\.|Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section imported-libraries-panel library-section-panel"/);
@@ -5012,7 +5012,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest collections/);
   assert.match(digestPipelineForm, /Import AI Digest collections shared by others\./);
-  assert.match(digestPipelineForm, /Collections you've imported from Hub\./);
+  assert.match(digestPipelineForm, /Digest collections imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest tab|Import shared AI Digest collections\.|Import shared collections\.|Import shared AI Digest collections into AI Digest\.|Available in AI Digest\.|Already in AI Digest\.|Collections already in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Archives already in AI Digest\.|Archives already available in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives shared to Hub\.|AI Digest archives already imported from Hub\./);
