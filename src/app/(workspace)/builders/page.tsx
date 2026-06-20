@@ -115,7 +115,7 @@ export default async function BuildersPage({
     <div className="page-pad">
       <PageHeader
         title="Sources"
-        description="Follow sources, fetch updates, and choose what feeds AI Digest and Following."
+        description="Manage your sources, AI Digests, and source subscriptions."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
@@ -710,8 +710,8 @@ async function FetchSourcesSection({
             Source syncing
           </h2>
           <p className="library-section-copy">
-            Copy a prompt for your Local Agent to fetch and summarize source
-            updates from your own library.
+            Copy a prompt for your Local Agent to fetch and summarize sources in
+            your own library.
           </p>
         </div>
       </div>
@@ -745,7 +745,7 @@ async function FetchSourcesSection({
     <section className="your-library-section" aria-labelledby="sources-library-section-title">
       <PrivateLibraryPanel
         className="your-library-panel library-section-panel"
-        description="Sources you follow. Sorted by type, newest first."
+        description="Sources in your library. You control when and how to fetch and summarize them."
         headingId="sources-library-section-title"
         sourceOptions={data.sourceLabelOptions}
         title="Your source library"
@@ -783,7 +783,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Shared source libraries imported from Hub.
+            Source libraries you've imported from Hub.
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (

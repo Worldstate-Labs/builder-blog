@@ -9,7 +9,7 @@ export default function BuildersLoading() {
     >
       <PageHeader
         title="Sources"
-        description="Follow sources, fetch updates, and choose what feeds AI Digest and Following."
+        description="Manage your sources, AI Digests, and source subscriptions."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">

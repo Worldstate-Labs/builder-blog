@@ -3341,7 +3341,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /<span className="sr-only">Loading AI Digest controls<\/span>/);
   assert.doesNotMatch(buildersPage, /Loading AI Digest settings/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, fetch updates, and choose what feeds AI Digest and Following\./);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Manage your sources, AI Digests, and source subscriptions\./);
   assert.doesNotMatch(buildersPage, /Follow sources, run Fetch sources, and choose what feeds AI Digest issues and Following posts\.|choose what feeds AI Digest issues and Following posts\./);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
@@ -3779,7 +3779,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, fetch updates, and choose what feeds AI Digest and Following\./);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Manage your sources, AI Digests, and source subscriptions\./);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
@@ -3790,7 +3790,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /className="sources-sync-section sources-sync-panel library-section-panel"/);
   assert.match(buildersPage, /className="library-section-summary library-section-summary--static"[\s\S]*id="source-syncing-section-title"/);
-  assert.match(buildersPage, /Copy a prompt for your Local Agent to fetch and summarize source[\s\S]*updates from your own library\./);
+  assert.match(buildersPage, /Copy a prompt for your Local Agent to fetch and summarize sources in[\s\S]*your own library\./);
   assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
   assert.match(buildersPage, /Source syncing/);
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
@@ -3964,8 +3964,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Shared source libraries imported from Hub\./);
-  assert.doesNotMatch(buildersPage, /Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\.|Source libraries imported from Hub\./);
+  assert.match(buildersPage, /Source libraries you've imported from Hub\./);
+  assert.doesNotMatch(buildersPage, /Shared source libraries imported from Hub\.|Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\.|Source libraries imported from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section imported-libraries-panel library-section-panel"/);
@@ -4116,7 +4116,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
-  assert.match(buildersPage, /description="Sources you follow\. Sorted by type, newest first\."/);
+  assert.match(buildersPage, /description="Sources in your library\. You control when and how to fetch and summarize them\."/);
   assert.match(buildersPage, /visibilityToggle=\{[\s\S]*<LibraryVisibilityToggle/);
   assert.doesNotMatch(buildersPage, /className="your-library-panel fb-panel"/);
   assert.ok(
