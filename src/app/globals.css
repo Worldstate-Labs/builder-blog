@@ -2374,7 +2374,6 @@ details:not([open]) > :not(summary) {
   --digest-headline-toggle-bg: var(--paper-strong);
   background: color-mix(in oklch, var(--paper-strong) 88%, var(--rail));
   border: 1px solid color-mix(in oklch, var(--line) 92%, transparent);
-  border-left: 3px solid color-mix(in oklch, var(--ink) 72%, var(--line));
   border-radius: 8px;
   box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper-strong) 82%, transparent);
   color: var(--ink);
@@ -2754,12 +2753,33 @@ details:not([open]) > :not(summary) {
 
 .library-section-panel-imported > .library-section-summary {
   align-items: start;
+  grid-template-areas:
+    "title action"
+    "toggle toggle";
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .library-section-panel-imported > .library-section-summary::after {
   content: none;
   display: none;
+}
+
+.library-section-panel-imported .library-section-summary-copy {
+  display: contents;
+}
+
+.library-section-panel-imported .library-section-summary-copy > .fb-section-heading {
+  grid-area: title;
+}
+
+.library-section-panel-imported .library-section-copy:has(.imported-library-collapsed-meta) {
+  align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-area: toggle;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 0.85rem;
+  max-width: none;
 }
 
 .library-section-summary::-webkit-details-marker {
@@ -2800,6 +2820,7 @@ summary.library-section-summary::after {
 
 .library-section-panel-imported .library-section-meta {
   align-self: start;
+  grid-area: action;
   grid-column: 2;
   grid-row: 1;
 }
@@ -8110,7 +8131,7 @@ summary.library-section-summary::after {
   cursor: pointer;
   display: inline-flex;
   font-size: 0.8125rem;
-  font-weight: 780;
+  font-weight: var(--text-role-value-weight);
   gap: 0.35rem;
   justify-self: start;
   line-height: 1.2;
@@ -8139,7 +8160,7 @@ summary.library-section-summary::after {
 .imported-library-collapsed-meta {
   align-items: center;
   display: inline-flex;
-  gap: 0.65rem;
+  gap: 0.8rem;
   max-width: 100%;
   min-width: 0;
   vertical-align: middle;
@@ -8172,33 +8193,29 @@ summary.library-section-summary::after {
   color: var(--muted-strong);
   display: inline-flex;
   font-size: 0.625rem;
-  font-weight: 760;
+  font-weight: var(--text-role-value-weight);
   justify-content: center;
   line-height: 1;
   position: relative;
   z-index: 1;
 }
 
-.imported-library-count-row {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
 .imported-library-source-count {
   color: var(--ink);
-  font-size: 0.95rem;
-  font-weight: 760;
+  font-size: var(--text-role-control-size);
+  font-weight: var(--text-role-value-weight);
+  letter-spacing: var(--text-role-tracking);
   white-space: nowrap;
 }
 
 .imported-library-chevron {
+  align-self: center;
   color: var(--accent);
   flex: 0 0 auto;
-  height: 0.875rem;
+  height: 1rem;
+  justify-self: end;
   transition: transform 140ms ease;
-  width: 0.875rem;
+  width: 1rem;
 }
 
 .library-section-panel-imported[open] .imported-library-chevron {
@@ -8263,7 +8280,7 @@ summary.library-section-summary::after {
   color: var(--ink);
   display: block;
   font-size: 0.9375rem;
-  font-weight: 760;
+  font-weight: var(--text-role-title-weight);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8356,7 +8373,7 @@ a.builder-library-name:hover {
   color: var(--muted-strong);
   display: inline-flex;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: var(--text-role-label-weight);
 }
 
 .builder-library-edit-button {
@@ -9709,16 +9726,16 @@ a.builder-library-name:hover {
 .fb-hub-title {
   color: var(--ink);
   font-size: 1.0625rem;
-  font-weight: 760;
-  letter-spacing: -0.005em;
+  font-weight: var(--text-role-title-weight);
+  letter-spacing: var(--text-role-tracking);
   line-height: 1.35;
   margin: 0;
 }
 
 .digest-source-management .fb-hub-title {
   font-size: 1.0625rem;
-  font-weight: 820;
-  letter-spacing: -0.01em;
+  font-weight: var(--text-role-title-weight);
+  letter-spacing: var(--text-role-tracking);
   line-height: 1.25;
   margin-top: 0;
 }
@@ -9726,7 +9743,7 @@ a.builder-library-name:hover {
 .fb-hub-card-byline {
   color: var(--muted);
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: var(--text-role-label-weight);
   line-height: 1.35;
   margin-top: 0.2rem;
 }
@@ -9739,7 +9756,7 @@ a.builder-library-name:hover {
   color: color-mix(in oklch, var(--accent) 54%, var(--ink));
   display: inline-flex;
   font-size: 0.71875rem;
-  font-weight: 780;
+  font-weight: var(--text-role-value-weight);
   gap: 0.3rem;
   line-height: 1.2;
   max-width: 100%;
@@ -9837,7 +9854,7 @@ a.builder-library-name:hover {
   align-items: center;
   display: inline-flex;
   font-size: 0.625rem;
-  font-weight: 760;
+  font-weight: var(--text-role-value-weight);
   justify-content: center;
   line-height: 1;
   position: relative;
@@ -9847,8 +9864,9 @@ a.builder-library-name:hover {
 .fb-hub-source-summary-more {
   color: var(--ink);
   flex: 0 0 auto;
-  font-size: 0.95rem;
-  font-weight: 760;
+  font-size: var(--text-role-control-size);
+  font-weight: var(--text-role-value-weight);
+  letter-spacing: var(--text-role-tracking);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -9919,7 +9937,7 @@ a.fb-hub-source-name:focus-visible {
 .fb-hub-source-row-meta {
   color: var(--muted);
   font-size: 0.71875rem;
-  font-weight: 650;
+  font-weight: var(--text-role-label-weight);
   line-height: 1.35;
   white-space: nowrap;
 }
@@ -9939,7 +9957,7 @@ a.fb-hub-source-name:focus-visible {
   display: flex;
   flex-wrap: wrap;
   font-size: 0.6875rem;
-  font-weight: 720;
+  font-weight: var(--text-role-label-weight);
   gap: 0.5rem 1rem;
   padding-top: 0.8rem;
 }
@@ -9967,14 +9985,14 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-hub-card-fetch-date {
   color: var(--muted-strong);
-  font-weight: 720;
+  font-weight: var(--text-role-label-weight);
   line-height: 1.35;
   white-space: nowrap;
 }
 
 .digest-source-management .fb-hub-card-stats {
   color: var(--muted);
-  letter-spacing: 0.01em;
+  letter-spacing: var(--text-role-tracking);
 }
 
 .fb-hub-digest-preview {
@@ -10005,7 +10023,7 @@ a.fb-hub-source-name:focus-visible {
 .fb-hub-digest-preview-title {
   color: var(--ink);
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: var(--text-role-value-weight);
   line-height: 1.35;
 }
 
@@ -10013,7 +10031,6 @@ a.fb-hub-source-name:focus-visible {
   --digest-headline-toggle-bg: var(--paper-strong);
   background: color-mix(in oklch, var(--paper-strong) 82%, var(--rail));
   border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
-  border-left: 3px solid color-mix(in oklch, var(--ink) 68%, var(--line));
   box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper-strong) 76%, transparent);
   margin-top: 0.7rem;
   padding: 0.72rem 0.82rem 0.66rem;
@@ -10031,7 +10048,7 @@ a.fb-hub-source-name:focus-visible {
 .fb-hub-digest-preview .digest-headline-kicker {
   color: var(--ink);
   font-size: 0.875rem;
-  font-weight: 780;
+  font-weight: var(--text-role-title-weight);
   letter-spacing: 0;
   line-height: 1.3;
   text-transform: none;
@@ -11277,7 +11294,7 @@ a.fb-hub-source-name:focus-visible {
   color: var(--muted-strong);
   display: inline-flex;
   font-size: 0.625rem;
-  font-weight: 760;
+  font-weight: var(--text-role-value-weight);
   height: 1.1rem;
   letter-spacing: 0;
   padding: 0 0.45rem;
@@ -11505,7 +11522,7 @@ a.fb-hub-source-name:focus-visible {
 
 .settings-save-status {
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: var(--text-role-value-weight);
 }
 
 .settings-save-status.is-saving {
@@ -11600,7 +11617,7 @@ a.fb-hub-source-name:focus-visible {
 .settings-markdown-preview h1,
 .settings-markdown-preview h2,
 .settings-markdown-preview h3 {
-  font-weight: 760;
+  font-weight: var(--text-role-title-weight);
   line-height: 1.25;
 }
 
@@ -11670,7 +11687,7 @@ a.fb-hub-source-name:focus-visible {
   color: var(--ink);
   cursor: pointer;
   font-size: 0.78125rem;
-  font-weight: 700;
+  font-weight: var(--text-role-value-weight);
   padding: 0.5rem 0.875rem;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }

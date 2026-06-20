@@ -972,32 +972,32 @@ function ImportedLibraryCollapsedMeta({
   const hiddenBuilderCount = Math.max(0, builders.length - visibleBuilders.length);
   const sourceLabel = builders.length === 1 ? "1 source" : `${formatCount(builders.length)} sources`;
   return (
-    <span
-      aria-label={sourceLabel}
-      className="imported-library-collapsed-meta"
-    >
-      {visibleBuilders.length > 0 ? (
-        <span className="imported-library-avatar-stack" aria-hidden="true">
-          {visibleBuilders.map((builder) => (
-            <SourceAvatar
-              className="imported-library-avatar"
-              imageSize={32}
-              key={builder.id}
-              source={builder}
-            />
-          ))}
-          {hiddenBuilderCount > 0 ? (
-            <span className="imported-library-avatar-more">
-              +{formatCount(hiddenBuilderCount)}
-            </span>
-          ) : null}
-        </span>
-      ) : null}
-      <span className="imported-library-count-row">
+    <>
+      <span
+        aria-label={sourceLabel}
+        className="imported-library-collapsed-meta"
+      >
+        {visibleBuilders.length > 0 ? (
+          <span className="imported-library-avatar-stack" aria-hidden="true">
+            {visibleBuilders.map((builder) => (
+              <SourceAvatar
+                className="imported-library-avatar"
+                imageSize={32}
+                key={builder.id}
+                source={builder}
+              />
+            ))}
+            {hiddenBuilderCount > 0 ? (
+              <span className="imported-library-avatar-more">
+                +{formatCount(hiddenBuilderCount)}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         <span className="imported-library-source-count">{sourceLabel}</span>
-        <ChevronDown aria-hidden="true" className="imported-library-chevron" />
       </span>
-    </span>
+      <ChevronDown aria-hidden="true" className="imported-library-chevron" />
+    </>
   );
 }
 

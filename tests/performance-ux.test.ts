@@ -2621,7 +2621,8 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestHeadlineSummary, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
   assert.match(globals, /\.digest-headline-list\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.digest-headline-summary\s*{[\s\S]*border-left:\s*3px solid/);
+  assert.match(globals, /\.digest-headline-summary\s*{[\s\S]*border:\s*1px solid/);
+  assert.doesNotMatch(cssRule(globals, ".digest-headline-summary"), /border-left:\s*[2-9]px/);
   assert.match(globals, /\.digest-headline-top\s*{[\s\S]*border-bottom:/);
   assert.match(globals, /\.digest-headline-title-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.fb-src-icon\s*{[\s\S]*border-radius:\s*999px/);
@@ -2832,7 +2833,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestDetails, /Could not load AI Digest\./);
   assert.doesNotMatch(digestDetails, /HTTP \$\{response\.status\}/);
   assert.match(digestHeadlineSummary, /aria-label="AI Digest headlines"/);
-  assert.match(digestDetails, /formatDateTime\(digest\.createdAt, hydrated\)/);
+  assert.match(digestDetails, /<RelativeTime value=\{digest\.createdAt\}/);
   assert.match(digestDetails, /month:\s*"short"/);
   assert.doesNotMatch(digestDetails, /toLocaleString\(\)|second:\s*"2-digit"/);
   assert.match(digestDetails, /digest-loading-chip/);
@@ -3627,7 +3628,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /AVATAR_COLORS/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-avatar/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /style=\{\{/);
-  assert.match(digestPipelineForm, /className="hub-section-copy"/);
+  assert.match(digestPipelineForm, /className=\{panel \? "library-section-copy" : "hub-section-copy"\}/);
   assert.match(digestPipelineForm, /sharedPipelines = useMemo\(/);
   assert.match(digestPipelineForm, /\(\) => pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.match(digestPipelineForm, /export function OwnDigestPipelineCard/);
@@ -3726,6 +3727,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon \+ \.fb-hub-source-summary-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.62rem/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-more\s*{[\s\S]*font-size:\s*var\(--text-role-control-size\)[\s\S]*font-weight:\s*var\(--text-role-value-weight\)[\s\S]*letter-spacing:\s*var\(--text-role-tracking\)/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-summary-item/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
@@ -3748,7 +3750,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
     assert.doesNotMatch(rule, /padding:/);
   }
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*border-left:\s*3px solid/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*border:\s*1px solid/);
+  assert.doesNotMatch(cssRule(source("src/app/globals.css"), ".fb-hub-digest-preview .digest-headline-summary"), /border-left:\s*[2-9]px/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*padding:\s*0\.72rem 0\.82rem 0\.66rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-kicker\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-meta\s*{[\s\S]*border-bottom:/);
@@ -4003,8 +4006,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /imageSize=\{32\}/);
   assert.match(buildersPage, /className="imported-library-avatar"/);
   assert.match(buildersPage, /className="imported-library-source-count"/);
-  assert.match(buildersPage, /className="imported-library-count-row"/);
   assert.match(buildersPage, /className="imported-library-chevron"/);
+  assert.doesNotMatch(buildersPage, /className="imported-library-count-row"/);
   assert.match(buildersPage, /className=\{`library-section-panel\$\{indented \? " library-section-panel-indented" : ""\}\$\{summaryClassName \? ` \$\{summaryClassName\}` : ""\}`\}/);
   assert.match(buildersPage, /summaryClassName="library-section-panel-imported"/);
   assert.match(buildersPage, /aria-label=\{sourceLabel\}/);
@@ -4021,16 +4024,18 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(cssRule(globals, ".library-section-panel-indented"), /margin-left/);
   assert.match(globals, /\.library-section-panel\[open\] \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.imported-library-collapsed-meta\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.library-section-panel-imported > \.library-section-summary\s*{[\s\S]*align-items:\s*start[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.library-section-panel-imported > \.library-section-summary\s*{[\s\S]*align-items:\s*start[\s\S]*grid-template-areas:[\s\S]*"title action"[\s\S]*"toggle toggle"[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.library-section-panel-imported > \.library-section-summary::after\s*{[\s\S]*content:\s*none[\s\S]*display:\s*none/);
-  assert.match(globals, /\.library-section-panel-imported \.library-section-meta\s*{[\s\S]*align-self:\s*start[\s\S]*grid-column:\s*2[\s\S]*grid-row:\s*1/);
+  assert.match(globals, /\.library-section-panel-imported \.library-section-summary-copy\s*{[\s\S]*display:\s*contents/);
+  assert.match(globals, /\.library-section-panel-imported \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*grid[\s\S]*grid-area:\s*toggle[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.library-section-panel-imported \.library-section-meta\s*{[\s\S]*align-self:\s*start[\s\S]*grid-area:\s*action[\s\S]*grid-column:\s*2[\s\S]*grid-row:\s*1/);
   assert.match(globals, /\.imported-library-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.imported-library-count-row\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.imported-library-chevron\s*{[\s\S]*height:\s*0\.875rem/);
+  assert.doesNotMatch(globals, /\.imported-library-count-row\s*{/);
+  assert.match(globals, /\.imported-library-chevron\s*{[\s\S]*height:\s*1rem[\s\S]*justify-self:\s*end/);
   assert.match(globals, /\.library-section-panel-imported\[open\] \.imported-library-chevron\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(globals, /\.imported-library-avatar\.fb-src-icon,[\s\S]*\.imported-library-avatar-more\s*{[\s\S]*height:\s*2rem/);
   assert.match(globals, /\.imported-library-avatar\.fb-src-icon \+ \.imported-library-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.62rem/);
-  assert.match(globals, /\.imported-library-source-count\s*{[\s\S]*white-space:\s*nowrap/);
+  assert.match(globals, /\.imported-library-source-count\s*{[\s\S]*font-size:\s*var\(--text-role-control-size\)[\s\S]*font-weight:\s*var\(--text-role-value-weight\)[\s\S]*letter-spacing:\s*var\(--text-role-tracking\)[\s\S]*white-space:\s*nowrap/);
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
