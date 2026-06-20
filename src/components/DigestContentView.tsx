@@ -80,34 +80,38 @@ export function DigestContentView({
       {sections.map((section) => (
         <section className="digest-section" id={section.key} key={section.key}>
           <div className="digest-section-body">
-            {section.groups.map((group) => (
-              <div className="digest-group" key={group.source.entityId}>
-                <DigestGroupHeading
-                  linkComponent={linkComponent}
-                  source={group.source}
-                  sourceLink={sourceLinkByEntityId.get(group.source.entityId)}
-                />
-                {group.sourceSummary ? (
-                  <div className="digest-source-summary">
-                    <p>{group.sourceSummary}</p>
-                  </div>
-                ) : null}
-                {group.items.map((item) => (
-                  <PostBlock
-                    favoriteError={favoriteErrorByFeedItemId[item.post.feedItemId] ?? ""}
-                    favoriteState={favoriteStateByFeedItemId[item.post.feedItemId] ?? {
-                      feedItemId: item.post.feedItemId,
-                      favoritedAt: null,
-                    }}
-                    item={item}
-                    key={item.post.feedItemId}
+            {section.groups.map((group) => {
+              const sourceLink = sourceLinkByEntityId.get(group.source.entityId);
+              return (
+                <div className="digest-group" key={group.source.entityId}>
+                  <DigestGroupHeading
                     linkComponent={linkComponent}
-                    onFavoriteToggle={onFavoriteToggle}
-                    pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
+                    source={group.source}
+                    sourceLink={sourceLink}
                   />
-                ))}
-              </div>
-            ))}
+                  {group.sourceSummary ? (
+                    <div className="digest-source-summary">
+                      <p>{group.sourceSummary}</p>
+                    </div>
+                  ) : null}
+                  {group.items.map((item) => (
+                    <PostBlock
+                      favoriteError={favoriteErrorByFeedItemId[item.post.feedItemId] ?? ""}
+                      favoriteState={favoriteStateByFeedItemId[item.post.feedItemId] ?? {
+                        feedItemId: item.post.feedItemId,
+                        favoritedAt: null,
+                      }}
+                      item={item}
+                      key={item.post.feedItemId}
+                      linkComponent={linkComponent}
+                      onFavoriteToggle={onFavoriteToggle}
+                      pendingFavoriteFeedItemIds={pendingFavoriteFeedItemIds}
+                      sourceLink={sourceLink}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}
@@ -126,6 +130,7 @@ function PostBlock({
   linkComponent,
   onFavoriteToggle,
   pendingFavoriteFeedItemIds,
+  sourceLink,
 }: {
   favoriteError: string;
   favoriteState: { feedItemId: string; favoritedAt: string | null };
@@ -133,24 +138,26 @@ function PostBlock({
   linkComponent: PostCardLinkComponent;
   onFavoriteToggle?: (feedItemId: string, nextFavorite: boolean) => void;
   pendingFavoriteFeedItemIds: Set<string>;
+  sourceLink?: DigestSourceLink;
 }) {
   const sourceType = normalizeSourceType(item.source.sourceType || item.post.sourceType) || "website";
+  const sourceName = sourceLink?.name || item.source.name;
   const postCard: PostCardPost = {
     id: `digest-${item.post.feedItemId}`,
-    title: item.post.title || item.source.name || "Untitled update",
+    title: item.post.title || sourceName || "Untitled update",
     body: item.summary,
     summary: item.summary,
     detailUrl: postDetailHref(item.post.feedItemId, "/dashboard?tab=ai-digest", "AI Digest"),
     url: item.post.url,
     publishedAt: item.post.publishedAt,
     createdAt: item.post.createdAt,
-    sourceName: item.source.name,
+    sourceName,
     sourceType,
     fetchTool: null,
     builder: {
       id: item.source.entityId,
       entityId: item.source.entityId,
-      name: item.source.name,
+      name: sourceName,
       kind: builderKindFromSourceType(sourceType),
       sourceType,
       sourceUrl: item.source.sourceUrl,
@@ -207,7 +214,7 @@ function DigestGroupHeading({
   sourceLink?: DigestSourceLink;
   linkComponent: PostCardLinkComponent;
 }) {
-  const label = source.name || "Unknown source";
+  const label = sourceLink?.name || source.name || "Unknown source";
   const avatar = (
     <SourceAvatar
       className="digest-group-source-avatar"

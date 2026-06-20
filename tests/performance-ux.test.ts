@@ -4718,6 +4718,10 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /className="digest-group-source-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestContent, /sourceLinkByEntityId/);
   assert.match(digestContent, /sourceLinkByEntityId\.get\(group\.source\.entityId\)/);
+  assert.match(digestContent, /sourceLink=\{sourceLink\}/);
+  assert.match(digestContent, /const sourceName = sourceLink\?\.name \|\| item\.source\.name/);
+  assert.match(digestContent, /const label = sourceLink\?\.name \|\| source\.name \|\| "Unknown source"/);
+  assert.doesNotMatch(digestContent, /sourceName:\s*item\.source\.name/);
   assert.doesNotMatch(digestContent, /sourceLinkForSource|sourceLinkForGroup|sourceLinkForPost|sourceEntityIdsByPostKey/);
   assert.match(digestContent, /PostCard/);
   assert.match(postCard, /className="post-detail-author-avatar"[\s\S]*imageSize=\{24\}/);
