@@ -33,15 +33,15 @@ export function BuilderDetailLoading() {
                   <span className="builder-detail-loading-meta builder-detail-loading-meta--wide" />
                 </span>
               </div>
-              <div className="builder-detail-control-row">
-                <div className="builder-detail-actions-skeleton">
-                  <span className="sr-only">Loading source follow action</span>
-                  <div className="builder-detail-action-skeleton-button" />
-                </div>
-                <span className="builder-detail-loading-chip" />
-              </div>
               <span className="builder-detail-loading-bio" />
             </div>
+          </div>
+          <div className="builder-detail-control-row">
+            <div className="builder-detail-actions-skeleton">
+              <span className="sr-only">Loading source follow action</span>
+              <div className="builder-detail-action-skeleton-button" />
+            </div>
+            <span className="builder-detail-loading-chip" />
           </div>
         </div>
       </PageHeader>

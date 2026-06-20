@@ -1579,12 +1579,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /Last summarized/);
   assert.match(builderDetailPage, /className="builder-detail-control-row"/);
   assert.match(builderDetailLoading, /className="builder-detail-control-row"/);
-  assert.match(globals, /\.builder-detail-title-stack\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/);
   assert.match(globals, /\.builder-detail-title-stack\s*{[\s\S]*flex:\s*1\s+1\s+auto/);
-  assert.match(globals, /\.builder-detail-control-row\s*{[\s\S]*grid-column:\s*2/);
+  assert.match(builderDetailPage, /<\/div>\s*<\/div>\s*<div className="builder-detail-control-row">/);
+  assert.match(builderDetailLoading, /<\/div>\s*<\/div>\s*<div className="builder-detail-control-row">/);
   assert.match(globals, /\.builder-detail-control-row\s*{[\s\S]*justify-self:\s*end/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-title-stack\s*{[\s\S]*grid-template-columns:\s*1fr/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-control-row\s*{[\s\S]*grid-column:\s*1/);
+  assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-control-row\s*{[\s\S]*justify-self:\s*start/);
   assert.match(builderDetailPage, /@\/components\/OriginalSourceAction/);
   assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{entity\.name\}`\}/);
   assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{sourceName\}`\}/);

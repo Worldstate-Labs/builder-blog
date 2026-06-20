@@ -178,27 +178,27 @@ export default async function BuilderDetailPage({ params }: Params) {
                   ) : null}
                 </span>
               </div>
-              <div className="builder-detail-control-row">
-                <Suspense fallback={<BuilderActionsSkeleton />}>
-                  <BuilderDetailActionsSlot
-                    entityId={entityId}
-                    sourceName={entity.name}
-                    userId={userId}
-                    channelIds={channelIds}
-                  />
-                </Suspense>
-                {headerSourceUrl ? (
-                  <OriginalSourceAction
-                    ariaLabel={`Original: ${entity.name}`}
-                    href={headerSourceUrl}
-                    sourceType={headerSourceType}
-                  />
-                ) : null}
-              </div>
               {entity.bio ? (
                 <p className="builder-detail-bio fb-desc">{entity.bio}</p>
               ) : null}
             </div>
+          </div>
+          <div className="builder-detail-control-row">
+            <Suspense fallback={<BuilderActionsSkeleton />}>
+              <BuilderDetailActionsSlot
+                entityId={entityId}
+                sourceName={entity.name}
+                userId={userId}
+                channelIds={channelIds}
+              />
+            </Suspense>
+            {headerSourceUrl ? (
+              <OriginalSourceAction
+                ariaLabel={`Original: ${entity.name}`}
+                href={headerSourceUrl}
+                sourceType={headerSourceType}
+              />
+            ) : null}
           </div>
         </div>
       </PageHeader>
