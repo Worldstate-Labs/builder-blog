@@ -3557,8 +3557,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*justify-content:\s*flex-start[\s\S]*max-width:\s*100%[\s\S]*width:\s*100%/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /const cardByline = sourceLibraryByline\(library\)/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-byline"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /const cardByline = sourceLibraryByline\(library\)/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-byline"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.owned\) return "Your source library"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.isCommunity\) return "Curated by FollowBrief"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Your Library"|return "By Community"/);
@@ -3642,6 +3642,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), />\s*Show\s*</);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats fb-hub-card-stats--source-library"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-fetch-date"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-owner"[\s\S]*sourceLibraryByline\(library\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{library\.importCount === 1 \? "import" : "imports"\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{library\.viewCount === 1 \? "view" : "views"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stat-row"/);

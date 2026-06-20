@@ -441,7 +441,6 @@ function HubCard({
     library.items.map((item) => item.builder.lastFetchedAt),
   );
   const sourceToggleLabel = formatSourceToggleLabel(library.itemCount);
-  const cardByline = sourceLibraryByline(library);
 
   const action = library.owned ? null : imported && pending !== "import" ? (
     <button
@@ -479,9 +478,6 @@ function HubCard({
             <h3 className="fb-hub-title">
               {library.name}
             </h3>
-            <p className="fb-hub-card-byline">
-              {cardByline}
-            </p>
           </div>
           {action ? (
             <div
@@ -555,6 +551,9 @@ function HubCard({
         <div className="fb-hub-card-fetch-date">
           <RelativeTime prefix="fetched " value={latestFetchedAt} fallback="not fetched yet" />
         </div>
+        <span className="fb-hub-card-owner">
+          {sourceLibraryByline(library)}
+        </span>
       </div>
     </article>
   );
