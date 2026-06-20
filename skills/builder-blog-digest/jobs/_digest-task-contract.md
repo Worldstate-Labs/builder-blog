@@ -1,5 +1,5 @@
 The creative step is limited to producing structured summary JSON from the
-FollowBrief context. The CLI assembles the final digest markdown
+FollowBrief context. The CLI assembles the final structured digest item JSON
 programmatically after this file is written.
 
 Read the saved `builder-blog-context.json`. Use only the supplied JSON. Do not
@@ -27,13 +27,14 @@ JSON schema:
 
 Rules:
 
+- If `context.items[]` is empty, stop and report that there are no AI Digest
+  issues to sync. Do not write a no-updates digest JSON and do not run sync.
 - Language mode: normally, write digest output in `context.language`. If
   `context.language` is `source`, use the supplied post summaries as the
   language source: write each `postSummaries[]` entry in that item's existing
   summary language, write each source summary in the dominant language of that
   source group's supplied summaries, and write `headlineSummary` in the dominant
-  language of all supplied summaries. If there are no supplied summaries, use
-  English for the no-updates line.
+  language of all supplied summaries.
 - `headlineSummary`: follow `context.digest.headlinePrompt`. It must be a
   non-empty string and must be 1200 characters or fewer. Before writing the JSON,
   count or conservatively estimate the final string length. If the headline
@@ -57,9 +58,6 @@ Rules:
 - Keep URLs unchanged when they appear in an existing post summary, but do not
   add new URLs to the JSON fields. The CLI will add the original source link
   from `item.url`.
-- If there are no items, output:
-  `{ "headlineSummary": "<no-updates line in context.language, following context.digest.headlinePrompt>", "sourceSummaries": [], "postSummaries": [] }`
-
 Before proceeding to the render command, reopen
 `$TMP_DIR/builder-blog-digest-agent-output.json` and self-check the saved JSON.
 If `headlineSummary` is empty or over 1200 characters, revise and save the JSON

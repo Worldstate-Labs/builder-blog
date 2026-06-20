@@ -345,10 +345,7 @@ export function PostCardView({
                 className={`post-detail-raw${rawExpanded ? " post-detail-raw--expanded" : ""}`}
               >
                 <div className="post-detail-raw-head">
-                  <div className="post-detail-raw-copy">
-                    <h2 className="post-detail-section-label">{rawContentLabel}</h2>
-                    <p className="post-detail-section-desc">Saved by Fetch sources.</p>
-                  </div>
+                  <h2 className="post-detail-section-label">{rawContentLabel}</h2>
                   <button
                     aria-controls={rawRegionId}
                     aria-expanded={rawExpanded}

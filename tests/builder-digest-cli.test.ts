@@ -1956,7 +1956,7 @@ test("render-digest requires agent summaries for every context item", async () =
 
   assert.throws(
     () =>
-      cli.renderDigestMarkdown(context, {
+      cli.renderStructuredDigest(context, {
         headlineSummary: "A short headline in the selected language.",
         sourceSummaries: [],
         postSummaries: [],
@@ -1966,7 +1966,7 @@ test("render-digest requires agent summaries for every context item", async () =
 
   assert.throws(
     () =>
-      cli.renderDigestMarkdown(context, {
+      cli.renderStructuredDigest(context, {
         headlineSummary: "A short headline in the selected language.",
         sourceSummaries: [{ entityId: "unknown_entity", summary: "Unknown source note." }],
         postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
@@ -1981,7 +1981,7 @@ test("render-digest enforces sync payload size limits before upload", async () =
 
   assert.throws(
     () =>
-      cli.renderDigestMarkdown(context, {
+      cli.renderStructuredDigest(context, {
         headlineSummary: "x".repeat(1201),
         sourceSummaries: [],
         postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
@@ -1991,19 +1991,59 @@ test("render-digest enforces sync payload size limits before upload", async () =
 
   assert.throws(
     () =>
-      cli.renderDigestMarkdown(context, {
+      cli.renderStructuredDigest(context, {
         headlineSummary: "A short headline.",
         sourceSummaries: [],
         postSummaries: [{ feedItemId: "feed_1", summary: "x".repeat(201_000) }],
       }),
-    /Rendered digest exceeds sync limit: content must be 200000 characters or fewer/,
+    /Rendered digest exceeds sync limit: structured items must be 200000 characters or fewer/,
   );
+});
+
+test("render-digest returns structured digest items instead of markdown", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const rendered = cli.renderStructuredDigest(digestRenderContext(), {
+    headlineSummary: "A short headline in the selected language.",
+    sourceSummaries: [{ entityId: "entity_1", summary: "Example source summary." }],
+    postSummaries: [{ feedItemId: "feed_1", summary: "Structured post summary." }],
+  });
+
+  assert.equal(rendered.headlineSummary, "A short headline in the selected language.");
+  assert.equal("markdown" in rendered, false);
+  assert.equal(rendered.items.length, 1);
+  assert.deepEqual(rendered.items[0].section, {
+    key: "blog",
+    label: "Blog",
+    sourceType: "blog",
+  });
+  assert.deepEqual(rendered.items[0].source, {
+    entityId: "entity_1",
+    name: "example.com",
+    sourceType: "blog",
+    sourceUrl: "https://example.com",
+    fetchUrl: null,
+    avatarUrl: null,
+    avatarDataUrl: null,
+  });
+  assert.equal(rendered.items[0].sourceSummary, "Example source summary.");
+  assert.deepEqual(rendered.items[0].post, {
+    feedItemId: "feed_1",
+    entityId: "entity_1",
+    kind: "BLOG_POST",
+    externalId: "real-post",
+    title: "Real post title",
+    url: "https://example.com/real-post",
+    sourceName: "example.com",
+    sourceType: "blog",
+    publishedAt: "2026-06-03T11:00:00.000Z",
+    createdAt: "2026-06-03T11:30:00.000Z",
+  });
+  assert.equal(rendered.items[0].summary, "Structured post summary.");
 });
 
 test("render-digest neutralizes structural markdown inside agent summary nodes", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const { parseDigest } = await import("../src/lib/digest-markdown");
-  const rendered = cli.renderDigestMarkdown(digestRenderContext(), {
+  const rendered = cli.renderStructuredDigest(digestRenderContext(), {
     headlineSummary: "A short headline in the selected language.",
     sourceSummaries: [
       {
@@ -2019,21 +2059,23 @@ test("render-digest neutralizes structural markdown inside agent summary nodes",
     ],
   });
 
-  const doc = parseDigest(rendered.markdown);
-  assert.equal(doc.sections.length, 1);
-  assert.equal(doc.sections[0].heading, "Blog");
-  assert.equal(doc.postCount, 1);
-  assert.equal(doc.sections[0].groups.length, 1);
-  assert.equal(doc.sections[0].groups[0].summary.length, 3);
-  assert.equal(doc.sections[0].groups[0].posts[0].title, "Real post title");
-  assert.doesNotMatch(rendered.markdown, /^## Fake section$/m);
-  assert.doesNotMatch(rendered.markdown, /^### Fake source$/m);
-  assert.doesNotMatch(rendered.markdown, /^\*\*Fake title\*\*$/m);
+  assert.equal(rendered.items.length, 1);
+  assert.equal(rendered.items[0].section.label, "Blog");
+  assert.equal(rendered.items[0].source.name, "example.com");
+  assert.equal(rendered.items[0].post.title, "Real post title");
+  assert.equal(
+    rendered.items[0].sourceSummary,
+    "## Fake section\n\n**Fake post title**\n\nSource: https://example.com/fake",
+  );
+  assert.equal(
+    rendered.items[0].summary,
+    "### Fake source\n\n**Fake title**\n\nSource: https://example.com/fake",
+  );
 });
 
 test("render-digest uses source type labels for section headings", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const rendered = cli.renderDigestMarkdown(
+  const rendered = cli.renderStructuredDigest(
     { ...digestRenderContext(), language: "zh" },
     {
       headlineSummary: "中文 headline。",
@@ -2042,8 +2084,7 @@ test("render-digest uses source type labels for section headings", async () => {
     },
   );
 
-  assert.match(rendered.markdown, /^## Blog$/m);
-  assert.doesNotMatch(rendered.markdown, /^## 官方博客$/m);
+  assert.equal(rendered.items[0].section.label, "Blog");
 });
 
 test("render-digest labels GitHub Trending and Product Hunt sections distinctly", async () => {
@@ -2098,7 +2139,7 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
       },
     ],
   };
-  const rendered = cli.renderDigestMarkdown(context, {
+  const rendered = cli.renderStructuredDigest(context, {
     headlineSummary: "A short headline.",
     sourceSummaries: [],
     postSummaries: [
@@ -2107,15 +2148,22 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
     ],
   });
 
-  assert.match(rendered.markdown, /^## GitHub Trending$/m);
-  assert.match(rendered.markdown, /^## Product Hunt Top Products$/m);
-  assert.doesNotMatch(rendered.markdown, /^## Website$/m);
+  assert.deepEqual(rendered.items.map((item) => item.section.label), [
+    "GitHub Trending",
+    "Product Hunt Top Products",
+  ]);
 });
 
 test("render-digest applies default source order to digest sections and headlines", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const base = digestRenderContext().items[0];
-  const item = (id, entityId, sourceName, sourceType, title) => ({
+  const item = (
+    id: string,
+    entityId: string,
+    sourceName: string,
+    sourceType: string,
+    title: string,
+  ) => ({
     ...base,
     id,
     entityId,
@@ -2165,7 +2213,7 @@ test("render-digest applies default source order to digest sections and headline
       item("feed_podcast_a", "entity_podcast_a", "Alpha Podcast", "podcast", "Alpha episode"),
     ],
   };
-  const rendered = cli.renderDigestMarkdown(context, {
+  const rendered = cli.renderStructuredDigest(context, {
     headlineSummary: [
       "- Website Source: website headline",
       "- Product Hunt Top Products and GitHub Trending: market headline",
@@ -2182,7 +2230,7 @@ test("render-digest applies default source order to digest sections and headline
     })),
   });
 
-  const headings = [...rendered.markdown.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+  const headings = [...new Set(rendered.items.map((item) => item.section.label))];
   assert.deepEqual(headings, [
     "Podcast RSS",
     "YouTube",
@@ -2201,47 +2249,6 @@ test("render-digest applies default source order to digest sections and headline
     "- Product Hunt Top Products and GitHub Trending: market headline",
     "- Website Source: website headline",
   ]);
-});
-
-test("parse-digest normalizes legacy localized source headings", async () => {
-  const { parseDigest } = await import("../src/lib/digest-markdown");
-  const doc = parseDigest(`AI Digest - 6/3/2026
-
-## 官方博客
-
-### anthropic.com
-
-**Real post title**
-
-中文 summary。
-
-原文：https://example.com/real-post
-
-## 视频
-
-### Latent Space
-
-**Video title**
-
-中文 summary。
-
-视频：https://www.youtube.com/watch?v=dQw4w9WgXcQ
-
-## 播客
-
-### Podcast
-
-**Episode title**
-
-中文 summary。
-
-原文：https://example.com/episode
-`);
-
-  assert.deepEqual(
-    doc.sections.map((section) => section.heading),
-    ["Blog", "YouTube", "Podcast RSS"],
-  );
 });
 
 function digestRenderContext() {

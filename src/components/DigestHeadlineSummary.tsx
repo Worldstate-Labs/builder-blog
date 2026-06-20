@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { ChevronDown, Newspaper } from "lucide-react";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
-import { parseDigest } from "@/lib/digest-markdown";
 
 const MAX_HEADLINE_SOURCE_ITEMS = 5;
 const DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = [
@@ -19,14 +18,12 @@ const DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = [
 
 export function DigestHeadlineSummary({
   collapsedLineCount,
-  content,
   headerAction,
   loading = false,
   sourceLinks = [],
   text,
 }: {
   collapsedLineCount?: number;
-  content?: string | null;
   headerAction?: ReactNode;
   loading?: boolean;
   sourceLinks?: DigestSourceLink[];
@@ -36,8 +33,8 @@ export function DigestHeadlineSummary({
   const [lineClampOverflow, setLineClampOverflow] = useState(false);
   const listWrapRef = useRef<HTMLDivElement>(null);
   const headlineItems = useMemo(
-    () => parseHeadlineSourceSummaries(text, sourceLinks, content),
-    [content, sourceLinks, text],
+    () => parseHeadlineSourceSummaries(text, sourceLinks),
+    [sourceLinks, text],
   );
   const lineClampEnabled = Boolean(collapsedLineCount && collapsedLineCount > 0);
   const itemLimitExceeded = !lineClampEnabled && headlineItems.length > MAX_HEADLINE_SOURCE_ITEMS;
@@ -196,7 +193,6 @@ function combinedHeadlineAvatarLabel(sourceLinks: DigestSourceLink[]) {
 function parseHeadlineSourceSummaries(
   text: string | undefined,
   sourceLinks: DigestSourceLink[],
-  content?: string | null,
 ): DigestHeadlineSourceItem[] {
   const trimmed = text?.trim();
   if (!trimmed) return [];
@@ -228,7 +224,7 @@ function parseHeadlineSourceSummaries(
       summary,
     });
   }
-  return sortHeadlineSourceItems(items, sourceLinks, content);
+  return sortHeadlineSourceItems(items, sourceLinks);
 }
 
 function headlineSeparatorIndex(line: string) {
@@ -242,11 +238,8 @@ function headlineSeparatorIndex(line: string) {
 function sortHeadlineSourceItems(
   items: DigestHeadlineSourceItem[],
   sourceLinks: DigestSourceLink[],
-  content?: string | null,
 ) {
-  const sourceOrder =
-    headlineSourceOrderFromDigestContent(content, sourceLinks) ??
-    headlineSourceOrderFromSourceLinks(sourceLinks);
+  const sourceOrder = headlineSourceOrderFromSourceLinks(sourceLinks);
   if (sourceOrder.size === 0) return items;
 
   return [...items].sort((a, b) => {
@@ -276,33 +269,6 @@ function headlineSourceItemKeys(item: DigestHeadlineSourceItem) {
   return [...keys, ...keys.map((key) => key.replace(/^@/, ""))]
     .map(headlineSourceKey)
     .filter(Boolean);
-}
-
-function headlineSourceOrderFromDigestContent(
-  content: string | null | undefined,
-  sourceLinks: DigestSourceLink[],
-) {
-  if (!content?.trim()) return null;
-  const doc = parseDigest(content);
-  if (!doc.hasStructure) return null;
-
-  const lookup = buildHeadlineSourceLookup(sourceLinks);
-  const order = new Map<string, number>();
-  let index = 0;
-  for (const section of doc.sections) {
-    for (const group of section.groups) {
-      if (!group.source) continue;
-      addHeadlineOrderKeys(order, group.source, index);
-      const sourceLink = headlineSourceLinkForSource(group.source, lookup);
-      if (sourceLink) {
-        for (const key of headlineSourceLinkKeys(sourceLink)) {
-          addHeadlineOrderKeys(order, key, index);
-        }
-      }
-      index += 1;
-    }
-  }
-  return order.size > 0 ? order : null;
 }
 
 function headlineSourceOrderFromSourceLinks(sourceLinks: DigestSourceLink[]) {

@@ -1336,37 +1336,60 @@ test("vercel migration wrapper retries Prisma advisory lock timeouts", () => {
   assert.match(migrate, /Retrying \$\{attempt \+ 1\}\/\$\{MAX_ATTEMPTS\}/);
 });
 
-test("digest sync user path defaults optional fields and rejects empty content", () => {
+test("digest sync user path requires structured digest items and derives digested marks", () => {
   const parsed = parseSkillDigestPayload({
     title: "Personal YouTube Builder Digest",
-    content: "Digest body",
+    items: [
+      {
+        order: 0,
+        section: { key: "blog", label: "Blog", sourceType: "blog" },
+        source: {
+          entityId: "e1",
+          name: "Example Blog",
+          sourceType: "blog",
+          sourceUrl: "https://example.com",
+          fetchUrl: null,
+        },
+        sourceSummary: "Example Blog published a product note.",
+        post: {
+          feedItemId: "fi1",
+          entityId: "e1",
+          kind: "BLOG_POST",
+          externalId: "x1",
+          title: "Post title",
+          url: "https://example.com/post",
+          sourceName: "Example Blog",
+          sourceType: "blog",
+          publishedAt: "2026-06-20T10:00:00.000Z",
+          createdAt: "2026-06-20T10:05:00.000Z",
+        },
+        summary: "Digest summary.",
+      },
+    ],
   });
   assert.equal(parsed.success, true);
   if (!parsed.success) return;
   assert.equal(parsed.data.language, "zh");
   assert.equal(parsed.data.itemCount, 0);
   assert.equal(parsed.data.headlineSummary, undefined);
-  // New fields default safely for old callers.
   assert.equal(parsed.data.regenerate, false);
-  assert.deepEqual(parsed.data.digestedItems, []);
+  assert.equal(parsed.data.items.length, 1);
+  assert.equal(parsed.data.items[0].post.feedItemId, "fi1");
 
-  // A caller that marks digested posts is accepted and validated.
-  const withMarks = parseSkillDigestPayload({
+  const withStructuredMarks = parseSkillDigestPayload({
     title: "Digest",
-    content: "Body",
     regenerate: true,
-    digestedItems: [{ entityId: "e1", kind: "TWEET", externalId: "x1", feedItemId: "fi1" }],
+    items: parsed.data.items,
   });
-  assert.equal(withMarks.success, true);
-  if (withMarks.success) {
-    assert.equal(withMarks.data.regenerate, true);
-    assert.equal(withMarks.data.digestedItems.length, 1);
-    assert.equal(withMarks.data.digestedItems[0].entityId, "e1");
+  assert.equal(withStructuredMarks.success, true);
+  if (withStructuredMarks.success) {
+    assert.equal(withStructuredMarks.data.regenerate, true);
+    assert.equal(withStructuredMarks.data.items[0].post.entityId, "e1");
   }
 
   const withHeadlineSummary = parseSkillDigestPayload({
     title: "Digest",
-    content: "Body",
+    items: parsed.data.items,
     headlineSummary: "OpenAI 发布新工具；Claude 更新 agents；开发者生态继续加速。",
   });
   assert.equal(withHeadlineSummary.success, true);
@@ -1379,13 +1402,16 @@ test("digest sync user path defaults optional fields and rejects empty content",
 
   const tooLongHeadlineSummary = parseSkillDigestPayload({
     title: "Digest",
-    content: "Body",
+    items: parsed.data.items,
     headlineSummary: "x".repeat(1201),
   });
   assert.equal(tooLongHeadlineSummary.success, false);
 
-  const empty = parseSkillDigestPayload({ title: "Bad", content: "" });
+  const empty = parseSkillDigestPayload({ title: "Bad", items: [] });
   assert.equal(empty.success, false);
+
+  const markdownOnly = parseSkillDigestPayload({ title: "Bad", content: "Digest body" });
+  assert.equal(markdownOnly.success, false);
 });
 
 test("fetch task success requires a persisted summary; failures are recorded with a reason", () => {

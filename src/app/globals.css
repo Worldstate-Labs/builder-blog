@@ -1616,16 +1616,11 @@ details:not([open]) > :not(summary) {
 
 .post-detail-raw-head {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem 0.75rem;
-  justify-content: space-between;
-}
-
-.post-detail-raw-copy {
   display: grid;
-  gap: 0.25rem;
-  min-width: min(100%, 18rem);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem 0.75rem;
+  justify-content: stretch;
+  min-width: 0;
 }
 
 .post-detail-section-label {
@@ -1640,16 +1635,7 @@ details:not([open]) > :not(summary) {
 
 .post-detail-raw-head .post-detail-section-label {
   margin-bottom: 0;
-}
-
-.post-detail-section-desc {
-  color: var(--muted-strong);
-  font-size: var(--text-role-control-size);
-  font-weight: var(--fw-regular);
-  letter-spacing: var(--text-role-tracking);
-  line-height: 1.45;
-  margin: 0;
-  max-width: var(--copy-max);
+  min-width: 0;
 }
 
 .post-detail-raw-toggle {

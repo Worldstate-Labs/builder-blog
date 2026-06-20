@@ -7,6 +7,7 @@ import {
   isOriginalContentLanguagePreference,
   normalizeSummaryLanguagePreference,
 } from "@/lib/language-preference";
+import { cleanStructuredDigestItems } from "@/lib/structured-digest";
 import { getUserFromBearer } from "@/lib/tokens";
 
 export async function POST(request: Request) {
@@ -36,6 +37,18 @@ export async function POST(request: Request) {
     : languagePreference;
 
   const now = new Date();
+  const digestItems = cleanStructuredDigestItems(parsed.data.items);
+  if (digestItems.length === 0) {
+    return NextResponse.json({ error: "Digest items are empty" }, { status: 400 });
+  }
+  const digestedItems = parsed.data.digestedItems.length > 0
+    ? parsed.data.digestedItems
+    : digestItems.map((item) => ({
+        entityId: item.post.entityId,
+        kind: item.post.kind,
+        externalId: item.post.externalId,
+        feedItemId: item.post.feedItemId,
+      }));
 
   // `regenerate` never deletes history. Its only meaning is "let posts the user
   // already had digested be reused in a new digest", which the prepare/context
@@ -48,12 +61,12 @@ export async function POST(request: Request) {
   // Coverage window = the published range of the posts this digest actually
   // presents, computed from the real candidates rather than the cosmetic 24h
   // label the CLI sends. Falls back to that label (or now-24h..now) only when
-  // the digest presents no dated items (e.g. an empty "no updates" digest).
+  // none of the structured items has a dated persisted feed item.
   let periodStart = parsed.data.periodStart
     ? new Date(parsed.data.periodStart)
     : new Date(now.getTime() - 24 * 60 * 60 * 1000);
   let periodEnd = parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : now;
-  const presentedFeedItemIds = parsed.data.digestedItems
+  const presentedFeedItemIds = digestedItems
     .map((item) => item.feedItemId)
     .filter((id): id is string => Boolean(id));
   if (presentedFeedItemIds.length > 0) {
@@ -74,12 +87,12 @@ export async function POST(request: Request) {
     data: {
       userId: user.id,
       title: parsed.data.title,
-      content: parsed.data.content,
+      items: digestItems,
       headlineSummary: parsed.data.headlineSummary?.trim() || null,
       language,
       periodStart,
       periodEnd,
-      itemCount: parsed.data.itemCount,
+      itemCount: parsed.data.itemCount || digestItems.length,
       source: "skill",
       status: "SYNCED",
     },
@@ -90,9 +103,9 @@ export async function POST(request: Request) {
   // Keyed by canonical content identity (entityId, kind, externalId) — matches
   // across channel variants. Idempotent: re-marking on an override run is a
   // no-op via the unique key. Provenance: digestId + the presented feedItemId.
-  if (parsed.data.digestedItems.length > 0) {
+  if (digestedItems.length > 0) {
     await prisma.$transaction(
-      parsed.data.digestedItems.map((item) =>
+      digestedItems.map((item) =>
         prisma.digestedItem.upsert({
           where: {
             userId_entityId_kind_externalId: {
@@ -138,8 +151,8 @@ export async function POST(request: Request) {
           digestTitle: digest.title,
           language,
           jobRunId: parsed.data.jobRunId ?? undefined,
-          includedCount: parsed.data.digestedItems.length,
-          includedKeys: parsed.data.digestedItems.map(
+          includedCount: digestedItems.length,
+          includedKeys: digestedItems.map(
             (item) => `${item.entityId}:${item.kind}:${item.externalId}`,
           ),
         },

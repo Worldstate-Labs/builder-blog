@@ -248,8 +248,8 @@ function usage() {
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5]
-  render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out digest.md --summary-out digest-headlines.txt
-  sync --file digest.md [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
+  render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
+  sync --file builder-blog-digest.json [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   fetch-status-audit
   digest-status-audit
@@ -6007,35 +6007,11 @@ function digestSourceOrder(context) {
   return new Map(order.map((sourceId, index) => [sourceId, index]));
 }
 
-function markdownLine(value, fallback = "") {
+function digestTextLine(value, fallback = "") {
   return String(value || fallback)
     .replace(/\r?\n/g, " ")
     .replace(/^\s*#+\s*/, "")
     .trim();
-}
-
-function markdownContentLine(value) {
-  const line = String(value || "").trimEnd();
-  const heading = line.match(/^#{1,6}\s+(.+?)\s*$/);
-  if (heading) return heading[1].trim();
-  const fullBold = line.match(/^\*\*(.+?)\*\*\s*$/);
-  if (fullBold) return fullBold[1].trim();
-  const mediaLike = line.match(
-    /^\s*(原文|来源|链接|出处|视频|影片|观看|收听|音频|播客|Source|Original|Video|Watch|Listen|Audio|Link|Podcast)\s*[:：]\s*(https?:\/\/\S+?)\s*$/i,
-  );
-  if (mediaLike) return `${mediaLike[1]} - ${mediaLike[2]}`;
-  const bareUrl = line.match(/^\s*(https?:\/\/\S+?)\s*$/);
-  if (bareUrl) return `Link - ${bareUrl[1]}`;
-  return line;
-}
-
-function markdownParagraph(value) {
-  return String(value || "")
-    .replace(/\r\n/g, "\n")
-    .split(/\n{2,}/)
-    .map((part) => part.split("\n").map(markdownContentLine).join("\n").trim())
-    .filter(Boolean)
-    .join("\n\n");
 }
 
 function sourceTypeForDigestItem(item) {
@@ -6185,7 +6161,7 @@ function splitCombinedHeadlineSourceLabel(value) {
 function headlineSourceKeysForGroup(group) {
   const keys = [
     group.source,
-    markdownLine(group.source),
+    digestTextLine(group.source),
     group.entityId,
   ].filter(Boolean);
   return [...keys, ...keys.map((key) => String(key).replace(/^@/, ""))]
@@ -6254,7 +6230,7 @@ function orderHeadlineSummaryByDigestSources(headlineSummary, items, context) {
     .trim();
 }
 
-export function renderDigestMarkdown(context, agentOutput = {}) {
+export function renderStructuredDigest(context, agentOutput = {}) {
   const items = Array.isArray(context?.items) ? context.items : [];
   const headlineSummary = orderHeadlineSummaryByDigestSources(
     agentOutput?.headlineSummary,
@@ -6262,77 +6238,82 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
     context,
   );
   if (items.length === 0) {
-    if (!headlineSummary) {
-      throw new Error("No digest items: agent output must include headlineSummary in context.language.");
-    }
-    if (headlineSummary.length > MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
-      throw new Error(
-        `Invalid digest agent output: headlineSummary must be ${MAX_DIGEST_HEADLINE_SUMMARY_CHARS} ` +
-          `characters or fewer (got ${headlineSummary.length})`,
-      );
-    }
-    return {
-      headlineSummary,
-      markdown: `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n${headlineSummary}`,
-    };
+    throw new Error("No digest items: structured digest sync requires at least one context item.");
   }
 
   const postSummaries = postSummaryFromAgentOutput(agentOutput);
   validateDigestAgentOutput(context, agentOutput, postSummaries);
   const sourceSummaries = sourceSummaryFromAgentOutput(agentOutput);
-  const sectionGroups = new Map();
+  const structuredItems = [];
+  let order = 0;
   for (const group of orderedDigestGroups(items, context)) {
     const sourceType = sourceTypeForDigestItem(group.items[0]);
-    const groups = sectionGroups.get(sourceType) ?? [];
-    groups.push(group);
-    sectionGroups.set(sourceType, groups);
-  }
-
-  const lines = [
-    `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}`,
-    "",
-  ];
-  for (const [sourceType, groupEntries] of sectionGroups.entries()) {
-    lines.push(`## ${digestSectionLabel(sourceType, context)}`, "");
-    for (const group of groupEntries) {
-      lines.push(`### ${markdownLine(group.source, "Unknown source")}`);
-      const groupSummary =
-        sourceSummaries.get(String(group.entityId)) ||
-        sourceSummaries.get(String(group.source)) ||
-        sourceSummaries.get(markdownLine(group.source));
-      if (groupSummary) {
-        lines.push("", markdownParagraph(groupSummary));
-      }
-      const sortedItems = [...group.items].sort((a, b) => {
-        const at = new Date(a.publishedAt || a.createdAt || 0).getTime();
-        const bt = new Date(b.publishedAt || b.createdAt || 0).getTime();
-        return bt - at;
+    const groupSummary =
+      sourceSummaries.get(String(group.entityId)) ||
+      sourceSummaries.get(String(group.source)) ||
+      sourceSummaries.get(digestTextLine(group.source)) ||
+      null;
+    const sortedItems = [...group.items].sort((a, b) => {
+      const at = new Date(a.publishedAt || a.createdAt || 0).getTime();
+      const bt = new Date(b.publishedAt || b.createdAt || 0).getTime();
+      return bt - at;
+    });
+    for (const item of sortedItems) {
+      const itemSourceType = sourceTypeForDigestItem(item);
+      const sourceName = digestTextLine(
+        sourceIdentityForDigestItem(item, context),
+        "Unknown source",
+      );
+      const builder = item?.builder ?? {};
+      structuredItems.push({
+        order,
+        section: {
+          key: sourceType,
+          label: digestSectionLabel(sourceType, context),
+          sourceType,
+        },
+        source: {
+          entityId: String(item?.entityId || builder?.entityId || group.entityId || ""),
+          name: sourceName,
+          sourceType: itemSourceType,
+          sourceUrl: stringOrNull(builder?.sourceUrl),
+          fetchUrl: stringOrNull(builder?.fetchUrl),
+          avatarUrl: stringOrNull(builder?.avatarUrl),
+          avatarDataUrl: stringOrNull(builder?.avatarDataUrl),
+        },
+        sourceSummary: groupSummary,
+        post: {
+          feedItemId: String(item?.id || ""),
+          entityId: String(item?.entityId || builder?.entityId || group.entityId || ""),
+          kind: String(item?.kind || ""),
+          externalId: String(item?.externalId || ""),
+          title: stringOrNull(item?.title || item?.sourceName || builder?.name),
+          url: String(item?.url || ""),
+          sourceName: stringOrNull(item?.sourceName),
+          sourceType: itemSourceType,
+          publishedAt: stringOrNull(item?.publishedAt),
+          createdAt: stringOrNull(item?.createdAt) || new Date(context?.generatedAt || Date.now()).toISOString(),
+        },
+        summary: postSummaryForItem(item, postSummaries),
       });
-      for (const item of sortedItems) {
-        const title = markdownLine(item?.title || item?.sourceName || item?.builder?.name, "Untitled update");
-        const summary = markdownParagraph(postSummaryForItem(item, postSummaries));
-        lines.push("", `**${title.replace(/\*\*/g, "")}**`);
-        if (summary) lines.push(summary);
-        lines.push(`Source: ${item.url}`);
-      }
-      lines.push("");
+      order += 1;
     }
   }
 
-  const markdown = `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
-  validateRenderedDigestSyncLimits({ markdown });
+  validateRenderedDigestSyncLimits({ items: structuredItems });
 
   return {
     headlineSummary,
-    markdown,
+    items: structuredItems,
   };
 }
 
-function validateRenderedDigestSyncLimits({ markdown }) {
-  if (markdown.length > MAX_DIGEST_CONTENT_CHARS) {
+function validateRenderedDigestSyncLimits({ items }) {
+  const serialized = JSON.stringify({ items });
+  if (serialized.length > MAX_DIGEST_CONTENT_CHARS) {
     throw new Error(
-      `Rendered digest exceeds sync limit: content must be ${MAX_DIGEST_CONTENT_CHARS} ` +
-        `characters or fewer (got ${markdown.length})`,
+      `Rendered digest exceeds sync limit: structured items must be ${MAX_DIGEST_CONTENT_CHARS} ` +
+        `characters or fewer (got ${serialized.length})`,
     );
   }
 }
@@ -6344,18 +6325,19 @@ async function renderDigest(args) {
   const summaryOutPath = argValue(args, "--summary-out");
   if (!contextPath) throw new Error("Missing --context builder-blog-context.json");
   if (!agentOutputPath) throw new Error("Missing --agent-output digest-agent-output.json");
-  if (!outPath) throw new Error("Missing --out digest.md");
+  if (!outPath) throw new Error("Missing --out builder-blog-digest.json");
   if (!summaryOutPath) throw new Error("Missing --summary-out digest-headlines.txt");
 
   const context = JSON.parse(await readFile(contextPath, "utf8"));
   const agentOutput = JSON.parse(await readFile(agentOutputPath, "utf8"));
-  const rendered = renderDigestMarkdown(context, agentOutput);
-  await writeFile(outPath, rendered.markdown, "utf8");
+  const rendered = renderStructuredDigest(context, agentOutput);
+  const digestJson = `${JSON.stringify(rendered, null, 2)}\n`;
+  await writeFile(outPath, digestJson, "utf8");
   await writeFile(summaryOutPath, rendered.headlineSummary || "", "utf8");
   console.log(JSON.stringify({
     status: "ok",
-    itemCount: Array.isArray(context.items) ? context.items.length : 0,
-    digestChars: rendered.markdown.length,
+    itemCount: rendered.items.length,
+    digestBytes: digestJson.length,
     headlineChars: rendered.headlineSummary.length,
   }, null, 2));
 }
@@ -6366,19 +6348,27 @@ async function sync(args) {
 
   const file = argValue(args, "--file");
   const title = argValue(args, "--title", `AI Builder Digest — ${new Date().toLocaleDateString()}`);
-  let content = "";
+  let rawDigest = "";
   if (file) {
-    content = await readFile(file, "utf8");
+    rawDigest = await readFile(file, "utf8");
   } else {
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
-    content = Buffer.concat(chunks).toString("utf8");
+    rawDigest = Buffer.concat(chunks).toString("utf8");
   }
-  if (!content.trim()) throw new Error("Digest content is empty");
+  if (!rawDigest.trim()) throw new Error("Digest JSON is empty");
+  let structuredDigest;
+  try {
+    structuredDigest = JSON.parse(rawDigest);
+  } catch (error) {
+    throw new Error(`Digest JSON is invalid: ${error.message}`);
+  }
+  const items = Array.isArray(structuredDigest?.items) ? structuredDigest.items : [];
+  if (items.length === 0) throw new Error("Digest JSON has no structured items");
   const summaryFile = argValue(args, "--summary-file", null);
   const headlineSummary = summaryFile
     ? stringOrNull(await readFile(summaryFile, "utf8"))
-    : stringOrNull(argValue(args, "--summary", null));
+    : stringOrNull(argValue(args, "--summary", structuredDigest?.headlineSummary ?? null));
 
   // --regenerate ("re-generate today's digest"): the create route replaces
   // this user's existing same-day digest instead of stacking a duplicate.
@@ -6396,7 +6386,15 @@ async function sync(args) {
     "--context",
     defaultDigestContextFile(),
   );
-  let digestedItems = [];
+  const digestedItems = items
+    .map((item) => item?.post)
+    .filter((post) => post && post.entityId && post.kind && post.externalId && post.feedItemId)
+    .map((post) => ({
+      entityId: post.entityId,
+      kind: post.kind,
+      externalId: post.externalId,
+      feedItemId: post.feedItemId,
+    }));
   // The DigestRun id the server issued at `prepare`; links this sync back to the
   // recorded candidate funnel so the digest log shows included-vs-dropped.
   let runId = null;
@@ -6405,14 +6403,6 @@ async function sync(args) {
     const ctx = JSON.parse(await readFile(contextPath, "utf8"));
     if (typeof ctx.runId === "string" && ctx.runId) runId = ctx.runId;
     if (typeof ctx.jobRunId === "string" && ctx.jobRunId) jobRunId = ctx.jobRunId;
-    digestedItems = (Array.isArray(ctx.items) ? ctx.items : [])
-      .filter((it) => it && it.entityId && it.kind && it.externalId)
-      .map((it) => ({
-        entityId: it.entityId,
-        kind: it.kind,
-        externalId: it.externalId,
-        feedItemId: it.id ?? null,
-      }));
   } catch {
     console.error(
       `Could not read digest candidates from ${contextPath}; skipping the ` +
@@ -6425,7 +6415,7 @@ async function sync(args) {
       {
         status: "skipped",
         webSyncDisabled: true,
-        digestChars: content.length,
+        digestItems: items.length,
         digestedItems: digestedItems.length,
         runId,
         jobRunId,
@@ -6442,14 +6432,14 @@ async function sync(args) {
     `${config.appUrl}/api/skill/digests`,
     {
       title,
-      content,
+      items,
       ...(headlineSummary ? { headlineSummary } : {}),
       // Recorded language is set server-side from the account-wide summary
       // language preference; this is only the fallback when none is set.
       language: argValue(args, "--language", "zh"),
       periodStart: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
       periodEnd: now.toISOString(),
-      itemCount: Number(argValue(args, "--item-count", String(digestedItems.length))),
+      itemCount: Number(argValue(args, "--item-count", String(items.length))),
       regenerate,
       digestedItems,
       ...(runId ? { runId } : {}),

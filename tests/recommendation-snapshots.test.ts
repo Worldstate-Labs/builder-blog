@@ -2,14 +2,60 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { FeedItemKind } from "@prisma/client";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DigestContent } from "../src/components/DigestContent";
 import { PostCard } from "../src/components/PostCard";
-import { digestPostKey, parseDigest } from "../src/lib/digest-markdown";
+import type { StructuredDigestItem } from "../src/lib/structured-digest";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
+
+function digestItem(overrides: {
+  order?: number;
+  section?: Partial<StructuredDigestItem["section"]>;
+  source?: Partial<StructuredDigestItem["source"]>;
+  sourceSummary?: string | null;
+  post?: Partial<StructuredDigestItem["post"]>;
+  summary?: string;
+} = {}): StructuredDigestItem {
+  const sourceShape = {
+    entityId: "entity_anthropic",
+    name: "anthropic.com",
+    sourceType: "blog",
+    sourceUrl: "https://anthropic.com/engineering",
+    fetchUrl: null,
+    avatarUrl: null,
+    avatarDataUrl: null,
+    ...overrides.source,
+  };
+  return {
+    order: overrides.order ?? 0,
+    section: {
+      key: "blog",
+      label: "Blog",
+      sourceType: "blog",
+      ...overrides.section,
+    },
+    source: sourceShape,
+    sourceSummary: overrides.sourceSummary ?? null,
+    post: {
+      feedItemId: "feed_123",
+      entityId: sourceShape.entityId,
+      kind: FeedItemKind.BLOG_POST,
+      externalId: "how-we-contain-claude",
+      title: "How we contain Claude across products",
+      url: "https://anthropic.com/engineering/how-we-contain-claude",
+      sourceName: sourceShape.name,
+      sourceType: sourceShape.sourceType,
+      publishedAt: "2026-06-05T00:00:00.000Z",
+      createdAt: "2026-06-05T01:00:00.000Z",
+      ...overrides.post,
+    },
+    summary: overrides.summary ?? "Anthropic explains containment.",
+  };
+}
 
 test("recommendation feed persists snapshots and marks reads without removing cards", () => {
   const schema = source("prisma/schema.prisma");
@@ -164,45 +210,39 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.doesNotMatch(postFavoriteControl, /Could not update reading queue|Could not update favorite\. Try again\./);
   assert.match(postFavoriteControl, /className="post-favorite-status" role="status"/);
   assert.match(postFavoriteControl, /className="post-favorite-control"/);
-  assert.match(digestRoute, /favoriteStateByUrl/);
-  assert.match(digestRoute, /activePoolBuilderIds/);
+  assert.match(digestRoute, /favoriteStateByFeedItemId/);
+  assert.match(digestRoute, /items:\s*true/);
   assert.match(digestRoute, /digestId/);
-  assert.match(digestRoute, /feedItemId:\s*\{ not: null \}/);
-  assert.match(digestRoute, /digestPostEntries\(digest\.content\)/);
-  assert.match(digestRoute, /favoriteStateByPostKey/);
-  assert.match(digestRoute, /matchDigestPostsToFeedItems/);
-  assert.match(digestRoute, /digestPostKey\(section, group, post\)/);
-  assert.match(digestRoute, /uniqueFeedItem/);
+  assert.match(digestRoute, /cleanStructuredDigestItems\(digest\.items\)/);
+  assert.doesNotMatch(digestRoute, /activePoolBuilderIds|digestPostEntries|matchDigestPostsToFeedItems|digestPostKey/);
   assert.match(digestRoute, /feedFavorite\.findMany/);
   assert.match(feedFavorites, /feedItemAppearsInAccessibleDigest/);
   assert.match(feedFavorites, /digestPipelineImport\.findMany/);
   assert.match(feedFavorites, /Post is outside your Sources or AI Digest collections/);
   assert.doesNotMatch(feedFavorites, /Post is not in your sources|imported AI Digest collections|imported AI Digest issues/);
-  assert.match(digestDetails, /favoriteStateByUrl/);
-  assert.match(digestDetails, /favoriteStateByPostKey/);
-  assert.match(digestDetails, /cleanFavoriteStateByUrl/);
-  assert.match(digestDetails, /favoriteErrorByUrl: Record<string, string>/);
-  assert.match(digestDetails, /pendingFavoriteUrls: Set<string>/);
-  assert.match(digestDetails, /pendingFavoriteUrls: new Set<string>\(\)/);
-  assert.match(digestDetails, /if \(pendingFavoriteUrls\.has\(url\)\) return/);
-  assert.match(digestDetails, /const previousFavoritedAt = favoriteStateByUrl\[url\]\?\.favoritedAt \?\? null/);
-  assert.match(digestDetails, /favoriteErrorByUrl: omitUrl\(current\.favoriteErrorByUrl, url\)/);
+  assert.match(digestDetails, /favoriteStateByFeedItemId/);
+  assert.match(digestDetails, /cleanFavoriteStateByFeedItemId/);
+  assert.match(digestDetails, /favoriteErrorByFeedItemId: Record<string, string>/);
+  assert.match(digestDetails, /pendingFavoriteFeedItemIds: Set<string>/);
+  assert.match(digestDetails, /pendingFavoriteFeedItemIds: new Set<string>\(\)/);
+  assert.match(digestDetails, /if \(pendingFavoriteFeedItemIds\.has\(feedItemId\)\) return/);
+  assert.match(digestDetails, /const previousFavoritedAt = favoriteStateByFeedItemId\[feedItemId\]\?\.favoritedAt \?\? null/);
+  assert.match(digestDetails, /favoriteErrorByFeedItemId: omitFeedItemId\(current\.favoriteErrorByFeedItemId, feedItemId\)/);
   assert.match(digestDetails, /favoritedAt: previousFavoritedAt/);
-  assert.match(digestDetails, /pendingFavoriteUrls: removeUrl\(current\.pendingFavoriteUrls, url\)/);
+  assert.match(digestDetails, /pendingFavoriteFeedItemIds: removeFeedItemId\(current\.pendingFavoriteFeedItemIds, feedItemId\)/);
   assert.match(digestDetails, /Could not update Favorites\. Try again\./);
   assert.doesNotMatch(digestDetails, /Could not update reading queue|Could not update favorite\. Try again\./);
-  assert.match(digestDetails, /function omitUrl/);
-  assert.match(digestDetails, /function removeUrl/);
+  assert.match(digestDetails, /function omitFeedItemId/);
+  assert.match(digestDetails, /function removeFeedItemId/);
   assert.match(digestDetails, /fetch\("\/api\/favorites"/);
   assert.doesNotMatch(digestDetails, /reload restores truth|Best-effort optimistic UI/);
   assert.match(source("src/components/DigestContentView.tsx"), /PostFavoriteButton/);
   assert.match(digestContent, /onFavoriteToggle/);
-  assert.match(digestContent, /digestPostKey/);
-  assert.match(digestContent, /favoriteStateByPostKey/);
-  assert.match(digestContent, /const EMPTY_PENDING_FAVORITE_URLS = new Set<string>\(\)/);
-  assert.match(digestContent, /favoriteErrorByUrl\?: Record<string, string>/);
-  assert.match(digestContent, /pendingFavoriteUrls\?: Set<string>/);
-  assert.match(digestContent, /disabled=\{pendingFavoriteUrls\.has\(url\)\}/);
+  assert.match(digestContent, /favoriteStateByFeedItemId/);
+  assert.match(digestContent, /const EMPTY_PENDING_FAVORITE_IDS = new Set<string>\(\)/);
+  assert.match(digestContent, /favoriteErrorByFeedItemId\?: Record<string, string>/);
+  assert.match(digestContent, /pendingFavoriteFeedItemIds\?: Set<string>/);
+  assert.match(digestContent, /disabled=\{pendingFavoriteFeedItemIds\.has\(item\.post\.feedItemId\)\}/);
   assert.match(digestContent, /className="post-favorite-control"/);
   assert.match(digestContent, /className="post-favorite-status" role="status"/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
@@ -219,39 +259,20 @@ test("favorites saves posts into the Favorites tab", () => {
 });
 
 test("digest posts can render a save control for their source feed item", () => {
-  const content = `AI Digest - 6/5/2026
-
-## Blog
-
-### anthropic.com
-
-**How we contain Claude across products**
-
-Anthropic explains containment.
-
-Source: https://anthropic.com/engineering/how-we-contain-claude`;
-  const doc = parseDigest(content);
-  const section = doc.sections[0];
-  const group = section.groups[0];
-  const post = group.posts[0];
-  const postKey = digestPostKey(section, group, post);
   const html = renderToStaticMarkup(
     createElement(DigestContent, {
-      content,
-      favoriteStateByPostKey: {
-        [postKey]: {
+      items: [digestItem()],
+      favoriteStateByFeedItemId: {
+        feed_123: {
           feedItemId: "feed_123",
           favoritedAt: null,
         },
       },
-      favoriteErrorByUrl: {
-        "https://anthropic.com/engineering/how-we-contain-claude":
-          "Could not update Favorites. Try again.",
+      favoriteErrorByFeedItemId: {
+        feed_123: "Could not update Favorites. Try again.",
       },
       onFavoriteToggle: () => undefined,
-      pendingFavoriteUrls: new Set([
-        "https://anthropic.com/engineering/how-we-contain-claude",
-      ]),
+      pendingFavoriteFeedItemIds: new Set(["feed_123"]),
       sourceLinks: [
         {
           aliases: ["anthropic.com"],
@@ -272,6 +293,57 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`;
   assert.match(html, /disabled=""/);
   assert.match(html, /post-favorite-status/);
   assert.match(html, /Could not update Favorites\. Try again\./);
+});
+
+test("digest read action links to post detail even when digest text omits a source URL", () => {
+  const html = renderToStaticMarkup(
+    createElement(DigestContent, {
+      items: [
+        digestItem({
+          section: { key: "podcast", label: "Podcast RSS", sourceType: "podcast" },
+          source: {
+            entityId: "entity_mad",
+            name: "The MAD Podcast with Matt Turck",
+            sourceType: "podcast",
+            sourceUrl: "https://www.youtube.com/@MadPodcast",
+          },
+          post: {
+            feedItemId: "feed_mad_slingshot",
+            entityId: "entity_mad",
+            kind: FeedItemKind.PODCAST_EPISODE,
+            externalId: "mad-slingshot",
+            title: "Can an AI Therapist Actually Help? (Slingshot AI CEO)",
+            url: "https://www.youtube.com/watch?v=slingshot",
+            sourceName: "The MAD Podcast with Matt Turck",
+            sourceType: "podcast",
+          },
+          summary:
+            "The Takeaway: Slingshot AI reframes therapy data and reinforcement learning. youtube.com",
+        }),
+      ],
+      favoriteStateByFeedItemId: {
+        feed_mad_slingshot: {
+          feedItemId: "feed_mad_slingshot",
+          favoritedAt: null,
+        },
+      },
+      sourceLinks: [
+        {
+          aliases: ["The MAD Podcast"],
+          entityId: "entity_mad",
+          href: "/builder/entity_mad",
+          name: "The MAD Podcast with Matt Turck",
+          sourceType: "podcast",
+          sourceUrl: "https://www.youtube.com/@MadPodcast",
+        },
+      ],
+    }),
+  );
+
+  assert.match(html, /href="\/posts\/feed_mad_slingshot\?returnTo=%2Fdashboard%3Ftab%3Dai-digest&amp;returnLabel=AI\+Digest"/);
+  assert.match(html, /aria-label="Read: Can an AI Therapist Actually Help\? \(Slingshot AI CEO\)"/);
+  assert.doesNotMatch(html, /aria-expanded=/);
+  assert.doesNotMatch(html, /fetched-post-raw/);
 });
 
 test("source logos are shared across recommendation and library surfaces", () => {
@@ -424,7 +496,7 @@ test("post detail keeps source actions with the source row without a top source 
   assert.match(bylineHtml, /post-favorite-control[\s\S]*post-source-original/);
   assert.match(html, /<section aria-label="Original content" class="post-detail-raw post-detail-raw--expanded">/);
   assert.match(html, /<h2 class="post-detail-section-label">Original content<\/h2>/);
-  assert.match(html, /<p class="post-detail-section-desc">Saved by Fetch sources\.<\/p>/);
+  assert.doesNotMatch(html, /Saved by Fetch sources\.|post-detail-section-desc/);
   assert.match(html, /aria-expanded="true"[\s\S]*Hide original content/);
   assert.match(html, /<div aria-label="Original content" class="post-detail-body" id="[^"]+-raw-content" role="region">Fetched raw body\.<\/div>/);
   assert.doesNotMatch(globals, /\.post-detail-byline\s*{[\s\S]{0,140}display:\s*grid/);
@@ -518,27 +590,54 @@ test("post card keeps source URLs as actions instead of repeated summary text", 
 test("digest renderer uses source link metadata before section heading fallbacks", () => {
   const html = renderToStaticMarkup(
     createElement(DigestContent, {
-      content: `AI Digest - 6/5/2026
-
-## Website
-
-### GitHub Trending
-
-**Repo launch**
-
-Summary.
-
-Source: https://github.com/owner/repo
-
-## Website
-
-### Product Hunt Top Products
-
-**Lightfield**
-
-Summary.
-
-Source: https://www.producthunt.com/products/lightfield`,
+      items: [
+        digestItem({
+          order: 0,
+          section: { key: "github_trending", label: "GitHub Trending", sourceType: "github_trending" },
+          source: {
+            entityId: "entity_github",
+            name: "GitHub Trending",
+            sourceType: "github_trending",
+            sourceUrl: "https://github.com/trending?since=daily",
+          },
+          post: {
+            feedItemId: "feed_github",
+            entityId: "entity_github",
+            kind: FeedItemKind.BLOG_POST,
+            externalId: "repo",
+            title: "Repo launch",
+            url: "https://github.com/owner/repo",
+            sourceName: "GitHub Trending",
+            sourceType: "github_trending",
+          },
+          summary: "Summary.",
+        }),
+        digestItem({
+          order: 1,
+          section: {
+            key: "product_hunt_top_products",
+            label: "Product Hunt Top Products",
+            sourceType: "product_hunt_top_products",
+          },
+          source: {
+            entityId: "entity_ph",
+            name: "Product Hunt Top Products",
+            sourceType: "product_hunt_top_products",
+            sourceUrl: "https://www.producthunt.com/",
+          },
+          post: {
+            feedItemId: "feed_ph",
+            entityId: "entity_ph",
+            kind: FeedItemKind.BLOG_POST,
+            externalId: "lightfield",
+            title: "Lightfield",
+            url: "https://www.producthunt.com/products/lightfield",
+            sourceName: "Product Hunt Top Products",
+            sourceType: "product_hunt_top_products",
+          },
+          summary: "Summary.",
+        }),
+      ],
       sourceLinks: [
         {
           aliases: ["GitHub Trending"],
@@ -567,30 +666,31 @@ Source: https://www.producthunt.com/products/lightfield`,
 });
 
 test("digest renderer links source headings that include an episode suffix", () => {
-  const content = `AI Digest - 6/20/2026
-
-## Podcast
-
-### With Jacob Effron
-
-这一组集中讨论模型如何变成可用的开发者工具和 agent。
-
-**RFT Launch, How OpenAI Improves Its Models**
-
-Summary.
-
-Source: https://www.youtube.com/watch?v=episode123`;
-  const doc = parseDigest(content);
-  const section = doc.sections[0];
-  const group = section.groups[0];
-  const post = group.posts[0];
-  const postKey = digestPostKey(section, group, post);
   const html = renderToStaticMarkup(
     createElement(DigestContent, {
-      content,
-      sourceEntityIdsByPostKey: {
-        [postKey]: "entity_unsupervised_learning",
-      },
+      items: [
+        digestItem({
+          section: { key: "podcast", label: "Podcast", sourceType: "podcast" },
+          source: {
+            entityId: "entity_unsupervised_learning",
+            name: "With Jacob Effron",
+            sourceType: "podcast",
+            sourceUrl: "https://www.youtube.com/@UnsupervisedLearning",
+          },
+          post: {
+            feedItemId: "feed_episode_123",
+            entityId: "entity_unsupervised_learning",
+            kind: FeedItemKind.PODCAST_EPISODE,
+            externalId: "episode123",
+            title: "RFT Launch, How OpenAI Improves Its Models",
+            url: "https://www.youtube.com/watch?v=episode123",
+            sourceName: "With Jacob Effron",
+            sourceType: "podcast",
+          },
+          sourceSummary: "这一组集中讨论模型如何变成可用的开发者工具和 agent。",
+          summary: "Summary.",
+        }),
+      ],
       sourceLinks: [
         {
           entityId: "entity_unsupervised_learning",
