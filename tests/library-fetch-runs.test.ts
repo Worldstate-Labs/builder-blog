@@ -438,7 +438,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-status-brief"/);
   assert.match(panel, /className="sync-panel-layout is-log-only"/);
   assert.match(panel, /<dt>Schedule enabled<\/dt>/);
-  assert.match(panel, /<dt>Next scheduled run<\/dt>/);
+  assert.doesNotMatch(panel, /<dt>Next scheduled run<\/dt>/);
   assert.match(panel, /<dt>Runner<\/dt>/);
   assert.match(panel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.doesNotMatch(panel, /className="sync-panel-run-card-funnel"/);
@@ -607,6 +607,9 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.doesNotMatch(panel, /AI Digest build status graph/);
   assert.doesNotMatch(panel, />Digest updates<|aria-label="Digest schedule status graph"/);
   assert.match(panel, /buildDigestCronStatus/);
+  assert.match(digestUpdateStatus, /const nextExpectedMs = nextExpected\.getTime\(\)/);
+  assert.match(digestUpdateStatus, /nextExpectedMs > nowMs/);
+  assert.match(digestUpdateStatus, /expected\.push\(nextExpected\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "digest-cron", run\.source\)/);
   assert.match(panel, /run\.status === "synced"/);
   assert.match(panel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
@@ -700,7 +703,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-status-brief"/);
   assert.match(panel, /className="sync-panel-layout is-log-only"/);
   assert.match(panel, /<dt>Schedule enabled<\/dt>/);
-  assert.match(panel, /<dt>Next scheduled run<\/dt>/);
+  assert.doesNotMatch(panel, /<dt>Next scheduled run<\/dt>/);
   assert.match(panel, /<dt>Runner<\/dt>/);
   assert.doesNotMatch(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);

@@ -96,6 +96,17 @@ export function buildDigestCronStatus<Run extends DigestCronRunStatusInput>(
     }
     cursor = addScheduleInterval(cursor, cronJob, -1);
   }
+  const nextExpectedMs = nextExpected.getTime();
+  const expectedTimes = new Set(expected.map((date) => date.getTime()));
+  if (
+    Number.isFinite(firstExpectedMs) &&
+    Number.isFinite(nextExpectedMs) &&
+    nextExpectedMs >= firstExpectedMs &&
+    nextExpectedMs > nowMs &&
+    !expectedTimes.has(nextExpectedMs)
+  ) {
+    expected.push(nextExpected);
+  }
 
   const slots = expected.map((expectedAt) => {
     const windowEnd = addScheduleInterval(expectedAt, cronJob);

@@ -1079,7 +1079,6 @@ export function FetchLogPanel({
             entries={timelineEntries}
             hasMoreHistory={hasMoreFetchHistory}
             isLoadingHistory={isLoadingFetchHistory}
-            nextExpectedAt={cronStatus.nextExpectedAt}
             onLoadMoreHistory={loadMoreHistory}
             onOpenLog={openLog}
           />
@@ -1317,7 +1316,6 @@ function FetchStatusPanel({
   entries,
   hasMoreHistory,
   isLoadingHistory,
-  nextExpectedAt,
   onLoadMoreHistory,
   onOpenLog,
 }: {
@@ -1325,7 +1323,6 @@ function FetchStatusPanel({
   entries: FetchTimelineEntry[];
   hasMoreHistory: boolean;
   isLoadingHistory: boolean;
-  nextExpectedAt: string | null;
   onLoadMoreHistory: () => void;
   onOpenLog: (logRef: FetchLogRef) => void;
 }) {
@@ -1399,14 +1396,6 @@ function FetchStatusPanel({
               <dt>Schedule enabled</dt>
               <dd>
                 {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-              </dd>
-            </div>
-          ) : null}
-          {cronJob && nextExpectedAt ? (
-            <div className="sync-panel-meta-row">
-              <dt>Next scheduled run</dt>
-              <dd>
-                {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
               </dd>
             </div>
           ) : null}

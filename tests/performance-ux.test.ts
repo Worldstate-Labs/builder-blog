@@ -2058,7 +2058,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
   assert.match(fetchLogPanel, /className="sync-panel-layout is-log-only"/);
   assert.match(fetchLogPanel, /<dt>Schedule enabled<\/dt>/);
-  assert.match(fetchLogPanel, /<dt>Next scheduled run<\/dt>/);
+  assert.doesNotMatch(fetchLogPanel, /<dt>Next scheduled run<\/dt>/);
   assert.match(fetchLogPanel, /<dt>Runner<\/dt>/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
@@ -2310,7 +2310,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-status-brief"/);
   assert.match(digestLogPanel, /className="sync-panel-layout is-log-only"/);
   assert.match(digestLogPanel, /<dt>Schedule enabled<\/dt>/);
-  assert.match(digestLogPanel, /<dt>Next scheduled run<\/dt>/);
+  assert.doesNotMatch(digestLogPanel, /<dt>Next scheduled run<\/dt>/);
   assert.match(digestLogPanel, /<dt>Runner<\/dt>/);
   assert.doesNotMatch(digestLogPanel, /sync-panel-slot-bar/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row"/);

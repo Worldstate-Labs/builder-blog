@@ -426,7 +426,6 @@ export function DigestLogPanel({
       <DigestStatusPanel
         cronJob={cronJob}
         entries={timelineEntries}
-        nextExpectedAt={cronStatus.nextExpectedAt}
         onOpenLog={openLog}
       />
     </div>
@@ -567,12 +566,10 @@ function DigestScheduleSummary({
 function DigestStatusPanel({
   cronJob,
   entries,
-  nextExpectedAt,
   onOpenLog,
 }: {
   cronJob: DigestCronJobStatus | null;
   entries: DigestTimelineEntry[];
-  nextExpectedAt: string | null;
   onOpenLog: (logRef: DigestLogRef) => void;
 }) {
   const hydrated = useHydrated();
@@ -640,14 +637,6 @@ function DigestStatusPanel({
               <dt>Schedule enabled</dt>
               <dd>
                 {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-              </dd>
-            </div>
-          ) : null}
-          {cronJob && nextExpectedAt ? (
-            <div className="sync-panel-meta-row">
-              <dt>Next scheduled run</dt>
-              <dd>
-                {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
               </dd>
             </div>
           ) : null}
