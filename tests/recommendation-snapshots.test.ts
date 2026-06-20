@@ -561,6 +561,41 @@ Source: https://www.producthunt.com/products/lightfield`,
   assert.match(html, /favicons\?domain=www\.producthunt\.com/);
 });
 
+test("digest renderer links source headings that include an episode suffix", () => {
+  const html = renderToStaticMarkup(
+    createElement(DigestContent, {
+      content: `AI Digest - 6/20/2026
+
+## Podcast
+
+### Unsupervised Learning: With Jacob Effron
+
+这一组集中讨论模型如何变成可用的开发者工具和 agent。
+
+**RFT Launch, How OpenAI Improves Its Models**
+
+Summary.
+
+Source: https://www.youtube.com/watch?v=episode123`,
+      sourceLinks: [
+        {
+          aliases: ["Unsupervised Learning"],
+          entityId: "entity_unsupervised_learning",
+          fetchUrl: "https://www.youtube.com/@UnsupervisedLearning",
+          href: "/builder/entity_unsupervised_learning",
+          name: "Unsupervised Learning",
+          sourceType: "podcast",
+          sourceUrl: "https://www.youtube.com/@UnsupervisedLearning",
+        },
+      ],
+    }),
+  );
+
+  assert.match(html, /href="\/builder\/entity_unsupervised_learning"[\s\S]*Unsupervised Learning: With Jacob Effron/);
+  assert.match(html, /digest-group-source-avatar/);
+  assert.doesNotMatch(html, /<h4 class="digest-group-heading">Unsupervised Learning: With Jacob Effron<\/h4>/);
+});
+
 test("recommendation snapshots request six posts at a time", () => {
   assert.match(source("src/lib/recommendations.ts"), /defaultRecommendationLimit = 6/);
   assert.match(source("src/app/api/recommendations/timeline/route.ts"), /itemLimit: 6/);

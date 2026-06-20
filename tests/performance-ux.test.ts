@@ -1930,12 +1930,16 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /stackActionsOnMobile=\{showAdminActions\}/);
   assert.doesNotMatch(recommendationFeed, /showSourceBadge=\{false\}/);
   assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
-  assert.match(recommendationFeed, /className="recommendation-feed-actions"/);
+  assert.doesNotMatch(recommendationFeed, /className="recommendation-feed-actions"/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
   assert.match(recommendationFeed, /useState\(\(\) => nonEmptySnapshots\(initialSnapshots\)\)/);
   assert.match(recommendationFeed, /return nonEmptySnapshots\(snapshots\)\.filter/);
   assert.match(recommendationFeed, /function nonEmptySnapshots/);
   assert.match(recommendationFeed, /Following update/);
+  assert.match(recommendationFeed, /snapshots\.map\(\(snapshot,\s*index\) =>/);
+  assert.match(recommendationFeed, /className="recommendation-snapshot-meta"/);
+  assert.match(recommendationFeed, /index === 0 \? \(/);
+  assert.match(recommendationFeed, /className="fb-btn light compact recommendation-refresh-button"/);
   assert.doesNotMatch(recommendationFeed, /Following snapshot/);
   assert.doesNotMatch(recommendationFeed, />Picks</);
   assert.match(recommendationFeed, /className="feed-load-more"/);
@@ -2001,7 +2005,10 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*width:\s*100%/);
-  assert.match(globals, /\.recommendation-feed-actions\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.doesNotMatch(globals, /\.recommendation-feed-actions\s*{/);
+  assert.match(globals, /\.recommendation-snapshot-header\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.recommendation-snapshot-meta\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.recommendation-refresh-button\s*{[\s\S]*margin-left:\s*auto/);
   assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.feed-load-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.feed-inline-retry\s*{[\s\S]*color:\s*var\(--accent\)/);
@@ -4612,6 +4619,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /digest-group-source-avatar/);
   assert.match(digestContent, /className="digest-group-source-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestContent, /sourceLinkForSource/);
+  assert.match(digestContent, /sourceLabelCandidates/);
+  assert.match(digestContent, /\.split\(\/\[\(\)（）\]\|\[:：\]\|\[-–—\]\\s\+\/\)/);
   assert.match(digestContent, /PostCard/);
   assert.match(postCard, /className="post-detail-author-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestContent, /originalSummariesByUrl/);

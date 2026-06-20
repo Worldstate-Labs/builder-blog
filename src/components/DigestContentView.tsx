@@ -364,16 +364,19 @@ function sourceLinkForSource(source: string, lookup: Map<string, DigestSourceLin
   const direct = lookup.get(sourceKey(source));
   if (direct) return direct;
 
-  const parts = source
-    .normalize("NFKC")
-    .split(/[()（）]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  for (const part of parts) {
+  for (const part of sourceLabelCandidates(source)) {
     const match = lookup.get(sourceKey(part));
     if (match) return match;
   }
   return undefined;
+}
+
+function sourceLabelCandidates(source: string) {
+  return source
+    .normalize("NFKC")
+    .split(/[()（）]|[:：]|[-–—]\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function sourceTypeForSection(section: DigestSection, lookup: Map<string, DigestSourceLink>) {

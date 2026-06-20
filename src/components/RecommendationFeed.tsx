@@ -164,33 +164,35 @@ export function RecommendationFeed({
 
   return (
     <section className="feed-content-stack recommendation-feed">
-      <div className="recommendation-feed-actions">
-        <button
-          aria-label="Refresh Following posts"
-          className="fb-btn light compact"
-          disabled={loadingDirection !== null}
-          onClick={() => void requestSnapshot("prepend")}
-          type="button"
-        >
-          <RefreshCcw className="feed-action-icon" />
-          Refresh
-        </button>
-      </div>
       {favoriteError ? (
         <p className="feed-load-error recommendation-favorite-error" role="status">
           {favoriteError}
         </p>
       ) : null}
       <div className="recommendation-snapshot-list">
-        {snapshots.map((snapshot) => (
+        {snapshots.map((snapshot, index) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
-              <span>Following update</span>
-              <RelativeTime value={snapshot.createdAt} />
-              <CountMeta
-                label={snapshot.items.length === 1 ? "post" : "posts"}
-                value={snapshot.items.length}
-              />
+              <span className="recommendation-snapshot-meta">
+                <span>Following update</span>
+                <RelativeTime value={snapshot.createdAt} />
+                <CountMeta
+                  label={snapshot.items.length === 1 ? "post" : "posts"}
+                  value={snapshot.items.length}
+                />
+              </span>
+              {index === 0 ? (
+                <button
+                  aria-label="Refresh Following posts"
+                  className="fb-btn light compact recommendation-refresh-button"
+                  disabled={loadingDirection !== null}
+                  onClick={() => void requestSnapshot("prepend")}
+                  type="button"
+                >
+                  <RefreshCcw className="feed-action-icon" />
+                  Refresh
+                </button>
+              ) : null}
             </div>
             {snapshot.items.map((entry) => (
               <RecommendationCard
