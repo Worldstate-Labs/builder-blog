@@ -67,6 +67,19 @@ function jobRunSlotStatus(jobRun: AgentJobRunListItem, nowMs = Date.now()): Cron
   return "failed";
 }
 
+function digestSlotStatusForRun(
+  run: DigestCronRunStatusInput | null,
+  jobRun: AgentJobRunListItem | null,
+  nowMs = Date.now(),
+): CronSlotStatus | null {
+  if (!run) return null;
+  const terminalFailedJob =
+    jobRun && !["starting", "running", "succeeded"].includes(jobRun.status);
+  if (terminalFailedJob) return "failed";
+  if (run.status === "synced") return "ok";
+  return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "failed";
+}
+
 export function buildDigestCronStatus<Run extends DigestCronRunStatusInput>(
   cronJob: DigestCronJobStatus | null,
   runs: Run[],
@@ -120,15 +133,14 @@ export function buildDigestCronStatus<Run extends DigestCronRunStatusInput>(
       const candidateMs = Date.parse(candidate.expectedAt ?? candidate.startedAt);
       return Number.isFinite(candidateMs) && candidateMs >= expectedMs - graceMs && candidateMs < endMs;
     }) ?? null;
-    const status: CronSlotStatus = jobRun
-      ? jobRunSlotStatus(jobRun, nowMs)
-      : match
-      ? match.status === "synced"
-        ? "ok"
-        : "failed"
-      : nowMs - expectedMs <= graceMs
-        ? "waiting"
-        : "missed";
+    const runStatus = digestSlotStatusForRun(match, jobRun, nowMs);
+    const status: CronSlotStatus = runStatus ?? (
+      jobRun
+        ? jobRunSlotStatus(jobRun, nowMs)
+        : nowMs - expectedMs <= graceMs
+          ? "waiting"
+          : "missed"
+    );
     return {
       expectedAt: expectedAt.toISOString(),
       windowEnd: windowEnd.toISOString(),

@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { buildDigestTimeline } from "../src/components/DigestLogPanel";
 import {
+  buildDigestCronStatus,
   getDigestUpdateStatus,
   type CronSlot,
   type DigestCronRunStatusInput,
 } from "../src/lib/digest-update-status";
-import type { DigestCronJobStatus } from "../src/lib/digest-runs";
+import type { AgentJobRunListItem } from "../src/lib/agent-job-runs";
+import type { DigestCronJobStatus, DigestRunListItem } from "../src/lib/digest-runs";
 
 function activeCron(): DigestCronJobStatus {
   return {
@@ -44,6 +47,56 @@ function preparedRun(source: "cron" | "manual"): DigestCronRunStatusInput {
   };
 }
 
+function runningDigestJobRun(): AgentJobRunListItem {
+  return {
+    id: "job_1",
+    jobType: "digest-build",
+    trigger: "scheduled",
+    scheduleJob: "digest-cron",
+    instanceId: "digest-20260618T100000",
+    expectedAt: "2026-06-18T10:00:00.000Z",
+    startedAt: "2026-06-18T10:00:05.000Z",
+    heartbeatAt: "2026-06-18T10:04:00.000Z",
+    finishedAt: null,
+    status: "running",
+    exitCode: null,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 123,
+    workerPid: 123,
+    hostname: "local",
+    platform: "darwin",
+    stage: "runtime_agent_started",
+    summary: "Runtime heartbeat.",
+    details: {},
+    updatedAt: "2026-06-18T10:04:00.000Z",
+  };
+}
+
+function syncedDigestRun(): DigestRunListItem {
+  return {
+    id: "run_1",
+    status: "synced",
+    source: "cron",
+    jobRunId: "digest-20260618T100000",
+    preparedAt: "2026-06-18T10:05:00.000Z",
+    syncedAt: "2026-06-18T10:06:00.000Z",
+    language: "original",
+    digestTitle: "AI Builder Digest",
+    lookbackCutoff: "2026-06-17T10:05:00.000Z",
+    maxPostAgeDays: 30,
+    lastDigestAt: null,
+    regenerate: false,
+    subscriptionCount: 6,
+    candidateCount: 20,
+    includedCount: 20,
+    droppedCount: 0,
+    contributingSourceCount: 6,
+    sources: [],
+    candidates: [],
+  };
+}
+
 test("manual digest runs do not mask active scheduled digest status", () => {
   const status = getDigestUpdateStatus(activeCron(), [missedSlot()], [preparedRun("manual")]);
 
@@ -55,6 +108,52 @@ test("scheduled digest runs can still show active cron building state", () => {
   const status = getDigestUpdateStatus(activeCron(), [missedSlot()], [preparedRun("cron")]);
 
   assert.equal(status.key, "building");
+});
+
+test("synced scheduled digest runs are not left running by an active runtime job", () => {
+  const result = buildDigestCronStatus(
+    activeCron(),
+    [
+      {
+        id: "run_1",
+        source: "cron",
+        status: "synced",
+        preparedAt: "2026-06-18T10:05:00.000Z",
+      },
+    ],
+    [runningDigestJobRun()],
+    Date.parse("2026-06-18T10:06:00.000Z"),
+  );
+
+  const slot = result.slots.find((candidate) => candidate.run?.id === "run_1");
+
+  assert.equal(slot?.status, "ok");
+  assert.equal(slot?.jobRun?.status, "running");
+});
+
+test("digest timeline consumes job runs linked from a slotted synced run", () => {
+  const run = syncedDigestRun();
+  const jobRun = runningDigestJobRun();
+  const entries = buildDigestTimeline({
+    jobRuns: [jobRun],
+    runs: [run],
+    slots: [
+      {
+        expectedAt: "2026-06-18T10:00:00.000Z",
+        windowEnd: "2026-06-18T11:00:00.000Z",
+        status: "running",
+        run,
+        jobRun: null,
+      },
+    ],
+    nowMs: Date.parse("2026-06-18T10:06:00.000Z"),
+  });
+
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.status, "ok");
+  assert.equal(entries[0]?.syncSummary, "20/20 saved");
+  assert.deepEqual(entries[0]?.logRef, { kind: "run", runId: "run_1" });
+  assert.equal(entries[0]?.jobRun?.instanceId, jobRun.instanceId);
 });
 
 test("one-time digest runs still show building when no schedule is connected", () => {

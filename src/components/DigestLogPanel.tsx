@@ -162,14 +162,19 @@ function hasFailedDigestJob(jobRun?: AgentJobRunListItem | null): boolean {
   return Boolean(jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status)));
 }
 
+function hasTerminalFailedDigestJob(jobRun?: AgentJobRunListItem | null): boolean {
+  return Boolean(jobRun && !["starting", "running", "succeeded"].includes(jobRun.status));
+}
+
 function digestRunSlotStatus(
   run: DigestRunListItem,
   jobRun?: AgentJobRunListItem | null,
   nowMs = Date.now(),
 ): CronSlotStatus {
+  if (hasTerminalFailedDigestJob(jobRun)) return "failed";
+  if (run.status === "synced") return "ok";
   const jobStatus = jobRun ? digestJobRunSlotStatus(jobRun, nowMs) : null;
   if (jobStatus && jobStatus !== "ok") return jobStatus;
-  if (run.status === "synced") return "ok";
   return isDigestRunInflight(run) ? "running" : "failed";
 }
 
@@ -189,7 +194,7 @@ function digestRunSyncSummary(run: DigestRunListItem | null): string | null {
   return `${formatCount(saved)}/${formatCount(eligible)} saved`;
 }
 
-function buildDigestTimeline({
+export function buildDigestTimeline({
   jobRuns,
   runs,
   slots,
@@ -205,27 +210,29 @@ function buildDigestTimeline({
   const matchedJobInstances = new Set<string>();
   const entries: DigestTimelineEntry[] = slots.map((slot) => {
     if (slot.run) matchedRunIds.add(slot.run.id);
-    if (slot.jobRun) matchedJobInstances.add(slot.jobRun.instanceId);
-    const triggerLabel = scheduledRunTriggerLabel(slot.jobRun ?? null, "digest-cron", slot.run?.source ?? "cron");
+    const jobRunFromRun = slot.run?.jobRunId ? jobsByInstanceId.get(slot.run.jobRunId) ?? null : null;
+    const resolvedJobRun = slot.run ? jobRunFromRun ?? slot.jobRun : slot.jobRun;
+    if (resolvedJobRun) matchedJobInstances.add(resolvedJobRun.instanceId);
+    const triggerLabel = scheduledRunTriggerLabel(resolvedJobRun ?? null, "digest-cron", slot.run?.source ?? "cron");
     const runSummary = slot.run ? digestRunSummary(slot.run) : null;
     return {
       key: `slot:${slot.expectedAt}`,
       time: slot.expectedAt,
-      status: slot.status,
+      status: slot.run ? digestRunSlotStatus(slot.run, resolvedJobRun, nowMs) : slot.status,
       label: triggerLabel,
       note: scheduledWindowRunNote({
-        jobRunStatus: slot.jobRun ? jobRunStatusLabel(slot.jobRun) : null,
+        jobRunStatus: resolvedJobRun ? jobRunStatusLabel(resolvedJobRun) : null,
         runSummary,
-        runtime: slot.jobRun?.runtime,
+        runtime: resolvedJobRun?.runtime,
       }),
       syncSummary: digestRunSyncSummary(slot.run),
       run: slot.run,
-      jobRun: slot.jobRun,
+      jobRun: resolvedJobRun,
       slot,
       logRef: slot.run
         ? { kind: "run", runId: slot.run.id }
-        : slot.jobRun
-          ? { kind: "job", instanceId: slot.jobRun.instanceId }
+        : resolvedJobRun
+          ? { kind: "job", instanceId: resolvedJobRun.instanceId }
           : null,
     };
   });

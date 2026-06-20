@@ -660,6 +660,10 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.doesNotMatch(panel, /const LOG_WINDOW_SIZE = 6/);
   assert.match(panel, /const DIGEST_TIMELINE_LIMIT = 12/);
   assert.doesNotMatch(panel, /function visibleLogWindowStart/);
+  assert.match(panel, /export function buildDigestTimeline/);
+  assert.match(panel, /const jobRunFromRun = slot\.run\?\.jobRunId \? jobsByInstanceId\.get\(slot\.run\.jobRunId\) \?\? null : null/);
+  assert.match(panel, /const resolvedJobRun = slot\.run \? jobRunFromRun \?\? slot\.jobRun : slot\.jobRun/);
+  assert.match(panel, /if \(resolvedJobRun\) matchedJobInstances\.add\(resolvedJobRun\.instanceId\)/);
   assert.match(panel, /const rowEntries = useMemo\(\(\) => entries\.slice\(\)\.reverse\(\), \[entries\]\)/);
   assert.match(panel, /const hasScrollCue = rowEntries\.length > 3/);
   assert.doesNotMatch(panel, /const visibleRowEntries = rowEntries\.slice\(logWindowStart, logWindowStart \+ LOG_WINDOW_SIZE\)/);
@@ -693,6 +697,10 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /function isStalledDigestJobRun/);
   assert.match(panel, /if \(isStalledDigestJobRun\(jobRun, nowMs\)\) return "stalled"/);
   assert.match(panel, /if \(isStalledDigestJobRun\(jobRun\)\) return "Stalled"/);
+  assert.match(panel, /function hasTerminalFailedDigestJob/);
+  assert.match(panel, /if \(hasTerminalFailedDigestJob\(jobRun\)\) return "failed";[\s\S]*if \(run\.status === "synced"\) return "ok";/);
+  assert.match(digestUpdateStatus, /function digestSlotStatusForRun/);
+  assert.match(digestUpdateStatus, /if \(run\.status === "synced"\) return "ok";/);
   assert.match(panel, /Local Agent stopped reporting before the AI Digest was saved\./);
   assert.match(panel, /Prepare candidates/);
   assert.match(panel, /Run Local Agent/);
