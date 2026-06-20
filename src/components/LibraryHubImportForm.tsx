@@ -323,12 +323,6 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       ) : null}
 
       <section className={showFilters ? "hub-list-region has-filters" : "hub-list-region"}>
-        <div className="hub-list-count-row at-desktop">
-          <CountRange>
-            {formatCount(filteredLibraries.length)}{" "}
-            {filteredLibraries.length === 1 ? "source library" : "source libraries"}
-          </CountRange>
-        </div>
         <div className="fb-hub-list">
           {filteredLibraries.map((library) => (
             <HubCard

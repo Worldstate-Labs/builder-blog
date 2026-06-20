@@ -3544,7 +3544,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Remove import\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-count-row at-desktop"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-count-row at-desktop"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-eyebrow">Current view<\/p>/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.hub-list-eyebrow\s*{/);
@@ -4373,8 +4373,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /<OriginalSourceAction/);
   assert.match(postCard, /post-raw-content-action/);
   assert.match(postCard, /aria-label=\{actionLabel\("Read", actionContext\)\}/);
-  assert.match(postCard, /className="post-inline-action post-inline-action--label post-raw-content-action post-read-action"/);
-  assert.match(postCard, /<span>Read<\/span>/);
+  assert.match(postCard, /className="post-inline-action post-inline-action--icon post-raw-content-action post-read-action"/);
+  assert.doesNotMatch(postCard, /<span>Read<\/span>/);
   assert.match(postCard, /aria-label=\{actionLabel\("Post actions", actionContext\)\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*role="group"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);

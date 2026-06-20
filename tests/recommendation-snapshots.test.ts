@@ -296,7 +296,8 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showBuilderRow=\{false\}/);
   assert.match(source("src/components/PostCardView.tsx"), /showDebugActions = false/);
   assert.match(source("src/components/PostCardView.tsx"), /className="post-actions"/);
-  assert.match(source("src/components/PostCardView.tsx"), /className="post-inline-action post-inline-action--label post-raw-content-action post-read-action"/);
+  assert.match(source("src/components/PostCardView.tsx"), /className="post-inline-action post-inline-action--icon post-raw-content-action post-read-action"/);
+  assert.doesNotMatch(source("src/components/PostCardView.tsx"), /<span>Read<\/span>/);
   assert.match(source("src/components/PostCardView.tsx"), /className=\{`post-inline-action post-inline-action--icon post-raw-content-action\$\{rawExpanded \? " post-inline-action--active post-raw-content-action--active" : ""\}`\}/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /PostCard/);
   assert.doesNotMatch(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
