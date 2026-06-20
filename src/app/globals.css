@@ -1211,14 +1211,6 @@ details:not([open]) > :not(summary) {
   width: 100%;
 }
 
-.favorite-saved-at {
-  color: var(--muted);
-  font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
-  line-height: 1.35;
-  white-space: nowrap;
-}
-
 .favorites-feed-error {
   color: var(--danger);
   font-size: 0.8125rem;
@@ -1230,6 +1222,19 @@ details:not([open]) > :not(summary) {
   display: grid;
   gap: 0.6rem;
   min-width: 0;
+}
+
+.favorite-post-shell {
+  min-width: 0;
+}
+
+.favorite-mark-read {
+  font-family: var(--font-geist-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  min-height: 1.72rem;
+  padding: 0.2rem 0.62rem;
+  text-transform: none;
 }
 
 .recommendation-snapshot-list {
@@ -2067,6 +2072,14 @@ details:not([open]) > :not(summary) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .fetched-post-card {
+    transition: none;
+  }
+
+  .favorite-post-shell {
+    view-transition-name: none !important;
+  }
+
   .post-raw-content-action-icon {
     transition: none;
   }
@@ -3518,6 +3531,25 @@ summary.library-section-summary::after {
 .fetched-post-card[data-read="true"] h2,
 .fetched-post-card[data-read="true"] .fetched-post-title {
   color: var(--muted-strong);
+}
+
+.fetched-post-card {
+  transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.fetched-post-card[data-favorite-read="true"] {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--accent) 14%, transparent),
+      color-mix(in oklch, var(--paper-strong) 86%, transparent) 36%
+    );
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
+  box-shadow: inset 4px 0 0 color-mix(in oklch, var(--accent) 68%, var(--line));
+}
+
+.fetched-post-card[data-favorite-read="true"] .fetched-post-title {
+  color: color-mix(in oklch, var(--ink) 82%, var(--muted-strong));
 }
 
 .read-indicator {

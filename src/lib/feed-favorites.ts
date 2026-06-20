@@ -133,3 +133,24 @@ export async function unfavoritePost(userId: string, identity: FavoritePostIdent
     },
   });
 }
+
+export async function markFavoritePostRead(
+  userId: string,
+  identity: FavoritePostIdentity,
+  markedRead: boolean,
+) {
+  const markedReadAt = markedRead ? new Date() : null;
+  const result = await prisma.feedFavorite.updateMany({
+    where: {
+      userId,
+      entityId: identity.entityId,
+      kind: identity.kind,
+      externalId: identity.externalId,
+    },
+    data: {
+      feedItemId: identity.feedItemId,
+      markedReadAt,
+    },
+  });
+  return result.count > 0 ? markedReadAt : undefined;
+}

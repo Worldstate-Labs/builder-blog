@@ -1907,11 +1907,18 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(dashboardPage, /isAdminEmail\(session\.user\.email\)/);
   assert.match(dashboardPage, /<FavoritePostsSection/);
   assert.equal(existsSync(join(root, "src/components/FavoritePostsSection.tsx")), true);
-  assert.equal(existsSync(join(root, "src/app/api/favorites/read/route.ts")), false);
+  assert.equal(existsSync(join(root, "src/app/api/favorites/read/route.ts")), true);
   assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
+  assert.match(favoriteList, /const \[pendingReadIds, setPendingReadIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(favoriteList, /postFavoriteActionLabel\(true, favoritePostLabel\(item\.post\)\)/);
   assert.match(favoriteList, /function favoritePostLabel\(post: PostCardPost\)/);
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
+  assert.match(favoriteList, /disabled=\{pendingReadIds\.has\(item\.feedItemId\)\}/);
+  assert.match(favoriteList, /fetch\("\/api\/favorites\/read"/);
+  assert.match(favoriteList, /favoriteMarkedRead=\{Boolean\(item\.markedReadAt\)\}/);
+  assert.match(favoriteList, /Mark read/);
+  assert.match(favoriteList, /Mark unread/);
+  assert.match(favoriteList, /runFavoriteListTransition/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.match(favoriteList, /Could not remove from Favorites\. Try again\./);
@@ -2046,6 +2053,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /Could not update Favorites\. Try again\./);
   assert.doesNotMatch(recommendationFeed, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(recommendationFeed, /mode\?: "favorites"|favorites-feed|FavoriteReadButton|\/api\/favorites\/read|markedReadAt/);
+  assert.match(globals, /\.fetched-post-card\[data-favorite-read="true"\]\s*{/);
+  assert.match(globals, /\.favorite-mark-read\s*{/);
   assert.doesNotMatch(followingSection, /Use Refresh to try again/);
   assert.doesNotMatch(followingSection, /feed-state-inner|feed-state-icon|feed-state-title|feed-state-desc/);
   assert.doesNotMatch(recommendationFeed, /recommendation-feed mt-6/);

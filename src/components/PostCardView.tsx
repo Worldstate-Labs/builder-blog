@@ -70,6 +70,7 @@ export type PostCardViewProps = {
   extraMeta?: ReactNode;
   extraActions?: ReactNode;
   fallbackBuilder?: FetchedPostBuilder | null;
+  favoriteMarkedRead?: boolean;
   /** Link renderer for internal navigation. Defaults to a plain anchor. */
   linkComponent?: PostCardLinkComponent;
   onInteract?: () => void | Promise<void>;
@@ -99,6 +100,7 @@ export function PostCardView({
   extraMeta,
   extraActions,
   fallbackBuilder,
+  favoriteMarkedRead,
   linkComponent: LinkComponent = DefaultLink,
   onInteract,
   post,
@@ -202,6 +204,7 @@ export function PostCardView({
   return (
     <article
       className={`${variant === "row" ? "builder-post-row" : "feed-card"} fetched-post-card${isDetail ? " post-detail-card" : ""}`}
+      data-favorite-read={favoriteMarkedRead ? "true" : undefined}
       data-read={dataRead ? "true" : undefined}
     >
       <div className="post-copy">

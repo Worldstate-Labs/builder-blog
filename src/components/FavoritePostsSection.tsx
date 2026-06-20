@@ -9,7 +9,10 @@ export async function FavoritePostsSection({ userId }: { userId: string }) {
       userId,
       feedItem: { isNot: null },
     },
-    orderBy: { favoritedAt: "desc" },
+    orderBy: [
+      { markedReadAt: { sort: "asc", nulls: "first" } },
+      { favoritedAt: "desc" },
+    ],
     take: favoritePostLimit,
     include: {
       feedItem: {
@@ -28,32 +31,6 @@ export async function FavoritePostsSection({ userId }: { userId: string }) {
     },
   });
 
-  const readKeys = favorites.map((favorite) => ({
-    entityId: favorite.entityId,
-    externalId: favorite.externalId,
-    kind: favorite.kind,
-  }));
-  const reads = readKeys.length
-    ? await prisma.feedRead.findMany({
-        where: {
-          userId,
-          OR: readKeys,
-        },
-        select: {
-          entityId: true,
-          externalId: true,
-          kind: true,
-          readAt: true,
-        },
-      })
-    : [];
-  const readAtByKey = new Map(
-    reads.map((read) => [
-      favoriteIdentityKey(read.entityId, read.kind, read.externalId),
-      read.readAt.toISOString(),
-    ]),
-  );
-
   const items: FavoritePostListItem[] = favorites.flatMap((favorite) => {
     const item = favorite.feedItem;
     if (!item) return [];
@@ -61,9 +38,7 @@ export async function FavoritePostsSection({ userId }: { userId: string }) {
       {
         feedItemId: item.id,
         favoritedAt: favorite.favoritedAt.toISOString(),
-        readAt: readAtByKey.get(
-          favoriteIdentityKey(favorite.entityId, favorite.kind, favorite.externalId),
-        ) ?? null,
+        markedReadAt: favorite.markedReadAt?.toISOString() ?? null,
         post: {
           id: item.id,
           body: item.body,
@@ -93,9 +68,14 @@ export async function FavoritePostsSection({ userId }: { userId: string }) {
     ];
   });
 
-  return <FavoritePostsList initialItems={items} />;
+  return <FavoritePostsList initialItems={sortFavoriteItems(items)} />;
 }
 
-function favoriteIdentityKey(entityId: string, kind: string, externalId: string) {
-  return `${entityId}:${kind}:${externalId}`;
+function sortFavoriteItems(items: FavoritePostListItem[]) {
+  return [...items].sort((a, b) => {
+    const aMarkedRead = Boolean(a.markedReadAt);
+    const bMarkedRead = Boolean(b.markedReadAt);
+    if (aMarkedRead !== bMarkedRead) return aMarkedRead ? 1 : -1;
+    return Date.parse(b.favoritedAt) - Date.parse(a.favoritedAt);
+  });
 }
