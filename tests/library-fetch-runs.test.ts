@@ -692,10 +692,11 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /if \(isStalledDigestJobRun\(jobRun\)\) return "Stalled"/);
   assert.match(panel, /Local Agent stopped reporting before the AI Digest was saved\./);
   assert.match(panel, /Prepare candidates/);
-  assert.match(panel, /Generate AI Digest/);
-  assert.match(panel, /Render AI Digest/);
-  assert.match(panel, /Sync to web/);
-  assert.match(panel, /Mark posts digested/);
+  assert.match(panel, /Run Local Agent/);
+  assert.match(panel, /Render digest JSON/);
+  assert.match(panel, /Save to FollowBrief/);
+  assert.match(panel, /Record digested posts/);
+  assert.doesNotMatch(panel, /No saved title/);
   assert.match(panel, /jobRunVerdict/);
   assert.match(panel, /jobRunDiagnostic/);
   assert.match(panel, /const showRuntimeState = isActiveDigestJobRun\(jobRun\) \|\| jobRun\.status !== "succeeded";/);
@@ -763,6 +764,11 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-run-card-detail-heading"/);
   assert.match(panel, /className="sync-panel-run-card-source-list"/);
   assert.match(panel, /className="sync-panel-run-card-candidate-list"/);
+  assert.match(panel, /const VISIBLE_CANDIDATE_LIMIT = 4/);
+  assert.match(panel, /const visibleCandidates = postsExpanded \? run\.candidates : run\.candidates\.slice\(0, VISIBLE_CANDIDATE_LIMIT\)/);
+  assert.match(panel, /CountMeta label="more posts" value=\{hiddenCandidateCount\}/);
+  assert.match(panel, /CountMeta label="more sources with new posts" value=\{hiddenSourceCount\}/);
+  assert.match(panel, /href=\{`\/builder\/\$\{src\.entityId\}`\}/);
   assert.match(panel, /className="sync-panel-source-row"/);
   assert.match(panel, /className="sync-panel-candidate-row"/);
   assert.match(panel, /className=\{`mono sync-panel-candidate-outcome is-\$\{outcomeTone\}`\}/);

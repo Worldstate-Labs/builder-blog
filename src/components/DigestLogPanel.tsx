@@ -76,6 +76,7 @@ function formatDay(iso: string): string {
 }
 
 const VISIBLE_SOURCE_LIMIT = 4;
+const VISIBLE_CANDIDATE_LIMIT = 4;
 const DIGEST_TIMELINE_LIMIT = 12;
 
 type StatusTone = "ok" | "partial" | "failed" | "muted";
@@ -984,6 +985,19 @@ function DigestLifecycle({
   const synced = run?.status === "synced";
   const failedJob = Boolean(jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status)));
   const digestSaved = synced && Boolean(run?.digestTitle);
+  const emptySyncedRun = Boolean(synced && run?.candidateCount === 0);
+  const activeJob = Boolean(jobRun && isActiveDigestJobRun(jobRun));
+  const selectedOutcome = run
+    ? run.candidateCount === 0
+      ? "No new posts"
+      : synced
+        ? `${formatCount(run.includedCount ?? 0)} selected`
+        : activeJob
+          ? "Generating"
+          : "No save reported"
+    : jobRun
+      ? jobRunStatusLabel(jobRun)
+      : "Pending";
   const steps: DigestLifecycleStep[] = [
     {
       key: "prepare",
@@ -997,30 +1011,26 @@ function DigestLifecycle({
     },
     {
       key: "generate",
-      label: "Generate AI Digest",
-      outcome: run
-        ? run.candidateCount === 0
-          ? "No new posts"
-          : `${formatCount(run.includedCount ?? 0)} selected`
-        : "Pending",
+      label: "Run Local Agent",
+      outcome: selectedOutcome,
       tone: synced || (run && run.candidateCount === 0) ? "ok" : failedJob ? "fail" : "idle",
     },
     {
       key: "render",
-      label: "Render AI Digest",
-      outcome: digestSaved ? run!.digestTitle! : run ? "No saved title" : "Pending",
-      tone: digestSaved ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
+      label: "Render digest JSON",
+      outcome: digestSaved ? run!.digestTitle! : emptySyncedRun ? "Not needed" : synced ? "Untitled AI Digest" : run ? "Not completed" : "Pending",
+      tone: digestSaved || emptySyncedRun ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
     },
     {
       key: "sync",
-      label: "Sync to web",
-      outcome: run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
+      label: "Save to FollowBrief",
+      outcome: emptySyncedRun ? "No AI Digest needed" : run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
       tone: run?.syncedAt ? "ok" : failedJob ? "fail" : "idle",
     },
     {
       key: "mark",
-      label: "Mark posts digested",
-      outcome: synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : "Pending",
+      label: "Record digested posts",
+      outcome: synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
       tone: synced ? "ok" : failedJob ? "fail" : "idle",
     },
   ];
@@ -1090,6 +1100,12 @@ function RunCard({
   const silentCount = run.subscriptionCount - contributing.length;
   const detailCount = run.candidates.length + contributing.length + Math.max(0, silentCount);
   const verdict = digestRunVerdict(run, jobRun);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
+  const [postsExpanded, setPostsExpanded] = useState(false);
+  const visibleSources = sourcesExpanded ? contributing : contributing.slice(0, VISIBLE_SOURCE_LIMIT);
+  const hiddenSourceCount = Math.max(0, contributing.length - VISIBLE_SOURCE_LIMIT);
+  const visibleCandidates = postsExpanded ? run.candidates : run.candidates.slice(0, VISIBLE_CANDIDATE_LIMIT);
+  const hiddenCandidateCount = Math.max(0, run.candidates.length - VISIBLE_CANDIDATE_LIMIT);
 
   return (
     <article className="sync-panel-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
@@ -1159,12 +1175,22 @@ function RunCard({
                   Source coverage
                 </div>
                 <ul className="sync-panel-run-card-source-list">
-                  {contributing.slice(0, VISIBLE_SOURCE_LIMIT).map((src) => (
+                  {visibleSources.map((src) => (
                     <SourceRow key={src.entityId} src={src} synced={run.status === "synced"} />
                   ))}
-                  {contributing.length > VISIBLE_SOURCE_LIMIT ? (
-                    <li className="mono sync-panel-run-card-detail-note">
-                      <CountMeta label="more sources with new posts" value={contributing.length - VISIBLE_SOURCE_LIMIT} />
+                  {hiddenSourceCount > 0 ? (
+                    <li>
+                      <button
+                        className="sync-panel-run-card-reveal"
+                        onClick={() => setSourcesExpanded((value) => !value)}
+                        type="button"
+                      >
+                        {sourcesExpanded ? (
+                          "Show fewer sources"
+                        ) : (
+                          <CountMeta label="more sources with new posts" value={hiddenSourceCount} />
+                        )}
+                      </button>
                     </li>
                   ) : null}
                   {silentCount > 0 ? (
@@ -1181,13 +1207,28 @@ function RunCard({
                   Posts considered
                 </div>
                 <ul className="sync-panel-run-card-candidate-list">
-                  {run.candidates.map((item, index) => (
+                  {visibleCandidates.map((item, index) => (
                     <CandidateRow
                       key={`${item.url ?? item.title ?? "item"}-${index}`}
                       item={item}
                       synced={run.status === "synced"}
                     />
                   ))}
+                  {hiddenCandidateCount > 0 ? (
+                    <li>
+                      <button
+                        className="sync-panel-run-card-reveal"
+                        onClick={() => setPostsExpanded((value) => !value)}
+                        type="button"
+                      >
+                        {postsExpanded ? (
+                          "Show fewer posts"
+                        ) : (
+                          <CountMeta label="more posts" value={hiddenCandidateCount} />
+                        )}
+                      </button>
+                    </li>
+                  ) : null}
                 </ul>
               </section>
             ) : null}
@@ -1281,7 +1322,9 @@ function FunnelStat({
 function SourceRow({ src, synced }: { src: DigestRunSource; synced: boolean }) {
   return (
     <li className="sync-panel-source-row">
-      <span className="sync-panel-source-row-name">{src.name}</span>
+      <a className="sync-panel-source-row-name" href={`/builder/${src.entityId}`}>
+        {src.name}
+      </a>
       <span className="mono sync-panel-source-row-count">
         {formatCount(src.eligible)} found{synced ? ` · ${formatCount(src.included)} used` : ""}
       </span>

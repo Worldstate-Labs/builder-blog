@@ -7203,17 +7203,42 @@ summary.library-section-summary::after {
 }
 
 .sync-panel-source-row-name {
-  color: var(--ink);
+  color: var(--accent);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
+  text-underline-offset: 0.18em;
   white-space: nowrap;
+}
+
+.sync-panel-source-row-name:hover {
+  text-decoration: underline;
 }
 
 .sync-panel-source-row-count {
   color: var(--muted-strong);
   flex-shrink: 0;
   font-size: 0.6875rem;
+}
+
+.sync-panel-run-card-reveal {
+  background: transparent;
+  border: 0;
+  color: var(--muted-strong);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.75rem;
+  font-weight: var(--text-role-value-weight);
+  padding: 0.125rem 0;
+  text-align: left;
+}
+
+.sync-panel-run-card-reveal:hover,
+.sync-panel-run-card-reveal:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .sync-panel-task-source-group-list {
