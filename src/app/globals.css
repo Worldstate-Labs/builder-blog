@@ -5619,7 +5619,7 @@ summary.library-section-summary::after {
 }
 
 .digest-control-picker .digest-picker-issue,
-.digest-control-picker .digest-picker-date {
+.digest-control-picker .digest-picker-mainline {
   font-size: 0.875rem;
   font-weight: 800;
 }
@@ -5707,9 +5707,13 @@ summary.library-section-summary::after {
 }
 
 .digest-pipeline-meta {
+  align-items: baseline;
   color: var(--muted);
+  display: inline-flex;
   font-size: 0.75rem;
   font-weight: 650;
+  gap: 0.35rem;
+  line-height: 1.35;
 }
 
 .digest-pipeline-meta .fb-user-name {
@@ -6014,20 +6018,48 @@ summary.library-section-summary::after {
 }
 
 .digest-picker-item {
-  align-items: center;
-  display: flex;
+  display: grid;
   flex: 1 1 auto;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.65rem;
+  gap: 0.18rem;
   min-width: 0;
 }
 
-.digest-picker-issue,
-.digest-picker-date {
+.digest-picker-mainline,
+.digest-picker-subtitle {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.digest-picker-mainline {
+  gap: 0.65rem;
+}
+
+.digest-picker-subtitle {
+  color: var(--muted);
+  gap: 0.35rem;
+}
+
+.digest-picker-issue {
   color: var(--ink);
   font-size: 0.8125rem;
   font-weight: 760;
   line-height: 1.25;
+}
+
+.digest-picker-date,
+.digest-picker-post-count {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.digest-picker-post-count::before {
+  color: var(--muted);
+  content: "·";
+  margin-right: 0.35rem;
 }
 
 .ai-digest-section {

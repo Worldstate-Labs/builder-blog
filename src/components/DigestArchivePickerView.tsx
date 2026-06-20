@@ -21,6 +21,7 @@ const pickerNavigationKeys = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
 export type DigestArchivePickerOption = {
   id: string;
   createdAt: string;
+  itemCount: number;
   issueNumber: number;
 };
 
@@ -210,9 +211,16 @@ function DigestPickerItem({
 }) {
   return (
     <span className="digest-picker-item">
-      <span className="digest-picker-issue">Issue #{digest.issueNumber}</span>
-      <RelativeTime className="digest-picker-date" value={digest.createdAt} />
-      {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+      <span className="digest-picker-mainline">
+        <span className="digest-picker-issue">Issue #{digest.issueNumber}</span>
+        {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+      </span>
+      <span className="digest-picker-subtitle">
+        <RelativeTime className="digest-picker-date" value={digest.createdAt} />
+        <span className="digest-picker-post-count">
+          from {digest.itemCount} {digest.itemCount === 1 ? "post" : "posts"}
+        </span>
+      </span>
     </span>
   );
 }
@@ -229,6 +237,7 @@ function digestArchiveLabel({
   return [
     `Issue #${digest.issueNumber}`,
     relativeTime(digest.createdAt, now ?? Date.now()),
+    `from ${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"}`,
     isLatest ? "Latest" : "",
   ].filter(Boolean).join(", ");
 }

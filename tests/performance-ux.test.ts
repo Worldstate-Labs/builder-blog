@@ -2679,11 +2679,14 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(dashboardPage, /selectedDigestIssueCount/);
   assert.match(dashboardPage, /serializeDigestArchiveOption\(digest, digestIssueCount - index\)/);
   assert.match(digestArchivePicker, /issueNumber: number/);
+  assert.match(digestArchivePicker, /itemCount: number/);
   assert.match(digestArchivePicker, /className="digest-picker-issue">Issue #\{digest\.issueNumber\}/);
   assert.match(digestArchivePicker, /<RelativeTime className="digest-picker-date" value=\{digest\.createdAt\}/);
+  assert.match(digestArchivePicker, /className="digest-picker-subtitle"/);
+  assert.match(digestArchivePicker, /from \{digest\.itemCount\} \{digest\.itemCount === 1 \? "post" : "posts"\}/);
+  assert.match(digestArchivePicker, /`from \$\{digest\.itemCount\} \$\{digest\.itemCount === 1 \? "post" : "posts"\}`/);
+  assert.match(dashboardPage, /itemCount:\s*digest\.itemCount/);
   assert.doesNotMatch(digestArchivePicker, /CountMeta/);
-  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "post" : "posts"/);
-  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount/);
   assert.match(digestDetails, /digest\.itemCount === 1 \? "post" : "posts"/);
   assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "item" : "items"/);
   assert.doesNotMatch(digestDetails, /digest\.itemCount === 1 \? "item" : "items"/);
@@ -2792,7 +2795,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /headlineSummary:\s*true/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /resolveDigestHeadlineSummary/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /latestDigestSourceLinks:\s*sourceLinks/);
-  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /digestSourceLinksForUser\(ownerUserId\)/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /digestSourceLinksForUser\(ownerUserId,\s*latestDigest\?\.id\)/);
   assert.match(source("src/lib/digest-source-links.ts"), /async function digestSourceLinksForUser/);
   assert.match(source("src/lib/digest-source-links.ts"), /avatarUrl:\s*builder\.avatarUrl/);
   assert.match(source("src/lib/digest-source-links.ts"), /avatarDataUrl:\s*builder\.avatarDataUrl/);

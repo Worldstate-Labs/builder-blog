@@ -208,11 +208,11 @@ function focusDirectionForKey(key: string): PickerFocusDirection {
 
 function PipelineOwnerLine({ pipeline }: { pipeline: DigestPipelineSelectorOption }) {
   if (pipeline.isOwnPipeline) return "Your AI Digest collection";
-  return <>Shared by <UserName>{pipeline.ownerLabel}</UserName></>;
+  return <>by <UserName>{pipeline.ownerLabel}</UserName></>;
 }
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
-  return pipeline.isOwnPipeline ? "Your AI Digest collection" : `Shared by ${pipeline.ownerLabel}`;
+  return pipeline.isOwnPipeline ? "Your AI Digest collection" : `by ${pipeline.ownerLabel}`;
 }
 
 function digestArchiveSourceLabel(pipeline: DigestPipelineSelectorOption) {

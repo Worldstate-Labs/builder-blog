@@ -62,13 +62,16 @@ test("home digest keeps collection and issue selection in a dedicated control ba
   assert.match(digestArchivePicker, /focusOption\(focusDirectionForKey\(event\.key\)\)/);
   assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest issues"/);
   assert.match(digestArchivePicker, /issueNumber: number/);
+  assert.match(digestArchivePicker, /itemCount: number/);
   assert.match(digestArchivePicker, /Issue #\{digest\.issueNumber\}/);
+  assert.match(digestArchivePicker, /className="digest-picker-subtitle"/);
+  assert.match(digestArchivePicker, /from \{digest\.itemCount\} \{digest\.itemCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(digestArchivePicker, /CountMeta/);
-  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount/);
   assert.match(dashboardPage, /selectedDigestIssueCount/);
   assert.match(dashboardPage, /serializeDigestArchiveOption\(digest, digestIssueCount - index\)/);
+  assert.match(dashboardPage, /itemCount:\s*digest\.itemCount/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.digest-picker-issue,\s*\.digest-picker-date\s*{/);
+  assert.match(globals, /\.digest-picker-subtitle\s*{[\s\S]*color:\s*var\(--muted\)/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);
   assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|md:grid-cols-2|\[&_\.digest-picker/);
@@ -101,8 +104,9 @@ test("home digest pipeline selector labels the selected pipeline owner", () => {
 
   assert.match(digestPipelineSelector, /function PipelineOwnerLine/);
   assert.match(digestPipelineSelector, /function pipelineOwnerLine/);
-  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your AI Digest collection" : `Shared by \$\{pipeline\.ownerLabel\}`/);
-  assert.match(digestPipelineSelector, /Shared by <UserName>\{pipeline\.ownerLabel\}<\/UserName>/);
+  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your AI Digest collection" : `by \$\{pipeline\.ownerLabel\}`/);
+  assert.match(digestPipelineSelector, /by <UserName>\{pipeline\.ownerLabel\}<\/UserName>/);
+  assert.doesNotMatch(digestPipelineSelector, /Shared by <UserName>\{pipeline\.ownerLabel\}<\/UserName>/);
   assert.doesNotMatch(digestPipelineSelector, /Your digest|Your AI Digest" :/);
   assert.doesNotMatch(digestPipelineSelector, /: pipeline\.ownerLabel/);
   assert.doesNotMatch(digestPipelineSelector, /Shared by Shared by/);

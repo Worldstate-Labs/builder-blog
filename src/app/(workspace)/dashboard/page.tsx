@@ -433,6 +433,7 @@ function serializeDigestArchiveOption(
   return {
     createdAt: digest.createdAt.toISOString(),
     id: digest.id,
+    itemCount: digest.itemCount,
     issueNumber: Math.max(1, issueNumber),
   };
 }
