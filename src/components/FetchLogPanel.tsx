@@ -2272,51 +2272,32 @@ function DetailsBody({
                 className="sync-panel-detail-card"
               >
                 <summary
-                  className="sync-panel-detail-card-summary"
-                  style={{ fontFamily: "var(--font-geist-mono)" }}
+                  className="sync-panel-detail-card-summary mono"
                 >
                   {sourceType}
                 </summary>
                 <div className="sync-panel-detail-card-body">
                   <div>
-                    <p
-                      className="sync-panel-detail-kicker"
-                      style={{ color: "var(--muted)" }}
-                    >
+                    <p className="sync-panel-detail-kicker">
                       Summary instructions
                     </p>
-                    <pre
-                      className="mono sync-panel-detail-code"
-                      style={{ color: "var(--muted-strong)" }}
-                    >
+                    <pre className="mono sync-panel-detail-code">
                       {bundle.summary ?? "(none)"}
                     </pre>
                   </div>
                   <div>
-                    <p
-                      className="sync-panel-detail-kicker-row"
-                      style={{ color: "var(--muted)" }}
-                    >
+                    <p className="sync-panel-detail-kicker-row">
                       <span>Read instructions</span>
                       {bundle.fetchIsDefault ? (
                         <span
                           className="sync-panel-detail-default-pill"
-                          style={{
-                            background: "var(--paper)",
-                            border: "1px solid var(--line)",
-                            color: "var(--muted-strong)",
-                            letterSpacing: "0.05em",
-                          }}
                           title="No fetch prompt set for this source; using common fetching rules."
                         >
                           default
                         </span>
                       ) : null}
                     </p>
-                    <pre
-                      className="mono sync-panel-detail-code"
-                      style={{ color: "var(--muted-strong)" }}
-                    >
+                    <pre className="mono sync-panel-detail-code">
                       {bundle.fetch ?? "(none)"}
                     </pre>
                   </div>
@@ -2369,7 +2350,6 @@ function DetailsBody({
               <li
                 key={`${message.slice(0, 32)}-${index}`}
                 className="mono sync-panel-detail-error-row"
-                style={{ color: "var(--danger)" }}
               >
                 {message}
               </li>
@@ -2393,7 +2373,6 @@ function DetailsBody({
         <details className="sync-panel-detail-card">
           <summary
             className="sync-panel-detail-card-summary is-danger"
-            style={{ color: "var(--danger)" }}
           >
             Error stack
           </summary>
@@ -3077,7 +3056,7 @@ function TaskRow({
           />
           <span
             className="sync-panel-task-status-pill"
-            style={{ ...toneStyle(pill.tone), fontFamily: "var(--font-geist-mono)" }}
+            style={toneStyle(pill.tone)}
           >
             {pill.label}
           </span>
