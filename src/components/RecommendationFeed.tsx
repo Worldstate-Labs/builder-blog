@@ -174,7 +174,7 @@ export function RecommendationFeed({
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
               <span className="recommendation-snapshot-meta">
-                <span>Following update</span>
+                <span>Update</span>
                 <RelativeTime value={snapshot.createdAt} />
                 <CountMeta
                   label={snapshot.items.length === 1 ? "post" : "posts"}

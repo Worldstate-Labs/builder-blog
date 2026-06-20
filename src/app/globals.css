@@ -883,7 +883,11 @@ details:not([open]) > :not(summary) {
 }
 
 .home-tab-panel {
-  padding-top: 1rem;
+  padding-top: 0;
+}
+
+.home-tab-panel > .feed-content-stack {
+  margin-top: 0;
 }
 
 .home-loading-tabs {
