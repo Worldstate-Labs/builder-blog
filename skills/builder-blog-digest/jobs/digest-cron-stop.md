@@ -13,6 +13,14 @@ digest cron worker if one is still running, then report that stopped state to
 FollowBrief. Do not delete any already-generated digests, and do not touch the
 library cron.
 
+Stopped-state contract — preserve this invariant: this account is fully stopped
+only after there is no loaded service, no target plist/crontab entry, no current
+worker file, no pin files, and FollowBrief has accepted `cron-status --status
+stopped`. A stale LaunchAgent plist without a loaded launchd service is still
+local scheduler state and must be removed. When `BUILDER_BLOG_ACCOUNT` is set,
+continue through worker cleanup, pin cleanup, and web status sync even if no
+local schedule is found; otherwise the web app can keep expecting cron runs.
+
 1. Install or refresh the skill so local audit/status commands are current:
 
 ```bash
@@ -26,26 +34,45 @@ this machine's OS — run `uname` if unsure.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
+JOB_PREFIX="com.followbrief.digest"
 if [ -n "$ACCT" ]; then
-  printf 'com.followbrief.digest.%s\n' "$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+  LABEL="$JOB_PREFIX.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+  PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+  if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+    printf 'loaded:%s\n' "$LABEL"
+  elif [ -f "$PLIST" ]; then
+    printf 'stale-plist:%s\n' "$LABEL"
+  else
+    printf 'no-local-schedule:%s\n' "$LABEL"
+  fi
 else
-  launchctl list 2>/dev/null | awk '{ print $3 }' | grep -E '^com\.followbrief\.digest\.' || echo "(none found)"
+  FOUND="$({
+    launchctl list 2>/dev/null | awk '{ print $3 }' | grep -E '^com\.followbrief\.digest\.' || true
+    find "$HOME/Library/LaunchAgents" -maxdepth 1 -name 'com.followbrief.digest.*.plist' -exec basename {} .plist \; 2>/dev/null || true
+  } | sort -u | sed '/^$/d')"
+  [ -n "$FOUND" ] && printf '%s\n' "$FOUND" || echo "(none found)"
 fi
 ```
 
 ### Linux / other
 
 ```bash
-crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh digest-cron' || echo "(none found)"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+if [ -n "$ACCT" ]; then
+  crontab -l 2>/dev/null | grep -E "# FollowBrief digest cron · $ACCT|BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner\.sh digest-cron" || echo "(none found)"
+else
+  crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh digest-cron' || echo "(none found)"
+fi
 ```
 
-If the result is "(none found)" — or, on macOS, the account-scoped label is not
-present in `launchctl list 2>/dev/null | awk '{ print $3 }'` — STOP: report that
-there is no digest schedule to remove, and change nothing. If more than one
+If `BUILDER_BLOG_ACCOUNT` is set, continue even when step 2 prints
+`no-local-schedule:<label>` or "(none found)"; steps 4-6 still make the stopped
+state complete. If `BUILDER_BLOG_ACCOUNT` is not set and the result is "(none
+found)", STOP because there is no safe account to report. If more than one
 digest job is listed and `BUILDER_BLOG_ACCOUNT` is not set (so you can't tell
 which account to stop), list them and ask the user which to stop before
 continuing — removing all of them stops every FollowBrief account on this
-machine.
+machine. Treat `stale-plist:<label>` as scheduler state that must be removed.
 
 3. Remove the schedule. Use the path for this machine's OS.
 
@@ -53,22 +80,46 @@ machine.
 
 Set `LABEL` to the job you are stopping. When the account email is available it
 derives the label exactly as the setup did; otherwise set `LABEL` to the exact
-label printed in step 1.
+label printed in step 2.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-[ -n "$ACCT" ] && LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
-# If BUILDER_BLOG_ACCOUNT is unset, replace the line above with the label from
-# step 2, e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
+if [ -n "$ACCT" ]; then
+  LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+fi
+# If BUILDER_BLOG_ACCOUNT is unset, set LABEL to the exact label from step 2,
+# e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
+[ -n "$LABEL" ] || { echo "LABEL is required"; exit 1; }
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason stop_cron
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
-BOOTOUT_CODE="$?"
-node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason "exit_$BOOTOUT_CODE"
-rm -f "$PLIST"
-node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason stop_cron
-launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL PRESENT: $LABEL" || echo "removed: $LABEL"
+if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+  LOADED=1
+else
+  LOADED=0
+fi
+if [ -f "$PLIST" ]; then
+  PLIST_EXISTS=1
+else
+  PLIST_EXISTS=0
+fi
+
+if [ "$LOADED" = "1" ] || [ "$PLIST_EXISTS" = "1" ]; then
+  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$PLIST_EXISTS" --launchctl-loaded "$LOADED" --reason stop_cron
+  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
+  BOOTOUT_CODE="$?"
+  if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+    LOADED_AFTER=1
+  else
+    LOADED_AFTER=0
+  fi
+  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason "exit_$BOOTOUT_CODE"
+  rm -f "$PLIST"
+  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason stop_cron
+else
+  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_no_schedule_found --label "$LABEL" --plist-exists 0 --launchctl-loaded 0 --reason stop_cron
+fi
+launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL LOADED: $LABEL" || echo "launchd absent: $LABEL"
+[ -f "$PLIST" ] && echo "STILL PLIST: $PLIST" || echo "plist absent: $PLIST"
 ```
 
 ### Linux / other → drop the crontab entry
@@ -178,7 +229,7 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
 ```
 
 7. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
-was removed (or that none existed), whether an active worker was stopped or no
-active worker was recorded, and that the step-3 verification line printed
-"removed". Tell the user they can resume later by re-running the digest cron
-setup prompt.
+was removed (or that no local schedule existed), whether an active worker was
+stopped or no active worker was recorded, and that step 3 printed both
+"launchd absent" and "plist absent" on macOS (or "removed" on Linux). Tell the
+user they can resume later by re-running the digest cron setup prompt.

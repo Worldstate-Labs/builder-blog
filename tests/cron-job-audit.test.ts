@@ -82,3 +82,28 @@ test("cron setup and stop prompts audit scheduler mutations before web status sy
     assert.match(prompt, /cron-status[\s\S]*--status stopped/);
   }
 });
+
+test("cron stop prompts clean stale local scheduler state before reporting stopped", () => {
+  const libraryStop = source("skills/builder-blog-digest/jobs/library-cron-stop.md");
+  const digestStop = source("skills/builder-blog-digest/jobs/digest-cron-stop.md");
+
+  for (const [job, prompt] of [
+    ["library-cron", libraryStop],
+    ["digest-cron", digestStop],
+  ] as const) {
+    assert.doesNotMatch(
+      prompt,
+      /account-scoped label is not\s+present in `launchctl list[\s\S]*STOP: report that\s+there is no/,
+      `${job} stop prompt must not treat a missing launchctl list row as fully stopped`,
+    );
+    assert.match(prompt, /Stopped-state contract/);
+    assert.match(prompt, /stale LaunchAgent plist/);
+    assert.match(prompt, /When `BUILDER_BLOG_ACCOUNT` is set,[\s\S]*continue/);
+    assert.match(prompt, /loaded service,\s+no target plist\/crontab entry,\s+no current\s+worker file, no pin files/);
+    assert.match(prompt, /launchctl print "gui\/\$\(id -u\)\/\$LABEL"/);
+    assert.match(prompt, /\[ -f "\$PLIST" \]/);
+    assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_no_schedule_found`));
+    assert.match(prompt, /"plist absent: \$PLIST"/);
+    assert.match(prompt, new RegExp(`cron-status[\\s\\S]*--job ${job}[\\s\\S]*--status stopped`));
+  }
+});
