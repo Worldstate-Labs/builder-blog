@@ -724,6 +724,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /scheduledWindowRunNote/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun, "digest-cron"\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "digest-cron", run\.source\)/);
+  assert.match(panel, /const label = entry\.jobRun \? jobRunStatusLabel\(entry\.jobRun\) : scheduledWindowStatusLabel\(entry\.status\);/);
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /<RunCard domId=\{null\} jobRun=\{jobRun \?\? undefined\} run=\{run\} suppressStalled=\{suppressStalled\} \/>/);
   assert.match(panel, /AI Digest job lifecycle/);

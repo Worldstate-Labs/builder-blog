@@ -771,7 +771,7 @@ function DigestTimelineRow({
   onOpenLog: (logRef: DigestLogRef) => void;
 }) {
   const tone = scheduledWindowStyleStatus(entry.status);
-  const label = scheduledWindowStatusLabel(entry.status);
+  const label = entry.jobRun ? jobRunStatusLabel(entry.jobRun) : scheduledWindowStatusLabel(entry.status);
   const id = entry.slot
     ? slotDomId(entry.slot)
     : entry.run
