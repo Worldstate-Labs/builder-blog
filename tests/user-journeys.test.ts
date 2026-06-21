@@ -517,10 +517,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
   assert.match(skillJobRoute, /localAgentTimeoutSeconds/);
   assert.match(skillJobRoute, /cronTimeoutJob/);
+  assert.match(skillJobRoute, /openClawSetupTimeoutSeconds/);
   assert.match(skillJobRoute, /job === "library-cron-setup"[\s\S]*\? "library-cron"/);
   assert.match(skillJobRoute, /job === "digest-cron-setup"[\s\S]*\? "digest-cron"/);
   assert.match(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
   assert.doesNotMatch(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, job\)/);
+  assert.match(skillJobRoute, /buildOpenClawSetupBootstrap/);
+  assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
+  assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
+  assert.match(skillJobRoute, /nohup openclaw agent --local --agent/);
+  assert.match(skillJobRoute, /--timeout[\s\S]*OPENCLAW_SETUP_TIMEOUT_SECONDS/);
+  assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*exchangeBlock[\s\S]*content/);
   assert.doesNotMatch(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
   // macOS scheduling uses a launchd LaunchAgent (keychain access). It runs a
   // short tick every minute while the runner anchors real jobs to install time

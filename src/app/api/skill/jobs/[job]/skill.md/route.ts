@@ -44,6 +44,65 @@ function buildExistingCronWarning(job: string, serverActiveCron: ExistingCronRec
   ].join("\n");
 }
 
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function buildOpenClawSetupBootstrap({
+  email,
+  job,
+  setupPromptUrl,
+  setupTimeoutSeconds,
+}: {
+  email: string;
+  job: string;
+  setupPromptUrl: string;
+  setupTimeoutSeconds: string;
+}): string {
+  return [
+    "0. OpenClaw timeout bootstrap before token exchange.",
+    "Run this block first. If it prints `FOLLOWBRIEF_OPENCLAW_DETACHED=1`, stop",
+    "this current turn immediately and report the log path it printed. Do not run",
+    "the later steps in this current turn. The detached OpenClaw setup turn uses",
+    "the required timeout, exchanges the setup code, runs validation, and installs",
+    "the schedule only if validation passes. If it prints",
+    "`FOLLOWBRIEF_OPENCLAW_CONTINUE=1`, continue to the next numbered step.",
+    "",
+    "```bash",
+    "if [ \"${FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED:-0}\" != \"1\" ]; then",
+    `  SETUP_PROMPT_URL=${shellSingleQuote(setupPromptUrl)}`,
+    `  OPENCLAW_SETUP_TIMEOUT_SECONDS=${shellSingleQuote(setupTimeoutSeconds)}`,
+    `  FOLLOWBRIEF_SETUP_JOB=${shellSingleQuote(job)}`,
+    `  ACCT=${shellSingleQuote(email)}`,
+    "  AGENT_DIR=\"${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}\"",
+    "  ACCOUNT_SLUG=\"$(printf '%s' \"$ACCT\" | tr -c 'a-zA-Z0-9' '_')\"",
+    "  SETUP_TMP_DIR=\"$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$FOLLOWBRIEF_SETUP_JOB-openclaw\"",
+    "  mkdir -p \"$SETUP_TMP_DIR\" \"$AGENT_DIR/logs\"",
+    "  PROMPT_COPY=\"$SETUP_TMP_DIR/prompt.md\"",
+    "  LOG_FILE=\"$AGENT_DIR/logs/openclaw-$FOLLOWBRIEF_SETUP_JOB-$(date -u +%Y%m%dT%H%M%SZ).log\"",
+    "  curl -fsSL \"$SETUP_PROMPT_URL\" -o \"$PROMPT_COPY\"",
+    "  OPENCLAW_TIMEOUT_CURRENT=\"$(openclaw config get agents.defaults.timeoutSeconds 2>/dev/null || printf '0\\n')\"",
+    "  case \"$OPENCLAW_TIMEOUT_CURRENT\" in ''|*[!0-9]*) OPENCLAW_TIMEOUT_CURRENT=0 ;; esac",
+    "  if [ \"$OPENCLAW_TIMEOUT_CURRENT\" -lt \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" ]; then",
+    "    openclaw config set agents.defaults.timeoutSeconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" --strict-json >/dev/null 2>&1 || true",
+    "  fi",
+    "  FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED=1 nohup openclaw agent --local --agent \"${OPENCLAW_AGENT:-main}\" --timeout \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" --message \"$(cat \"$PROMPT_COPY\")\" > \"$LOG_FILE\" 2>&1 &",
+    "  DETACHED_PID=$!",
+    "  sleep 1",
+    "  if ! kill -0 \"$DETACHED_PID\" 2>/dev/null; then",
+    "    echo \"Detached OpenClaw setup failed to stay running. Log: $LOG_FILE\" >&2",
+    "    tail -80 \"$LOG_FILE\" >&2 2>/dev/null || true",
+    "    exit 1",
+    "  fi",
+    "  echo \"FOLLOWBRIEF_OPENCLAW_DETACHED=1 pid=$DETACHED_PID log=$LOG_FILE\"",
+    "  exit 0",
+    "fi",
+    "echo \"FOLLOWBRIEF_OPENCLAW_CONTINUE=1\"",
+    "```",
+    "",
+  ].join("\n");
+}
+
 // Source-type-aware credential prep for the library cron setup prompt. The web
 // copy-prompt flow resolves the account from the exchange code, so we can tell
 // the agent up front which sources need a local API token in secrets.json —
@@ -202,6 +261,10 @@ export async function GET(request: Request, { params }: Params) {
         ? "digest-cron"
         : job;
   const cronTimeoutSeconds = localAgentTimeoutSeconds(cronInterval, cronTimeoutJob);
+  const cronTimeoutNumber = Number(cronTimeoutSeconds);
+  const openClawSetupTimeoutSeconds = Number.isFinite(cronTimeoutNumber)
+    ? String(cronTimeoutNumber + 600)
+    : cronTimeoutSeconds;
   // macOS uses a launchd LaunchAgent (runs in the user's login session, so
   // the agent CLI can reach the login keychain — plain cron cannot). Run a
   // short scheduler tick every minute; the runner anchors real jobs to
@@ -341,6 +404,16 @@ export async function GET(request: Request, { params }: Params) {
       content = content.replaceAll("${BUILDER_BLOG_ACCOUNT}", email);
     }
 
+    const openClawSetupBootstrap =
+      runtime === "openclaw" && (job === "library-cron-setup" || job === "digest-cron-setup")
+        ? buildOpenClawSetupBootstrap({
+            email,
+            job,
+            setupPromptUrl: request.url,
+            setupTimeoutSeconds: openClawSetupTimeoutSeconds,
+          })
+        : "";
+
     // 1. Prepend the exchange step as an explicitly numbered step. The setup
     // prompts tell agents to run numbered steps exactly; leaving exchange as an
     // unnumbered preface lets some agents skip it and install an unauthenticated
@@ -356,8 +429,12 @@ export async function GET(request: Request, { params }: Params) {
       "```\n",
     ].join("\n");
 
-    // Insert before the first heading or content
-    content = exchangeBlock + "\n" + content;
+    // Insert before the first heading or content. The OpenClaw bootstrap must
+    // come before token exchange so the parent turn does not consume the
+    // one-time code before it starts the long-timeout detached setup turn.
+    content = openClawSetupBootstrap
+      ? `${openClawSetupBootstrap}\n${exchangeBlock}\n${content}`
+      : `${exchangeBlock}\n${content}`;
 
     // 2. Rewrite every bash block: replace any placeholder
     //    `BUILDER_BLOG_ACCOUNT="..." \` line that precedes a
