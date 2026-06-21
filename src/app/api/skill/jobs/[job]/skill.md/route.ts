@@ -195,7 +195,13 @@ export async function GET(request: Request, { params }: Params) {
   const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
   const cronInterval = cronIntervalMinutes[freq] ?? "360";
   const cronIntervalSeconds = String(Number(cronInterval) * 60);
-  const cronTimeoutSeconds = localAgentTimeoutSeconds(cronInterval, job);
+  const cronTimeoutJob =
+    job === "library-cron-setup"
+      ? "library-cron"
+      : job === "digest-cron-setup"
+        ? "digest-cron"
+        : job;
+  const cronTimeoutSeconds = localAgentTimeoutSeconds(cronInterval, cronTimeoutJob);
   // macOS uses a launchd LaunchAgent (runs in the user's login session, so
   // the agent CLI can reach the login keychain — plain cron cannot). Run a
   // short scheduler tick every minute; the runner anchors real jobs to
