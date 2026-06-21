@@ -766,6 +766,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /DigestLifecycle/);
   assert.match(panel, /function hasFailedDigestJob/);
   assert.match(panel, /statusChip\(run, jobRun, stallGraceUntilMs\)/);
+  assert.match(panel, /label: jobRun \? jobRunStatusLabel\(jobRun, undefined, stallGraceUntilMs\) : "Failed"/);
   assert.match(panel, /runtime failed/);
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);

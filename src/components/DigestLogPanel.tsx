@@ -1176,7 +1176,7 @@ function DigestLifecycle({
 function statusChip(run: DigestRunListItem, jobRun?: AgentJobRunListItem, stallGraceUntilMs = 0): { label: string; tone: StatusTone } {
   if (hasFailedDigestJob(jobRun, undefined, stallGraceUntilMs)) {
     return {
-      label: "Failed",
+      label: jobRun ? jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs) : "Failed",
       tone: "failed",
     };
   }
