@@ -1300,13 +1300,14 @@ run_sharded_library() {
     fi
   fi
 
-  node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-    --tasks "$_result_file" || true
-
   node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
     --tasks "$_result_file" \
     --out-dir "$_shards_dir" \
     --max-workers "$MAX_PARALLEL_WORKERS"
+
+  node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+    --tasks "$_result_file" \
+    --results-dir "$_results_dir" || true
 
   # Per-shard timeout: 3/4 of the whole-job timeout. A hung shard is
   # terminated early enough for merge, failure reporting, and final sync to

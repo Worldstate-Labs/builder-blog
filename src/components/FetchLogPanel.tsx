@@ -3242,15 +3242,6 @@ function TaskRow({
             ariaLabel={isDiscovery ? "Discovery task lifecycle" : "Post task lifecycle"}
             steps={lifecycleSteps}
           />
-
-          <details className="sync-panel-task-technical">
-            <summary className="sync-panel-task-technical-summary">
-              Technical details
-            </summary>
-            <pre className="mono sync-panel-task-technical-code">
-              {JSON.stringify(task, null, 2)}
-            </pre>
-          </details>
         </div>
       </details>
     </li>

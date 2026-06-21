@@ -2227,7 +2227,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /const stats = fetchRunStats\(\{ details, liveProgress, run \}\)/);
   assert.match(fetchLogPanel, /const displaySummary = fetchRunDisplaySummary\(run, stats, liveProgress\)/);
   assert.match(fetchLogPanel, /const hasDetailedPostTasks = plannedTasks\.length > 0/);
-  assert.match(fetchLogPanel, /hasDetailedPostTasks[\s\S]*\? plannedTasks\.length[\s\S]*: Math\.max\(counters\.tasksPlanned \?\? 0, run\?\.tasksGenerated \?\? 0\)/);
+  assert.match(fetchLogPanel, /const fallbackPlanned = Math\.max\(counters\.tasksPlanned \?\? 0, run\?\.tasksGenerated \?\? 0\)/);
+  assert.match(fetchLogPanel, /const planned = Math\.max\([\s\S]*hasDetailedPostTasks \? plannedTasks\.length : 0,[\s\S]*fallbackPlanned,[\s\S]*\)/);
   assert.match(fetchLogPanel, /outcome: ratioText\(stats\.read, stats\.planned, "post"\)/);
   assert.match(fetchLogPanel, /outcome: ratioText\(stats\.planned, stats\.planned, "post"\)/);
   assert.match(fetchLogPanel, /Action needed/);
@@ -2321,8 +2322,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-lifecycle-detail"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-fact-row"/);
-  assert.match(fetchLogPanel, /className="sync-panel-task-technical"/);
-  assert.match(fetchLogPanel, /className="mono sync-panel-task-technical-code"/);
+  assert.doesNotMatch(fetchLogPanel, /Technical details/);
+  assert.doesNotMatch(fetchLogPanel, /sync-panel-task-technical/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-note"/);
   assert.match(fetchLogPanel, /Prompts used to read and summarize each source type in this update\./);
   assert.match(fetchLogPanel, /Prompt instructions/);
@@ -2571,8 +2572,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /href=\{`\/builder\/\$\{src\.entityId\}`\}/);
   assert.match(globals, /\.sync-panel-task-worker-group-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.sync-panel-task-worker-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.sync-panel-task-worker-summary::after,[\s\S]*\.sync-panel-task-source-summary::after,[\s\S]*\.sync-panel-detail-card-summary::before,[\s\S]*\.sync-panel-task-technical-summary::before\s*{[\s\S]*transform:\s*rotate\(45deg\)/);
-  assert.match(globals, /\.sync-panel-task-worker-details\[open\] > \.sync-panel-task-worker-summary::after,[\s\S]*\.sync-panel-task-source-details\[open\] > \.sync-panel-task-source-summary::after,[\s\S]*\.sync-panel-detail-card\[open\] > \.sync-panel-detail-card-summary::before,[\s\S]*\.sync-panel-task-technical\[open\] > \.sync-panel-task-technical-summary::before\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
+  assert.match(globals, /\.sync-panel-task-worker-summary::after,[\s\S]*\.sync-panel-task-source-summary::after,[\s\S]*\.sync-panel-detail-card-summary::before\s*{[\s\S]*transform:\s*rotate\(45deg\)/);
+  assert.match(globals, /\.sync-panel-task-worker-details\[open\] > \.sync-panel-task-worker-summary::after,[\s\S]*\.sync-panel-task-source-details\[open\] > \.sync-panel-task-source-summary::after,[\s\S]*\.sync-panel-detail-card\[open\] > \.sync-panel-detail-card-summary::before\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
   assert.match(globals, /\.sync-panel-task-worker-details > \.sync-panel-task-source-group-list\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-task-source-group-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.sync-panel-task-source-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
@@ -2589,7 +2590,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-task-fact-label\s*{[\s\S]*width:\s*6rem/);
   assert.match(globals, /\.fb-hub-digest-meta-item dt,\s*[\s\S]*\.sync-panel-meta-row dt,\s*[\s\S]*\.sync-panel-task-fact-label\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.fb-hub-digest-meta-item dd,\s*[\s\S]*\.sync-panel-meta-row dd,\s*[\s\S]*\.sync-panel-task-fact-value\s*{[\s\S]*font-weight:\s*700/);
-  assert.match(globals, /\.sync-panel-task-technical-code\s*{[\s\S]*max-height:\s*18rem/);
+  assert.doesNotMatch(globals, /sync-panel-task-technical/);
   assert.match(globals, /\.sync-panel-detail-card-list\s*{[\s\S]*margin-top:\s*0\.5rem/);
   assert.match(globals, /\.sync-panel-detail-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.sync-panel-detail-card-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);

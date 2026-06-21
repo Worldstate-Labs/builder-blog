@@ -297,6 +297,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /function fallbackTaskWorkerName/);
   assert.match(panel, /Worker assignment pending/);
   assert.doesNotMatch(panel, /Main Local Agent/);
+  assert.doesNotMatch(panel, /Technical details/);
+  assert.doesNotMatch(panel, /sync-panel-task-technical/);
+  assert.doesNotMatch(panel, /JSON\.stringify\(task, null, 2\)/);
   assert.match(panel, /Post task details/);
   assert.match(panel, /className="sync-panel-run-card-details-count"/);
   assert.doesNotMatch(panel, /Post tasks \(\{postTasks\.length\}\)/);
@@ -333,6 +336,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /return postTasks\.some\(\(task\) => task\?\.status === "pending" \|\| task\?\.status === "fetched"\)/);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
   assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{resolvedJobRun \?\? undefined\} run=\{run\} \/>/);
+  assert.match(source("scripts/builder-agent-runner.sh"), /patch-fetch-run-plan[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
   assert.match(panel, /isStalledJobRun\(jobRun\)[\s\S]*label: "Stalled"/);
@@ -549,8 +553,6 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-lifecycle"/);
   assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
-  assert.match(panel, /className="sync-panel-task-technical"/);
-  assert.match(panel, /className="mono sync-panel-task-technical-code"/);
   assert.match(panel, /className="sync-panel-detail-note"/);
   assert.match(panel, /Prompts used to read and summarize each source type in this update\./);
   assert.match(panel, /Prompt instructions/);

@@ -496,6 +496,48 @@ test("expanded fetch results expose canonical planned post tasks for fetch logs"
   );
 });
 
+test("planned fetch log patches include shard worker ids after fan-out planning", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "fetch_post:podcast:a",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        builder: "Podcast",
+        builderId: "builder_podcast",
+        sourceType: "youtube",
+        item: { title: "Episode A", url: "https://example.com/a" },
+      },
+      {
+        id: "fetch_post:podcast:b",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        builder: "Podcast",
+        builderId: "builder_podcast",
+        sourceType: "youtube",
+        item: { title: "Episode B", url: "https://example.com/b" },
+      },
+    ],
+  };
+
+  const planned = cli.fetchRunPlannedTaskPatches(fetchResult, {
+    shardPlans: [
+      { shard: "shard-0", tasks: [fetchResult.fetchTasks[0]] },
+      { shard: "shard-1", tasks: [fetchResult.fetchTasks[1]] },
+    ],
+  });
+
+  assert.deepEqual(
+    planned.map((task: { id: string; workerId: string | null }) => [task.id, task.workerId]),
+    [
+      ["fetch_post:podcast:a", "shard-0"],
+      ["fetch_post:podcast:b", "shard-1"],
+    ],
+  );
+});
+
 test("sync payload can carry a durable fetch-run plan patch", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchRun = cli.buildFetchRunSyncPatch("fetch_run_1", [

@@ -7285,15 +7285,13 @@ summary.library-section-summary::after {
 
 .sync-panel-task-worker-summary::-webkit-details-marker,
 .sync-panel-task-source-summary::-webkit-details-marker,
-.sync-panel-detail-card-summary::-webkit-details-marker,
-.sync-panel-task-technical-summary::-webkit-details-marker {
+.sync-panel-detail-card-summary::-webkit-details-marker {
   display: none;
 }
 
 .sync-panel-task-worker-summary::after,
 .sync-panel-task-source-summary::after,
-.sync-panel-detail-card-summary::before,
-.sync-panel-task-technical-summary::before {
+.sync-panel-detail-card-summary::before {
   border-bottom: 1.8px solid currentColor;
   border-right: 1.8px solid currentColor;
   color: var(--accent);
@@ -7308,8 +7306,7 @@ summary.library-section-summary::after {
 
 .sync-panel-task-worker-details[open] > .sync-panel-task-worker-summary::after,
 .sync-panel-task-source-details[open] > .sync-panel-task-source-summary::after,
-.sync-panel-detail-card[open] > .sync-panel-detail-card-summary::before,
-.sync-panel-task-technical[open] > .sync-panel-task-technical-summary::before {
+.sync-panel-detail-card[open] > .sync-panel-detail-card-summary::before {
   transform: rotate(225deg);
 }
 
@@ -7318,9 +7315,7 @@ summary.library-section-summary::after {
 .sync-panel-task-source-summary:hover::after,
 .sync-panel-task-source-summary:focus-visible::after,
 .sync-panel-detail-card-summary:hover::before,
-.sync-panel-detail-card-summary:focus-visible::before,
-.sync-panel-task-technical-summary:hover::before,
-.sync-panel-task-technical-summary:focus-visible::before {
+.sync-panel-detail-card-summary:focus-visible::before {
   opacity: 1;
 }
 
@@ -7644,33 +7639,6 @@ summary.library-section-summary::after {
 
 .sync-panel-task-link.is-breakable {
   word-break: break-all;
-}
-
-.sync-panel-task-technical {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.sync-panel-task-technical-summary {
-  align-items: center;
-  color: var(--muted-strong);
-  cursor: pointer;
-  display: flex;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  gap: 0.45rem;
-  letter-spacing: 0.04em;
-  padding: 0.375rem 0.625rem;
-  text-transform: uppercase;
-}
-
-.sync-panel-task-technical-code {
-  color: var(--muted-strong);
-  font-size: 0.6875rem;
-  max-height: 18rem;
-  overflow: auto;
-  padding: 0.25rem 0.625rem 0.625rem;
 }
 
 @media (max-width: 640px) {

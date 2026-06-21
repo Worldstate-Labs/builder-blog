@@ -6515,8 +6515,10 @@ async function patchFetchRunPlan(args) {
   requireLoggedIn(config);
 
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
+  const resultsDir = argValue(args, "--results-dir");
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
-  const plannedTasks = fetchRunPlannedTaskPatches(fetchResult);
+  const shardPlans = resultsDir ? await readShardPlans(resultsDir) : [];
+  const plannedTasks = fetchRunPlannedTaskPatches(fetchResult, { shardPlans });
   let runId = "";
   try {
     runId = (await readFile(libraryFetchRunIdFile(), "utf8")).trim();
@@ -7182,14 +7184,31 @@ function plannedFetchTaskStatus(task) {
   return "pending";
 }
 
-export function fetchRunPlannedTaskPatches(fetchResult) {
+function shardWorkerIdByTaskId(shardPlans = []) {
+  const byTaskId = new Map();
+  for (const plan of shardPlans.map(normalizeShardPlan).filter(Boolean)) {
+    for (const taskId of plan.taskIds) byTaskId.set(taskId, plan.shard);
+  }
+  return byTaskId;
+}
+
+function taskWithShardWorkerId(task, workerIds) {
+  if (task?.workerId) return task;
+  const id = String(task?.id || fetchTaskId(task));
+  const workerId = workerIds.get(id);
+  return workerId ? { ...task, workerId } : task;
+}
+
+export function fetchRunPlannedTaskPatches(fetchResult, options = {}) {
+  const workerIds = shardWorkerIdByTaskId(options.shardPlans ?? []);
   return extractFetchTasks(fetchResult)
     .filter((task) => !isCandidateDiscoveryFetchTask(task))
     .map((task) => {
       const id = String(task?.id || fetchTaskId(task));
+      const plannedTask = taskWithShardWorkerId(task, workerIds);
       return {
-        ...fetchTaskLogPatch(task, id),
-        status: plannedFetchTaskStatus(task),
+        ...fetchTaskLogPatch(plannedTask, id),
+        status: plannedFetchTaskStatus(plannedTask),
       };
     });
 }
