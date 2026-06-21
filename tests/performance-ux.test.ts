@@ -2847,7 +2847,11 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*beforePreview=\{/);
   assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*cronStatusControl=\{/);
-  assert.match(digestUpdatesCard, /<DigestStatusToggle[\s\S]*status=\{updateStatus\}/);
+  assert.match(digestUpdatesCard, /const \[activityStatus, setActivityStatus\] = useState/);
+  assert.match(digestUpdatesCard, /const \[frequencyLabel, setFrequencyLabel\] = useState/);
+  assert.match(digestUpdatesCard, /onCronJobChange=\{handleCronJobChange\}/);
+  assert.match(digestUpdatesCard, /onStatusChange=\{setActivityStatus\}/);
+  assert.match(digestUpdatesCard, /<DigestStatusToggle[\s\S]*status=\{activityStatus\}/);
   assert.match(digestUpdatesCard, /beforePreview=\{[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
   assert.match(digestUpdatesCard, /detailsRootId=\{detailsRootId\}/);
   assert.match(digestUpdatesCard, /actionsPlacement="start"/);

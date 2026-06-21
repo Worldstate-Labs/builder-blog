@@ -1,16 +1,22 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useCallback, useId, useState, type ReactNode } from "react";
 import {
+  buildDigestTimeline,
   DigestLogPanel,
   DigestStatusToggle,
+  getDigestActivityStatus,
   type DigestLogPanelProps,
 } from "@/components/DigestLogPanel";
 import {
   OwnDigestPipelineCard,
   type OwnDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
-import { statusStyle, type DigestUpdateStatus } from "@/lib/digest-update-status";
+import {
+  buildDigestCronStatus,
+  digestCronFrequencyLabel,
+  type DigestUpdateStatus,
+} from "@/lib/digest-update-status";
 
 type OwnDigestPipelineUpdatesCardProps = Omit<
   DigestLogPanelProps,
@@ -26,10 +32,17 @@ export function OwnDigestPipelineUpdatesCard({
   ...logPanelProps
 }: OwnDigestPipelineUpdatesCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<DigestUpdateStatus>(
-    fullDigestUpdateStatus(pipeline.digestUpdateStatus),
+  const [activityStatus, setActivityStatus] = useState<DigestUpdateStatus>(
+    () => initialDigestActivityStatus(logPanelProps),
+  );
+  const [frequencyLabel, setFrequencyLabel] = useState(
+    () => digestCronFrequencyLabel(logPanelProps.initialCronJob),
   );
   const detailsRootId = useId();
+
+  const handleCronJobChange = useCallback((cronJob: DigestLogPanelProps["initialCronJob"]) => {
+    setFrequencyLabel(digestCronFrequencyLabel(cronJob));
+  }, []);
 
   return (
     <OwnDigestPipelineCard
@@ -41,8 +54,9 @@ export function OwnDigestPipelineUpdatesCard({
             actionsPlacement="start"
             detailsOpen={detailsOpen}
             detailsRootId={detailsRootId}
+            onCronJobChange={handleCronJobChange}
             onDetailsOpenChange={setDetailsOpen}
-            onStatusChange={setUpdateStatus}
+            onStatusChange={setActivityStatus}
             showHeading={false}
             showStatusToggle={false}
           />
@@ -52,12 +66,13 @@ export function OwnDigestPipelineUpdatesCard({
         <DigestStatusToggle
           detailsOpen={detailsOpen}
           onToggle={() => setDetailsOpen((value) => !value)}
-          status={updateStatus}
+          status={activityStatus}
         />
       }
       pipeline={{
         ...pipeline,
-        digestUpdateStatus: updateStatus,
+        digestUpdateStatus: activityStatus,
+        frequencyLabel,
       }}
     >
       <div className="fb-hub-digest-details-slot" id={detailsRootId} />
@@ -65,17 +80,26 @@ export function OwnDigestPipelineUpdatesCard({
   );
 }
 
-function fullDigestUpdateStatus(
-  status: OwnDigestPipeline["digestUpdateStatus"],
-): DigestUpdateStatus {
-  const tone =
-    status.key === "healthy"
-      ? "ok"
-      : status.key === "needs-attention"
-        ? "failed"
-        : "partial";
-  return {
-    ...status,
-    style: statusStyle(tone),
-  };
+function initialDigestActivityStatus({
+  initialCronJob,
+  initialCronRuns,
+  initialJobRuns = [],
+  initialRuns,
+  initialScheduledJobRuns = [],
+}: Pick<
+  DigestLogPanelProps,
+  "initialCronJob" | "initialCronRuns" | "initialJobRuns" | "initialRuns" | "initialScheduledJobRuns"
+>): DigestUpdateStatus {
+  const cronStatus = buildDigestCronStatus(
+    initialCronJob,
+    initialCronRuns,
+    initialScheduledJobRuns,
+  );
+  return getDigestActivityStatus(
+    buildDigestTimeline({
+      jobRuns: initialJobRuns,
+      runs: initialRuns,
+      slots: cronStatus.slots,
+    }),
+  );
 }

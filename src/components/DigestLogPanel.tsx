@@ -20,9 +20,11 @@ import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import {
   buildDigestCronStatus,
+  digestCronFrequencyLabel,
   getDigestUpdateStatus,
   isActiveDigestJobRun,
   isDigestRunInflight,
+  statusStyle,
   type CronSlot,
   type CronSlotStatus,
   type DigestUpdateStatus,
@@ -116,7 +118,7 @@ type DigestLogRef =
   | { kind: "run"; runId: string }
   | { kind: "job"; instanceId: string };
 
-type DigestTimelineEntry = {
+export type DigestTimelineEntry = {
   key: string;
   time: string;
   status: CronSlotStatus;
@@ -140,6 +142,7 @@ export type DigestLogPanelProps = {
   initialRuns: DigestRunListItem[];
   initialScheduledJobRuns?: AgentJobRunListItem[];
   onDetailsOpenChange?: (open: boolean) => void;
+  onCronJobChange?: (cronJob: DigestCronJobStatus | null) => void;
   onStatusChange?: (status: DigestUpdateStatus) => void;
   showHeading?: boolean;
   showStatusToggle?: boolean;
@@ -192,6 +195,35 @@ function digestRunSyncSummary(run: DigestRunListItem | null): string | null {
   const eligible = Math.max(0, run.candidateCount, saved);
   if (eligible <= 0 && saved <= 0) return null;
   return `${formatCount(saved)}/${formatCount(eligible)} saved`;
+}
+
+export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestUpdateStatus {
+  const latestActiveEntry = entries
+    .slice()
+    .reverse()
+    .find((entry) =>
+      Boolean(entry.jobRun && (entry.status === "running" || entry.status === "stalled")),
+    );
+
+  if (!latestActiveEntry?.jobRun) {
+    return {
+      key: "waiting",
+      label: "Idle",
+      summary: "No AI Digest job is currently running.",
+      style: statusStyle("partial"),
+    };
+  }
+
+  const stalled = latestActiveEntry.status === "stalled";
+  const runKind = latestActiveEntry.label.toLowerCase();
+  return {
+    key: stalled ? "needs-attention" : "building",
+    label: jobRunStatusLabel(latestActiveEntry.jobRun),
+    summary: stalled
+      ? `FollowBrief lost contact with the latest ${runKind} AI Digest job.`
+      : `The latest ${runKind} AI Digest job is running.`,
+    style: statusStyle(stalled ? "failed" : "partial"),
+  };
 }
 
 export function buildDigestTimeline({
@@ -290,6 +322,7 @@ export function DigestLogPanel({
   initialScheduledJobRuns = [],
   initialCronJob,
   onDetailsOpenChange,
+  onCronJobChange,
   onStatusChange,
   showHeading = true,
   showStatusToggle = true,
@@ -316,6 +349,10 @@ export function DigestLogPanel({
     () => getDigestUpdateStatus(cronJob, cronStatus.slots, runs),
     [cronJob, cronStatus.slots, runs],
   );
+  const activityStatus = useMemo(
+    () => getDigestActivityStatus(timelineEntries),
+    [timelineEntries],
+  );
   const runsRef = useRef(runs);
   const jobRunsRef = useRef(jobRuns);
   const hydrated = useHydrated();
@@ -337,8 +374,11 @@ export function DigestLogPanel({
     jobRunsRef.current = jobRuns;
   }, [jobRuns]);
   useEffect(() => {
-    onStatusChange?.(updateStatus);
-  }, [onStatusChange, updateStatus]);
+    onCronJobChange?.(cronJob);
+  }, [cronJob, onCronJobChange]);
+  useEffect(() => {
+    onStatusChange?.(activityStatus);
+  }, [activityStatus, onStatusChange]);
 
   const openLog = useCallback(
     (logRef: DigestLogRef) => {
@@ -479,7 +519,7 @@ export function DigestLogPanel({
             <DigestStatusToggle
               detailsOpen={detailsOpen}
               onToggle={() => setDetailsOpen((value) => !value)}
-              status={updateStatus}
+              status={activityStatus}
             />
           ) : null}
         </div>
@@ -579,7 +619,7 @@ function DigestScheduleSummary({
 
   return (
     <p className="sync-panel-schedule-summary">
-      {status.summary} · {cronJob.frequencyLabel}
+      {status.summary} · {digestCronFrequencyLabel(cronJob)}
       {nextLabel ? ` · next ${nextLabel}` : ""}
       {cronJob.regenerateDigest ? " · includes posts already used in AI Digest" : ""}
     </p>

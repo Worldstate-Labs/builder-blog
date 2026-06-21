@@ -1,6 +1,7 @@
 import { serializeAgentJobRun } from "@/lib/agent-job-runs";
 import {
   buildDigestCronStatus,
+  digestCronFrequencyLabel,
   getDigestUpdateStatus,
   type DigestCronRunStatusInput,
   type DigestUpdateStatus,
@@ -109,7 +110,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
         latestDigestLanguage: latestDigest?.language ?? null,
         latestDigestSourceLinks: sourceLinks,
         summaryLanguage: feedPreference?.summaryLanguage ?? null,
-        frequencyLabel: cronJob?.frequencyLabel ?? null,
+        frequencyLabel: digestCronFrequencyLabel(cronJob),
         digestUpdateStatus: {
           key: updateStatus.key,
           label: updateStatus.label,

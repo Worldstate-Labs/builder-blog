@@ -54,6 +54,12 @@ export function isActiveDigestJobRun(jobRun: AgentJobRunListItem): boolean {
   return jobRun.status === "starting" || jobRun.status === "running";
 }
 
+export function digestCronFrequencyLabel(cronJob: DigestCronJobStatus | null): string {
+  if (!cronJob) return "Not scheduled";
+  if (cronJob.status !== "active") return "Stopped";
+  return cronJob.frequencyLabel || "Scheduled";
+}
+
 function isStalledJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
   if (!isActiveDigestJobRun(jobRun)) return false;
   const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);

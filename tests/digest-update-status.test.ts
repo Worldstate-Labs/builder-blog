@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDigestTimeline } from "../src/components/DigestLogPanel";
+import { buildDigestTimeline, getDigestActivityStatus } from "../src/components/DigestLogPanel";
 import {
   buildDigestCronStatus,
+  digestCronFrequencyLabel,
   getDigestUpdateStatus,
   type CronSlot,
   type DigestCronRunStatusInput,
@@ -28,11 +29,29 @@ function activeCron(): DigestCronJobStatus {
   };
 }
 
+function stoppedCron(): DigestCronJobStatus {
+  return {
+    ...activeCron(),
+    status: "stopped",
+    stoppedAt: "2026-06-18T12:00:00.000Z",
+  };
+}
+
 function missedSlot(): CronSlot {
   return {
     expectedAt: "2026-06-18T10:00:00.000Z",
     windowEnd: "2026-06-18T11:00:00.000Z",
     status: "missed",
+    run: null,
+    jobRun: null,
+  };
+}
+
+function waitingDigestSlot(): CronSlot<DigestRunListItem> {
+  return {
+    expectedAt: "2026-06-18T11:00:00.000Z",
+    windowEnd: "2026-06-18T12:00:00.000Z",
+    status: "waiting",
     run: null,
     jobRun: null,
   };
@@ -154,6 +173,48 @@ test("digest timeline consumes job runs linked from a slotted synced run", () =>
   assert.equal(entries[0]?.syncSummary, "20/20 saved");
   assert.deepEqual(entries[0]?.logRef, { kind: "run", runId: "run_1" });
   assert.equal(entries[0]?.jobRun?.instanceId, jobRun.instanceId);
+});
+
+test("digest status control reports the latest active job instead of the waiting schedule slot", () => {
+  const heartbeatAt = new Date().toISOString();
+  const setupJobRun = {
+    ...runningDigestJobRun(),
+    trigger: "one_time",
+    instanceId: "digest-setup",
+    expectedAt: null,
+    heartbeatAt,
+    startedAt: heartbeatAt,
+    updatedAt: heartbeatAt,
+  };
+  const entries = buildDigestTimeline({
+    jobRuns: [setupJobRun],
+    runs: [],
+    slots: [waitingDigestSlot()],
+    nowMs: Date.now(),
+  });
+  const status = getDigestActivityStatus(entries);
+
+  assert.equal(status.key, "building");
+  assert.equal(status.label, "Running");
+});
+
+test("digest status control stays idle when only the next scheduled slot is waiting", () => {
+  const entries = buildDigestTimeline({
+    jobRuns: [],
+    runs: [],
+    slots: [waitingDigestSlot()],
+    nowMs: Date.parse("2026-06-18T10:05:00.000Z"),
+  });
+  const status = getDigestActivityStatus(entries);
+
+  assert.equal(status.key, "waiting");
+  assert.equal(status.label, "Idle");
+});
+
+test("digest frequency label reflects the cron job state", () => {
+  assert.equal(digestCronFrequencyLabel(activeCron()), "every hour");
+  assert.equal(digestCronFrequencyLabel(stoppedCron()), "Stopped");
+  assert.equal(digestCronFrequencyLabel(null), "Not scheduled");
 });
 
 test("one-time digest runs still show building when no schedule is connected", () => {
