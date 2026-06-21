@@ -419,11 +419,12 @@ export function fetchRunStats({
   const livePostTasks = liveTasks.filter(isLivePostTask);
   const hasDetailedPostTasks = plannedTasks.length > 0;
   const hasLivePostTasks = livePostTasks.length > 0;
-  const planned = hasDetailedPostTasks
-    ? plannedTasks.length
-    : hasLivePostTasks
-    ? livePostTasks.length
-    : Math.max(counters.tasksPlanned ?? 0, run?.tasksGenerated ?? 0);
+  const fallbackPlanned = Math.max(counters.tasksPlanned ?? 0, run?.tasksGenerated ?? 0);
+  const planned = Math.max(
+    hasDetailedPostTasks ? plannedTasks.length : 0,
+    hasLivePostTasks ? livePostTasks.length : 0,
+    hasLivePostTasks ? 0 : fallbackPlanned,
+  );
   const read = hasDetailedPostTasks
     ? plannedTasks.filter(isReadForStats).length
     : hasLivePostTasks
@@ -470,6 +471,12 @@ export function fetchRunStats({
     failed,
     actionNeeded,
   };
+}
+
+function fetchRunHasCompletedOutcomes(stats: FetchRunStats): boolean {
+  const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  if (stats.planned <= 0) return true;
+  return accounted >= stats.planned;
 }
 
 function hasActiveFetchProgress(jobRuns: AgentJobRunListItem[]): boolean {
@@ -704,9 +711,13 @@ function buildCronStatus(
 
 function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunListItem | null, nowMs = Date.now()): CronSlotStatus {
   if (run.status !== "ok") return "failed";
-  if (jobRun && isStalledJobRun(jobRun, nowMs)) return "stalled";
+  const details = readDetails(run.details);
+  const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
+  const stats = fetchRunStats({ details, liveProgress, run });
+  const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
+  if (jobRun && isStalledJobRun(jobRun, nowMs) && !completedOutcomes) return "stalled";
   if (isRunInflight(run, jobRun, null)) return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "running";
-  if (jobRun && !isActiveJobRun(jobRun) && jobRun.status !== "succeeded") return jobRunSlotStatus(jobRun, nowMs);
+  if (jobRun && !isActiveJobRun(jobRun) && jobRun.status !== "succeeded" && !completedOutcomes) return jobRunSlotStatus(jobRun, nowMs);
   if (run.status === "ok") return "ok";
   return "failed";
 }
@@ -1583,6 +1594,34 @@ function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
   return { label: jobRunStatusLabel(jobRun), style: statusStyle("failed"), tone: "failed" };
 }
 
+export function fetchRunDisplayState({
+  completedOutcomes,
+  inflight,
+  jobRun,
+  runStatus,
+}: {
+  completedOutcomes: boolean;
+  inflight: boolean;
+  jobRun?: AgentJobRunListItem | null;
+  runStatus: string;
+}) {
+  const interruptedStatus = interruptedFetchRunStatus(jobRun);
+  const completedInterruptedLabel = !inflight && completedOutcomes
+    ? interruptedStatus?.label ?? null
+    : null;
+  const displayStatus = inflight
+    ? { label: "Syncing", style: statusStyle("partial"), tone: "partial" as const }
+    : interruptedStatus && !completedOutcomes
+      ? interruptedStatus
+      : {
+          label: STATUS_LABEL[runStatus] ?? runStatus,
+          style: statusStyle(runStatus),
+          tone: statusTone(runStatus),
+        };
+
+  return { completedInterruptedLabel, displayStatus };
+}
+
 function runHeaderHost(hostname: string | null | undefined): string | null {
   const trimmed = String(hostname ?? "").trim();
   return trimmed ? trimmed.replace(/\.local$/, "") : null;
@@ -1663,10 +1702,12 @@ function fetchRunDisplaySummary(run: LibraryFetchRunListItem, stats: FetchRunSta
 }
 
 function fetchRunVerdict({
+  completedInterruptedLabel,
   displayStatus,
   inflight,
   stats,
 }: {
+  completedInterruptedLabel?: string | null;
   displayStatus: { label: string };
   inflight: boolean;
   stats: FetchRunStats;
@@ -1677,6 +1718,15 @@ function fetchRunVerdict({
     return {
       tone: "warn",
       text: "Fetch is running. Stages update as Local Agent reports work.",
+    };
+  }
+  if (completedInterruptedLabel) {
+    const endedText = completedInterruptedLabel === "Timed out"
+      ? "timed out before it exited"
+      : `ended as ${completedInterruptedLabel.toLowerCase()}`;
+    return {
+      tone: "warn",
+      text: `FollowBrief received final sync outcomes, but the Local Agent process ${endedText}.`,
     };
   }
   if (displayStatus.label === "Stalled") {
@@ -1989,16 +2039,17 @@ function RunCard({
   domId?: string | null;
 }) {
   const hydrated = useHydrated();
-  const style = statusStyle(run.status);
-  const label = STATUS_LABEL[run.status] ?? run.status;
   const details = readDetails(run.details);
   const inflight = isRunInflight(run, jobRun, cronJob);
-  const interruptedStatus = interruptedFetchRunStatus(jobRun);
-  const displayStatus = inflight
-    ? { label: "Syncing", style: statusStyle("partial"), tone: "partial" as const }
-    : interruptedStatus
-    ? interruptedStatus
-    : { label, style, tone: statusTone(run.status) };
+  const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
+  const stats = fetchRunStats({ details, liveProgress, run });
+  const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
+  const { completedInterruptedLabel, displayStatus } = fetchRunDisplayState({
+    completedOutcomes,
+    inflight,
+    jobRun,
+    runStatus: run.status,
+  });
   // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
   const agentLabel =
@@ -2009,10 +2060,13 @@ function RunCard({
     runHeaderHost(jobRun?.hostname ?? run.hostname),
   );
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
-  const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
-  const stats = fetchRunStats({ details, liveProgress, run });
   const displaySummary = fetchRunDisplaySummary(run, stats, liveProgress);
-  const verdict = fetchRunVerdict({ displayStatus, inflight, stats });
+  const verdict = fetchRunVerdict({
+    completedInterruptedLabel,
+    displayStatus,
+    inflight,
+    stats,
+  });
   const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : [];
   const postTaskCount = Array.isArray(details.fetchTasks)
     ? details.fetchTasks.filter(isPlannedPostTask).length

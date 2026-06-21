@@ -1475,6 +1475,62 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   assert.match(contract, /FAILURE/);
 });
 
+test("skill builder sync accepts durable fetch-run patches with long task ids", () => {
+  const longFetchTaskId = `fetch_post:blog:${"a".repeat(420)}`;
+  const parsed = parseSkillBuilderSyncPayload({
+    force: true,
+    builders: [
+      {
+        builderId: "builder_blog_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Engineering",
+        sourceUrl: "https://example.com/engineering",
+        fetchUrl: "https://example.com/engineering",
+        subscribe: true,
+        items: [
+          {
+            kind: "BLOG_POST",
+            externalId: "long-id-post",
+            title: "Long id post",
+            body: "A real body long enough for the sync contract.",
+            summary: "A real summary for a task with a long fetch id.",
+            url: "https://example.com/engineering/long-id-post",
+            publishedAt: "2026-05-22T10:00:00.000Z",
+            rawJson: { fetchTaskId: longFetchTaskId },
+          },
+        ],
+      },
+    ],
+    taskOutcomes: [
+      {
+        fetchTaskId: longFetchTaskId,
+        status: "failed",
+        reason: "worker_missing_result",
+      },
+    ],
+    fetchRun: {
+      id: "fetch_run_1",
+      plannedTasks: [
+        {
+          id: longFetchTaskId,
+          builderId: "builder_blog_1",
+          builder: "Engineering",
+          sourceType: "blog",
+          title: "Long id post",
+          url: "https://example.com/engineering/long-id-post",
+        },
+      ],
+    },
+  });
+
+  assert.equal(parsed.success, true);
+  if (!parsed.success) return;
+  assert.equal(parsed.data.fetchRun?.id, "fetch_run_1");
+  assert.equal(parsed.data.fetchRun?.plannedTasks[0]?.id, longFetchTaskId);
+  assert.equal(parsed.data.taskOutcomes[0]?.fetchTaskId, longFetchTaskId);
+});
+
 test("every fetchTask resolves to a terminal state; skips need per-task evidence", () => {
   // Sync contract carries structured per-task outcomes for non-synced tasks.
   const contracts = readFileSync("src/lib/skill-contracts.ts", "utf8");

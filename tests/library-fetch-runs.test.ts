@@ -70,6 +70,7 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
 test("skill fetch-runs route validates payload size and gates auth on user or bearer", () => {
   const route = source("src/app/api/skill/fetch-runs/route.ts");
   const patchRoute = source("src/app/api/skill/fetch-runs/[id]/route.ts");
+  const mergeHelper = source("src/lib/fetch-run-details.ts");
   const cronRoute = source("src/app/api/skill/cron-jobs/route.ts");
   // POST is bearer-token (CLI); GET is browser session or bearer read-only
   // so local production audits can read the same status model as the UI.
@@ -93,9 +94,14 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /cronJob: cron/);
   // PATCH may append discovery-expanded tasks, but only for builders already
   // present in this run's perBuilder snapshot.
+  assert.match(patchRoute, /PlannedTaskSchema/);
+  assert.match(patchRoute, /plannedTasks: z\.array\(PlannedTaskSchema\)\.max\(500\)\.optional\(\)/);
+  assert.match(patchRoute, /TERMINAL_FETCH_TASK_STATUSES/);
+  assert.match(patchRoute, /MAX_FETCH_TASK_ID/);
+  assert.match(patchRoute, /mergeFetchRunDetails/);
   assert.match(patchRoute, /workerId: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
-  assert.match(patchRoute, /plannedBuilderIds/);
-  assert.match(patchRoute, /details\.perBuilder/);
+  assert.match(mergeHelper, /plannedBuilderIds/);
+  assert.match(mergeHelper, /details\.perBuilder/);
   // Server orders by startedAt desc and pages older history in 10-row batches.
   assert.match(route, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(route, /FETCH_RUN_PAGE_SIZE = 10/);
@@ -161,7 +167,27 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /discoveryExpansions/);
   assert.match(cli, /discoveryExpansionById/);
   assert.match(cli, /discovery_expanded/);
+  assert.match(cli, /buildFetchRunSyncPatch/);
+  assert.match(cli, /fetchRun: buildFetchRunSyncPatch/);
   assert.doesNotMatch(cli, /discoveryExpanded: true/);
+});
+
+test("builder sync endpoint durably patches fetch-run outcomes server-side", () => {
+  const buildersRoute = source("src/app/api/skill/builders/route.ts");
+  const contracts = source("src/lib/skill-contracts.ts");
+
+  assert.match(contracts, /MAX_FETCH_TASK_ID = 500/);
+  assert.match(contracts, /SkillFetchRunPlannedTaskSchema/);
+  assert.match(contracts, /fetchRun: z\.object/);
+  assert.match(buildersRoute, /mergeFetchRunDetails/);
+  assert.match(buildersRoute, /parsed\.data\.fetchRun/);
+  assert.match(buildersRoute, /patchFetchRunForBuilderSync/);
+  assert.match(buildersRoute, /fetchRunPatch/);
+  assert.match(buildersRoute, /itemResultsToFetchRunOutcomes/);
+  assert.match(buildersRoute, /skillTaskOutcomeToFetchRunOutcome/);
+  assert.match(buildersRoute, /builderSyncFailureResponse/);
+  assert.match(buildersRoute, /catch \(error\)[\s\S]*builderSyncFailureResponse/);
+  assert.match(buildersRoute, /patchFetchRunForBuilderSync[\s\S]*itemResults/);
 });
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
@@ -194,6 +220,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /validation-failed-payload\.json/);
   assert.match(runner, /--exclude-task-ids-file "\$_checkpoint_synced_ids_file"/);
   assert.match(runner, /--reason "validation_failed"/);
+  assert.match(runner, /patch-fetch-run-plan/);
+  assert.match(runner, /--partial-outcomes/);
   assert.match(runner, /still_alive_after_kill/);
   assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);

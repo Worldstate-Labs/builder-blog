@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { mergeFetchRunDetails } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { MAX_FETCH_TASK_ID } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 
 // Mirror of the POST route's cap — details still has to fit comfortably.
 const MAX_DETAILS_BYTES = 50_000;
 
+const PlannedTaskSchema = z.object({
+  id: z.string().min(1).max(MAX_FETCH_TASK_ID),
+}).passthrough();
+
 // One per-post outcome, merged onto the matching planned task (details.fetchTasks
 // entry whose `id` equals this fetchTaskId). All fields except the key are
 // optional so the CLI can grow the per-post record without a schema change.
 const TaskOutcomeSchema = z.object({
-  fetchTaskId: z.string().min(1).max(200),
+  fetchTaskId: z.string().min(1).max(MAX_FETCH_TASK_ID),
   plannedTask: z.record(z.string(), z.unknown()).optional(),
   bodyChars: z.number().int().min(0).max(100_000_000).nullable().optional(),
   bodyWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
@@ -34,8 +40,12 @@ const TaskOutcomeSchema = z.object({
 });
 
 const PatchSchema = z.object({
-  taskOutcomes: z.array(TaskOutcomeSchema).max(500),
-});
+  plannedTasks: z.array(PlannedTaskSchema).max(500).optional(),
+  taskOutcomes: z.array(TaskOutcomeSchema).max(500).optional(),
+}).refine(
+  (value) => (value.plannedTasks?.length ?? 0) + (value.taskOutcomes?.length ?? 0) > 0,
+  { message: "plannedTasks or taskOutcomes is required" },
+);
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -69,76 +79,12 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Fetch run not found" }, { status: 404 });
   }
 
-  const details =
-    run.details && typeof run.details === "object" && !Array.isArray(run.details)
-      ? { ...(run.details as Record<string, unknown>) }
-      : {};
-
-  const byTaskId = new Map(parsed.data.taskOutcomes.map((o) => [o.fetchTaskId, o]));
-  const plannedTaskById = new Map(
-    parsed.data.taskOutcomes
-      .filter((o) => o.plannedTask && typeof o.plannedTask === "object")
-      .map((o) => [o.fetchTaskId, o.plannedTask as Record<string, unknown>]),
-  );
-
-  // Merge each outcome onto the planned task with the same id. Only defined
-  // values overwrite, so stage-1 fetch facts are never clobbered.
-  const existingTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
-  let matched = 0;
-  const existingIds = new Set<string>();
-  const mergedTasks = existingTasks.map((task) => {
-    const t = task && typeof task === "object" ? (task as Record<string, unknown>) : {};
-    if (typeof t.id === "string") existingIds.add(t.id);
-    const outcome = typeof t.id === "string" ? byTaskId.get(t.id) : undefined;
-    if (!outcome) return task;
-    matched += 1;
-    const patch: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(outcome)) {
-      if (key === "fetchTaskId" || key === "plannedTask" || value === undefined) continue;
-      patch[key] = value;
-    }
-    return { ...t, ...patch };
+  // mergeFetchRunDetails preserves terminal statuses from TERMINAL_FETCH_TASK_STATUSES
+  // when a late plannedTasks patch arrives after synced/skipped/failed outcomes.
+  const { details, matched, planned } = mergeFetchRunDetails(run.details, {
+    plannedTasks: parsed.data.plannedTasks ?? [],
+    taskOutcomes: parsed.data.taskOutcomes ?? [],
   });
-  details.fetchTasks = mergedTasks;
-  const plannedBuilderIds = new Set(
-    (Array.isArray(details.perBuilder) ? details.perBuilder : [])
-      .map((builder) =>
-        builder && typeof builder === "object"
-          ? (builder as Record<string, unknown>).builderId
-          : null,
-      )
-      .filter((id): id is string => typeof id === "string" && id.length > 0),
-  );
-  for (const outcome of parsed.data.taskOutcomes) {
-    if (existingIds.has(outcome.fetchTaskId)) continue;
-    const plannedTask = plannedTaskById.get(outcome.fetchTaskId);
-    if (!plannedTask) continue;
-    const plannedBuilderId = plannedTask.builderId;
-    if (
-      plannedBuilderIds.size > 0 &&
-      (typeof plannedBuilderId !== "string" || !plannedBuilderIds.has(plannedBuilderId))
-    ) {
-      continue;
-    }
-    const patch: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(outcome)) {
-      if (key === "fetchTaskId" || key === "plannedTask" || value === undefined) continue;
-      patch[key] = value;
-    }
-    mergedTasks.push({ ...plannedTask, ...patch });
-  }
-
-  // Roll the distinct models/runtimes actually used up to the run header so the
-  // log line reflects reality (one model → "gpt-5-codex"; several → "a / b").
-  const uniq = (vals: (string | null | undefined)[]) => [
-    ...new Set(vals.map((v) => (v ?? "").trim()).filter(Boolean)),
-  ];
-  const models = uniq(parsed.data.taskOutcomes.map((o) => o.agentModel));
-  const runtimes = uniq(parsed.data.taskOutcomes.map((o) => o.agentRuntime));
-  if (models.length) details.agentModel = models.length === 1 ? models[0] : models.join(" / ");
-  if (runtimes.length) {
-    details.agentRuntime = runtimes.length === 1 ? runtimes[0] : runtimes.join(" / ");
-  }
 
   if (Buffer.byteLength(JSON.stringify(details), "utf8") > MAX_DETAILS_BYTES) {
     return NextResponse.json(
@@ -152,5 +98,5 @@ export async function PATCH(request: Request, { params }: Params) {
     data: { details: details as object },
   });
 
-  return NextResponse.json({ id: run.id, matched });
+  return NextResponse.json({ id: run.id, matched, planned });
 }

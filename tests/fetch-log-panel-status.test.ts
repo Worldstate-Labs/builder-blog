@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildFetchTimeline,
+  fetchRunDisplayState,
   fetchRunStats,
   getFetchUpdateStatus,
   type LibraryCronJobStatus,
@@ -315,7 +316,184 @@ test("fetch timeline status follows the concrete run bound to a scheduled slot",
   assert.equal(entries[0]?.run?.id, "run_failed");
 });
 
-test("fetch run stats use detailed post tasks before aggregate run counters", () => {
+test("completed fetch outcomes outrank a later runtime timeout", () => {
+  const timedOutJob: AgentJobRunListItem = {
+    id: "job_timed_out",
+    jobType: "library-fetch",
+    trigger: "scheduled",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-timed-out",
+    expectedAt: "2026-06-20T15:31:02.000Z",
+    startedAt: "2026-06-20T15:31:33.000Z",
+    heartbeatAt: "2026-06-20T16:21:39.000Z",
+    finishedAt: "2026-06-20T16:21:39.000Z",
+    status: "timed_out",
+    exitCode: null,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 7100,
+    workerPid: 7100,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    stage: "runtime",
+    summary: "Runtime timed out.",
+    details: {
+      reason: "timeout_seconds_for_job",
+      timeoutStage: "runtime",
+      timeoutSeconds: 2880,
+      progress: {
+        stage: "reconciled",
+        counters: {
+          sourcesChecked: 6,
+          sourcesTotal: 6,
+          tasksPlanned: 1,
+          tasksDone: 1,
+          synced: 1,
+          skipped: 0,
+          failed: 0,
+          actionNeeded: 0,
+        },
+      },
+    },
+    updatedAt: "2026-06-20T16:21:39.000Z",
+  };
+  const completedRun: LibraryFetchRunListItem = {
+    id: "run_completed",
+    startedAt: "2026-06-20T15:31:47.759Z",
+    finishedAt: "2026-06-20T15:32:00.978Z",
+    durationMs: 13_219,
+    status: "ok",
+    source: "cron",
+    jobRunId: timedOutJob.instanceId,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 6,
+    itemsFetched: 0,
+    tasksGenerated: 0,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 0 new posts from 6 sources",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:product_hunt:workclaw", title: "#1 WorkClaw", status: "synced" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [timedOutJob],
+    runs: [completedRun],
+    slots: [
+      {
+        expectedAt: "2026-06-20T15:31:02.000Z",
+        windowEnd: "2026-06-20T16:31:02.000Z",
+        status: "failed",
+        run: completedRun,
+        jobRun: timedOutJob,
+      },
+    ],
+    nowMs: Date.parse("2026-06-20T16:30:00.000Z"),
+  });
+
+  assert.equal(entries[0]?.status, "ok");
+  assert.equal(entries[0]?.syncSummary, "1/1 saved");
+
+  const displayState = fetchRunDisplayState({
+    completedOutcomes: true,
+    inflight: false,
+    jobRun: timedOutJob,
+    runStatus: completedRun.status,
+  });
+  assert.equal(displayState.displayStatus.label, "Succeeded");
+  assert.equal(displayState.completedInterruptedLabel, "Timed out");
+});
+
+test("partial checkpoint outcomes keep the expanded planned count visible", () => {
+  const timedOutJob: AgentJobRunListItem = {
+    id: "job_timed_out_partial",
+    jobType: "library-fetch",
+    trigger: "scheduled",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-timed-out-partial",
+    expectedAt: "2026-06-20T15:31:02.000Z",
+    startedAt: "2026-06-20T15:31:33.000Z",
+    heartbeatAt: "2026-06-20T16:21:39.000Z",
+    finishedAt: "2026-06-20T16:21:39.000Z",
+    status: "timed_out",
+    exitCode: null,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 7100,
+    workerPid: 7100,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    stage: "runtime",
+    summary: "Runtime timed out.",
+    details: {
+      reason: "timeout_seconds_for_job",
+      progress: {
+        stage: "workers_running",
+        counters: {
+          sourcesChecked: 6,
+          sourcesTotal: 6,
+          tasksPlanned: 3,
+          tasksDone: 1,
+          synced: 1,
+          skipped: 0,
+          failed: 0,
+          actionNeeded: 0,
+        },
+      },
+    },
+    updatedAt: "2026-06-20T16:21:39.000Z",
+  };
+  const run: LibraryFetchRunListItem = {
+    id: "run_partial_checkpoint",
+    startedAt: "2026-06-20T15:31:47.759Z",
+    finishedAt: "2026-06-20T15:32:00.978Z",
+    durationMs: 13_219,
+    status: "ok",
+    source: "cron",
+    jobRunId: timedOutJob.instanceId,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 6,
+    itemsFetched: 0,
+    tasksGenerated: 0,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 0 new posts from 6 sources",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:product_hunt:workclaw", title: "#1 WorkClaw", status: "synced" },
+        { id: "fetch_post:product_hunt:reframe", title: "#2 Reframe", status: "pending" },
+        { id: "fetch_post:product_hunt:slack", title: "#3 Slackbot's MCP Client", status: "pending" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [timedOutJob],
+    runs: [run],
+    slots: [
+      {
+        expectedAt: "2026-06-20T15:31:02.000Z",
+        windowEnd: "2026-06-20T16:31:02.000Z",
+        status: "failed",
+        run,
+        jobRun: timedOutJob,
+      },
+    ],
+    nowMs: Date.parse("2026-06-20T16:30:00.000Z"),
+  });
+
+  assert.equal(entries[0]?.status, "failed");
+  assert.equal(entries[0]?.syncSummary, "1/3 saved");
+});
+
+test("fetch run stats keep the highest planned post count across details and live counters", () => {
   const run: LibraryFetchRunListItem = {
     id: "run_product_hunt",
     startedAt: "2026-06-20T13:31:00.000Z",
@@ -355,7 +533,7 @@ test("fetch run stats use detailed post tasks before aggregate run counters", ()
     run,
   });
 
-  assert.equal(stats.planned, 3);
+  assert.equal(stats.planned, 4);
   assert.equal(stats.read, 3);
   assert.equal(stats.summarized, 3);
   assert.equal(stats.synced, 3);

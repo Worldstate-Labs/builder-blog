@@ -1163,6 +1163,7 @@ sync_payload_slices() {
   _sps_payload_file="$2"
   _sps_slices_dir="$3"
   _sps_label="${4:-library result}"
+  _sps_sync_args="${5:-}"
 
   node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
     --tasks "$_sps_tasks_file" \
@@ -1180,7 +1181,8 @@ sync_payload_slices() {
     set +e
     node "$AGENT_DIR/builder-digest.mjs" sync-builders \
       --file "$_slice_payload" \
-      --tasks "$_slice_tasks" > "$_slice_stdout" 2> "$_slice_stderr"
+      --tasks "$_slice_tasks" \
+      $_sps_sync_args > "$_slice_stdout" 2> "$_slice_stderr"
     _slice_code="$?"
     set -e
     [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
@@ -1203,7 +1205,8 @@ sync_payload_slices() {
     set +e
     node "$AGENT_DIR/builder-digest.mjs" sync-builders \
       --file "$_failed_payload" \
-      --tasks "$_slice_tasks" > "$_failed_stdout" 2> "$_failed_stderr"
+      --tasks "$_slice_tasks" \
+      $_sps_sync_args > "$_failed_stdout" 2> "$_failed_stderr"
     _failed_code="$?"
     set -e
     [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
@@ -1258,7 +1261,7 @@ sync_completed_checkpoints() {
     return 0
   fi
 
-  if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint"; then
+  if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint" "--partial-outcomes"; then
     cat "$_scc_ids" >> "$_scc_synced_ids_file"
     sort -u "$_scc_synced_ids_file" > "$_scc_synced_ids_file.tmp"
     mv "$_scc_synced_ids_file.tmp" "$_scc_synced_ids_file"
@@ -1296,6 +1299,9 @@ run_sharded_library() {
       echo "Discovery pre-pass failed; un-expanded discovery entries will be left out of post-task sync." >&2
     fi
   fi
+
+  node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+    --tasks "$_result_file" || true
 
   node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
     --tasks "$_result_file" \

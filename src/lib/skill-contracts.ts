@@ -17,6 +17,8 @@ const MAX_DIGEST_HEADLINE_SUMMARY = 1200;
 const MAX_ITEMS_PER_BUILDER = 500;
 const MAX_BUILDERS_PER_SYNC = 50;
 const MAX_DIGEST_ITEMS = 5_000;
+export const MAX_FETCH_TASK_ID = 500;
+const MAX_TASK_OUTCOMES = 500;
 
 export const SkillFeedItemSchema = z.object({
   kind: z.enum(FeedItemKind),
@@ -50,7 +52,7 @@ export const SkillBuilderSchema = z.object({
 // (e.g. { meanVolumeDb: -91, hasCaptions: false }); the validator requires it
 // for status="skipped" so an agent can't skip many tasks on one assumption.
 export const SkillTaskOutcomeSchema = z.object({
-  fetchTaskId: z.string().min(1).max(200),
+  fetchTaskId: z.string().min(1).max(MAX_FETCH_TASK_ID),
   status: z.enum(["skipped", "failed", "blocked"]),
   reason: z.string().min(1).max(400),
   evidence: z.record(z.string(), z.unknown()).optional(),
@@ -58,7 +60,9 @@ export const SkillTaskOutcomeSchema = z.object({
   externalId: z.string().max(MAX_EXTERNAL_ID).nullable().optional(),
 });
 
-const MAX_TASK_OUTCOMES = 500;
+export const SkillFetchRunPlannedTaskSchema = z.object({
+  id: z.string().min(1).max(MAX_FETCH_TASK_ID),
+}).passthrough();
 
 export const SkillBuilderSyncSchema = z.object({
   force: z.boolean().default(false),
@@ -66,6 +70,10 @@ export const SkillBuilderSyncSchema = z.object({
   builders: z.array(SkillBuilderSchema).min(1).max(MAX_BUILDERS_PER_SYNC),
   // Per-task outcomes for tasks not synced as items (skipped / failed / blocked).
   taskOutcomes: z.array(SkillTaskOutcomeSchema).max(MAX_TASK_OUTCOMES).default([]),
+  fetchRun: z.object({
+    id: z.string().min(1).max(64),
+    plannedTasks: z.array(SkillFetchRunPlannedTaskSchema).max(MAX_TASK_OUTCOMES).default([]),
+  }).nullable().optional(),
 });
 
 // Canonical content identity of a post presented to a digest (matches the

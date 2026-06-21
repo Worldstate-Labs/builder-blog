@@ -7,6 +7,7 @@ import { formatZodError } from "@/lib/zod-error";
 
 const MAX_DETAILS_BYTES = 50_000;
 const MAX_SUMMARY_CHARS = 500;
+const TERMINAL_AGENT_JOB_STATUSES = new Set(["succeeded", "failed", "timed_out", "killed", "replaced", "stale"]);
 
 const AgentJobRunSchema = z.object({
   jobType: z.enum(["library-fetch", "digest-build"]),
@@ -52,6 +53,44 @@ function mergeAgentJobRunDetails(
   return merged;
 }
 
+function isTerminalAgentJobStatus(status: unknown): boolean {
+  return typeof status === "string" && TERMINAL_AGENT_JOB_STATUSES.has(status);
+}
+
+function mergeAgentJobRunLifecycle<
+  T extends {
+    status: string;
+    finishedAt: Date | null;
+    exitCode: number | null;
+    signal: string | null;
+    stage: string | null;
+    summary: string | null;
+  },
+>(
+  existingRun: {
+    status: string;
+    finishedAt: Date | null;
+    exitCode: number | null;
+    signal: string | null;
+    stage: string | null;
+    summary: string | null;
+  },
+  incoming: T,
+): T {
+  if (existingRun && isTerminalAgentJobStatus(existingRun.status)) {
+    return {
+      ...incoming,
+      status: existingRun.status,
+      finishedAt: existingRun.finishedAt ?? incoming.finishedAt,
+      exitCode: existingRun.exitCode ?? incoming.exitCode,
+      signal: existingRun.signal ?? incoming.signal,
+      stage: existingRun.stage ?? incoming.stage,
+      summary: existingRun.summary ?? incoming.summary,
+    };
+  }
+  return incoming;
+}
+
 export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
   if (!user) {
@@ -78,7 +117,7 @@ export async function POST(request: Request) {
       jobType: parsed.data.jobType,
       instanceId: parsed.data.instanceId,
     },
-    select: { id: true, details: true },
+    select: { id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true },
   });
   const detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
   let detailsJson = "";
@@ -93,7 +132,7 @@ export async function POST(request: Request) {
 
   const now = new Date();
   const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
-  const runData = {
+  const incomingRunData = {
     status: parsed.data.status,
     scheduleJob: parsed.data.scheduleJob ?? null,
     expectedAt: parsed.data.expectedAt ? new Date(parsed.data.expectedAt) : null,
@@ -110,6 +149,9 @@ export async function POST(request: Request) {
     summary: parsed.data.summary ?? null,
     details: detailsValue as object,
   };
+  const runData = existingRun && isTerminalAgentJobStatus(existingRun.status)
+    ? mergeAgentJobRunLifecycle(existingRun, incomingRunData)
+    : incomingRunData;
 
   const record = existingRun
     ? await prisma.agentJobRun.update({

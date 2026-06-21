@@ -56,6 +56,9 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   );
   assert.match(route, /agentJobRun\.findFirst/);
   assert.match(route, /userId: user\.id,[\s\S]*jobType: parsed\.data\.jobType,[\s\S]*instanceId: parsed\.data\.instanceId/);
+  assert.match(route, /mergeAgentJobRunLifecycle/);
+  assert.match(route, /isTerminalAgentJobStatus/);
+  assert.match(route, /select: \{ id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true \}/);
   assert.match(route, /agentJobRun\.update/);
   assert.match(route, /agentJobRun\.create/);
   assert.doesNotMatch(route, /userId_instanceId/);
@@ -65,6 +68,17 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /job-run-update/);
   assert.match(cli, /\/api\/skill\/job-runs/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
+});
+
+test("terminal agent job runs cannot be regressed by late runtime updates", () => {
+  const route = source("src/app/api/skill/job-runs/route.ts");
+
+  assert.match(route, /TERMINAL_AGENT_JOB_STATUSES/);
+  assert.match(route, /existingRun && isTerminalAgentJobStatus\(existingRun\.status\)/);
+  assert.match(route, /status: existingRun\.status/);
+  assert.match(route, /finishedAt: existingRun\.finishedAt/);
+  assert.match(route, /exitCode: existingRun\.exitCode/);
+  assert.match(route, /signal: existingRun\.signal/);
 });
 
 test("library fetch job runs carry bounded live progress without schema churn", () => {
@@ -97,7 +111,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /checkpoint-progress/);
   assert.match(cli, /stage: "scanning_sources"/);
   assert.match(cli, /stage: "tasks_planned"/);
-  assert.match(cli, /stage: "syncing"/);
+  assert.match(cli, /stage: partialOutcomes \? "checkpoint_syncing" : "syncing"/);
   assert.match(cli, /stage: "reconciled"/);
   assert.match(cli, /type: "source_checked"/);
   assert.match(cli, /type: "task_completed"/);

@@ -440,6 +440,112 @@ test("candidate discovery results expand into Product Hunt per-product fetch tas
   assert.equal(expanded.fetchTasks[0].item.rawJson.discoveryFetchTaskId, discoveryTask.id);
 });
 
+test("expanded fetch results expose canonical planned post tasks for fetch logs", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const planned = cli.fetchRunPlannedTaskPatches({
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "candidate_discovery:product-hunt",
+        type: "candidate_discovery",
+        agentWorkType: "candidate_discovery_fallback",
+        sourceType: "product_hunt_top_products",
+        builderId: "builder_product_hunt_top_products",
+      },
+      {
+        id: "fetch_post:product-hunt:workclaw",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        builder: "Product Hunt Top Products",
+        builderId: "builder_product_hunt_top_products",
+        sourceType: "product_hunt_top_products",
+        item: { title: "#1 WorkClaw", url: "https://www.producthunt.com/products/workclaw" },
+      },
+      {
+        id: "fetch_post:blog:ready",
+        agentWorkType: "fetch_post",
+        contentStatus: "ready",
+        builder: "Engineering",
+        builderId: "builder_blog",
+        sourceType: "blog",
+        item: { title: "Ready post", url: "https://example.com/ready", body: "Already fetched." },
+      },
+      {
+        id: "fetch_post:x:token",
+        agentWorkType: "x_token_missing",
+        contentStatus: "requires_agent",
+        builder: "X",
+        builderId: "builder_x",
+        sourceType: "x",
+        item: { title: "Needs token", url: "https://x.com/example/status/1" },
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    planned.map((task: { id: string; status: string }) => [task.id, task.status]),
+    [
+      ["fetch_post:product-hunt:workclaw", "pending"],
+      ["fetch_post:blog:ready", "fetched"],
+      ["fetch_post:x:token", "action_needed"],
+    ],
+  );
+  assert.equal(
+    planned.some((task: { id: string }) => task.id.startsWith("candidate_discovery:")),
+    false,
+  );
+});
+
+test("sync payload can carry a durable fetch-run plan patch", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchRun = cli.buildFetchRunSyncPatch("fetch_run_1", [
+    {
+      id: "candidate_discovery:product-hunt",
+      agentWorkType: "candidate_discovery_fallback",
+      builderId: "builder_product_hunt_top_products",
+    },
+    {
+      id: "fetch_post:product-hunt:workclaw",
+      agentWorkType: "fetch_post",
+      contentStatus: "ready",
+      builder: "Product Hunt Top Products",
+      builderId: "builder_product_hunt_top_products",
+      sourceType: "product_hunt_top_products",
+      item: { title: "#1 WorkClaw", url: "https://www.producthunt.com/products/workclaw" },
+    },
+  ]);
+
+  assert.ok(fetchRun);
+  assert.equal(fetchRun.id, "fetch_run_1");
+  assert.equal(fetchRun.plannedTasks.length, 1);
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "id",
+        "builder",
+        "builderId",
+        "sourceType",
+        "title",
+        "url",
+        "status",
+        "contentStatus",
+        "agentWorkType",
+      ].map((key) => [key, fetchRun.plannedTasks[0][key]]),
+    ),
+    {
+      id: "fetch_post:product-hunt:workclaw",
+      builder: "Product Hunt Top Products",
+      builderId: "builder_product_hunt_top_products",
+      sourceType: "product_hunt_top_products",
+      title: "#1 WorkClaw",
+      url: "https://www.producthunt.com/products/workclaw",
+      status: "fetched",
+      contentStatus: "ready",
+      agentWorkType: "fetch_post",
+    },
+  );
+});
+
 test("blocked candidate discovery becomes an outcome, not an expanded fetch task", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const discoveryTask = {
@@ -2442,6 +2548,39 @@ test("candidate discovery outcomes do not count as post task progress", async ()
     progress.completedTaskIds,
     ["fetch_post:product-hunt:1", "fetch_post:product-hunt:2", "fetch_post:product-hunt:3"],
   );
+});
+
+test("partial task outcome progress does not shrink the canonical planned count", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const progress = {
+    version: 1,
+    stage: "workers_running",
+    counters: {
+      sourcesTotal: 6,
+      sourcesChecked: 6,
+      tasksPlanned: 3,
+      tasksDone: 0,
+      synced: 0,
+      skipped: 0,
+      failed: 0,
+      actionNeeded: 0,
+    },
+    current: {},
+    sources: [],
+    tasks: [],
+    recentEvents: [],
+    completedTaskIds: [],
+  };
+
+  cli.applyFetchProgressTaskOutcomes(
+    progress,
+    [{ fetchTaskId: "fetch_post:product-hunt:workclaw", status: "synced" }],
+    ["fetch_post:product-hunt:workclaw"],
+  );
+
+  assert.equal(progress.counters.tasksPlanned, 3);
+  assert.equal(progress.counters.tasksDone, 1);
+  assert.equal(progress.counters.synced, 1);
 });
 
 test("split-sync-slices isolates synced items and outcomes by source", async () => {
