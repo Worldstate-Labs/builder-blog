@@ -523,10 +523,18 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
   assert.doesNotMatch(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, job\)/);
   assert.match(skillJobRoute, /buildOpenClawSetupBootstrap/);
-  assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
-  assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
-  assert.match(skillJobRoute, /nohup openclaw agent --local --agent/);
-  assert.match(skillJobRoute, /--timeout[\s\S]*OPENCLAW_SETUP_TIMEOUT_SECONDS/);
+  assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
+  assert.match(skillJobRoute, /!openClawSetupChild/);
+  assert.match(skillJobRoute, /withSearchParam\(request\.url, "openclaw_setup_child", "1"\)/);
+  assert.match(skillJobRoute, /OPENCLAW_CHILD_SETUP_PROMPT_URL/);
+  assert.match(skillJobRoute, /openclaw cron add/);
+  assert.match(skillJobRoute, /--session isolated/);
+  assert.match(skillJobRoute, /--light-context/);
+  assert.match(skillJobRoute, /--timeout-seconds \\"\$OPENCLAW_SETUP_TIMEOUT_SECONDS\\"/);
+  assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
+  assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
+  assert.doesNotMatch(skillJobRoute, /nohup openclaw agent/);
   assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*exchangeBlock[\s\S]*content/);
   assert.doesNotMatch(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
   // macOS scheduling uses a launchd LaunchAgent (keychain access). It runs a
@@ -1128,10 +1136,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
   assert.match(runner, /codex exec --skip-git-repo-check/);
   assert.match(runner, /claude -p/);
-  // openclaw 2026.5.20+ requires a session selector, so the runner passes
-  // `--agent` between `--local` and `--message`.
-  assert.match(runner, /openclaw agent --local --agent .* --timeout .* --message/);
-  assert.match(runner, /openclaw agent --local --agent .* --timeout "\$_openclaw_timeout" --message/);
+  // openclaw 2026.5.20+ requires a session selector. Interactive runs may use
+  // `--agent`, but unattended scheduled jobs use an isolated deterministic
+  // session by default so they don't inherit the huge interactive main session.
+  assert.match(runner, /openclaw_default_session_id\(\)/);
+  assert.match(runner, /_openclaw_session_id="\$\{OPENCLAW_SESSION_ID:-\$\(openclaw_default_session_id\)\}"/);
+  assert.match(runner, /openclaw agent --local --session-id "\$_openclaw_session_id" --timeout "\$_openclaw_timeout" --message/);
+  assert.doesNotMatch(runner, /openclaw agent --local --agent .* --timeout .* --message/);
   assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
   assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(runner, /openclaw config set agents\.defaults\.timeoutSeconds "\$_seconds" --strict-json/);

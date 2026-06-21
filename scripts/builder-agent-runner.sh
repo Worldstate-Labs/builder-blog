@@ -150,6 +150,11 @@ agent_output_file() {
   mktemp "$JOB_TMP_DIR/$_runtime-agent-output.XXXXXX"
 }
 
+openclaw_default_session_id() {
+  _suffix="${BUILDER_BLOG_JOB_RUN_ID:-$$}"
+  printf 'followbrief-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$_suffix" | tr -c 'a-zA-Z0-9_.@+-' '_'
+}
+
 # Unattended (cron / launchd) — each runtime gets the permission
 # allowlist or auto-approve mode appropriate for it. Mirror these in
 # the user-facing cron setup prompt (library-cron-setup.md) so users
@@ -209,17 +214,15 @@ run_with_openclaw_unattended() {
   # relocate that file, so it can't be scoped that way). So we don't touch
   # global policy at all. `agent` requires a session selector on 2026.5.20
   # (the bare `--local --message` form errors "Pass --to/--session-id/--agent");
-  # parallel workers can set OPENCLAW_SESSION_ID for isolated sessions, and the
-  # regular path otherwise uses the configured main agent.
+  # scheduled jobs use an isolated deterministic session by default instead of
+  # appending to the huge interactive `main` session; parallel workers can still
+  # set OPENCLAW_SESSION_ID when they need shard-specific sessions.
   _openclaw_timeout="${_timeout:-$(job_timeout_seconds)}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
+  _openclaw_session_id="${OPENCLAW_SESSION_ID:-$(openclaw_default_session_id)}"
   set +e
-  if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
-    openclaw agent --local --session-id "$OPENCLAW_SESSION_ID" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
-  else
-    openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
-  fi
+  openclaw agent --local --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
   _openclaw_code="$?"
   set -e
   cat "$_openclaw_output"

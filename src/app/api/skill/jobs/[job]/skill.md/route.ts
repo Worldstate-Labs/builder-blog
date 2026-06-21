@@ -48,56 +48,74 @@ function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+function withSearchParam(rawUrl: string, key: string, value: string): string {
+  const nextUrl = new URL(rawUrl);
+  nextUrl.searchParams.set(key, value);
+  return nextUrl.toString();
+}
+
 function buildOpenClawSetupBootstrap({
   email,
   job,
   setupPromptUrl,
+  childSetupPromptUrl,
   setupTimeoutSeconds,
 }: {
   email: string;
   job: string;
   setupPromptUrl: string;
+  childSetupPromptUrl: string;
   setupTimeoutSeconds: string;
 }): string {
   return [
-    "0. OpenClaw timeout bootstrap before token exchange.",
-    "Run this block first. If it prints `FOLLOWBRIEF_OPENCLAW_DETACHED=1`, stop",
-    "this current turn immediately and report the log path it printed. Do not run",
-    "the later steps in this current turn. The detached OpenClaw setup turn uses",
-    "the required timeout, exchanges the setup code, runs validation, and installs",
-    "the schedule only if validation passes. If it prints",
-    "`FOLLOWBRIEF_OPENCLAW_CONTINUE=1`, continue to the next numbered step.",
+    "0. Queue the OpenClaw setup validation as a durable one-shot job before token exchange.",
+    "Run this block first. If it prints `FOLLOWBRIEF_OPENCLAW_QUEUED=1`, stop",
+    "this current turn immediately and report the setup job name it printed. Do not run",
+    "the later steps in this current turn. The queued OpenClaw one-shot job is",
+    "owned by the OpenClaw Gateway, uses the required timeout, exchanges the setup",
+    "code, runs validation, and installs the schedule only if validation passes.",
+    "Do not replace this with `nohup` or another shell background process — OpenClaw",
+    "tool calls clean up background children when the tool turn ends.",
     "",
     "```bash",
-    "if [ \"${FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED:-0}\" != \"1\" ]; then",
-    `  SETUP_PROMPT_URL=${shellSingleQuote(setupPromptUrl)}`,
-    `  OPENCLAW_SETUP_TIMEOUT_SECONDS=${shellSingleQuote(setupTimeoutSeconds)}`,
-    `  FOLLOWBRIEF_SETUP_JOB=${shellSingleQuote(job)}`,
-    `  ACCT=${shellSingleQuote(email)}`,
-    "  AGENT_DIR=\"${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}\"",
-    "  ACCOUNT_SLUG=\"$(printf '%s' \"$ACCT\" | tr -c 'a-zA-Z0-9' '_')\"",
-    "  SETUP_TMP_DIR=\"$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$FOLLOWBRIEF_SETUP_JOB-openclaw\"",
-    "  mkdir -p \"$SETUP_TMP_DIR\" \"$AGENT_DIR/logs\"",
-    "  PROMPT_COPY=\"$SETUP_TMP_DIR/prompt.md\"",
-    "  LOG_FILE=\"$AGENT_DIR/logs/openclaw-$FOLLOWBRIEF_SETUP_JOB-$(date -u +%Y%m%dT%H%M%SZ).log\"",
-    "  curl -fsSL \"$SETUP_PROMPT_URL\" -o \"$PROMPT_COPY\"",
-    "  OPENCLAW_TIMEOUT_CURRENT=\"$(openclaw config get agents.defaults.timeoutSeconds 2>/dev/null || printf '0\\n')\"",
-    "  case \"$OPENCLAW_TIMEOUT_CURRENT\" in ''|*[!0-9]*) OPENCLAW_TIMEOUT_CURRENT=0 ;; esac",
-    "  if [ \"$OPENCLAW_TIMEOUT_CURRENT\" -lt \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" ]; then",
-    "    openclaw config set agents.defaults.timeoutSeconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" --strict-json >/dev/null 2>&1 || true",
-    "  fi",
-    "  FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED=1 nohup openclaw agent --local --agent \"${OPENCLAW_AGENT:-main}\" --timeout \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" --message \"$(cat \"$PROMPT_COPY\")\" > \"$LOG_FILE\" 2>&1 &",
-    "  DETACHED_PID=$!",
-    "  sleep 1",
-    "  if ! kill -0 \"$DETACHED_PID\" 2>/dev/null; then",
-    "    echo \"Detached OpenClaw setup failed to stay running. Log: $LOG_FILE\" >&2",
-    "    tail -80 \"$LOG_FILE\" >&2 2>/dev/null || true",
-    "    exit 1",
-    "  fi",
-    "  echo \"FOLLOWBRIEF_OPENCLAW_DETACHED=1 pid=$DETACHED_PID log=$LOG_FILE\"",
-    "  exit 0",
+    `SETUP_PROMPT_URL=${shellSingleQuote(setupPromptUrl)}`,
+    `OPENCLAW_CHILD_SETUP_PROMPT_URL=${shellSingleQuote(childSetupPromptUrl)}`,
+    `OPENCLAW_SETUP_TIMEOUT_SECONDS=${shellSingleQuote(setupTimeoutSeconds)}`,
+    `FOLLOWBRIEF_SETUP_JOB=${shellSingleQuote(job)}`,
+    `ACCT=${shellSingleQuote(email)}`,
+    "AGENT_DIR=\"${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}\"",
+    "ACCOUNT_SLUG=\"$(printf '%s' \"$ACCT\" | tr -c 'a-zA-Z0-9' '_')\"",
+    "SETUP_TMP_DIR=\"$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$FOLLOWBRIEF_SETUP_JOB-openclaw\"",
+    "mkdir -p \"$SETUP_TMP_DIR\" \"$AGENT_DIR/logs\"",
+    "PROMPT_COPY=\"$SETUP_TMP_DIR/prompt.md\"",
+    "CRON_ADD_OUTPUT=\"$SETUP_TMP_DIR/openclaw-cron-add-output.txt\"",
+    "SETUP_ID=\"$(printf 'followbrief-%s-%s-%s' \"$ACCOUNT_SLUG\" \"$FOLLOWBRIEF_SETUP_JOB\" \"$(date -u +%Y%m%dT%H%M%SZ)\" | tr -c 'a-zA-Z0-9_.@+-' '_')\"",
+    "RUN_AT=\"$(node -e 'console.log(new Date(Date.now()+30000).toISOString())')\"",
+    "curl -fsSL \"$OPENCLAW_CHILD_SETUP_PROMPT_URL\" -o \"$PROMPT_COPY\"",
+    "OPENCLAW_TIMEOUT_CURRENT=\"$(openclaw config get agents.defaults.timeoutSeconds 2>/dev/null || printf '0\\n')\"",
+    "case \"$OPENCLAW_TIMEOUT_CURRENT\" in ''|*[!0-9]*) OPENCLAW_TIMEOUT_CURRENT=0 ;; esac",
+    "if [ \"$OPENCLAW_TIMEOUT_CURRENT\" -lt \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" ]; then",
+    "  openclaw config set agents.defaults.timeoutSeconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" --strict-json >/dev/null 2>&1 || true",
     "fi",
-    "echo \"FOLLOWBRIEF_OPENCLAW_CONTINUE=1\"",
+    "if ! openclaw cron add \\",
+    "  --name \"$SETUP_ID\" \\",
+    "  --at \"$RUN_AT\" \\",
+    "  --delete-after-run \\",
+    "  --agent \"${OPENCLAW_AGENT:-main}\" \\",
+    "  --session isolated \\",
+    "  --light-context \\",
+    "  --timeout-seconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" \\",
+    "  --announce \\",
+    "  --best-effort-deliver \\",
+    "  --message \"$(cat \"$PROMPT_COPY\")\" \\",
+    "  --json > \"$CRON_ADD_OUTPUT\" 2>&1; then",
+    "  echo \"OpenClaw durable setup job could not be queued.\" >&2",
+    "  cat \"$CRON_ADD_OUTPUT\" >&2",
+    "  exit 1",
+    "fi",
+    "cat \"$CRON_ADD_OUTPUT\"",
+    "echo \"FOLLOWBRIEF_OPENCLAW_QUEUED=1 name=$SETUP_ID run_at=$RUN_AT prompt=$PROMPT_COPY\"",
+    "exit 0",
     "```",
     "",
   ].join("\n");
@@ -197,6 +215,7 @@ export async function GET(request: Request, { params }: Params) {
 
   const url = new URL(request.url);
   const ecParam = url.searchParams.get("ec");
+  const openClawSetupChild = url.searchParams.get("openclaw_setup_child") === "1";
 
   // Reject any ec value that doesn't match the exchange-code format so it
   // can never carry shell metacharacters into the generated bash block.
@@ -405,11 +424,14 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     const openClawSetupBootstrap =
-      runtime === "openclaw" && (job === "library-cron-setup" || job === "digest-cron-setup")
+      runtime === "openclaw" &&
+      !openClawSetupChild &&
+      (job === "library-cron-setup" || job === "digest-cron-setup")
         ? buildOpenClawSetupBootstrap({
             email,
             job,
             setupPromptUrl: request.url,
+            childSetupPromptUrl: withSearchParam(request.url, "openclaw_setup_child", "1"),
             setupTimeoutSeconds: openClawSetupTimeoutSeconds,
           })
         : "";
@@ -430,8 +452,8 @@ export async function GET(request: Request, { params }: Params) {
     ].join("\n");
 
     // Insert before the first heading or content. The OpenClaw bootstrap must
-    // come before token exchange so the parent turn does not consume the
-    // one-time code before it starts the long-timeout detached setup turn.
+    // come before token exchange so the parent turn queues the long-timeout
+    // one-shot setup job without consuming the one-time code itself.
     content = openClawSetupBootstrap
       ? `${openClawSetupBootstrap}\n${exchangeBlock}\n${content}`
       : `${exchangeBlock}\n${content}`;
