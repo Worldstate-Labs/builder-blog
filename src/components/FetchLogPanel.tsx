@@ -524,7 +524,7 @@ type FetchLogRef =
   | { kind: "run"; runId: string }
   | { kind: "job"; instanceId: string };
 
-type FetchTimelineEntry = {
+export type FetchTimelineEntry = {
   key: string;
   time: string;
   status: CronSlotStatus;
@@ -551,6 +551,12 @@ type FetchUpdateStatus = {
   summary: string;
   style: ReturnType<typeof statusStyle>;
 };
+
+export function fetchCronFrequencyLabel(cronJob: LibraryCronJobStatus | null): string {
+  if (!cronJob) return "Not scheduled";
+  if (cronJob.status !== "active") return "Stopped";
+  return cronJob.frequencyLabel || "Scheduled";
+}
 
 function slotDomId(slot: CronSlot): string {
   return `fetch-slot-${Date.parse(slot.expectedAt)}`;
@@ -878,6 +884,40 @@ export function buildFetchTimeline({
   return entries.sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
 }
 
+export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpdateStatus {
+  const latestLogEntry = entries
+    .slice()
+    .reverse()
+    .find((entry) => Boolean(entry.logRef));
+
+  if (!latestLogEntry) {
+    return {
+      key: "waiting",
+      label: "Idle",
+      summary: "No Fetch sources job has started yet.",
+      style: statusStyle("partial"),
+    };
+  }
+
+  const failed = latestLogEntry.status === "failed" ||
+    latestLogEntry.status === "missed" ||
+    latestLogEntry.status === "stalled";
+  const running = latestLogEntry.status === "running";
+  const label = latestLogEntry.jobRun
+    ? jobRunStatusLabel(latestLogEntry.jobRun)
+    : scheduledWindowStatusLabel(latestLogEntry.status);
+  const runKind = latestLogEntry.label.toLowerCase();
+
+  return {
+    key: failed ? "needs-attention" : running ? "syncing" : latestLogEntry.status === "ok" ? "healthy" : "waiting",
+    label,
+    summary: running
+      ? `The latest ${runKind} Fetch sources job is running.`
+      : `The latest ${runKind} Fetch sources job is ${label.toLowerCase()}.`,
+    style: statusStyle(failed ? "failed" : latestLogEntry.status === "ok" ? "ok" : "partial"),
+  };
+}
+
 export function FetchLogPanel({
   initialRuns,
   initialCronRuns,
@@ -920,9 +960,9 @@ export function FetchLogPanel({
     [cronStatus.slots, jobRuns, runs],
   );
   const dialogRuns = useMemo(() => mergeFetchRunLists(runs, cronRuns), [runs, cronRuns]);
-  const updateStatus = useMemo(
-    () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs, jobRuns),
-    [cronJob, cronStatus.slots, runs, jobRuns],
+  const activityStatus = useMemo(
+    () => getFetchActivityStatus(timelineEntries),
+    [timelineEntries],
   );
   const actionsNode = actions ? (
     <div className="digest-updates-actions">
@@ -1125,7 +1165,7 @@ export function FetchLogPanel({
             detailsOpen={detailsOpen}
             latestRun={runs[0] ?? null}
             onToggleDetails={() => setDetailsOpen((value) => !value)}
-            status={updateStatus}
+            status={activityStatus}
             summaryLanguage={summaryLanguage}
             hydrated={hydrated}
           />
@@ -1337,7 +1377,7 @@ function SourceFetchMetaGrid({
     <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Fetch sources details">
       <SourceFetchMetaItem
         label="Fetch frequency"
-        value={cronJob?.frequencyLabel ?? "Not scheduled"}
+        value={fetchCronFrequencyLabel(cronJob)}
       />
       <SourceFetchMetaItem
         label="Language"

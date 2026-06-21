@@ -198,6 +198,31 @@ test("digest status control reports the latest active job instead of the waiting
   assert.equal(status.label, "Running");
 });
 
+test("digest status control reports the latest failed job instead of idle", () => {
+  const failedAt = new Date().toISOString();
+  const setupJobRun = {
+    ...runningDigestJobRun(),
+    trigger: "one_time",
+    instanceId: "digest-setup-failed",
+    expectedAt: null,
+    heartbeatAt: failedAt,
+    startedAt: failedAt,
+    finishedAt: failedAt,
+    status: "failed",
+    updatedAt: failedAt,
+  };
+  const entries = buildDigestTimeline({
+    jobRuns: [setupJobRun],
+    runs: [],
+    slots: [waitingDigestSlot()],
+    nowMs: Date.now(),
+  });
+  const status = getDigestActivityStatus(entries);
+
+  assert.equal(status.key, "needs-attention");
+  assert.equal(status.label, "Failed");
+});
+
 test("digest status control stays idle when only the next scheduled slot is waiting", () => {
   const entries = buildDigestTimeline({
     jobRuns: [],

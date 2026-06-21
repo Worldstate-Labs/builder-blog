@@ -80,6 +80,7 @@ function formatDay(iso: string): string {
 const VISIBLE_SOURCE_LIMIT = 4;
 const VISIBLE_CANDIDATE_LIMIT = 4;
 const DIGEST_TIMELINE_LIMIT = 12;
+const LIVE_LOG_STALL_GRACE_MS = 10_000;
 
 type StatusTone = "ok" | "partial" | "failed" | "muted";
 
@@ -93,9 +94,9 @@ function digestStatusTone(status: DigestUpdateStatus): StatusTone {
   return "partial";
 }
 
-function jobRunStatusTone(jobRun: AgentJobRunListItem): StatusTone {
+function jobRunStatusTone(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGraceUntilMs = 0): StatusTone {
   if (jobRun.status === "succeeded") return "ok";
-  if (isStalledDigestJobRun(jobRun)) return "failed";
+  if (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs)) return "failed";
   if (jobRun.status === "running" || jobRun.status === "starting") return "partial";
   return "failed";
 }
@@ -148,21 +149,22 @@ export type DigestLogPanelProps = {
   showStatusToggle?: boolean;
 };
 
-function digestJobRunSlotStatus(jobRun: AgentJobRunListItem, nowMs = Date.now()): CronSlotStatus {
+function digestJobRunSlotStatus(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGraceUntilMs = 0): CronSlotStatus {
   if (jobRun.status === "succeeded") return "ok";
-  if (isStalledDigestJobRun(jobRun, nowMs)) return "stalled";
+  if (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs)) return "stalled";
   if (isActiveDigestJobRun(jobRun)) return "running";
   return "failed";
 }
 
-function isStalledDigestJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
+function isStalledDigestJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGraceUntilMs = 0): boolean {
   if (!isActiveDigestJobRun(jobRun)) return false;
+  if (stallGraceUntilMs > nowMs) return false;
   const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);
   return Number.isFinite(heartbeatMs) && nowMs - heartbeatMs > 2 * 60_000;
 }
 
-function hasFailedDigestJob(jobRun?: AgentJobRunListItem | null): boolean {
-  return Boolean(jobRun && (isStalledDigestJobRun(jobRun) || !["starting", "running", "succeeded"].includes(jobRun.status)));
+function hasFailedDigestJob(jobRun?: AgentJobRunListItem | null, nowMs = Date.now(), stallGraceUntilMs = 0): boolean {
+  return Boolean(jobRun && (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs) || !["starting", "running", "succeeded"].includes(jobRun.status)));
 }
 
 function hasTerminalFailedDigestJob(jobRun?: AgentJobRunListItem | null): boolean {
@@ -198,31 +200,35 @@ function digestRunSyncSummary(run: DigestRunListItem | null): string | null {
 }
 
 export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestUpdateStatus {
-  const latestActiveEntry = entries
+  const latestLogEntry = entries
     .slice()
     .reverse()
-    .find((entry) =>
-      Boolean(entry.jobRun && (entry.status === "running" || entry.status === "stalled")),
-    );
+    .find((entry) => Boolean(entry.logRef));
 
-  if (!latestActiveEntry?.jobRun) {
+  if (!latestLogEntry) {
     return {
       key: "waiting",
       label: "Idle",
-      summary: "No AI Digest job is currently running.",
+      summary: "No AI Digest job has started yet.",
       style: statusStyle("partial"),
     };
   }
 
-  const stalled = latestActiveEntry.status === "stalled";
-  const runKind = latestActiveEntry.label.toLowerCase();
+  const failed = latestLogEntry.status === "failed" ||
+    latestLogEntry.status === "missed" ||
+    latestLogEntry.status === "stalled";
+  const running = latestLogEntry.status === "running";
+  const runKind = latestLogEntry.label.toLowerCase();
+  const label = latestLogEntry.jobRun
+    ? jobRunStatusLabel(latestLogEntry.jobRun)
+    : scheduledWindowStatusLabel(latestLogEntry.status);
   return {
-    key: stalled ? "needs-attention" : "building",
-    label: jobRunStatusLabel(latestActiveEntry.jobRun),
-    summary: stalled
-      ? `FollowBrief lost contact with the latest ${runKind} AI Digest job.`
-      : `The latest ${runKind} AI Digest job is running.`,
-    style: statusStyle(stalled ? "failed" : "partial"),
+    key: failed ? "needs-attention" : running ? "building" : latestLogEntry.status === "ok" ? "healthy" : "waiting",
+    label,
+    summary: running
+      ? `The latest ${runKind} AI Digest job is running.`
+      : `The latest ${runKind} AI Digest job is ${label.toLowerCase()}.`,
+    style: statusStyle(failed ? "failed" : latestLogEntry.status === "ok" ? "ok" : "partial"),
   };
 }
 
@@ -336,6 +342,7 @@ export function DigestLogPanel({
   const [, startTransition] = useTransition();
   const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<DigestLogRef | null>(null);
+  const [liveLogSuppressStalled, setLiveLogSuppressStalled] = useState(false);
   const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
   const cronStatus = useMemo(
     () => buildDigestCronStatus(cronJob, cronRuns, scheduledJobRuns),
@@ -380,14 +387,6 @@ export function DigestLogPanel({
     onStatusChange?.(activityStatus);
   }, [activityStatus, onStatusChange]);
 
-  const openLog = useCallback(
-    (logRef: DigestLogRef) => {
-      setDetailsOpen(true);
-      setSelectedLog(logRef);
-    },
-    [setDetailsOpen],
-  );
-
   const refresh = useCallback(() => {
     setError(null);
     startTransition(async () => {
@@ -423,6 +422,25 @@ export function DigestLogPanel({
       }
     });
   }, []);
+
+  const openLog = useCallback(
+    (logRef: DigestLogRef) => {
+      const jobRun = jobRunForLogRef(logRef, runsRef.current, jobRunsRef.current);
+      if (jobRun && isStalledDigestJobRun(jobRun)) {
+        setLiveLogSuppressStalled(true);
+        refresh();
+      }
+      setDetailsOpen(true);
+      setSelectedLog(logRef);
+    },
+    [refresh, setDetailsOpen],
+  );
+
+  useEffect(() => {
+    if (!liveLogSuppressStalled) return;
+    const id = window.setTimeout(() => setLiveLogSuppressStalled(false), LIVE_LOG_STALL_GRACE_MS);
+    return () => window.clearTimeout(id);
+  }, [liveLogSuppressStalled]);
 
   // Confirm against live data once on mount. initialRuns gives an instant first
   // paint, but the log's whole job is to show the run you just made, so a stale
@@ -556,6 +574,7 @@ export function DigestLogPanel({
         <DigestLogDialog
           jobRuns={jobRuns}
           logRef={selectedLog}
+          suppressStalled={liveLogSuppressStalled}
           onClose={() => setSelectedLog(null)}
           runs={runs}
         />
@@ -811,12 +830,23 @@ function jobRunByInstanceId(jobRuns: AgentJobRunListItem[]): Map<string, AgentJo
   return map;
 }
 
+function jobRunForLogRef(
+  logRef: DigestLogRef,
+  runs: DigestRunListItem[],
+  jobRuns: AgentJobRunListItem[],
+): AgentJobRunListItem | null {
+  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
+  if (logRef.kind === "job") return jobsByInstanceId.get(logRef.instanceId) ?? null;
+  const run = runs.find((candidate) => candidate.id === logRef.runId) ?? null;
+  return run?.jobRunId ? jobsByInstanceId.get(run.jobRunId) ?? null : null;
+}
+
 function jobRunLabel(jobRun: AgentJobRunListItem): string {
   return scheduledRunTriggerLabel(jobRun, "digest-cron");
 }
 
-function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
-  if (isStalledDigestJobRun(jobRun)) return "Stalled";
+function jobRunStatusLabel(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGraceUntilMs = 0): string {
+  if (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs)) return "Stalled";
   return scheduledJobRunStatusLabel(jobRun.status);
 }
 
@@ -843,8 +873,18 @@ function jobRunDetailNumber(jobRun: AgentJobRunListItem, key: string): number | 
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
+function isInternalDigestJobRunReason(value: string | null): boolean {
+  const normalized = value?.trim().toLowerCase().replace(/[_-]+/g, " ") ?? "";
+  return normalized === "heartbeat" || normalized === "runtime heartbeat";
+}
+
+function publicJobRunReason(jobRun: AgentJobRunListItem): string | null {
   const reason = jobRunDetailString(jobRun, "reason");
+  return isInternalDigestJobRunReason(reason) ? null : reason;
+}
+
+function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
+  const reason = publicJobRunReason(jobRun);
   const timeoutSeconds = jobRunDetailNumber(jobRun, "timeoutSeconds");
   const timeoutStage = jobRunDetailString(jobRun, "timeoutStage");
   if (jobRun.status === "timed_out") {
@@ -861,19 +901,20 @@ function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
 }
 
 function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
+  if (isActiveDigestJobRun(jobRun)) return null;
   if (jobRun.status === "succeeded") return null;
   const parts = [
     jobRunDetailNumber(jobRun, "timeoutSeconds")
       ? `timeout ${formatCount(jobRunDetailNumber(jobRun, "timeoutSeconds")!)} seconds`
       : null,
     jobRunDetailString(jobRun, "timeoutStage")?.replace(/[_-]+/g, " "),
-    jobRunDetailString(jobRun, "reason")?.replace(/[_-]+/g, " "),
+    publicJobRunReason(jobRun)?.replace(/[_-]+/g, " "),
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
 }
 
-function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
-  if (isStalledDigestJobRun(jobRun)) {
+function jobRunVerdict(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGraceUntilMs = 0): RunVerdict {
+  if (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs)) {
     return {
       tone: "fail",
       text: "Local Agent stopped reporting before the AI Digest was saved.",
@@ -897,8 +938,8 @@ function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
   };
 }
 
-function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem): RunVerdict {
-  if (hasFailedDigestJob(jobRun) && run.status === "synced") {
+function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem, nowMs = Date.now(), stallGraceUntilMs = 0): RunVerdict {
+  if (hasFailedDigestJob(jobRun, nowMs, stallGraceUntilMs) && run.status === "synced") {
     return {
       tone: "fail",
       text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} posts, but Local Agent marked the run failed. ${jobRunFailureReason(jobRun!)}`,
@@ -916,7 +957,7 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem):
       text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} eligible posts to FollowBrief.`,
     };
   }
-  if (hasFailedDigestJob(jobRun)) {
+  if (hasFailedDigestJob(jobRun, nowMs, stallGraceUntilMs)) {
     return {
       tone: "fail",
       text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before saving. ${jobRunFailureReason(jobRun!)}`,
@@ -935,27 +976,41 @@ function readableReason(value: string): string {
     .trim();
 }
 
+function jobRunDisplaySummary(jobRun: AgentJobRunListItem): string {
+  const summary = jobRun.summary?.trim() ?? "";
+  if (isActiveDigestJobRun(jobRun)) {
+    return /^runtime heartbeat\.?$/i.test(summary)
+      ? "Local Agent is working on this AI Digest."
+      : summary || "Local Agent is working on this AI Digest.";
+  }
+  return summary || "No AI Digest was saved for this run.";
+}
+
 function JobRunCard({
   jobRun,
   domId = jobRunDomId(jobRun.instanceId),
+  suppressStalled = false,
 }: {
   jobRun: AgentJobRunListItem;
   domId?: string | null;
+  suppressStalled?: boolean;
 }) {
   const hydrated = useHydrated();
-  const tone = jobRunStatusTone(jobRun);
+  const activeJob = isActiveDigestJobRun(jobRun);
+  const stallGraceUntilMs = suppressStalled ? Number.POSITIVE_INFINITY : 0;
+  const tone = jobRunStatusTone(jobRun, undefined, stallGraceUntilMs);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
-  const verdict = jobRunVerdict(jobRun);
-  const reason = jobRunDetailString(jobRun, "reason");
+  const verdict = jobRunVerdict(jobRun, undefined, stallGraceUntilMs);
+  const reason = publicJobRunReason(jobRun);
   const diagnostic = jobRunDiagnostic(jobRun);
-  const showRuntimeState = isActiveDigestJobRun(jobRun) || jobRun.status !== "succeeded";
-  const showFailureDetails = jobRun.status !== "succeeded" &&
+  const showRuntimeState = !activeJob && jobRun.status !== "succeeded" && Boolean(jobRun.stage);
+  const showFailureDetails = !activeJob && jobRun.status !== "succeeded" &&
     (Boolean(reason) || jobRun.exitCode !== null || Boolean(jobRun.signal) || Boolean(jobRun.stage));
   return (
     <article className="sync-panel-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
         <span className={`fb-chip ${toneClass(tone)}`}>
-          {jobRunStatusLabel(jobRun)}
+          {jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)}
         </span>
         <time
           className="sync-panel-run-card-time"
@@ -973,12 +1028,12 @@ function JobRunCard({
         ) : null}
       </header>
       <p className="sync-panel-run-card-summary">
-        {jobRun.summary || "No AI Digest was saved for this run."}
+        {jobRunDisplaySummary(jobRun)}
       </p>
       <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
         {verdict.text}
       </p>
-      <DigestLifecycle jobRun={jobRun} />
+      <DigestLifecycle jobRun={jobRun} suppressStalled={suppressStalled} />
       {showFailureDetails ? (
         <dl className="sync-panel-run-card-reason">
           {jobRun.stage ? (
@@ -1009,7 +1064,7 @@ function JobRunCard({
       ) : null}
       {showRuntimeState ? (
         <div className="mono sync-panel-run-card-stage">
-          {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
+          {readableReason(jobRun.stage!)} · {jobRun.finishedAt ? "finished" : "not completed"}
         </div>
       ) : null}
       {diagnostic ? (
@@ -1034,13 +1089,16 @@ type DigestLifecycleStep = {
 function DigestLifecycle({
   jobRun,
   run,
+  suppressStalled = false,
 }: {
   jobRun?: AgentJobRunListItem | null;
   run?: DigestRunListItem;
+  suppressStalled?: boolean;
 }) {
+  const stallGraceUntilMs = suppressStalled ? Number.POSITIVE_INFINITY : 0;
   const hasRun = Boolean(run);
   const synced = run?.status === "synced";
-  const failedJob = hasFailedDigestJob(jobRun);
+  const failedJob = hasFailedDigestJob(jobRun, undefined, stallGraceUntilMs);
   const digestSaved = synced && Boolean(run?.digestTitle);
   const emptySyncedRun = Boolean(synced && run?.candidateCount === 0);
   const activeJob = Boolean(jobRun && isActiveDigestJobRun(jobRun));
@@ -1055,7 +1113,7 @@ function DigestLifecycle({
           ? "Generating"
           : "No save reported"
     : jobRun
-      ? jobRunStatusLabel(jobRun)
+      ? jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
       : "Pending";
   const steps: DigestLifecycleStep[] = [
     {
@@ -1064,7 +1122,7 @@ function DigestLifecycle({
       outcome: run
         ? `${formatCount(run.candidateCount)} found from ${formatCount(run.contributingSourceCount)} sources`
         : jobRun
-          ? jobRunStatusLabel(jobRun)
+          ? jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
           : "Waiting for Local Agent",
       tone: hasRun ? "ok" : failedJob ? "fail" : jobRun ? "warn" : "idle",
     },
@@ -1115,8 +1173,8 @@ function DigestLifecycle({
   );
 }
 
-function statusChip(run: DigestRunListItem, jobRun?: AgentJobRunListItem): { label: string; tone: StatusTone } {
-  if (hasFailedDigestJob(jobRun)) {
+function statusChip(run: DigestRunListItem, jobRun?: AgentJobRunListItem, stallGraceUntilMs = 0): { label: string; tone: StatusTone } {
+  if (hasFailedDigestJob(jobRun, undefined, stallGraceUntilMs)) {
     return {
       label: "Failed",
       tone: "failed",
@@ -1144,15 +1202,18 @@ function RunCard({
   jobRun,
   run,
   domId = runDomId(run.id),
+  suppressStalled = false,
 }: {
   jobRun?: AgentJobRunListItem;
   run: DigestRunListItem;
   domId?: string | null;
+  suppressStalled?: boolean;
 }) {
   const hydrated = useHydrated();
+  const stallGraceUntilMs = suppressStalled ? Number.POSITIVE_INFINITY : 0;
   const stampIso = run.syncedAt ?? run.preparedAt;
   const timeLabel = hydrated ? formatRelative(stampIso) : formatAbsolute(stampIso);
-  const chip = statusChip(run, jobRun);
+  const chip = statusChip(run, jobRun, stallGraceUntilMs);
 
   const windowLabel = run.lookbackCutoff
     ? `${formatDay(run.lookbackCutoff)} → ${formatDay(run.preparedAt)}`
@@ -1164,7 +1225,7 @@ function RunCard({
   const contributing = run.sources.filter((s) => s.eligible > 0);
   const silentCount = run.subscriptionCount - contributing.length;
   const detailCount = run.candidates.length + contributing.length + Math.max(0, silentCount);
-  const verdict = digestRunVerdict(run, jobRun);
+  const verdict = digestRunVerdict(run, jobRun, undefined, stallGraceUntilMs);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [postsExpanded, setPostsExpanded] = useState(false);
   const visibleSources = sourcesExpanded ? contributing : contributing.slice(0, VISIBLE_SOURCE_LIMIT);
@@ -1196,7 +1257,7 @@ function RunCard({
       <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
         {verdict.text}
       </p>
-      <DigestLifecycle jobRun={jobRun} run={run} />
+      <DigestLifecycle jobRun={jobRun} run={run} suppressStalled={suppressStalled} />
 
       <div className="sync-panel-run-card-funnel">
         <FunnelStat value={run.candidateCount} label="found" />
@@ -1309,11 +1370,13 @@ function DigestLogDialog({
   logRef,
   onClose,
   runs,
+  suppressStalled = false,
 }: {
   jobRuns: AgentJobRunListItem[];
   logRef: DigestLogRef;
   onClose: () => void;
   runs: DigestRunListItem[];
+  suppressStalled?: boolean;
 }) {
   const jobsByInstanceId = jobRunByInstanceId(jobRuns);
   const run = logRef.kind === "run" ? runs.find((candidate) => candidate.id === logRef.runId) ?? null : null;
@@ -1341,9 +1404,9 @@ function DigestLogDialog({
         </header>
         <div className="sync-panel-log-dialog-body">
           {run ? (
-            <RunCard domId={null} jobRun={jobRun ?? undefined} run={run} />
+            <RunCard domId={null} jobRun={jobRun ?? undefined} run={run} suppressStalled={suppressStalled} />
           ) : jobRun ? (
-            <JobRunCard domId={null} jobRun={jobRun} />
+            <JobRunCard domId={null} jobRun={jobRun} suppressStalled={suppressStalled} />
           ) : (
             <EmptyState
               className="sync-panel-empty is-dashed"

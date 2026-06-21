@@ -2,16 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildFetchTimeline,
+  fetchCronFrequencyLabel,
   fetchRunDisplayState,
   fetchRunStats,
+  getFetchActivityStatus,
   getFetchUpdateStatus,
   type LibraryCronJobStatus,
   type LibraryFetchRunListItem,
 } from "../src/components/FetchLogPanel";
 import type { AgentJobRunListItem } from "../src/lib/agent-job-runs";
 
-test("one-time setup validation does not hide missed scheduled fetch windows", () => {
-  const cronJob: LibraryCronJobStatus = {
+function activeCronJob(): LibraryCronJobStatus {
+  return {
     id: "cron_1",
     status: "active",
     startedAt: "2026-06-18T12:00:00.000Z",
@@ -26,6 +28,47 @@ test("one-time setup validation does not hide missed scheduled fetch windows", (
     platform: "darwin",
     updatedAt: "2026-06-18T12:00:00.000Z",
   };
+}
+
+function waitingFetchSlot() {
+  return {
+    expectedAt: "2026-06-18T17:00:00.000Z",
+    windowEnd: "2026-06-18T18:00:00.000Z",
+    status: "waiting" as const,
+    run: null,
+    jobRun: null,
+  };
+}
+
+function runningFetchJobRun(): AgentJobRunListItem {
+  const now = new Date().toISOString();
+  return {
+    id: "job_1",
+    jobType: "library-fetch",
+    trigger: "one_time",
+    scheduleJob: "library-cron",
+    instanceId: "fetch-setup",
+    expectedAt: null,
+    startedAt: now,
+    heartbeatAt: now,
+    finishedAt: null,
+    status: "running",
+    exitCode: null,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 123,
+    workerPid: 123,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    stage: "runtime_agent_started",
+    summary: "Runtime heartbeat.",
+    details: {},
+    updatedAt: now,
+  };
+}
+
+test("one-time setup validation does not hide missed scheduled fetch windows", () => {
+  const cronJob = activeCronJob();
   const missedSlot = {
     expectedAt: "2026-06-18T15:00:00.000Z",
     windowEnd: "2026-06-18T16:00:00.000Z",
@@ -81,6 +124,55 @@ test("one-time setup validation does not hide missed scheduled fetch windows", (
   assert.equal(status.key, "needs-attention");
   assert.equal(status.label, "Needs attention");
   assert.match(status.summary, /No Fetch sources run started/);
+});
+
+test("fetch status control reports the latest failed job instead of idle", () => {
+  const failedAt = new Date().toISOString();
+  const setupJob = {
+    ...runningFetchJobRun(),
+    instanceId: "fetch-setup-failed",
+    heartbeatAt: failedAt,
+    startedAt: failedAt,
+    finishedAt: failedAt,
+    status: "failed",
+    updatedAt: failedAt,
+  };
+  const entries = buildFetchTimeline({
+    jobRuns: [setupJob],
+    runs: [],
+    slots: [waitingFetchSlot()],
+    nowMs: Date.now(),
+  });
+  const status = getFetchActivityStatus(entries);
+
+  assert.equal(status.key, "needs-attention");
+  assert.equal(status.label, "Failed");
+});
+
+test("fetch status control stays idle when only the next scheduled slot is waiting", () => {
+  const entries = buildFetchTimeline({
+    jobRuns: [],
+    runs: [],
+    slots: [waitingFetchSlot()],
+    nowMs: Date.parse("2026-06-18T16:55:00.000Z"),
+  });
+  const status = getFetchActivityStatus(entries);
+
+  assert.equal(status.key, "waiting");
+  assert.equal(status.label, "Idle");
+});
+
+test("fetch frequency label reflects the cron job state", () => {
+  assert.equal(fetchCronFrequencyLabel(activeCronJob()), "every hour");
+  assert.equal(
+    fetchCronFrequencyLabel({
+      ...activeCronJob(),
+      status: "stopped",
+      stoppedAt: "2026-06-18T13:00:00.000Z",
+    }),
+    "Stopped",
+  );
+  assert.equal(fetchCronFrequencyLabel(null), "Not scheduled");
 });
 
 test("stale scheduled fetch run with pending tasks does not stay syncing", () => {

@@ -2121,6 +2121,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(workspaceAutoRefresh, /contentSyncStateChanged/);
   assert.match(fetchLogPanel, /className="source-fetch-overview"/);
   assert.match(fetchLogPanel, /SourceFetchMetaGrid/);
+  assert.match(fetchLogPanel, /getFetchActivityStatus\(timelineEntries\)/);
+  assert.match(fetchLogPanel, /status=\{activityStatus\}/);
+  assert.match(fetchLogPanel, /fetchCronFrequencyLabel\(cronJob\)/);
+  assert.doesNotMatch(fetchLogPanel, /status=\{updateStatus\}/);
   assert.match(fetchLogPanel, /const hydrated = useHydrated\(\)/);
   assert.match(fetchLogPanel, /hydrated=\{hydrated\}/);
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
