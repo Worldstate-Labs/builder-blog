@@ -505,9 +505,13 @@ test("public entry pages use the centered product layout", () => {
   assert.match(publicHeader, /className="fb-top-inner fb-public-top-inner"/);
   assert.match(publicHeader, /className="fb-public-top-actions"/);
   assert.match(publicHeader, /className="fb-public-mobile-actions"/);
+  assert.match(publicHeader, /<PublicHeaderActions current=\{current\} session=\{session\} surface="desktop" \/>/);
+  assert.match(publicHeader, /<PublicHeaderActions current=\{current\} session=\{session\} surface="mobile" \/>/);
   assert.match(publicHeader, /ThemeToggle/);
   assert.match(publicHeader, /UserMenu/);
   assert.match(publicHeader, /const isLegalPage = current === "privacy" \|\| current === "terms"/);
+  assert.match(publicHeader, /const showMobileLegalLinks = surface === "mobile" && isLegalPage && !session/);
+  assert.match(publicHeader, /showMobileLegalLinks \? \([\s\S]*href="\/privacy"[\s\S]*Privacy[\s\S]*href="\/terms"[\s\S]*Terms/);
   assert.match(publicHeader, /<UserMenu compact session=\{session\} \/>/);
   assert.match(publicHeader, /href="\/privacy"/);
   assert.match(publicHeader, /href="\/terms"/);
