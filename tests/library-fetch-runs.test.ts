@@ -99,6 +99,9 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(patchRoute, /TERMINAL_FETCH_TASK_STATUSES/);
   assert.match(patchRoute, /MAX_FETCH_TASK_ID/);
   assert.match(patchRoute, /mergeFetchRunDetails/);
+  assert.match(patchRoute, /deriveFetchRunStatusFromDetails/);
+  assert.match(patchRoute, /errorCount: nextStatus\.errorCount/);
+  assert.match(patchRoute, /status: nextStatus\.status/);
   assert.match(patchRoute, /workerId: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
   assert.match(mergeHelper, /plannedBuilderIds/);
   assert.match(mergeHelper, /details\.perBuilder/);

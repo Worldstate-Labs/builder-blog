@@ -1,6 +1,13 @@
 export const TERMINAL_FETCH_TASK_STATUSES = new Set(["synced", "skipped", "failed", "action_needed"]);
+const FETCH_RUN_STATUSES = new Set(["ok", "partial", "failed"]);
 
 type FetchRunTask = Record<string, unknown>;
+type FetchRunStatus = "ok" | "partial" | "failed";
+
+export type FetchRunStatusSnapshot = {
+  status: FetchRunStatus;
+  errorCount: number;
+};
 
 export type FetchRunPlannedTaskPatch = {
   id: string;
@@ -30,6 +37,10 @@ function taskRecord(value: unknown): FetchRunTask {
 
 function taskStatus(task: FetchRunTask): string | null {
   return typeof task.status === "string" ? task.status : null;
+}
+
+function normalizedFetchRunStatus(status: string): FetchRunStatus {
+  return FETCH_RUN_STATUSES.has(status) ? (status as FetchRunStatus) : "failed";
 }
 
 function normalizePlannedTask(task: FetchRunTask): FetchRunTask {
@@ -88,6 +99,58 @@ function builderIdsFromDetails(details: Record<string, unknown>): Set<string> {
       )
       .filter((id): id is string => typeof id === "string" && id.length > 0),
   );
+}
+
+function isCandidateDiscoveryTask(task: FetchRunTask): boolean {
+  const id = typeof task.id === "string" ? task.id : "";
+  return (
+    task.agentWorkType === "candidate_discovery_fallback" ||
+    task.type === "candidate_discovery" ||
+    id.startsWith("candidate_discovery:")
+  );
+}
+
+function isPlannedPostTask(task: FetchRunTask): boolean {
+  if (isCandidateDiscoveryTask(task)) return false;
+  const id = typeof task.id === "string" ? task.id : "";
+  if (id.startsWith("fetch_post:")) return true;
+  return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
+}
+
+export function deriveFetchRunStatusFromDetails(
+  current: FetchRunStatusSnapshot,
+  detailsValue: unknown,
+): FetchRunStatusSnapshot {
+  const currentStatus = normalizedFetchRunStatus(current.status);
+  const currentErrorCount = Number.isFinite(current.errorCount)
+    ? Math.max(0, Math.trunc(current.errorCount))
+    : 0;
+  const details = detailsValue && typeof detailsValue === "object" && !Array.isArray(detailsValue)
+    ? (detailsValue as Record<string, unknown>)
+    : {};
+  const tasks = Array.isArray(details.fetchTasks)
+    ? details.fetchTasks.map(taskRecord).filter(isPlannedPostTask)
+    : [];
+  if (tasks.length === 0) {
+    return { status: currentStatus, errorCount: currentErrorCount };
+  }
+
+  let terminal = 0;
+  let failed = 0;
+  for (const task of tasks) {
+    const status = taskStatus(task);
+    if (!status || !TERMINAL_FETCH_TASK_STATUSES.has(status)) continue;
+    terminal += 1;
+    if (status === "failed") failed += 1;
+  }
+  if (terminal === 0 || failed === 0) {
+    return { status: currentStatus, errorCount: currentErrorCount };
+  }
+
+  return {
+    status: failed >= tasks.length ? "failed" : "partial",
+    errorCount: Math.max(currentErrorCount, failed),
+  };
 }
 
 export function mergeFetchRunDetails(

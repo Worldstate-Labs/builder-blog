@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mergeFetchRunDetails } from "../src/lib/fetch-run-details";
+import { deriveFetchRunStatusFromDetails, mergeFetchRunDetails } from "../src/lib/fetch-run-details";
 
 test("late planned-task patches do not regress terminal fetch task outcomes", () => {
   const result = mergeFetchRunDetails(
@@ -114,4 +114,34 @@ test("fetch run details do not downgrade a synced task after a late failed slice
       summaryChars: 80,
     },
   ]);
+});
+
+test("failed terminal post outcomes derive a failed fetch run status", () => {
+  const result = mergeFetchRunDetails(
+    {
+      fetchTasks: [
+        { id: "fetch_post:builder_1:post_1", builderId: "builder_1", status: "pending" },
+        { id: "fetch_post:builder_1:post_2", builderId: "builder_1", status: "pending" },
+      ],
+    },
+    {
+      taskOutcomes: [
+        {
+          fetchTaskId: "fetch_post:builder_1:post_1",
+          status: "failed",
+          failureReason: "not_summarized",
+        },
+        {
+          fetchTaskId: "fetch_post:builder_1:post_2",
+          status: "failed",
+          failureReason: "not_summarized",
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(
+    deriveFetchRunStatusFromDetails({ status: "ok", errorCount: 0 }, result.details),
+    { status: "failed", errorCount: 2 },
+  );
 });

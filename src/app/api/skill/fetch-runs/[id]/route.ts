@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { mergeFetchRunDetails } from "@/lib/fetch-run-details";
+import { deriveFetchRunStatusFromDetails, mergeFetchRunDetails } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { MAX_FETCH_TASK_ID } from "@/lib/skill-contracts";
@@ -73,7 +73,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const run = await prisma.libraryFetchRun.findFirst({
     where: { id, userId: user.id },
-    select: { id: true, details: true },
+    select: { id: true, details: true, errorCount: true, status: true },
   });
   if (!run) {
     return NextResponse.json({ error: "Fetch run not found" }, { status: 404 });
@@ -85,6 +85,10 @@ export async function PATCH(request: Request, { params }: Params) {
     plannedTasks: parsed.data.plannedTasks ?? [],
     taskOutcomes: parsed.data.taskOutcomes ?? [],
   });
+  const nextStatus = deriveFetchRunStatusFromDetails(
+    { status: run.status as "ok" | "partial" | "failed", errorCount: run.errorCount },
+    details,
+  );
 
   if (Buffer.byteLength(JSON.stringify(details), "utf8") > MAX_DETAILS_BYTES) {
     return NextResponse.json(
@@ -95,8 +99,12 @@ export async function PATCH(request: Request, { params }: Params) {
 
   await prisma.libraryFetchRun.update({
     where: { id: run.id },
-    data: { details: details as object },
+    data: {
+      details: details as object,
+      errorCount: nextStatus.errorCount,
+      status: nextStatus.status,
+    },
   });
 
-  return NextResponse.json({ id: run.id, matched, planned });
+  return NextResponse.json({ id: run.id, matched, planned, status: nextStatus.status });
 }

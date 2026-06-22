@@ -640,6 +640,98 @@ test("partial checkpoint outcomes keep the expanded planned count visible", () =
   assert.equal(entries[0]?.syncSummary, "1/3 saved");
 });
 
+test("failed post outcomes override an ok fetch run status", () => {
+  const failedJob: AgentJobRunListItem = {
+    id: "job_failed_outcomes",
+    jobType: "library-fetch",
+    trigger: "one_time",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-failed-outcomes",
+    expectedAt: null,
+    startedAt: "2026-06-22T05:49:46.000Z",
+    heartbeatAt: "2026-06-22T05:52:11.000Z",
+    finishedAt: "2026-06-22T05:52:11.000Z",
+    status: "failed",
+    exitCode: 65,
+    signal: null,
+    runtime: "openclaw",
+    runnerPid: 41050,
+    workerPid: 41050,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    stage: "runtime",
+    summary: "Runtime exited with code 65.",
+    details: {
+      reason: "runtime_finished",
+      progress: {
+        stage: "reconciled",
+        counters: {
+          sourcesChecked: 6,
+          sourcesTotal: 6,
+          tasksPlanned: 2,
+          tasksDone: 2,
+          synced: 0,
+          skipped: 0,
+          failed: 2,
+          actionNeeded: 0,
+        },
+      },
+    },
+    updatedAt: "2026-06-22T05:52:11.000Z",
+  };
+  const run: LibraryFetchRunListItem = {
+    id: "run_failed_outcomes",
+    startedAt: "2026-06-22T05:49:48.365Z",
+    finishedAt: "2026-06-22T05:52:11.000Z",
+    durationMs: 142_635,
+    status: "ok",
+    source: "manual",
+    jobRunId: failedJob.instanceId,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 6,
+    itemsFetched: 1,
+    tasksGenerated: 2,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 1 post from 6 sources",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:builder_1:post_1", title: "Post 1", status: "failed" },
+        { id: "fetch_post:builder_2:post_2", title: "Post 2", status: "failed" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [failedJob],
+    runs: [run],
+    slots: [],
+    nowMs: Date.parse("2026-06-22T05:55:00.000Z"),
+  });
+  const status = getFetchActivityStatus(entries);
+  const stats = fetchRunStats({
+    details: run.details as { fetchTasks: Array<{ id: string; status: string }> },
+    liveProgress: null,
+    run,
+  });
+  const displayState = fetchRunDisplayState({
+    completedOutcomes: true,
+    inflight: false,
+    jobRun: failedJob,
+    outcomeStatus: "failed",
+    runStatus: run.status,
+  });
+
+  assert.equal(entries[0]?.status, "failed");
+  assert.equal(entries[0]?.syncSummary, "0/2 saved");
+  assert.equal(status.key, "needs-attention");
+  assert.equal(status.label, "Failed");
+  assert.equal(stats.failed, 2);
+  assert.equal(displayState.displayStatus.label, "Failed");
+});
+
 test("fetch run stats keep the highest planned post count across details and live counters", () => {
   const run: LibraryFetchRunListItem = {
     id: "run_product_hunt",

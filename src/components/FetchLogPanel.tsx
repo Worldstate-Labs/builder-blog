@@ -479,6 +479,11 @@ function fetchRunHasCompletedOutcomes(stats: FetchRunStats): boolean {
   return accounted >= stats.planned;
 }
 
+function fetchRunOutcomeStatus(runStatus: string, stats: FetchRunStats): string {
+  if (stats.failed <= 0 || stats.planned <= 0) return runStatus;
+  return stats.failed >= stats.planned ? "failed" : "partial";
+}
+
 function hasFailedFetchJob(jobRun?: AgentJobRunListItem | null, nowMs = Date.now()): boolean {
   return Boolean(jobRun && (isStalledJobRun(jobRun, nowMs) || !["starting", "running", "succeeded"].includes(jobRun.status)));
 }
@@ -742,6 +747,7 @@ function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunLi
   const details = readDetails(run.details);
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
+  if (fetchRunOutcomeStatus(run.status, stats) !== "ok") return "failed";
   const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
   if (jobRun && isStalledJobRun(jobRun, nowMs) && !completedOutcomes) return "stalled";
   if (isRunInflight(run, jobRun, null)) return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "running";
@@ -934,9 +940,11 @@ export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpda
     latestLogEntry.status === "missed" ||
     latestLogEntry.status === "stalled";
   const running = latestLogEntry.status === "running";
-  const label = latestLogEntry.jobRun
-    ? jobRunStatusLabel(latestLogEntry.jobRun)
-    : scheduledWindowStatusLabel(latestLogEntry.status);
+  const label = latestLogEntry.run
+    ? scheduledWindowStatusLabel(latestLogEntry.status)
+    : latestLogEntry.jobRun
+      ? jobRunStatusLabel(latestLogEntry.jobRun)
+      : scheduledWindowStatusLabel(latestLogEntry.status);
   const runKind = latestLogEntry.label.toLowerCase();
 
   return {
@@ -1606,18 +1614,21 @@ export function fetchRunDisplayState({
   inflight,
   jobRun,
   noUpdate = false,
+  outcomeStatus,
   runStatus,
 }: {
   completedOutcomes: boolean;
   inflight: boolean;
   jobRun?: AgentJobRunListItem | null;
   noUpdate?: boolean;
+  outcomeStatus?: string;
   runStatus: string;
 }) {
   const interruptedStatus = interruptedFetchRunStatus(jobRun);
   const completedInterruptedLabel = !inflight && completedOutcomes
     ? interruptedStatus?.label ?? null
     : null;
+  const displayRunStatus = outcomeStatus ?? runStatus;
   const displayStatus = inflight
     ? { label: "Syncing", style: statusStyle("partial"), tone: "partial" as const }
     : noUpdate
@@ -1625,9 +1636,9 @@ export function fetchRunDisplayState({
     : interruptedStatus && !completedOutcomes
       ? interruptedStatus
       : {
-          label: STATUS_LABEL[runStatus] ?? runStatus,
-          style: statusStyle(runStatus),
-          tone: statusTone(runStatus),
+          label: STATUS_LABEL[displayRunStatus] ?? displayRunStatus,
+          style: statusStyle(displayRunStatus),
+          tone: statusTone(displayRunStatus),
         };
 
   return { completedInterruptedLabel, displayStatus };
@@ -1681,6 +1692,17 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): JobRunDiagnosticItem[] {
 function jobRunStageLabel(stage: string | null): string | null {
   const normalized = String(stage ?? "").trim();
   if (!normalized || normalized === "heartbeat") return null;
+  const labels: Record<string, string> = {
+    fetch_sources: "Fetch sources",
+    expand_discovery: "Expand discovery",
+    shard_fetch_tasks: "Plan fetch tasks",
+    run_fetch_workers: "Run fetch workers",
+    merge_results: "Merge results",
+    validate_results: "Validate results",
+    sync_to_followbrief: "Sync to FollowBrief",
+    no_update: "No update",
+  };
+  if (labels[normalized]) return labels[normalized];
   return normalized.replace(/_/g, " ");
 }
 
@@ -1731,15 +1753,6 @@ function fetchRunVerdict({
       text: "Fetch is running. Stages update as Local Agent reports work.",
     };
   }
-  if (completedInterruptedLabel) {
-    const endedText = completedInterruptedLabel === "Timed out"
-      ? "timed out before it exited"
-      : `ended as ${completedInterruptedLabel.toLowerCase()}`;
-    return {
-      tone: "warn",
-      text: `FollowBrief received final sync outcomes, but the Local Agent process ${endedText}.`,
-    };
-  }
   if (displayStatus.label === "Stalled") {
     return {
       tone: "fail",
@@ -1768,6 +1781,15 @@ function fetchRunVerdict({
     return {
       tone: "fail",
       text: "Local Agent stopped before FollowBrief received final sync outcomes.",
+    };
+  }
+  if (completedInterruptedLabel) {
+    const endedText = completedInterruptedLabel === "Timed out"
+      ? "timed out before it exited"
+      : `ended as ${completedInterruptedLabel.toLowerCase()}`;
+    return {
+      tone: "warn",
+      text: `FollowBrief received final sync outcomes, but the Local Agent process ${endedText}.`,
     };
   }
   if (stats.actionNeeded > 0) {
@@ -2062,11 +2084,13 @@ function RunCard({
   const stats = fetchRunStats({ details, liveProgress, run });
   const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
   const noUpdate = isNoUpdateFetchRun(run, jobRun);
+  const outcomeStatus = fetchRunOutcomeStatus(run.status, stats);
   const { completedInterruptedLabel, displayStatus } = fetchRunDisplayState({
     completedOutcomes,
     inflight,
     jobRun,
     noUpdate,
+    outcomeStatus,
     runStatus: run.status,
   });
   // Show the Local Agent that ran this fetch. Model names are kept out of the
