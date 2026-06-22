@@ -13,6 +13,7 @@ import {
 } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { formatCount } from "@/components/Count";
+import { RelativeTime } from "@/components/RelativeTime";
 import { relativeTime } from "@/lib/relative-time";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -268,20 +269,6 @@ function formatAbsolute(iso: string): string {
       minute: "2-digit",
       timeZone: "UTC",
       timeZoneName: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
-
-function formatMetaDate(iso: string, hydrated: boolean): string {
-  try {
-    if (!hydrated) return formatAbsolute(iso);
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
     }).format(new Date(iso));
   } catch {
     return iso;
@@ -993,7 +980,6 @@ export function FetchLogPanel({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<FetchLogRef | null>(null);
   const [liveLogSuppressStalled, setLiveLogSuppressStalled] = useState(false);
-  const hydrated = useHydrated();
   const cronStatus = useMemo(
     () => buildCronStatus(cronJob, cronRuns, scheduledJobRuns),
     [cronJob, cronRuns, scheduledJobRuns],
@@ -1223,7 +1209,6 @@ export function FetchLogPanel({
             onToggleDetails={() => setDetailsOpen((value) => !value)}
             status={activityStatus}
             summaryLanguage={summaryLanguage}
-            hydrated={hydrated}
           />
         </div>
         {actionsPlacement === "end" ? actionsNode : null}
@@ -1422,7 +1407,6 @@ function SourceFetchMetaGrid({
   onToggleDetails,
   status,
   summaryLanguage,
-  hydrated,
 }: {
   cronJob: LibraryCronJobStatus | null;
   detailsOpen: boolean;
@@ -1430,7 +1414,6 @@ function SourceFetchMetaGrid({
   onToggleDetails: () => void;
   status: FetchUpdateStatus;
   summaryLanguage?: string | null;
-  hydrated: boolean;
 }) {
   return (
     <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Fetch sources details">
@@ -1444,7 +1427,7 @@ function SourceFetchMetaGrid({
       />
       <SourceFetchMetaItem
         label="Latest fetch"
-        value={latestRun ? formatMetaDate(latestRun.startedAt, hydrated) : "None yet"}
+        value={<RelativeTime value={latestRun?.startedAt} fallback="None yet" />}
       />
       <div className="fb-hub-digest-meta-item source-fetch-status-item">
         <dt>Status / log</dt>
@@ -1465,7 +1448,7 @@ function SourceFetchMetaItem({
   value,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
 }) {
   return (
     <div className="fb-hub-digest-meta-item">

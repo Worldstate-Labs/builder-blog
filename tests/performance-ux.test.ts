@@ -2125,8 +2125,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /status=\{activityStatus\}/);
   assert.match(fetchLogPanel, /fetchCronFrequencyLabel\(cronJob\)/);
   assert.doesNotMatch(fetchLogPanel, /status=\{updateStatus\}/);
-  assert.match(fetchLogPanel, /const hydrated = useHydrated\(\)/);
-  assert.match(fetchLogPanel, /hydrated=\{hydrated\}/);
+  assert.match(fetchLogPanel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
+  assert.doesNotMatch(fetchLogPanel, /formatMetaDate/);
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
   assert.match(digestLogPanel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
   assert.match(digestLogPanel, /const sourceType = item\.sourceType\?\.trim\(\) \|\| sourceTag\(item\.kind\)/);
@@ -2204,6 +2204,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
+  assert.match(fetchLogPanel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
   assert.match(fetchLogPanel, /Status \/ log/);
   assert.match(fetchLogPanel, /Show Fetch sources status log/);
   assert.match(fetchLogPanel, /Hide Fetch sources status log/);
@@ -2281,9 +2282,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /entry\.name \?\? entry\.builderId \?\? "unknown"/);
   assert.doesNotMatch(fetchLogPanel, /refreshes library posts/);
   assert.doesNotMatch(fetchLogPanel, /Cron status|library fetch cron|Items checked|refreshes saved posts|refreshes fetched posts|refreshes fetched items|label="checked"|\} checked<\/span>/);
-  assert.match(fetchLogPanel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
-  assert.match(fetchLogPanel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
-  assert.match(fetchLogPanel, /if \(!hydrated\) return formatAbsolute\(iso\)/);
+  assert.match(fetchLogPanel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
+  assert.doesNotMatch(fetchLogPanel, /formatMetaDate/);
   assert.match(fetchLogPanel, /formatLanguage/);
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /Could not refresh\. Try again\./);

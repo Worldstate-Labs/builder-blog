@@ -515,9 +515,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /Cron status/);
   assert.match(panel, /formatLanguage\(summaryLanguage \?\? "zh"\)/);
   assert.match(panel, /displayLanguagePreference\(value\)/);
-  assert.match(panel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
-  assert.match(panel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
-  assert.match(panel, /if \(!hydrated\) return formatAbsolute\(iso\)/);
+  assert.match(panel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
+  assert.doesNotMatch(panel, /formatMetaDate/);
   assert.match(panel, /aria-controls="fetch-sync-details"/);
   assert.match(panel, /className="sync-panel-error"/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat"/);
