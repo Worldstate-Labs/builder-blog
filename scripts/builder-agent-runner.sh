@@ -117,6 +117,138 @@ run_with_override() {
   BUILDER_BLOG_JOB="$JOB_NAME" BUILDER_BLOG_PROMPT_FILE="$PROMPT_FILE" sh -c "$BUILDER_BLOG_AGENT_COMMAND"
 }
 
+shell_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+openclaw_prompt_dir() {
+  _ocp_dir="$JOB_TMP_DIR/openclaw-prompts"
+  mkdir -p "$_ocp_dir"
+  printf '%s\n' "$_ocp_dir"
+}
+
+openclaw_worker_prompt_file() {
+  _ocp_shard_name="$1"
+  _ocp_shard_file="$2"
+  _ocp_result_file="$3"
+  _ocp_checkpoint_dir="$4"
+  _ocp_out="$(openclaw_prompt_dir)/$_ocp_shard_name-worker.md"
+  cat > "$_ocp_out" <<EOF
+OpenClaw Gateway runner context:
+
+This job runs through OpenClaw Gateway. Gateway tool calls may not inherit the
+parent runner shell environment. Treat the concrete paths below as
+authoritative, and do not search for the shard assignment or result path.
+
+- Shard file: $_ocp_shard_file
+- Shard result file: $_ocp_result_file
+- Shard checkpoint directory: $_ocp_checkpoint_dir
+- Agent directory: $AGENT_DIR
+- Account: ${BUILDER_BLOG_ACCOUNT:-default}
+
+If the original instructions reference \$BUILDER_BLOG_SHARD_FILE, use:
+$_ocp_shard_file
+
+If they reference \$BUILDER_BLOG_SHARD_RESULT, use:
+$_ocp_result_file
+
+If they reference \$BUILDER_BLOG_SHARD_CHECKPOINT_DIR, use:
+$_ocp_checkpoint_dir
+
+If you use shell commands, include these exports at the top of the same shell
+block that reads or writes FollowBrief files:
+
+\`\`\`bash
+export BUILDER_BLOG_AGENT_DIR=$(shell_quote "$AGENT_DIR")
+export BUILDER_BLOG_ACCOUNT=$(shell_quote "${BUILDER_BLOG_ACCOUNT:-default}")
+export BUILDER_BLOG_SHARD_FILE=$(shell_quote "$_ocp_shard_file")
+export BUILDER_BLOG_SHARD_RESULT=$(shell_quote "$_ocp_result_file")
+export BUILDER_BLOG_SHARD_CHECKPOINT_DIR=$(shell_quote "$_ocp_checkpoint_dir")
+\`\`\`
+
+Original task instructions:
+
+EOF
+  cat "$AGENT_DIR/jobs/library-worker.md" >> "$_ocp_out"
+  printf '%s\n' "$_ocp_out"
+}
+
+openclaw_discovery_prompt_file() {
+  _ocp_fetch_result="$1"
+  _ocp_discovery_result="$2"
+  _ocp_out="$(openclaw_prompt_dir)/library-discovery.md"
+  cat > "$_ocp_out" <<EOF
+OpenClaw Gateway runner context:
+
+This job runs through OpenClaw Gateway. Gateway tool calls may not inherit the
+parent runner shell environment. Treat the concrete paths below as
+authoritative, and do not search for the fetch result or output path.
+
+- Job temp directory: $JOB_TMP_DIR
+- Fetch result file: $_ocp_fetch_result
+- Discovery result file: $_ocp_discovery_result
+- Agent directory: $AGENT_DIR
+- Account: ${BUILDER_BLOG_ACCOUNT:-default}
+
+If the original instructions compute TMP_DIR from \$BUILDER_BLOG_JOB_TMP_DIR,
+use this exact TMP_DIR:
+$JOB_TMP_DIR
+
+If you use shell commands, include these exports at the top of the same shell
+block that reads or writes FollowBrief files:
+
+\`\`\`bash
+export BUILDER_BLOG_AGENT_DIR=$(shell_quote "$AGENT_DIR")
+export BUILDER_BLOG_ACCOUNT=$(shell_quote "${BUILDER_BLOG_ACCOUNT:-default}")
+export BUILDER_BLOG_JOB_TMP_DIR=$(shell_quote "$JOB_TMP_DIR")
+\`\`\`
+
+Original task instructions:
+
+EOF
+  cat "$AGENT_DIR/jobs/library-discovery.md" >> "$_ocp_out"
+  printf '%s\n' "$_ocp_out"
+}
+
+openclaw_digest_prompt_file() {
+  _ocp_base_prompt="$1"
+  _ocp_context_file="$2"
+  _ocp_agent_output_file="$3"
+  _ocp_out="$(openclaw_prompt_dir)/digest-agent.md"
+  cat > "$_ocp_out" <<EOF
+OpenClaw Gateway runner context:
+
+This job runs through OpenClaw Gateway. Gateway tool calls may not inherit the
+parent runner shell environment. Treat the concrete paths below as
+authoritative, and do not search for the digest context or output path.
+
+- Job temp directory: $JOB_TMP_DIR
+- Digest context file: $_ocp_context_file
+- Digest agent output file: $_ocp_agent_output_file
+- Agent directory: $AGENT_DIR
+- Account: ${BUILDER_BLOG_ACCOUNT:-default}
+
+If the original instructions compute TMP_DIR from \$BUILDER_BLOG_JOB_TMP_DIR,
+use this exact TMP_DIR:
+$JOB_TMP_DIR
+
+If you use shell commands, include these exports at the top of the same shell
+block that reads or writes FollowBrief files:
+
+\`\`\`bash
+export BUILDER_BLOG_AGENT_DIR=$(shell_quote "$AGENT_DIR")
+export BUILDER_BLOG_ACCOUNT=$(shell_quote "${BUILDER_BLOG_ACCOUNT:-default}")
+export BUILDER_BLOG_JOB_TMP_DIR=$(shell_quote "$JOB_TMP_DIR")
+export BUILDER_BLOG_DIGEST_AGENT_ONLY=1
+\`\`\`
+
+Original task instructions:
+
+EOF
+  cat "$_ocp_base_prompt" >> "$_ocp_out"
+  printf '%s\n' "$_ocp_out"
+}
+
 # Interactive (user is watching) — each runtime runs with its default
 # permission gates. Used when no runtime is pinned and the user is at
 # a TTY (library-once / digest-once from the command line).
@@ -1370,8 +1502,13 @@ run_digest_job() {
   job_run_update running "Generating digest summary JSON for $_item_count candidates." "agent_started" \
     --stage "run_local_agent"
   export BUILDER_BLOG_DIGEST_AGENT_ONLY=1
+  _digest_base_prompt="$PROMPT_FILE"
+  if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+    PROMPT_FILE="$(openclaw_digest_prompt_file "$_digest_base_prompt" "$_context_file" "$_agent_output_file")"
+  fi
   run_selected_runtime
   _agent_code="$?"
+  PROMPT_FILE="$_digest_base_prompt"
   unset BUILDER_BLOG_DIGEST_AGENT_ONLY
   if [ "$_agent_code" -ne 0 ]; then
     job_run_update failed "Local agent failed to write digest summary JSON." "agent_failed" \
@@ -1583,6 +1720,9 @@ run_library_job() {
              export OPENCLAW_SESSION_ID
            fi
            PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
+           if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+             PROMPT_FILE="$(openclaw_discovery_prompt_file "$_result_file" "$JOB_TMP_DIR/library-discovery-result.json")"
+           fi
            BUILDER_BLOG_LIBRARY_AGENT_STAGE=discovery
            export BUILDER_BLOG_LIBRARY_AGENT_STAGE
            IS_CRON_JOB=1
@@ -1678,6 +1818,9 @@ run_library_job() {
         export OPENCLAW_SESSION_ID
       fi
       PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
+      if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+        PROMPT_FILE="$(openclaw_worker_prompt_file "$_shard_name" "$BUILDER_BLOG_SHARD_FILE" "$BUILDER_BLOG_SHARD_RESULT" "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR")"
+      fi
       BUILDER_BLOG_LIBRARY_AGENT_STAGE=worker
       export BUILDER_BLOG_LIBRARY_AGENT_STAGE
       # Workers must never wait on interactive permission prompts, so they

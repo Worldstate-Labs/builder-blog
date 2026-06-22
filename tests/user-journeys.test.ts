@@ -1173,6 +1173,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /openclaw agent --session-id "\$_openclaw_session_id" --timeout "\$_openclaw_timeout" --message/);
   assert.doesNotMatch(runner, /openclaw agent --local --session-id "\$_openclaw_session_id" --timeout "\$_openclaw_timeout" --message/);
   assert.doesNotMatch(runner, /openclaw agent --local --agent .* --timeout .* --message/);
+  assert.match(runner, /openclaw_worker_prompt_file\(\)/);
+  assert.match(runner, /openclaw_discovery_prompt_file\(\)/);
+  assert.match(runner, /openclaw_digest_prompt_file\(\)/);
+  assert.match(runner, /Gateway tool calls may not inherit the/);
+  assert.match(runner, /do not search for the shard assignment or result path/);
+  assert.match(runner, /export BUILDER_BLOG_SHARD_FILE=\$\(shell_quote "\$_ocp_shard_file"\)/);
+  assert.match(runner, /PROMPT_FILE="\$\(openclaw_worker_prompt_file "\$_shard_name"/);
+  assert.match(runner, /PROMPT_FILE="\$\(openclaw_discovery_prompt_file "\$_result_file"/);
+  assert.match(runner, /PROMPT_FILE="\$\(openclaw_digest_prompt_file "\$_digest_base_prompt"/);
   assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
   assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(runner, /openclaw config set agents\.defaults\.timeoutSeconds "\$_seconds" --strict-json/);
