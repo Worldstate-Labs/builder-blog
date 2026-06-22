@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 // Server-side include expansion for skill job prompts. Lets the library
-// job prompts (library-once.md, library-cron.md, library-worker.md,
-// library-discovery.md) share ONE copy of the fetch-task / summarize
+// job prompts (library-once.md, library-worker.md, library-discovery.md)
+// share ONE copy of the fetch-task / summarize
 // execution contract instead of duplicating it. The contract is split in
 // three so the parallel worker can reuse the per-task core without
 // inheriting discovery or the validate/sync tail (the runner owns those in

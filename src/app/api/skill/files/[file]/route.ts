@@ -18,10 +18,6 @@ const skillFiles = {
     path: "skills/builder-blog-digest/jobs/digest-once.md",
     contentType: "text/markdown; charset=utf-8",
   },
-  "builder-blog-library-cron.md": {
-    path: "skills/builder-blog-digest/jobs/library-cron.md",
-    contentType: "text/markdown; charset=utf-8",
-  },
   "builder-blog-library-cron-setup.md": {
     path: "skills/builder-blog-digest/jobs/library-cron-setup.md",
     contentType: "text/markdown; charset=utf-8",

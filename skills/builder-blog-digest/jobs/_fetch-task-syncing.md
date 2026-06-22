@@ -1,9 +1,8 @@
 <!--
-  Payload / validate / sync tail of the fetch-task execution contract. Only
-  the single-agent jobs (library-once.md, library-cron.md) include this —
-  in a sharded parallel run the runner itself merges worker results and runs
-  validate-agent-sync + sync-builders, and workers are explicitly forbidden
-  from syncing (library-worker.md).
+  Legacy payload / validate / sync tail of the fetch-task execution contract.
+  Current library jobs are runner-owned, so normal prompts should not include
+  this fragment. Keep it only for old prompt compatibility and contract tests
+  that exercise the CLI validation language.
 
       {{INCLUDE:fetch-task-syncing REPORT_TARGET="..." TMP_JOB="..."}}
 -->

@@ -1,12 +1,9 @@
 <!--
   Per-task core of the fetch-task / summarize execution contract. This is
-  the SINGLE SOURCE OF TRUTH for how one fetchTask is completed — it is
-  shared by the single-agent jobs (library-once.md, library-cron.md) AND by
-  the parallel shard worker (library-worker.md), so per-task behavior can
-  never drift between sequential and parallel runs. It deliberately contains
-  no discovery flow and no payload-path / validate / sync commands — those
-  live in _fetch-task-discovery.md and _fetch-task-syncing.md, which the
-  worker does not include (the runner owns merge/validate/sync there).
+  the SINGLE SOURCE OF TRUTH for how one fetchTask is completed. It is included
+  by the library-worker prompt only; the runner owns fetch-personal, discovery
+  expansion, merge, validation, repair, and sync. It deliberately contains no
+  discovery flow and no validate / sync commands.
 
       {{INCLUDE:fetch-task-core REPORT_TARGET="..."}}
 

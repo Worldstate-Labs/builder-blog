@@ -76,7 +76,6 @@ refresh_skill_files() {
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-once.md" "$AGENT_DIR/jobs/digest-once.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" "$AGENT_DIR/jobs/library-cron-setup.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" "$AGENT_DIR/jobs/digest-cron-setup.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron.md" "$AGENT_DIR/jobs/library-cron.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
@@ -514,10 +513,10 @@ export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
 
 # Forced re-fetch: cron-setup writes 1 to the fetch-force pin when the user
 # picked "override already-fetched posts". We expose it as
-# BUILDER_BLOG_FETCH_FORCE, which the library-cron prompt drops straight into
-# the fetch-personal command (`${BUILDER_BLOG_FETCH_FORCE:-}` → --force). "1" →
-# --force (re-pull posts already in the library, ignoring the fetchedAt cutoff
-# + externalId dedup); anything else → no flag.
+# BUILDER_BLOG_FETCH_FORCE, which the runner passes to fetch-personal
+# (`${BUILDER_BLOG_FETCH_FORCE:-}` → --force). "1" → --force (re-pull posts
+# already in the library, ignoring the fetchedAt cutoff + externalId dedup);
+# anything else → no flag.
 BUILDER_BLOG_FETCH_FORCE=""
 if [ "$INCOMING_FETCH_FORCE_SET" = "1" ]; then
   BUILDER_BLOG_FETCH_FORCE="$INCOMING_FETCH_FORCE"
@@ -558,12 +557,12 @@ elif [ "$(read_pin regenerate)" = "1" ]; then
 fi
 export BUILDER_BLOG_DIGEST_REGENERATE
 
-# Parallel fetch fan-out: when the parallel pin is >= 2 the runner orchestrates
-# the library job itself — fetch-personal, shard-tasks, merge-task-results,
-# validate-agent-sync, and sync-builders are deterministic CLI steps, and N
-# runtime workers each complete one shard of fetchTasks. The pin is per-account
-# and per-job with the usual once→cron fallback, so a one-time run parallelizes
-# exactly like the recurring job. Absent/0/1 → single-agent path (default).
+# Library fetch fan-out: the runner orchestrates the library job itself —
+# fetch-personal, discovery expansion, shard-tasks, merge-task-results,
+# validate-agent-sync, and sync-builders are deterministic CLI steps. Runtime
+# workers only complete assigned fetchTasks. The pin is per-account and per-job
+# with the usual once→cron fallback, so a one-time run uses the same worker
+# count as the recurring job. Absent/0/1 → one worker.
 if [ "$INCOMING_PARALLEL_WORKERS_SET" = "1" ]; then
   MAX_PARALLEL_WORKERS="$INCOMING_PARALLEL_WORKERS"
 else
@@ -1142,8 +1141,12 @@ run_selected_runtime() {
       run_with_openclaw
     elif command -v gemini >/dev/null 2>&1; then
       run_with_gemini
-    elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
+    elif { [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; } && [ -z "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" ]; then
       run_shell_library_fallback
+    elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
+      echo "No local agent runtime found for FollowBrief library ${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-agent} work." >&2
+      echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+      exit 78
     else
       echo "No local agent runtime found for FollowBrief digest generation." >&2
       echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
@@ -1153,10 +1156,10 @@ run_selected_runtime() {
   fi
 }
 
-# The job payload run inside the supervised/tracked worker. Library jobs with
-# a parallel pin >= 2 use the sharded orchestration; everything else (digest
-# jobs, un-pinned accounts) keeps the single-agent path. The runtime smoke
-# check never goes through here — it calls run_selected_runtime directly.
+# The job payload run inside the supervised/tracked worker. Digest and library
+# jobs are runner-owned: deterministic CLI steps stay here, while local agents
+# only handle the model/browser work. The runtime smoke check never goes
+# through here — it calls run_selected_runtime directly.
 run_job_payload() {
   case "$JOB_NAME" in
     digest-once|digest-cron)
@@ -1164,10 +1167,8 @@ run_job_payload() {
       return "$?"
       ;;
     library-once|library-cron)
-      if [ "$MAX_PARALLEL_WORKERS" -ge 2 ]; then
-        run_sharded_library
-        return "$?"
-      fi
+      run_library_job
+      return "$?"
       ;;
   esac
   run_selected_runtime
@@ -1187,6 +1188,28 @@ const fs = require("fs");
 const file = process.argv[2];
 const context = JSON.parse(fs.readFileSync(file, "utf8"));
 console.log(Array.isArray(context.items) ? context.items.length : 0);
+NODE
+}
+
+library_fetch_task_count() {
+  _lftc_file="$1"
+  node - "$_lftc_file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const result = JSON.parse(fs.readFileSync(file, "utf8"));
+const tasks = Array.isArray(result.fetchTasks) ? result.fetchTasks : [];
+console.log(tasks.filter((task) => task?.agentWorkType !== "candidate_discovery_fallback").length);
+NODE
+}
+
+library_has_discovery_tasks() {
+  _lhdt_file="$1"
+  node - "$_lhdt_file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const result = JSON.parse(fs.readFileSync(file, "utf8"));
+const tasks = Array.isArray(result.fetchTasks) ? result.fetchTasks : [];
+process.exit(tasks.some((task) => task && task.agentWorkType === "candidate_discovery_fallback") ? 0 : 1);
 NODE
 }
 
@@ -1291,14 +1314,14 @@ run_digest_job() {
   digest_output_completed "$_sync_result_file"
 }
 
-# Sharded library run: the runner owns every deterministic step (fetch, shard,
-# merge, validate, sync) and runtime agents only do the genuinely agentic work
-# — a discovery pre-pass when the fetch result contains candidate-discovery
-# tasks, then one worker per shard completing that shard's fetchTasks. Workers
-# write per-shard result files; merge-task-results assembles the single sync
-# payload and backfills a failed taskOutcome for any task a worker never
-# reported (crash/timeout), so the "every task ends in a terminal state"
-# validation contract holds even with partial worker failure.
+# Library run: the runner owns every deterministic step (fetch, discovery
+# expansion, shard, merge, validate, sync) and runtime agents only do the
+# genuinely agentic work — a discovery pre-pass when the fetch result contains
+# candidate-discovery tasks, then one worker per shard completing that shard's
+# fetchTasks. Workers write per-shard result files; merge-task-results assembles
+# the single sync payload and backfills a failed taskOutcome for any task a
+# worker never reported (crash/timeout), so the "every task ends in a terminal
+# state" validation contract holds even with partial worker failure.
 sync_payload_slices() {
   _sps_tasks_file="$1"
   _sps_payload_file="$2"
@@ -1413,34 +1436,102 @@ sync_completed_checkpoints() {
   return 0
 }
 
-run_sharded_library() {
+run_library_job() {
   _shards_dir="$JOB_TMP_DIR/shards"
   _results_dir="$_shards_dir/results"
   rm -rf "$_shards_dir"
   mkdir -p "$_results_dir"
   _result_file="$JOB_TMP_DIR/library-fetch-result.json"
 
-  echo "FollowBrief parallel library run: up to $MAX_PARALLEL_WORKERS workers."
+  echo "FollowBrief library run: $MAX_PARALLEL_WORKERS worker(s)."
 
+  job_run_update running "Fetching source candidates." "fetch_started" --stage "fetch_sources"
+  _fetch_stderr="$JOB_TMP_DIR/library-fetch.err"
+  _discovery_failed=0
+  set +e
   node "$AGENT_DIR/builder-digest.mjs" fetch-personal \
     --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
     --limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
-    ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file"
+    ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file" 2> "$_fetch_stderr"
+  _fetch_code="$?"
+  set -e
+  [ ! -s "$_fetch_stderr" ] || cat "$_fetch_stderr" >&2
+  if [ "$_fetch_code" -ne 0 ]; then
+    job_run_update failed "Fetch sources failed." "fetch_failed" \
+      --stage "fetch_sources" \
+      --exit-code "$_fetch_code"
+    return "$_fetch_code"
+  fi
   cat "$_result_file"
 
-  if grep -q '"candidate_discovery_fallback"' "$_result_file"; then
+  if library_has_discovery_tasks "$_result_file"; then
     echo "Discovery entries present; running the discovery agent pre-pass."
+    job_run_update running "Expanding source candidate discovery." "discovery_started" --stage "expand_discovery"
     if ! ( if [ "$PINNED_RUNTIME" = "openclaw" ]; then
              OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-discovery' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" | tr -c 'a-zA-Z0-9_.@+-' '_')"
              export OPENCLAW_SESSION_ID
            fi
            PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
+           BUILDER_BLOG_LIBRARY_AGENT_STAGE=discovery
+           export BUILDER_BLOG_LIBRARY_AGENT_STAGE
            IS_CRON_JOB=1
            run_selected_runtime ); then
       echo "Discovery pre-pass failed; un-expanded discovery entries will be left out of post-task sync." >&2
+      _discovery_failed=1
+      job_run_update running "Discovery pre-pass failed; continuing with expanded post tasks available so far." "discovery_agent_failed" \
+        --stage "expand_discovery"
+    else
+      _discovery_result_file="$JOB_TMP_DIR/library-discovery-result.json"
+      _expanded_result_file="$JOB_TMP_DIR/library-fetch-expanded.json"
+      _expand_stderr="$JOB_TMP_DIR/library-expand-discovery.err"
+      set +e
+      BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+      node "$AGENT_DIR/builder-digest.mjs" expand-discovery \
+        --tasks "$_result_file" \
+        --file "$_discovery_result_file" \
+        --out "$_expanded_result_file" > "$JOB_TMP_DIR/library-expand-discovery.out" 2> "$_expand_stderr"
+      _expand_code="$?"
+      set -e
+      [ ! -s "$JOB_TMP_DIR/library-expand-discovery.out" ] || cat "$JOB_TMP_DIR/library-expand-discovery.out"
+      [ ! -s "$_expand_stderr" ] || cat "$_expand_stderr" >&2
+      if [ "$_expand_code" -eq 0 ]; then
+        mv "$_expanded_result_file" "$_result_file"
+        cat "$_result_file"
+      else
+        echo "Discovery expansion failed; un-expanded discovery entries will be left out of post-task sync." >&2
+        _discovery_failed=1
+        job_run_update running "Discovery expansion failed; continuing with original fetch result." "discovery_expand_failed" \
+          --stage "expand_discovery" \
+          --exit-code "$_expand_code"
+      fi
     fi
   fi
 
+  _task_count="$(library_fetch_task_count "$_result_file")" || {
+    _count_code="$?"
+    job_run_update failed "Fetch result could not be read." "fetch_result_invalid" \
+      --stage "fetch_sources" \
+      --exit-code "$_count_code"
+    return "$_count_code"
+  }
+
+  if [ "$_task_count" -eq 0 ]; then
+    if [ "$_discovery_failed" -ne 0 ]; then
+      echo "Discovery failed before any post tasks could be planned." >&2
+      job_run_update failed "Discovery failed before any post tasks could be planned." "discovery_failed" \
+        --stage "expand_discovery"
+      return 65
+    fi
+    echo "No source updates to sync. Planned 0 post tasks."
+    node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+      --tasks "$_result_file" \
+      --results-dir "$_results_dir" || true
+    job_run_update succeeded "No update. Planned 0 post tasks." "no_update" \
+      --stage "no_update"
+    return 0
+  fi
+
+  job_run_update running "Sharding $_task_count fetch task(s)." "shard_started" --stage "shard_fetch_tasks"
   node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
     --tasks "$_result_file" \
     --out-dir "$_shards_dir" \
@@ -1460,6 +1551,7 @@ run_sharded_library() {
   _timed_out_worker_pids=""
   _checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
   : > "$_checkpoint_synced_ids_file"
+  job_run_update running "Running source fetch workers." "workers_started" --stage "run_fetch_workers"
   for _shard_file in "$_shards_dir"/shard-*.json; do
     [ -e "$_shard_file" ] || continue
     _shard_name="$(basename "$_shard_file" .json)"
@@ -1475,6 +1567,8 @@ run_sharded_library() {
         export OPENCLAW_SESSION_ID
       fi
       PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
+      BUILDER_BLOG_LIBRARY_AGENT_STAGE=worker
+      export BUILDER_BLOG_LIBRARY_AGENT_STAGE
       # Workers must never wait on interactive permission prompts, so they
       # always use the pinned runtime's unattended invocation — even when the
       # enclosing job is a one-time run.
@@ -1553,6 +1647,7 @@ run_sharded_library() {
   done
 
   _merge_result_file="$JOB_TMP_DIR/merge-task-results.json"
+  job_run_update running "Merging source fetch worker results." "merge_started" --stage "merge_results"
   node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
     --tasks "$_result_file" \
     --results-dir "$_results_dir" \
@@ -1573,8 +1668,7 @@ try {
 NODE
 )"
 
-  # Validate-and-repair loop. Each sharded worker validates its own slice before
-  # reporting, but the runner must still validate the merged payload because
+  # Validate-and-repair loop. The runner validates the merged payload because
   # workers can time out, crash, miss a task, or leave invalid JSON despite the
   # prompt contract. On failure, the runner hands the exact error list to one
   # repair agent that fixes ONLY the failing items in the merged payload, then
@@ -1586,6 +1680,7 @@ NODE
   _validate_file="$JOB_TMP_DIR/validate-agent-sync-result.json"
   _sync_payload="$JOB_TMP_DIR/library-agent-sync.json"
   _repair_round=0
+  job_run_update running "Validating source fetch results." "validate_started" --stage "validate_results"
   while :; do
     set +e
     node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
@@ -1661,6 +1756,8 @@ the corrected JSON back to the payload path, print one line {"repairDone": true}
 and stop.
 EOF
     if ! ( PROMPT_FILE="$REPAIR_PROMPT_FILE"
+           BUILDER_BLOG_LIBRARY_AGENT_STAGE=repair
+           export BUILDER_BLOG_LIBRARY_AGENT_STAGE
            IS_CRON_JOB=1
            run_selected_runtime ); then
       echo "Repair agent round $_repair_round exited non-zero; re-validating anyway." >&2
@@ -1668,6 +1765,7 @@ EOF
   done
 
   _sync_slices_dir="$JOB_TMP_DIR/sync-slices"
+  job_run_update running "Saving fetched posts to FollowBrief." "sync_started" --stage "sync_to_followbrief"
   node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
     --tasks "$_result_file" \
     --file "$JOB_TMP_DIR/library-agent-sync.json" \
@@ -1723,6 +1821,10 @@ EOF
   fi
   if [ "${_merge_issue_count:-0}" -gt 0 ]; then
     echo "Parallel library run completed with $_merge_issue_count worker/result issue(s); synced terminal outcomes, but marking the runtime failed." >&2
+    return 65
+  fi
+  if [ "$_discovery_failed" -ne 0 ]; then
+    echo "Library run completed normal post-task sync, but discovery failed for at least one source." >&2
     return 65
   fi
 }
