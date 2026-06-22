@@ -71,6 +71,36 @@ test("settings exposes account data export and deletion controls backed by scope
   assert.match(deleteRoute, /user\.delete/);
 });
 
+test("admin settings can reset all fetch and digest generated state through one shared helper", () => {
+  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
+  const panel = assertFile("src/components/AdminMaintenancePanel.tsx");
+  const route = assertFile("src/app/api/admin/maintenance/fetch-digest-reset/route.ts");
+  const helper = assertFile("src/lib/fetch-digest-reset.ts");
+  const script = assertFile("scripts/clear-fetch-digest-state.mts");
+
+  assert.match(settingsPage, /isAdmin \? <AdminMaintenancePanel \/> : null/);
+  assert.match(panel, /Reset fetch and digest state/);
+  assert.match(panel, /\/api\/admin\/maintenance\/fetch-digest-reset/);
+  assert.match(panel, /RESET/);
+
+  assert.match(route, /getCurrentSession\(\)/);
+  assert.match(route, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(route, /resetFetchDigestState\(\)/);
+  assert.match(route, /confirmation[\s\S]*RESET/);
+
+  assert.match(helper, /feedItem\.deleteMany/);
+  assert.match(helper, /libraryFetchRun\.deleteMany/);
+  assert.match(helper, /digestRun\.deleteMany/);
+  assert.match(helper, /digest\.deleteMany/);
+  assert.match(helper, /digestedItem\.deleteMany/);
+  assert.match(helper, /agentJobRun\.deleteMany/);
+  assert.match(helper, /jobType:\s*\{\s*in:\s*\[\s*"library-fetch",\s*"digest-build"\s*\]/);
+  assert.match(helper, /builder\.updateMany[\s\S]*lastFetchedAt:\s*null/);
+  assert.match(helper, /builder\.updateMany[\s\S]*status:\s*"IDLE"/);
+  assert.match(helper, /maxWait:\s*60_000/);
+  assert.match(script, /resetFetchDigestState/);
+});
+
 test("sharing controls explain Hub visibility before publishing user content", () => {
   const digestToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
   const libraryToggle = source("src/components/LibraryVisibilityToggle.tsx");

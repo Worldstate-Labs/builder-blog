@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
+import { AdminMaintenancePanel } from "@/components/AdminMaintenancePanel";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AccountDataPanel } from "@/components/AccountDataPanel";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
@@ -44,6 +45,7 @@ export default async function SettingsPage() {
             <AgentTokenSlot userId={userId} />
           </Suspense>
           <AccountDataPanel />
+          {isAdmin ? <AdminMaintenancePanel /> : null}
         </div>
 
         <Suspense fallback={<SettingsRulesSkeleton />}>
