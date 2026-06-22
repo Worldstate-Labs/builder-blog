@@ -523,7 +523,6 @@ export function DigestLogPanel({
   const detailsPanel = detailsOpen ? (
     <div id="digest-update-details">
       <DigestStatusPanel
-        cronJob={cronJob}
         entries={timelineEntries}
         onOpenLog={openLog}
       />
@@ -659,18 +658,16 @@ function DigestScheduleSummary({
 }
 
 function DigestStatusPanel({
-  cronJob,
   entries,
   onOpenLog,
 }: {
-  cronJob: DigestCronJobStatus | null;
   entries: DigestTimelineEntry[];
   onOpenLog: (logRef: DigestLogRef) => void;
 }) {
   const hydrated = useHydrated();
   const rowEntries = useMemo(() => entries.slice().reverse(), [entries]);
   const hasScrollCue = rowEntries.length > 3;
-  if (!cronJob && entries.length === 0) {
+  if (entries.length === 0) {
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
@@ -680,71 +677,8 @@ function DigestStatusPanel({
     );
   }
 
-  if (cronJob && cronJob.status !== "active" && entries.length === 0) {
-    const runnerRuntime = cronJob.runtime || "Local Agent";
-    const runnerHost = cronJob.hostname || null;
-    return (
-      <div className="sync-panel-card">
-        <div className="sync-panel-status-brief">
-          <dl className="sync-panel-meta">
-            <div className="sync-panel-meta-row">
-              <dt>Schedule enabled</dt>
-              <dd>
-                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-              </dd>
-            </div>
-            {cronJob.stoppedAt ? (
-              <div className="sync-panel-meta-row">
-                <dt>Schedule stopped</dt>
-                <dd>
-                  <time
-                    className="sync-panel-run-card-time"
-                    dateTime={cronJob.stoppedAt}
-                    title={formatAbsolute(cronJob.stoppedAt)}
-                  >
-                    {hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}
-                  </time>
-                </dd>
-              </div>
-            ) : null}
-            <div className="sync-panel-meta-row">
-              <dt>Runner</dt>
-              <dd className="sync-panel-truncate">
-                {runnerRuntime}
-                {runnerHost ? ` · ${runnerHost.replace(/\.local$/, "")}` : ""}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-    );
-  }
-
-  const latestEntry = entries.at(-1) ?? null;
-  const runnerRuntime = cronJob?.runtime || latestEntry?.jobRun?.runtime || "Local Agent";
-  const runnerHost = cronJob?.hostname || latestEntry?.jobRun?.hostname || null;
-
   return (
     <div className="sync-panel-card">
-      <div className="sync-panel-status-brief">
-        <dl className="sync-panel-meta">
-          {cronJob ? (
-            <div className="sync-panel-meta-row">
-              <dt>Schedule enabled</dt>
-              <dd>
-                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-              </dd>
-            </div>
-          ) : null}
-          <div className="sync-panel-meta-row">
-            <dt>Runner</dt>
-            <dd className="sync-panel-truncate">
-              {runnerRuntime}
-              {runnerHost ? ` · ${runnerHost.replace(/\.local$/, "")}` : ""}
-            </dd>
-          </div>
-        </dl>
-      </div>
       <div className="sync-panel-layout is-log-only">
 
         {entries.length > 0 ? (
