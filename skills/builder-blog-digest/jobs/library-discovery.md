@@ -10,8 +10,8 @@ do NOT summarize posts, and do NOT run `validate-agent-sync` or
 `sync-builders` — the parallel workers and the runner handle everything after
 expansion.
 
-Agent discretion boundary: do not change paths, flags, titles, output files,
-JSON schema, or success criteria.
+Agent discretion boundary: use the exact input/output paths and JSON shapes
+specified below.
 
 1. Read the fetch result (the runner sets `BUILDER_BLOG_JOB_TMP_DIR`):
 

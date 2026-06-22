@@ -1,7 +1,3 @@
-The creative step is limited to producing structured summary JSON from the
-FollowBrief context. The CLI assembles the final structured digest item JSON
-programmatically after this file is written.
-
 Read the saved `builder-blog-context.json`. Use only the supplied JSON. Do not
 browse the web and do not invent facts.
 
@@ -27,8 +23,8 @@ JSON schema:
 
 Rules:
 
-- If `context.items[]` is empty, stop and report that there are no AI Digest
-  issues to sync. Do not write a no-updates digest JSON and do not run sync.
+- If `context.items[]` is empty, stop and report that there are no candidate
+  items. Do not write a no-updates digest JSON.
 - Language mode: normally, write digest output in `context.language`. If
   `context.language` is `source`, use the supplied post summaries as the
   language source: write each `postSummaries[]` entry in that item's existing
@@ -51,15 +47,15 @@ Rules:
   `summary`.
 - Preserve IDs exactly: use `item.id` as `feedItemId` and `item.entityId` as
   `entityId`.
-- The render step validates this object before sync. If `headlineSummary` is
-  empty or longer than 1200 characters, if any `context.items[]` entry lacks a matching
-  `postSummaries[].feedItemId`, or if a non-empty source summary references an
-  unknown `entityId`, the job fails instead of syncing a partial digest.
+- If `headlineSummary` is empty or longer than 1200 characters, if any
+  `context.items[]` entry lacks a matching `postSummaries[].feedItemId`, or if a
+  non-empty source summary references an unknown `entityId`, the job fails
+  instead of syncing a partial digest.
 - Keep URLs unchanged when they appear in an existing post summary, but do not
   add new URLs to the JSON fields. The CLI will add the original source link
   from `item.url`.
-Before proceeding to the render command, reopen
+Before finishing, reopen
 `$TMP_DIR/builder-blog-digest-agent-output.json` and self-check the saved JSON.
 If `headlineSummary` is empty or over 1200 characters, revise and save the JSON
-again before running render. The render command is the final validation gate; do
-not use a failed render as the first time you discover an oversized headline.
+again. A later validation step rejects oversized headlines, missing
+`postSummaries[]` coverage, and unknown `sourceSummaries[]` entity IDs.

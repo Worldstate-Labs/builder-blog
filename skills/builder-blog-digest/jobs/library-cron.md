@@ -11,8 +11,8 @@ to nothing otherwise. Do not add `--force` yourself.
 
 Agent discretion boundary: this is a command-runner job unless the CLI returns
 `fetchTasks` or a source requires local cookies, credentials, transcription, or
-custom tooling. Do not change paths, flags, cadence, titles, output files, JSON
-schema, or success criteria.
+custom tooling. Run the shell commands exactly as written, and follow the JSON
+shapes in the included task instructions.
 
 The runner already downloaded the latest skill files (CLI, prompts,
 sources.json) from the server before this prompt runs, so there is no install

@@ -35,7 +35,6 @@ download_skill_file() {
   mv "$_tmp" "$_dest"
 }
 
-download_skill_file "$APP_URL/api/skill/files/builder-blog-digest.md" "$AGENT_DIR/SKILL.md"
 download_skill_file "$APP_URL/api/skill/files/builder-digest.mjs" "$AGENT_DIR/builder-digest.mjs"
 download_skill_file "$APP_URL/api/skill/files/builder-agent-runner.sh" "$AGENT_DIR/builder-agent-runner.sh"
 download_skill_file "$APP_URL/api/skill/files/builder-blog-library-once.md" "$AGENT_DIR/jobs/library-once.md"
@@ -54,7 +53,6 @@ download_skill_file "$APP_URL/api/skill/files/local-agent-timeouts.json" "$AGENT
 chmod +x "$AGENT_DIR/builder-digest.mjs"
 chmod +x "$AGENT_DIR/builder-agent-runner.sh"
 
-echo "FollowBrief skill saved to $AGENT_DIR/SKILL.md"
 echo "FollowBrief CLI saved to $AGENT_DIR/builder-digest.mjs"
 echo "FollowBrief agent runner saved to $AGENT_DIR/builder-agent-runner.sh"
 echo "FollowBrief scheduled job prompts saved to $AGENT_DIR/jobs"

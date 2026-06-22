@@ -67,7 +67,6 @@ const nextConfig: NextConfig = {
       "./scripts/builder-digest.mjs",
       "./scripts/builder-agent-runner.sh",
       "./config/local-agent-timeouts.json",
-      "./skills/builder-blog-digest/SKILL.md",
       "./skills/builder-blog-digest/jobs/library-once.md",
       "./skills/builder-blog-digest/jobs/digest-once.md",
       "./skills/builder-blog-digest/jobs/library-cron-setup.md",

@@ -334,7 +334,6 @@ test("web app serves the agent skill and setup command", () => {
   const skillJobAliasRoute = readFileSync("src/app/api/skill/jobs/[job]/route.ts", "utf8");
   const skillJobFiles = readFileSync("src/lib/skill-job-files.ts", "utf8");
   const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
-  const skill = readFileSync("skills/builder-blog-digest/SKILL.md", "utf8");
   const libraryOncePrompt = readFileSync("skills/builder-blog-digest/jobs/library-once.md", "utf8");
   const digestOncePrompt = readFileSync("skills/builder-blog-digest/jobs/digest-once.md", "utf8");
   const libraryCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-setup.md", "utf8");
@@ -618,7 +617,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{DIGEST_REGENERATE\}\}/);
   assert.match(skillJobRoute, /\{\{DIGEST_REGENERATE_FLAG\}\}/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_DIGEST_REGENERATE="\$\{BUILDER_BLOG_DIGEST_REGENERATE-\{\{DIGEST_REGENERATE_FLAG\}\}\}"/);
-  assert.match(digestCronPrompt, /BUILDER_BLOG_DIGEST_REGENERATE/);
+  assert.doesNotMatch(digestCronPrompt, /BUILDER_BLOG_DIGEST_REGENERATE/);
   assert.match(digestCronSetupPrompt, /\{\{DIGEST_REGENERATE\}\}/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_DIGEST_REGENERATE="\{\{DIGEST_REGENERATE_FLAG\}\}"/);
   assert.match(digestCronSetupPrompt, /regenerate-digest-cron/);
@@ -785,7 +784,7 @@ test("web app serves the agent skill and setup command", () => {
     libraryOnceExpanded,
     /BUILDER_BLOG_PARALLEL_WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/,
   );
-  assert.match(libraryOnceExpanded, /execution\s+contract, not as user-facing documentation/);
+  assert.match(libraryOnceExpanded, /Run only the numbered shell blocks below, in order/);
   assert.doesNotMatch(libraryOnceExpanded, /Environment contract/);
   assertOrderedText(libraryOnceExpanded, [
     "1. Install or refresh the skill",
@@ -863,8 +862,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestOncePrompt, /builder-digest\.mjs" prepare/);
   assert.doesNotMatch(digestOncePrompt, /render-digest/);
   assert.doesNotMatch(digestOncePrompt, /builder-digest\.mjs" sync/);
-  assert.match(digestOncePrompt, /runner owns candidate preparation, agent JSON output, rendering, syncing, and job-run lifecycle updates/);
-  assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
+  assert.match(digestOncePrompt, /Run only the numbered shell blocks below, in order/);
+  assert.match(digestOncePrompt, /It owns candidate preparation,[\s\S]*summary JSON handoff, rendering/);
+  assert.doesNotMatch(digestOncePrompt, /JSON schema, or success criteria/);
+  assert.doesNotMatch(libraryOncePrompt, /JSON schema, or success criteria/);
   assert.doesNotMatch(digestOncePrompt, /Environment contract/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR=/);
   assert.match(libraryOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
@@ -1081,7 +1082,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /--started-at "\$ANCHOR_AT"/);
   assert.match(digestCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(digestCronPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron/);
-  assert.match(digestCronPrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
+  assert.match(runner, /--context "\$_context_file"/);
   assertOrderedText(digestCronSetupPrompt, [
     "account's digest cron",
     "4. Keep the selected runtime and digest mode scoped",
@@ -1246,7 +1247,7 @@ test("web app serves the agent skill and setup command", () => {
   );
   assert.match(bootstrapRoute, /download_skill_file\(\)/);
   assert.match(bootstrapRoute, /mv "\$_tmp" "\$_dest"/);
-  assert.match(skillFileRoute, /builder-blog-digest\.md/);
+  assert.doesNotMatch(skillFileRoute, /builder-blog-digest\.md/);
   assert.match(skillFileRoute, /builder-blog-library-once\.md/);
   assert.match(skillFileRoute, /builder-blog-digest-once\.md/);
   assert.match(skillFileRoute, /builder-blog-library-cron-setup\.md/);
@@ -1262,7 +1263,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /text\/markdown/);
   assert.match(skillJobAliasRoute, /jobSkillFiles/);
   assert.match(skillJobAliasRoute, /rel="canonical"/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
+  assert.doesNotMatch(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
   assert.match(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);
@@ -1285,13 +1286,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(cli, /disallowedPrimarySources:\s*\[/);
   assert.match(cli, /Could not read \$\{SOURCES_CONFIG_PATH\}/);
   assert.match(cli, /Re-run the FollowBrief/);
-  assert.match(skill, /Install From Web App/);
-  assert.match(skill, /Scheduled Jobs/);
-  assert.match(skill, /builder-agent-runner\.sh digest-cron/);
-  assert.match(skill, /OpenClaw CLI/);
-  assert.match(skill, /validate-agent-sync/);
-  assert.match(skill, /failed extraction attempts are not command-contract\s+failures/);
-  assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
+  assert.doesNotMatch(bootstrapRoute, /FollowBrief skill saved/);
   // Cron contract = same shared fragment, asserted on the EXPANDED prompt.
   assert.match(libraryCronExpanded, /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT:-3\}/);
   assert.match(libraryCronExpanded, /validate-agent-sync/);
@@ -1338,15 +1333,20 @@ test("web app serves the agent skill and setup command", () => {
     "validate-agent-sync",
     "sync-builders",
   ]);
-  assert.match(digestCronPrompt, /builder-digest\.mjs" prepare \$\{BUILDER_BLOG_DIGEST_REGENERATE:-\}/);
+  assert.doesNotMatch(digestCronPrompt, /builder-digest\.mjs" prepare/);
+  assert.match(runner, /builder-digest\.mjs" prepare \$\{BUILDER_BLOG_DIGEST_REGENERATE:-\}/);
   assert.doesNotMatch(digestCronPrompt, /prepare --days/);
-  assert.match(digestCronPrompt, /builder-blog-digest\.json/);
+  assert.doesNotMatch(digestCronPrompt, /builder-blog-digest\.json/);
   assert.doesNotMatch(digestCronPrompt, /builder-blog-digest\.md/);
-  assert.match(digestCronPrompt, /Only\s+use agent judgment to write the structured summary JSON/);
-  assert.match(digestCronPrompt, /Agent discretion boundary/);
-  assert.match(digestCronExpanded, /structured summary JSON/);
+  assert.match(digestCronPrompt, /Read only `\$TMP_DIR\/builder-blog-context\.json`/);
+  assert.match(digestCronPrompt, /Write only `\$TMP_DIR\/builder-blog-digest-agent-output\.json`/);
+  assert.doesNotMatch(digestCronPrompt, /Do not change paths/);
+  assert.doesNotMatch(digestCronPrompt, /cadence|titles|success criteria/);
+  assert.doesNotMatch(digestCronPrompt, /lower-level digest/);
+  assert.doesNotMatch(digestCronPrompt, /cron-status|bootstrap|schedule commands/);
+  assert.match(digestCronExpanded, /summary JSON/);
   assert.doesNotMatch(digestCronPrompt, /api\/skill\/bootstrap/);
-  assert.match(digestCronPrompt, /runner already downloaded the latest skill files/);
+  assert.doesNotMatch(digestCronPrompt, /runner already downloaded the latest skill files/);
   // The recurring run shares the once job's structured output contract via the
   // partial.
   assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract TMP_JOB="digest-cron"\}\}/);
@@ -1359,17 +1359,20 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestCronExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestCronExpanded, /context\.digest\.digestIntro/);
-  assert.match(digestCronPrompt, /render-digest/);
+  assert.doesNotMatch(digestCronPrompt, /builder-digest\.mjs" prepare/);
+  assert.doesNotMatch(digestCronPrompt, /render-digest/);
+  assert.doesNotMatch(digestCronPrompt, /builder-digest\.mjs" sync/);
+  assert.doesNotMatch(digestCronPrompt, /The FollowBrief runner owns candidate preparation/);
   assert.match(digestCronExpanded, /headlineSummary/);
-  assert.match(digestCronPrompt, /builder-blog-digest-headlines\.txt/);
-  assert.match(digestCronPrompt, /builder-blog-digest-sync-result\.json/);
-  assert.match(digestCronPrompt, /> "\$TMP_DIR\/builder-blog-digest-sync-result\.json"/);
-  assert.match(digestCronPrompt, /cat "\$TMP_DIR\/builder-blog-digest-sync-result\.json"/);
-  assert.match(digestCronPrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
+  assert.match(runner, /run_digest_job\(\)/);
+  assert.match(runner, /builder-digest\.mjs" prepare/);
+  assert.match(runner, /digest_context_item_count/);
+  assert.match(runner, /BUILDER_BLOG_DIGEST_AGENT_ONLY=1/);
+  assert.match(runner, /builder-digest\.mjs" render-digest/);
+  assert.match(runner, /builder-digest\.mjs" sync/);
+  assert.match(runner, /No update\. Prepared 0 candidates\./);
   assert.doesNotMatch(digestCronExpanded, /summarize-tweets\.md/);
   assert.doesNotMatch(digestCronExpanded, /context\.prompts/);
-  assert.equal(skill.includes("/Users/jie/code/builder_blog"), false);
-  assert.equal(skill.includes("node scripts/builder-digest.mjs"), false);
 });
 
 test("vercel migration wrapper retries Prisma advisory lock timeouts", () => {

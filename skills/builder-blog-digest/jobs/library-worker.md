@@ -17,8 +17,8 @@ syncs it with `sync-builders`. Because of that, these boundaries are hard:
 - Write only your shard result file (plus your own scratch files under the
   shard temp directory, if you need any).
 
-Agent discretion boundary: do not change paths, flags, titles, output files,
-JSON schema, or success criteria.
+Agent discretion boundary: use the exact shard paths and JSON shapes specified
+below.
 
 1. Resolve your shard assignment and read the tasks (the runner exports both
 variables):

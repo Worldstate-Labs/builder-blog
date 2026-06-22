@@ -70,7 +70,6 @@ fi
 
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest.md" "$AGENT_DIR/SKILL.md"
   download_skill_file "$APP_URL/api/skill/files/builder-digest.mjs" "$AGENT_DIR/builder-digest.mjs"
   download_skill_file "$APP_URL/api/skill/files/sources.json" "$AGENT_DIR/sources.json"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-once.md" "$AGENT_DIR/jobs/library-once.md"
@@ -267,6 +266,14 @@ digest_output_completed() {
   esac
 
   _output_file="${1:-}"
+  if [ "${BUILDER_BLOG_DIGEST_AGENT_ONLY:-}" = "1" ]; then
+    if [ -s "$JOB_TMP_DIR/builder-blog-digest-agent-output.json" ]; then
+      return 0
+    fi
+    echo "Digest agent did not produce builder-blog-digest-agent-output.json." >&2
+    return 1
+  fi
+
   _missing=""
   for _artifact in \
     "$JOB_TMP_DIR/builder-blog-context.json" \
@@ -539,8 +546,8 @@ export BUILDER_BLOG_FETCH_DAYS
 
 # Re-generate today's digest: digest-cron-setup writes 1 to the regenerate pin
 # when the user picked "re-generate today's digest". We expose it as
-# BUILDER_BLOG_DIGEST_REGENERATE, which the digest-cron prompt drops into the
-# prepare/sync commands (`${BUILDER_BLOG_DIGEST_REGENERATE:-}` → --regenerate).
+# BUILDER_BLOG_DIGEST_REGENERATE, which the deterministic digest runner passes
+# to the prepare/sync commands (`${BUILDER_BLOG_DIGEST_REGENERATE:-}` → --regenerate).
 # "1" → re-cover the full window and replace the existing same-day digest;
 # anything else → no flag (normal incremental digest).
 BUILDER_BLOG_DIGEST_REGENERATE=""
@@ -1053,7 +1060,21 @@ run_with_job_tracking() {
   wait "$RUNTIME_PID"
   _code="$?"
   if [ "$_code" -eq 0 ]; then
-    job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+    if [ "$JOB_NAME" = "digest-once" ] || [ "$JOB_NAME" = "digest-cron" ]; then
+      _digest_final_context="$JOB_TMP_DIR/builder-blog-context.json"
+      _digest_final_count=""
+      if [ -s "$_digest_final_context" ]; then
+        _digest_final_count="$(digest_context_item_count "$_digest_final_context" 2>/dev/null || true)"
+      fi
+      if [ "$_digest_final_count" = "0" ]; then
+        job_run_update succeeded "No update. Prepared 0 candidates." "no_update" \
+          --stage "no_update"
+      else
+        job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+      fi
+    else
+      job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+    fi
   elif [ "$_code" -eq 124 ]; then
     job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout"
   else
@@ -1138,14 +1159,15 @@ run_selected_runtime() {
 # check never goes through here — it calls run_selected_runtime directly.
 run_job_payload() {
   case "$JOB_NAME" in
+    digest-once|digest-cron)
+      run_digest_job
+      return "$?"
+      ;;
     library-once|library-cron)
       if [ "$MAX_PARALLEL_WORKERS" -ge 2 ]; then
         run_sharded_library
         return "$?"
       fi
-      ;;
-    digest-once)
-      PROMPT_FILE="$(payload_prompt_file)"
       ;;
   esac
   run_selected_runtime
@@ -1156,6 +1178,117 @@ payload_prompt_file() {
     digest-once) printf '%s\n' "$AGENT_DIR/jobs/digest-cron.md" ;;
     *) printf '%s\n' "$AGENT_DIR/jobs/$JOB_NAME.md" ;;
   esac
+}
+
+digest_context_item_count() {
+  _dcic_file="$1"
+  node - "$_dcic_file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const context = JSON.parse(fs.readFileSync(file, "utf8"));
+console.log(Array.isArray(context.items) ? context.items.length : 0);
+NODE
+}
+
+run_digest_job() {
+  PROMPT_FILE="$(payload_prompt_file)"
+  _context_file="$JOB_TMP_DIR/builder-blog-context.json"
+  _agent_output_file="$JOB_TMP_DIR/builder-blog-digest-agent-output.json"
+  _digest_file="$JOB_TMP_DIR/builder-blog-digest.json"
+  _headlines_file="$JOB_TMP_DIR/builder-blog-digest-headlines.txt"
+  _sync_result_file="$JOB_TMP_DIR/builder-blog-digest-sync-result.json"
+  rm -f \
+    "$_context_file" \
+    "$_agent_output_file" \
+    "$_digest_file" \
+    "$_headlines_file" \
+    "$_sync_result_file"
+
+  job_run_update running "Preparing digest candidates." "prepare_started" --stage "prepare_candidates"
+  _prepare_stderr="$JOB_TMP_DIR/digest-prepare.err"
+  set +e
+  BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+  node "$AGENT_DIR/builder-digest.mjs" prepare ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
+    > "$_context_file" 2> "$_prepare_stderr"
+  _prepare_code="$?"
+  set -e
+  [ ! -s "$_prepare_stderr" ] || cat "$_prepare_stderr" >&2
+  if [ "$_prepare_code" -ne 0 ]; then
+    job_run_update failed "Prepare candidates failed." "prepare_failed" \
+      --stage "prepare_candidates" \
+      --exit-code "$_prepare_code"
+    return "$_prepare_code"
+  fi
+
+  _item_count="$(digest_context_item_count "$_context_file")" || {
+    _count_code="$?"
+    job_run_update failed "Prepared digest context could not be read." "prepare_context_invalid" \
+      --stage "prepare_candidates" \
+      --exit-code "$_count_code"
+    return "$_count_code"
+  }
+
+  if [ "$_item_count" -eq 0 ]; then
+    echo "No AI Digest issues to sync. Prepared 0 candidates."
+    job_run_update succeeded "No update. Prepared 0 candidates." "no_update" \
+      --stage "no_update"
+    return 0
+  fi
+
+  job_run_update running "Generating digest summary JSON for $_item_count candidates." "agent_started" \
+    --stage "run_local_agent"
+  export BUILDER_BLOG_DIGEST_AGENT_ONLY=1
+  run_selected_runtime
+  _agent_code="$?"
+  unset BUILDER_BLOG_DIGEST_AGENT_ONLY
+  if [ "$_agent_code" -ne 0 ]; then
+    job_run_update failed "Local agent failed to write digest summary JSON." "agent_failed" \
+      --stage "run_local_agent" \
+      --exit-code "$_agent_code"
+    return "$_agent_code"
+  fi
+
+  job_run_update running "Rendering digest JSON." "render_started" --stage "render_digest_json"
+  _render_stderr="$JOB_TMP_DIR/digest-render.err"
+  set +e
+  node "$AGENT_DIR/builder-digest.mjs" render-digest \
+    --context "$_context_file" \
+    --agent-output "$_agent_output_file" \
+    --out "$_digest_file" \
+    --summary-out "$_headlines_file" > "$JOB_TMP_DIR/digest-render.out" 2> "$_render_stderr"
+  _render_code="$?"
+  set -e
+  [ ! -s "$JOB_TMP_DIR/digest-render.out" ] || cat "$JOB_TMP_DIR/digest-render.out"
+  [ ! -s "$_render_stderr" ] || cat "$_render_stderr" >&2
+  if [ "$_render_code" -ne 0 ]; then
+    job_run_update failed "Render digest JSON failed." "render_failed" \
+      --stage "render_digest_json" \
+      --exit-code "$_render_code"
+    return "$_render_code"
+  fi
+
+  job_run_update running "Saving digest to FollowBrief." "sync_started" --stage "save_to_followbrief"
+  _sync_stderr="$JOB_TMP_DIR/digest-sync.err"
+  set +e
+  BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+  node "$AGENT_DIR/builder-digest.mjs" sync \
+    --file "$_digest_file" \
+    --summary-file "$_headlines_file" \
+    --context "$_context_file" \
+    --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
+    > "$_sync_result_file" 2> "$_sync_stderr"
+  _sync_code="$?"
+  set -e
+  [ ! -s "$_sync_result_file" ] || cat "$_sync_result_file"
+  [ ! -s "$_sync_stderr" ] || cat "$_sync_stderr" >&2
+  if [ "$_sync_code" -ne 0 ]; then
+    job_run_update failed "Save to FollowBrief failed." "sync_failed" \
+      --stage "save_to_followbrief" \
+      --exit-code "$_sync_code"
+    return "$_sync_code"
+  fi
+
+  digest_output_completed "$_sync_result_file"
 }
 
 # Sharded library run: the runner owns every deterministic step (fetch, shard,

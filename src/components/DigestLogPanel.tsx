@@ -1041,6 +1041,27 @@ type DigestLifecycleStep = {
   open?: boolean;
 };
 
+const DIGEST_LIFECYCLE_STAGE_INDEX: Record<string, number> = {
+  prepare_candidates: 0,
+  no_update: 0,
+  run_local_agent: 1,
+  render_digest_json: 2,
+  save_to_followbrief: 3,
+  record_digested_posts: 4,
+};
+
+function digestLifecycleStageIndex(jobRun?: AgentJobRunListItem | null): number | null {
+  const stage = jobRun?.stage;
+  if (!stage) return null;
+  return DIGEST_LIFECYCLE_STAGE_INDEX[stage] ?? null;
+}
+
+function isNoUpdateDigestJob(jobRun?: AgentJobRunListItem | null): boolean {
+  if (!jobRun || jobRun.status !== "succeeded") return false;
+  const reason = publicJobRunReason(jobRun);
+  return jobRun.stage === "no_update" || reason === "no_update";
+}
+
 function DigestFactRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="sync-panel-task-fact-row">
@@ -1089,7 +1110,15 @@ function DigestLifecycle({
   const failedJob = hasFailedDigestJob(jobRun, undefined, stallGraceUntilMs);
   const digestSaved = synced && Boolean(run?.digestTitle);
   const noUpdateRun = isNoUpdateDigestRun(run, jobRun);
+  const noUpdateJob = isNoUpdateDigestJob(jobRun);
+  const noUpdate = noUpdateRun || noUpdateJob;
   const activeJob = Boolean(jobRun && isActiveDigestJobRun(jobRun));
+  const stageIndex = digestLifecycleStageIndex(jobRun);
+  const activeStageIndex = activeJob ? stageIndex : null;
+  const failedStageIndex = failedJob ? stageIndex : null;
+  const stepPast = (index: number) => Boolean(stageIndex !== null && stageIndex > index);
+  const stepActive = (index: number) => activeStageIndex === index;
+  const stepFailed = (index: number) => failedStageIndex === index;
   const prepareFailed = failedJob && !run;
   const selectedOutcome = run
     ? run.candidateCount === 0
@@ -1102,7 +1131,13 @@ function DigestLifecycle({
           ? "Generating"
           : "No save reported"
     : jobRun
-      ? jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
+      ? noUpdateJob
+        ? "Not needed"
+        : stepActive(1)
+          ? "Generating"
+          : stepPast(1)
+            ? "Summary JSON written"
+            : jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
       : "Pending";
   const steps: DigestLifecycleStep[] = [
     {
@@ -1110,11 +1145,17 @@ function DigestLifecycle({
       label: "Prepare candidates",
       outcome: run
         ? `${formatCount(run.candidateCount)} found from ${formatCount(run.contributingSourceCount)} sources`
+        : noUpdateJob
+          ? "0 candidates"
         : jobRun
-          ? jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
+          ? stepActive(0)
+            ? "Preparing"
+            : stepPast(0)
+              ? "Prepared"
+              : jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
           : "Waiting for Local Agent",
-      tone: hasRun ? "ok" : failedJob ? "fail" : jobRun ? "warn" : "idle",
-      open: prepareFailed,
+      tone: hasRun || noUpdateJob || stepPast(0) ? "ok" : stepFailed(0) ? "fail" : jobRun ? "warn" : "idle",
+      open: prepareFailed || stepFailed(0),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {run ? (
@@ -1122,6 +1163,8 @@ function DigestLifecycle({
               <DigestFactRow label="Candidates" value={<span>{formatCount(run.candidateCount)}</span>} />
               <DigestFactRow label="Sources" value={<span>{formatCount(run.contributingSourceCount)} of {formatCount(run.subscriptionCount)}</span>} />
             </>
+          ) : noUpdateJob ? (
+            <DigestFactRow label="Candidates" value={<span>0 candidates; no AI Digest needed.</span>} />
           ) : failedJob ? (
             <DigestFactRow
               label="What happened"
@@ -1135,12 +1178,13 @@ function DigestLifecycle({
       key: "generate",
       label: "Run Local Agent",
       outcome: selectedOutcome,
-      tone: failedJob ? "fail" : synced || noUpdateRun ? "ok" : "idle",
-      open: failedJob && !synced && !noUpdateRun,
+      tone: failedJob ? "fail" : synced || noUpdate ? "ok" : stepActive(1) ? "warn" : stepPast(1) ? "ok" : "idle",
+      open: stepFailed(1) || (failedJob && !synced && !noUpdate),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
-          {activeJob ? <DigestFactRow label="Status" value={<span>Local Agent is still running.</span>} /> : null}
+          {stepActive(1) ? <DigestFactRow label="Status" value={<span>Local Agent is writing digest summary JSON.</span>} /> : null}
           {synced ? <DigestFactRow label="Selected" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
+          {noUpdate ? <DigestFactRow label="Skipped" value={<span>No candidate posts required agent summarization.</span>} /> : null}
           {failedJob ? <DigestFactRow label="Failure" value={<span>{jobRun ? jobRunFailureReason(jobRun) : "Local Agent stopped before completing."}</span>} /> : null}
         </DigestLifecycleDetails>
       ),
@@ -1148,12 +1192,23 @@ function DigestLifecycle({
     {
       key: "render",
       label: "Render digest JSON",
-      outcome: digestSaved ? run!.digestTitle! : noUpdateRun ? "Not needed" : synced ? "Untitled AI Digest" : run ? "Not completed" : "Pending",
-      tone: digestSaved || noUpdateRun ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
-      open: failedJob && Boolean(run),
+      outcome: digestSaved
+        ? run!.digestTitle!
+        : noUpdate
+          ? "Not needed"
+          : synced
+            ? "Untitled AI Digest"
+            : stepActive(2)
+              ? "Rendering"
+              : stepPast(2)
+                ? "Rendered"
+                : run ? "Not completed" : "Pending",
+      tone: digestSaved || noUpdate ? "ok" : synced ? "warn" : stepFailed(2) ? "fail" : stepActive(2) ? "warn" : stepPast(2) ? "ok" : failedJob ? "fail" : "idle",
+      open: stepFailed(2) || (failedJob && Boolean(run)),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {digestSaved ? <DigestFactRow label="Title" value={<span>{run!.digestTitle}</span>} /> : null}
+          {stepActive(2) ? <DigestFactRow label="Status" value={<span>The runner is validating and rendering the digest JSON.</span>} /> : null}
           {!digestSaved && failedJob ? <DigestFactRow label="Blocked by" value={<span>Local Agent did not return digest JSON.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
@@ -1161,12 +1216,21 @@ function DigestLifecycle({
     {
       key: "sync",
       label: "Save to FollowBrief",
-      outcome: noUpdateRun ? "No AI Digest needed" : run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
-      tone: noUpdateRun || run?.syncedAt ? "ok" : failedJob ? "fail" : "idle",
-      open: failedJob && Boolean(run) && !run?.syncedAt,
+      outcome: noUpdate
+        ? "No AI Digest needed"
+        : run?.syncedAt
+          ? "Saved to FollowBrief"
+          : stepActive(3)
+            ? "Saving"
+            : stepPast(3)
+              ? "Saved"
+              : run ? "Not saved yet" : "Pending",
+      tone: noUpdate || run?.syncedAt ? "ok" : stepFailed(3) ? "fail" : stepActive(3) ? "warn" : stepPast(3) ? "ok" : failedJob ? "fail" : "idle",
+      open: stepFailed(3) || (failedJob && Boolean(run) && !run?.syncedAt),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {run?.syncedAt ? <DigestFactRow label="Saved at" value={<span>{formatAbsolute(run.syncedAt)}</span>} /> : null}
+          {stepActive(3) ? <DigestFactRow label="Status" value={<span>The runner is saving the rendered AI Digest.</span>} /> : null}
           {!run?.syncedAt && failedJob ? <DigestFactRow label="Blocked by" value={<span>No saved AI Digest was linked to this run.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
@@ -1174,8 +1238,8 @@ function DigestLifecycle({
     {
       key: "mark",
       label: "Record digested posts",
-      outcome: noUpdateRun ? "No posts to record" : synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
-      tone: noUpdateRun || synced ? "ok" : failedJob ? "fail" : "idle",
+      outcome: noUpdate ? "No posts to record" : synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
+      tone: noUpdate || synced ? "ok" : stepFailed(4) ? "fail" : failedJob ? "fail" : "idle",
       open: false,
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>

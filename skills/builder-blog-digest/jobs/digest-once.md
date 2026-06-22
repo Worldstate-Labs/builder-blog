@@ -1,15 +1,13 @@
-Objective: generate one FollowBrief subscription digest once through the same
-local runner path used by the scheduled digest job.
-
-You are the local agent executing this job. Treat this file as the execution
-contract, not as user-facing documentation.
+You are executing one FollowBrief AI Digest build.
 
 Execution contract:
-- Run the numbered command steps exactly.
+- Run only the numbered shell blocks below, in order.
 - If a command fails, stop and report the command, exit code, and stderr to the user.
 - Do not browse for extra context.
-- Do not change paths, flags, output files, JSON schema, or success criteria.
-- The runner owns candidate preparation, agent JSON output, rendering, syncing, and job-run lifecycle updates. Do not run lower-level FollowBrief CLI steps yourself.
+- Run the shell blocks exactly as written; keep command paths, environment
+  variables, flags, and output locations unchanged.
+- Use the runner in step 2 as the build command. It owns candidate preparation,
+  summary JSON handoff, rendering, syncing, and job-run lifecycle updates.
 
 1. Install or refresh the skill:
 

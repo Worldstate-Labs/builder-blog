@@ -6,10 +6,6 @@ import { expandSkillIncludes } from "@/lib/skill-includes";
 type Params = { params: Promise<{ file: string }> };
 
 const skillFiles = {
-  "builder-blog-digest.md": {
-    path: "skills/builder-blog-digest/SKILL.md",
-    contentType: "text/markdown; charset=utf-8",
-  },
   "builder-blog-digest-cron.md": {
     path: "skills/builder-blog-digest/jobs/digest-cron.md",
     contentType: "text/markdown; charset=utf-8",

@@ -1,16 +1,13 @@
-Objective: run this user's FollowBrief private source library fetch once through
-the same local runner path used by the scheduled fetch job.
-
-You are the local agent executing this job. Treat this file as the execution
-contract, not as user-facing documentation.
+You are executing one FollowBrief private source library fetch.
 
 Execution contract:
-- Run the numbered command steps exactly.
+- Run only the numbered shell blocks below, in order.
 - If a command fails, stop and report the command, exit code, and stderr to the user.
 - Do not browse for extra context.
-- Do not change paths, flags, output files, JSON schema, or success criteria.
-- The runner owns source discovery, fetch-task sharding, validation, syncing,
-  and fetch-log updates. Do not run lower-level FollowBrief CLI steps yourself.
+- Run the shell blocks exactly as written; keep command paths, environment
+  variables, flags, and output locations unchanged.
+- Use the runner in step 2 as the fetch command. It owns source discovery,
+  fetch-task sharding, validation, syncing, and fetch-log updates.
 
 1. Install or refresh the skill:
 
