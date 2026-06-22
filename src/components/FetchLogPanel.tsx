@@ -522,9 +522,10 @@ function isRunInflight(
   run: LibraryFetchRunListItem,
   jobRun?: AgentJobRunListItem | null,
   cronJob?: LibraryCronJobStatus | null,
+  suppressStalled = false,
 ): boolean {
   if (run.source === "cron" && cronJob && cronJob.status !== "active") return false;
-  if (jobRun && (!isActiveJobRun(jobRun) || isStalledJobRun(jobRun))) return false;
+  if (jobRun && (!isActiveJobRun(jobRun) || (!suppressStalled && isStalledJobRun(jobRun)))) return false;
   if (!jobRun) {
     const ageMs = Date.now() - Date.parse(run.startedAt);
     if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
@@ -537,6 +538,7 @@ function isRunInflight(
 
 const FETCH_LOG_PAGE_SIZE = 10;
 const SCHEDULED_SLOT_CONTEXT_SIZE = 12;
+const LIVE_LOG_STALL_GRACE_MS = 10_000;
 
 type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
 
@@ -990,6 +992,7 @@ export function FetchLogPanel({
   const [, startTransition] = useTransition();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<FetchLogRef | null>(null);
+  const [liveLogSuppressStalled, setLiveLogSuppressStalled] = useState(false);
   const hydrated = useHydrated();
   const cronStatus = useMemo(
     () => buildCronStatus(cronJob, cronRuns, scheduledJobRuns),
@@ -1024,11 +1027,6 @@ export function FetchLogPanel({
   useEffect(() => {
     cronJobRef.current = cronJob;
   }, [cronJob]);
-
-  const openLog = useCallback((logRef: FetchLogRef) => {
-    setDetailsOpen(true);
-    setSelectedLog(logRef);
-  }, []);
 
   const refresh = useCallback(() => {
     setError(null);
@@ -1071,6 +1069,20 @@ export function FetchLogPanel({
       }
     });
   }, []);
+
+  const openLog = useCallback((logRef: FetchLogRef) => {
+    setDetailsOpen(true);
+    setSelectedLog(logRef);
+    setLiveLogSuppressStalled(true);
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!selectedLog) return;
+    if (typeof window === "undefined") return;
+    const id = window.setTimeout(() => setLiveLogSuppressStalled(false), LIVE_LOG_STALL_GRACE_MS);
+    return () => window.clearTimeout(id);
+  }, [refresh, selectedLog]);
 
   const loadMoreHistory = useCallback(async () => {
     if (isLoadingFetchHistory || !hasMoreFetchHistory) return;
@@ -1233,8 +1245,12 @@ export function FetchLogPanel({
           cronJob={cronJob}
           jobRuns={jobRuns}
           logRef={selectedLog}
-          onClose={() => setSelectedLog(null)}
+          onClose={() => {
+            setSelectedLog(null);
+            setLiveLogSuppressStalled(false);
+          }}
           runs={dialogRuns}
+          suppressStalled={liveLogSuppressStalled}
         />
       ) : null}
     </section>
@@ -1591,13 +1607,13 @@ function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
   return scheduledJobRunStatusLabel(jobRun.status);
 }
 
-function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
+function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null, suppressStalled = false): {
   label: string;
   style: ReturnType<typeof statusStyle>;
   tone: StatusTone;
 } | null {
   if (!jobRun || jobRun.status === "succeeded") return null;
-  if (isStalledJobRun(jobRun)) {
+  if (!suppressStalled && isStalledJobRun(jobRun)) {
     return { label: "Stalled", style: statusStyle("failed"), tone: "failed" };
   }
   if (isActiveJobRun(jobRun)) return null;
@@ -1617,6 +1633,7 @@ export function fetchRunDisplayState({
   noUpdate = false,
   outcomeStatus,
   runStatus,
+  suppressStalled = false,
 }: {
   completedOutcomes: boolean;
   inflight: boolean;
@@ -1624,8 +1641,9 @@ export function fetchRunDisplayState({
   noUpdate?: boolean;
   outcomeStatus?: string;
   runStatus: string;
+  suppressStalled?: boolean;
 }) {
-  const interruptedStatus = interruptedFetchRunStatus(jobRun);
+  const interruptedStatus = interruptedFetchRunStatus(jobRun, suppressStalled);
   const completedInterruptedLabel = !inflight && completedOutcomes
     ? interruptedStatus?.label ?? null
     : null;
@@ -2073,16 +2091,18 @@ function RunCard({
   onOpenLog,
   run,
   domId = runDomId(run.id),
+  suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
   jobRun?: AgentJobRunListItem;
   onOpenLog?: () => void;
   run: LibraryFetchRunListItem;
   domId?: string | null;
+  suppressStalled?: boolean;
 }) {
   const hydrated = useHydrated();
   const details = readDetails(run.details);
-  const inflight = isRunInflight(run, jobRun, cronJob);
+  const inflight = isRunInflight(run, jobRun, cronJob, suppressStalled);
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
   const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
@@ -2095,6 +2115,7 @@ function RunCard({
     noUpdate,
     outcomeStatus,
     runStatus: run.status,
+    suppressStalled,
   });
   // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
@@ -2185,12 +2206,14 @@ function FetchLogDialog({
   logRef,
   onClose,
   runs,
+  suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
   jobRuns: AgentJobRunListItem[];
   logRef: FetchLogRef;
   onClose: () => void;
   runs: LibraryFetchRunListItem[];
+  suppressStalled?: boolean;
 }) {
   const jobsByInstanceId = jobRunByInstanceId(jobRuns);
   const jobRun = logRef.kind === "job"
@@ -2219,7 +2242,13 @@ function FetchLogDialog({
         </header>
         <div className="sync-panel-log-dialog-body">
           {run ? (
-            <RunCard cronJob={cronJob} domId={null} jobRun={resolvedJobRun ?? undefined} run={run} />
+            <RunCard
+              cronJob={cronJob}
+              domId={null}
+              jobRun={resolvedJobRun ?? undefined}
+              run={run}
+              suppressStalled={suppressStalled}
+            />
           ) : resolvedJobRun ? (
             <JobRunCard domId={null} jobRun={resolvedJobRun} />
           ) : (

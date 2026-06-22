@@ -352,7 +352,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /cronJobRef/);
   assert.match(panel, /run\.source === "cron" && cronJob && cronJob\.status !== "active"/);
-  assert.match(panel, /if \(jobRun && \(!isActiveJobRun\(jobRun\) \|\| isStalledJobRun\(jobRun\)\)\) return false/);
+  assert.match(panel, /if \(jobRun && \(!isActiveJobRun\(jobRun\) \|\| \(!suppressStalled && isStalledJobRun\(jobRun\)\)\)\) return false/);
   assert.match(panel, /if \(jobRun && jobRun\.trigger !== "scheduled"\) return false/);
   assert.match(panel, /if \(!jobRun && run\.source !== "cron"\) return false/);
   assert.match(panel, /const postTasks = tasks\.filter\(isPlannedPostTask\)/);
@@ -361,7 +361,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /label: "No update"/);
   assert.match(panel, /No update\. Sources were checked and no new posts needed to be saved\./);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
-  assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{resolvedJobRun \?\? undefined\} run=\{run\} \/>/);
+  assert.match(panel, /<RunCard[\s\S]*cronJob=\{cronJob\}[\s\S]*suppressStalled=\{suppressStalled\}[\s\S]*\/>/);
   assert.match(source("scripts/builder-agent-runner.sh"), /patch-fetch-run-plan[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
@@ -373,6 +373,11 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-run-card-diagnostics"/);
   assert.doesNotMatch(panel, /className="mono sync-panel-run-card-stage"/);
   assert.match(panel, /const displayStatus = inflight/);
+  assert.match(panel, /LIVE_LOG_STALL_GRACE_MS = 10_000/);
+  assert.match(panel, /setLiveLogSuppressStalled\(true\)/);
+  assert.match(panel, /refresh\(\)/);
+  assert.match(panel, /suppressStalled=\{liveLogSuppressStalled\}/);
+  assert.match(panel, /isRunInflight\(run, jobRun, cronJob, suppressStalled\)/);
   assert.match(panel, /displayStatus\.label/);
   assert.match(panel, /statusToneClass\(displayStatus\.tone\)/);
   assert.doesNotMatch(panel, /displayStatus\.style\.background/);

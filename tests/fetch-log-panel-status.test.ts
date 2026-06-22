@@ -301,6 +301,31 @@ test("stale scheduled fetch run with pending tasks does not stay syncing", () =>
   assert.equal(status.key, "needs-attention");
   assert.equal(status.label, "Needs attention");
   assert.match(status.summary, /lost contact/);
+
+  const stats = fetchRunStats({
+    details: staleRun.details as { fetchTasks: Array<{ id: string; status: string }> },
+    liveProgress: null,
+    run: staleRun,
+  });
+  const stalledDisplay = fetchRunDisplayState({
+    completedOutcomes: false,
+    inflight: false,
+    jobRun: staleJob,
+    outcomeStatus: "ok",
+    runStatus: staleRun.status,
+  });
+  assert.equal(stalledDisplay.displayStatus.label, "Stalled");
+
+  const openedLiveLogDisplay = fetchRunDisplayState({
+    completedOutcomes: false,
+    inflight: true,
+    jobRun: staleJob,
+    outcomeStatus: "ok",
+    runStatus: staleRun.status,
+    suppressStalled: true,
+  });
+  assert.equal(stats.planned, 4);
+  assert.equal(openedLiveLogDisplay.displayStatus.label, "Syncing");
 });
 
 test("fetch timeline opens the specific run bound to a scheduled slot", () => {
