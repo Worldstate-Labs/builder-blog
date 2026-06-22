@@ -894,7 +894,7 @@ function jobRunDetailNumber(jobRun: AgentJobRunListItem, key: string): number | 
 
 function isInternalDigestJobRunReason(value: string | null): boolean {
   const normalized = value?.trim().toLowerCase().replace(/[_-]+/g, " ") ?? "";
-  return normalized === "heartbeat" || normalized === "runtime heartbeat";
+  return normalized === "heartbeat" || normalized === "runtime heartbeat" || normalized === "runtime finished";
 }
 
 function publicJobRunReason(jobRun: AgentJobRunListItem): string | null {
@@ -1102,8 +1102,43 @@ type DigestLifecycleStep = {
   label: string;
   outcome: string;
   tone: DigestLifecycleTone;
+  children?: ReactNode;
   meta?: string;
+  open?: boolean;
 };
+
+function DigestFactRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="sync-panel-task-fact-row">
+      <dt className="sync-panel-task-fact-label">{label}</dt>
+      <dd className="sync-panel-task-fact-value">{value}</dd>
+    </div>
+  );
+}
+
+function DigestLifecycleDetails({
+  children,
+  jobRun,
+  run,
+}: {
+  children?: ReactNode;
+  jobRun?: AgentJobRunListItem | null;
+  run?: DigestRunListItem;
+}) {
+  const reason = jobRun ? publicJobRunReason(jobRun) : null;
+  return (
+    <dl className="sync-panel-task-fact-list">
+      {children}
+      {run ? <DigestFactRow label="DigestRun" value={<span className="mono">{run.id}</span>} /> : null}
+      {jobRun?.stage ? <DigestFactRow label="Last event" value={<span className="mono">{readableReason(jobRun.stage)}</span>} /> : null}
+      {reason ? <DigestFactRow label="Reason" value={<span>{readableReason(reason)}</span>} /> : null}
+      {jobRun?.exitCode !== null && jobRun?.exitCode !== undefined ? (
+        <DigestFactRow label="Exit code" value={<span className="mono">{jobRun.exitCode}</span>} />
+      ) : null}
+      {jobRun?.signal ? <DigestFactRow label="Signal" value={<span className="mono">{jobRun.signal}</span>} /> : null}
+    </dl>
+  );
+}
 
 function DigestLifecycle({
   jobRun,
@@ -1121,6 +1156,7 @@ function DigestLifecycle({
   const digestSaved = synced && Boolean(run?.digestTitle);
   const noUpdateRun = isNoUpdateDigestRun(run, jobRun);
   const activeJob = Boolean(jobRun && isActiveDigestJobRun(jobRun));
+  const prepareFailed = failedJob && !run;
   const selectedOutcome = run
     ? run.candidateCount === 0
       ? "No update"
@@ -1144,30 +1180,75 @@ function DigestLifecycle({
           ? jobRunStatusLabel(jobRun, undefined, stallGraceUntilMs)
           : "Waiting for Local Agent",
       tone: hasRun ? "ok" : failedJob ? "fail" : jobRun ? "warn" : "idle",
+      open: prepareFailed,
+      children: (
+        <DigestLifecycleDetails jobRun={jobRun} run={run}>
+          {run ? (
+            <>
+              <DigestFactRow label="Candidates" value={<span>{formatCount(run.candidateCount)}</span>} />
+              <DigestFactRow label="Sources" value={<span>{formatCount(run.contributingSourceCount)} of {formatCount(run.subscriptionCount)}</span>} />
+            </>
+          ) : failedJob ? (
+            <DigestFactRow
+              label="What happened"
+              value={<span>No AI Digest preparation was recorded before the runtime exited.</span>}
+            />
+          ) : null}
+        </DigestLifecycleDetails>
+      ),
     },
     {
       key: "generate",
       label: "Run Local Agent",
       outcome: selectedOutcome,
       tone: failedJob ? "fail" : synced || noUpdateRun ? "ok" : "idle",
+      open: failedJob && !synced && !noUpdateRun,
+      children: (
+        <DigestLifecycleDetails jobRun={jobRun} run={run}>
+          {activeJob ? <DigestFactRow label="Status" value={<span>Local Agent is still running.</span>} /> : null}
+          {synced ? <DigestFactRow label="Selected" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
+          {failedJob ? <DigestFactRow label="Failure" value={<span>{jobRun ? jobRunFailureReason(jobRun) : "Local Agent stopped before completing."}</span>} /> : null}
+        </DigestLifecycleDetails>
+      ),
     },
     {
       key: "render",
       label: "Render digest JSON",
       outcome: digestSaved ? run!.digestTitle! : noUpdateRun ? "Not needed" : synced ? "Untitled AI Digest" : run ? "Not completed" : "Pending",
       tone: digestSaved || noUpdateRun ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
+      open: failedJob && Boolean(run),
+      children: (
+        <DigestLifecycleDetails jobRun={jobRun} run={run}>
+          {digestSaved ? <DigestFactRow label="Title" value={<span>{run!.digestTitle}</span>} /> : null}
+          {!digestSaved && failedJob ? <DigestFactRow label="Blocked by" value={<span>Local Agent did not return digest JSON.</span>} /> : null}
+        </DigestLifecycleDetails>
+      ),
     },
     {
       key: "sync",
       label: "Save to FollowBrief",
       outcome: noUpdateRun ? "No AI Digest needed" : run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
       tone: noUpdateRun || run?.syncedAt ? "ok" : failedJob ? "fail" : "idle",
+      open: failedJob && Boolean(run) && !run?.syncedAt,
+      children: (
+        <DigestLifecycleDetails jobRun={jobRun} run={run}>
+          {run?.syncedAt ? <DigestFactRow label="Saved at" value={<span>{formatAbsolute(run.syncedAt)}</span>} /> : null}
+          {!run?.syncedAt && failedJob ? <DigestFactRow label="Blocked by" value={<span>No saved AI Digest was linked to this run.</span>} /> : null}
+        </DigestLifecycleDetails>
+      ),
     },
     {
       key: "mark",
       label: "Record digested posts",
       outcome: noUpdateRun ? "No posts to record" : synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
       tone: noUpdateRun || synced ? "ok" : failedJob ? "fail" : "idle",
+      open: false,
+      children: (
+        <DigestLifecycleDetails jobRun={jobRun} run={run}>
+          {synced ? <DigestFactRow label="Recorded" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
+          {!synced && failedJob ? <DigestFactRow label="Blocked by" value={<span>No posts were recorded because the AI Digest was not saved.</span>} /> : null}
+        </DigestLifecycleDetails>
+      ),
     },
   ];
 
@@ -1175,16 +1256,19 @@ function DigestLifecycle({
     <ol aria-label="AI Digest job lifecycle" className="sync-panel-lifecycle">
       {steps.map((step, index) => (
         <li key={step.key} className="sync-panel-lifecycle-item">
-          <div className={`sync-panel-lifecycle-step is-${step.tone}`}>
-            <div className="sync-panel-lifecycle-summary">
+          <details className={`sync-panel-lifecycle-step is-${step.tone}`} open={step.open}>
+            <summary className="sync-panel-lifecycle-summary">
               <span aria-hidden="true" className="sync-panel-lifecycle-dot" />
               <span className="sync-panel-lifecycle-copy">
                 <span className="sync-panel-lifecycle-label">{step.label}</span>
                 <span className="mono sync-panel-lifecycle-outcome">{step.outcome}</span>
               </span>
               {step.meta ? <span className="mono sync-panel-lifecycle-meta">{step.meta}</span> : null}
-            </div>
-          </div>
+            </summary>
+            {step.children ? (
+              <div className="sync-panel-lifecycle-detail">{step.children}</div>
+            ) : null}
+          </details>
           {index < steps.length - 1 ? <span aria-hidden="true" className="sync-panel-lifecycle-rail" /> : null}
         </li>
       ))}
