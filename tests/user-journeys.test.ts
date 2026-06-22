@@ -534,8 +534,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /sliceSetupPromptForOpenClawParent\(job, contentWithExchange, openClawSetupBootstrap\)/);
   assert.match(skillJobRoute, /Queue the OpenClaw initial run/);
   assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
+  assert.match(skillJobRoute, /searchParams\.get\("setup_account"\)/);
   assert.match(skillJobRoute, /!openClawSetupChild/);
-  assert.match(skillJobRoute, /withSearchParam\(request\.url, "openclaw_setup_child", "1"\)/);
+  assert.match(skillJobRoute, /withOpenClawSetupChildParams\(request\.url, accountEmail\)/);
+  assert.match(skillJobRoute, /searchParams\.delete\("ec"\)/);
+  assert.match(skillJobRoute, /searchParams\.set\("setup_account", email\)/);
+  assert.match(skillJobRoute, /openClawSetupChild[\s\S]*Setup account missing or invalid/);
   assert.match(skillJobRoute, /OPENCLAW_CHILD_SETUP_PROMPT_URL/);
   assert.match(skillJobRoute, /openclaw cron add/);
   assert.match(skillJobRoute, /--session isolated/);

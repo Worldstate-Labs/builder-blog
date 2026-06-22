@@ -48,9 +48,11 @@ function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
-function withSearchParam(rawUrl: string, key: string, value: string): string {
+function withOpenClawSetupChildParams(rawUrl: string, email: string): string {
   const nextUrl = new URL(rawUrl);
-  nextUrl.searchParams.set(key, value);
+  nextUrl.searchParams.delete("ec");
+  nextUrl.searchParams.set("openclaw_setup_child", "1");
+  nextUrl.searchParams.set("setup_account", email);
   return nextUrl.toString();
 }
 
@@ -265,6 +267,7 @@ export async function GET(request: Request, { params }: Params) {
   const url = new URL(request.url);
   const ecParam = url.searchParams.get("ec");
   const openClawSetupChild = url.searchParams.get("openclaw_setup_child") === "1";
+  const setupAccountParam = url.searchParams.get("setup_account");
 
   // Reject any ec value that doesn't match the exchange-code format so it
   // can never carry shell metacharacters into the generated bash block.
@@ -392,10 +395,14 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{DIGEST_REGENERATE}}", fetchForce ? "1" : "0")
     .replaceAll("{{DIGEST_REGENERATE_FLAG}}", fetchForce ? "--regenerate" : "");
 
+  const isCronSetupJob = job === "library-cron-setup" || job === "digest-cron-setup";
   let credentialPrep = "";
+  let accountEmail = "";
+  let accountUserId: string | null = null;
   if (ecParam) {
-    // Validate the exchange code: must exist, not expired, not yet used.
-    // Do NOT mark usedAt here — only the CLI exchange endpoint marks it.
+    // Validate the exchange code while rendering the user-facing setup prompt.
+    // The exchange endpoint deletes this row after successful exchange, so the
+    // queued OpenClaw child prompt must not depend on this code being reusable.
     const record = await prisma.exchangeCode.findUnique({
       where: { code: ecParam },
       include: {
@@ -409,19 +416,27 @@ export async function GET(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Exchange code invalid or expired" }, { status: 403 });
     }
 
-    const email = record.agentToken.user.email ?? "";
+    accountEmail = record.agentToken.user.email ?? "";
+    accountUserId = record.agentToken.user.id;
+  } else if (openClawSetupChild && isCronSetupJob) {
+    if (!setupAccountParam || !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/.test(setupAccountParam)) {
+      return NextResponse.json({ error: "Setup account missing or invalid" }, { status: 400 });
+    }
+    accountEmail = setupAccountParam;
+  }
 
+  if (accountEmail) {
     // Tell the agent up front which sources need an API token, based on this
     // account's actual source types — so prep happens before the initial setup run
     // instead of only when it surfaces an *_token_missing notice.
-    if (content.includes("{{SOURCE_CREDENTIAL_PREP}}")) {
-      credentialPrep = await buildSourceCredentialPrep(record.agentToken.user.id);
+    if (accountUserId && content.includes("{{SOURCE_CREDENTIAL_PREP}}")) {
+      credentialPrep = await buildSourceCredentialPrep(accountUserId);
     }
 
-    if (job === "library-cron-setup" || job === "digest-cron-setup") {
+    if (accountUserId && isCronSetupJob) {
       const serverActiveCron = job === "library-cron-setup"
         ? await prisma.libraryCronJob.findUnique({
-            where: { userId: record.agentToken.user.id },
+            where: { userId: accountUserId },
             select: {
               status: true,
               startedAt: true,
@@ -432,7 +447,7 @@ export async function GET(request: Request, { params }: Params) {
             },
           })
         : await prisma.digestCronJob.findUnique({
-            where: { userId: record.agentToken.user.id },
+            where: { userId: accountUserId },
             select: {
               status: true,
               startedAt: true,
@@ -459,18 +474,16 @@ export async function GET(request: Request, { params }: Params) {
     // shell, so an un-exported `${BUILDER_BLOG_ACCOUNT}` is empty there and the
     // run dies with "No agent token". Since the exchange code already
     // identifies the account, substitute it so setup never relies on shell env.
-    if (email) {
-      content = content.replaceAll("${BUILDER_BLOG_ACCOUNT}", email);
-    }
+    content = content.replaceAll("${BUILDER_BLOG_ACCOUNT}", accountEmail);
 
     const openClawSetupBootstrap =
       runtime === "openclaw" &&
       !openClawSetupChild &&
-      (job === "library-cron-setup" || job === "digest-cron-setup")
+      isCronSetupJob
         ? buildOpenClawInitialRunBootstrap({
-            email,
+            email: accountEmail,
             job,
-            childSetupPromptUrl: withSearchParam(request.url, "openclaw_setup_child", "1"),
+            childSetupPromptUrl: withOpenClawSetupChildParams(request.url, accountEmail),
             setupTimeoutSeconds: openClawSetupTimeoutSeconds,
           })
         : "";
@@ -480,18 +493,22 @@ export async function GET(request: Request, { params }: Params) {
     // exactly; leaving exchange as an unnumbered preface lets some agents skip
     // it and install an unauthenticated schedule. It must come after bootstrap
     // so first-time machines have builder-digest.mjs before running exchange.
-    const exchangeBlock = [
-      "1a. Exchange the one-time setup code for an agent token after installing the skill.",
-      "This writes to",
-      `\`~/.builder-blog/accounts/${email}.json\`. The code is used once and expires.`,
-      "If this command fails, stop and report the command, exit code, and stderr.\n",
-      "```bash",
-      `mkdir -p "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/accounts"`,
-      `node "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" exchange --ec "${ecParam}"`,
-      "```\n",
-    ].join("\n");
+    const exchangeBlock = ecParam
+      ? [
+          "1a. Exchange the one-time setup code for an agent token after installing the skill.",
+          "This writes to",
+          `\`~/.builder-blog/accounts/${accountEmail}.json\`. The code is used once and expires.`,
+          "If this command fails, stop and report the command, exit code, and stderr.\n",
+          "```bash",
+          `mkdir -p "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/accounts"`,
+          `node "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" exchange --ec "${ecParam}"`,
+          "```\n",
+        ].join("\n")
+      : "";
 
-    const contentWithExchange = insertExchangeAfterInstallStep(content, exchangeBlock);
+    const contentWithExchange = exchangeBlock
+      ? insertExchangeAfterInstallStep(content, exchangeBlock)
+      : content;
 
     // For OpenClaw, keep bootstrap/token exchange/credential checks in the
     // visible parent prompt, then queue the initial run and schedule install as
@@ -500,7 +517,7 @@ export async function GET(request: Request, { params }: Params) {
     // one-time exchange code.
     if (
       openClawSetupChild &&
-      (job === "library-cron-setup" || job === "digest-cron-setup")
+      isCronSetupJob
     ) {
       content = sliceSetupPromptForOpenClawChild(job, contentWithExchange);
     } else {
@@ -515,7 +532,7 @@ export async function GET(request: Request, { params }: Params) {
     //    email, or prepend one when the command stands alone. Preserve
     //    indentation so nested stop/setup cleanup commands also receive
     //    the account instead of failing with "No agent token".
-    const accountEnv = `BUILDER_BLOG_ACCOUNT="${email}"`;
+    const accountEnv = `BUILDER_BLOG_ACCOUNT="${accountEmail}"`;
     content = content.replace(/^```bash\n([\s\S]*?)^```/gm, (_match, blockBody) => {
       const rewritten = blockBody.replace(
         /(^|\n)([ \t]*)(?:BUILDER_BLOG_ACCOUNT="[^"]*"\s*\\\n[ \t]*)?(node\s+[^\n]*builder-digest\.mjs[^\n]*)/gm,
