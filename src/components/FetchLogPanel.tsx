@@ -479,6 +479,28 @@ function fetchRunHasCompletedOutcomes(stats: FetchRunStats): boolean {
   return accounted >= stats.planned;
 }
 
+function hasFailedFetchJob(jobRun?: AgentJobRunListItem | null, nowMs = Date.now()): boolean {
+  return Boolean(jobRun && (isStalledJobRun(jobRun, nowMs) || !["starting", "running", "succeeded"].includes(jobRun.status)));
+}
+
+function isNoUpdateFetchRun(run?: LibraryFetchRunListItem | null, jobRun?: AgentJobRunListItem | null): boolean {
+  if (!run || run.status !== "ok" || hasFailedFetchJob(jobRun)) return false;
+  const details = readDetails(run.details);
+  const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
+  const stats = fetchRunStats({ details, liveProgress, run });
+  return (
+    stats.planned === 0 &&
+    stats.read === 0 &&
+    stats.synced === 0 &&
+    stats.skipped === 0 &&
+    stats.failed === 0 &&
+    stats.actionNeeded === 0 &&
+    run.itemsFetched === 0 &&
+    run.tasksGenerated === 0 &&
+    run.errorCount === 0
+  );
+}
+
 function hasActiveFetchProgress(jobRuns: AgentJobRunListItem[]): boolean {
   return jobRuns.some((jobRun) => isActiveJobRun(jobRun) && readFetchJobProgress(jobRun.details));
 }
@@ -896,6 +918,15 @@ export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpda
       label: "Idle",
       summary: "No Fetch sources job has started yet.",
       style: statusStyle("partial"),
+    };
+  }
+
+  if (isNoUpdateFetchRun(latestLogEntry.run, latestLogEntry.jobRun)) {
+    return {
+      key: "healthy",
+      label: "No update",
+      summary: "The latest Fetch sources job completed with no new posts to save.",
+      style: statusStyle("ok"),
     };
   }
 
@@ -1559,7 +1590,9 @@ function FetchTimelineRow({
   onOpenLog: (logRef: FetchLogRef) => void;
 }) {
   const tone = statusTone(scheduledWindowStyleStatus(entry.status));
-  const statusLabel = scheduledWindowStatusLabel(entry.status);
+  const noUpdate = isNoUpdateFetchRun(entry.run, entry.jobRun);
+  const displayTone = noUpdate ? "ok" : tone;
+  const statusLabel = noUpdate ? "No update" : scheduledWindowStatusLabel(entry.status);
   const id = entry.slot ? slotDomId(entry.slot) : entry.run ? runDomId(entry.run.id) : entry.jobRun ? jobRunDomId(entry.jobRun.instanceId) : undefined;
   return (
     <div
@@ -1569,7 +1602,7 @@ function FetchTimelineRow({
     >
       <div className="sync-panel-slot-row-main">
         <div className="sync-panel-slot-row-primary">
-          <span className={`sync-panel-slot-row-status ${statusToneClass(tone)}`}>
+          <span className={`sync-panel-slot-row-status ${statusToneClass(displayTone)}`}>
             <span
               aria-hidden="true"
               className="sync-panel-slot-row-dot"
@@ -1638,11 +1671,13 @@ export function fetchRunDisplayState({
   completedOutcomes,
   inflight,
   jobRun,
+  noUpdate = false,
   runStatus,
 }: {
   completedOutcomes: boolean;
   inflight: boolean;
   jobRun?: AgentJobRunListItem | null;
+  noUpdate?: boolean;
   runStatus: string;
 }) {
   const interruptedStatus = interruptedFetchRunStatus(jobRun);
@@ -1651,6 +1686,8 @@ export function fetchRunDisplayState({
     : null;
   const displayStatus = inflight
     ? { label: "Syncing", style: statusStyle("partial"), tone: "partial" as const }
+    : noUpdate
+      ? { label: "No update", style: statusStyle("ok"), tone: "ok" as const }
     : interruptedStatus && !completedOutcomes
       ? interruptedStatus
       : {
@@ -1803,6 +1840,12 @@ function fetchRunVerdict({
     return {
       tone: "warn",
       text: `${formatCount(stats.actionNeeded)} ${stats.actionNeeded === 1 ? "post needs" : "posts need"} Local Agent follow-up before summarizing.`,
+    };
+  }
+  if (displayStatus.label === "No update") {
+    return {
+      tone: "ok",
+      text: "No update. Sources were checked and no new posts needed to be saved.",
     };
   }
   if (stats.planned > 0 && accounted >= stats.planned) {
@@ -2084,10 +2127,12 @@ function RunCard({
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
   const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
+  const noUpdate = isNoUpdateFetchRun(run, jobRun);
   const { completedInterruptedLabel, displayStatus } = fetchRunDisplayState({
     completedOutcomes,
     inflight,
     jobRun,
+    noUpdate,
     runStatus: run.status,
   });
   // Show the Local Agent that ran this fetch. Model names are kept out of the

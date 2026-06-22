@@ -199,6 +199,10 @@ function digestRunSyncSummary(run: DigestRunListItem | null): string | null {
   return `${formatCount(saved)}/${formatCount(eligible)} saved`;
 }
 
+function isNoUpdateDigestRun(run?: DigestRunListItem | null, jobRun?: AgentJobRunListItem | null): boolean {
+  return Boolean(run && run.candidateCount === 0 && !hasFailedDigestJob(jobRun));
+}
+
 export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestUpdateStatus {
   const latestLogEntry = entries
     .slice()
@@ -211,6 +215,15 @@ export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestU
       label: "Idle",
       summary: "No AI Digest job has started yet.",
       style: statusStyle("partial"),
+    };
+  }
+
+  if (isNoUpdateDigestRun(latestLogEntry.run, latestLogEntry.jobRun)) {
+    return {
+      key: "healthy",
+      label: "No update",
+      summary: "The latest AI Digest job completed with no new posts to digest.",
+      style: statusStyle("ok"),
     };
   }
 
@@ -771,7 +784,13 @@ function DigestTimelineRow({
   onOpenLog: (logRef: DigestLogRef) => void;
 }) {
   const tone = scheduledWindowStyleStatus(entry.status);
-  const label = entry.jobRun ? jobRunStatusLabel(entry.jobRun) : scheduledWindowStatusLabel(entry.status);
+  const noUpdate = isNoUpdateDigestRun(entry.run, entry.jobRun);
+  const label = noUpdate
+    ? "No update"
+    : entry.jobRun
+      ? jobRunStatusLabel(entry.jobRun)
+      : scheduledWindowStatusLabel(entry.status);
+  const displayTone = noUpdate ? "ok" : tone;
   const id = entry.slot
     ? slotDomId(entry.slot)
     : entry.run
@@ -787,7 +806,7 @@ function DigestTimelineRow({
     >
       <div className="sync-panel-slot-row-main">
         <div className="sync-panel-slot-row-primary">
-          <span className={`sync-panel-slot-row-status ${toneClass(tone)}`}>
+          <span className={`sync-panel-slot-row-status ${toneClass(displayTone)}`}>
             <span
               aria-hidden="true"
               className="sync-panel-slot-row-dot"
@@ -945,10 +964,10 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem, 
       text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} posts, but Local Agent marked the run failed. ${jobRunFailureReason(jobRun!)}`,
     };
   }
-  if (run.status === "synced" && run.candidateCount === 0) {
+  if (isNoUpdateDigestRun(run, jobRun)) {
     return {
       tone: "ok",
-      text: "Completed. No new eligible posts in this window.",
+      text: "No update. No new eligible posts in this window.",
     };
   }
   if (run.status === "synced") {
@@ -1100,11 +1119,11 @@ function DigestLifecycle({
   const synced = run?.status === "synced";
   const failedJob = hasFailedDigestJob(jobRun, undefined, stallGraceUntilMs);
   const digestSaved = synced && Boolean(run?.digestTitle);
-  const emptySyncedRun = Boolean(synced && run?.candidateCount === 0);
+  const noUpdateRun = isNoUpdateDigestRun(run, jobRun);
   const activeJob = Boolean(jobRun && isActiveDigestJobRun(jobRun));
   const selectedOutcome = run
     ? run.candidateCount === 0
-      ? "No new posts"
+      ? "No update"
       : failedJob && synced
         ? `${formatCount(run.includedCount ?? 0)} selected · runtime failed`
         : synced
@@ -1130,25 +1149,25 @@ function DigestLifecycle({
       key: "generate",
       label: "Run Local Agent",
       outcome: selectedOutcome,
-      tone: failedJob ? "fail" : synced || (run && run.candidateCount === 0) ? "ok" : "idle",
+      tone: failedJob ? "fail" : synced || noUpdateRun ? "ok" : "idle",
     },
     {
       key: "render",
       label: "Render digest JSON",
-      outcome: digestSaved ? run!.digestTitle! : emptySyncedRun ? "Not needed" : synced ? "Untitled AI Digest" : run ? "Not completed" : "Pending",
-      tone: digestSaved || emptySyncedRun ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
+      outcome: digestSaved ? run!.digestTitle! : noUpdateRun ? "Not needed" : synced ? "Untitled AI Digest" : run ? "Not completed" : "Pending",
+      tone: digestSaved || noUpdateRun ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
     },
     {
       key: "sync",
       label: "Save to FollowBrief",
-      outcome: emptySyncedRun ? "No AI Digest needed" : run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
-      tone: run?.syncedAt ? "ok" : failedJob ? "fail" : "idle",
+      outcome: noUpdateRun ? "No AI Digest needed" : run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
+      tone: noUpdateRun || run?.syncedAt ? "ok" : failedJob ? "fail" : "idle",
     },
     {
       key: "mark",
       label: "Record digested posts",
-      outcome: synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
-      tone: synced ? "ok" : failedJob ? "fail" : "idle",
+      outcome: noUpdateRun ? "No posts to record" : synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
+      tone: noUpdateRun || synced ? "ok" : failedJob ? "fail" : "idle",
     },
   ];
 
@@ -1180,16 +1199,16 @@ function statusChip(run: DigestRunListItem, jobRun?: AgentJobRunListItem, stallG
       tone: "failed",
     };
   }
+  if (isNoUpdateDigestRun(run, jobRun)) {
+    return {
+      label: "No update",
+      tone: "ok",
+    };
+  }
   if (run.status !== "synced") {
     return {
       label: "Not saved",
       tone: "partial",
-    };
-  }
-  if (run.candidateCount === 0) {
-    return {
-      label: "Empty",
-      tone: "muted",
     };
   }
   return {

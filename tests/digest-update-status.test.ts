@@ -223,6 +223,32 @@ test("digest status control reports the latest failed job instead of idle", () =
   assert.equal(status.label, "Failed");
 });
 
+test("digest status control reports no update for an empty digest run", () => {
+  const run: DigestRunListItem = {
+    ...syncedDigestRun(),
+    id: "run_empty",
+    status: "prepared",
+    syncedAt: null,
+    digestTitle: null,
+    candidateCount: 0,
+    includedCount: null,
+    droppedCount: null,
+    contributingSourceCount: 0,
+    sources: [],
+    candidates: [],
+  };
+  const entries = buildDigestTimeline({
+    jobRuns: [],
+    runs: [run],
+    slots: [],
+    nowMs: Date.now(),
+  });
+  const status = getDigestActivityStatus(entries);
+
+  assert.equal(status.key, "healthy");
+  assert.equal(status.label, "No update");
+});
+
 test("digest status control stays idle when only the next scheduled slot is waiting", () => {
   const entries = buildDigestTimeline({
     jobRuns: [],

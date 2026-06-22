@@ -149,6 +149,61 @@ test("fetch status control reports the latest failed job instead of idle", () =>
   assert.equal(status.label, "Failed");
 });
 
+test("fetch status control reports no update for an empty successful run", () => {
+  const run: LibraryFetchRunListItem = {
+    id: "run_no_update",
+    startedAt: "2026-06-21T18:00:10.000Z",
+    finishedAt: "2026-06-21T18:00:30.000Z",
+    durationMs: 20_000,
+    status: "ok",
+    source: "cron",
+    jobRunId: null,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 6,
+    itemsFetched: 0,
+    tasksGenerated: 0,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 0 new posts from 6 sources",
+    details: {
+      fetchTasks: [
+        { id: "candidate_discovery:source:product_hunt_top_products", status: "synced", agentWorkType: "candidate_discovery_fallback" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [],
+    runs: [run],
+    slots: [
+      {
+        expectedAt: "2026-06-21T18:00:00.000Z",
+        windowEnd: "2026-06-21T19:00:00.000Z",
+        status: "ok",
+        run,
+        jobRun: null,
+      },
+    ],
+    nowMs: Date.parse("2026-06-21T18:05:00.000Z"),
+  });
+  const status = getFetchActivityStatus(entries);
+  const displayState = fetchRunDisplayState({
+    completedOutcomes: false,
+    inflight: false,
+    jobRun: null,
+    runStatus: run.status,
+    noUpdate: true,
+  });
+
+  assert.equal(entries[0]?.status, "ok");
+  assert.equal(status.key, "healthy");
+  assert.equal(status.label, "No update");
+  assert.equal(displayState.displayStatus.label, "No update");
+  assert.equal(displayState.displayStatus.tone, "ok");
+});
+
 test("fetch status control stays idle when only the next scheduled slot is waiting", () => {
   const entries = buildFetchTimeline({
     jobRuns: [],

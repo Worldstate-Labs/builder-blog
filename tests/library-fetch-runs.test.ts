@@ -334,6 +334,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /if \(!jobRun && run\.source !== "cron"\) return false/);
   assert.match(panel, /const postTasks = tasks\.filter\(isPlannedPostTask\)/);
   assert.match(panel, /return postTasks\.some\(\(task\) => task\?\.status === "pending" \|\| task\?\.status === "fetched"\)/);
+  assert.match(panel, /function isNoUpdateFetchRun/);
+  assert.match(panel, /label: "No update"/);
+  assert.match(panel, /No update\. Sources were checked and no new posts needed to be saved\./);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
   assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{resolvedJobRun \?\? undefined\} run=\{run\} \/>/);
   assert.match(source("scripts/builder-agent-runner.sh"), /patch-fetch-run-plan[\s\S]*--results-dir "\$_results_dir"/);
@@ -425,6 +428,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun, "library-cron"\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun, "library-cron"\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "library-cron", run\.source\)/);
+  assert.match(panel, /const noUpdate = isNoUpdateFetchRun\(entry\.run, entry\.jobRun\)/);
+  assert.match(panel, /const displayTone = noUpdate \? "ok" : tone/);
+  assert.match(panel, /const statusLabel = noUpdate \? "No update" : scheduledWindowStatusLabel\(entry\.status\)/);
   assert.match(panel, /ok: "Succeeded"/);
   assert.match(panel, /if \(jobRun\.status === "killed" \|\| jobRun\.status === "stale"\) return "Stopped"/);
   assert.match(panel, /function runHeaderMeta/);
@@ -509,7 +515,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-slot-row-primary"/);
   assert.match(panel, /className="sync-panel-slot-row-secondary"/);
   assert.match(panel, /className="sync-panel-slot-row-side"/);
-  assert.match(panel, /className=\{`sync-panel-slot-row-status \$\{statusToneClass\(tone\)\}`\}/);
+  assert.match(panel, /className=\{`sync-panel-slot-row-status \$\{statusToneClass\(displayTone\)\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row-dot"/);
   assert.doesNotMatch(panel, /style=\{\{ color: style\.color \}\}/);
   assert.doesNotMatch(panel, /style=\{\{ background: style\.color \}\}/);
@@ -724,11 +730,13 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /scheduledWindowRunNote/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun, "digest-cron"\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "digest-cron", run\.source\)/);
-  assert.match(panel, /const label = entry\.jobRun \? jobRunStatusLabel\(entry\.jobRun\) : scheduledWindowStatusLabel\(entry\.status\);/);
+  assert.match(panel, /const noUpdate = isNoUpdateDigestRun\(entry\.run, entry\.jobRun\);/);
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /<RunCard domId=\{null\} jobRun=\{jobRun \?\? undefined\} run=\{run\} suppressStalled=\{suppressStalled\} \/>/);
   assert.match(panel, /AI Digest job lifecycle/);
   assert.match(panel, /function isStalledDigestJobRun/);
+  assert.match(panel, /function isNoUpdateDigestRun/);
+  assert.match(panel, /\? "No update"[\s\S]*scheduledWindowStatusLabel\(entry\.status\)/);
   assert.match(panel, /if \(isStalledDigestJobRun\(jobRun, nowMs, stallGraceUntilMs\)\) return "stalled"/);
   assert.match(panel, /LIVE_LOG_STALL_GRACE_MS = 10_000/);
   assert.match(panel, /setLiveLogSuppressStalled\(true\)/);
@@ -755,6 +763,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /const showFailureDetails = !activeJob && jobRun\.status !== "succeeded"/);
   assert.doesNotMatch(panel, /\{jobRun\.stage \|\| "runtime"\} · \{jobRun\.finishedAt \? "finished" : "active"\}/);
   assert.match(panel, /digestRunVerdict/);
+  assert.match(panel, /text: "No update\. No new eligible posts in this window\."/);
   assert.match(panel, /jobRunFailureReason/);
   assert.match(panel, /readableReason/);
   assert.match(panel, /Timed out after \$\{formatCount\(timeoutSeconds\)\} seconds/);
@@ -802,7 +811,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-slot-row-primary"/);
   assert.match(panel, /className="sync-panel-slot-row-secondary"/);
   assert.match(panel, /className="sync-panel-slot-row-side"/);
-  assert.match(panel, /className=\{`sync-panel-slot-row-status \$\{toneClass\(tone\)\}`\}/);
+  assert.match(panel, /className=\{`sync-panel-slot-row-status \$\{toneClass\(displayTone\)\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row-dot"/);
   assert.doesNotMatch(panel, /style=\{\{ color: style\.color \}\}/);
   assert.doesNotMatch(panel, /style=\{\{ background: style\.color \}\}/);

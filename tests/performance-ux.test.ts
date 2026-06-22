@@ -2155,6 +2155,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
   assert.match(fetchLogPanel, /const displayStatus = inflight/);
   assert.match(fetchLogPanel, /label: "Syncing"/);
+  assert.match(fetchLogPanel, /label: "No update"/);
+  assert.match(fetchLogPanel, /No update\. Sources were checked and no new posts needed to be saved\./);
   assert.match(fetchLogPanel, /ok: "Succeeded"/);
   assert.match(fetchLogPanel, /if \(jobRun\.status === "killed" \|\| jobRun\.status === "stale"\) return "Stopped"/);
   assert.match(fetchLogPanel, /function runHeaderMeta/);
@@ -2165,7 +2167,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-primary"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-secondary"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-side"/);
-  assert.match(fetchLogPanel, /className=\{`sync-panel-slot-row-status \$\{statusToneClass\(tone\)\}`\}/);
+  assert.match(fetchLogPanel, /className=\{`sync-panel-slot-row-status \$\{statusToneClass\(displayTone\)\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-dot"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-kind"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-time"/);
@@ -2383,6 +2385,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /includes posts already used in AI Digest issues|includes posts already used in AI Digests/);
   assert.match(digestLogPanel, /Untitled AI Digest/);
   assert.match(digestLogPanel, /Prepared, no AI Digest saved/);
+  assert.match(digestLogPanel, /No update/);
+  assert.match(digestLogPanel, /No update\. No new eligible posts in this window\./);
   assert.match(digestLogPanel, /Previous AI Digest/);
   assert.match(digestLogPanel, /Found, AI Digest not saved yet/);
   assert.match(digestLogPanel, /Used in the AI Digest/);
@@ -2412,7 +2416,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-slot-row-primary"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-secondary"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-side"/);
-  assert.match(digestLogPanel, /className=\{`sync-panel-slot-row-status \$\{toneClass\(tone\)\}`\}/);
+  assert.match(digestLogPanel, /className=\{`sync-panel-slot-row-status \$\{toneClass\(displayTone\)\}`\}/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-dot"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-kind"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-time"/);
