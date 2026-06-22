@@ -525,8 +525,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /job === "digest-cron-setup"[\s\S]*\? "digest-cron"/);
   assert.match(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
   assert.doesNotMatch(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, job\)/);
-  assert.match(skillJobRoute, /buildOpenClawSetupBootstrap/);
-  assert.match(skillJobRoute, /bootstraps the[\s\S]*FollowBrief CLI/);
+  assert.match(skillJobRoute, /buildOpenClawInitialRunBootstrap/);
+  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawChild/);
+  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawParent/);
+  assert.match(skillJobRoute, /Queue the OpenClaw initial run/);
   assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
   assert.match(skillJobRoute, /!openClawSetupChild/);
   assert.match(skillJobRoute, /withSearchParam\(request\.url, "openclaw_setup_child", "1"\)/);
@@ -536,6 +538,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /--light-context/);
   assert.match(skillJobRoute, /--timeout-seconds \\"\$OPENCLAW_SETUP_TIMEOUT_SECONDS\\"/);
   assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.match(skillJobRoute, /openClawSetupChild[\s\S]*sliceSetupPromptForOpenClawChild/);
+  assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*sliceSetupPromptForOpenClawParent/);
   assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
   assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
   assert.doesNotMatch(skillJobRoute, /nohup openclaw agent/);

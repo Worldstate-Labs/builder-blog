@@ -54,32 +54,31 @@ function withSearchParam(rawUrl: string, key: string, value: string): string {
   return nextUrl.toString();
 }
 
-function buildOpenClawSetupBootstrap({
+function buildOpenClawInitialRunBootstrap({
   email,
   job,
-  setupPromptUrl,
   childSetupPromptUrl,
   setupTimeoutSeconds,
 }: {
   email: string;
   job: string;
-  setupPromptUrl: string;
   childSetupPromptUrl: string;
   setupTimeoutSeconds: string;
 }): string {
   return [
-    "0. Queue the OpenClaw setup validation as a durable one-shot job before the long-running setup.",
-    "Run this block first. If it prints `FOLLOWBRIEF_OPENCLAW_QUEUED=1`, stop",
-    "this current turn immediately and report the setup job name it printed. Do not run",
-    "the later steps in this current turn. The queued OpenClaw one-shot job is",
-    "owned by the OpenClaw Gateway, uses the required timeout, bootstraps the",
-    "FollowBrief CLI, exchanges the setup code, runs validation, and installs",
-    "the schedule only if validation passes.",
+    "6. Queue the OpenClaw initial run and schedule install as a durable one-shot job.",
+    "Run this block after steps 1-5 pass. If it prints",
+    "`FOLLOWBRIEF_OPENCLAW_QUEUED=1`, stop this current turn immediately and",
+    "report the setup job name it printed. Do not run the later steps in this",
+    "current turn. The queued OpenClaw one-shot job runs the initial validation",
+    "fetch/build, installs the schedule only if validation passes, and reports",
+    "cron status. It does not bootstrap the CLI, exchange the setup code, prepare",
+    "credentials, or check the existing schedule; those setup steps are handled",
+    "above in this parent session.",
     "Do not replace this with `nohup` or another shell background process — OpenClaw",
     "tool calls clean up background children when the tool turn ends.",
     "",
     "```bash",
-    `SETUP_PROMPT_URL=${shellSingleQuote(setupPromptUrl)}`,
     `OPENCLAW_CHILD_SETUP_PROMPT_URL=${shellSingleQuote(childSetupPromptUrl)}`,
     `OPENCLAW_SETUP_TIMEOUT_SECONDS=${shellSingleQuote(setupTimeoutSeconds)}`,
     `FOLLOWBRIEF_SETUP_JOB=${shellSingleQuote(job)}`,
@@ -120,6 +119,41 @@ function buildOpenClawSetupBootstrap({
     "```",
     "",
   ].join("\n");
+}
+
+function setupInitialRunMarker(job: string): string {
+  if (job === "library-cron-setup") return "6. Run one real initial fetch job now.";
+  if (job === "digest-cron-setup") return "6. Run one real initial digest job now.";
+  return "";
+}
+
+function sliceSetupPromptForOpenClawChild(job: string, content: string): string {
+  const marker = setupInitialRunMarker(job);
+  const markerIndex = marker ? content.indexOf(marker) : -1;
+  const childBody = markerIndex >= 0 ? content.slice(markerIndex).trimStart() : content.trimStart();
+  return [
+    "Continue the FollowBrief setup after the parent OpenClaw session completed",
+    "bootstrap, token exchange, credential prep, existing-schedule confirmation,",
+    "and runtime checks.",
+    "",
+    "This queued OpenClaw child job is unattended. Do not ask the user questions.",
+    "If the initial run command fails, times out, or the validation gate reports",
+    "failed post tasks, report the details and stop without installing the",
+    "schedule.",
+    "",
+    childBody,
+  ].join("\n");
+}
+
+function sliceSetupPromptForOpenClawParent(
+  job: string,
+  content: string,
+  initialRunBootstrap: string,
+): string {
+  const marker = setupInitialRunMarker(job);
+  const markerIndex = marker ? content.indexOf(marker) : -1;
+  const parentBody = markerIndex >= 0 ? content.slice(0, markerIndex).trimEnd() : content.trimEnd();
+  return `${parentBody}\n\n${initialRunBootstrap}`;
 }
 
 function insertExchangeAfterInstallStep(content: string, exchangeBlock: string): string {
@@ -428,10 +462,9 @@ export async function GET(request: Request, { params }: Params) {
       runtime === "openclaw" &&
       !openClawSetupChild &&
       (job === "library-cron-setup" || job === "digest-cron-setup")
-        ? buildOpenClawSetupBootstrap({
+        ? buildOpenClawInitialRunBootstrap({
             email,
             job,
-            setupPromptUrl: request.url,
             childSetupPromptUrl: withSearchParam(request.url, "openclaw_setup_child", "1"),
             setupTimeoutSeconds: openClawSetupTimeoutSeconds,
           })
@@ -455,13 +488,21 @@ export async function GET(request: Request, { params }: Params) {
 
     const contentWithExchange = insertExchangeAfterInstallStep(content, exchangeBlock);
 
-    // The OpenClaw bootstrap must come before the setup body so the parent turn
-    // queues the long-timeout one-shot setup job without consuming the one-time
-    // code itself. If the user ignores the stop instruction and continues, the
-    // visible setup body still bootstraps before exchanging.
-    content = openClawSetupBootstrap
-      ? `${openClawSetupBootstrap}\n${contentWithExchange}`
-      : contentWithExchange;
+    // For OpenClaw, keep bootstrap/token exchange/credential checks in the
+    // visible parent prompt, then queue the initial run and schedule install as
+    // a durable child job. The child prompt starts at the original step 6 so it
+    // cannot spend the long-timeout job redoing setup work or consuming the
+    // one-time exchange code.
+    if (
+      openClawSetupChild &&
+      (job === "library-cron-setup" || job === "digest-cron-setup")
+    ) {
+      content = sliceSetupPromptForOpenClawChild(job, contentWithExchange);
+    } else {
+      content = openClawSetupBootstrap
+        ? sliceSetupPromptForOpenClawParent(job, contentWithExchange, openClawSetupBootstrap)
+        : contentWithExchange;
+    }
 
     // 2. Rewrite every bash block: replace any placeholder
     //    `BUILDER_BLOG_ACCOUNT="..." \` line that precedes a
