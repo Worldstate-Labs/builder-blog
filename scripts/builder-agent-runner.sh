@@ -1181,6 +1181,7 @@ run_with_job_tracking() {
   fi
   export BUILDER_BLOG_RUN_SOURCE
 
+  job_run_update starting "Runtime job accepted by local runner." "runtime_job_started"
   _timeout="$(job_timeout_seconds)"
   job_run_update running "Runtime agent started." "runtime_agent_started"
   run_job_payload &

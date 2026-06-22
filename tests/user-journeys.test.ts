@@ -1136,6 +1136,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /JOB_TMP_DIR="\$BUILDER_BLOG_JOB_TMP_DIR"/);
   assert.match(runner, /JOB_TMP_DIR="\$DEFAULT_JOB_TMP_DIR-direct"/);
   assert.match(runner, /run_cron_worker\(\) \{[\s\S]*run_with_job_tracking "\$\{BUILDER_BLOG_JOB_TRIGGER:-scheduled\}"/);
+  assert.match(runner, /job_run_update starting "Runtime job accepted by local runner\." "runtime_job_started"[\s\S]*job_run_update running "Runtime agent started\." "runtime_agent_started"/);
   assert.match(runner, /run_cron_scheduler_tick\(\)/);
   assert.match(runner, /BUILDER_BLOG_SCHEDULER_TICK/);
   assert.match(runner, /schedule-anchor-\$JOB_NAME-\$ACCOUNT_SLUG/);

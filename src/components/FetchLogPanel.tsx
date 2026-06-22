@@ -1185,11 +1185,15 @@ export function FetchLogPanel({
       if (document.visibilityState === "visible") refresh();
     };
 
+    const initialRefresh = window.setTimeout(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 0);
     schedule();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     return () => {
       cancelled = true;
+      window.clearTimeout(initialRefresh);
       window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);

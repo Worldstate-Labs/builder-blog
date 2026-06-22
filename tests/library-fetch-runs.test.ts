@@ -376,6 +376,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /LIVE_LOG_STALL_GRACE_MS = 10_000/);
   assert.match(panel, /setLiveLogSuppressStalled\(true\)/);
   assert.match(panel, /refresh\(\)/);
+  assert.match(panel, /const initialRefresh = window\.setTimeout\(\(\) => \{[\s\S]*if \(document\.visibilityState === "visible"\) refresh\(\);[\s\S]*\}, 0\);[\s\S]*schedule\(\);/);
+  assert.match(panel, /window\.clearTimeout\(initialRefresh\)/);
   assert.match(panel, /suppressStalled=\{liveLogSuppressStalled\}/);
   assert.match(panel, /isRunInflight\(run, jobRun, cronJob, suppressStalled\)/);
   assert.match(panel, /displayStatus\.label/);
