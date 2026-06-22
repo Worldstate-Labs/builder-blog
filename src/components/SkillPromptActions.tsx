@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Check, CircleStop, Copy, KeyRound } from "lucide-react";
 import {
+  AccessStatusText,
   AccessKeyDeviceIcon,
   describeAccessDevice,
   describeAccessStatus,
@@ -11,10 +12,10 @@ import {
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
 import { EmptyState } from "@/components/EmptyState";
+import { RelativeTime } from "@/components/RelativeTime";
 import { languageOptions } from "@/components/settings/SettingsFields";
 import { useHydrated } from "@/components/ThemeToggle";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
-import { relativeTime } from "@/lib/relative-time";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
@@ -721,7 +722,6 @@ function StopScheduleDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [submitting, setSubmitting] = useState(false);
-  const hydrated = useHydrated();
   const scheduleName = context === "digest" ? "AI Digest" : "Fetch sources";
   const machineLabel = formatScheduleMachine(schedule);
 
@@ -801,7 +801,9 @@ function StopScheduleDialog({
             </div>
             <div className="stop-schedule-detail">
               <dt>Started</dt>
-              <dd>{formatScheduleDate(schedule?.startedAt ?? null, hydrated)}</dd>
+              <dd>
+                <RelativeTime value={schedule?.startedAt} fallback="Unknown" />
+              </dd>
             </div>
             {machineLabel ? (
               <div className="stop-schedule-detail">
@@ -844,21 +846,6 @@ function formatScheduleMachine(schedule: ActiveScheduleInfo | null) {
   if (!schedule) return null;
   const parts = [schedule.hostname, schedule.platform].filter(Boolean);
   return parts.length > 0 ? parts.join(" · ") : null;
-}
-
-function formatScheduleDate(value: string | null, hydrated: boolean) {
-  if (!value) return "Unknown";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  if (!hydrated) {
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  }
-  return relativeTime(value, Date.now());
 }
 
 function TokenPickerDialog({
@@ -988,7 +975,7 @@ function TokenPickerDialog({
                   <span className="token-picker-row-body">
                     <span className="token-picker-row-name">{tokenLabel}</span>
                     <span className="token-picker-row-meta">
-                      <span>{statusLabel}</span>
+                      <AccessStatusText token={token} />
                     </span>
                   </span>
                   <input

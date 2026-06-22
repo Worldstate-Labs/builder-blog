@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Laptop, Plus, Smartphone } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { RelativeTime } from "@/components/RelativeTime";
 import { useHydrated } from "@/components/ThemeToggle";
 import { relativeTime } from "@/lib/relative-time";
 
@@ -469,7 +470,10 @@ export function AgentTokenPanel({
                       </>
                     ) : null}
                     {revokeTarget.lastUsedAt ? (
-                      <> ({formatDate(revokeTarget.lastUsedAt)})</>
+                      <>
+                        {" "}
+                        <RelativeTime value={revokeTarget.lastUsedAt} prefix="last connected " />
+                      </>
                     ) : null}
                     .
                   </p>
@@ -525,6 +529,32 @@ export function formatRelativeCompact(value: string, hydrated: boolean) {
   return relativeTime(value, Date.now());
 }
 
+export function AccessStatusText({
+  className,
+  id,
+  token,
+}: {
+  className?: string;
+  id?: string;
+  token: AgentTokenListItem;
+}) {
+  if (token.revokedAt) {
+    return (
+      <span className={className} id={id}>
+        <RelativeTime value={token.revokedAt} prefix="Revoked " />
+      </span>
+    );
+  }
+  if (token.lastUsedAt) {
+    return (
+      <span className={className} id={id}>
+        <RelativeTime value={token.lastUsedAt} prefix="Last connected " />
+      </span>
+    );
+  }
+  return <span className={className} id={id}>Never connected</span>;
+}
+
 function TokenRow({
   hydrated,
   token,
@@ -538,7 +568,6 @@ function TokenRow({
 }) {
   const tokenLabel = describeAccessDevice(token);
   const statusLabel = describeAccessStatus(token, hydrated);
-  const statusDateTime = token.revokedAt ?? token.lastUsedAt;
   const statusId = `access-key-status-${token.id}`;
 
   return (
@@ -549,13 +578,7 @@ function TokenRow({
       <AccessKeyDeviceIcon token={token} />
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>
-        {statusDateTime ? (
-          <time className="access-key-device-status" dateTime={statusDateTime} id={statusId}>
-            {statusLabel}
-          </time>
-        ) : (
-          <span className="access-key-device-status" id={statusId}>{statusLabel}</span>
-        )}
+        <AccessStatusText className="access-key-device-status" id={statusId} token={token} />
       </div>
       {token.revokedAt ? (
         <span className="access-key-revoked-pill" aria-describedby={statusId}>

@@ -912,6 +912,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /const statusLabel = describeAccessStatus\(token, hydrated\)/);
   assert.match(skillPromptActions, /className="token-picker-device-icon"/);
   assert.match(skillPromptActions, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
+  assert.match(skillPromptActions, /<AccessStatusText token=\{token\} \/>/);
+  assert.match(skillPromptActions, /<RelativeTime value=\{schedule\?\.startedAt\} fallback="Unknown" \/>/);
+  assert.doesNotMatch(skillPromptActions, /formatScheduleDate/);
   assert.doesNotMatch(skillPromptActions, /const statusLabel = token\.lastUsedAt[\s\S]*Never connected/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /className="skill-prompt-access-required"/);
@@ -959,6 +962,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(agentTokenPanel, /role="listitem"/);
   assert.match(agentTokenPanel, /function describeAccessStatus/);
   assert.match(agentTokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
+  assert.match(agentTokenPanel, /export function AccessStatusText/);
+  assert.match(agentTokenPanel, /<RelativeTime value=\{token\.lastUsedAt\} prefix="Last connected " \/>/);
   assert.match(agentTokenPanel, /Never connected/);
   assert.doesNotMatch(agentTokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(agentTokenPanel, /className=\{`access-key-card/);
@@ -2389,6 +2394,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /No update/);
   assert.match(digestLogPanel, /No update\. No new eligible posts in this window\./);
   assert.match(digestLogPanel, /Previous AI Digest/);
+  assert.match(digestLogPanel, /Previous AI Digest <RelativeTime value=\{run\.lastDigestAt\} \/>/);
   assert.match(digestLogPanel, /Found, AI Digest not saved yet/);
   assert.match(digestLogPanel, /Used in the AI Digest/);
   assert.match(digestLogPanel, /Run Local Agent/);
@@ -5683,6 +5689,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(tokenPanel, /Revoke access for \{describeAccessDevice\(revokeTarget\)\}\?/);
   assert.match(tokenPanel, /<strong>\{describeAccessDevice\(revokeTarget\)\}<\/strong>/);
+  assert.match(tokenPanel, /<RelativeTime value=\{revokeTarget\.lastUsedAt\} prefix="last connected " \/>/);
   assert.match(tokenPanel, /className="fb-btn danger compact"[\s\S]*Revoke access[\s\S]*<\/button>/);
   assert.doesNotMatch(tokenPanel, />\s*Revoke\s*<\/button>/);
   assert.doesNotMatch(tokenPanel, /Revoke access key &ldquo;\{revokeTarget\.name\}&rdquo;/);
@@ -5693,14 +5700,14 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /describeAccessStatus\(token, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
+  assert.match(tokenPanel, /export function AccessStatusText/);
+  assert.match(tokenPanel, /<RelativeTime value=\{token\.lastUsedAt\} prefix="Last connected " \/>/);
   assert.match(tokenPanel, /Never connected/);
   assert.doesNotMatch(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /const statusId = `access-key-status-\$\{token\.id\}`/);
-  assert.match(tokenPanel, /<time className="access-key-device-status" dateTime=\{statusDateTime\} id=\{statusId\}>/);
-  assert.match(tokenPanel, /<span className="access-key-device-status" id=\{statusId\}>\{statusLabel\}<\/span>/);
+  assert.match(tokenPanel, /<AccessStatusText className="access-key-device-status" id=\{statusId\} token=\{token\} \/>/);
   assert.match(tokenPanel, /aria-describedby=\{statusId\}/);
-  assert.match(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt/);
-  assert.doesNotMatch(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
+  assert.doesNotMatch(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt/);
   assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);

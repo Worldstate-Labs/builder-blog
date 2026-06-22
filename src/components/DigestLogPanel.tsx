@@ -13,9 +13,10 @@ import {
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { CountBadge, CountMeta, formatCount } from "@/components/Count";
-import { relativeTime } from "@/lib/relative-time";
 import { EmptyState } from "@/components/EmptyState";
+import { RelativeTime } from "@/components/RelativeTime";
 import { useHydrated } from "@/components/ThemeToggle";
+import { relativeTime } from "@/lib/relative-time";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import {
@@ -1380,7 +1381,11 @@ function RunCard({
           /{formatCount(run.subscriptionCount)} sources contributed
         </span>
         <span>Covered {windowLabel}</span>
-        {run.lastDigestAt ? <span>Previous AI Digest {formatRelative(run.lastDigestAt)}</span> : null}
+        {run.lastDigestAt ? (
+          <span>
+            Previous AI Digest <RelativeTime value={run.lastDigestAt} />
+          </span>
+        ) : null}
       </div>
 
       {run.candidateCount === 0 ? (
