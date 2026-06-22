@@ -205,23 +205,26 @@ run_with_claude_unattended() {
 run_with_openclaw_unattended() {
   # OpenClaw's DEFAULT exec policy is already security=full / ask=off (verified
   # via `openclaw exec-policy show` with no approvals file present), so a
-  # non-interactive `agent` turn auto-approves exec on its own — confirmed by a
-  # live non-TTY run. The old global-yolo preset command was both unnecessary AND
+  # non-interactive Gateway `agent` turn auto-approves exec on its own. Do not
+  # use `--local` here: local embedded runs take a separate provider-auth path
+  # and can fail Codex OAuth refresh even while the main OpenClaw Gateway can
+  # chat normally. The old global-yolo preset command was both unnecessary AND
   # harmful: it wrote the GLOBAL ~/.openclaw/exec-approvals.json, disarming
-  # approval for EVERY openclaw session on the host (and `--profile` does not
+  # approval for EVERY OpenClaw session on the host (and `--profile` does not
   # relocate that file, so it can't be scoped that way). So we don't touch
   # global policy at all. `agent` requires a session selector on 2026.5.20
-  # (the bare `--local --message` form errors "Pass --to/--session-id/--agent");
-  # scheduled jobs use an isolated deterministic session by default instead of
-  # appending to the huge interactive `main` session; parallel workers can still
-  # set OPENCLAW_SESSION_ID when they need shard-specific sessions.
+  # (the bare `--message` form errors "Pass --to/--session-id/--agent");
+  # scheduled jobs use an isolated deterministic Gateway session by default
+  # instead of appending to the huge interactive `main` session; parallel
+  # workers can still set OPENCLAW_SESSION_ID when they need shard-specific
+  # sessions.
   _openclaw_timeout="${_timeout:-$(job_timeout_seconds)}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
   LAST_AGENT_OUTPUT_FILE="$_openclaw_output"
   _openclaw_session_id="${OPENCLAW_SESSION_ID:-$(openclaw_default_session_id)}"
   set +e
-  openclaw agent --local --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+  openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
   _openclaw_code="$?"
   set -e
   cat "$_openclaw_output"
@@ -240,6 +243,14 @@ agent_output_has_openclaw_auth_failure() {
   grep -E -i -q \
     "OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth" \
     "$_file"
+}
+
+openclaw_auth_failure_summary() {
+  _file="${1:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 0
+  grep -E -i -m 1 \
+    "OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth|FailoverError:" \
+    "$_file" | sed 's/^[[:space:]]*//' | cut -c 1-500 || true
 }
 
 agent_output_has_openclaw_preflight_marker() {
@@ -1295,10 +1306,12 @@ EOF
   fi
 
   if agent_output_has_openclaw_auth_failure "${LAST_AGENT_OUTPUT_FILE:-}"; then
+    _openclaw_provider_error="$(openclaw_auth_failure_summary "${LAST_AGENT_OUTPUT_FILE:-}")"
     echo "OpenClaw auth failed before fetch workers started." >&2
     job_run_update failed "OpenClaw auth failed before fetch workers started." "runtime_auth_failed" \
       --stage "runtime_preflight" \
-      --exit-code "$_olp_code"
+      --exit-code "$_olp_code" \
+      --provider-error "$_openclaw_provider_error"
     return 78
   fi
 

@@ -158,6 +158,7 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /\/api\/skill\/job-runs[\s\S]*timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /HTTP \$\{details\.method\} \$\{details\.url\} \$\{message\}/);
   assert.match(cli, /timed out after \$\{Math\.round\(options\.timeoutMs \/ 1000\)\}s/);
+  assert.match(cli, /providerError: argValue\(args, "--provider-error", null\)/);
   // Product Hunt direct-fetch 403s are recoverable: they should be shown as a
   // fallback note while agent discovery continues, not counted as a source error.
   assert.match(cli, /isRecoverableFetchFallback/);
@@ -227,9 +228,14 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /run_openclaw_library_preflight\(\)/);
   assert.match(runner, /followbriefRuntimePreflight/);
   assert.match(runner, /agent_output_has_openclaw_auth_failure/);
+  assert.match(runner, /openclaw_auth_failure_summary/);
   assert.match(
     runner,
     /run_openclaw_library_preflight[\s\S]*job_run_update failed "OpenClaw auth failed before fetch workers started\." "runtime_auth_failed"/,
+  );
+  assert.match(
+    runner,
+    /run_openclaw_library_preflight[\s\S]*--provider-error "\$_openclaw_provider_error"/,
   );
   assert.match(
     runner,
@@ -396,6 +402,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /runtime_auth_failed: "OpenClaw auth failed before this post could be fetched"/);
   assert.match(panel, /content_validation_failed: "Fetched content failed validation"/);
   assert.match(panel, /task\.failureReason === "runtime_auth_failed"/);
+  assert.match(panel, /providerError/);
+  assert.match(panel, /label: "Provider"/);
   assert.match(panel, /function isInternalJobRunReason/);
   assert.match(panel, /reason === "heartbeat"/);
   assert.match(panel, /reason === "timeout_seconds_for_job"/);

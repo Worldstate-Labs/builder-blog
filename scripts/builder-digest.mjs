@@ -710,6 +710,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
       timedOutWorker: argValue(args, "--timed-out-worker", null),
       timedOutWorkerPid: numberOrNull(argValue(args, "--timed-out-worker-pid", null)),
       termination: argValue(args, "--termination", null),
+      providerError: argValue(args, "--provider-error", null),
       skippedWaitPids: argValue(args, "--skipped-wait-pids", null),
     },
   });

@@ -1166,10 +1166,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /claude -p/);
   // openclaw 2026.5.20+ requires a session selector. Interactive runs may use
   // `--agent`, but unattended scheduled jobs use an isolated deterministic
-  // session by default so they don't inherit the huge interactive main session.
+  // Gateway session by default so they don't inherit the huge interactive main
+  // session and still reuse Gateway-managed Codex OAuth.
   assert.match(runner, /openclaw_default_session_id\(\)/);
   assert.match(runner, /_openclaw_session_id="\$\{OPENCLAW_SESSION_ID:-\$\(openclaw_default_session_id\)\}"/);
-  assert.match(runner, /openclaw agent --local --session-id "\$_openclaw_session_id" --timeout "\$_openclaw_timeout" --message/);
+  assert.match(runner, /openclaw agent --session-id "\$_openclaw_session_id" --timeout "\$_openclaw_timeout" --message/);
+  assert.doesNotMatch(runner, /openclaw agent --local --session-id "\$_openclaw_session_id" --timeout "\$_openclaw_timeout" --message/);
   assert.doesNotMatch(runner, /openclaw agent --local --agent .* --timeout .* --message/);
   assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
   assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);

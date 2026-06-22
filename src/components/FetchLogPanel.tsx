@@ -177,6 +177,7 @@ type LifecycleStep = {
 type JobRunDetailsShape = {
   reason?: string | null;
   cliVersion?: string | null;
+  providerError?: string | null;
   timeoutSeconds?: number | null;
   timeoutStage?: string | null;
   timedOutWorker?: string | null;
@@ -1675,12 +1676,14 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): JobRunDiagnosticItem[] {
   if (jobRun.status === "succeeded") return [];
   const details = readJobRunDetails(jobRun.details);
   const timeoutStage = humanizeJobRunCode(details.timeoutStage);
+  const providerError = String(details.providerError ?? "").trim();
   const reason = isInternalJobRunReason(details.reason) ? null : humanizeJobRunCode(details.reason);
   return [
     details.timeoutSeconds
       ? { label: "Timeout", value: `Timed out after ${formatDuration(details.timeoutSeconds * 1000)}` }
       : null,
     timeoutStage ? { label: "Stage", value: timeoutStage } : null,
+    providerError ? { label: "Provider", value: providerError } : null,
     details.timedOutWorker ? { label: "Worker", value: details.timedOutWorker } : null,
     details.termination === "still_alive_after_kill"
       ? { label: "Cleanup", value: "Cleanup did not finish" }
