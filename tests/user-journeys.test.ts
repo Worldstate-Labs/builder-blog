@@ -344,8 +344,10 @@ test("web app serves the agent skill and setup command", () => {
 
   assert.match(skillJobRoute, /"your Local Agent"/);
   assert.doesNotMatch(skillJobRoute, /"your local agent"/);
-  assert.match(skillJobRoute, /0\. Exchange the one-time setup code/);
-  assert.match(skillJobRoute, /before step 1/);
+  assert.match(skillJobRoute, /insertExchangeAfterInstallStep/);
+  assert.match(skillJobRoute, /1a\. Exchange the one-time setup code/);
+  assert.match(skillJobRoute, /after installing the skill/);
+  assert.doesNotMatch(skillJobRoute, /before step 1/);
   assert.match(skillJobRoute, /If this command fails, stop/);
   assert.match(skillJobRoute, /buildExistingCronWarning/);
   assert.match(skillJobRoute, /serverActiveCron/);
@@ -524,6 +526,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
   assert.doesNotMatch(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, job\)/);
   assert.match(skillJobRoute, /buildOpenClawSetupBootstrap/);
+  assert.match(skillJobRoute, /bootstraps the[\s\S]*FollowBrief CLI/);
   assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
   assert.match(skillJobRoute, /!openClawSetupChild/);
   assert.match(skillJobRoute, /withSearchParam\(request\.url, "openclaw_setup_child", "1"\)/);
@@ -1025,6 +1028,12 @@ test("web app serves the agent skill and setup command", () => {
   );
   assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="\$\(cat "\$SCHEDULE_SPEC_DIR\/status\.txt"\)"/);
   assert.match(libraryCronSetupPrompt, /--started-at "\$ANCHOR_AT"/);
+  assert.match(libraryCronSetupPrompt, /step after step 1 and before this check/);
+  assert.match(libraryCronSetupPrompt, /This setup\s+prompt raises OpenClaw's response timeout/);
+  assert.match(libraryCronSetupPrompt, /runs on this machine through the\s+selected local runtime/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /before step 1/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /do not edit that timeout by hand here/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /current session/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   // digest cron-setup pins the runtime too (parity with library) so the
   // scheduled job is self-sufficient even when only the digest cron is
@@ -1038,6 +1047,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
   assert.match(digestCronSetupPrompt, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(digestCronSetupPrompt, /openclaw config set agents\.defaults\.timeoutSeconds "\{\{CRON_TIMEOUT_SECONDS\}\}" --strict-json/);
+  assert.match(digestCronSetupPrompt, /step after step 1 and before this check/);
+  assert.match(digestCronSetupPrompt, /This setup\s+prompt raises OpenClaw's response timeout/);
+  assert.match(digestCronSetupPrompt, /runs on this machine through the\s+selected local runtime/);
+  assert.doesNotMatch(digestCronSetupPrompt, /before step 1/);
+  assert.doesNotMatch(digestCronSetupPrompt, /do not edit that timeout by hand here/);
+  assert.doesNotMatch(digestCronSetupPrompt, /current session/);
   assert.doesNotMatch(digestCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(digestCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);

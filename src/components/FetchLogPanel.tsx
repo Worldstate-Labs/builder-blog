@@ -2658,7 +2658,8 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (isContentFailure(task)) return { label: "Failed", tone: "fail" };
   if (
     task.status === "failed" &&
-    task.failureReason === "worker_missing_result" &&
+    (task.failureReason === "worker_missing_result" ||
+      task.failureReason === "runtime_auth_failed") &&
     typeof task.bodyChars !== "number"
   ) {
     return { label: "Not completed", tone: "fail" };
@@ -2676,6 +2677,8 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   not_synced: "Not synced",
   content_missing: "No readable content was found",
   content_too_short: "The readable content was too short",
+  content_validation_failed: "Fetched content failed validation",
+  runtime_auth_failed: "OpenClaw auth failed before this post could be fetched",
   // Parallel-run outcomes backfilled by merge-task-results when a shard
   // worker never reported a task (crash/timeout) or discovery never expanded.
   worker_missing_result: "A Local Agent task stopped before reporting this post",

@@ -2988,6 +2988,47 @@ test("merge-task-results preserves task checkpoints when a shard result is missi
   ]);
 });
 
+test("merge-task-results classifies missing OpenClaw auth-failed shards", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "auth-lost", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    { name: "shard-0-result.json", error: "no result file" },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        workerLogTail:
+          "OAuth token refresh failed for openai-codex. fetch failed. Please try again or re-authenticate.",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: {
+      failureKind?: string;
+      missingShard?: {
+        workerLogTail?: string;
+      };
+    };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["auth-lost", "runtime_auth_failed"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "runtime_auth_failed");
+  assert.match(outcomes[0]?.evidence?.missingShard?.workerLogTail ?? "", /OAuth token refresh failed/);
+});
+
 test("merge-task-results prefers final shard results over stale task checkpoints", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {

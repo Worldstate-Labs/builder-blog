@@ -68,12 +68,13 @@ function buildOpenClawSetupBootstrap({
   setupTimeoutSeconds: string;
 }): string {
   return [
-    "0. Queue the OpenClaw setup validation as a durable one-shot job before token exchange.",
+    "0. Queue the OpenClaw setup validation as a durable one-shot job before the long-running setup.",
     "Run this block first. If it prints `FOLLOWBRIEF_OPENCLAW_QUEUED=1`, stop",
     "this current turn immediately and report the setup job name it printed. Do not run",
     "the later steps in this current turn. The queued OpenClaw one-shot job is",
-    "owned by the OpenClaw Gateway, uses the required timeout, exchanges the setup",
-    "code, runs validation, and installs the schedule only if validation passes.",
+    "owned by the OpenClaw Gateway, uses the required timeout, bootstraps the",
+    "FollowBrief CLI, exchanges the setup code, runs validation, and installs",
+    "the schedule only if validation passes.",
     "Do not replace this with `nohup` or another shell background process — OpenClaw",
     "tool calls clean up background children when the tool turn ends.",
     "",
@@ -119,6 +120,15 @@ function buildOpenClawSetupBootstrap({
     "```",
     "",
   ].join("\n");
+}
+
+function insertExchangeAfterInstallStep(content: string, exchangeBlock: string): string {
+  const installStep =
+    /(1\. Install or refresh the skill:[\s\S]*?^```[^\n]*\n[\s\S]*?^```\n)/m;
+  if (!installStep.test(content)) {
+    return `${exchangeBlock}\n${content}`;
+  }
+  return content.replace(installStep, `$1\n${exchangeBlock}\n`);
 }
 
 // Source-type-aware credential prep for the library cron setup prompt. The web
@@ -427,12 +437,13 @@ export async function GET(request: Request, { params }: Params) {
           })
         : "";
 
-    // 1. Prepend the exchange step as an explicitly numbered step. The setup
-    // prompts tell agents to run numbered steps exactly; leaving exchange as an
-    // unnumbered preface lets some agents skip it and install an unauthenticated
-    // schedule.
+    // Insert the exchange step as an explicitly numbered sub-step immediately
+    // after bootstrap. The setup prompts tell agents to run numbered steps
+    // exactly; leaving exchange as an unnumbered preface lets some agents skip
+    // it and install an unauthenticated schedule. It must come after bootstrap
+    // so first-time machines have builder-digest.mjs before running exchange.
     const exchangeBlock = [
-      "0. Exchange the one-time setup code for an agent token before step 1.",
+      "1a. Exchange the one-time setup code for an agent token after installing the skill.",
       "This writes to",
       `\`~/.builder-blog/accounts/${email}.json\`. The code is used once and expires.`,
       "If this command fails, stop and report the command, exit code, and stderr.\n",
@@ -442,12 +453,15 @@ export async function GET(request: Request, { params }: Params) {
       "```\n",
     ].join("\n");
 
-    // Insert before the first heading or content. The OpenClaw bootstrap must
-    // come before token exchange so the parent turn queues the long-timeout
-    // one-shot setup job without consuming the one-time code itself.
+    const contentWithExchange = insertExchangeAfterInstallStep(content, exchangeBlock);
+
+    // The OpenClaw bootstrap must come before the setup body so the parent turn
+    // queues the long-timeout one-shot setup job without consuming the one-time
+    // code itself. If the user ignores the stop instruction and continues, the
+    // visible setup body still bootstraps before exchanging.
     content = openClawSetupBootstrap
-      ? `${openClawSetupBootstrap}\n${exchangeBlock}\n${content}`
-      : `${exchangeBlock}\n${content}`;
+      ? `${openClawSetupBootstrap}\n${contentWithExchange}`
+      : contentWithExchange;
 
     // 2. Rewrite every bash block: replace any placeholder
     //    `BUILDER_BLOG_ACCOUNT="..." \` line that precedes a

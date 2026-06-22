@@ -218,6 +218,7 @@ run_with_openclaw_unattended() {
   _openclaw_timeout="${_timeout:-$(job_timeout_seconds)}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
+  LAST_AGENT_OUTPUT_FILE="$_openclaw_output"
   _openclaw_session_id="${OPENCLAW_SESSION_ID:-$(openclaw_default_session_id)}"
   set +e
   openclaw agent --local --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
@@ -231,6 +232,21 @@ run_with_openclaw_unattended() {
     return 1
   fi
   return "$_openclaw_code"
+}
+
+agent_output_has_openclaw_auth_failure() {
+  _file="${1:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 1
+  grep -E -i -q \
+    "OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth" \
+    "$_file"
+}
+
+agent_output_has_openclaw_preflight_marker() {
+  _file="${1:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 1
+  grep -q '"followbriefRuntimePreflight"[[:space:]]*:[[:space:]]*"ok"' "$_file" && \
+    grep -q '"runtimeReady"[[:space:]]*:[[:space:]]*true' "$_file"
 }
 
 sync_openclaw_timeout_config() {
@@ -1213,6 +1229,86 @@ process.exit(tasks.some((task) => task && task.agentWorkType === "candidate_disc
 NODE
 }
 
+run_openclaw_library_preflight() {
+  [ "$PINNED_RUNTIME" = "openclaw" ] || return 0
+
+  _olp_prompt="$JOB_TMP_DIR/library-openclaw-preflight.md"
+  cat > "$_olp_prompt" <<EOF
+You are validating the FollowBrief OpenClaw runtime before source fetch workers start.
+
+Do not run FollowBrief fetch, digest, sync, cron-status, setup, or web browsing commands.
+Return exactly one JSON object and stop:
+
+{"followbriefRuntimePreflight":"ok","runtimeReady":true}
+EOF
+
+  _olp_previous_prompt="$PROMPT_FILE"
+  _olp_previous_stage="${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}"
+  _olp_previous_is_cron="$IS_CRON_JOB"
+  _olp_previous_session="${OPENCLAW_SESSION_ID:-}"
+  _olp_previous_timeout="${_timeout:-}"
+
+  PROMPT_FILE="$_olp_prompt"
+  BUILDER_BLOG_LIBRARY_AGENT_STAGE=runtime_preflight
+  IS_CRON_JOB=1
+  OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-preflight' "$ACCOUNT_SLUG" "$JOB_NAME" "${BUILDER_BLOG_JOB_RUN_ID:-$$}" | tr -c 'a-zA-Z0-9_.@+-' '_')"
+  _timeout="${BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS:-120}"
+  export BUILDER_BLOG_LIBRARY_AGENT_STAGE OPENCLAW_SESSION_ID
+
+  echo "Running OpenClaw runtime preflight before FollowBrief fetch workers."
+  LAST_AGENT_OUTPUT_FILE=""
+  set +e
+  run_selected_runtime
+  _olp_code="$?"
+  set -e
+
+  PROMPT_FILE="$_olp_previous_prompt"
+  IS_CRON_JOB="$_olp_previous_is_cron"
+  if [ -n "$_olp_previous_stage" ]; then
+    BUILDER_BLOG_LIBRARY_AGENT_STAGE="$_olp_previous_stage"
+    export BUILDER_BLOG_LIBRARY_AGENT_STAGE
+  else
+    unset BUILDER_BLOG_LIBRARY_AGENT_STAGE
+  fi
+  if [ -n "$_olp_previous_session" ]; then
+    OPENCLAW_SESSION_ID="$_olp_previous_session"
+    export OPENCLAW_SESSION_ID
+  else
+    unset OPENCLAW_SESSION_ID
+  fi
+  if [ -n "$_olp_previous_timeout" ]; then
+    _timeout="$_olp_previous_timeout"
+  else
+    unset _timeout
+  fi
+
+  if [ "$_olp_code" -eq 0 ] && agent_output_has_openclaw_preflight_marker "${LAST_AGENT_OUTPUT_FILE:-}"; then
+    return 0
+  fi
+
+  if [ "$_olp_code" -eq 124 ]; then
+    job_run_update timed_out "OpenClaw preflight timed out before fetch workers started." "runtime_preflight_timeout" \
+      --stage "runtime_preflight" \
+      --timeout-seconds "${BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS:-120}" \
+      --timeout-stage "runtime_preflight"
+    return 124
+  fi
+
+  if agent_output_has_openclaw_auth_failure "${LAST_AGENT_OUTPUT_FILE:-}"; then
+    echo "OpenClaw auth failed before fetch workers started." >&2
+    job_run_update failed "OpenClaw auth failed before fetch workers started." "runtime_auth_failed" \
+      --stage "runtime_preflight" \
+      --exit-code "$_olp_code"
+    return 78
+  fi
+
+  echo "OpenClaw preflight failed before fetch workers started." >&2
+  job_run_update failed "OpenClaw preflight failed before fetch workers started." "runtime_preflight_failed" \
+    --stage "runtime_preflight" \
+    --exit-code "$_olp_code"
+  return 78
+}
+
 run_digest_job() {
   PROMPT_FILE="$(payload_prompt_file)"
   _context_file="$JOB_TMP_DIR/builder-blog-context.json"
@@ -1444,6 +1540,8 @@ run_library_job() {
   _result_file="$JOB_TMP_DIR/library-fetch-result.json"
 
   echo "FollowBrief library run: $MAX_PARALLEL_WORKERS worker(s)."
+
+  run_openclaw_library_preflight || return "$?"
 
   job_run_update running "Fetching source candidates." "fetch_started" --stage "fetch_sources"
   _fetch_stderr="$JOB_TMP_DIR/library-fetch.err"
@@ -1701,7 +1799,7 @@ NODE
         --tasks-out "$_failed_tasks" \
         --out "$_failed_payload" \
         --exclude-task-ids-file "$_checkpoint_synced_ids_file" \
-        --reason "validation_failed" \
+        --reason "content_validation_failed" \
         --message "validate-agent-sync still failing after $_repair_round repair round(s); marking unfinished tasks failed"
       _failed_stdout="$JOB_TMP_DIR/validation-failed-sync.out"
       _failed_stderr="$JOB_TMP_DIR/validation-failed-sync.err"

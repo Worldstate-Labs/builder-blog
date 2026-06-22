@@ -4921,7 +4921,7 @@ function normalizeShardPlan(plan) {
 function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
   const evidence = {
     mergedBy: "merge-task-results",
-    failureKind: "missing_worker_result_file",
+    failureKind: options.failureKind || "missing_worker_result_file",
     runShardSummary: shardSummaries.map((s) => `${s.shard}:${s.status}`),
   };
   if (shardPlan) {
@@ -4945,6 +4945,25 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
     evidence.shardTimeoutSeconds = Number(options.shardTimeoutSeconds);
   }
   return evidence;
+}
+
+function workerLogLooksLikeRuntimeAuthFailure(text) {
+  return /OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth/i.test(
+    String(text || ""),
+  );
+}
+
+function missingShardFailure(shardPlan) {
+  if (workerLogLooksLikeRuntimeAuthFailure(shardPlan?.workerLogTail)) {
+    return {
+      reason: "runtime_auth_failed",
+      failureKind: "runtime_auth_failed",
+    };
+  }
+  return {
+    reason: "worker_missing_result",
+    failureKind: "missing_worker_result_file",
+  };
 }
 
 function workerIdFromShardResultName(name) {
@@ -5087,17 +5106,19 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       const id = String(task?.id || fetchTaskId(task));
       if (accounted.has(id)) continue;
       accounted.add(id);
+      const shardPlan = shardPlanByTaskId.get(id);
+      const failure = missingShardFailure(shardPlan);
       taskOutcomes.push({
         fetchTaskId: id,
         status: "failed",
-        reason: "worker_missing_result",
+        reason: failure.reason,
         evidence: missingShardEvidence(
           task,
-          shardPlanByTaskId.get(id),
+          shardPlan,
           shardSummaries,
-          options,
+          { ...options, failureKind: failure.failureKind },
         ),
-        ...(shardPlanByTaskId.get(id)?.shard ? { workerId: shardPlanByTaskId.get(id).shard } : {}),
+        ...(shardPlan?.shard ? { workerId: shardPlan.shard } : {}),
       });
       backfilled += 1;
     }

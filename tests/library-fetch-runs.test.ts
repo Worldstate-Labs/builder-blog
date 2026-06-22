@@ -222,7 +222,19 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
   assert.match(runner, /validation-failed-payload\.json/);
   assert.match(runner, /--exclude-task-ids-file "\$_checkpoint_synced_ids_file"/);
-  assert.match(runner, /--reason "validation_failed"/);
+  assert.match(runner, /--reason "content_validation_failed"/);
+  assert.doesNotMatch(runner, /--reason "validation_failed"/);
+  assert.match(runner, /run_openclaw_library_preflight\(\)/);
+  assert.match(runner, /followbriefRuntimePreflight/);
+  assert.match(runner, /agent_output_has_openclaw_auth_failure/);
+  assert.match(
+    runner,
+    /run_openclaw_library_preflight[\s\S]*job_run_update failed "OpenClaw auth failed before fetch workers started\." "runtime_auth_failed"/,
+  );
+  assert.match(
+    runner,
+    /run_library_job\(\) \{[\s\S]*run_openclaw_library_preflight[\s\S]*job_run_update running "Fetching source candidates\."/,
+  );
   assert.match(runner, /patch-fetch-run-plan/);
   assert.match(runner, /--partial-outcomes/);
   assert.match(runner, /still_alive_after_kill/);
@@ -381,6 +393,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /timeoutSeconds/);
   assert.match(panel, /Timed out after \$\{formatDuration\(details\.timeoutSeconds \* 1000\)\}/);
   assert.match(panel, /Cleanup did not finish/);
+  assert.match(panel, /runtime_auth_failed: "OpenClaw auth failed before this post could be fetched"/);
+  assert.match(panel, /content_validation_failed: "Fetched content failed validation"/);
+  assert.match(panel, /task\.failureReason === "runtime_auth_failed"/);
   assert.match(panel, /function isInternalJobRunReason/);
   assert.match(panel, /reason === "heartbeat"/);
   assert.match(panel, /reason === "timeout_seconds_for_job"/);

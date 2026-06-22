@@ -25,7 +25,7 @@ below uses this pinned runtime; do not fall back to a different one.
 
 2. Create required directories and verify this account's local credential before
 changing scheduler state. The web Copy-prompt version runs a one-time exchange
-step before step 1; static local copies cannot create the account file
+step after step 1 and before this check; static local copies cannot create the account file
 themselves. If the credential is missing, stop before pinning settings or
 installing the schedule.
 
@@ -112,9 +112,9 @@ If the path printed is empty, install or symlink the CLI into
 For OpenClaw only, also verify that scheduled runs will not wait for exec
 approval prompts. Do not change OpenClaw policy from this setup prompt; just
 fail fast if this machine is configured to ask. The user can either configure
-OpenClaw for unattended exec or choose a different Local Agent. The runner
-raises OpenClaw's response timeout to the scheduled FollowBrief job timeout
-before each unattended run, so do not edit that timeout by hand here.
+OpenClaw for unattended exec or choose a different Local Agent. This setup
+prompt raises OpenClaw's response timeout to the scheduled FollowBrief job
+timeout when needed, and the runner does the same before each unattended run.
 
 ```bash
 if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
@@ -133,12 +133,12 @@ if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
 fi
 ```
 
-6. Run one real initial fetch job now. This runs in your current session (which
-has keychain access), uses the selected runtime and fetch settings, and performs
-the same fetch, summarize, validate, and web-sync work as the recurring
-`library-cron` job. It is recorded as a one-time setup run, not a scheduled
-window. This can take until the normal job timeout; do not treat a lack of
-output as a hang before the command exits or the runner timeout fires.
+6. Run one real initial fetch job now. This runs on this machine through the
+selected local runtime, uses the selected fetch settings, and performs the same
+fetch, summarize, validate, and web-sync work as the recurring `library-cron`
+job. It is recorded as a one-time setup run, not a scheduled window. This can
+take until the normal job timeout; do not treat a lack of output as a hang before
+the command exits or the runner timeout fires.
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
