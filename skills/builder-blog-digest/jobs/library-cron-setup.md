@@ -234,11 +234,11 @@ scheduled runtime/fetch settings and install the schedule to run
 {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
 while the unmanaged initial run above is still executing, and a pipeline that
 failed the initial run or was not approved after post-task failures never gets
-scheduled. On macOS, the LaunchAgent runs a short scheduler tick every minute;
-the real fetch windows are anchored to this install time plus
-N × {{CRON_INTERVAL_MINUTES}} minutes, so a long previous run cannot drift the
-next scheduled window. Pick the path for this machine's OS — run `uname` if
-unsure.
+scheduled. The concrete launchd/crontab schedule is generated from this install
+time after validation succeeds. The first scheduled fetch window is
+install anchor + {{CRON_INTERVAL_MINUTES}} minutes, and later windows stay on
+that same anchor, so long previous runs cannot drift the cadence. Pick the path
+for this machine's OS — run `uname` if unsure.
 
 Write the per-account, per-job pins immediately before installing the schedule:
 `runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
@@ -248,12 +248,23 @@ window; and `parallel-library-cron-$ACCOUNT_SLUG` pins the worker count.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
-printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG"
-printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
-printf '{{FETCH_DAYS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG"
-printf '{{PARALLEL_WORKERS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/parallel-library-cron-$ACCOUNT_SLUG"
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/schedule-anchor-library-cron-$ACCOUNT_SLUG"
+ANCHOR_FILE="$AGENT_DIR/schedule-anchor-library-cron-$ACCOUNT_SLUG"
+SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
+printf '{{AGENT_RUNTIME}}\n' > "$AGENT_DIR/runtime-library-cron-$ACCOUNT_SLUG"
+printf '{{FETCH_FORCE}}\n' > "$AGENT_DIR/fetch-force-library-cron-$ACCOUNT_SLUG"
+printf '{{FETCH_DAYS}}\n' > "$AGENT_DIR/fetch-days-library-cron-$ACCOUNT_SLUG"
+printf '{{PARALLEL_WORKERS}}\n' > "$AGENT_DIR/parallel-library-cron-$ACCOUNT_SLUG"
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ANCHOR_FILE"
+ANCHOR_AT="$(cat "$ANCHOR_FILE")"
+mkdir -p "$SCHEDULE_SPEC_DIR"
+node "$AGENT_DIR/builder-digest.mjs" schedule-spec \
+  --freq "{{CRON_FREQUENCY_KEY}}" \
+  --anchor-file "$ANCHOR_FILE" \
+  --cron-out "$SCHEDULE_SPEC_DIR/cron.txt" \
+  --launchd-out "$SCHEDULE_SPEC_DIR/launchd.xml" \
+  --status-out "$SCHEDULE_SPEC_DIR/status.txt"
 ```
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
@@ -262,11 +273,15 @@ On macOS you MUST use a launchd LaunchAgent, not cron. A LaunchAgent runs
 inside your login session, so it can reach the login keychain and the pinned
 agent ({{AGENT_RUNTIME_LABEL}}) is authenticated. Plain `cron` runs outside
 your session and cannot reach the keychain, so the agent CLI fails every run
-with "Not logged in".
+with "Not logged in". The generated plist uses `StartCalendarInterval`
+entries derived from the install anchor.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
+LAUNCHD_SCHEDULE_XML="$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")"
 LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
@@ -288,7 +303,7 @@ cat > "$PLIST" <<PLISTEOF
 <key>BUILDER_BLOG_INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
 <key>INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
 </dict>
-{{LAUNCHD_SCHEDULE}}
+$LAUNCHD_SCHEDULE_XML
 <key>StandardOutPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
 <key>StandardErrorPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
 </dict>
@@ -316,7 +331,16 @@ previous FollowBrief library job for this account, then installs one idempotent
 job:
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/%s.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" "$LABEL" ) | crontab -
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
+CRON_SCHEDULE_EXPR="$(cat "$SCHEDULE_SPEC_DIR/cron.txt")"
+LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+(
+  crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron"
+  printf "# FollowBrief library cron · %s\n%s BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/%s.log 2>&1\n" "$ACCT" "$CRON_SCHEDULE_EXPR" "$ACCT" "$HOME" "$HOME" "$LABEL"
+) | crontab -
 BUILDER_BLOG_ACCOUNT="$ACCT" node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-audit --job library-cron --event crontab_install_succeeded --label "$LABEL" --reason setup_install
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
@@ -327,10 +351,13 @@ only; it does not fetch content. Do not run this step before the initial run and
 schedule install have both finished successfully:
 
 ```bash
-SCHEDULE_STATUS="{{CRON_SCHEDULE}}"
-if [ "$(uname)" = "Darwin" ]; then
-  SCHEDULE_STATUS="interval:{{CRON_INTERVAL_SECONDS}}"
-fi
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+ANCHOR_FILE="$AGENT_DIR/schedule-anchor-library-cron-$ACCOUNT_SLUG"
+SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
+ANCHOR_AT="$(cat "$ANCHOR_FILE")"
+SCHEDULE_STATUS="$(cat "$SCHEDULE_SPEC_DIR/status.txt")"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
   --job library-cron \
@@ -338,6 +365,7 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
   --freq "{{CRON_FREQUENCY_KEY}}" \
   --label "{{CRON_FREQUENCY_LABEL}}" \
   --schedule "$SCHEDULE_STATUS" \
+  --started-at "$ANCHOR_AT" \
   --runtime "{{AGENT_RUNTIME}}" \
   --force "{{FETCH_FORCE}}"
 ```

@@ -7,7 +7,7 @@ export type ScheduleTimingJob = {
 };
 
 export function usesRelativeIntervalSchedule(cronJob: ScheduleTimingJob): boolean {
-  if (/^interval:\d+$/i.test(cronJob.schedule.trim())) return true;
+  if (/^(?:interval:\d+|anchor:.+)$/i.test(cronJob.schedule.trim())) return true;
   return /^(darwin|macos)$/i.test(cronJob.platform?.trim() ?? "");
 }
 

@@ -228,6 +228,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /stale_pid_next_schedule_arrived/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
+  assert.match(runner, /toleranceMs = Math\.min\(5 \* 60 \* 1000/);
+  assert.match(runner, /elapsed \+ toleranceMs < intervalMs/);
   assert.match(runner, /status replaced/);
   assert.match(runner, /status killed/);
   assert.match(runner, /\*\-cron\)/);

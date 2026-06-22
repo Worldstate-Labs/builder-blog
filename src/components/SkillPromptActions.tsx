@@ -129,8 +129,8 @@ const FREQUENCY_CHOICES: { id: ScheduleFrequency; label: string }[] = [
   { id: "30m", label: "Every 30 minutes" },
   { id: "1h", label: "Every hour" },
   { id: "12h", label: "Every 12 hours" },
-  { id: "daily", label: "Once a day · 08:00" },
-  { id: "weekly", label: "Once a week · Mon 08:00" },
+  { id: "daily", label: "Every day" },
+  { id: "weekly", label: "Every week" },
 ];
 
 const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: ScheduleFrequency; label: string }[]> = {

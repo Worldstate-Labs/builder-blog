@@ -830,10 +830,15 @@ const anchorText = fs.readFileSync(anchorFile, "utf8").trim();
 const anchorMs = Date.parse(anchorText);
 const nowMs = Date.now();
 if (!Number.isFinite(anchorMs) || !Number.isFinite(intervalSeconds) || intervalSeconds <= 0) process.exit(1);
+const intervalMs = intervalSeconds * 1000;
+// launchd/crontab cannot schedule seconds, but the anchor is precise to a
+// second. Allow the generated minute-level schedule to fire slightly before the
+// exact anchor+N*interval timestamp while preserving that exact expectedAt.
+const toleranceMs = Math.min(5 * 60 * 1000, Math.max(0, intervalMs / 4));
 const elapsed = nowMs - anchorMs;
-if (elapsed < intervalSeconds * 1000) process.exit(1);
-const slotIndex = Math.floor(elapsed / (intervalSeconds * 1000));
-console.log(new Date(anchorMs + slotIndex * intervalSeconds * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"));
+if (elapsed + toleranceMs < intervalMs) process.exit(1);
+const slotIndex = Math.floor((elapsed + toleranceMs) / intervalMs);
+console.log(new Date(anchorMs + slotIndex * intervalMs).toISOString().replace(/\.\d{3}Z$/, "Z"));
 NODE
 }
 

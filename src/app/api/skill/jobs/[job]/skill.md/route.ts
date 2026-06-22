@@ -241,20 +241,19 @@ export async function GET(request: Request, { params }: Params) {
     openclaw: "OpenClaw",
   };
 
-  // Cron cadence for cron-setup prompts. Whitelisted key → fixed cron
-  // expression so the schedule that lands in the generated crontab printf
-  // can never carry arbitrary/injected text. Defaults to every 6 hours
-  // (the prior hard-coded behavior) when absent or unrecognized — so old
-  // copied prompts and the no-freq case keep working.
-  const cronSchedules: Record<string, { schedule: string; label: string }> = {
-    "30m": { schedule: "*/30 * * * *", label: "every 30 minutes" },
-    "1h": { schedule: "0 * * * *", label: "every hour" },
-    "12h": { schedule: "0 */12 * * *", label: "every 12 hours" },
-    daily: { schedule: "0 8 * * *", label: "once a day at 08:00" },
-    weekly: { schedule: "0 8 * * 1", label: "once a week (Monday 08:00)" },
+  // Cron cadence for cron-setup prompts. Whitelisted key → fixed interval
+  // metadata; the concrete cron/launchd schedule is generated on the user's
+  // machine from the install-time anchor after validation succeeds. Defaults
+  // keep old copied no-freq links working.
+  const cronFrequencies: Record<string, { label: string }> = {
+    "30m": { label: "every 30 minutes" },
+    "1h": { label: "every hour" },
+    "12h": { label: "every 12 hours" },
+    daily: { label: "every day" },
+    weekly: { label: "every week" },
     // Legacy keys kept so any previously-copied ?freq= link still resolves.
-    "3h": { schedule: "0 */3 * * *", label: "every 3 hours" },
-    "6h": { schedule: "0 */6 * * *", label: "every 6 hours" },
+    "3h": { label: "every 3 hours" },
+    "6h": { label: "every 6 hours" },
   };
   const cronIntervalMinutes: Record<string, string> = {
     "30m": "30",
@@ -265,12 +264,12 @@ export async function GET(request: Request, { params }: Params) {
     "3h": "180",
     "6h": "360",
   };
-  // Default cadence matches each job's prior hard-coded schedule, so old
-  // copied prompts (no freq param) are unchanged: digest = daily, the
-  // fetch/library job = every 6 hours.
+  // Default cadence keys match the old no-freq defaults: digest = daily, the
+  // fetch/library job = every 6 hours. The concrete clock time is now generated
+  // from the post-validation install anchor.
   const defaultFreq = job.startsWith("digest") ? "daily" : "6h";
   const freqRaw = url.searchParams.get("freq");
-  const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
+  const freq = freqRaw && cronFrequencies[freqRaw] ? freqRaw : defaultFreq;
   const cronInterval = cronIntervalMinutes[freq] ?? "360";
   const cronIntervalSeconds = String(Number(cronInterval) * 60);
   const cronTimeoutJob =
@@ -284,12 +283,6 @@ export async function GET(request: Request, { params }: Params) {
   const openClawSetupTimeoutSeconds = Number.isFinite(cronTimeoutNumber)
     ? String(cronTimeoutNumber + 600)
     : cronTimeoutSeconds;
-  // macOS uses a launchd LaunchAgent (runs in the user's login session, so
-  // the agent CLI can reach the login keychain — plain cron cannot). Run a
-  // short scheduler tick every minute; the runner anchors real jobs to
-  // schedule-anchor-* + N * interval so long workers cannot drift the cadence.
-  const launchdSchedule = `  <key>StartInterval</key>\n  <integer>60</integer>`;
-
   // Forced re-fetch toggle. "1" → re-fetch posts already in the library
   // (ignore the fetchedAt cutoff + externalId dedup). Default off. Closed
   // value set → no injection into the rendered md. Two placeholders:
@@ -333,12 +326,10 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{AGENT_RUNTIME}}", runtime ?? "")
     .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your Local Agent")
     .replaceAll("{{CRON_FREQUENCY_KEY}}", freq)
-    .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
-    .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
+    .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronFrequencies[freq].label)
     .replaceAll("{{CRON_INTERVAL_MINUTES}}", cronInterval)
     .replaceAll("{{CRON_INTERVAL_SECONDS}}", cronIntervalSeconds)
     .replaceAll("{{CRON_TIMEOUT_SECONDS}}", cronTimeoutSeconds)
-    .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedule)
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
     .replaceAll("{{FETCH_DAYS}}", fetchDays)

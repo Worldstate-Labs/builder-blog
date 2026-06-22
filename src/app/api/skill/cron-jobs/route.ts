@@ -12,8 +12,8 @@ const cronFrequencies: Record<string, { intervalMinutes: number; label: string }
   "3h": { intervalMinutes: 180, label: "every 3 hours" },
   "6h": { intervalMinutes: 360, label: "every 6 hours" },
   "12h": { intervalMinutes: 720, label: "every 12 hours" },
-  daily: { intervalMinutes: 1_440, label: "once a day at 08:00" },
-  weekly: { intervalMinutes: 10_080, label: "once a week (Monday 08:00)" },
+  daily: { intervalMinutes: 1_440, label: "every day" },
+  weekly: { intervalMinutes: 10_080, label: "every week" },
 };
 
 const CronJobSchema = z.object({

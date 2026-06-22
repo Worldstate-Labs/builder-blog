@@ -48,3 +48,23 @@ test("legacy macOS launchd rows use relative interval timing even when schedule 
   assert.equal(firstExpectedSchedule(cronJob)?.toISOString(), "2026-06-13T11:17:14.166Z");
   assert.equal(addScheduleInterval(cursor, cronJob).toISOString(), "2026-06-13T11:17:14.166Z");
 });
+
+test("anchored cron schedules use install time rather than wall-clock cron buckets", () => {
+  const cronJob = {
+    frequencyKey: "12h",
+    intervalMinutes: 720,
+    schedule: "anchor:15 1,13 * * *",
+    startedAt: "2026-06-21T13:15:22.000Z",
+    platform: "linux",
+  };
+
+  const beforeFirstRun = floorToExpectedSchedule(new Date("2026-06-22T01:14:59.000Z"), cronJob);
+  const firstRun = floorToExpectedSchedule(new Date("2026-06-22T01:15:22.000Z"), cronJob);
+  const secondRun = floorToExpectedSchedule(new Date("2026-06-22T13:20:00.000Z"), cronJob);
+
+  assert.equal(beforeFirstRun.toISOString(), "2026-06-21T13:15:22.000Z");
+  assert.equal(firstRun.toISOString(), "2026-06-22T01:15:22.000Z");
+  assert.equal(secondRun.toISOString(), "2026-06-22T13:15:22.000Z");
+  assert.equal(firstExpectedSchedule(cronJob)?.toISOString(), "2026-06-22T01:15:22.000Z");
+  assert.equal(addScheduleInterval(firstRun, cronJob).toISOString(), "2026-06-22T13:15:22.000Z");
+});

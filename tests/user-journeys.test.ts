@@ -498,13 +498,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(summaryLanguageRoute, /summaryLanguage/);
   assert.match(prismaSchema, /summaryLanguage\s+String\?/);
   assert.match(prismaSchema, /headlineSummary\s+String\?/);
-  // Server validates freq against a whitelist → fixed cron expression and
-  // substitutes the schedule + cadence label into the cron-setup prompt.
-  assert.match(skillJobRoute, /cronSchedules/);
+  // Server validates freq against a whitelist and substitutes cadence metadata;
+  // the setup prompt derives the concrete cron/launchd schedule from the
+  // install-time anchor after validation succeeds.
+  assert.match(skillJobRoute, /cronFrequencies/);
   assert.match(skillJobRoute, /new Set\(\["claude", "codex", "gemini", "openclaw"\]\)/);
   assert.match(skillJobRoute, /openclaw: "OpenClaw"/);
   assert.match(skillPromptActions, /id: "openclaw"/);
   assert.match(skillPromptActions, /label: "OpenClaw"/);
+  assert.match(skillPromptActions, /Every day/);
+  assert.match(skillPromptActions, /Every week/);
+  assert.doesNotMatch(skillPromptActions, /08:00|Mon 08:00/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("days"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("parallel"\)/);
@@ -512,7 +516,6 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
-  assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
   assert.match(skillJobRoute, /localAgentTimeoutSeconds/);
@@ -537,16 +540,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillJobRoute, /nohup openclaw agent/);
   assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*exchangeBlock[\s\S]*content/);
   assert.doesNotMatch(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
-  // macOS scheduling uses a launchd LaunchAgent (keychain access). It runs a
-  // short tick every minute while the runner anchors real jobs to install time
-  // plus N * interval, so long workers cannot drift the cadence.
-  assert.match(skillJobRoute, /cronIntervalSeconds/);
-  assert.match(skillJobRoute, /<key>StartInterval<\/key>/);
-  assert.match(skillJobRoute, /<integer>60<\/integer>/);
-  assert.match(skillJobRoute, /schedule-anchor-\*/);
-  assert.doesNotMatch(skillJobRoute, /StartCalendarInterval/);
+  // macOS scheduling uses a launchd LaunchAgent with anchor-aligned
+  // StartCalendarInterval entries instead of a forever one-minute tick.
+  assert.doesNotMatch(skillJobRoute, /<key>StartInterval<\/key>/);
+  assert.doesNotMatch(skillJobRoute, /<integer>60<\/integer>/);
   assert.match(skillJobRoute, /\{\{CRON_INTERVAL_SECONDS\}\}/);
-  assert.match(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.doesNotMatch(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
   // Forced re-fetch toggle: ?force=1 → {{FETCH_FORCE}} substituted to 1.
   assert.match(skillJobRoute, /searchParams\.get\("force"\)/);
   assert.match(skillJobRoute, /\{\{FETCH_FORCE\}\}/);
@@ -558,12 +557,21 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
   assert.match(skillFileRoute, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
   assert.match(skillFileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "1"\)/);
-  // cron-setup prompts use the placeholders, not a hard-coded schedule, and
-  // install via launchd on macOS / crontab on Linux.
-  assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  // cron-setup prompts generate an anchor-aligned schedule after the
+  // validation run passes, then install via launchd on macOS / crontab on Linux.
+  assert.match(libraryCronSetupPrompt, /schedule-spec/);
+  assert.match(libraryCronSetupPrompt, /--anchor-file "\$ANCHOR_FILE"/);
+  assert.match(libraryCronSetupPrompt, /--cron-out "\$SCHEDULE_SPEC_DIR\/cron\.txt"/);
+  assert.match(libraryCronSetupPrompt, /--launchd-out "\$SCHEDULE_SPEC_DIR\/launchd\.xml"/);
+  assert.match(libraryCronSetupPrompt, /--status-out "\$SCHEDULE_SPEC_DIR\/status\.txt"/);
+  assert.match(libraryCronSetupPrompt, /CRON_SCHEDULE_EXPR="\$\(cat "\$SCHEDULE_SPEC_DIR\/cron\.txt"\)"/);
+  assert.match(libraryCronSetupPrompt, /LAUNCHD_SCHEDULE_XML="\$\(cat "\$SCHEDULE_SPEC_DIR\/launchd\.xml"\)"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
-  assert.match(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /<key>StartInterval<\/key>/);
+  assert.match(libraryCronSetupPrompt, /StartCalendarInterval/);
   assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(libraryCronSetupPrompt, /<key>INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key><string>1<\/string>/);
@@ -582,8 +590,14 @@ test("web app serves the agent skill and setup command", () => {
     "Keep the selected runtime and fetch mode scoped",
   ]);
   assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
-  assert.match(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
-  assert.match(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.match(digestCronSetupPrompt, /schedule-spec/);
+  assert.match(digestCronSetupPrompt, /--anchor-file "\$ANCHOR_FILE"/);
+  assert.match(digestCronSetupPrompt, /CRON_SCHEDULE_EXPR="\$\(cat "\$SCHEDULE_SPEC_DIR\/cron\.txt"\)"/);
+  assert.match(digestCronSetupPrompt, /LAUNCHD_SCHEDULE_XML="\$\(cat "\$SCHEDULE_SPEC_DIR\/launchd\.xml"\)"/);
+  assert.doesNotMatch(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  assert.doesNotMatch(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.doesNotMatch(digestCronSetupPrompt, /<key>StartInterval<\/key>/);
+  assert.match(digestCronSetupPrompt, /StartCalendarInterval/);
   assert.match(digestCronSetupPrompt, /<key>BUILDER_BLOG_INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(digestCronSetupPrompt, /<key>INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(digestCronSetupPrompt, /launchctl bootstrap/);
@@ -1022,7 +1036,8 @@ test("web app serves the agent skill and setup command", () => {
     libraryCronSetupPrompt,
     /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*TMP_DIR="\$\{BUILDER_BLOG_JOB_TMP_DIR:-\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\}"/,
   );
-  assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
+  assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="\$\(cat "\$SCHEDULE_SPEC_DIR\/status\.txt"\)"/);
+  assert.match(libraryCronSetupPrompt, /--started-at "\$ANCHOR_AT"/);
   assert.match(libraryCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(
     libraryCronPrompt,
@@ -1062,7 +1077,8 @@ test("web app serves the agent skill and setup command", () => {
     /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*ACCOUNT_SLUG="\$\(printf '%s' "\$ACCT" \| tr -c 'a-zA-Z0-9' '_'\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/,
   );
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
-  assert.match(digestCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
+  assert.match(digestCronSetupPrompt, /SCHEDULE_STATUS="\$\(cat "\$SCHEDULE_SPEC_DIR\/status\.txt"\)"/);
+  assert.match(digestCronSetupPrompt, /--started-at "\$ANCHOR_AT"/);
   assert.match(digestCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(digestCronPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron/);
   assert.match(digestCronPrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
