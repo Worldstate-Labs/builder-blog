@@ -528,6 +528,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /buildOpenClawInitialRunBootstrap/);
   assert.match(skillJobRoute, /sliceSetupPromptForOpenClawChild/);
   assert.match(skillJobRoute, /sliceSetupPromptForOpenClawParent/);
+  assert.match(skillJobRoute, /adaptSetupContinuationForUnattendedChild/);
+  assert.match(skillJobRoute, /content\.slice\(markerIndex\)\.trimStart\(\)/);
+  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawChild\(job, contentWithExchange\)/);
+  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawParent\(job, contentWithExchange, openClawSetupBootstrap\)/);
   assert.match(skillJobRoute, /Queue the OpenClaw initial run/);
   assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
   assert.match(skillJobRoute, /!openClawSetupChild/);
@@ -538,6 +542,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /--light-context/);
   assert.match(skillJobRoute, /--timeout-seconds \\"\$OPENCLAW_SETUP_TIMEOUT_SECONDS\\"/);
   assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.match(skillJobRoute, /Run this queued FollowBrief setup continuation/);
+  assert.match(skillJobRoute, /numbering continues from the[\s\S]*user-facing setup prompt/);
+  assert.match(skillJobRoute, /This child job is[\s\S]*unattended and must not wait for confirmation/);
   assert.match(skillJobRoute, /openClawSetupChild[\s\S]*sliceSetupPromptForOpenClawChild/);
   assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*sliceSetupPromptForOpenClawParent/);
   assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);

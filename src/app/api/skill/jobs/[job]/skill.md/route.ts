@@ -66,17 +66,9 @@ function buildOpenClawInitialRunBootstrap({
   setupTimeoutSeconds: string;
 }): string {
   return [
-    "6. Queue the OpenClaw initial run and schedule install as a durable one-shot job.",
+    "6. Queue the OpenClaw initial run and schedule install.",
     "Run this block after steps 1-5 pass. If it prints",
-    "`FOLLOWBRIEF_OPENCLAW_QUEUED=1`, stop this current turn immediately and",
-    "report the setup job name it printed. Do not run the later steps in this",
-    "current turn. The queued OpenClaw one-shot job runs the initial validation",
-    "fetch/build, installs the schedule only if validation passes, and reports",
-    "cron status. It does not bootstrap the CLI, exchange the setup code, prepare",
-    "credentials, or check the existing schedule; those setup steps are handled",
-    "above in this parent session.",
-    "Do not replace this with `nohup` or another shell background process — OpenClaw",
-    "tool calls clean up background children when the tool turn ends.",
+    "`FOLLOWBRIEF_OPENCLAW_QUEUED=1`, report the printed setup job name and stop.",
     "",
     "```bash",
     `OPENCLAW_CHILD_SETUP_PROMPT_URL=${shellSingleQuote(childSetupPromptUrl)}`,
@@ -127,19 +119,32 @@ function setupInitialRunMarker(job: string): string {
   return "";
 }
 
+function adaptSetupContinuationForUnattendedChild(job: string, childBody: string): string {
+  if (job !== "library-cron-setup") return childBody;
+  return childBody.replace(
+    /If the gate prints `"status": "needs_confirmation"`[\s\S]*?install or report an active schedule\./,
+    [
+      "If the gate prints `\"status\": \"needs_confirmation\"`, list every failed post",
+      "task with its title, source, failed stage (`read`, `summarize`, or `sync`),",
+      "and reason. Then stop without installing the scheduled run. This child job is",
+      "unattended and must not wait for confirmation.",
+    ].join("\n"),
+  );
+}
+
 function sliceSetupPromptForOpenClawChild(job: string, content: string): string {
   const marker = setupInitialRunMarker(job);
   const markerIndex = marker ? content.indexOf(marker) : -1;
-  const childBody = markerIndex >= 0 ? content.slice(markerIndex).trimStart() : content.trimStart();
+  const rawChildBody = markerIndex >= 0 ? content.slice(markerIndex).trimStart() : content.trimStart();
+  const childBody = adaptSetupContinuationForUnattendedChild(job, rawChildBody);
   return [
-    "Continue the FollowBrief setup after the parent OpenClaw session completed",
-    "bootstrap, token exchange, credential prep, existing-schedule confirmation,",
-    "and runtime checks.",
+    "Run this queued FollowBrief setup continuation.",
+    "Start at the initial-run step below; numbering continues from the",
+    "user-facing setup prompt.",
     "",
-    "This queued OpenClaw child job is unattended. Do not ask the user questions.",
-    "If the initial run command fails, times out, or the validation gate reports",
-    "failed post tasks, report the details and stop without installing the",
-    "schedule.",
+    "This job is unattended. If the initial run command fails, times out, or the",
+    "validation gate reports failed post tasks, report the details and stop",
+    "without installing the schedule.",
     "",
     childBody,
   ].join("\n");
