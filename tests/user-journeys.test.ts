@@ -1619,10 +1619,12 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
 
   // YouTube extraction strategy moved out of the contract into the source prompt.
   assert.doesNotMatch(contract, /silent screen recording/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Before starting local speech transcription/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /estimate this\s+video's duration/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /local_asr_duration_exceeded/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /worker budget/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Only if no usable captions\/transcript are available/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Prefer faster-whisper or MLX Whisper/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Do not use the OpenAI API/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /estimate this\s+video's duration/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /local_asr_duration_exceeded/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /worker budget/);
   assert.equal(
     existsSync("scripts/seed-youtube-fetch-prompt.mts"),
     false,
@@ -3220,18 +3222,19 @@ test("Product Hunt fetch prompt migration removes the general web search ban fro
   assert.match(migration, /\$\$6\. If a field is hidden[\s\S]*\$\$5\. If a field is hidden/);
 });
 
-test("YouTube fetch prompt migration bounds local ASR and updates user prompts", () => {
+test("YouTube fetch prompt migration reverts agent-side ASR duration guessing", () => {
   const migration = readFileSync(
-    "prisma/migrations/000074_youtube_asr_budget_prompt/migration.sql",
+    "prisma/migrations/000075_revert_youtube_asr_budget_prompt/migration.sql",
     "utf8",
   );
 
   assert.match(migration, /UPDATE "SourceTypeConfig"[\s\S]*"sourceId" = 'youtube'/);
   assert.match(migration, /UPDATE "UserSourceTypeConfig"[\s\S]*"sourceId" = 'youtube'/);
-  assert.match(migration, /Before starting local speech transcription/);
-  assert.match(migration, /estimate this\s+video's duration/);
+  assert.match(migration, /Prefer faster-whisper or MLX Whisper/);
   assert.match(migration, /local_asr_duration_exceeded/);
   assert.match(migration, /worker budget/);
+  assert.doesNotMatch(migration, /estimate this\s+video's duration/);
+  assert.doesNotMatch(migration, /Before starting local speech transcription/);
 });
 
 test("source registry supports future source types without new BuilderKind enum values", () => {
