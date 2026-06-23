@@ -189,7 +189,7 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/],
     ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
@@ -2839,7 +2839,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   const digestUpdatesCard = source("src/components/OwnDigestPipelineUpdatesCard.tsx");
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   assert.match(buildersPage, /@\/lib\/digest-runs/);
-  assert.match(buildersPage, /WorkspaceTopTabs/);
+  assert.match(buildersPage, /SourcesTabShell/);
   assert.match(buildersPage, /ariaLabel="Sources and AI Digest tabs"/);
   assert.doesNotMatch(buildersPage, /ariaLabel="Sources and AI Digest"/);
   assert.match(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders\?tab=fetch"/);
@@ -3502,6 +3502,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
+  assert.match(buildersPage, /<SourcesTabShell[\s\S]*digestFallback=\{<DigestSourcesFallback \/>\}[\s\S]*fetchFallback=\{<FetchSourcesFallback \/>\}/);
+  assert.match(source("src/components/SourcesTabShell.tsx"), /setPendingTab\(value\)/);
+  assert.match(source("src/components/SourcesTabShell.tsx"), /router\.push\(target\.href!\)/);
   assert.match(
     buildersPage,
     /selectedTab === "fetch" \? loadBuildersPageData\(\) : null/,
@@ -3990,7 +3993,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /@\/components\/PageHeader/);
   assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Manage your sources, AI Digests, and source subscriptions\./);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
-  assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
+  assert.match(buildersPage, /<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
   assert.doesNotMatch(buildersPage, /<PageHeader[^>]*actions=/);

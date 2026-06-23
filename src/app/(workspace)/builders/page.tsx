@@ -25,7 +25,8 @@ import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
 import { SourceAvatar } from "@/components/SourceAvatar";
-import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
+import { SourcesTabShell } from "@/components/SourcesTabShell";
+import type { WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
@@ -120,35 +121,38 @@ export default async function BuildersPage({
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
-          <WorkspaceTopTabs
+          <SourcesTabShell
             ariaLabel="Sources and AI Digest tabs"
+            digestFallback={<DigestSourcesFallback />}
+            fetchFallback={<FetchSourcesFallback />}
             items={SOURCES_TABS}
-            selectedValue={selectedTab}
-          />
-
-          {selectedTab === "fetch" ? (
-            <section
-              aria-labelledby={selectedTabItem.tabId}
-              className="sources-tab-body sources-tab-body--fetch"
-              id={selectedTabItem.panelId}
-              role="tabpanel"
-            >
-              <Suspense fallback={<FetchSourcesFallback />}>
-                <FetchSourcesSection dataPromise={fetchDataPromise!} />
-              </Suspense>
-            </section>
-          ) : (
-            <section
-              aria-labelledby={selectedTabItem.tabId}
-              className="sources-tab-body sources-tab-body--digest"
-              id={selectedTabItem.panelId}
-              role="tabpanel"
-            >
-              <Suspense fallback={<DigestSourcesFallback />}>
-                <DigestSourcesSection dataPromise={digestDataPromise!} />
-              </Suspense>
-            </section>
-          )}
+            key={selectedTab}
+            selectedTab={selectedTab}
+          >
+            {selectedTab === "fetch" ? (
+              <section
+                aria-labelledby={selectedTabItem.tabId}
+                className="sources-tab-body sources-tab-body--fetch"
+                id={selectedTabItem.panelId}
+                role="tabpanel"
+              >
+                <Suspense fallback={<FetchSourcesFallback />}>
+                  <FetchSourcesSection dataPromise={fetchDataPromise!} />
+                </Suspense>
+              </section>
+            ) : (
+              <section
+                aria-labelledby={selectedTabItem.tabId}
+                className="sources-tab-body sources-tab-body--digest"
+                id={selectedTabItem.panelId}
+                role="tabpanel"
+              >
+                <Suspense fallback={<DigestSourcesFallback />}>
+                  <DigestSourcesSection dataPromise={digestDataPromise!} />
+                </Suspense>
+              </section>
+            )}
+          </SourcesTabShell>
         </section>
       </div>
     </div>
