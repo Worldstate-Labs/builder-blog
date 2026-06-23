@@ -837,8 +837,13 @@ function publicJobRunReason(jobRun: AgentJobRunListItem): string | null {
   return isInternalDigestJobRunReason(reason) ? null : reason;
 }
 
+function jobRunProviderError(jobRun: AgentJobRunListItem): string | null {
+  return jobRunDetailString(jobRun, "providerError");
+}
+
 function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
   const reason = publicJobRunReason(jobRun);
+  const providerError = jobRunProviderError(jobRun);
   const timeoutSeconds = jobRunDetailNumber(jobRun, "timeoutSeconds");
   const timeoutStage = jobRunDetailString(jobRun, "timeoutStage");
   if (jobRun.status === "timed_out") {
@@ -849,6 +854,7 @@ function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
   if (jobRun.status === "killed") return "Stopped by the local scheduler before finishing.";
   if (jobRun.status === "replaced") return "Replaced by a newer scheduled run.";
   if (jobRun.status === "stale") return "FollowBrief lost contact with the Local Agent.";
+  if (providerError) return providerError;
   if (jobRun.signal) return `Stopped after receiving ${jobRun.signal}.`;
   if (jobRun.exitCode !== null) return `Exited with code ${jobRun.exitCode}.`;
   return reason ? readableReason(reason) : "Stopped before completing the AI Digest build.";
@@ -862,6 +868,7 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
       ? `timeout ${formatCount(jobRunDetailNumber(jobRun, "timeoutSeconds")!)} seconds`
       : null,
     jobRunDetailString(jobRun, "timeoutStage")?.replace(/[_-]+/g, " "),
+    jobRunProviderError(jobRun),
     publicJobRunReason(jobRun)?.replace(/[_-]+/g, " "),
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
@@ -956,10 +963,11 @@ function JobRunCard({
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   const verdict = jobRunVerdict(jobRun, undefined, stallGraceUntilMs);
   const reason = publicJobRunReason(jobRun);
+  const providerError = jobRunProviderError(jobRun);
   const diagnostic = jobRunDiagnostic(jobRun);
   const showRuntimeState = !activeJob && jobRun.status !== "succeeded" && Boolean(jobRun.stage);
   const showFailureDetails = !activeJob && jobRun.status !== "succeeded" &&
-    (Boolean(reason) || jobRun.exitCode !== null || Boolean(jobRun.signal) || Boolean(jobRun.stage));
+    (Boolean(reason) || Boolean(providerError) || jobRun.exitCode !== null || Boolean(jobRun.signal) || Boolean(jobRun.stage));
   return (
     <article className="sync-panel-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
@@ -1000,6 +1008,12 @@ function JobRunCard({
             <div>
               <dt>Reason</dt>
               <dd>{readableReason(reason)}</dd>
+            </div>
+          ) : null}
+          {providerError ? (
+            <div>
+              <dt>Provider</dt>
+              <dd>{providerError}</dd>
             </div>
           ) : null}
           {jobRun.exitCode !== null ? (
@@ -1082,12 +1096,14 @@ function DigestLifecycleDetails({
   run?: DigestRunListItem;
 }) {
   const reason = jobRun ? publicJobRunReason(jobRun) : null;
+  const providerError = jobRun ? jobRunProviderError(jobRun) : null;
   return (
     <dl className="sync-panel-task-fact-list">
       {children}
       {run ? <DigestFactRow label="DigestRun" value={<span className="mono">{run.id}</span>} /> : null}
       {jobRun?.stage ? <DigestFactRow label="Last event" value={<span className="mono">{readableReason(jobRun.stage)}</span>} /> : null}
       {reason ? <DigestFactRow label="Reason" value={<span>{readableReason(reason)}</span>} /> : null}
+      {providerError ? <DigestFactRow label="Provider" value={<span>{providerError}</span>} /> : null}
       {jobRun?.exitCode !== null && jobRun?.exitCode !== undefined ? (
         <DigestFactRow label="Exit code" value={<span className="mono">{jobRun.exitCode}</span>} />
       ) : null}

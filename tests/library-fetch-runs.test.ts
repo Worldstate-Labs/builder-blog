@@ -221,6 +221,15 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /worker_shard_timeout/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
+  assert.match(runner, /agent_runtime_failure_summary\(\)/);
+  assert.match(runner, /agent_output_has_openclaw_capacity_failure\(\)/);
+  assert.match(runner, /openclaw_model_candidates\(\)/);
+  assert.match(runner, /BUILDER_BLOG_OPENCLAW_MODELS/);
+  assert.match(runner, /BUILDER_BLOG_OPENCLAW_CAPACITY_ATTEMPTS/);
+  assert.match(runner, /openclaw agent[\s\S]*--model "\$_openclaw_model"/);
+  assert.match(runner, /OpenClaw selected model was at capacity; retrying/);
+  assert.match(runner, /GatewayClientRequestError:/);
+  assert.match(runner, /--provider-error "\$_agent_provider_error"/);
   assert.match(runner, /validation-failed-payload\.json/);
   assert.match(runner, /--exclude-task-ids-file "\$_checkpoint_synced_ids_file"/);
   assert.match(runner, /--reason "content_validation_failed"/);

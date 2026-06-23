@@ -2415,6 +2415,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /No save reported/);
   assert.match(digestLogPanel, /Not completed/);
   assert.match(digestLogPanel, /Not recorded/);
+  assert.match(digestLogPanel, /providerError/);
+  assert.match(digestLogPanel, /jobRunProviderError/);
+  assert.match(digestLogPanel, /label="Provider"/);
   assert.doesNotMatch(digestLogPanel, /No saved title/);
   assert.doesNotMatch(digestLogPanel, /rebuilds past posts/);
   assert.match(digestLogPanel, /all new posts/);

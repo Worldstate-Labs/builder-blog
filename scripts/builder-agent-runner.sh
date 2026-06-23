@@ -296,6 +296,7 @@ run_with_codex_unattended() {
   # generic "fetch failed". Re-enable network for the workspace sandbox so the
   # job can reach the network while keeping the filesystem sandbox intact.
   _codex_output="$(agent_output_file codex)"
+  LAST_AGENT_OUTPUT_FILE="$_codex_output"
   set +e
   codex exec --skip-git-repo-check --full-auto \
     -c sandbox_workspace_write.network_access=true \
@@ -317,6 +318,7 @@ run_with_claude_unattended() {
   # surface the library-once skill actually uses (Bash for node CLI +
   # curl, WebFetch for content extraction, file IO under tmp/).
   _claude_output="$(agent_output_file claude)"
+  LAST_AGENT_OUTPUT_FILE="$_claude_output"
   set +e
   claude -p "$(cat "$PROMPT_FILE")" \
     --add-dir "$AGENT_DIR" \
@@ -355,17 +357,50 @@ run_with_openclaw_unattended() {
   _openclaw_output="$(agent_output_file openclaw)"
   LAST_AGENT_OUTPUT_FILE="$_openclaw_output"
   _openclaw_session_id="${OPENCLAW_SESSION_ID:-$(openclaw_default_session_id)}"
-  set +e
-  openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
-  _openclaw_code="$?"
-  set -e
-  cat "$_openclaw_output"
-  if agent_output_has_timeout "$_openclaw_output"; then
-    return 124
+  _openclaw_attempts="$(openclaw_capacity_attempts)"
+  _openclaw_delay="$(openclaw_capacity_retry_delay_seconds)"
+  _openclaw_models="$(openclaw_model_candidates)"
+  if [ -z "$_openclaw_models" ]; then
+    _openclaw_models="__followbrief_default_model__"
   fi
-  if [ "$_openclaw_code" -eq 0 ] && ! digest_output_completed "$_openclaw_output"; then
-    return 1
-  fi
+
+  _openclaw_attempt=1
+  _openclaw_code=1
+  while [ "$_openclaw_attempt" -le "$_openclaw_attempts" ]; do
+    for _openclaw_model in $_openclaw_models; do
+      if [ "$_openclaw_model" = "__followbrief_default_model__" ]; then
+        echo "Running OpenClaw Gateway attempt $_openclaw_attempt/$_openclaw_attempts with the configured default model."
+        set +e
+        openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        _openclaw_code="$?"
+        set -e
+      else
+        echo "Running OpenClaw Gateway attempt $_openclaw_attempt/$_openclaw_attempts with model $_openclaw_model."
+        set +e
+        openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --model "$_openclaw_model" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        _openclaw_code="$?"
+        set -e
+      fi
+      cat "$_openclaw_output"
+      if agent_output_has_timeout "$_openclaw_output"; then
+        return 124
+      fi
+      if [ "$_openclaw_code" -eq 0 ] && digest_output_completed "$_openclaw_output"; then
+        return 0
+      fi
+      if ! agent_output_has_openclaw_capacity_failure "$_openclaw_output"; then
+        if [ "$_openclaw_code" -eq 0 ]; then
+          return 1
+        fi
+        return "$_openclaw_code"
+      fi
+    done
+    if [ "$_openclaw_attempt" -lt "$_openclaw_attempts" ]; then
+      echo "OpenClaw selected model was at capacity; retrying in ${_openclaw_delay}s." >&2
+      sleep "$_openclaw_delay"
+    fi
+    _openclaw_attempt="$(( _openclaw_attempt + 1 ))"
+  done
   return "$_openclaw_code"
 }
 
@@ -415,6 +450,78 @@ agent_output_has_timeout() {
   grep -E -i -q \
     "Request timed out before a response was generated|codex app-server turn idle timed out|codex app-server client retired after timed-out turn|embedded run failover decision:.*reason=timeout|LLM timed out|Profile .* timed out|DEADLINE_EXCEEDED|deadline exceeded" \
     "$_file"
+}
+
+agent_output_has_openclaw_capacity_failure() {
+  _file="${1:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 1
+  grep -E -i -q \
+    "Selected model is at capacity|model is at capacity|provider overloaded|overloaded|rate.?limit|too many requests|FailoverError:.*capacity|FailoverError:.*overload|FailoverError:.*rate" \
+    "$_file"
+}
+
+agent_runtime_failure_summary() {
+  _file="${1:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 0
+  grep -E -i -m 1 \
+    "GatewayClientRequestError:|FailoverError:|Provider authentication failed|OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth|Request timed out before a response was generated|DEADLINE_EXCEEDED|deadline exceeded|Digest agent did not produce builder-blog-digest-agent-output\\.json" \
+    "$_file" | sed 's/^[[:space:]]*//' | cut -c 1-500 || true
+}
+
+openclaw_capacity_attempts() {
+  _value="${BUILDER_BLOG_OPENCLAW_CAPACITY_ATTEMPTS:-3}"
+  case "$_value" in
+    ''|*[!0-9]*) printf '%s\n' 3 ;;
+    0) printf '%s\n' 1 ;;
+    *) printf '%s\n' "$_value" ;;
+  esac
+}
+
+openclaw_capacity_retry_delay_seconds() {
+  _value="${BUILDER_BLOG_OPENCLAW_CAPACITY_RETRY_DELAY_SECONDS:-20}"
+  case "$_value" in
+    ''|*[!0-9]*) printf '%s\n' 20 ;;
+    *) printf '%s\n' "$_value" ;;
+  esac
+}
+
+openclaw_model_candidates() {
+  if [ -n "${BUILDER_BLOG_OPENCLAW_MODELS:-}" ]; then
+    printf '%s\n' "$BUILDER_BLOG_OPENCLAW_MODELS" | tr ', ' '\n\n' | awk 'NF && !seen[$0]++'
+    return 0
+  fi
+
+  node <<'NODE'
+const { execFileSync } = require("node:child_process");
+
+function configGet(path) {
+  try {
+    return execFileSync("openclaw", ["config", "get", path], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+const raw = configGet("agents.defaults.model");
+const models = ["__followbrief_default_model__"];
+try {
+  const parsed = JSON.parse(raw);
+  if (Array.isArray(parsed?.fallbacks)) models.push(...parsed.fallbacks.filter((model) => typeof model === "string"));
+} catch {
+  // Scalar/default model config is already covered by the no --model first
+  // attempt, which lets OpenClaw own its normal routing behavior.
+}
+
+const seen = new Set();
+for (const model of models.map((value) => value.trim()).filter(Boolean)) {
+  if (seen.has(model)) continue;
+  seen.add(model);
+  console.log(model);
+}
+NODE
 }
 
 digest_output_completed() {
@@ -485,6 +592,7 @@ NODE
 
 run_with_gemini_unattended() {
   _gemini_output="$(agent_output_file gemini)"
+  LAST_AGENT_OUTPUT_FILE="$_gemini_output"
   set +e
   gemini --yolo -p "$(cat "$PROMPT_FILE")" > "$_gemini_output" 2>&1
   _gemini_code="$?"
@@ -1512,9 +1620,11 @@ run_digest_job() {
   PROMPT_FILE="$_digest_base_prompt"
   unset BUILDER_BLOG_DIGEST_AGENT_ONLY
   if [ "$_agent_code" -ne 0 ]; then
+    _agent_provider_error="$(agent_runtime_failure_summary "${LAST_AGENT_OUTPUT_FILE:-}")"
     job_run_update failed "Local agent failed to write digest summary JSON." "agent_failed" \
       --stage "run_local_agent" \
-      --exit-code "$_agent_code"
+      --exit-code "$_agent_code" \
+      --provider-error "$_agent_provider_error"
     return "$_agent_code"
   fi
 
