@@ -28,7 +28,10 @@ export function SourcesTabShell({
         digest: digestFallback,
         fetch: fetchFallback,
       }}
-      fallbackClassName={(value) => `sources-tab-body sources-tab-body--${value}`}
+      fallbackClassNameByValue={{
+        digest: "sources-tab-body sources-tab-body--digest",
+        fetch: "sources-tab-body sources-tab-body--fetch",
+      }}
       items={items}
       selectedValue={selectedTab}
     >

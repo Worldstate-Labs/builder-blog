@@ -3512,6 +3512,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
   assert.match(buildersPage, /<SourcesTabShell[\s\S]*digestFallback=\{<DigestSourcesFallback \/>\}[\s\S]*fetchFallback=\{<FetchSourcesFallback \/>\}/);
   assert.match(source("src/components/SourcesTabShell.tsx"), /WorkspaceTabShell/);
+  assert.match(source("src/components/SourcesTabShell.tsx"), /fallbackClassNameByValue=\{\{/);
+  assert.doesNotMatch(source("src/components/SourcesTabShell.tsx"), /fallbackClassName=\{\(value\)/);
+  assert.doesNotMatch(workspaceTabShell, /fallbackClassName\?: string \| \(\(value/);
   assert.match(workspaceTabShell, /setPending\(\{ from: selectedValue, value \}\)/);
   assert.match(workspaceTabShell, /router\.push\(target\.href!\)/);
   assert.match(

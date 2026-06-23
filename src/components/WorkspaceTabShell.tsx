@@ -11,7 +11,8 @@ type WorkspaceTabShellProps<TValue extends string> = {
   ariaLabel: string;
   children: ReactNode;
   fallbackByValue: Record<TValue, ReactNode>;
-  fallbackClassName?: string | ((value: TValue) => string);
+  fallbackClassName?: string;
+  fallbackClassNameByValue?: Partial<Record<TValue, string>>;
   items: Array<WorkspaceTopTabItem<TValue>>;
   selectedValue: TValue;
 };
@@ -21,6 +22,7 @@ export function WorkspaceTabShell<TValue extends string>({
   children,
   fallbackByValue,
   fallbackClassName,
+  fallbackClassNameByValue,
   items,
   selectedValue,
 }: WorkspaceTabShellProps<TValue>) {
@@ -50,9 +52,7 @@ export function WorkspaceTabShell<TValue extends string>({
   }
 
   const resolvedFallbackClassName =
-    typeof fallbackClassName === "function"
-      ? fallbackClassName(visualValue)
-      : fallbackClassName;
+    fallbackClassNameByValue?.[visualValue] ?? fallbackClassName;
 
   return (
     <>
