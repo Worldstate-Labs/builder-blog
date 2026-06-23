@@ -22,7 +22,7 @@ export function PublicHeader({
             <span className="fb-brand-name">FollowBrief</span>
           </Link>
           <div className="fb-public-top-actions">
-            <PublicHeaderActions current={current} session={session} surface="desktop" />
+            <PublicHeaderActions current={current} session={session} />
           </div>
         </div>
       </header>
@@ -34,34 +34,30 @@ export function PublicHeader({
         </Link>
         <span className="fb-m-spacer" />
         <div className="fb-public-mobile-actions">
-          <PublicHeaderActions current={current} session={session} surface="mobile" />
+          <PublicHeaderActions current={current} session={session} />
         </div>
       </header>
     </>
   );
 }
 
-type PublicHeaderSurface = "desktop" | "mobile";
-
 function PublicHeaderActions({
   current,
   session,
-  surface,
 }: {
   current: PublicHeaderPage;
   session?: Session | null;
-  surface: PublicHeaderSurface;
 }) {
   const isLegalPage = current === "privacy" || current === "terms";
   const showSignIn = current !== "login" && !session;
-  const showMobileLegalLinks = surface === "mobile" && isLegalPage && !session;
+  const showLegalLinks = isLegalPage && !session;
 
   if (isLegalPage) {
     return session ? (
       <UserMenu compact session={session} />
     ) : (
       <>
-        {showMobileLegalLinks ? (
+        {showLegalLinks ? (
           <>
             <Link className="fb-login-nav-link" href="/privacy">
               Privacy
