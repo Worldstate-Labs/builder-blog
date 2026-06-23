@@ -661,6 +661,7 @@ function searchTypeTabItem({
     href,
     id: searchTypeTabId(value),
     label,
+    value,
   };
 }
 

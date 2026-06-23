@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
+import { FeedLoadingState } from "@/components/FeedState";
+import { WorkspaceTabShell } from "@/components/WorkspaceTabShell";
+import type { WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 
 type DashboardTab = "ai-digest" | "following" | "favorites";
 
@@ -39,12 +41,17 @@ export function DashboardHomeTabs({
   initialTab: DashboardTab;
 }) {
   return (
-    <>
-      <WorkspaceTopTabs
-        ariaLabel="Today feed tabs"
-        items={HOME_TABS}
-        selectedValue={initialTab}
-      />
+    <WorkspaceTabShell
+      ariaLabel="Today feed tabs"
+      fallbackByValue={{
+        "ai-digest": <HomeAiDigestFallback />,
+        favorites: <FeedLoadingState label="Loading Favorites" />,
+        following: <FeedLoadingState label="Loading Following" />,
+      }}
+      fallbackClassName="home-tab-panel"
+      items={HOME_TABS}
+      selectedValue={initialTab}
+    >
       <section
         aria-labelledby="home-tab-ai-digest"
         className="home-tab-panel"
@@ -72,6 +79,37 @@ export function DashboardHomeTabs({
       >
         {initialTab === "favorites" ? favorites : null}
       </section>
-    </>
+    </WorkspaceTabShell>
+  );
+}
+
+function HomeAiDigestFallback() {
+  return (
+    <div className="ai-digest-stack home-loading-ai-digest" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading AI Digest</span>
+      <section className="digest-control-bar home-loading-control">
+        {["AI Digest collection", "AI Digest issue"].map((label) => (
+          <div className="digest-control-field" key={label}>
+            <span className="digest-control-label">{label}</span>
+            <span className="home-loading-control-shell" />
+          </div>
+        ))}
+      </section>
+      <div className="ai-digest-panel">
+        <div className="ai-digest-body">
+          <section className="home-loading-digest-card" aria-hidden="true">
+            <span className="home-loading-line home-loading-line--kicker" />
+            <span className="home-loading-line home-loading-line--title" />
+            <span className="home-loading-line" />
+            <span className="home-loading-line home-loading-line--short" />
+            <div className="home-loading-post-list">
+              {[0, 1, 2].map((index) => (
+                <span className="home-loading-post-row" key={index} />
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
   );
 }

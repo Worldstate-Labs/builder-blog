@@ -10,6 +10,7 @@ export type SearchTypeTabItem = {
   href: string;
   id: string;
   label: string;
+  value: string;
 };
 
 export type SearchTypeTabLinkProps = {
@@ -41,6 +42,7 @@ export type SearchTypeTabsViewProps = {
   ariaLabel: string;
   controlsId: string;
   items: SearchTypeTabItem[];
+  onSelect?: (value: string) => void;
   linkComponent?: SearchTypeTabLinkComponent;
 };
 
@@ -48,13 +50,14 @@ export function SearchTypeTabsView({
   ariaLabel,
   controlsId,
   items,
+  onSelect,
   linkComponent: LinkComponent = DefaultLink,
 }: SearchTypeTabsViewProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const navigableKeys = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
     if (!navigableKeys.has(event.key)) return;
 
-    const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
+    const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'));
     if (tabs.length === 0) return;
 
     event.preventDefault();
@@ -71,6 +74,9 @@ export function SearchTypeTabsView({
             : (currentIndex - 1 + tabs.length) % tabs.length;
 
     tabs[nextIndex]?.focus();
+    if (onSelect) {
+      onSelect(items[nextIndex]!.value);
+    }
   }
 
   return (
@@ -80,23 +86,47 @@ export function SearchTypeTabsView({
       onKeyDown={handleKeyDown}
       role="tablist"
     >
-      {items.map((item) => (
-        <LinkComponent
-          aria-controls={controlsId}
-          aria-label={item.ariaLabel}
-          aria-selected={item.active}
-          className="fb-btn compact"
-          data-active={item.active ? "true" : undefined}
-          href={item.href}
-          id={item.id}
-          key={item.id}
-          role="tab"
-          tabIndex={item.active ? 0 : -1}
-        >
-          <span>{item.label}</span>
-          {typeof item.count === "number" ? <CountBadge value={item.count} /> : null}
-        </LinkComponent>
-      ))}
+      {items.map((item) => {
+        const commonProps = {
+          "aria-controls": controlsId,
+          "aria-label": item.ariaLabel,
+          "aria-selected": item.active,
+          className: "fb-btn compact",
+          "data-active": item.active ? "true" : undefined,
+          id: item.id,
+          role: "tab",
+          tabIndex: item.active ? 0 : -1,
+        } as const;
+        const content = (
+          <>
+            <span>{item.label}</span>
+            {typeof item.count === "number" ? <CountBadge value={item.count} /> : null}
+          </>
+        );
+
+        if (onSelect) {
+          return (
+            <button
+              {...commonProps}
+              key={item.id}
+              onClick={() => onSelect(item.value)}
+              type="button"
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <LinkComponent
+            {...commonProps}
+            href={item.href}
+            key={item.id}
+          >
+            {content}
+          </LinkComponent>
+        );
+      })}
     </div>
   );
 }

@@ -6,7 +6,8 @@ import {
 } from "@/components/DigestPipelineImportForm";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { PageHeader } from "@/components/PageHeader";
-import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
+import { WorkspaceTabShell } from "@/components/WorkspaceTabShell";
+import type { WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
@@ -71,33 +72,37 @@ export default async function LibraryHubPage({
         description="Browse and import shared source libraries and AI Digest collections."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
-        <WorkspaceTopTabs
+        <WorkspaceTabShell
           ariaLabel="Hub tabs"
+          fallbackByValue={{
+            "ai-digests": <DigestPipelineImportFallback />,
+            "source-library": <LibraryHubImportFallback />,
+          }}
           items={LIBRARY_HUB_TABS}
           selectedValue={selectedTab}
-        />
-
-        {selectedTab === "source-library" ? (
-          <section
-            aria-labelledby={selectedTabItem.tabId}
-            id={selectedTabItem.panelId}
-            role="tabpanel"
-          >
-            <Suspense fallback={<LibraryHubImportFallback />}>
-              <LibraryHubImportSection dataPromise={sourceLibraryDataPromise!} />
-            </Suspense>
-          </section>
-        ) : (
-          <section
-            aria-labelledby={selectedTabItem.tabId}
-            id={selectedTabItem.panelId}
-            role="tabpanel"
-          >
-            <Suspense fallback={<DigestPipelineImportFallback />}>
-              <DigestPipelineImportSection dataPromise={digestPipelineDataPromise!} />
-            </Suspense>
-          </section>
-        )}
+        >
+          {selectedTab === "source-library" ? (
+            <section
+              aria-labelledby={selectedTabItem.tabId}
+              id={selectedTabItem.panelId}
+              role="tabpanel"
+            >
+              <Suspense fallback={<LibraryHubImportFallback />}>
+                <LibraryHubImportSection dataPromise={sourceLibraryDataPromise!} />
+              </Suspense>
+            </section>
+          ) : (
+            <section
+              aria-labelledby={selectedTabItem.tabId}
+              id={selectedTabItem.panelId}
+              role="tabpanel"
+            >
+              <Suspense fallback={<DigestPipelineImportFallback />}>
+                <DigestPipelineImportSection dataPromise={digestPipelineDataPromise!} />
+              </Suspense>
+            </section>
+          )}
+        </WorkspaceTabShell>
       </div>
     </div>
   );

@@ -190,7 +190,7 @@ test("every app route has an explicit centered layout role", () => {
 
   const workspaceRoutes = [
     ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
@@ -1235,6 +1235,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
   const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
   const workspaceTopTabsView = source("src/components/WorkspaceTopTabsView.tsx");
+  const workspaceTabShell = source("src/components/WorkspaceTabShell.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(appShell, /label: "Home"/);
@@ -1441,9 +1442,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /aria-label="Digest source" className="mt-4"/);
   assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
-  assert.match(dashboardTabs, /WorkspaceTopTabs/);
+  assert.match(dashboardTabs, /WorkspaceTabShell/);
   assert.match(dashboardTabs, /ariaLabel="Today feed tabs"/);
   assert.doesNotMatch(dashboardTabs, /ariaLabel="Home feed tabs"|ariaLabel="Home sections"|ariaLabel="Home feed"/);
+  assert.match(workspaceTabShell, /setPending\(\{ from: selectedValue, value \}\)/);
+  assert.match(workspaceTabShell, /router\.push\(target\.href!\)/);
   assert.match(workspaceTopTabsView, /role="tablist"/);
   assert.match(workspaceTopTabsView, /onKeyDown=\{handleTabKeyDown\}/);
   assert.match(workspaceTopTabsView, /"ArrowLeft", "ArrowRight", "Home", "End"/);
@@ -1497,9 +1500,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardTabs, /href: "\/dashboard\?tab=following"/);
   assert.doesNotMatch(dashboardTabs, /href: "\/dashboard",/);
   assert.match(dashboardTabs, /selectedValue=\{initialTab\}/);
+  assert.match(dashboardTabs, /fallbackByValue=\{\{/);
+  assert.match(dashboardTabs, /HomeAiDigestFallback/);
   assert.match(dashboardTabs, /hidden=\{initialTab !== "ai-digest"\}/);
   assert.match(dashboardTabs, /hidden=\{initialTab !== "following"\}/);
-  assert.doesNotMatch(dashboardTabs, /useState|useEffect|setSelectedTab/);
+  assert.doesNotMatch(dashboardTabs, /setSelectedTab/);
   assert.doesNotMatch(dashboardTabs, /useSearchParams/);
   assert.doesNotMatch(dashboardTabs, /router\.replace/);
   assert.doesNotMatch(dashboardTabs, /window\.history\.pushState/);
@@ -3076,8 +3081,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchTypeTabs, /"use client"/);
   assert.match(searchTypeTabs, /onKeyDown=\{handleKeyDown\}/);
   assert.match(searchTypeTabs, /const navigableKeys = new Set\(\["ArrowLeft", "ArrowRight", "Home", "End"\]\)/);
-  assert.match(searchTypeTabs, /querySelectorAll<HTMLAnchorElement>\('\[role="tab"\]'\)/);
+  assert.match(searchTypeTabs, /querySelectorAll<HTMLElement>\('\[role="tab"\]'\)/);
   assert.match(searchTypeTabs, /tabs\[nextIndex\]\?\.focus\(\)/);
+  assert.match(searchTypeTabs, /if \(onSelect\) \{[\s\S]*onSelect\(items\[nextIndex\]!\.value\)/);
   assert.match(searchTypeTabs, /<div[\s\S]*className="fb-segmented-tabs filter-tabs"[\s\S]*role="tablist"/);
   assert.doesNotMatch(searchPage, /<nav className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">/);
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
@@ -3256,17 +3262,18 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultRefinements/);
   assert.match(searchPage, /function SearchResultRefinements/);
   assert.match(searchTypeTabs, /className="fb-segmented-tabs filter-tabs"/);
-  assert.match(searchTypeTabs, /className="fb-btn compact"/);
+  assert.match(searchTypeTabs, /className:\s*"fb-btn compact"/);
   assert.match(searchPage, /const searchResultsPanelId = "search-results-panel"/);
   assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(typeFilter\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
   assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(current\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
   assert.match(searchPage, /const ariaLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{searchResultCountLabel\(value, count\)\}`[\s\S]*: label/);
-  assert.match(searchTypeTabs, /aria-controls=\{controlsId\}/);
-  assert.match(searchTypeTabs, /aria-label=\{item\.ariaLabel\}/);
-  assert.match(searchTypeTabs, /aria-selected=\{item\.active\}/);
-  assert.match(searchTypeTabs, /id=\{item\.id\}/);
-  assert.match(searchTypeTabs, /role="tab"/);
-  assert.match(searchTypeTabs, /tabIndex=\{item\.active \? 0 : -1\}/);
+  assert.match(searchTypeTabs, /"aria-controls": controlsId/);
+  assert.match(searchTypeTabs, /"aria-label": item\.ariaLabel/);
+  assert.match(searchTypeTabs, /"aria-selected": item\.active/);
+  assert.match(searchTypeTabs, /onClick=\{\(\) => onSelect\(item\.value\)\}/);
+  assert.match(searchTypeTabs, /id: item\.id/);
+  assert.match(searchTypeTabs, /role: "tab"/);
+  assert.match(searchTypeTabs, /tabIndex: item\.active \? 0 : -1/);
   assert.match(searchPage, /function searchTypeTabId\(value: SearchTypeFilter\)/);
   assert.doesNotMatch(searchTypeTabs, /aria-current=\{item\.active \? "page" : undefined\}/);
   assert.match(globals, /\.filter-tabs\s*{/);
@@ -3500,11 +3507,13 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const workspaceTabShell = source("src/components/WorkspaceTabShell.tsx");
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
   assert.match(buildersPage, /<SourcesTabShell[\s\S]*digestFallback=\{<DigestSourcesFallback \/>\}[\s\S]*fetchFallback=\{<FetchSourcesFallback \/>\}/);
-  assert.match(source("src/components/SourcesTabShell.tsx"), /setPendingTab\(value\)/);
-  assert.match(source("src/components/SourcesTabShell.tsx"), /router\.push\(target\.href!\)/);
+  assert.match(source("src/components/SourcesTabShell.tsx"), /WorkspaceTabShell/);
+  assert.match(workspaceTabShell, /setPending\(\{ from: selectedValue, value \}\)/);
+  assert.match(workspaceTabShell, /router\.push\(target\.href!\)/);
   assert.match(
     buildersPage,
     /selectedTab === "fetch" \? loadBuildersPageData\(\) : null/,
@@ -3564,7 +3573,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /@\/components\/PageHeader/);
   assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*Browse and import shared source libraries and AI Digest collections\./);
   assert.doesNotMatch(libraryHubPage, /Browse shared source libraries and AI Digest collections, then import the ones you need\./);
-  assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
+  assert.match(libraryHubPage, /<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/);
+  assert.match(libraryHubPage, /fallbackByValue=\{\{/);
+  assert.match(libraryHubPage, /"source-library": <LibraryHubImportFallback \/>/);
+  assert.match(libraryHubPage, /"ai-digests": <DigestPipelineImportFallback \/>/);
   assert.match(libraryHubPage, /ariaLabel="Hub tabs"/);
   assert.doesNotMatch(libraryHubPage, /ariaLabel="Hub sections"/);
   assert.match(libraryHubPage, /panelId:\s*"hub-panel-source-library"/);
