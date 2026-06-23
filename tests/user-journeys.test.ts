@@ -809,6 +809,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryWorkerExpanded, /rawJson\.agentExecutionProof/);
   assert.match(libraryWorkerExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
   assert.match(libraryWorkerExpanded, /fetchTasks/);
+  assert.match(libraryWorkerExpanded, /BUILDER_BLOG_JOB_TMP_DIR/);
+  assert.match(libraryWorkerExpanded, /Do not\s+read or reuse local artifacts from other accounts/);
+  assert.match(libraryWorkerExpanded, /Never read from `~\/\.builder-blog\/tmp\/accounts\/<other account>`/);
   assert.match(libraryWorkerExpanded, /single-post\s+`?summary`?/);
   assert.match(libraryWorkerExpanded, /summaryInstructions\.prompt/);
   assert.match(libraryWorkerExpanded, /only prompt source for fetch-task\s+summaries/);
@@ -1616,6 +1619,10 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
 
   // YouTube extraction strategy moved out of the contract into the source prompt.
   assert.doesNotMatch(contract, /silent screen recording/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Before starting local speech transcription/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /estimate this\s+video's duration/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /local_asr_duration_exceeded/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /worker budget/);
   assert.equal(
     existsSync("scripts/seed-youtube-fetch-prompt.mts"),
     false,
@@ -3211,6 +3218,20 @@ test("Product Hunt fetch prompt migration removes the general web search ban fro
   assert.match(migration, /\$\$4\. Explain what the product concretely does[\s\S]*\$\$3\. Explain what the product concretely does/);
   assert.match(migration, /\$\$5\. Explain why it is noteworthy[\s\S]*\$\$4\. Explain why it is noteworthy/);
   assert.match(migration, /\$\$6\. If a field is hidden[\s\S]*\$\$5\. If a field is hidden/);
+});
+
+test("YouTube fetch prompt migration bounds local ASR and updates user prompts", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000074_youtube_asr_budget_prompt/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /UPDATE "SourceTypeConfig"[\s\S]*"sourceId" = 'youtube'/);
+  assert.match(migration, /UPDATE "UserSourceTypeConfig"[\s\S]*"sourceId" = 'youtube'/);
+  assert.match(migration, /Before starting local speech transcription/);
+  assert.match(migration, /estimate this\s+video's duration/);
+  assert.match(migration, /local_asr_duration_exceeded/);
+  assert.match(migration, /worker budget/);
 });
 
 test("source registry supports future source types without new BuilderKind enum values", () => {

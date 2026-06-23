@@ -56,6 +56,15 @@ How to execute each `fetchTask`:
     for that medium and how to confirm an item genuinely has no content — live
     in that source's fetch prompt, not here; follow
     `task.fetchInstructions.prompt` for EACH task independently.
+- Use only this run's scratch space for reusable local artifacts.
+  `$BUILDER_BLOG_JOB_TMP_DIR`, `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR`, and the
+  shard file/result directories define the current account/job boundary. Do not
+  read or reuse local artifacts from other accounts, other job types, or global
+  scratch directories. Never read from `~/.builder-blog/tmp/accounts/<other account>`,
+  `~/.builder-blog/tmp/whisper`, or another account's transcript/audio cache. If
+  a useful artifact exists outside the current account/job boundary, treat it as
+  unavailable and fetch or transcribe the task inside the current scratch path,
+  or report a terminal task outcome with concrete evidence.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive acceptance:
   `minChars`, `minContentUnits`, and optional density/diversity gates such as
