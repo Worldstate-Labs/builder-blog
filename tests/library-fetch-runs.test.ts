@@ -513,7 +513,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /Status \/ log/);
   assert.doesNotMatch(panel, /Schedule status/);
   assert.doesNotMatch(panel, /Cron status/);
-  assert.match(panel, /formatLanguage\(summaryLanguage \?\? "zh"\)/);
+  assert.match(panel, /const scheduleLanguage =/);
+  assert.match(panel, /cronJob\?\.status === "active"/);
+  assert.match(panel, /formatLanguage\(summaryLanguage \?\? "zh"\) : "N\/A"/);
   assert.match(panel, /displayLanguagePreference\(value\)/);
   assert.match(panel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
   assert.doesNotMatch(panel, /formatMetaDate/);
@@ -598,6 +600,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
   assert.match(panel, /className="sync-panel-detail-note"/);
+  assert.match(panel, /isAdmin = false/);
+  assert.match(panel, /isAdmin && promptEntries\.length > 0/);
   assert.match(panel, /Prompts used to read and summarize each source type in this update\./);
   assert.match(panel, /Prompt instructions/);
   assert.doesNotMatch(panel, /Helper instructions/);
@@ -936,6 +940,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
+  assert.match(buildersPage, /isAdmin=\{data\.isAdmin\}/);
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /context="digest"/);

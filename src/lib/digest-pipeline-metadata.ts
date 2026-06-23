@@ -18,6 +18,7 @@ export type DigestPipelineRuntimeMetadata = {
   latestDigestLanguage: string | null;
   latestDigestSourceLinks: DigestSourceLink[];
   summaryLanguage: string | null;
+  scheduleStatus: string | null;
   frequencyLabel: string | null;
   digestUpdateStatus: Pick<DigestUpdateStatus, "key" | "label" | "summary">;
 };
@@ -29,6 +30,7 @@ const EMPTY_METADATA: DigestPipelineRuntimeMetadata = {
   latestDigestLanguage: null,
   latestDigestSourceLinks: [],
   summaryLanguage: null,
+  scheduleStatus: null,
   frequencyLabel: null,
   digestUpdateStatus: {
     key: "not-connected",
@@ -110,6 +112,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
         latestDigestLanguage: latestDigest?.language ?? null,
         latestDigestSourceLinks: sourceLinks,
         summaryLanguage: feedPreference?.summaryLanguage ?? null,
+        scheduleStatus: cronJob?.status ?? null,
         frequencyLabel: digestCronFrequencyLabel(cronJob),
         digestUpdateStatus: {
           key: updateStatus.key,

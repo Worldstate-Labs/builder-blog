@@ -37,6 +37,7 @@ export type OwnDigestPipeline = Pick<
   | "latestDigestHeadline"
   | "latestDigestLanguage"
   | "latestDigestSourceLinks"
+  | "scheduleStatus"
   | "summaryLanguage"
   | "title"
 >;
@@ -50,6 +51,7 @@ type DigestPipelinePreviewData = Pick<
   | "latestDigestHeadline"
   | "latestDigestLanguage"
   | "latestDigestSourceLinks"
+  | "scheduleStatus"
   | "summaryLanguage"
 >;
 
@@ -565,6 +567,11 @@ function DigestPipelineMetaGrid({
   pipeline: DigestPipelinePreviewData;
 }) {
   const status = pipeline.digestUpdateStatus;
+  const scheduleLanguage =
+    pipeline.scheduleStatus === "active"
+      ? formatLanguage(pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh")
+      : "N/A";
+
   return (
     <dl className="fb-hub-digest-meta" aria-label="AI Digest details">
       <DigestPipelineMetaItem
@@ -573,7 +580,7 @@ function DigestPipelineMetaGrid({
       />
       <DigestPipelineMetaItem
         label="Language"
-        value={formatLanguage(pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh")}
+        value={scheduleLanguage}
       />
       <div className="fb-hub-digest-meta-item">
         <dt>Latest issue</dt>

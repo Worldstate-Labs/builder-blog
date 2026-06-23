@@ -2341,6 +2341,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /Technical details/);
   assert.doesNotMatch(fetchLogPanel, /sync-panel-task-technical/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-note"/);
+  assert.match(fetchLogPanel, /isAdmin = false/);
+  assert.match(fetchLogPanel, /isAdmin && promptEntries\.length > 0/);
   assert.match(fetchLogPanel, /Prompts used to read and summarize each source type in this update\./);
   assert.match(fetchLogPanel, /Prompt instructions/);
   assert.doesNotMatch(fetchLogPanel, /Helper instructions/);
@@ -3848,6 +3850,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /aria-label="AI Digest details"/);
   assert.match(digestPipelineForm, /Build frequency/);
   assert.match(digestPipelineForm, /Language/);
+  assert.match(digestPipelineForm, /const scheduleLanguage =/);
+  assert.match(digestPipelineForm, /pipeline\.scheduleStatus === "active"/);
+  assert.match(digestPipelineForm, /: "N\/A"/);
   assert.match(digestPipelineForm, /Latest issue/);
   assert.doesNotMatch(digestPipelineForm, /Latest AI Digest/);
   assert.doesNotMatch(digestPipelineForm, /\?\s*`Latest AI Digest \$\{formatDate\(pipeline\.latestDigestAt\)\}`/);
@@ -3864,6 +3869,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /scheduleStatus: cronJob\?\.status \?\? null/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /statsClassName="fb-hub-card-stats/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /"fb-hub-card digest-pipeline-card is-sources-panel"[\s\S]*"fb-hub-card digest-pipeline-card"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);

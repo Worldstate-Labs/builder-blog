@@ -736,6 +736,7 @@ async function FetchSourcesSection({
           initialHasMoreHistory={data.hasMoreFetchHistory}
           initialScheduledJobRuns={data.scheduledJobRuns}
           initialRuns={data.fetchRuns}
+          isAdmin={data.isAdmin}
           summaryLanguage={data.summaryLanguage}
         />
       </div>

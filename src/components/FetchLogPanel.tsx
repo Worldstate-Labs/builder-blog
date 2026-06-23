@@ -954,6 +954,7 @@ export function FetchLogPanel({
   initialScheduledJobRuns = [],
   initialCronJob,
   initialHasMoreHistory = false,
+  isAdmin = false,
   actions,
   actionsPlacement = "end",
   summaryLanguage,
@@ -964,6 +965,7 @@ export function FetchLogPanel({
   initialScheduledJobRuns?: AgentJobRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
   initialHasMoreHistory?: boolean;
+  isAdmin?: boolean;
   actions?: ReactNode;
   actionsPlacement?: "start" | "end";
   summaryLanguage?: string | null;
@@ -1232,6 +1234,7 @@ export function FetchLogPanel({
       {selectedLog ? (
         <FetchLogDialog
           cronJob={cronJob}
+          isAdmin={isAdmin}
           jobRuns={jobRuns}
           logRef={selectedLog}
           onClose={() => {
@@ -1415,6 +1418,9 @@ function SourceFetchMetaGrid({
   status: FetchUpdateStatus;
   summaryLanguage?: string | null;
 }) {
+  const scheduleLanguage =
+    cronJob?.status === "active" ? formatLanguage(summaryLanguage ?? "zh") : "N/A";
+
   return (
     <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Fetch sources details">
       <SourceFetchMetaItem
@@ -1423,7 +1429,7 @@ function SourceFetchMetaGrid({
       />
       <SourceFetchMetaItem
         label="Language"
-        value={formatLanguage(summaryLanguage ?? "zh")}
+        value={scheduleLanguage}
       />
       <SourceFetchMetaItem
         label="Latest fetch"
@@ -2074,6 +2080,7 @@ function JobRunCard({
 
 function RunCard({
   cronJob,
+  isAdmin = false,
   jobRun,
   onOpenLog,
   run,
@@ -2081,6 +2088,7 @@ function RunCard({
   suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
+  isAdmin?: boolean;
   jobRun?: AgentJobRunListItem;
   onOpenLog?: () => void;
   run: LibraryFetchRunListItem;
@@ -2180,7 +2188,7 @@ function RunCard({
           ) : null}
         </summary>
         <div className="sync-panel-run-card-details-body">
-          <DetailsBody details={details} liveProgress={liveProgress} />
+          <DetailsBody details={details} isAdmin={isAdmin} liveProgress={liveProgress} />
         </div>
       </details>
     </article>
@@ -2189,6 +2197,7 @@ function RunCard({
 
 function FetchLogDialog({
   cronJob,
+  isAdmin,
   jobRuns,
   logRef,
   onClose,
@@ -2196,6 +2205,7 @@ function FetchLogDialog({
   suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
+  isAdmin: boolean;
   jobRuns: AgentJobRunListItem[];
   logRef: FetchLogRef;
   onClose: () => void;
@@ -2232,6 +2242,7 @@ function FetchLogDialog({
             <RunCard
               cronJob={cronJob}
               domId={null}
+              isAdmin={isAdmin}
               jobRun={resolvedJobRun ?? undefined}
               run={run}
               suppressStalled={suppressStalled}
@@ -2383,9 +2394,11 @@ function groupedTaskStats(tasks: FetchTaskLog[]) {
 
 function DetailsBody({
   details,
+  isAdmin,
   liveProgress,
 }: {
   details: DetailsShape;
+  isAdmin: boolean;
   liveProgress: FetchJobProgress | null;
 }) {
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
@@ -2462,7 +2475,7 @@ function DetailsBody({
         </div>
       ) : null}
 
-      {promptEntries.length > 0 ? (
+      {isAdmin && promptEntries.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
             Prompt instructions
@@ -2590,7 +2603,7 @@ function DetailsBody({
       {userActions.length === 0 &&
       localErrors.length === 0 &&
       fetchTasks.length === 0 &&
-      promptEntries.length === 0 &&
+      (!isAdmin || promptEntries.length === 0) &&
       !details.cliFlags &&
       !details.error ? (
         <p className="sync-panel-detail-empty">
