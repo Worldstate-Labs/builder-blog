@@ -1180,12 +1180,18 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /openclaw_worker_prompt_file\(\)/);
   assert.match(runner, /openclaw_discovery_prompt_file\(\)/);
   assert.match(runner, /openclaw_digest_prompt_file\(\)/);
+  assert.match(runner, /digest_agent_prompt_file\(\)/);
   assert.match(runner, /Gateway tool calls may not inherit the/);
   assert.match(runner, /do not search for the shard assignment or result path/);
   assert.match(runner, /export BUILDER_BLOG_SHARD_FILE=\$\(shell_quote "\$_ocp_shard_file"\)/);
   assert.match(runner, /PROMPT_FILE="\$\(openclaw_worker_prompt_file "\$_shard_name"/);
   assert.match(runner, /PROMPT_FILE="\$\(openclaw_discovery_prompt_file "\$_result_file"/);
-  assert.match(runner, /PROMPT_FILE="\$\(openclaw_digest_prompt_file "\$_digest_base_prompt"/);
+  assert.match(
+    runner,
+    /_digest_base_prompt="\$\(digest_agent_prompt_file "\$_digest_original_prompt" "\$_context_file" "\$_agent_output_file" "\$_item_count"/,
+  );
+  assert.match(runner, /PROMPT_FILE="\$\(openclaw_digest_prompt_file "\$_digest_base_prompt" "\$_context_file" "\$_agent_output_file"/);
+  assert.match(runner, /Candidate item count verified by the runner before this agent turn/);
   assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
   assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(runner, /openclaw config set agents\.defaults\.timeoutSeconds "\$_seconds" --strict-json/);
@@ -1364,6 +1370,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronExpanded, /context\.digest\.headlinePrompt/);
   assert.match(digestCronExpanded, /1200 characters or fewer/);
   assert.match(digestCronExpanded, /Source A and Source B/);
+  assert.match(digestCronExpanded, /runner invokes this contract only after it has already verified/);
+  assert.doesNotMatch(digestCronExpanded, /Do not write a no-updates digest JSON/);
   assert.match(digestCronExpanded, /reopen[\s\S]*builder-blog-digest-agent-output\.json[\s\S]*self-check/);
   assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestCronExpanded, /context\.digest\.translate/);

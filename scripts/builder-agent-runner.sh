@@ -210,6 +210,34 @@ EOF
   printf '%s\n' "$_ocp_out"
 }
 
+digest_agent_prompt_file() {
+  _dap_base_prompt="$1"
+  _dap_context_file="$2"
+  _dap_agent_output_file="$3"
+  _dap_item_count="${4:-}"
+  _dap_out="$JOB_TMP_DIR/digest-agent.md"
+  cat > "$_dap_out" <<EOF
+FollowBrief runner-verified digest context:
+
+The runner already prepared and validated the candidate set before this agent
+turn. Use the concrete paths and count below as authoritative.
+
+- Digest context file: $_dap_context_file
+- Digest agent output file: $_dap_agent_output_file
+- Candidate item count verified by the runner before this agent turn: $_dap_item_count
+
+Before writing the digest JSON, deterministically read the concrete Digest
+context file above and confirm the number of \`items\`. If the file contains one
+or more items, you must write the Digest agent output JSON. Do not stop with a
+"no candidate items" report when the runner-verified count above is non-zero.
+
+Original task instructions:
+
+EOF
+  cat "$_dap_base_prompt" >> "$_dap_out"
+  printf '%s\n' "$_dap_out"
+}
+
 openclaw_digest_prompt_file() {
   _ocp_base_prompt="$1"
   _ocp_context_file="$2"
@@ -464,7 +492,7 @@ agent_runtime_failure_summary() {
   _file="${1:-}"
   [ -n "$_file" ] && [ -r "$_file" ] || return 0
   grep -E -i -m 1 \
-    "GatewayClientRequestError:|FailoverError:|Provider authentication failed|OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth|Request timed out before a response was generated|DEADLINE_EXCEEDED|deadline exceeded|Digest agent did not produce builder-blog-digest-agent-output\\.json" \
+    "GatewayClientRequestError:|FailoverError:|Provider authentication failed|OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth|Request timed out before a response was generated|DEADLINE_EXCEEDED|deadline exceeded|No candidate items were present|did not write a digest JSON|did not write digest JSON|Digest agent did not produce builder-blog-digest-agent-output\\.json" \
     "$_file" | sed 's/^[[:space:]]*//' | cut -c 1-500 || true
 }
 
@@ -535,7 +563,11 @@ digest_output_completed() {
     if [ -s "$JOB_TMP_DIR/builder-blog-digest-agent-output.json" ]; then
       return 0
     fi
-    echo "Digest agent did not produce builder-blog-digest-agent-output.json." >&2
+    _digest_missing_message="Digest agent did not produce builder-blog-digest-agent-output.json."
+    echo "$_digest_missing_message" >&2
+    if [ -n "$_output_file" ] && [ -w "$_output_file" ]; then
+      printf '%s\n' "$_digest_missing_message" >> "$_output_file"
+    fi
     return 1
   fi
 
@@ -1611,13 +1643,15 @@ run_digest_job() {
   job_run_update running "Generating digest summary JSON for $_item_count candidates." "agent_started" \
     --stage "run_local_agent"
   export BUILDER_BLOG_DIGEST_AGENT_ONLY=1
-  _digest_base_prompt="$PROMPT_FILE"
+  _digest_original_prompt="$PROMPT_FILE"
+  _digest_base_prompt="$(digest_agent_prompt_file "$_digest_original_prompt" "$_context_file" "$_agent_output_file" "$_item_count")"
+  PROMPT_FILE="$_digest_base_prompt"
   if [ "$PINNED_RUNTIME" = "openclaw" ]; then
     PROMPT_FILE="$(openclaw_digest_prompt_file "$_digest_base_prompt" "$_context_file" "$_agent_output_file")"
   fi
   run_selected_runtime
   _agent_code="$?"
-  PROMPT_FILE="$_digest_base_prompt"
+  PROMPT_FILE="$_digest_original_prompt"
   unset BUILDER_BLOG_DIGEST_AGENT_ONLY
   if [ "$_agent_code" -ne 0 ]; then
     _agent_provider_error="$(agent_runtime_failure_summary "${LAST_AGENT_OUTPUT_FILE:-}")"

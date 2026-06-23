@@ -23,8 +23,10 @@ JSON schema:
 
 Rules:
 
-- If `context.items[]` is empty, stop and report that there are no candidate
-  items. Do not write a no-updates digest JSON.
+- The runner invokes this contract only after it has already verified that
+  `context.items[]` contains one or more candidate posts. Read the exact context
+  file before deciding what to write; do not stop for "no candidates" unless
+  that exact file read proves `context.items[]` is empty.
 - Language mode: normally, write digest output in `context.language`. If
   `context.language` is `source`, use the supplied post summaries as the
   language source: write each `postSummaries[]` entry in that item's existing
