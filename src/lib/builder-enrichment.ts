@@ -366,12 +366,23 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
       enrichment: {},
     };
   }
+  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
   const html = await response.text().catch(() => "");
   if (!html) {
     return {
       ok: true,
       warning: "The page returned an empty body. Local Agent retries at sync time.",
       enrichment: {},
+    };
+  }
+  if (input.sourceType === "blog" && looksLikeXmlFeed(contentType, html)) {
+    const title = extractFeedTitleFromXml(html);
+    return {
+      ok: true,
+      discoveredFetchUrl: pageUrl,
+      enrichment: {
+        ...(title ? { name: title } : {}),
+      },
     };
   }
   if (isHtmlNotFoundPage(html)) {
@@ -690,6 +701,26 @@ function normalizeVisibleText(value: string | null | undefined) {
   return stripHtmlTags(value ?? "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function looksLikeXmlFeed(contentType: string, body: string) {
+  const trimmed = body.trimStart();
+  return (
+    contentType.startsWith("application/xml") ||
+    contentType.startsWith("application/rss+xml") ||
+    contentType.startsWith("application/atom+xml") ||
+    contentType.startsWith("text/xml") ||
+    trimmed.startsWith("<?xml") ||
+    /^<(?:rss|feed)\b/i.test(trimmed)
+  );
+}
+
+function extractFeedTitleFromXml(body: string) {
+  const channelTitle = body.match(/<channel\b[\s\S]*?<title[^>]*>([\s\S]*?)<\/title>/i);
+  const atomTitle = body.match(/<feed\b[\s\S]*?<title[^>]*>([\s\S]*?)<\/title>/i);
+  const raw = channelTitle?.[1] ?? atomTitle?.[1] ?? null;
+  if (!raw) return null;
+  return decodeHtmlEntities(raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
 }
 
 /**

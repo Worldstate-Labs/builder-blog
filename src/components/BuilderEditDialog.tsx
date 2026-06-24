@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
 import {
+  FEED_SOURCE_ID,
   FIXED_SOURCE_VALUE_BY_ID,
   placeholderForSourceId,
 } from "@/lib/source-inputs";
@@ -41,7 +42,7 @@ function computePreview(sourceType: string, value: string): Preview {
   const trimmed = value.trim();
   if (!trimmed) return { kind: "idle" };
 
-  if (sourceType === "podcast") {
+  if (sourceType === "podcast" || sourceType === FEED_SOURCE_ID) {
     const rejection = podcastHostnameRejection(trimmed);
     if (rejection) return { kind: "error", message: rejection };
   }
@@ -85,7 +86,7 @@ export function BuilderEditDialog({
       : (builder.sourceUrl ?? builder.handle ?? "");
 
   const [name, setName] = useState(builder.name);
-  const [sourceType, setSourceType] = useState(builder.sourceType);
+  const [sourceType, setSourceType] = useState(formSourceTypeForBuilder(builder.sourceType));
   const [sourceValue, setSourceValue] = useState(initialSourceValue);
   const [error, setError] = useState<string | null>(null);
   const [errorSuggestId, setErrorSuggestId] = useState<DetectedSourceId | null>(null);
@@ -137,7 +138,7 @@ export function BuilderEditDialog({
     // Reset form to the latest props on open so re-opening always
     // shows the canonical current values, not stale draft state.
     setName(builder.name);
-    setSourceType(builder.sourceType);
+    setSourceType(formSourceTypeForBuilder(builder.sourceType));
     setSourceValue(initialSourceValue);
     setError(null);
     setErrorSuggestId(null);
@@ -476,4 +477,8 @@ export function BuilderEditDialog({
       </dialog>
     </>
   );
+}
+
+function formSourceTypeForBuilder(sourceType: string) {
+  return sourceType === "podcast" ? FEED_SOURCE_ID : sourceType;
 }

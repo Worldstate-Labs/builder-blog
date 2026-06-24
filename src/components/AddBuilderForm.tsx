@@ -30,6 +30,7 @@ import {
   type DetectedSourceId,
 } from "@/lib/source-value-detect";
 import {
+  FEED_SOURCE_ID,
   FIXED_SOURCE_VALUE_BY_ID,
   GITHUB_TRENDING_SOURCE_ID,
   placeholderForSourceId,
@@ -56,7 +57,7 @@ function computePreview(sourceType: string, value: string): Preview {
   if (!trimmed) return { kind: "idle" };
 
   // Hard rejections come first so they win over generic cross-type hints.
-  if (sourceType === "podcast") {
+  if (sourceType === "podcast" || sourceType === FEED_SOURCE_ID) {
     const rej = podcastHostnameRejection(trimmed);
     if (rej) return { kind: "error", message: rej };
   }

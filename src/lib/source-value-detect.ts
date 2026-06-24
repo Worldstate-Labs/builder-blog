@@ -21,6 +21,7 @@
 export type DetectedSourceId =
   | "x"
   | "blog"
+  | "feed"
   | "github_trending"
   | "product_hunt_top_products"
   | "youtube"
@@ -30,6 +31,7 @@ export type DetectedSourceId =
 export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
   x: "X/Twitter",
   blog: "Blog",
+  feed: "Feed URL",
   github_trending: "GitHub Trending",
   product_hunt_top_products: "Product Hunt Top Products",
   youtube: "YouTube",
@@ -80,9 +82,13 @@ export function crossTypeWarning(
 ): { suggestId: DetectedSourceId; message: string } | null {
   const detected = detectSourceTypeFromValue(value);
   if (!detected || detected === declared) return null;
+  if (declared === "feed" && (detected === "blog" || detected === "podcast")) {
+    return null;
+  }
+  const suggestId = detected === "podcast" ? "feed" : detected;
   return {
-    suggestId: detected,
-    message: `This looks like a ${DETECTED_SOURCE_LABELS[detected]} URL. Switch source type?`,
+    suggestId,
+    message: `This looks like a ${DETECTED_SOURCE_LABELS[suggestId]} URL. Switch source type?`,
   };
 }
 

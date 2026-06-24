@@ -6,6 +6,7 @@ import { GitFork, Globe, Play, Podcast, Rocket, Rss, X } from "lucide-react";
 // picker in AddBuilderForm so the two stay in sync.
 export const sourceIcons: Record<string, ComponentType<{ className?: string }>> = {
   blog: Rss,
+  feed: Rss,
   github_trending: GitFork,
   podcast: Podcast,
   product_hunt_top_products: Rocket,

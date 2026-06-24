@@ -113,6 +113,33 @@ test("probe rejects a 200 HTML page whose visible title is not found", async () 
   }
 });
 
+test("probe accepts direct blog RSS without requiring page-scrape confirmation", async () => {
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      `<?xml version="1.0"?>
+      <rss version="2.0">
+        <channel><title>Example Articles</title></channel>
+      </rss>`,
+      { status: 200, headers: { "content-type": "application/rss+xml" } },
+    );
+  try {
+    const outcome = await probeAndEnrichSource({
+      sourceType: "blog",
+      sourceUrl: "https://example.com/feed.xml",
+      fetchUrl: "https://example.com/feed.xml",
+      handle: null,
+    });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.requiresConfirmation, undefined);
+    assert.equal(outcome.discoveredFetchUrl, "https://example.com/feed.xml");
+    assert.deepEqual(outcome.enrichment, { name: "Example Articles" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("probe requires confirmation when an HTML page cannot be verified", async () => {
   const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
   const originalFetch = globalThis.fetch;

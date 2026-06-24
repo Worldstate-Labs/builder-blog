@@ -53,6 +53,7 @@ import {
 } from "@/lib/library-hub";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
+import { FEED_SOURCE_ID } from "@/lib/source-inputs";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 
 type BuilderWithCount = {
@@ -570,10 +571,7 @@ async function loadBuildersPageData() {
     latestPostCreationTimes(poolBuilderIds),
     getMergedSourceDefinitions(),
   ]);
-  const sourceLabelOptions = mergedSourceDefinitions.map((source) => ({
-    id: source.id,
-    label: source.label,
-  }));
+  const sourceLabelOptions = sourceOptionsForForms(mergedSourceDefinitions);
 
   const activeTokens = serializeAgentTokens(rawTokens);
 
@@ -687,6 +685,22 @@ function serializeAgentTokens(
     lastUser: token.lastUser ?? null,
     revokedAt: null,
   }));
+}
+
+function sourceOptionsForForms(
+  sources: Array<{ id: string; label: string }>,
+) {
+  return sources.map((source) =>
+    source.id === "podcast"
+      ? {
+          id: FEED_SOURCE_ID,
+          label: "Feed URL",
+        }
+      : {
+          id: source.id,
+          label: source.label,
+        },
+  );
 }
 
 async function FetchSourcesSection({

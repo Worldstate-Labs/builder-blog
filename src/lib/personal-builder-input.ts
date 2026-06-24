@@ -2,12 +2,14 @@ import { BuilderKind } from "@prisma/client";
 import { builderKindForSourceType } from "@/lib/source-registry";
 import { normalizeHandle } from "@/lib/builder-keys";
 import { toSafeAvatarUrl, type BuilderEnrichment } from "@/lib/builder-enrichment";
+import { FEED_SOURCE_ID } from "@/lib/source-inputs";
 import {
   crossTypeWarning,
   isLikelyEpisodeOrPostUrl,
   podcastHostnameRejection,
   type DetectedSourceId,
 } from "@/lib/source-value-detect";
+import { validatePublicHttpUrl } from "@/lib/safe-url";
 
 export type PersonalBuilderInput = {
   kind: BuilderKind;
@@ -50,6 +52,7 @@ export const GITHUB_TRENDING_SOURCE_ID = "github_trending";
 export const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 export const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
 export const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
+const FEED_RESOLVE_TIMEOUT_MS = 4000;
 
 /**
  * Resolve, validate, and auto-correct the user's AddBuilderForm input.
@@ -92,6 +95,7 @@ export async function resolvePersonalBuilderInput(input: {
 
   if (sourceType === "x") return resolveX(input.displayName, value);
   if (sourceType === "youtube") return resolveYouTube(input.displayName, value);
+  if (sourceType === FEED_SOURCE_ID) return resolveFeed(input.displayName, value);
   if (sourceType === "podcast") return resolvePodcast(input.displayName, value);
   if (sourceType === "blog") return resolveBlog(input.displayName, value);
   return resolveWebsite(input.displayName, sourceType, value);
@@ -140,6 +144,49 @@ function resolveYouTube(displayName: string, value: string): Resolution {
       handle: null,
       sourceUrl,
       fetchUrl: null,
+    },
+  };
+}
+
+async function resolveFeed(displayName: string, value: string): Promise<Resolution> {
+  const rejection = podcastHostnameRejection(value);
+  if (rejection) return { ok: false, reason: rejection };
+
+  const sourceUrl = normalizedUrl(value);
+  if (!sourceUrl) {
+    return {
+      ok: false,
+      reason: "Paste an RSS, Atom, or Apple Podcasts URL.",
+    };
+  }
+
+  if (/podcasts\.apple\.com\/[^?\s]*\/id\d+/i.test(sourceUrl)) {
+    return resolvePodcast(displayName, sourceUrl);
+  }
+
+  const check = validatePublicHttpUrl(sourceUrl);
+  if (!check.ok) {
+    return {
+      ok: false,
+      reason: `Source URL is not allowed: ${check.reason}.`,
+    };
+  }
+
+  const classification = await classifyFeedUrl(sourceUrl);
+  if (!classification.ok) {
+    return { ok: false, reason: classification.reason };
+  }
+
+  const { sourceType, fetchUrl, title } = classification.value;
+  return {
+    ok: true,
+    value: {
+      kind: builderKindForSourceType(sourceType),
+      sourceType,
+      name: displayName.trim() || title || nameFromUrl(sourceUrl),
+      handle: null,
+      sourceUrl,
+      fetchUrl,
     },
   };
 }
@@ -306,6 +353,172 @@ function resolveWebsite(displayName: string, sourceType: string, value: string):
       fetchUrl: null,
     },
   };
+}
+
+type FeedClassification =
+  | {
+      ok: true;
+      value: {
+        sourceType: "blog" | "podcast";
+        fetchUrl: string;
+        title?: string;
+      };
+    }
+  | { ok: false; reason: string };
+
+async function classifyFeedUrl(url: string, depth = 0): Promise<FeedClassification> {
+  let response: Response;
+  try {
+    response = await fetchUrlWithTimeout(url, {
+      Accept:
+        "application/rss+xml,application/atom+xml,application/xml,text/xml,text/html;q=0.8,*/*;q=0.5",
+      "User-Agent": "FollowBrief/1.0 (feed source resolver)",
+    });
+  } catch {
+    return {
+      ok: false,
+      reason:
+        "Could not verify this feed. Paste a direct RSS/Atom feed URL, or choose Blog for a normal web page.",
+    };
+  }
+
+  if (response.status === 404 || response.status === 410) {
+    return { ok: false, reason: "The feed URL could not be found." };
+  }
+  if (response.status === 403 || response.status === 429 || response.status >= 500) {
+    return {
+      ok: false,
+      reason:
+        "Could not verify this feed from the server. Paste a direct RSS/Atom feed URL, or choose Blog if this is a web page.",
+    };
+  }
+  if (!response.ok) {
+    return { ok: false, reason: "Could not verify this feed URL." };
+  }
+
+  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+  const body = await response.text().catch(() => "");
+  if (!body.trim()) {
+    return { ok: false, reason: "The feed URL returned an empty response." };
+  }
+
+  if (looksLikeXmlFeed(contentType, body)) {
+    const sourceType = looksLikePodcastFeed(body) ? "podcast" : "blog";
+    const title = extractFeedTitle(body);
+    return {
+      ok: true,
+      value: {
+        sourceType,
+        fetchUrl: url,
+        ...(title ? { title } : {}),
+      },
+    };
+  }
+
+  if (looksLikeHtmlNotFound(body)) {
+    return { ok: false, reason: "The feed URL could not be found." };
+  }
+
+  if (depth < 1) {
+    const discovered = extractFeedLinkFromHtml(body, url);
+    if (discovered) {
+      const check = validatePublicHttpUrl(discovered);
+      if (check.ok) return classifyFeedUrl(discovered, depth + 1);
+    }
+  }
+
+  return {
+    ok: false,
+    reason:
+      "That URL is not an RSS or Atom feed. Choose Blog for a normal web page, or paste the direct feed URL.",
+  };
+}
+
+async function fetchUrlWithTimeout(
+  url: string,
+  headers: Record<string, string>,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FEED_RESOLVE_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      headers,
+      redirect: "follow",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function looksLikeXmlFeed(contentType: string, body: string) {
+  const trimmed = body.trimStart();
+  return (
+    contentType.startsWith("application/xml") ||
+    contentType.startsWith("application/rss+xml") ||
+    contentType.startsWith("application/atom+xml") ||
+    contentType.startsWith("text/xml") ||
+    trimmed.startsWith("<?xml") ||
+    /^<(?:rss|feed)\b/i.test(trimmed)
+  );
+}
+
+function looksLikePodcastFeed(body: string) {
+  return (
+    /xmlns:itunes=|<itunes:/i.test(body) ||
+    /<enclosure\b[^>]*\btype=["']audio\//i.test(body) ||
+    /<podcast:/i.test(body)
+  );
+}
+
+function extractFeedTitle(body: string) {
+  const channelTitle = body.match(/<channel\b[\s\S]*?<title[^>]*>([\s\S]*?)<\/title>/i);
+  const atomTitle = body.match(/<feed\b[\s\S]*?<title[^>]*>([\s\S]*?)<\/title>/i);
+  const raw = channelTitle?.[1] ?? atomTitle?.[1] ?? null;
+  if (!raw) return null;
+  return decodeXmlEntities(raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+}
+
+function extractFeedLinkFromHtml(html: string, pageUrl: string): string | null {
+  const linkPattern = /<link\b[^>]*>/gi;
+  for (const tag of html.match(linkPattern) ?? []) {
+    const relMatch = tag.match(/\brel=["']([^"']+)["']/i);
+    if (!relMatch?.[1] || !/\balternate\b/i.test(relMatch[1])) continue;
+    const typeMatch = tag.match(/\btype=["']([^"']+)["']/i);
+    if (
+      !typeMatch?.[1] ||
+      !/application\/(?:rss|atom)\+xml/i.test(typeMatch[1])
+    ) {
+      continue;
+    }
+    const hrefMatch = tag.match(/\bhref=["']([^"']+)["']/i);
+    if (!hrefMatch?.[1]) continue;
+    try {
+      return new URL(decodeXmlEntities(hrefMatch[1].trim()), pageUrl).toString();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function looksLikeHtmlNotFound(html: string) {
+  const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? "";
+  const h1 = html.match(/<h1\b[^>]*>([\s\S]{0,240}?)<\/h1>/i)?.[1] ?? "";
+  return [title, h1].some((value) =>
+    /^(?:404\s*)?(?:page\s+)?not\s+found[.!]?$/i.test(
+      value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+    ),
+  );
+}
+
+function decodeXmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 // ──────────────────────────────────────────────────────────────────
