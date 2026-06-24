@@ -74,6 +74,21 @@ test("personal blog fetcher extracts article text", async () => {
   assert.match(article.body, /long enough/);
 });
 
+test("final personal fetch cutoff rejects old dated items from any source", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const cutoff = new Date("2026-03-25T00:00:00.000Z");
+
+  assert.equal(
+    cli.itemIsWithinFetchCutoff({ publishedAt: "2025-03-20T00:00:00.000Z" }, cutoff),
+    false,
+  );
+  assert.equal(
+    cli.itemIsWithinFetchCutoff({ publishedAt: "2026-05-20T00:00:00.000Z" }, cutoff),
+    true,
+  );
+  assert.equal(cli.itemIsWithinFetchCutoff({ publishedAt: null }, cutoff), true);
+});
+
 test("personal blog fetcher extracts Mintlify-style docs paragraphs", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const article = cli.extractBlogArticle(`
@@ -696,6 +711,70 @@ test("personal blog fetcher uses Anthropic Next data when available", async () =
   assert.equal(article.title, "Scaling Agents");
   assert.equal(article.publishedAt, "2026-05-20T12:00:00.000Z");
   assert.equal(article.body, "First structured paragraph.\n\nSecond structured paragraph.");
+});
+
+test("personal blog fetcher reads Anthropic rendered card dates", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const candidates = cli.parseBlogCandidates(
+    `
+    <article class="ArticleList-module__article">
+      <a class="ArticleList-module__cardLink" href="/engineering/claude-think-tool">
+        <div class="ArticleList-module__content">
+          <h3 class="headline-4">The &quot;think&quot; tool: Enabling Claude to stop and think in complex tool use situations</h3>
+          <div class="body-2 ArticleList-module__date">Mar 20, 2025</div>
+        </div>
+      </a>
+    </article>
+    `,
+    "https://www.anthropic.com/engineering",
+  );
+
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].url, "https://www.anthropic.com/engineering/claude-think-tool");
+  assert.equal(
+    candidates[0].title,
+    'The "think" tool: Enabling Claude to stop and think in complex tool use situations',
+  );
+  assert.match(candidates[0].publishedAt ?? "", /^2025-03-20T/);
+});
+
+test("personal blog fetcher drops articles older than cutoff after article extraction", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "builder_anthropic",
+    name: "anthropic.com",
+    kind: "BLOG",
+    sourceUrl: "https://www.anthropic.com/engineering",
+    fetchUrl: "https://www.anthropic.com/engineering",
+  };
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: new Date("2026-03-25T00:00:00.000Z"),
+    limit: 1,
+    agentModel: "test-model",
+    fetchedItemKeys: new Set(),
+    sources: {},
+    fetcher: async (url: string) => {
+      if (url === "https://www.anthropic.com/engineering") {
+        return new Response(`
+          <a href="/engineering/claude-think-tool">The &quot;think&quot; tool</a>
+        `);
+      }
+      return new Response(`
+        <html>
+          <head><meta property="og:title" content="The &quot;think&quot; tool: Enabling Claude to stop and think"></head>
+          <body>
+            <main>
+              <p class="date">Published <!-- -->Mar 20, 2025</p>
+              <p>This article body is long enough to satisfy the deterministic content extractor and should be rejected only by the final published date cutoff after article extraction.</p>
+            </main>
+          </body>
+        </html>
+      `);
+    },
+  });
+
+  assert.equal(result.items.length, 0);
+  assert.equal(result.agentTasks.length, 0);
 });
 
 test("personal blog fetcher uses Claude JSON-LD and rich text body when available", async () => {
@@ -1468,6 +1547,50 @@ test("sync upload payload keeps Product Hunt durable body facts-only", async () 
   assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "facts_only");
 });
 
+test("sync payload converts items older than the planned fetch cutoff to skipped outcomes", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const filtered = cli.filterStaleSyncItemsByFetchCutoff(
+    {
+      builders: [
+        {
+          builderId: "builder_blog",
+          name: "Engineering",
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: "https://www.anthropic.com/engineering/claude-think-tool",
+              title: 'The "think" tool',
+              body: "Fetched body",
+              summary: "A valid summary for this fetched body that is long enough.",
+              url: "https://www.anthropic.com/engineering/claude-think-tool",
+              publishedAt: "2025-03-20T00:00:00.000Z",
+              rawJson: { fetchTaskId: "fetch_post:blog:think" },
+            },
+          ],
+        },
+      ],
+    },
+    [
+      {
+        id: "fetch_post:blog:think",
+        fetchCutoff: "2026-03-25T00:00:00.000Z",
+        item: {
+          title: 'The "think" tool',
+          url: "https://www.anthropic.com/engineering/claude-think-tool",
+        },
+      },
+    ],
+  );
+
+  assert.deepEqual(filtered.builders, []);
+  assert.equal(filtered.taskOutcomes.length, 1);
+  assert.equal(filtered.taskOutcomes[0].fetchTaskId, "fetch_post:blog:think");
+  assert.equal(filtered.taskOutcomes[0].status, "skipped");
+  assert.equal(filtered.taskOutcomes[0].reason, "published_before_fetch_cutoff");
+  assert.equal(filtered.taskOutcomes[0].evidence.publishedAt, "2025-03-20T00:00:00.000Z");
+  assert.equal(filtered.taskOutcomes[0].evidence.fetchCutoff, "2026-03-25T00:00:00.000Z");
+});
+
 test("ready fetch tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const sources = {
@@ -1543,6 +1666,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
         kind: "BLOG",
         name: "Example Blog Builder",
         sourceType: "blog",
+        fetchCutoff: "2026-03-25T00:00:00.000Z",
         items: [
           {
             kind: "BLOG_POST",
@@ -1592,6 +1716,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
       { builderId: "builder_blog", kind: "BLOG", sourceType: "blog", name: "Example Blog Builder", subscribe: false },
     ],
   );
+  assert.equal(tasks[2].fetchCutoff, "2026-03-25T00:00:00.000Z");
   for (const task of tasks) {
     assert.match(task.summaryInstructions.prompt, /Write one concise FollowBrief single-post summary in zh\./);
     assert.match(task.summaryInstructions.prompt, /do not read external prompt files/i);

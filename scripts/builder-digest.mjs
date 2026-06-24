@@ -1163,6 +1163,7 @@ async function fetchPersonal(args) {
       try {
         const source = personalFetcherSourceForBuilder(builder);
         if (!source) {
+          const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
           const externalItems = await fetchPersonalWithExternalCommand(builder, {
             fallbackCutoff,
             force,
@@ -1187,35 +1188,39 @@ async function fetchPersonal(args) {
           }
           const filtered = filterFetchedItems(externalItems, {
             builderId: builder.id,
-            cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
+            cutoff: builderCutoff,
             limit,
             fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
           });
-          builders.push({ ...fallbackBuilderSync, items: filtered });
+          builders.push({ ...fallbackBuilderSync, fetchCutoff: builderCutoff?.toISOString() ?? null, items: filtered });
           builderStat.itemsFetched += filtered.length;
           continue;
         }
+        const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
         const fetched = await source.fetch(builder, {
-          cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
+          cutoff: builderCutoff,
           limit,
           agentModel,
           fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
           sources,
         });
         const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
+        const filteredItems = filterFinalFetchedItemsByCutoff(items, builderCutoff);
+        const filteredAgentTasks = filterFinalAgentTasksByCutoff(sourceAgentTasks, builderCutoff);
         const builderSync = {
           ...fallbackBuilderSync,
           kind: source.syncKind,
           sourceType: source.id,
         };
-        const fetchTasksFromAgentTasks = sourceAgentTasks.map((task) =>
-          fetchTaskFromAgentTask(task, builderSync, sources, commonFetchRules, commonSummaryRules),
-        );
+        const fetchTasksFromAgentTasks = filteredAgentTasks.map((task) => ({
+          ...fetchTaskFromAgentTask(task, builderSync, sources, commonFetchRules, commonSummaryRules),
+          fetchCutoff: builderCutoff?.toISOString() ?? null,
+        }));
         fetchTasks.push(...fetchTasksFromAgentTasks);
         builderStat.tasksGenerated += fetchTasksFromAgentTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
         builderStat.discoveryTasksGenerated += fetchTasksFromAgentTasks.filter(isCandidateDiscoveryFetchTask).length;
-        builders.push({ ...builderSync, items });
-        builderStat.itemsFetched += items.length;
+        builders.push({ ...builderSync, fetchCutoff: builderCutoff?.toISOString() ?? null, items: filteredItems });
+        builderStat.itemsFetched += filteredItems.length;
         builderStat.sourceType = source.id;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -1587,6 +1592,18 @@ function normalizePersonalFetchResult(result) {
   };
 }
 
+function filterFinalFetchedItemsByCutoff(items, cutoff) {
+  return items.filter((item) => itemIsWithinFetchCutoff(item, cutoff));
+}
+
+function filterFinalAgentTasksByCutoff(agentTasks, cutoff) {
+  return agentTasks.filter((task) => itemIsWithinFetchCutoff(task?.item, cutoff));
+}
+
+export function itemIsWithinFetchCutoff(item, cutoff) {
+  return isAfterCutoff(item?.publishedAt, cutoff);
+}
+
 export function fetchTasksForReadyBuilders(builders, sources = {}, commonSummaryRules = "") {
   return builders.flatMap((builder) =>
     (builder.items ?? []).map((item) => ({
@@ -1595,6 +1612,7 @@ export function fetchTasksForReadyBuilders(builders, sources = {}, commonSummary
       builder: builder.name,
       builderId: builder.builderId,
       sourceType: builder.sourceType,
+      fetchCutoff: builder.fetchCutoff ?? null,
       builderSync: {
         builderId: builder.builderId,
         kind: builder.kind,
@@ -2638,6 +2656,7 @@ async function fetchPersonalBlogBuilder(
     const body = extracted.body || article.description;
     const title = extracted.title || article.title || "Untitled";
     const publishedAt = extracted.publishedAt || article.publishedAt;
+    if (!isAfterCutoff(publishedAt, cutoff)) continue;
     const quality = genericContentQuality(body, {
       title,
       description: article.description,
@@ -3623,11 +3642,39 @@ function parseAnthropicEngineeringIndex(html) {
       // Fall through to rendered links.
     }
   }
+  const renderedArticles = parseAnthropicRenderedArticleCards(html);
+  if (renderedArticles.length > 0) return renderedArticles;
   return linksByPattern(html, /href=["']\/engineering\/([a-z0-9-]+)["']/gi, "https://www.anthropic.com/engineering/");
 }
 
 function parseClaudeBlogIndex(html) {
   return linksByPattern(html, /href=["']\/blog\/([a-z0-9-]+)["']/gi, "https://claude.com/blog/");
+}
+
+function parseAnthropicRenderedArticleCards(html) {
+  const articles = [];
+  const articleRegex = /<article\b[\s\S]*?<\/article>/gi;
+  let match;
+  while ((match = articleRegex.exec(html)) !== null) {
+    const block = match[0];
+    const href = block.match(/href=["'](\/engineering\/[a-z0-9-]+)["']/i)?.[1];
+    if (!href) continue;
+    const heading =
+      block.match(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/i)?.[1] ||
+      block.match(/<img\b[^>]*\balt=["']([^"']+)["']/i)?.[1] ||
+      "";
+    const dateText =
+      block.match(/class=["'][^"']*date[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1] ||
+      block.match(/\b([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+20\d{2})\b/)?.[1] ||
+      "";
+    articles.push({
+      title: stripHtml(heading),
+      url: absoluteUrl(href, "https://www.anthropic.com/engineering"),
+      publishedAt: normalizedDate(stripHtml(dateText)),
+      description: "",
+    });
+  }
+  return dedupeByUrl(articles);
 }
 
 function linksByPattern(html, pattern, prefix) {
@@ -6006,6 +6053,56 @@ function validateFetchTaskItem(task, candidate) {
   return errors;
 }
 
+export function filterStaleSyncItemsByFetchCutoff(payload, plannedTasks = []) {
+  const taskById = new Map(
+    (Array.isArray(plannedTasks) ? plannedTasks : [])
+      .map((task) => [String(task?.id || fetchTaskId(task)), task]),
+  );
+  const existingOutcomes = Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [];
+  const outcomeIds = new Set(
+    existingOutcomes
+      .filter((outcome) => outcome?.fetchTaskId)
+      .map((outcome) => String(outcome.fetchTaskId)),
+  );
+  const staleOutcomes = [];
+  const builders = [];
+
+  for (const builder of payload?.builders ?? []) {
+    const items = [];
+    for (const item of builder?.items ?? []) {
+      const fetchTaskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : "";
+      const task = fetchTaskId ? taskById.get(fetchTaskId) : null;
+      const cutoff = normalizedDate(task?.fetchCutoff);
+      const publishedAt = normalizedDate(item?.publishedAt);
+      if (fetchTaskId && cutoff && publishedAt && !isAfterCutoff(publishedAt, cutoff)) {
+        if (!outcomeIds.has(fetchTaskId)) {
+          staleOutcomes.push({
+            fetchTaskId,
+            status: "skipped",
+            reason: "published_before_fetch_cutoff",
+            evidence: {
+              publishedAt,
+              fetchCutoff: cutoff,
+              title: item?.title ?? task?.item?.title ?? null,
+              url: item?.url ?? task?.item?.url ?? null,
+            },
+          });
+          outcomeIds.add(fetchTaskId);
+        }
+        continue;
+      }
+      items.push(item);
+    }
+    if (items.length > 0) builders.push({ ...builder, items });
+  }
+
+  return {
+    ...payload,
+    builders,
+    taskOutcomes: [...existingOutcomes, ...staleOutcomes],
+  };
+}
+
 function validateItemSummary(summary, { title = "", body = "" } = {}) {
   const errors = [];
   const normalized = normalizeContentText(summary || "");
@@ -6615,13 +6712,14 @@ async function syncBuilders(args) {
   const file = argValue(args, "--file");
   if (!file) throw new Error("Missing --file personal-builders.json");
   const partialOutcomes = args.includes("--partial-outcomes");
-  const payload = JSON.parse(await readFile(file, "utf8"));
+  let payload = JSON.parse(await readFile(file, "utf8"));
   payload.fetchTool ??= skillFetchTool(
     "manual JSON sync",
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
   const { plannedTasks, plannedTaskOutcomes, discoveryExpansions } = await readPlannedFetchResult(tasksFile);
+  payload = filterStaleSyncItemsByFetchCutoff(payload, plannedTasks);
   const plannedPostTasks = plannedTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
   const fetchProgress =
     (await readFetchProgressState()) ??
