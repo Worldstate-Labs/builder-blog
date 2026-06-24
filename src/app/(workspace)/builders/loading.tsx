@@ -1,3 +1,4 @@
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 
 export default function BuildersLoading() {
@@ -8,8 +9,8 @@ export default function BuildersLoading() {
       className="page-pad sources-loading"
     >
       <PageHeader
-        title="Sources"
-        description="Manage your sources, AI Digests, and source subscriptions."
+        title={<I18nText id="workspace.sources" />}
+        description={<I18nText id="workspace.sourcesDesc" />}
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">

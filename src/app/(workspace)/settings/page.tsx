@@ -8,6 +8,7 @@ import { AccountDataPanel } from "@/components/AccountDataPanel";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { AgentTokenPanelSkeleton } from "@/components/AgentTokenPanelSkeleton";
 import { CountMeta } from "@/components/Count";
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { SettingsRulesSkeleton } from "@/components/SettingsRulesSkeleton";
 import {
@@ -35,8 +36,8 @@ export default async function SettingsPage() {
   return (
     <div className="page-pad page-pad--settings">
       <PageHeader
-        title="Settings"
-        description="Access keys and rules for Fetch sources and AI Digest."
+        title={<I18nText id="workspace.settings" />}
+        description={<I18nText id="workspace.settingsDesc" />}
       />
 
       <div className="workspace-content-stack settings-workspace">

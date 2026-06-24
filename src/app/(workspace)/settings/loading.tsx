@@ -1,4 +1,5 @@
 import { AgentTokenPanelSkeleton } from "@/components/AgentTokenPanelSkeleton";
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { SettingsRulesSkeleton } from "@/components/SettingsRulesSkeleton";
 
@@ -10,8 +11,8 @@ export default function SettingsLoading() {
       className="page-pad page-pad--settings settings-loading"
     >
       <PageHeader
-        title="Settings"
-        description="Access keys and rules for Fetch sources and AI Digest."
+        title={<I18nText id="workspace.settings" />}
+        description={<I18nText id="workspace.settingsDesc" />}
       />
 
       <div className="workspace-content-stack settings-workspace">

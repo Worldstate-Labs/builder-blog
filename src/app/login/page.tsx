@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { BookOpenCheck, Rss, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
+import { I18nText } from "@/components/I18nProvider";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
+import type { I18nKey } from "@/lib/i18n";
 
 export default async function LoginPage({
   searchParams,
@@ -22,16 +25,16 @@ export default async function LoginPage({
       <div className="fb-login-shell">
         <section className="fb-login-intro">
           <h1 className="fb-login-title">
-            Sign in to{" "}
+            <I18nText id="login.titlePrefix" />{" "}
             <span className="fb-login-title-break">FollowBrief.</span>
           </h1>
           <p className="fb-login-copy">
-            Follow sources, build AI Digest, and search your workspace.
+            <I18nText id="login.copy" />
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
-            <LoginProof icon={Rss} label="Follow sources" />
-            <LoginProof icon={BookOpenCheck} label="Build AI Digest" />
-            <LoginProof icon={Search} label="Search" />
+            <LoginProof icon={Rss} label={<I18nText id="login.followSources" />} />
+            <LoginProof icon={BookOpenCheck} label={<I18nText id="login.buildDigest" />} />
+            <LoginProof icon={Search} label={<I18nText id="login.search" />} />
           </div>
         </section>
 
@@ -39,10 +42,10 @@ export default async function LoginPage({
           <div className="fb-login-panel-head">
             <div>
               <h2 className="fb-login-panel-title">
-                Sign in
+                <I18nText id="login.panelTitle" />
               </h2>
               <p className="fb-login-panel-copy">
-                Use one account for the app and Local Agent.
+                <I18nText id="login.panelCopy" />
               </p>
             </div>
           </div>
@@ -51,16 +54,17 @@ export default async function LoginPage({
               className="fb-login-error"
               role="alert"
             >
-              {errorMessage}
+              <I18nText id={errorMessage} />
             </div>
           ) : null}
           <div className="fb-login-auth">
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="fb-login-panel-copy">
-            By signing in, you can review the{" "}
-            <Link href="/privacy">Privacy Policy</Link> and{" "}
-            <Link href="/terms">Terms</Link>.
+            <I18nText id="login.agreementPrefix" />{" "}
+            <Link href="/privacy"><I18nText id="common.privacy" /></Link>{" "}
+            <I18nText id="login.agreementAnd" />{" "}
+            <Link href="/terms"><I18nText id="common.terms" /></Link>.
           </p>
         </section>
       </div>
@@ -76,19 +80,18 @@ export default async function LoginPage({
  * nothing. Keys mirror the codes NextAuth documents in its OAuth
  * callback flow; unknown codes fall through to a generic message.
  */
-function describeAuthError(code: string | undefined): string | null {
+function describeAuthError(code: string | undefined): I18nKey | null {
   if (!code) return null;
-  const messages: Record<string, string> = {
-    OAuthAccountNotLinked:
-      "This email uses a different sign-in method. Use that method or contact support.",
-    OAuthSignin: "Could not start sign in. Try again.",
-    OAuthCallback: "Could not finish sign in. Try again.",
-    OAuthCreateAccount: "Could not create your account. Try again.",
-    Callback: "Could not finish sign in. Try again.",
-    AccessDenied: "Sign in was denied.",
-    SessionRequired: "Sign in to continue.",
+  const messages: Record<string, I18nKey> = {
+    OAuthAccountNotLinked: "login.error.OAuthAccountNotLinked",
+    OAuthSignin: "login.error.OAuthSignin",
+    OAuthCallback: "login.error.OAuthCallback",
+    OAuthCreateAccount: "login.error.OAuthCreateAccount",
+    Callback: "login.error.Callback",
+    AccessDenied: "login.error.AccessDenied",
+    SessionRequired: "login.error.SessionRequired",
   };
-  return messages[code] ?? "Could not sign in. Try again.";
+  return messages[code] ?? "login.error.default";
 }
 
 /**
@@ -109,7 +112,7 @@ function LoginProof({
   label,
 }: {
   icon: typeof BookOpenCheck;
-  label: string;
+  label: ReactNode;
 }) {
   return (
     <div className="fb-login-proof">

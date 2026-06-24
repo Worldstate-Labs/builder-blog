@@ -44,6 +44,8 @@ export type AppNavViewProps = {
   mobileItems?: AppNavViewItem[];
   mode?: "desktop" | "mobile" | "both";
   linkComponent?: AppNavLinkComponent;
+  desktopAriaLabel?: string;
+  mobileAriaLabel?: string;
 };
 
 export function AppNavView({
@@ -52,19 +54,21 @@ export function AppNavView({
   mobileItems,
   mode = "both",
   linkComponent: LinkComponent = DefaultLink,
+  desktopAriaLabel,
+  mobileAriaLabel = "Mobile primary",
 }: AppNavViewProps) {
   const mobileNavItems = mobileItems ?? items;
   const desktopClassName =
     desktopLayout === "bar"
       ? "fb-nav-list fb-nav-list-bar"
       : "fb-nav-list fb-nav-list-rail";
-  const desktopAriaLabel =
-    desktopLayout === "bar" ? "Primary" : "Desktop primary";
+  const resolvedDesktopAriaLabel =
+    desktopAriaLabel ?? (desktopLayout === "bar" ? "Primary" : "Desktop primary");
 
   return (
     <>
       {mode !== "mobile" ? (
-        <nav className={desktopClassName} aria-label={desktopAriaLabel}>
+        <nav className={desktopClassName} aria-label={resolvedDesktopAriaLabel}>
           {items.map((item) => {
             const Icon = icons[item.icon];
             return (
@@ -86,7 +90,7 @@ export function AppNavView({
         <nav
           className="fb-m-tabbar"
           style={{ "--tab-count": mobileNavItems.length } as CSSProperties}
-          aria-label="Mobile primary"
+          aria-label={mobileAriaLabel}
         >
           {mobileNavItems.map((item) => {
             const Icon = icons[item.icon];

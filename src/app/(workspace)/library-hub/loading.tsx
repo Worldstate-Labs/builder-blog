@@ -1,3 +1,4 @@
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 
 export default function LibraryHubLoading() {
@@ -8,8 +9,8 @@ export default function LibraryHubLoading() {
       className="page-pad hub-loading"
     >
       <PageHeader
-        title="Hub"
-        description="Browse and import shared source libraries and AI Digest collections."
+        title={<I18nText id="workspace.hub" />}
+        description={<I18nText id="workspace.hubDesc" />}
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <div className="workspace-top-tabs-row">

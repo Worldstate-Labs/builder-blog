@@ -4,6 +4,7 @@ import {
   DigestPipelineImportForm,
   type HubDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
+import { I18nText } from "@/components/I18nProvider";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { PageHeader } from "@/components/PageHeader";
 import { WorkspaceTabShell } from "@/components/WorkspaceTabShell";
@@ -68,8 +69,8 @@ export default async function LibraryHubPage({
   return (
     <div className="page-pad">
       <PageHeader
-        title="Hub"
-        description="Browse and import shared source libraries and AI Digest collections."
+        title={<I18nText id="workspace.hub" />}
+        description={<I18nText id="workspace.hubDesc" />}
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <WorkspaceTabShell

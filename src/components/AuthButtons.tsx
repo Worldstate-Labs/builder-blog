@@ -2,6 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 
 type Provider = "google" | "github" | "apple";
 
@@ -52,12 +53,13 @@ const providers: Array<{ id: Provider; label: string; Icon: () => React.ReactEle
 
 export function AuthButtons({
   callbackUrl = "/dashboard",
-  labelPrefix = "Continue with",
+  labelPrefix,
 }: {
   callbackUrl?: string;
   labelPrefix?: string;
 }) {
   const [pendingProvider, setPendingProvider] = useState<Provider | null>(null);
+  const { t } = useI18n();
 
   async function handleSignIn(provider: Provider) {
     setPendingProvider(provider);
@@ -78,8 +80,8 @@ export function AuthButtons({
           <Icon />
           <span>
             {pendingProvider === id
-              ? `Opening ${label}`
-              : `${labelPrefix} ${label}`}
+              ? t("auth.opening", { provider: label })
+              : `${labelPrefix ?? t("auth.continueWith")} ${label}`}
           </span>
         </button>
       ))}

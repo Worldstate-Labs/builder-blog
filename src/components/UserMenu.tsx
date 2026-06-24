@@ -7,7 +7,9 @@ import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
 import { FileText, LogOut, Moon, Scale, Settings, ShieldCheck, Sun } from "lucide-react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { setTheme, useHydrated, useTheme } from "@/components/ThemeToggle";
+import { useI18n } from "@/components/I18nProvider";
 import { UserName } from "@/components/UserName";
 
 export function UserMenu({
@@ -26,6 +28,7 @@ export function UserMenu({
   const pathname = usePathname();
   const theme = useTheme();
   const themeHydrated = useHydrated();
+  const { t } = useI18n();
   const user = session?.user;
   const name = user?.name || user?.email?.split("@")[0] || "User";
   const email = user?.email || "";
@@ -80,7 +83,11 @@ export function UserMenu({
       <summary
         aria-controls={popoverId}
         aria-expanded={menuOpen ? "true" : "false"}
-        aria-label={email ? `Account menu for ${email}` : `Account menu for ${name}`}
+        aria-label={
+          email
+            ? t("nav.accountMenuForEmail", { email })
+            : t("nav.accountMenuForName", { name })
+        }
         className="user-menu-trigger"
         ref={summaryRef}
       >
@@ -117,7 +124,7 @@ export function UserMenu({
         {isAdmin ? (
           <span className="user-menu-item user-menu-item-static">
             <ShieldCheck className="user-menu-icon" />
-            Admin
+            {t("nav.admin")}
           </span>
         ) : null}
         <Link
@@ -128,7 +135,7 @@ export function UserMenu({
           onClick={() => closeMenu()}
         >
           <Settings className="user-menu-icon" />
-          Settings
+          {t("nav.settings")}
         </Link>
         <Link
           className="user-menu-item"
@@ -136,7 +143,7 @@ export function UserMenu({
           onClick={() => closeMenu()}
         >
           <FileText className="user-menu-icon" />
-          Privacy
+          {t("common.privacy")}
         </Link>
         <Link
           className="user-menu-item"
@@ -144,8 +151,11 @@ export function UserMenu({
           onClick={() => closeMenu()}
         >
           <Scale className="user-menu-icon" />
-          Terms
+          {t("common.terms")}
         </Link>
+        <div className="user-menu-item user-menu-language">
+          <LanguageSwitcher />
+        </div>
         <button
           className="user-menu-item"
           onClick={toggleTheme}
@@ -156,7 +166,7 @@ export function UserMenu({
           ) : (
             <Moon className="user-menu-icon" aria-hidden="true" />
           )}
-          {themeHydrated && theme === "dark" ? "Light mode" : "Dark mode"}
+          {themeHydrated && theme === "dark" ? t("nav.lightMode") : t("nav.darkMode")}
         </button>
         <div className="user-menu-separator" />
         <button
@@ -170,7 +180,7 @@ export function UserMenu({
           type="button"
         >
           <LogOut className="user-menu-icon" />
-          Sign out
+          {t("nav.signOut")}
         </button>
       </div>
     </details>

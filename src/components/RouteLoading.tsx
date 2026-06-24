@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { PageHeader } from "@/components/PageHeader";
 
 export function RouteLoading({
@@ -6,8 +7,8 @@ export function RouteLoading({
   rows = 4,
   variant = "reading",
 }: {
-  label: string;
-  title: string;
+  label: ReactNode;
+  title: ReactNode;
   rows?: number;
   variant?: "reading" | "workspace";
 }) {

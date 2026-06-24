@@ -20,6 +20,7 @@ import {
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { OwnDigestPipelineUpdatesCard } from "@/components/OwnDigestPipelineUpdatesCard";
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
@@ -116,8 +117,8 @@ export default async function BuildersPage({
   return (
     <div className="page-pad">
       <PageHeader
-        title="Sources"
-        description="Manage your sources, AI Digests, and source subscriptions."
+        title={<I18nText id="workspace.sources" />}
+        description={<I18nText id="workspace.sourcesDesc" />}
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">

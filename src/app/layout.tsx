@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { cookies } from "next/headers";
+import { I18nProvider } from "@/components/I18nProvider";
+import {
+  defaultUiLocale,
+  localeHtmlLang,
+  normalizeUiLocale,
+  uiLocaleCookieName,
+} from "@/lib/i18n";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,14 +32,19 @@ export const metadata: Metadata = {
     "Follow sources, build AI Digest, and search your workspace.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const initialLocale =
+    normalizeUiLocale(cookieStore.get(uiLocaleCookieName)?.value) ?? defaultUiLocale;
+
   return (
     <html
-      lang="en"
+      lang={localeHtmlLang(initialLocale)}
+      data-locale={initialLocale}
       className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} fb-root`}
       suppressHydrationWarning
     >
@@ -42,7 +55,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="fb-root-body">{children}</body>
+      <body className="fb-root-body">
+        <I18nProvider initialLocale={initialLocale}>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

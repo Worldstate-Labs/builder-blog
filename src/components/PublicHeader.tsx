@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { Session } from "next-auth";
 import { BrandMark } from "@/components/BrandMark";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
+import { useI18n } from "@/components/I18nProvider";
 
 type PublicHeaderPage = "home" | "login" | "privacy" | "terms";
 
@@ -48,6 +52,7 @@ function PublicHeaderActions({
   current: PublicHeaderPage;
   session?: Session | null;
 }) {
+  const { t } = useI18n();
   const isLegalPage = current === "privacy" || current === "terms";
   const showSignIn = current !== "login" && !session;
   const showLegalLinks = isLegalPage && !session;
@@ -59,16 +64,17 @@ function PublicHeaderActions({
       <>
         {showLegalLinks ? (
           <>
+            <LanguageSwitcher compact />
             <Link className="fb-login-nav-link" href="/privacy">
-              Privacy
+              {t("common.privacy")}
             </Link>
             <Link className="fb-login-nav-link" href="/terms">
-              Terms
+              {t("common.terms")}
             </Link>
           </>
         ) : null}
         <Link className="fb-btn dark fb-public-header-primary" href="/login">
-          Sign in
+          {t("common.signIn")}
         </Link>
       </>
     );
@@ -76,21 +82,22 @@ function PublicHeaderActions({
 
   return (
     <>
+      <LanguageSwitcher compact />
       <ThemeToggle />
       {current !== "home" ? (
         <Link className="fb-login-nav-link" href="/">
-          Home
+          {t("common.home")}
         </Link>
       ) : null}
       <Link className="fb-login-nav-link" href="/privacy">
-        Privacy
+        {t("common.privacy")}
       </Link>
       <Link className="fb-login-nav-link" href="/terms">
-        Terms
+        {t("common.terms")}
       </Link>
       {showSignIn ? (
         <Link className="fb-btn dark fb-public-header-primary" href="/login">
-          Sign in
+          {t("common.signIn")}
         </Link>
       ) : null}
     </>

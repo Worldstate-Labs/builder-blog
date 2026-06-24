@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useI18n } from "@/components/I18nProvider";
 import { postReturnToFromPath } from "@/lib/navigation";
 import {
   AppNavView,
@@ -36,20 +37,33 @@ export function AppNav({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const returnTo = postReturnToFromPath(pathname, searchParams.get("returnTo"));
 
   const withActive = (list: AppNavItem[]): AppNavViewItem[] =>
-    list.map((item) => ({ ...item, active: isActiveNavItem(pathname, item, returnTo) }));
+    list.map((item) => ({
+      ...item,
+      label: navLabel(item.icon, t),
+      active: isActiveNavItem(pathname, item, returnTo),
+    }));
 
   return (
     <AppNavView
       desktopLayout={desktopLayout}
+      desktopAriaLabel={desktopLayout === "bar" ? t("nav.primary") : t("nav.desktopPrimary")}
       items={withActive(items)}
+      mobileAriaLabel={t("nav.mobilePrimary")}
       mobileItems={mobileItems ? withActive(mobileItems) : undefined}
       mode={mode}
       linkComponent={NextLink}
     />
   );
+}
+
+function navLabel(icon: AppNavItem["icon"], t: ReturnType<typeof useI18n>["t"]) {
+  if (icon === "home") return t("nav.home");
+  if (icon === "sources") return t("nav.sources");
+  return t("nav.hub");
 }
 
 function isActiveNavItem(pathname: string, item: AppNavItem, returnTo = "") {

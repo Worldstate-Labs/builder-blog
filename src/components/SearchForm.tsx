@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Clock, Search, X } from "lucide-react";
+import { useI18n } from "@/components/I18nProvider";
 import {
   normalizeRecentSearches,
   searchDocumentTypeParamValue,
@@ -47,6 +48,7 @@ export function SearchForm({
   suggestions?: string[];
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const isHeader = variant === "header";
   const [isPending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState(query);
@@ -203,7 +205,7 @@ export function SearchForm({
     >
       <div className={isHeader ? "header-search-row" : "search-form-row"}>
         <label className={isHeader ? "header-search-label" : "search-query-label"}>
-          <span className="sr-only">Search query</span>
+          <span className="sr-only">{t("search.query")}</span>
           <span className={isHeader ? "header-search-input-wrap search-input-wrap" : "search-input-wrap"}>
             <Search className="search-input-icon" />
             <input
@@ -249,11 +251,11 @@ export function SearchForm({
                   submitSuggestion(activeSuggestion, event.currentTarget.form);
                 }
               }}
-              placeholder="Search sources, posts, and AI Digest issues"
+              placeholder={t("search.placeholder")}
             />
             {inputValue ? (
               <button
-                aria-label="Clear search query"
+                aria-label={t("search.clear")}
                 className="search-input-clear"
                 onClick={clearQuery}
                 type="button"
@@ -264,7 +266,7 @@ export function SearchForm({
             {shouldShowSuggestions ? (
               <div
                 className="search-suggestion-dropdown"
-                aria-label="Search suggestions"
+                aria-label={t("search.suggestions")}
                 aria-live="polite"
                 id={suggestionListId}
                 role="listbox"
@@ -279,7 +281,7 @@ export function SearchForm({
                     className="search-suggestion-item"
                   >
                     <button
-                      aria-label={`Search for ${suggestion.query}`}
+                      aria-label={t("search.searchFor", { query: suggestion.query })}
                       className="search-suggestion-chip"
                       onClick={() => {
                         submitSuggestion(suggestion, inputRef.current?.form ?? null);
@@ -307,7 +309,7 @@ export function SearchForm({
                     </button>
                     {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion.query)) ? (
                       <button
-                        aria-label={`Remove recent search ${suggestion.query}`}
+                        aria-label={t("search.removeRecent", { query: suggestion.query })}
                         className="search-suggestion-remove"
                         onClick={(event) => {
                           event.preventDefault();
@@ -332,37 +334,37 @@ export function SearchForm({
         {isHeader ? null : (
           <>
             <label className="search-mode-select">
-              <span>Mode</span>
+              <span>{t("search.mode")}</span>
               <select name="mode" defaultValue={mode}>
-                <option value="hybrid">Best match</option>
-                <option value="exact">Exact words</option>
-                <option value="semantic">Meaning</option>
+                <option value="hybrid">{t("search.bestMatch")}</option>
+                <option value="exact">{t("search.exactWords")}</option>
+                <option value="semantic">{t("search.meaning")}</option>
               </select>
             </label>
             <label className="search-mode-select">
-              <span>Time</span>
+              <span>{t("search.time")}</span>
               <select name="time" defaultValue={time}>
-                <option value="any">Any time</option>
-                <option value="day">Past day</option>
-                <option value="week">Past week</option>
-                <option value="month">Past month</option>
-                <option value="year">Past year</option>
+                <option value="any">{t("search.anyTime")}</option>
+                <option value="day">{t("search.pastDay")}</option>
+                <option value="week">{t("search.pastWeek")}</option>
+                <option value="month">{t("search.pastMonth")}</option>
+                <option value="year">{t("search.pastYear")}</option>
               </select>
             </label>
             <label className="search-mode-select">
-              <span>Sort</span>
+              <span>{t("search.sort")}</span>
               <select name="sort" defaultValue={sort}>
-                <option value="relevance">Relevance</option>
-                <option value="newest">Newest</option>
+                <option value="relevance">{t("search.relevance")}</option>
+                <option value="newest">{t("search.newest")}</option>
               </select>
             </label>
             <div className="search-date-range" aria-label="Custom date range">
               <label className="search-date-field">
-                <span>From</span>
+                <span>{t("search.from")}</span>
                 <input name="after" type="date" defaultValue={afterDate} />
               </label>
               <label className="search-date-field">
-                <span>To</span>
+                <span>{t("search.to")}</span>
                 <input name="before" type="date" defaultValue={beforeDate} />
               </label>
             </div>
@@ -376,11 +378,11 @@ export function SearchForm({
               <span
                 className={`submit-button-content${isPending ? " is-pending" : ""}`}
               >
-                Search
+                {t("common.search")}
               </span>
               {isPending ? (
                 <span className="submit-button-pending">
-                  Searching
+                  {t("search.searching")}
                 </span>
               ) : null}
             </button>

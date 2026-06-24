@@ -1,3 +1,4 @@
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 
 export default function DashboardLoading() {
@@ -8,8 +9,8 @@ export default function DashboardLoading() {
       className="page-pad page-pad--reading home-page home-loading"
     >
       <PageHeader
-        title="Today"
-        description="Catch up on AI Digest issues and Following posts."
+        title={<I18nText id="workspace.today" />}
+        description={<I18nText id="workspace.todayDesc" />}
       />
       <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
         <div className="workspace-top-tabs-row">

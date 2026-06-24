@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { PostCard } from "@/components/PostCard";
 import { PostFavoriteControl } from "@/components/PostFavoriteControl";
@@ -168,8 +169,8 @@ export default async function SearchPage({
   return (
     <div className="page-pad page-pad--reading search-page">
       <PageHeader
-        title="Search"
-        description="Find sources, posts, and AI Digest issues."
+        title={<I18nText id="common.search" />}
+        description={<I18nText id="workspace.searchDesc" />}
       />
 
       <div className="workspace-content-stack search-results-workspace">

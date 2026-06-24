@@ -1,3 +1,4 @@
+import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 
 export default function SearchLoading() {
@@ -8,8 +9,8 @@ export default function SearchLoading() {
       className="page-pad page-pad--reading search-page search-loading"
     >
       <PageHeader
-        title="Search"
-        description="Find sources, posts, and AI Digest issues."
+        title={<I18nText id="common.search" />}
+        description={<I18nText id="workspace.searchDesc" />}
       />
 
       <div className="workspace-content-stack search-results-workspace">
