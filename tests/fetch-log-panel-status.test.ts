@@ -848,7 +848,7 @@ test("partial post failures stay partial across timeline status and run card", (
     startedAt: "2026-06-24T12:49:48.365Z",
     finishedAt: "2026-06-24T12:52:11.000Z",
     durationMs: 142_635,
-    status: "ok",
+    status: "partial",
     source: "manual",
     jobRunId: succeededJob.instanceId,
     cliVersion: null,

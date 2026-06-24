@@ -740,7 +740,7 @@ function buildCronStatus(
 }
 
 function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunListItem | null, nowMs = Date.now()): CronSlotStatus {
-  if (run.status !== "ok") return "failed";
+  if (run.status === "failed") return "failed";
   const details = readDetails(run.details);
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
