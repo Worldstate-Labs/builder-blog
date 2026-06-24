@@ -508,6 +508,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "소스 추가",
     es: "Agregar fuente",
   },
+  "Add a source": {
+    "zh-CN": "添加信息源",
+    "zh-TW": "新增資訊源",
+    ja: "ソースを追加",
+    ko: "소스 추가",
+    es: "Agregar fuente",
+  },
   "Adding": {
     "zh-CN": "添加中",
     "zh-TW": "新增中",
@@ -643,11 +650,11 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     es: "AI Digest",
   },
   "Following": {
-    "zh-CN": "Following",
-    "zh-TW": "Following",
-    ja: "Following",
-    ko: "Following",
-    es: "Following",
+    "zh-CN": "已关注",
+    "zh-TW": "已追蹤",
+    ja: "フォロー中",
+    ko: "팔로잉",
+    es: "Siguiendo",
   },
   "Favorites": {
     "zh-CN": "Favorites",
@@ -894,6 +901,195 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ja: "ソース同期",
     ko: "소스 동기화",
     es: "Sincronización de fuentes",
+  },
+  "Sources": {
+    "zh-CN": "信息源",
+    "zh-TW": "資訊源",
+    ja: "ソース",
+    ko: "소스",
+    es: "Fuentes",
+  },
+  "Copy a prompt for your Local Agent to fetch and summarize sources in your own library.": {
+    "zh-CN": "复制一段 prompt，让你的 Local Agent 抓取并总结自己信息源库里的信息源。",
+    "zh-TW": "複製一段 prompt，讓你的 Local Agent 抓取並摘要自己資訊源庫裡的資訊源。",
+    ja: "Local Agent が自分のライブラリ内のソースを取得して要約できるよう、プロンプトをコピーします。",
+    ko: "Local Agent가 내 라이브러리의 소스를 가져오고 요약하도록 프롬프트를 복사하세요.",
+    es: "Copia un prompt para que tu Local Agent obtenga y resuma las fuentes de tu propia biblioteca.",
+  },
+  "Fetch frequency": {
+    "zh-CN": "抓取频率",
+    "zh-TW": "抓取頻率",
+    ja: "取得頻度",
+    ko: "가져오기 빈도",
+    es: "Frecuencia de obtención",
+  },
+  "Language": {
+    "zh-CN": "语言",
+    "zh-TW": "語言",
+    ja: "言語",
+    ko: "언어",
+    es: "Idioma",
+  },
+  "Latest fetch": {
+    "zh-CN": "最近抓取",
+    "zh-TW": "最近抓取",
+    ja: "最新の取得",
+    ko: "최근 가져오기",
+    es: "Última obtención",
+  },
+  "N/A": {
+    "zh-CN": "不适用",
+    "zh-TW": "不適用",
+    ja: "該当なし",
+    ko: "해당 없음",
+    es: "N/D",
+  },
+  "None yet": {
+    "zh-CN": "暂无",
+    "zh-TW": "暫無",
+    ja: "まだありません",
+    ko: "아직 없음",
+    es: "Aún no",
+  },
+  "Idle": {
+    "zh-CN": "空闲",
+    "zh-TW": "閒置",
+    ja: "待機中",
+    ko: "유휴",
+    es: "Inactivo",
+  },
+  "Stopped": {
+    "zh-CN": "已停止",
+    "zh-TW": "已停止",
+    ja: "停止済み",
+    ko: "중지됨",
+    es: "Detenido",
+  },
+  "Scheduled": {
+    "zh-CN": "已计划",
+    "zh-TW": "已排程",
+    ja: "スケジュール済み",
+    ko: "예약됨",
+    es: "Programado",
+  },
+  "Not scheduled": {
+    "zh-CN": "未计划",
+    "zh-TW": "未排程",
+    ja: "未スケジュール",
+    ko: "예약되지 않음",
+    es: "Sin programar",
+  },
+  "Show Fetch sources status log": {
+    "zh-CN": "显示抓取信息源状态日志",
+    "zh-TW": "顯示抓取資訊源狀態日誌",
+    ja: "ソース取得ステータスログを表示",
+    ko: "소스 가져오기 상태 로그 표시",
+    es: "Mostrar registro de estado de obtención de fuentes",
+  },
+  "Hide Fetch sources status log": {
+    "zh-CN": "隐藏抓取信息源状态日志",
+    "zh-TW": "隱藏抓取資訊源狀態日誌",
+    ja: "ソース取得ステータスログを非表示",
+    ko: "소스 가져오기 상태 로그 숨기기",
+    es: "Ocultar registro de estado de obtención de fuentes",
+  },
+  "Sources in your library. You control when and how to fetch and summarize them.": {
+    "zh-CN": "你信息源库里的信息源。你可以控制何时以及如何抓取和总结它们。",
+    "zh-TW": "你資訊源庫裡的資訊源。你可以控制何時以及如何抓取和摘要它們。",
+    ja: "あなたのライブラリ内のソースです。いつ、どのように取得して要約するかを管理できます。",
+    ko: "내 라이브러리의 소스입니다. 언제 어떻게 가져오고 요약할지 제어할 수 있습니다.",
+    es: "Fuentes en tu biblioteca. Controlas cuándo y cómo obtenerlas y resumirlas.",
+  },
+  "Remove from Hub": {
+    "zh-CN": "从 Hub 移除",
+    "zh-TW": "從 Hub 移除",
+    ja: "Hub から削除",
+    ko: "Hub에서 제거",
+    es: "Quitar de Hub",
+  },
+  "Share to Hub": {
+    "zh-CN": "分享到 Hub",
+    "zh-TW": "分享到 Hub",
+    ja: "Hub に共有",
+    ko: "Hub에 공유",
+    es: "Compartir en Hub",
+  },
+  "Close add source form": {
+    "zh-CN": "关闭添加信息源表单",
+    "zh-TW": "關閉新增資訊源表單",
+    ja: "ソース追加フォームを閉じる",
+    ko: "소스 추가 양식 닫기",
+    es: "Cerrar formulario para agregar fuente",
+  },
+  "Open Settings": {
+    "zh-CN": "打开设置",
+    "zh-TW": "開啟設定",
+    ja: "設定を開く",
+    ko: "설정 열기",
+    es: "Abrir Ajustes",
+  },
+  "Source libraries imported from Hub.": {
+    "zh-CN": "从 Hub 导入的信息源库。",
+    "zh-TW": "從 Hub 匯入的資訊源庫。",
+    ja: "Hub からインポートしたソースライブラリ。",
+    ko: "Hub에서 가져온 소스 라이브러리입니다.",
+    es: "Bibliotecas de fuentes importadas desde Hub.",
+  },
+  "Import from Hub": {
+    "zh-CN": "从 Hub 导入",
+    "zh-TW": "從 Hub 匯入",
+    ja: "Hub からインポート",
+    ko: "Hub에서 가져오기",
+    es: "Importar desde Hub",
+  },
+  "Import source libraries from Hub.": {
+    "zh-CN": "从 Hub 导入信息源库。",
+    "zh-TW": "從 Hub 匯入資訊源庫。",
+    ja: "Hub からソースライブラリをインポートします。",
+    ko: "Hub에서 소스 라이브러리를 가져오세요.",
+    es: "Importa bibliotecas de fuentes desde Hub.",
+  },
+  "No sources yet": {
+    "zh-CN": "还没有信息源",
+    "zh-TW": "還沒有資訊源",
+    ja: "ソースはまだありません",
+    ko: "아직 소스가 없습니다",
+    es: "Aún no hay fuentes",
+  },
+  "Add sources, then copy a Fetch sources prompt.": {
+    "zh-CN": "先添加信息源，然后复制抓取信息源 prompt。",
+    "zh-TW": "先新增資訊源，然後複製抓取資訊源 prompt。",
+    ja: "ソースを追加してから、ソース取得プロンプトをコピーしてください。",
+    ko: "소스를 추가한 다음 소스 가져오기 프롬프트를 복사하세요.",
+    es: "Agrega fuentes y luego copia un prompt de obtención de fuentes.",
+  },
+  "No active sources": {
+    "zh-CN": "没有活动信息源",
+    "zh-TW": "沒有作用中資訊源",
+    ja: "有効なソースはありません",
+    ko: "활성 소스가 없습니다",
+    es: "No hay fuentes activas",
+  },
+  "Show fewer sources": {
+    "zh-CN": "收起信息源",
+    "zh-TW": "收合資訊源",
+    ja: "ソースを少なく表示",
+    ko: "소스 줄이기",
+    es: "Mostrar menos fuentes",
+  },
+  "This imported source library has no active sources.": {
+    "zh-CN": "这个已导入的信息源库没有活动信息源。",
+    "zh-TW": "這個已匯入的資訊源庫沒有作用中資訊源。",
+    ja: "このインポート済みソースライブラリには有効なソースがありません。",
+    ko: "가져온 이 소스 라이브러리에는 활성 소스가 없습니다.",
+    es: "Esta biblioteca de fuentes importada no tiene fuentes activas.",
+  },
+  "Copy a Fetch sources prompt to create history.": {
+    "zh-CN": "复制抓取信息源 prompt 后会生成历史记录。",
+    "zh-TW": "複製抓取資訊源 prompt 後會產生歷史記錄。",
+    ja: "ソース取得プロンプトをコピーすると履歴が作成されます。",
+    ko: "소스 가져오기 프롬프트를 복사하면 기록이 생성됩니다.",
+    es: "Copia un prompt de obtención de fuentes para crear historial.",
   },
   "Loading shared AI Digest collections": {
     "zh-CN": "正在加载共享 AI Digest 集合",
@@ -2024,6 +2220,77 @@ const templateTranslations: PhraseTemplate[] = [
     render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
       const action = translateUiPhrase(locale, match[1]) ?? match[1];
       return `${action} ${match[2]}`;
+    },
+  },
+  {
+    pattern: /^Show ([0-9,]+) more sources?$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const count = match[1];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `再显示 ${count} 个信息源`,
+        "zh-TW": `再顯示 ${count} 個資訊源`,
+        ja: `さらに ${count} 件のソースを表示`,
+        ko: `소스 ${count}개 더 보기`,
+        es: `Mostrar ${count} fuentes más`,
+      };
+      return values[locale];
+    },
+  },
+  {
+    pattern: /^Source tools for (.+)$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const source = match[1];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `${source} 的信息源工具`,
+        "zh-TW": `${source} 的資訊源工具`,
+        ja: `${source} のソースツール`,
+        ko: `${source} 소스 도구`,
+        es: `Herramientas de fuente para ${source}`,
+      };
+      return values[locale];
+    },
+  },
+  {
+    pattern: /^([0-9,]+) posts?$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const count = match[1];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `${count} 篇帖子`,
+        "zh-TW": `${count} 篇貼文`,
+        ja: `${count} 件の投稿`,
+        ko: `게시물 ${count}개`,
+        es: `${count} publicaciones`,
+      };
+      return values[locale];
+    },
+  },
+  {
+    pattern: /^(.+) posts, ([0-9,]+) posts?$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const source = match[1];
+      const count = match[2];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `${source} 帖子，${count} 篇帖子`,
+        "zh-TW": `${source} 貼文，${count} 篇貼文`,
+        ja: `${source} の投稿、${count} 件`,
+        ko: `${source} 게시물, ${count}개`,
+        es: `Publicaciones de ${source}, ${count}`,
+      };
+      return values[locale];
+    },
+  },
+  {
+    pattern: /^Could not update Following for (.+)\.$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const source = match[1];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `无法更新 ${source} 的关注状态。`,
+        "zh-TW": `無法更新 ${source} 的追蹤狀態。`,
+        ja: `${source} のフォロー状態を更新できませんでした。`,
+        ko: `${source}의 팔로우 상태를 업데이트할 수 없습니다.`,
+        es: `No se pudo actualizar el seguimiento de ${source}.`,
+      };
+      return values[locale];
     },
   },
   {
