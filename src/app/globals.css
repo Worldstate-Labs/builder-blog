@@ -43,6 +43,18 @@
      .library-visibility-toggle) but never defined — aliasing --rail keeps a
      single source of truth and resolves correctly in both themes. */
   --soft: var(--rail);
+  --surface: color-mix(in oklch, var(--paper-strong) 78%, var(--paper));
+  --surface-raised: color-mix(in oklch, var(--paper-strong) 94%, var(--paper));
+  --surface-sunken: color-mix(in oklch, var(--rail) 72%, var(--paper));
+  --surface-muted: color-mix(in oklch, var(--rail) 54%, var(--paper));
+  --surface-hover: color-mix(in oklch, var(--accent) 5%, var(--surface-raised));
+  --surface-selected: color-mix(in oklch, var(--accent) 8%, var(--surface-raised));
+  --surface-field: color-mix(in oklch, var(--paper-strong) 92%, var(--paper));
+  --chrome: color-mix(in oklch, var(--paper) 96%, var(--paper-strong));
+  --chrome-strong: color-mix(in oklch, var(--paper-strong) 86%, var(--paper));
+  --line-strong: color-mix(in oklch, var(--ink) 20%, transparent);
+  --overlay: color-mix(in oklch, var(--ink) 24%, transparent);
+  --focus-ring: color-mix(in oklch, var(--accent) 22%, transparent);
 
   /* Type scale — 1.2 minor third, anchored on a 17px reading body. */
   --text-xs: 0.78rem;
@@ -113,16 +125,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: oklch(0.18 0.022 248);
-    --paper-strong: oklch(0.22 0.024 248);
-    --rail: oklch(0.245 0.025 248);
-    --ink: oklch(0.965 0.005 238);
+    --paper: oklch(0.145 0.018 248);
+    --paper-strong: oklch(0.19 0.02 248);
+    --rail: oklch(0.235 0.022 248);
+    --ink: oklch(0.958 0.007 238);
     --charcoal: oklch(0.99 0.003 238);
-    --muted: oklch(0.7 0.022 248);
-    --muted-strong: oklch(0.82 0.018 248);
-    --accent: oklch(0.74 0.13 252);
-    --accent-soft: oklch(0.32 0.07 252);
-    --accent-strong: oklch(0.82 0.14 255);
+    --muted: oklch(0.66 0.018 248);
+    --muted-strong: oklch(0.8 0.016 248);
+    --accent: oklch(0.76 0.115 252);
+    --accent-soft: oklch(0.28 0.05 252);
+    --accent-strong: oklch(0.84 0.12 255);
     --signal: oklch(0.78 0.13 162);
     --signal-soft: oklch(0.32 0.06 162);
     --status-partial: oklch(0.84 0.13 88);
@@ -131,8 +143,20 @@
     --warm-soft: oklch(0.32 0.05 78);
     --danger: oklch(0.72 0.14 24);
     --danger-soft: oklch(0.32 0.07 24);
-    --line: color-mix(in oklch, var(--ink) 18%, transparent);
-    --shadow: color-mix(in oklch, var(--surface-ink) 55%, transparent);
+    --line: color-mix(in oklch, var(--ink) 14%, transparent);
+    --line-strong: color-mix(in oklch, var(--ink) 24%, transparent);
+    --shadow: color-mix(in oklch, var(--surface-ink) 64%, transparent);
+    --surface: color-mix(in oklch, var(--paper-strong) 80%, var(--paper));
+    --surface-raised: oklch(0.218 0.022 248);
+    --surface-sunken: oklch(0.118 0.016 248);
+    --surface-muted: color-mix(in oklch, var(--rail) 66%, var(--paper));
+    --surface-hover: color-mix(in oklch, var(--ink) 5%, var(--surface-raised));
+    --surface-selected: color-mix(in oklch, var(--accent) 14%, var(--surface-raised));
+    --surface-field: oklch(0.175 0.019 248);
+    --chrome: color-mix(in oklch, var(--paper) 88%, var(--surface-raised));
+    --chrome-strong: color-mix(in oklch, var(--surface-raised) 88%, var(--paper));
+    --overlay: color-mix(in oklch, var(--surface-ink) 66%, transparent);
+    --focus-ring: color-mix(in oklch, var(--accent) 30%, transparent);
     --on-accent: var(--surface-ink);
     --on-danger: var(--surface-ink);
     --on-ink: var(--paper);
@@ -142,16 +166,16 @@
 }
 
 :root[data-theme="dark"] {
-  --paper: oklch(0.18 0.022 248);
-  --paper-strong: oklch(0.22 0.024 248);
-  --rail: oklch(0.245 0.025 248);
-  --ink: oklch(0.965 0.005 238);
+  --paper: oklch(0.145 0.018 248);
+  --paper-strong: oklch(0.19 0.02 248);
+  --rail: oklch(0.235 0.022 248);
+  --ink: oklch(0.958 0.007 238);
   --charcoal: oklch(0.99 0.003 238);
-  --muted: oklch(0.7 0.022 248);
-  --muted-strong: oklch(0.82 0.018 248);
-  --accent: oklch(0.74 0.13 252);
-  --accent-soft: oklch(0.32 0.07 252);
-  --accent-strong: oklch(0.82 0.14 255);
+  --muted: oklch(0.66 0.018 248);
+  --muted-strong: oklch(0.8 0.016 248);
+  --accent: oklch(0.76 0.115 252);
+  --accent-soft: oklch(0.28 0.05 252);
+  --accent-strong: oklch(0.84 0.12 255);
   --signal: oklch(0.78 0.13 162);
   --signal-soft: oklch(0.32 0.06 162);
   --status-partial: oklch(0.84 0.13 88);
@@ -160,8 +184,20 @@
   --warm-soft: oklch(0.32 0.05 78);
   --danger: oklch(0.72 0.14 24);
   --danger-soft: oklch(0.32 0.07 24);
-  --line: color-mix(in oklch, var(--ink) 18%, transparent);
-  --shadow: color-mix(in oklch, var(--surface-ink) 55%, transparent);
+  --line: color-mix(in oklch, var(--ink) 14%, transparent);
+  --line-strong: color-mix(in oklch, var(--ink) 24%, transparent);
+  --shadow: color-mix(in oklch, var(--surface-ink) 64%, transparent);
+  --surface: color-mix(in oklch, var(--paper-strong) 80%, var(--paper));
+  --surface-raised: oklch(0.218 0.022 248);
+  --surface-sunken: oklch(0.118 0.016 248);
+  --surface-muted: color-mix(in oklch, var(--rail) 66%, var(--paper));
+  --surface-hover: color-mix(in oklch, var(--ink) 5%, var(--surface-raised));
+  --surface-selected: color-mix(in oklch, var(--accent) 14%, var(--surface-raised));
+  --surface-field: oklch(0.175 0.019 248);
+  --chrome: color-mix(in oklch, var(--paper) 88%, var(--surface-raised));
+  --chrome-strong: color-mix(in oklch, var(--surface-raised) 88%, var(--paper));
+  --overlay: color-mix(in oklch, var(--surface-ink) 66%, transparent);
+  --focus-ring: color-mix(in oklch, var(--accent) 30%, transparent);
   --on-accent: var(--surface-ink);
   --on-danger: var(--surface-ink);
   --on-ink: var(--paper);
@@ -184,8 +220,8 @@
 }
 
 .theme-toggle:hover {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
@@ -244,7 +280,7 @@ a {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
 /* Iconography (lucide-react). Lighter-than-default 1.75 stroke reads as
@@ -344,7 +380,7 @@ svg.lucide {
 
 .header-search {
   align-items: center;
-  background: color-mix(in oklch, var(--rail) 70%, var(--paper));
+  background: var(--surface-field);
   border: 1px solid transparent;
   border-radius: 999px;
   color: var(--muted);
@@ -358,7 +394,7 @@ svg.lucide {
 }
 
 .header-search:focus-within {
-  background: var(--paper);
+  background: var(--surface-raised);
   border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
   box-shadow: 0 6px 18px var(--shadow);
   color: var(--ink);
@@ -632,7 +668,7 @@ a.reading-source-label:focus-visible {
 
 .button-light {
   border: 1px solid var(--line);
-  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  background: var(--surface);
   color: var(--ink);
 }
 
@@ -673,7 +709,7 @@ a.reading-source-label:focus-visible {
 .auth-button {
   width: 100%;
   border: 1px solid var(--line);
-  background: var(--paper-strong);
+  background: var(--surface-raised);
   color: var(--ink);
   gap: 0.7rem;
   justify-content: flex-start;
@@ -689,6 +725,7 @@ a.reading-source-label:focus-visible {
 
 .button-light:hover,
 .auth-button:hover {
+  background: var(--surface-hover);
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
   box-shadow: 0 10px 24px var(--shadow);
 }
@@ -741,7 +778,7 @@ details:not([open]) > :not(summary) {
 
 .user-menu-trigger:hover,
 .user-menu[open] .user-menu-trigger {
-  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
+  background: color-mix(in oklch, var(--surface-hover) 88%, transparent);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
@@ -790,7 +827,7 @@ details:not([open]) > :not(summary) {
 }
 
 .user-menu-popover {
-  background: var(--paper);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--elev-2);
@@ -839,7 +876,7 @@ details:not([open]) > :not(summary) {
 .user-menu-item:hover,
 .user-menu-item:focus-visible,
 .user-menu-item[data-active="true"] {
-  background: var(--soft);
+  background: var(--surface-hover);
 }
 
 .user-menu-item[data-active="true"] {
@@ -847,7 +884,7 @@ details:not([open]) > :not(summary) {
 }
 
 .user-menu-item:active {
-  background: color-mix(in oklch, var(--rail) 85%, var(--ink));
+  background: var(--surface-selected);
 }
 
 .user-menu-item-static {
@@ -1004,7 +1041,7 @@ details:not([open]) > :not(summary) {
 }
 
 .count-badge {
-  background: color-mix(in oklch, var(--ink) 6%, transparent);
+  background: color-mix(in oklch, var(--ink) 6%, var(--surface-muted));
   border-radius: 999px;
   color: var(--muted-strong);
   font-family: var(--font-geist-mono);
@@ -1017,7 +1054,7 @@ details:not([open]) > :not(summary) {
 
 .count-chip {
   align-items: center;
-  background: color-mix(in oklch, var(--ink) 4%, transparent);
+  background: var(--surface-muted);
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted-strong);
@@ -1054,7 +1091,7 @@ details:not([open]) > :not(summary) {
 }
 
 .count-metric {
-  background: var(--paper-strong);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 8px;
   min-width: 0;
@@ -1188,7 +1225,7 @@ details:not([open]) > :not(summary) {
 .admin-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: color-mix(in oklch, var(--paper-strong) 76%, transparent);
+  background: var(--surface);
   box-shadow: var(--elev-0);
   min-width: 0;
   width: 100%;
@@ -1263,7 +1300,7 @@ details:not([open]) > :not(summary) {
 .post-detail-loading-pill,
 .post-detail-loading-source-mark {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  background: color-mix(in oklch, var(--ink) 9%, var(--surface-muted));
   border-radius: 8px;
 }
 
@@ -1275,7 +1312,7 @@ details:not([open]) > :not(summary) {
 .home-loading-line,
 .home-loading-post-row {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  background: color-mix(in oklch, var(--ink) 9%, var(--surface-muted));
   border-radius: 8px;
 }
 
@@ -1286,7 +1323,7 @@ details:not([open]) > :not(summary) {
 }
 
 .home-loading-digest-card {
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4613,7 +4650,7 @@ summary.library-section-summary::after {
 }
 
 .library-hub-card {
-  background: color-mix(in oklch, var(--paper-strong) 58%, transparent);
+  background: var(--surface);
   border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 8px;
   box-shadow: none;
@@ -4697,7 +4734,7 @@ summary.library-section-summary::after {
   width: 100%;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: var(--paper-strong);
+  background: var(--surface-field);
   padding: 0.7rem 0.9rem;
   outline: none;
 }
@@ -4826,8 +4863,8 @@ summary.library-section-summary::after {
 /* Top bar / shell */
 .fb-top {
   align-items: center;
-  background: color-mix(in oklch, var(--paper) 96%, var(--paper-strong));
-  border-bottom: 0;
+  background: var(--chrome);
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 62%, transparent);
   display: flex;
   gap: 1rem;
   justify-content: flex-start;
@@ -4925,12 +4962,12 @@ summary.library-section-summary::after {
   color: var(--ink);
   font-size: 0.9375rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .fb-search {
   align-items: center;
-  background: color-mix(in oklch, var(--rail) 70%, var(--paper));
+  background: var(--surface-field);
   border: 1px solid transparent;
   border-radius: 999px;
   color: var(--muted);
@@ -4946,7 +4983,7 @@ summary.library-section-summary::after {
 
 .fb-search:focus-within,
 .fb-search.focused {
-  background: var(--paper);
+  background: var(--surface-raised);
   border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
   box-shadow: 0 6px 18px var(--shadow);
   color: var(--ink);
@@ -4987,8 +5024,8 @@ summary.library-section-summary::after {
 }
 
 .fb-icon-btn:hover {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
@@ -5025,13 +5062,13 @@ summary.library-section-summary::after {
 }
 
 .fb-nav:hover {
-  background: color-mix(in oklch, var(--paper-strong) 70%, transparent);
+  background: var(--surface-hover);
   color: var(--ink);
 }
 
 .fb-nav.active {
-  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface-selected);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 18%, var(--line));
   color: var(--ink);
 }
 
@@ -5186,7 +5223,7 @@ summary.library-section-summary::after {
 
 .fb-btn.dark {
   background: var(--accent);
-  box-shadow: 0 8px 20px color-mix(in oklch, var(--accent) 22%, transparent);
+  box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 16%, transparent);
   color: var(--on-accent);
 }
 
@@ -5195,14 +5232,14 @@ summary.library-section-summary::after {
 }
 
 .fb-btn.light {
-  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  background: var(--surface);
   border-color: var(--line);
   color: var(--ink);
 }
 
 .fb-btn.light:hover {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
 }
 
 .fb-btn.ghost {
@@ -5212,7 +5249,7 @@ summary.library-section-summary::after {
 }
 
 .fb-btn.ghost:hover {
-  background: color-mix(in oklch, var(--paper-strong) 60%, transparent);
+  background: var(--surface-hover);
   color: var(--ink);
 }
 
@@ -5228,7 +5265,7 @@ summary.library-section-summary::after {
 }
 
 .fb-segmented-tabs {
-  background: var(--paper-strong);
+  background: var(--surface-muted);
   border: 1px solid var(--line);
   border-radius: 10px;
   display: inline-flex;
@@ -5237,14 +5274,14 @@ summary.library-section-summary::after {
 }
 
 .fb-segmented-tabs .fb-btn {
-  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
+  background: color-mix(in oklch, var(--surface-raised) 78%, transparent);
   border-color: color-mix(in oklch, var(--line) 86%, transparent);
   color: var(--muted-strong);
 }
 
 .fb-segmented-tabs .fb-btn:hover {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
@@ -5253,7 +5290,7 @@ summary.library-section-summary::after {
 .fb-segmented-tabs .fb-btn[data-active="true"] {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 22%, transparent);
+  box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 16%, transparent);
   color: var(--on-accent);
 }
 
@@ -5286,14 +5323,14 @@ summary.library-section-summary::after {
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn:hover {
-  background: color-mix(in oklch, var(--ink) 4%, transparent);
+  background: var(--surface-hover);
   border-color: transparent;
   color: var(--ink);
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"],
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"] {
-  background: color-mix(in oklch, var(--accent) 8%, var(--paper-strong));
+  background: var(--surface-selected);
   border-color: transparent;
   box-shadow: inset 0 -3px 0 var(--accent);
   color: var(--accent-strong);
@@ -5302,7 +5339,7 @@ summary.library-section-summary::after {
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"]:hover {
-  background: color-mix(in oklch, var(--accent) 10%, var(--paper-strong));
+  background: var(--surface-selected);
   border-color: transparent;
   color: var(--accent-strong);
 }
@@ -5397,7 +5434,7 @@ summary.library-section-summary::after {
 
 /* Dialogs */
 .fb-dialog {
-  background: var(--paper);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: 0 8px 32px color-mix(in oklch, var(--ink) 12%, transparent);
@@ -5414,7 +5451,7 @@ summary.library-section-summary::after {
 }
 
 .fb-dialog::backdrop {
-  background: color-mix(in oklch, var(--ink) 24%, transparent);
+  background: var(--overlay);
 }
 
 .fb-dialog-inner {
@@ -5458,7 +5495,7 @@ summary.library-section-summary::after {
 }
 
 .fb-chip.is-muted {
-  background: var(--paper-strong);
+  background: var(--surface-muted);
   border-color: var(--line);
   color: var(--muted-strong);
 }
@@ -6107,7 +6144,7 @@ summary.library-section-summary::after {
 .digest-source-management .library-hub-toolbar-copy .fb-section-heading {
   font-size: 1.1875rem;
   font-weight: 820;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   line-height: 1.2;
 }
 
@@ -6181,7 +6218,7 @@ summary.library-section-summary::after {
 }
 
 .own-digest-card {
-  background: color-mix(in oklch, var(--paper-strong) 56%, transparent);
+  background: var(--surface);
   border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 8px;
   display: grid;
@@ -6198,7 +6235,7 @@ summary.library-section-summary::after {
 .own-digest-card .fb-hub-title {
   font-size: 1.0625rem;
   font-weight: 820;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   line-height: 1.25;
   margin: 0;
 }
@@ -6308,7 +6345,7 @@ summary.library-section-summary::after {
 
 .sync-panel-card,
 .sync-panel-empty {
-  background: var(--paper-strong);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
   margin-top: 1rem;
@@ -6406,7 +6443,7 @@ summary.library-section-summary::after {
 
 .sync-panel-scroll-cue.has-more::after {
   background:
-    linear-gradient(to bottom, transparent, var(--paper-strong) 78%),
+    linear-gradient(to bottom, transparent, var(--surface) 78%),
     linear-gradient(to bottom, transparent 58%, color-mix(in oklch, var(--accent) 28%, transparent));
   border-bottom: 1px solid color-mix(in oklch, var(--accent) 22%, transparent);
   border-radius: 0 0 7px 7px;
@@ -6537,7 +6574,7 @@ summary.library-section-summary::after {
 .sync-panel-slot-rows.is-timeline .sync-panel-slot-row-dot {
   background: currentColor;
   border-radius: 999px;
-  border: 2px solid var(--paper-strong);
+  border: 2px solid var(--surface);
   display: inline-block;
   height: 0.625rem;
   left: 0.21875rem;
@@ -6588,7 +6625,7 @@ summary.library-section-summary::after {
 }
 
 .sync-panel-run-card {
-  background: var(--paper-strong);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.75rem 0.875rem;
@@ -6664,7 +6701,7 @@ summary.library-section-summary::after {
 
 .sync-panel-log-dialog-backdrop {
   align-items: center;
-  background: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--overlay);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -6674,7 +6711,7 @@ summary.library-section-summary::after {
 }
 
 .sync-panel-log-dialog {
-  background: var(--paper-strong);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 18px 60px color-mix(in oklch, var(--shadow) 65%, transparent);
@@ -6986,7 +7023,7 @@ summary.library-section-summary::after {
 
 .sync-panel-lifecycle-dot {
   background: var(--step-color);
-  border: 2px solid var(--paper-strong);
+  border: 2px solid var(--surface-raised);
   border-radius: 999px;
   box-shadow: 0 0 0 1px var(--step-color);
   height: 0.75rem;
@@ -6997,8 +7034,8 @@ summary.library-section-summary::after {
 }
 
 .sync-panel-lifecycle-step.is-idle .sync-panel-lifecycle-dot {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--paper-strong) 100%, transparent);
+  background: var(--surface-raised);
+  border-color: color-mix(in oklch, var(--surface-raised) 100%, transparent);
 }
 
 .sync-panel-lifecycle-copy {
@@ -7039,7 +7076,7 @@ summary.library-section-summary::after {
 }
 
 .sync-panel-run-card-details {
-  background: var(--paper);
+  background: var(--surface-sunken);
   border: 1px solid var(--line);
   border-radius: 8px;
   margin-top: 0.625rem;
@@ -7090,7 +7127,7 @@ summary.library-section-summary::after {
 }
 
 .sync-panel-run-card-details-count {
-  background: var(--paper-strong);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted-strong);
@@ -8022,7 +8059,7 @@ summary.library-section-summary::after {
   color: var(--ink);
   font-size: 1.375rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   line-height: 1;
 }
 
@@ -8080,7 +8117,7 @@ summary.library-section-summary::after {
 
 .builder-library-card:hover,
 .builder-library-card:focus-within {
-  background: color-mix(in oklch, var(--rail) 26%, transparent);
+  background: var(--surface-hover);
 }
 
 .builder-library-card[data-expandable="true"] {
@@ -8150,8 +8187,8 @@ summary.library-section-summary::after {
 
 .imported-library-avatar.fb-src-icon,
 .imported-library-avatar-more {
-  background: var(--paper-strong);
-  border: 2px solid var(--paper-strong);
+  background: var(--surface-raised);
+  border: 2px solid var(--surface-raised);
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--line) 76%, transparent);
   height: 2rem;
   width: 2rem;
@@ -8198,7 +8235,7 @@ summary.library-section-summary::after {
 }
 
 .builder-library-avatar.fb-src-icon {
-  background: color-mix(in oklch, var(--rail) 68%, var(--paper-strong));
+  background: color-mix(in oklch, var(--surface-muted) 76%, var(--surface-raised));
   border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
   box-shadow: none;
   color: var(--muted-strong);
@@ -8391,7 +8428,7 @@ a.builder-library-name:hover {
   color: var(--ink);
   font-size: 0.875rem;
   font-weight: 700;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 
 .fb-src-meta {
@@ -8660,7 +8697,7 @@ a.builder-library-name:hover {
   font-family: var(--font-display);
   font-size: 1.0625rem;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   margin: 0;
 }
 
@@ -8762,7 +8799,7 @@ a.builder-library-name:hover {
   font-family: var(--font-display);
   font-size: 1.0625rem;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   margin: 0;
 }
 
@@ -9252,7 +9289,7 @@ a.builder-library-name:hover {
   font-size: 1.2rem;
   font-weight: 700;
   gap: 0.45rem;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   margin: 0;
 }
 .digest-section-heading .source-badge {
@@ -9641,7 +9678,7 @@ a.builder-library-name:hover {
 
 /* Library hub card */
 .fb-hub-card {
-  background: color-mix(in oklch, var(--paper-strong) 64%, transparent);
+  background: var(--surface);
   border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 8px;
   content-visibility: auto;
@@ -9687,14 +9724,14 @@ a.builder-library-name:hover {
 }
 
 .hub-card-action-button.is-imported {
-  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  background: var(--surface);
   border-color: var(--line);
   color: var(--ink);
 }
 
 .hub-card-action-button.is-imported:hover {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
@@ -9791,8 +9828,8 @@ a.builder-library-name:hover {
 
 .fb-hub-source-summary-avatar.fb-src-icon,
 .fb-hub-source-summary-avatar-more {
-  background: var(--paper-strong);
-  border: 2px solid var(--paper-strong);
+  background: var(--surface-raised);
+  border: 2px solid var(--surface-raised);
   border-radius: 999px;
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--line) 76%, transparent);
   color: var(--muted-strong);
@@ -9855,7 +9892,7 @@ a.builder-library-name:hover {
 
 .fb-hub-source-row:hover,
 .fb-hub-source-row:focus-within {
-  background: color-mix(in oklch, var(--rail) 26%, transparent);
+  background: var(--surface-hover);
 }
 
 .fb-hub-source-row[data-expandable="true"] {
@@ -9959,7 +9996,7 @@ a.builder-library-name:hover {
 
 .fb-hub-digest-preview .digest-headline-summary {
   --digest-headline-toggle-bg: var(--paper-strong);
-  background: color-mix(in oklch, var(--paper-strong) 82%, var(--rail));
+  background: color-mix(in oklch, var(--surface-raised) 82%, var(--surface-muted));
   border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper-strong) 76%, transparent);
   margin-top: 0.7rem;
@@ -9987,14 +10024,14 @@ a.builder-library-name:hover {
 .fb-hub-digest-preview .digest-headline-list-wrap.is-expandable:not(.is-expanded)::after {
   background: linear-gradient(
     180deg,
-    color-mix(in oklch, var(--paper) 0%, transparent) 0%,
-    color-mix(in oklch, var(--paper) 78%, transparent) 46%,
-    color-mix(in oklch, var(--paper) 98%, transparent) 100%
+    color-mix(in oklch, var(--surface) 0%, transparent) 0%,
+    color-mix(in oklch, var(--surface) 78%, transparent) 46%,
+    color-mix(in oklch, var(--surface) 98%, transparent) 100%
   );
 }
 
 .digest-source-management .fb-hub-digest-preview .digest-headline-summary {
-  --digest-headline-toggle-bg: color-mix(in oklch, var(--paper-strong) 86%, var(--rail));
+  --digest-headline-toggle-bg: color-mix(in oklch, var(--surface-raised) 86%, var(--surface-muted));
 }
 
 .fb-hub-digest-meta {
@@ -10128,8 +10165,8 @@ a.builder-library-name:hover {
 
 .fb-login-nav-link:hover,
 .fb-login-nav-link:focus-visible {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
@@ -10231,7 +10268,7 @@ a.builder-library-name:hover {
 }
 
 .fb-dark-panel {
-  background: color-mix(in oklch, var(--paper-strong) 74%, transparent);
+  background: var(--surface-raised);
   border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 10px;
   box-sizing: border-box;
@@ -10281,7 +10318,7 @@ a.builder-library-name:hover {
 
 .fb-auth-btn {
   align-items: center;
-  background: var(--paper-strong);
+  background: var(--surface-field);
   border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
   border-radius: 10px;
   box-sizing: border-box;
@@ -10313,7 +10350,7 @@ a.builder-library-name:hover {
 }
 
 .fb-auth-btn:hover {
-  background: color-mix(in oklch, var(--paper-strong) 70%, var(--accent-soft));
+  background: var(--surface-hover);
 }
 
 .fb-auth-btn.outline {
@@ -10323,7 +10360,7 @@ a.builder-library-name:hover {
 }
 
 .fb-auth-btn.outline:hover {
-  background: color-mix(in oklch, var(--rail) 58%, transparent);
+  background: var(--surface-hover);
 }
 
 @media (max-width: 767px) {
@@ -10422,7 +10459,7 @@ a.builder-library-name:hover {
 }
 
 .fb-input {
-  background: var(--paper-strong);
+  background: var(--surface-field);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -10439,10 +10476,11 @@ a.builder-library-name:hover {
 
 .fb-input:focus {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .fb-textarea {
-  background: var(--paper-strong);
+  background: var(--surface-field);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -10456,6 +10494,7 @@ a.builder-library-name:hover {
 
 .fb-textarea:focus {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Settings rules: consistent hierarchy for configuration surfaces. */
@@ -11252,7 +11291,7 @@ a.builder-library-name:hover {
 }
 
 .settings-config-form .settings-choice-list {
-  background: var(--paper-strong) !important;
+  background: var(--surface) !important;
   border-color: color-mix(in oklch, var(--line) 72%, transparent);
   border-radius: 8px;
   padding: 0.45rem !important;
@@ -11306,7 +11345,7 @@ a.builder-library-name:hover {
 }
 
 .settings-choice-list {
-  background: var(--paper-strong);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.625rem;
@@ -12470,13 +12509,129 @@ mark.fb-mark-highlight {
 
 /* Dark-mode parity adjustments for fb-* utilities */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .fb-search {
-    background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
+  :root:not([data-theme="light"]) .fb-top,
+  :root:not([data-theme="light"]) .fb-m-top,
+  :root:not([data-theme="light"]) .fb-side-rail,
+  :root:not([data-theme="light"]) .fb-m-tabbar {
+    box-shadow: 0 1px 0 color-mix(in oklch, var(--ink) 5%, transparent);
+  }
+
+  :root:not([data-theme="light"]) .fb-search,
+  :root:not([data-theme="light"]) .header-search,
+  :root:not([data-theme="light"]) .search-input-wrap,
+  :root:not([data-theme="light"]) .input,
+  :root:not([data-theme="light"]) .fb-input,
+  :root:not([data-theme="light"]) .fb-textarea,
+  :root:not([data-theme="light"]) .settings-input,
+  :root:not([data-theme="light"]) .settings-textarea,
+  :root:not([data-theme="light"]) .settings-markdown-textarea,
+  :root:not([data-theme="light"]) .cron-field-select {
+    background: var(--surface-field);
+    border-color: color-mix(in oklch, var(--line) 88%, transparent);
+  }
+
+  :root:not([data-theme="light"]) .feed-card,
+  :root:not([data-theme="light"]) .digest-card,
+  :root:not([data-theme="light"]) .builder-card,
+  :root:not([data-theme="light"]) .admin-panel,
+  :root:not([data-theme="light"]) .fb-hub-card,
+  :root:not([data-theme="light"]) .library-hub-card,
+  :root:not([data-theme="light"]) .sync-panel-card,
+  :root:not([data-theme="light"]) .sync-panel-run-card,
+  :root:not([data-theme="light"]) .settings-rules-card,
+  :root:not([data-theme="light"]) .source-type-config-card,
+  :root:not([data-theme="light"]) .access-key-card {
+    border-color: color-mix(in oklch, var(--line) 92%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, var(--ink) 4%, transparent);
+  }
+
+  :root:not([data-theme="light"]) .fetched-post-card[data-read="true"] {
+    background: color-mix(in oklch, var(--surface) 70%, var(--surface-sunken));
+  }
+
+  :root:not([data-theme="light"]) .fetched-post-card[data-read="true"] .item-title,
+  :root:not([data-theme="light"]) .fetched-post-card[data-read="true"] h2,
+  :root:not([data-theme="light"]) .fetched-post-card[data-read="true"] .fetched-post-title {
+    color: color-mix(in oklch, var(--ink) 72%, var(--muted));
+  }
+
+  :root:not([data-theme="light"]) .fb-btn.dark,
+  :root:not([data-theme="light"]) .button-dark {
+    box-shadow: none;
+  }
+
+  :root:not([data-theme="light"]) .fb-btn.dark:hover,
+  :root:not([data-theme="light"]) .button-dark:hover {
+    background: color-mix(in oklch, var(--accent-strong) 88%, var(--ink));
+  }
+
+  :root:not([data-theme="light"]) .source-badge-mark,
+  :root:not([data-theme="light"]) .fb-src-icon,
+  :root:not([data-theme="light"]) .builder-library-avatar.fb-src-icon {
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 5%, transparent);
   }
 }
 
-:root[data-theme="dark"] .fb-search {
-  background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
+:root[data-theme="dark"] .fb-top,
+:root[data-theme="dark"] .fb-m-top,
+:root[data-theme="dark"] .fb-side-rail,
+:root[data-theme="dark"] .fb-m-tabbar {
+  box-shadow: 0 1px 0 color-mix(in oklch, var(--ink) 5%, transparent);
+}
+
+:root[data-theme="dark"] .fb-search,
+:root[data-theme="dark"] .header-search,
+:root[data-theme="dark"] .search-input-wrap,
+:root[data-theme="dark"] .input,
+:root[data-theme="dark"] .fb-input,
+:root[data-theme="dark"] .fb-textarea,
+:root[data-theme="dark"] .settings-input,
+:root[data-theme="dark"] .settings-textarea,
+:root[data-theme="dark"] .settings-markdown-textarea,
+:root[data-theme="dark"] .cron-field-select {
+  background: var(--surface-field);
+  border-color: color-mix(in oklch, var(--line) 88%, transparent);
+}
+
+:root[data-theme="dark"] .feed-card,
+:root[data-theme="dark"] .digest-card,
+:root[data-theme="dark"] .builder-card,
+:root[data-theme="dark"] .admin-panel,
+:root[data-theme="dark"] .fb-hub-card,
+:root[data-theme="dark"] .library-hub-card,
+:root[data-theme="dark"] .sync-panel-card,
+:root[data-theme="dark"] .sync-panel-run-card,
+:root[data-theme="dark"] .settings-rules-card,
+:root[data-theme="dark"] .source-type-config-card,
+:root[data-theme="dark"] .access-key-card {
+  border-color: color-mix(in oklch, var(--line) 92%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--ink) 4%, transparent);
+}
+
+:root[data-theme="dark"] .fetched-post-card[data-read="true"] {
+  background: color-mix(in oklch, var(--surface) 70%, var(--surface-sunken));
+}
+
+:root[data-theme="dark"] .fetched-post-card[data-read="true"] .item-title,
+:root[data-theme="dark"] .fetched-post-card[data-read="true"] h2,
+:root[data-theme="dark"] .fetched-post-card[data-read="true"] .fetched-post-title {
+  color: color-mix(in oklch, var(--ink) 72%, var(--muted));
+}
+
+:root[data-theme="dark"] .fb-btn.dark,
+:root[data-theme="dark"] .button-dark {
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .fb-btn.dark:hover,
+:root[data-theme="dark"] .button-dark:hover {
+  background: color-mix(in oklch, var(--accent-strong) 88%, var(--ink));
+}
+
+:root[data-theme="dark"] .source-badge-mark,
+:root[data-theme="dark"] .fb-src-icon,
+:root[data-theme="dark"] .builder-library-avatar.fb-src-icon {
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 5%, transparent);
 }
 
 :root[data-theme="dark"] .fb-digest,
@@ -12487,8 +12642,8 @@ mark.fb-mark-highlight {
 /* ============ MOBILE (fb-m-*) ============ */
 .fb-m-top {
   align-items: center;
-  background: color-mix(in oklch, var(--paper) 96%, var(--paper-strong));
-  border-bottom: 0;
+  background: var(--chrome);
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 62%, transparent);
   display: flex;
   flex-shrink: 0;
   gap: 0.625rem;
@@ -12560,7 +12715,7 @@ mark.fb-mark-highlight {
 
 .fb-m-icon:hover,
 .fb-m-icon[data-active="true"] {
-  background: var(--paper-strong);
+  background: var(--surface-hover);
   color: var(--ink);
 }
 
@@ -12583,7 +12738,7 @@ mark.fb-mark-highlight {
 }
 
 .fb-m-tabbar {
-  background: color-mix(in oklch, var(--paper-strong) 90%, transparent);
+  background: color-mix(in oklch, var(--chrome-strong) 92%, transparent);
   border-top: 1px solid var(--line);
   bottom: 0;
   display: grid;
@@ -12598,7 +12753,7 @@ mark.fb-mark-highlight {
 @supports (backdrop-filter: blur(20px)) {
   .fb-m-tabbar {
     backdrop-filter: blur(20px);
-    background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
+    background: color-mix(in oklch, var(--chrome-strong) 82%, transparent);
   }
 }
 
@@ -12625,7 +12780,7 @@ mark.fb-mark-highlight {
 
 .fb-m-tab.active,
 .fb-m-tab[data-active="true"] {
-  background: var(--accent-soft);
+  background: var(--surface-selected);
   color: var(--accent-strong);
 }
 
@@ -12633,7 +12788,7 @@ mark.fb-mark-highlight {
   color: var(--ink);
   font-size: 1.5rem;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   line-height: 1.15;
   margin: 0;
 }
@@ -12663,7 +12818,7 @@ mark.fb-mark-highlight {
 
   .fb-side-rail {
     align-items: flex-start;
-    background: var(--paper);
+    background: var(--chrome);
     border-right: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
     display: flex;
     grid-column: 1;
@@ -13007,7 +13162,7 @@ body {
   .your-digest-section .library-hub-toolbar-copy .fb-section-heading,
   .your-library-section .library-hub-toolbar-copy .fb-section-heading {
     font-size: 1.25rem;
-    letter-spacing: -0.006em;
+    letter-spacing: 0;
     line-height: 1.08;
   }
 
