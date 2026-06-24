@@ -11,7 +11,7 @@ export type DigestCronRunStatusInput = {
   preparedAt: string;
 };
 
-export type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
+export type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled" | "stopped" | "replaced";
 
 export type CronSlot<Run extends DigestCronRunStatusInput = DigestCronRunStatusInput> = {
   expectedAt: string;

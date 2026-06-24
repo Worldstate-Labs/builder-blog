@@ -361,7 +361,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /cronJobRef/);
   assert.match(panel, /run\.source === "cron" && cronJob && cronJob\.status !== "active"/);
-  assert.match(panel, /if \(jobRun && \(!isActiveJobRun\(jobRun\) \|\| \(!suppressStalled && isStalledJobRun\(jobRun\)\)\)\) return false/);
+  assert.match(panel, /if \(jobRun && \(!isActiveJobRun\(jobRun\) \|\| \(!suppressStalled && isStalledJobRun\(jobRun, nowMs\)\)\)\) return false/);
   assert.match(panel, /if \(jobRun && jobRun\.trigger !== "scheduled"\) return false/);
   assert.match(panel, /if \(!jobRun && run\.source !== "cron"\) return false/);
   assert.match(panel, /const postTasks = tasks\.filter\(isPlannedPostTask\)/);

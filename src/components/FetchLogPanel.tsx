@@ -510,11 +510,12 @@ function isRunInflight(
   jobRun?: AgentJobRunListItem | null,
   cronJob?: LibraryCronJobStatus | null,
   suppressStalled = false,
+  nowMs = Date.now(),
 ): boolean {
   if (run.source === "cron" && cronJob && cronJob.status !== "active") return false;
-  if (jobRun && (!isActiveJobRun(jobRun) || (!suppressStalled && isStalledJobRun(jobRun)))) return false;
+  if (jobRun && (!isActiveJobRun(jobRun) || (!suppressStalled && isStalledJobRun(jobRun, nowMs)))) return false;
   if (!jobRun) {
-    const ageMs = Date.now() - Date.parse(run.startedAt);
+    const ageMs = nowMs - Date.parse(run.startedAt);
     if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
   }
   const tasks = readDetails(run.details).fetchTasks;
@@ -527,7 +528,7 @@ const FETCH_LOG_PAGE_SIZE = 10;
 const SCHEDULED_SLOT_CONTEXT_SIZE = 12;
 const LIVE_LOG_STALL_GRACE_MS = 10_000;
 
-type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
+type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled" | "stopped" | "replaced";
 
 type CronSlot = {
   expectedAt: string;
@@ -560,7 +561,8 @@ type FetchUpdateStatusKey =
   | "syncing"
   | "waiting"
   | "healthy"
-  | "needs-attention";
+  | "needs-attention"
+  | "replaced";
 
 type FetchUpdateStatus = {
   key: FetchUpdateStatusKey;
@@ -647,10 +649,16 @@ function isStalledJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boole
   return Number.isFinite(heartbeatMs) && nowMs - heartbeatMs > 2 * 60_000;
 }
 
+function isStoppedJobRun(jobRun: AgentJobRunListItem): boolean {
+  return jobRun.status === "killed" || jobRun.status === "stale";
+}
+
 function jobRunSlotStatus(jobRun: AgentJobRunListItem, nowMs = Date.now()): CronSlotStatus {
   if (jobRun.status === "succeeded") return "ok";
   if (isStalledJobRun(jobRun, nowMs)) return "stalled";
   if (isActiveJobRun(jobRun)) return "running";
+  if (isStoppedJobRun(jobRun)) return "stopped";
+  if (jobRun.status === "replaced") return "replaced";
   return "failed";
 }
 
@@ -737,11 +745,11 @@ function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunLi
   const details = readDetails(run.details);
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
-  if (fetchRunOutcomeStatus(run.status, stats) !== "ok") return "failed";
   const completedOutcomes = fetchRunHasCompletedOutcomes(stats);
   if (jobRun && isStalledJobRun(jobRun, nowMs) && !completedOutcomes) return "stalled";
-  if (isRunInflight(run, jobRun, null)) return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "running";
+  if (isRunInflight(run, jobRun, null, false, nowMs)) return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "running";
   if (jobRun && !isActiveJobRun(jobRun) && jobRun.status !== "succeeded" && !completedOutcomes) return jobRunSlotStatus(jobRun, nowMs);
+  if (fetchRunOutcomeStatus(run.status, stats) !== "ok") return "failed";
   if (run.status === "ok") return "ok";
   return "failed";
 }
@@ -938,7 +946,7 @@ export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpda
   const runKind = latestLogEntry.label.toLowerCase();
 
   return {
-    key: failed ? "needs-attention" : running ? "syncing" : latestLogEntry.status === "ok" ? "healthy" : "waiting",
+    key: failed ? "needs-attention" : running ? "syncing" : latestLogEntry.status === "ok" ? "healthy" : latestLogEntry.status === "stopped" ? "stopped" : latestLogEntry.status === "replaced" ? "replaced" : "waiting",
     label,
     summary: running
       ? `The latest ${runKind} Fetch sources job is running.`
@@ -1342,6 +1350,22 @@ export function getFetchUpdateStatus(
       style: statusStyle("failed"),
     };
   }
+  if (latestSlot?.status === "stopped") {
+    return {
+      key: "stopped",
+      label: "Stopped",
+      summary: "The latest scheduled Fetch sources run was stopped before final sync outcomes arrived.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (latestSlot?.status === "replaced") {
+    return {
+      key: "replaced",
+      label: "Replaced",
+      summary: "A newer Fetch sources run replaced the previous local job.",
+      style: statusStyle("partial"),
+    };
+  }
 
   const latestResolved = latestResolvedSlotStatus(slots);
   if (latestResolved === "missed" || latestResolved === "failed") {
@@ -1610,7 +1634,7 @@ function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null, suppress
     return { label: "Stalled", style: statusStyle("failed"), tone: "failed" };
   }
   if (isActiveJobRun(jobRun)) return null;
-  if (jobRun.status === "killed") {
+  if (isStoppedJobRun(jobRun)) {
     return { label: "Stopped", style: statusStyle("partial"), tone: "partial" };
   }
   if (jobRun.status === "replaced") {

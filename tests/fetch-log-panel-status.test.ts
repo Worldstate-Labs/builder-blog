@@ -665,6 +665,68 @@ test("partial checkpoint outcomes keep the expanded planned count visible", () =
   assert.equal(entries[0]?.syncSummary, "1/3 saved");
 });
 
+test("running fetch job with partial failures stays syncing in the timeline", () => {
+  const runningJob: AgentJobRunListItem = {
+    ...runningFetchJobRun(),
+    instanceId: "runtime-running-with-failures",
+    startedAt: "2026-06-24T12:17:50.000Z",
+    heartbeatAt: "2026-06-24T12:39:15.000Z",
+    details: {
+      progress: {
+        stage: "workers_running",
+        counters: {
+          sourcesChecked: 10,
+          sourcesTotal: 10,
+          tasksPlanned: 16,
+          tasksDone: 8,
+          synced: 5,
+          skipped: 0,
+          failed: 3,
+          actionNeeded: 0,
+        },
+      },
+    },
+    updatedAt: "2026-06-24T12:39:15.000Z",
+  };
+  const run: LibraryFetchRunListItem = {
+    id: "run_running_with_failures",
+    startedAt: "2026-06-24T12:17:53.268Z",
+    finishedAt: "2026-06-24T12:18:20.943Z",
+    durationMs: 27_675,
+    status: "ok",
+    source: "manual",
+    jobRunId: runningJob.instanceId,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 10,
+    itemsFetched: 9,
+    tasksGenerated: 13,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 9 posts from 10 sources · 16 posts planned",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:1", status: "synced" },
+        { id: "fetch_post:2", status: "failed" },
+        { id: "fetch_post:3", status: "pending" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [runningJob],
+    runs: [run],
+    slots: [],
+    nowMs: Date.parse("2026-06-24T12:40:00.000Z"),
+  });
+  const status = getFetchActivityStatus(entries);
+
+  assert.equal(entries[0]?.status, "running");
+  assert.equal(status.key, "syncing");
+  assert.equal(status.label, "Running");
+});
+
 test("failed post outcomes override an ok fetch run status", () => {
   const failedJob: AgentJobRunListItem = {
     id: "job_failed_outcomes",
@@ -755,6 +817,154 @@ test("failed post outcomes override an ok fetch run status", () => {
   assert.equal(status.label, "Failed");
   assert.equal(stats.failed, 2);
   assert.equal(displayState.displayStatus.label, "Failed");
+});
+
+test("stopped stale fetch job does not turn unfinished planned posts into failed status", () => {
+  const staleJob: AgentJobRunListItem = {
+    id: "job_stale_stop",
+    jobType: "library-fetch",
+    trigger: "scheduled",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-stopped",
+    expectedAt: null,
+    startedAt: "2026-06-24T12:31:01.000Z",
+    heartbeatAt: "2026-06-24T12:35:40.824Z",
+    finishedAt: null,
+    status: "stale",
+    exitCode: null,
+    signal: null,
+    runtime: "openclaw",
+    runnerPid: 28993,
+    workerPid: 28993,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    stage: "runtime",
+    summary: "Stop cron found no live worker for the recorded instance.",
+    details: {
+      reason: "stop_cron_stale",
+      progress: {
+        stage: "tasks_planned",
+        counters: {
+          sourcesChecked: 10,
+          sourcesTotal: 10,
+          tasksPlanned: 10,
+          tasksDone: 0,
+          synced: 0,
+          skipped: 0,
+          failed: 0,
+          actionNeeded: 0,
+        },
+      },
+    },
+    updatedAt: "2026-06-24T12:35:40.824Z",
+  };
+  const run: LibraryFetchRunListItem = {
+    id: "run_stale_stop",
+    startedAt: "2026-06-24T12:31:41.915Z",
+    finishedAt: "2026-06-24T12:32:13.410Z",
+    durationMs: 31_495,
+    status: "ok",
+    source: "cron",
+    jobRunId: staleJob.instanceId,
+    cliVersion: null,
+    hostname: "JiedeMac-mini.local",
+    platform: "darwin",
+    buildersAttempted: 10,
+    itemsFetched: 4,
+    tasksGenerated: 7,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 4 posts from 10 sources · 10 posts planned",
+    details: {
+      fetchTasks: [
+        { id: "fetch_post:1", status: "fetched" },
+        { id: "fetch_post:2", status: "pending" },
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [staleJob],
+    runs: [run],
+    slots: [],
+    nowMs: Date.parse("2026-06-24T12:40:00.000Z"),
+  });
+  const status = getFetchActivityStatus(entries);
+  const displayState = fetchRunDisplayState({
+    completedOutcomes: false,
+    inflight: false,
+    jobRun: staleJob,
+    outcomeStatus: "ok",
+    runStatus: run.status,
+  });
+
+  assert.equal(entries[0]?.status, "stopped");
+  assert.equal(status.key, "stopped");
+  assert.equal(status.label, "Stopped");
+  assert.equal(displayState.displayStatus.label, "Stopped");
+  assert.equal(displayState.displayStatus.tone, "partial");
+});
+
+test("scheduled fetch status control reports stopped for a stopped latest slot", () => {
+  const staleJob: AgentJobRunListItem = {
+    ...runningFetchJobRun(),
+    trigger: "scheduled",
+    instanceId: "runtime-stopped-slot",
+    status: "stale",
+    summary: "Stop cron found no live worker for the recorded instance.",
+    details: { reason: "stop_cron_stale" },
+  };
+  const status = getFetchUpdateStatus(
+    activeCronJob(),
+    [
+      {
+        expectedAt: "2026-06-24T12:00:00.000Z",
+        windowEnd: "2026-06-24T13:00:00.000Z",
+        status: "stopped",
+        run: null,
+        jobRun: staleJob,
+      },
+    ],
+    [],
+    [staleJob],
+  );
+
+  assert.equal(status.key, "stopped");
+  assert.equal(status.label, "Stopped");
+});
+
+test("replaced fetch job stays non-failed across timeline and status control", () => {
+  const replacedJob: AgentJobRunListItem = {
+    ...runningFetchJobRun(),
+    trigger: "scheduled",
+    instanceId: "runtime-replaced",
+    status: "replaced",
+    finishedAt: "2026-06-24T12:45:00.000Z",
+    summary: "Runtime was replaced by a newer instance.",
+    details: { reason: "runtime_replaced" },
+  };
+  const entries = buildFetchTimeline({
+    jobRuns: [replacedJob],
+    runs: [],
+    slots: [
+      {
+        expectedAt: "2026-06-24T12:00:00.000Z",
+        windowEnd: "2026-06-24T13:00:00.000Z",
+        status: "replaced",
+        run: null,
+        jobRun: replacedJob,
+      },
+    ],
+    nowMs: Date.parse("2026-06-24T12:50:00.000Z"),
+  });
+  const activityStatus = getFetchActivityStatus(entries);
+  const scheduleStatus = getFetchUpdateStatus(activeCronJob(), entries.map((entry) => entry.slot!).filter(Boolean), [], [replacedJob]);
+
+  assert.equal(entries[0]?.status, "replaced");
+  assert.equal(activityStatus.key, "replaced");
+  assert.equal(activityStatus.label, "Replaced");
+  assert.equal(scheduleStatus.key, "replaced");
+  assert.equal(scheduleStatus.label, "Replaced");
 });
 
 test("fetch run stats keep the highest planned post count across details and live counters", () => {
