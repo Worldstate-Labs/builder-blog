@@ -1,6 +1,14 @@
 "use client";
 
-import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 const ERROR_SUGGEST_SEP = "__SUGGEST__";
 
@@ -25,6 +33,7 @@ import { sourceLabelForType } from "@/lib/source-display";
 import { sourceIcons } from "@/lib/source-icons";
 import {
   crossTypeWarning,
+  detectSourceTypeFromValue,
   isLikelyEpisodeOrPostUrl,
   podcastHostnameRejection,
   type DetectedSourceId,
@@ -114,6 +123,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   const [isPending, startTransition] = useTransition();
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
   const [sourceValue, setSourceValue] = useState("");
+  const lastAutoSwitchedValueRef = useRef("");
   // Display name auto-derives from sourceType + sourceValue when the
   // user hasn't typed in the field themselves. Once they edit (or
   // even clear the auto-filled value), we stop overwriting it so we
@@ -128,14 +138,33 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   const [debouncedValue, setDebouncedValue] = useState(sourceValue);
   const resolvedSourceValue = FIXED_SOURCE_VALUE_BY_ID[sourceType] ?? sourceValue;
   const sourceValueIsFixed = Boolean(FIXED_SOURCE_VALUE_BY_ID[sourceType]);
+  const sourceOptionIds = useMemo(
+    () => new Set(sourceOptions.map((source) => source.id)),
+    [sourceOptions],
+  );
 
   useEffect(() => {
     const id = window.setTimeout(
-      () => setDebouncedValue(resolvedSourceValue),
+      () => {
+        setDebouncedValue(resolvedSourceValue);
+        const value = resolvedSourceValue.trim();
+        if (!value || sourceValueIsFixed) return;
+        if (lastAutoSwitchedValueRef.current === value) return;
+        const detected = formSourceTypeForValue(value, sourceOptionIds);
+        if (!detected) return;
+
+        lastAutoSwitchedValueRef.current = value;
+        if (detected === sourceType) return;
+        setSourceType(detected);
+        setError("");
+        setStatus("");
+        setWarning("");
+        setPendingConfirmation(null);
+      },
       resolvedSourceValue ? 200 : 0,
     );
     return () => window.clearTimeout(id);
-  }, [resolvedSourceValue]);
+  }, [resolvedSourceValue, sourceOptionIds, sourceType, sourceValueIsFixed]);
 
   const preview = useMemo(
     () => computePreview(sourceType, debouncedValue),
@@ -438,4 +467,14 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
 
 function sourceTypeOptionId(sourceId: string) {
   return `add-source-type-${sourceId}`;
+}
+
+function formSourceTypeForValue(
+  value: string,
+  sourceOptionIds: ReadonlySet<string>,
+) {
+  const detected = detectSourceTypeFromValue(value);
+  if (!detected) return null;
+  const formSourceType = detected === "podcast" ? FEED_SOURCE_ID : detected;
+  return sourceOptionIds.has(formSourceType) ? formSourceType : null;
 }

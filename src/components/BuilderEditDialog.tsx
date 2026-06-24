@@ -11,6 +11,7 @@ import {
 } from "@/lib/source-inputs";
 import {
   crossTypeWarning,
+  detectSourceTypeFromValue,
   isLikelyEpisodeOrPostUrl,
   podcastHostnameRejection,
   type DetectedSourceId,
@@ -78,6 +79,7 @@ export function BuilderEditDialog({
 }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const lastAutoSwitchedValueRef = useRef("");
   const [open, setOpen] = useState(false);
 
   const initialSourceValue =
@@ -96,6 +98,10 @@ export function BuilderEditDialog({
   const [isPending, startTransition] = useTransition();
   const resolvedSourceValue = FIXED_SOURCE_VALUE_BY_ID[sourceType] ?? sourceValue;
   const sourceValueIsFixed = Boolean(FIXED_SOURCE_VALUE_BY_ID[sourceType]);
+  const sourceOptionIds = useMemo(
+    () => new Set(sourceOptions.map((source) => source.id)),
+    [sourceOptions],
+  );
   const sourceFeedbackId = `edit-builder-${builder.id}-source-feedback`;
   const sourcePreviewId = `edit-builder-${builder.id}-source-preview`;
   const preview = useMemo(
@@ -134,6 +140,28 @@ export function BuilderEditDialog({
     return () => d.removeEventListener("close", onClose);
   }, []);
 
+  useEffect(() => {
+    const id = window.setTimeout(
+      () => {
+        const value = resolvedSourceValue.trim();
+        if (!open || !value || sourceValueIsFixed) return;
+        if (lastAutoSwitchedValueRef.current === value) return;
+        const detected = formSourceTypeForValue(value, sourceOptionIds);
+        if (!detected) return;
+
+        lastAutoSwitchedValueRef.current = value;
+        if (detected === sourceType) return;
+        setSourceType(detected);
+        setError(null);
+        setErrorSuggestId(null);
+        setWarning(null);
+        setPendingConfirmation(null);
+      },
+      resolvedSourceValue ? 200 : 0,
+    );
+    return () => window.clearTimeout(id);
+  }, [open, resolvedSourceValue, sourceOptionIds, sourceType, sourceValueIsFixed]);
+
   function openDialog() {
     // Reset form to the latest props on open so re-opening always
     // shows the canonical current values, not stale draft state.
@@ -145,6 +173,7 @@ export function BuilderEditDialog({
     setWarning(null);
     setPendingConfirmation(null);
     setConfirmingRemove(false);
+    lastAutoSwitchedValueRef.current = "";
     setOpen(true);
   }
 
@@ -481,4 +510,14 @@ export function BuilderEditDialog({
 
 function formSourceTypeForBuilder(sourceType: string) {
   return sourceType === "podcast" ? FEED_SOURCE_ID : sourceType;
+}
+
+function formSourceTypeForValue(
+  value: string,
+  sourceOptionIds: ReadonlySet<string>,
+) {
+  const detected = detectSourceTypeFromValue(value);
+  if (!detected) return null;
+  const formSourceType = detected === "podcast" ? FEED_SOURCE_ID : detected;
+  return sourceOptionIds.has(formSourceType) ? formSourceType : null;
 }

@@ -52,6 +52,10 @@ import {
   normalizeSearchTime,
   normalizeSearchMode,
 } from "../src/lib/search";
+import {
+  crossTypeWarning,
+  detectSourceTypeFromValue,
+} from "../src/lib/source-value-detect";
 
 function assertOrderedText(text: string, markers: string[]) {
   let lastIndex = -1;
@@ -254,6 +258,24 @@ test("Feed URL input routes podcast RSS to the podcast source type", async () =>
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("source value detection recognizes feed-shaped URLs for automatic source switching", () => {
+  assert.equal(detectSourceTypeFromValue("https://x.com/openai"), "x");
+  assert.equal(detectSourceTypeFromValue("https://twitter.com/openai"), "x");
+  assert.equal(detectSourceTypeFromValue("https://youtube.com/@openai"), "youtube");
+  assert.equal(detectSourceTypeFromValue("https://github.com/trending?since=daily"), "github_trending");
+  assert.equal(detectSourceTypeFromValue("https://www.producthunt.com/"), "product_hunt_top_products");
+  assert.equal(detectSourceTypeFromValue("https://example.com/feed.xml"), "feed");
+  assert.equal(detectSourceTypeFromValue("https://example.com/rss"), "feed");
+  assert.equal(detectSourceTypeFromValue("https://example.com/?format=atom"), "feed");
+  assert.equal(detectSourceTypeFromValue("https://claude.com/blog"), "blog");
+  assert.equal(detectSourceTypeFromValue("https://example.com"), "website");
+  assert.equal(detectSourceTypeFromValue("https://podcasts.apple.com/us/podcast/example/id123"), "podcast");
+  assert.deepEqual(crossTypeWarning("blog", "https://example.com/feed.xml"), {
+    suggestId: "feed",
+    message: "This looks like a Feed URL. Switch source type?",
+  });
 });
 
 test("personal source identity is URL-based across source types", () => {

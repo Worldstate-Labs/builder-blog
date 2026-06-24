@@ -8,7 +8,7 @@
  *
  *  - `detectSourceTypeFromValue`: best-effort guess of which source type
  *    the user *probably* meant from the URL/handle they pasted. Returns
- *    null when the value is too ambiguous (bare handles, RSS URLs, etc.).
+ *    null when the value is too ambiguous (bare handles, generic web pages, etc.).
  *  - `crossTypeWarning`: pairs the detected type against the declared
  *    source type and returns a "looks like X — switch?" suggestion.
  *  - `podcastHostnameRejection`: hard-rejects known-unsupported podcast
@@ -48,7 +48,7 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   const v = value.trim().toLowerCase();
   if (!v) return null;
 
-  if (/(^|\/\/)(www\.)?(x|twitter)\.com\//.test(v)) return "x";
+  if (/(^|\/\/)(www\.)?(x|twitter)\.com(?:\/|[?#]|$)/.test(v)) return "x";
   if (/(^|\/\/)github\.com\/trending(\?|\/|$)/.test(v)) return "github_trending";
   if (/(^|\/\/)(www\.)?producthunt\.com\/?(?:[?#]|$)/.test(v)) {
     return "product_hunt_top_products";
@@ -56,7 +56,7 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   if (/(^|\/\/)(www\.)?producthunt\.com\/products(?:\/|[?#]|$)/.test(v)) {
     return "product_hunt_top_products";
   }
-  if (/(^|\/\/)(www\.)?(youtube\.com|youtu\.be)\//.test(v)) return "youtube";
+  if (/(^|\/\/)(www\.)?(youtube\.com|youtu\.be)(?:\/|[?#]|$)/.test(v)) return "youtube";
 
   if (/(^|\/\/)podcasts\.apple\.com\//.test(v)) return "podcast";
   if (/(^|\/\/)open\.spotify\.com\/show\//.test(v)) return "podcast";
@@ -65,9 +65,14 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   if (/(^|\/\/)music\.163\.com\/[^/]*\/?#?\/?djradio/.test(v)) return "podcast";
   if (/(^|\/\/)overcast\.fm\/itunes/.test(v)) return "podcast";
 
+  if (isLikelyFeedUrl(v)) return "feed";
+
   // Substack / Medium / common blog hosts.
   if (/\.substack\.com(\/|$)/.test(v)) return "blog";
   if (/(^|\/\/)(www\.)?medium\.com\//.test(v) || /\.medium\.com(\/|$)/.test(v)) return "blog";
+  if (isLikelyBlogUrl(v)) return "blog";
+
+  if (isLikelyHttpUrl(v)) return "website";
 
   return null;
 }
@@ -85,10 +90,15 @@ export function crossTypeWarning(
   if (declared === "feed" && (detected === "blog" || detected === "podcast")) {
     return null;
   }
+  if (detected === "website" && (declared === "blog" || declared === "podcast")) {
+    return null;
+  }
   const suggestId = detected === "podcast" ? "feed" : detected;
+  const sourceLabel =
+    suggestId === "feed" ? DETECTED_SOURCE_LABELS[suggestId] : `${DETECTED_SOURCE_LABELS[suggestId]} URL`;
   return {
     suggestId,
-    message: `This looks like a ${DETECTED_SOURCE_LABELS[suggestId]} URL. Switch source type?`,
+    message: `This looks like a ${sourceLabel}. Switch source type?`,
   };
 }
 
@@ -113,6 +123,22 @@ export function podcastHostnameRejection(value: string): string | null {
     return "网易云音乐 uses a proprietary protocol. Content cannot be imported via RSS.";
   }
   return null;
+}
+
+function isLikelyFeedUrl(value: string) {
+  return (
+    /(?:\/|^)(?:feed|rss|atom)(?:\/|\.xml|[?#]|$)/i.test(value) ||
+    /(?:rss|atom|feed)\.xml(?:[?#]|$)/i.test(value) ||
+    /[?&](?:format|output|type)=(?:rss|atom|feed)(?:&|$)/i.test(value)
+  );
+}
+
+function isLikelyBlogUrl(value: string) {
+  return /\/(?:blog|blogs|post|posts|article|articles|news|journal)(?:\/|[?#]|$)/i.test(value);
+}
+
+function isLikelyHttpUrl(value: string) {
+  return /^(?:https?:\/\/)?[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:[/:?#]|$)/i.test(value);
 }
 
 /**
