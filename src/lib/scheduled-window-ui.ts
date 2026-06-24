@@ -1,6 +1,6 @@
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 
-export type ScheduledWindowStatus = "ok" | "failed" | "missed" | "running" | "stalled" | "stopped" | "replaced" | "waiting";
+export type ScheduledWindowStatus = "ok" | "partial" | "failed" | "missed" | "running" | "stalled" | "stopped" | "replaced" | "waiting";
 
 export type ScheduledWindowStyleStatus = "ok" | "partial" | "failed";
 
@@ -12,6 +12,7 @@ export function scheduledWindowStyleStatus(status: ScheduledWindowStatus): Sched
 
 export function scheduledWindowStatusLabel(status: ScheduledWindowStatus): string {
   if (status === "ok") return "Succeeded";
+  if (status === "partial") return "Partial";
   if (status === "failed") return "Failed";
   if (status === "missed") return "Missed";
   if (status === "running") return "Running";

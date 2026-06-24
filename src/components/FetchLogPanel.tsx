@@ -528,7 +528,7 @@ const FETCH_LOG_PAGE_SIZE = 10;
 const SCHEDULED_SLOT_CONTEXT_SIZE = 12;
 const LIVE_LOG_STALL_GRACE_MS = 10_000;
 
-type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled" | "stopped" | "replaced";
+type CronSlotStatus = "ok" | "partial" | "failed" | "missed" | "waiting" | "running" | "stalled" | "stopped" | "replaced";
 
 type CronSlot = {
   expectedAt: string;
@@ -719,15 +719,14 @@ function buildCronStatus(
       const candidateMs = Date.parse(candidate.expectedAt ?? candidate.startedAt);
       return Number.isFinite(candidateMs) && candidateMs >= expectedMs - graceMs && candidateMs < endMs;
     }) ?? null;
-    const status: CronSlotStatus = jobRun
-      ? jobRunSlotStatus(jobRun, nowMs)
-      : match
-      ? match.status === "ok"
-        ? "ok"
-        : "failed"
-      : nowMs - expectedMs <= graceMs
-        ? "waiting"
-        : "missed";
+    const matchedJobRun = match && runMatchesJobRun(match, jobRun) ? jobRun : null;
+    const status: CronSlotStatus = match
+      ? fetchRunSlotStatus(match, matchedJobRun, nowMs)
+      : jobRun
+        ? jobRunSlotStatus(jobRun, nowMs)
+        : nowMs - expectedMs <= graceMs
+          ? "waiting"
+          : "missed";
     return {
       expectedAt: expectedAt.toISOString(),
       windowEnd: windowEnd.toISOString(),
@@ -749,7 +748,9 @@ function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunLi
   if (jobRun && isStalledJobRun(jobRun, nowMs) && !completedOutcomes) return "stalled";
   if (isRunInflight(run, jobRun, null, false, nowMs)) return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "running";
   if (jobRun && !isActiveJobRun(jobRun) && jobRun.status !== "succeeded" && !completedOutcomes) return jobRunSlotStatus(jobRun, nowMs);
-  if (fetchRunOutcomeStatus(run.status, stats) !== "ok") return "failed";
+  const outcomeStatus = fetchRunOutcomeStatus(run.status, stats);
+  if (outcomeStatus === "partial") return "partial";
+  if (outcomeStatus !== "ok") return "failed";
   if (run.status === "ok") return "ok";
   return "failed";
 }
@@ -938,6 +939,7 @@ export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpda
     latestLogEntry.status === "missed" ||
     latestLogEntry.status === "stalled";
   const running = latestLogEntry.status === "running";
+  const partial = latestLogEntry.status === "partial";
   const label = latestLogEntry.run
     ? scheduledWindowStatusLabel(latestLogEntry.status)
     : latestLogEntry.jobRun
@@ -946,7 +948,7 @@ export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpda
   const runKind = latestLogEntry.label.toLowerCase();
 
   return {
-    key: failed ? "needs-attention" : running ? "syncing" : latestLogEntry.status === "ok" ? "healthy" : latestLogEntry.status === "stopped" ? "stopped" : latestLogEntry.status === "replaced" ? "replaced" : "waiting",
+    key: failed || partial ? "needs-attention" : running ? "syncing" : latestLogEntry.status === "ok" ? "healthy" : latestLogEntry.status === "stopped" ? "stopped" : latestLogEntry.status === "replaced" ? "replaced" : "waiting",
     label,
     summary: running
       ? `The latest ${runKind} Fetch sources job is running.`
@@ -1279,19 +1281,30 @@ export function getFetchUpdateStatus(
     }
     const latestRun = runs[0] ?? null;
     if (latestRun) {
-      return latestRun.status === "ok"
-        ? {
-            key: "healthy",
-            label: "OK",
-            summary: "The latest one-time Fetch sources run completed. No schedule is connected.",
-            style: statusStyle("ok"),
-          }
-        : {
-            key: "needs-attention",
-            label: "Needs attention",
-            summary: "The latest one-time Fetch sources run did not finish successfully.",
-            style: statusStyle("failed"),
-          };
+      const latestJobRun = latestRun.jobRunId ? jobsByInstanceId.get(latestRun.jobRunId) ?? null : null;
+      const latestRunStatus = fetchRunSlotStatus(latestRun, latestJobRun);
+      if (latestRunStatus === "ok") {
+        return {
+          key: "healthy",
+          label: "OK",
+          summary: "The latest one-time Fetch sources run completed. No schedule is connected.",
+          style: statusStyle("ok"),
+        };
+      }
+      if (latestRunStatus === "partial") {
+        return {
+          key: "needs-attention",
+          label: "Partial",
+          summary: "The latest one-time Fetch sources run completed with some planned post failures.",
+          style: statusStyle("partial"),
+        };
+      }
+      return {
+        key: "needs-attention",
+        label: "Needs attention",
+        summary: "The latest one-time Fetch sources run did not finish successfully.",
+        style: statusStyle("failed"),
+      };
     }
     return {
       key: "not-connected",
@@ -1350,6 +1363,14 @@ export function getFetchUpdateStatus(
       style: statusStyle("failed"),
     };
   }
+  if (latestSlot?.status === "partial") {
+    return {
+      key: "needs-attention",
+      label: "Partial",
+      summary: "The latest scheduled Fetch sources run completed with some planned post failures.",
+      style: statusStyle("partial"),
+    };
+  }
   if (latestSlot?.status === "stopped") {
     return {
       key: "stopped",
@@ -1368,6 +1389,14 @@ export function getFetchUpdateStatus(
   }
 
   const latestResolved = latestResolvedSlotStatus(slots);
+  if (latestResolved === "partial") {
+    return {
+      key: "needs-attention",
+      label: "Partial",
+      summary: "The latest scheduled Fetch sources run completed with some planned post failures.",
+      style: statusStyle("partial"),
+    };
+  }
   if (latestResolved === "missed" || latestResolved === "failed") {
     return {
       key: "needs-attention",

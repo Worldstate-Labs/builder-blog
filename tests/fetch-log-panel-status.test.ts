@@ -819,6 +819,88 @@ test("failed post outcomes override an ok fetch run status", () => {
   assert.equal(displayState.displayStatus.label, "Failed");
 });
 
+test("partial post failures stay partial across timeline status and run card", () => {
+  const succeededJob: AgentJobRunListItem = {
+    id: "job_partial_outcomes",
+    jobType: "library-fetch",
+    trigger: "one_time",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-partial-outcomes",
+    expectedAt: null,
+    startedAt: "2026-06-24T12:49:46.000Z",
+    heartbeatAt: "2026-06-24T12:52:11.000Z",
+    finishedAt: "2026-06-24T12:52:11.000Z",
+    status: "succeeded",
+    exitCode: 0,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 41050,
+    workerPid: 41050,
+    hostname: "JiedeMac-mini-2.local",
+    platform: "darwin",
+    stage: "runtime",
+    summary: "Fetch job completed.",
+    details: {},
+    updatedAt: "2026-06-24T12:52:11.000Z",
+  };
+  const run: LibraryFetchRunListItem = {
+    id: "run_partial_outcomes",
+    startedAt: "2026-06-24T12:49:48.365Z",
+    finishedAt: "2026-06-24T12:52:11.000Z",
+    durationMs: 142_635,
+    status: "ok",
+    source: "manual",
+    jobRunId: succeededJob.instanceId,
+    cliVersion: null,
+    hostname: "JiedeMac-mini-2.local",
+    platform: "darwin",
+    buildersAttempted: 10,
+    itemsFetched: 12,
+    tasksGenerated: 16,
+    userActionsCount: 0,
+    errorCount: 0,
+    summary: "Read 12 posts from 10 sources · 16 posts planned · 4 posts failed",
+    details: {
+      fetchTasks: [
+        ...Array.from({ length: 12 }, (_, index) => ({
+          id: `fetch_post:synced_${index}`,
+          title: `Synced ${index}`,
+          status: "synced",
+        })),
+        ...Array.from({ length: 4 }, (_, index) => ({
+          id: `fetch_post:failed_${index}`,
+          title: `Failed ${index}`,
+          status: "failed",
+        })),
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [succeededJob],
+    runs: [run],
+    slots: [],
+    nowMs: Date.parse("2026-06-24T13:30:00.000Z"),
+  });
+  const activityStatus = getFetchActivityStatus(entries);
+  const updateStatus = getFetchUpdateStatus(null, [], [run], [succeededJob]);
+  const displayState = fetchRunDisplayState({
+    completedOutcomes: true,
+    inflight: false,
+    jobRun: succeededJob,
+    outcomeStatus: "partial",
+    runStatus: run.status,
+  });
+
+  assert.equal(entries[0]?.status, "partial");
+  assert.equal(activityStatus.key, "needs-attention");
+  assert.equal(activityStatus.label, "Partial");
+  assert.equal(updateStatus.key, "needs-attention");
+  assert.equal(updateStatus.label, "Partial");
+  assert.equal(displayState.displayStatus.label, "Partial");
+  assert.equal(displayState.displayStatus.tone, "partial");
+});
+
 test("stopped stale fetch job does not turn unfinished planned posts into failed status", () => {
   const staleJob: AgentJobRunListItem = {
     id: "job_stale_stop",

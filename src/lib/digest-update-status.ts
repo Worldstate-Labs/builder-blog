@@ -11,7 +11,7 @@ export type DigestCronRunStatusInput = {
   preparedAt: string;
 };
 
-export type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled" | "stopped" | "replaced";
+export type CronSlotStatus = "ok" | "partial" | "failed" | "missed" | "waiting" | "running" | "stalled" | "stopped" | "replaced";
 
 export type CronSlot<Run extends DigestCronRunStatusInput = DigestCronRunStatusInput> = {
   expectedAt: string;
@@ -159,7 +159,7 @@ export function buildDigestCronStatus<Run extends DigestCronRunStatusInput>(
   return { slots, nextExpectedAt: nextExpected.toISOString() };
 }
 
-export type ResolvedSlotStatus = "ok" | "missed" | "failed";
+export type ResolvedSlotStatus = "ok" | "partial" | "missed" | "failed";
 
 // The status chip judges only the most recent window that has a settled
 // outcome; waiting/running/stalled windows are still undecided and skipped.
@@ -168,7 +168,7 @@ export function latestResolvedSlotStatus(
 ): ResolvedSlotStatus | null {
   for (let index = slots.length - 1; index >= 0; index -= 1) {
     const status = slots[index].status;
-    if (status === "ok" || status === "missed" || status === "failed") return status;
+    if (status === "ok" || status === "partial" || status === "missed" || status === "failed") return status;
   }
   return null;
 }
@@ -208,6 +208,14 @@ export function getDigestUpdateStatus(
   }
 
   const latestResolved = latestResolvedSlotStatus(slots);
+  if (latestResolved === "partial") {
+    return {
+      key: "needs-attention",
+      label: "Partial",
+      summary: "The latest scheduled digest run completed with partial results.",
+      style: statusStyle("partial"),
+    };
+  }
   if (latestResolved === "missed" || latestResolved === "failed") {
     return {
       key: "needs-attention",
