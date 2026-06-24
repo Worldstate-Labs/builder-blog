@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
@@ -8,8 +8,56 @@ import {
   FIXED_SOURCE_VALUE_BY_ID,
   placeholderForSourceId,
 } from "@/lib/source-inputs";
+import {
+  crossTypeWarning,
+  isLikelyEpisodeOrPostUrl,
+  podcastHostnameRejection,
+  type DetectedSourceId,
+} from "@/lib/source-value-detect";
 
 type SourceOption = { id: string; label: string };
+
+type Preview =
+  | { kind: "idle" }
+  | { kind: "error"; message: string }
+  | { kind: "warn"; message: string; suggestId?: DetectedSourceId };
+
+type SaveOptions = {
+  confirmedWarning?: boolean;
+  confirmedClearFetchedPosts?: boolean;
+};
+
+type PendingConfirmation =
+  | { kind: "warning"; warning: string }
+  | {
+      kind: "clearFetchedPosts";
+      warning: string;
+      feedItemCount: number;
+      confirmedWarning?: boolean;
+    };
+
+function computePreview(sourceType: string, value: string): Preview {
+  if (FIXED_SOURCE_VALUE_BY_ID[sourceType]) return { kind: "idle" };
+  const trimmed = value.trim();
+  if (!trimmed) return { kind: "idle" };
+
+  if (sourceType === "podcast") {
+    const rejection = podcastHostnameRejection(trimmed);
+    if (rejection) return { kind: "error", message: rejection };
+  }
+  const singleItem = isLikelyEpisodeOrPostUrl(sourceType, trimmed);
+  if (singleItem) return { kind: "error", message: singleItem };
+
+  const crossType = crossTypeWarning(sourceType, trimmed);
+  if (crossType) {
+    return {
+      kind: "warn",
+      message: crossType.message,
+      suggestId: crossType.suggestId,
+    };
+  }
+  return { kind: "idle" };
+}
 
 /**
  * Per-row "edit" pencil + modal that updates the same three fields
@@ -40,12 +88,25 @@ export function BuilderEditDialog({
   const [sourceType, setSourceType] = useState(builder.sourceType);
   const [sourceValue, setSourceValue] = useState(initialSourceValue);
   const [error, setError] = useState<string | null>(null);
+  const [errorSuggestId, setErrorSuggestId] = useState<DetectedSourceId | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isPending, startTransition] = useTransition();
   const resolvedSourceValue = FIXED_SOURCE_VALUE_BY_ID[sourceType] ?? sourceValue;
   const sourceValueIsFixed = Boolean(FIXED_SOURCE_VALUE_BY_ID[sourceType]);
   const sourceFeedbackId = `edit-builder-${builder.id}-source-feedback`;
+  const sourcePreviewId = `edit-builder-${builder.id}-source-preview`;
+  const preview = useMemo(
+    () => computePreview(sourceType, resolvedSourceValue),
+    [sourceType, resolvedSourceValue],
+  );
+  const sourceDescriptionIds = [
+    preview.kind !== "idle" ? sourcePreviewId : null,
+    error || pendingConfirmation || warning ? sourceFeedbackId : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // Sync the underlying <dialog>'s open state with React state.
   useEffect(() => {
@@ -79,15 +140,33 @@ export function BuilderEditDialog({
     setSourceType(builder.sourceType);
     setSourceValue(initialSourceValue);
     setError(null);
+    setErrorSuggestId(null);
     setWarning(null);
+    setPendingConfirmation(null);
     setConfirmingRemove(false);
     setOpen(true);
   }
 
-  function save() {
+  function applySuggestion(target: DetectedSourceId) {
+    setSourceType(target);
     setError(null);
+    setErrorSuggestId(null);
     setWarning(null);
-    if (!sourceValue.trim()) {
+    setPendingConfirmation(null);
+  }
+
+  function clearSourceFeedback() {
+    setError(null);
+    setErrorSuggestId(null);
+    setWarning(null);
+    setPendingConfirmation(null);
+  }
+
+  function save(options: SaveOptions = {}) {
+    setError(null);
+    setErrorSuggestId(null);
+    setWarning(null);
+    if (!resolvedSourceValue.trim()) {
       setError("Handle or URL is required.");
       return;
     }
@@ -100,11 +179,41 @@ export function BuilderEditDialog({
             name: name.trim(),
             sourceType,
             sourceValue: resolvedSourceValue.trim(),
+            ...(options.confirmedWarning ? { confirmedWarning: true } : {}),
+            ...(options.confirmedClearFetchedPosts
+              ? { confirmedClearFetchedPosts: true }
+              : {}),
           }),
         });
-        const body = await response.json().catch(() => null);
+        const body = (await response.json().catch(() => null)) as {
+          error?: string;
+          warning?: string;
+          needsConfirmation?: boolean;
+          needsClearFetchedPostsConfirmation?: boolean;
+          feedItemCount?: number;
+          suggestId?: DetectedSourceId;
+        } | null;
+        if (response.status === 409 && body?.needsConfirmation) {
+          setPendingConfirmation({
+            kind: "warning",
+            warning: body.warning ?? "Review this source before saving it.",
+          });
+          return;
+        }
+        if (response.status === 409 && body?.needsClearFetchedPostsConfirmation) {
+          setPendingConfirmation({
+            kind: "clearFetchedPosts",
+            warning:
+              body.warning ??
+              "Changing this source URL will clear fetched posts for this source.",
+            feedItemCount: body.feedItemCount ?? builder.feedItemCount,
+            ...(options.confirmedWarning ? { confirmedWarning: true } : {}),
+          });
+          return;
+        }
         if (!response.ok) {
           setError(body?.error ?? "Could not save source.");
+          setErrorSuggestId(body?.suggestId ?? null);
           return;
         }
         if (body?.warning) setWarning(body.warning);
@@ -124,6 +233,7 @@ export function BuilderEditDialog({
     if (!confirmingRemove) {
       setError(null);
       setWarning(null);
+      setPendingConfirmation(null);
       setConfirmingRemove(true);
       return;
     }
@@ -187,7 +297,10 @@ export function BuilderEditDialog({
               <select
                 className="fb-input"
                 value={sourceType}
-                onChange={(e) => setSourceType(e.target.value)}
+                onChange={(e) => {
+                  setSourceType(e.target.value);
+                  clearSourceFeedback();
+                }}
               >
                 {sourceOptions.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -200,7 +313,7 @@ export function BuilderEditDialog({
             <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">Handle or URL</span>
               <input
-                aria-describedby={error || warning ? sourceFeedbackId : undefined}
+                aria-describedby={sourceDescriptionIds || undefined}
                 aria-invalid={error ? "true" : undefined}
                 aria-readonly={sourceValueIsFixed}
                 className="fb-input mono"
@@ -208,14 +321,37 @@ export function BuilderEditDialog({
                 onChange={(e) => {
                   if (sourceValueIsFixed) return;
                   setSourceValue(e.target.value);
-                  setError(null);
-                  setWarning(null);
+                  clearSourceFeedback();
                 }}
                 placeholder={placeholderForSourceId(sourceType)}
                 readOnly={sourceValueIsFixed}
                 required
               />
             </label>
+
+            {preview.kind !== "idle" ? (
+              <div
+                id={sourcePreviewId}
+                aria-live="polite"
+                className={`add-source-inline-note ${
+                  preview.kind === "error" ? "is-error" : "is-warning"
+                }`}
+              >
+                {preview.message}
+                {preview.kind === "warn" && preview.suggestId ? (
+                  <>
+                    {" "}
+                    <button
+                      className="add-source-text-action"
+                      onClick={() => preview.suggestId && applySuggestion(preview.suggestId)}
+                      type="button"
+                    >
+                      Switch source type
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
 
             <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">
@@ -224,7 +360,10 @@ export function BuilderEditDialog({
               <input
                 className="fb-input"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setWarning(null);
+                }}
                 placeholder="Use detected name if blank"
               />
             </label>
@@ -236,7 +375,62 @@ export function BuilderEditDialog({
                 role="alert"
               >
                 {error}
+                {errorSuggestId ? (
+                  <>
+                    {" "}
+                    <button
+                      className="add-source-text-action is-error"
+                      onClick={() => applySuggestion(errorSuggestId)}
+                      type="button"
+                    >
+                      Switch source type
+                    </button>
+                  </>
+                ) : null}
               </span>
+            ) : pendingConfirmation ? (
+              <div
+                id={sourceFeedbackId}
+                aria-live="polite"
+                role="status"
+                className="add-source-callout"
+              >
+                <div className="add-source-callout-copy">
+                  <span className="add-source-callout-label">Confirm</span>
+                  <span className="add-source-callout-body">
+                    {pendingConfirmation.warning}
+                  </span>
+                </div>
+                <div className="add-source-callout-actions">
+                  <button
+                    type="button"
+                    className="fb-btn dark compact"
+                    disabled={isPending}
+                    onClick={() =>
+                      pendingConfirmation.kind === "clearFetchedPosts"
+                        ? save({
+                            confirmedWarning: pendingConfirmation.confirmedWarning,
+                            confirmedClearFetchedPosts: true,
+                          })
+                        : save({ confirmedWarning: true })
+                    }
+                  >
+                    {isPending
+                      ? "Saving"
+                      : pendingConfirmation.kind === "clearFetchedPosts"
+                        ? "Clear posts and save"
+                        : "Save anyway"}
+                  </button>
+                  <button
+                    type="button"
+                    className="fb-btn compact"
+                    disabled={isPending}
+                    onClick={() => setPendingConfirmation(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : warning ? (
               <span
                 id={sourceFeedbackId}
@@ -272,7 +466,7 @@ export function BuilderEditDialog({
               <button
                 type="submit"
                 className="fb-btn dark compact"
-                disabled={isPending}
+                disabled={isPending || Boolean(pendingConfirmation)}
               >
                 {isPending ? "Saving" : "Save changes"}
               </button>

@@ -17,6 +17,10 @@ import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
+import {
+  DUPLICATE_PERSONAL_SOURCE_ERROR,
+  findConflictingPersonalSource,
+} from "@/lib/personal-source-identity";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 import { prisma } from "@/lib/prisma";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
@@ -115,6 +119,15 @@ export async function POST(request: Request) {
   // over the probe's enrichment when present, since iTunes carries
   // richer fields than RSS first-bytes ever can.
   const enrichment: BuilderEnrichment = resolution.enrichment ?? probe.enrichment;
+  const finalFetchUrl = probe.discoveredFetchUrl ?? input.fetchUrl ?? null;
+  const duplicateSource = await findConflictingPersonalSource({
+    userId: session.user.id,
+    sourceUrl: input.sourceUrl,
+    fetchUrl: finalFetchUrl,
+  });
+  if (duplicateSource) {
+    return NextResponse.json({ error: DUPLICATE_PERSONAL_SOURCE_ERROR }, { status: 409 });
+  }
 
   const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name, {
     urlSignals: [
@@ -137,7 +150,7 @@ export async function POST(request: Request) {
     // If the probe auto-discovered an RSS/Atom feed link on the HTML
     // page the user pasted, persist that as the fetchUrl so the CLI
     // hits the real feed at sync time instead of re-scraping HTML.
-    fetchUrl: probe.discoveredFetchUrl ?? input.fetchUrl ?? null,
+    fetchUrl: finalFetchUrl,
   });
 
   await addBuilderToPool({

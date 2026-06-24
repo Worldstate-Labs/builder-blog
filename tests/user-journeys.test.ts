@@ -27,6 +27,10 @@ import {
   parseSkillBuilderSyncPayload,
   parseSkillDigestPayload,
 } from "../src/lib/skill-contracts";
+import {
+  canonicalPersonalSourceUrl,
+  personalSourceIdentityKeys,
+} from "../src/lib/personal-source-identity";
 import { resolvePersonalBuilderInput } from "../src/lib/personal-builder-input";
 import {
   candidateSearchTerms,
@@ -182,6 +186,24 @@ test("manual builder input derives canonical fields from one handle or URL", asy
   });
 });
 
+test("personal source identity is URL-based across source types", () => {
+  assert.equal(
+    canonicalPersonalSourceUrl("HTTPS://Claude.com:443/blog/?b=2&a=1#comments"),
+    "https://claude.com/blog?a=1&b=2",
+  );
+  assert.deepEqual(
+    [...personalSourceIdentityKeys({
+      sourceUrl: "https://claude.com/",
+      fetchUrl: "https://claude.com/feed",
+    })],
+    ["https://claude.com/", "https://claude.com/feed"],
+  );
+  assert.equal(
+    personalSourceIdentityKeys({ sourceUrl: "https://claude.com", fetchUrl: "https://claude.com/" }).size,
+    1,
+  );
+});
+
 test("personal YouTube sync cannot create a duplicate builder through handle metadata", () => {
   const sourceUrl = "https://www.youtube.com/@googledeepmind";
 
@@ -260,6 +282,7 @@ test("non-admin users default-import the admin community library and digest", ()
 
 test("personal builder removal deletes its fetched feed items instead of preserving fetch state", () => {
   const libraryRoute = readFileSync("src/app/api/builders/[builderId]/library/route.ts", "utf8");
+  const personalUpdateRoute = readFileSync("src/app/api/builders/[builderId]/personal/route.ts", "utf8");
 
   assert.match(libraryRoute, /ownerUserId: session\.user\.id/);
   assert.match(libraryRoute, /ownerUserId === session\.user\.id/);
@@ -267,6 +290,14 @@ test("personal builder removal deletes its fetched feed items instead of preserv
   assert.match(libraryRoute, /prisma\.builder\.delete/);
   assert.match(libraryRoute, /deletedFeedItems/);
   assert.match(libraryRoute, /BuilderPoolOrigin\.HUB_IMPORT/);
+
+  assert.match(personalUpdateRoute, /confirmedClearFetchedPosts/);
+  assert.match(personalUpdateRoute, /needsClearFetchedPostsConfirmation:\s*true/);
+  assert.match(personalUpdateRoute, /feedItem\.count\(\{ where: \{ builderId: existing\.id \} \}\)/);
+  assert.match(personalUpdateRoute, /feedItem\.deleteMany\(\{ where: \{ builderId: existing\.id \} \}\)/);
+  assert.match(personalUpdateRoute, /itemCount:\s*0/);
+  assert.match(personalUpdateRoute, /lastFetchedAt:\s*null/);
+  assert.match(personalUpdateRoute, /status:\s*FetchStatus\.IDLE/);
 });
 
 test("skill sync user path accepts personal YouTube builders with synced feed items", () => {

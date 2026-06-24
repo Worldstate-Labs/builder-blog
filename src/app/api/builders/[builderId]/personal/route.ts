@@ -1,4 +1,4 @@
-import { BuilderKind, Prisma } from "@prisma/client";
+import { BuilderKind, FetchStatus, Prisma } from "@prisma/client";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -9,6 +9,10 @@ import {
   canonicalBuilderValueForInput,
   normalizedBuilderHandle,
 } from "@/lib/builder-keys";
+import {
+  DUPLICATE_PERSONAL_SOURCE_ERROR,
+  findConflictingPersonalSource,
+} from "@/lib/personal-source-identity";
 import {
   combineWarnings,
   hostnameOrNull,
@@ -29,7 +33,14 @@ const PatchSchema = z.object({
   name: z.string().trim().max(240).optional(),
   sourceType: z.string().trim().min(1).max(40).optional(),
   sourceValue: z.string().trim().min(1).max(2048).optional(),
+  confirmedWarning: z.boolean().optional(),
+  confirmedClearFetchedPosts: z.boolean().optional(),
 });
+
+function clearFetchedPostsWarning(count: number) {
+  const label = count === 1 ? "post" : "posts";
+  return `Changing this source URL will clear ${count} fetched ${label} for this source.`;
+}
 
 // PATCH /api/builders/:builderId/personal — edit the three creation
 // fields (sourceType / sourceValue / display name) on a user-owned
@@ -145,7 +156,26 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!probe.ok) {
     return NextResponse.json({ error: probe.hardError }, { status: 400 });
   }
+  if (probe.requiresConfirmation && !parsed.data.confirmedWarning) {
+    return NextResponse.json(
+      {
+        needsConfirmation: true,
+        warning: probe.warning,
+      },
+      { status: 409 },
+    );
+  }
   const enrichment: BuilderEnrichment = resolution.enrichment ?? probe.enrichment;
+  const finalFetchUrl = probe.discoveredFetchUrl ?? input.fetchUrl ?? null;
+  const duplicateSource = await findConflictingPersonalSource({
+    userId: session.user.id,
+    sourceUrl: input.sourceUrl,
+    fetchUrl: finalFetchUrl,
+    excludeBuilderId: existing.id,
+  });
+  if (duplicateSource) {
+    return NextResponse.json({ error: DUPLICATE_PERSONAL_SOURCE_ERROR }, { status: 409 });
+  }
 
   const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name, {
     urlSignals: [
@@ -159,8 +189,25 @@ export async function PATCH(request: Request, { params }: Params) {
   const sourceIdentityChanged =
     input.sourceType !== existing.sourceType ||
     (input.sourceUrl ?? null) !== (existing.sourceUrl ?? null) ||
-    (input.fetchUrl ?? null) !== (existing.fetchUrl ?? null) ||
+    finalFetchUrl !== (existing.fetchUrl ?? null) ||
     (handle ?? null) !== (existing.handle ?? null);
+  const fetchedPostCount = sourceIdentityChanged
+    ? await prisma.feedItem.count({ where: { builderId: existing.id } })
+    : 0;
+  if (
+    sourceIdentityChanged &&
+    fetchedPostCount > 0 &&
+    !parsed.data.confirmedClearFetchedPosts
+  ) {
+    return NextResponse.json(
+      {
+        needsClearFetchedPostsConfirmation: true,
+        feedItemCount: fetchedPostCount,
+        warning: clearFetchedPostsWarning(fetchedPostCount),
+      },
+      { status: 409 },
+    );
+  }
   const avatarDataUrl = avatarUrl
     ? await resolveAvatarDataUrl(avatarUrl)
     : sourceIdentityChanged
@@ -168,27 +215,42 @@ export async function PATCH(request: Request, { params }: Params) {
       : existing.avatarDataUrl;
 
   try {
-    const updated = await prisma.builder.update({
-      where: { id: existing.id },
-      data: {
-        name: finalName,
-        handle: handle ?? null,
-        sourceType: input.sourceType,
-        sourceUrl: input.sourceUrl ?? null,
-        // Probe-discovered RSS/Atom feed link wins over the resolver's
-        // best guess when the user pasted an HTML landing page.
-        fetchUrl: probe.discoveredFetchUrl ?? input.fetchUrl ?? null,
-        avatarUrl,
-        avatarDataUrl,
-        kind,
-        canonicalKey,
-        libraryKey,
-      },
+    const { updated, deletedFeedItems } = await prisma.$transaction(async (tx) => {
+      const updated = await tx.builder.update({
+        where: { id: existing.id },
+        data: {
+          name: finalName,
+          handle: handle ?? null,
+          sourceType: input.sourceType,
+          sourceUrl: input.sourceUrl ?? null,
+          // Probe-discovered RSS/Atom feed link wins over the resolver's
+          // best guess when the user pasted an HTML landing page.
+          fetchUrl: finalFetchUrl,
+          avatarUrl,
+          avatarDataUrl,
+          kind,
+          canonicalKey,
+          libraryKey,
+          ...(sourceIdentityChanged
+            ? {
+                itemCount: 0,
+                lastFetchedAt: null,
+                lastError: null,
+                status: FetchStatus.IDLE,
+              }
+            : {}),
+        },
+      });
+      const deleted = sourceIdentityChanged
+        ? await tx.feedItem.deleteMany({ where: { builderId: existing.id } })
+        : { count: 0 };
+      return { updated, deletedFeedItems: deleted.count };
     });
     revalidateTag(`user:${session.user.id}:recs`, "default");
     const warning = combineWarnings(resolution.warning, probe.warning);
     return NextResponse.json({
       builder: updated,
+      ...(deletedFeedItems ? { deletedFeedItems } : {}),
       ...(warning ? { warning } : {}),
     });
   } catch (error) {
