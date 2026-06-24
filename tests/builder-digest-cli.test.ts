@@ -1591,6 +1591,47 @@ test("sync payload converts items older than the planned fetch cutoff to skipped
   assert.equal(filtered.taskOutcomes[0].evidence.fetchCutoff, "2026-03-25T00:00:00.000Z");
 });
 
+test("sync payload keeps items newer than the planned fetch cutoff when dates are ISO strings", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const filtered = cli.filterStaleSyncItemsByFetchCutoff(
+    {
+      builders: [
+        {
+          builderId: "builder_blog",
+          name: "Engineering",
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: "https://example.com/new-post",
+              title: "New post",
+              body: "Fetched body",
+              summary: "A valid summary for this fetched body that is long enough.",
+              url: "https://example.com/new-post",
+              publishedAt: "2026-06-23T22:42:38.000Z",
+              rawJson: { fetchTaskId: "fetch_post:blog:new-post" },
+            },
+          ],
+        },
+      ],
+    },
+    [
+      {
+        id: "fetch_post:blog:new-post",
+        fetchCutoff: "2026-05-25T11:21:18.769Z",
+        item: {
+          title: "New post",
+          url: "https://example.com/new-post",
+        },
+      },
+    ],
+  );
+
+  assert.equal(filtered.builders.length, 1);
+  assert.equal(filtered.builders[0].items.length, 1);
+  assert.equal(filtered.builders[0].items[0].title, "New post");
+  assert.deepEqual(filtered.taskOutcomes, []);
+});
+
 test("ready fetch tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const sources = {

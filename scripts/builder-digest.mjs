@@ -3555,7 +3555,8 @@ function filterFetchedItems(items, { builderId, cutoff, limit = Number.POSITIVE_
 function isAfterCutoff(value, cutoff) {
   if (!cutoff || !value) return true;
   const date = new Date(value);
-  return !Number.isNaN(date.getTime()) && date > cutoff;
+  const cutoffDate = new Date(cutoff);
+  return !Number.isNaN(date.getTime()) && !Number.isNaN(cutoffDate.getTime()) && date > cutoffDate;
 }
 
 export function parseBlogCandidates(body, indexUrl) {
