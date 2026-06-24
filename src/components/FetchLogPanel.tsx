@@ -303,9 +303,9 @@ function statusStyle(status: string): {
       };
     case "partial":
       return {
-        background: "var(--warm-soft)",
-        color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
-        border: "color-mix(in oklch, var(--warm) 30%, var(--line))",
+        background: "var(--status-partial-soft)",
+        color: "color-mix(in oklch, var(--status-partial) 76%, var(--ink))",
+        border: "color-mix(in oklch, var(--status-partial) 34%, var(--line))",
       };
     case "failed":
       return {
@@ -333,6 +333,12 @@ function statusTone(status: string): StatusTone {
 
 function statusToneClass(tone: StatusTone): string {
   return `is-${tone}`;
+}
+
+function fetchUpdateStatusTone(status: FetchUpdateStatus): StatusTone {
+  if (status.key === "healthy") return "ok";
+  if (status.key === "needs-attention" && status.label !== "Partial") return "failed";
+  return "partial";
 }
 
 function jobRunStatusTone(jobRun: AgentJobRunListItem): StatusTone {
@@ -1439,13 +1445,8 @@ function FetchStatusToggle({
     <button
       aria-controls="fetch-sync-details"
       aria-expanded={detailsOpen}
-      className="fb-chip digest-status-toggle"
+      className={`fb-chip digest-status-toggle ${statusToneClass(fetchUpdateStatusTone(status))}`}
       onClick={onToggle}
-      style={{
-        background: status.style.background,
-        borderColor: status.style.border,
-        color: status.style.color,
-      }}
       title={detailsOpen ? "Hide Fetch sources status log" : "Show Fetch sources status log"}
       type="button"
     >
@@ -2766,7 +2767,7 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   runtime_auth_failed: "OpenClaw auth failed before this post could be fetched",
   // Parallel-run outcomes backfilled by merge-task-results when a shard
   // worker never reported a task (crash/timeout) or discovery never expanded.
-  worker_missing_result: "A Local Agent task stopped before reporting this post",
+  worker_missing_result: "Local Agent shard did not write a result file for this post",
   discovery_not_expanded: "Candidate discovery did not complete",
 };
 
@@ -2940,23 +2941,44 @@ function liveSummarizeOutcome(
 }
 
 function missingShardText(task: FetchTaskLog): string | null {
-  const missingShard = task.evidence?.missingShard;
-  if (!missingShard || typeof missingShard !== "object") return null;
-  const shard = "shard" in missingShard ? String(missingShard.shard) : null;
-  const resultFile = "resultFile" in missingShard ? String(missingShard.resultFile) : null;
+  const missingShard = missingShardRecord(task);
+  const shard = missingShard?.shard;
+  const resultFile = missingShard?.resultFile;
   if (!shard && !resultFile) return null;
   const parts = [];
-  if (shard) parts.push(shard);
-  if (resultFile) parts.push(`missing ${resultFile}`);
+  if (typeof shard === "string" && shard.trim()) parts.push(shard.trim());
+  if (typeof resultFile === "string" && resultFile.trim()) parts.push(`missing ${resultFile.trim()}`);
   return parts.join(" · ");
 }
 
 function workerLogText(task: FetchTaskLog): string | null {
-  const missingShard = task.evidence?.missingShard;
-  if (!missingShard || typeof missingShard !== "object") return null;
-  if (!("workerLogTail" in missingShard)) return null;
+  const missingShard = missingShardRecord(task);
+  if (!missingShard || !("workerLogTail" in missingShard)) return null;
   const tail = missingShard.workerLogTail;
   return typeof tail === "string" && tail.trim() ? tail.trim() : null;
+}
+
+function missingWorkerLogText(task: FetchTaskLog): string | null {
+  if (task.failureReason !== "worker_missing_result") return null;
+  if (workerLogText(task)) return null;
+  if (!missingShardRecord(task)) return null;
+  return "No worker log tail was captured for this shard.";
+}
+
+function shardTimeoutText(task: FetchTaskLog): string | null {
+  const timeoutSeconds = Number(task.evidence?.shardTimeoutSeconds);
+  if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) return null;
+  return formatDuration(timeoutSeconds * 1000);
+}
+
+function shardSummaryText(task: FetchTaskLog): string | null {
+  const summary = task.evidence?.runShardSummary;
+  if (!Array.isArray(summary)) return null;
+  const text = summary
+    .map((entry) => String(entry ?? "").trim())
+    .filter(Boolean)
+    .join(" · ");
+  return text || null;
 }
 
 function discoveryExpansionText(evidence: Record<string, unknown> | null | undefined): string | null {
@@ -3110,6 +3132,9 @@ function TaskRow({
       : work.blurb;
   const missingShard = missingShardText(task);
   const workerLog = workerLogText(task);
+  const missingWorkerLog = missingWorkerLogText(task);
+  const shardTimeout = shardTimeoutText(task);
+  const shardSummary = shardSummaryText(task);
   const discoveryExpansion = discoveryState?.expansionText ?? discoveryExpansionText(task.evidence);
   const syncOutcome = (() => {
     const liveStatus = String(liveTask?.status ?? "").toLowerCase();
@@ -3138,7 +3163,10 @@ function TaskRow({
     compression ||
     failureReasonText(task) ||
     missingShard ||
-    workerLog;
+    workerLog ||
+    missingWorkerLog ||
+    shardTimeout ||
+    shardSummary;
   const syncStatusText = (() => {
     if (discoveryState?.synced) {
       return discoveryState.postTaskCount > 0
@@ -3245,10 +3273,28 @@ function TaskRow({
               value={<span className="mono">{missingShard}</span>}
             />
           ) : null}
+          {shardTimeout ? (
+            <FactRow
+              label="Shard timeout"
+              value={<span>{shardTimeout}</span>}
+            />
+          ) : null}
+          {shardSummary ? (
+            <FactRow
+              label="Shard summary"
+              value={<span className="mono">{shardSummary}</span>}
+            />
+          ) : null}
           {workerLog ? (
             <FactRow
               label="Local Agent log"
               value={<span className="mono">{workerLog}</span>}
+            />
+          ) : null}
+          {missingWorkerLog ? (
+            <FactRow
+              label="Local Agent log"
+              value={<span className="sync-panel-task-muted">{missingWorkerLog}</span>}
             />
           ) : null}
           {!hasSummaryDetail ? (

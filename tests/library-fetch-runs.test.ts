@@ -293,7 +293,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /function addScheduleInterval/);
   // Status pill colors must reuse existing tokens, not new colors.
   assert.match(panel, /var\(--signal\)/);
-  assert.match(panel, /var\(--warm\)/);
+  assert.match(panel, /var\(--status-partial\)/);
   assert.match(panel, /var\(--danger\)/);
   // Background refresh still calls the GET endpoint, but the panel no longer
   // renders its own manual Refresh button.
@@ -312,6 +312,12 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /role="tabpanel"/);
   assert.doesNotMatch(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
+  assert.match(panel, /digest-status-toggle \$\{statusToneClass\(fetchUpdateStatusTone\(status\)\)\}/);
+  const globals = source("src/app/globals.css");
+  assert.match(globals, /--status-partial:\s*oklch\(/);
+  assert.match(globals, /\.fb-chip\.is-partial\s*{[\s\S]*var\(--status-partial-soft\)/);
+  assert.match(globals, /\.digest-status-toggle::before\s*{[\s\S]*background:\s*currentColor/);
+  assert.match(globals, /\.digest-status-toggle:hover\s*{[\s\S]*color-mix\(in oklch, currentColor 7%, var\(--paper-strong\)\)/);
   assert.doesNotMatch(panel, /Fetch sources run history/);
   assert.doesNotMatch(panel, /function FetchRunList/);
   assert.doesNotMatch(panel, /className="sync-panel-run-list-shell"/);
@@ -328,6 +334,14 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks, fallbackTaskWorkerName\(liveProgress\)\)/);
   assert.match(panel, /function fallbackTaskWorkerName/);
   assert.match(panel, /Worker assignment pending/);
+  assert.match(panel, /worker_missing_result: "Local Agent shard did not write a result file for this post"/);
+  assert.match(panel, /function missingWorkerLogText/);
+  assert.match(panel, /No worker log tail was captured for this shard\./);
+  assert.match(panel, /function shardTimeoutText/);
+  assert.match(panel, /function shardSummaryText/);
+  assert.match(panel, /label="Shard timeout"/);
+  assert.match(panel, /label="Shard summary"/);
+  assert.match(panel, /label="Local Agent log"/);
   assert.doesNotMatch(panel, /Main Local Agent/);
   assert.doesNotMatch(panel, /Technical details/);
   assert.doesNotMatch(panel, /sync-panel-task-technical/);

@@ -260,9 +260,9 @@ export function statusStyle(status: "ok" | "partial" | "failed"): ChipStyle {
       };
     default:
       return {
-        background: "var(--warm-soft)",
-        color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
-        border: "color-mix(in oklch, var(--warm) 30%, var(--line))",
+        background: "var(--status-partial-soft)",
+        color: "color-mix(in oklch, var(--status-partial) 76%, var(--ink))",
+        border: "color-mix(in oklch, var(--status-partial) 34%, var(--line))",
       };
   }
 }

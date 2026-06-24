@@ -91,7 +91,7 @@ function toneClass(tone: StatusTone): string {
 
 function digestStatusTone(status: DigestUpdateStatus): StatusTone {
   if (status.key === "healthy") return "ok";
-  if (status.key === "needs-attention") return "failed";
+  if (status.key === "needs-attention" && status.label !== "Partial") return "failed";
   return "partial";
 }
 
