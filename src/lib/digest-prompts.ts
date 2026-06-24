@@ -288,7 +288,7 @@ Rules:
 
 - Cover every source that has candidate posts. A source may be covered by a
   combined line such as \`GitHub Trending and Product Hunt Top Products: ...\`.
-- Use the same source order as the digest: follow \`context.digest.order\` when provided; otherwise use Podcast RSS, YouTube, Blog, X/Twitter, GitHub Trending, Product Hunt Top Products, then Website. Within each source type, order sources by source name.
+- Use the same source order as the digest: follow \`context.digest.order\` when provided; otherwise use Podcast / Audio Feed, YouTube, Blog / Article Feed, X/Twitter, GitHub Trending, Product Hunt Top Products, then Website. Within each source type, order sources by source name.
 - Keep each source summary to 50 characters or fewer for Chinese/Japanese/Korean output, or 50 words or fewer for word-delimited languages.
 - Keep the entire \`headlineSummary\` at 1200 characters or fewer. Before writing
   the JSON, count or conservatively estimate the final string length and

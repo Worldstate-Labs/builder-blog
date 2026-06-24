@@ -21,7 +21,6 @@
 export type DetectedSourceId =
   | "x"
   | "blog"
-  | "feed"
   | "github_trending"
   | "product_hunt_top_products"
   | "youtube"
@@ -30,19 +29,20 @@ export type DetectedSourceId =
 
 export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
   x: "X/Twitter",
-  blog: "Blog",
-  feed: "Feed URL",
+  blog: "Blog / Article Feed",
   github_trending: "GitHub Trending",
   product_hunt_top_products: "Product Hunt Top Products",
   youtube: "YouTube",
-  podcast: "Podcast",
+  podcast: "Podcast / Audio Feed",
   website: "Website",
 };
 
 /**
  * Detect the probable source type from a raw user input. Returns null
  * when the input is too ambiguous to assign confidently (bare handles
- * without a host, plain RSS feed URLs without a known publisher).
+ * without a host, single words, etc.). Generic RSS/Atom URL shapes map
+ * to Blog / Article Feed; podcast feed content is verified server-side
+ * when the URL body is available.
  */
 export function detectSourceTypeFromValue(value: string): DetectedSourceId | null {
   const v = value.trim().toLowerCase();
@@ -65,7 +65,7 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   if (/(^|\/\/)music\.163\.com\/[^/]*\/?#?\/?djradio/.test(v)) return "podcast";
   if (/(^|\/\/)overcast\.fm\/itunes/.test(v)) return "podcast";
 
-  if (isLikelyFeedUrl(v)) return "feed";
+  if (isLikelyFeedUrl(v)) return "blog";
 
   // Substack / Medium / common blog hosts.
   if (/\.substack\.com(\/|$)/.test(v)) return "blog";
@@ -87,18 +87,15 @@ export function crossTypeWarning(
 ): { suggestId: DetectedSourceId; message: string } | null {
   const detected = detectSourceTypeFromValue(value);
   if (!detected || detected === declared) return null;
-  if (declared === "feed" && (detected === "blog" || detected === "podcast")) {
+  if (declared === "podcast" && detected === "blog" && isLikelyFeedUrl(value.trim().toLowerCase())) {
     return null;
   }
   if (detected === "website" && (declared === "blog" || declared === "podcast")) {
     return null;
   }
-  const suggestId = detected === "podcast" ? "feed" : detected;
-  const sourceLabel =
-    suggestId === "feed" ? DETECTED_SOURCE_LABELS[suggestId] : `${DETECTED_SOURCE_LABELS[suggestId]} URL`;
   return {
-    suggestId,
-    message: `This looks like a ${sourceLabel}. Switch source type?`,
+    suggestId: detected,
+    message: `This looks like a ${DETECTED_SOURCE_LABELS[detected]} URL. Switch source type?`,
   };
 }
 

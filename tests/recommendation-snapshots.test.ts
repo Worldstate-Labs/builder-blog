@@ -319,7 +319,7 @@ test("digest read action links to post detail even when digest text omits a sour
     createElement(DigestContent, {
       items: [
         digestItem({
-          section: { key: "podcast", label: "Podcast RSS", sourceType: "podcast" },
+          section: { key: "podcast", label: "Podcast / Audio Feed", sourceType: "podcast" },
           source: {
             entityId: "entity_mad",
             name: "The MAD Podcast with Matt Turck",

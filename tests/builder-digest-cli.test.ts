@@ -2508,9 +2508,9 @@ test("render-digest applies default source order to digest sections and headline
     ...digestRenderContext(),
     digest: {},
     sources: {
-      podcast: { id: "podcast", label: "Podcast RSS" },
+      podcast: { id: "podcast", label: "Podcast / Audio Feed" },
       youtube: { id: "youtube", label: "YouTube" },
-      blog: { id: "blog", label: "Blog" },
+      blog: { id: "blog", label: "Blog / Article Feed" },
       x: { id: "x", label: "X/Twitter" },
       github_trending: { id: "github_trending", label: "GitHub Trending" },
       product_hunt_top_products: {
@@ -2559,9 +2559,9 @@ test("render-digest applies default source order to digest sections and headline
 
   const headings = [...new Set(rendered.items.map((item) => item.section.label))];
   assert.deepEqual(headings, [
-    "Podcast RSS",
+    "Podcast / Audio Feed",
     "YouTube",
-    "Blog",
+    "Blog / Article Feed",
     "X/Twitter",
     "GitHub Trending",
     "Product Hunt Top Products",

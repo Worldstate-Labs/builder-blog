@@ -84,7 +84,7 @@ const ITEMS = [
   },
   {
     order: 2,
-    section: { key: "podcast", label: "Podcast RSS", sourceType: "podcast" },
+    section: { key: "podcast", label: "Podcast / Audio Feed", sourceType: "podcast" },
     source: {
       entityId: "cognitive-revolution",
       name: "The Cognitive Revolution",

@@ -18,7 +18,7 @@
     },
     {
       "id": "blog",
-      "label": "Blog",
+      "label": "Blog / Article Feed",
       "builderKind": "BLOG",
       "feedItemKinds": [
         "BLOG_POST"
@@ -84,7 +84,7 @@
     },
     {
       "id": "podcast",
-      "label": "Podcast RSS",
+      "label": "Podcast / Audio Feed",
       "builderKind": "PODCAST",
       "feedItemKinds": [
         "PODCAST_EPISODE"

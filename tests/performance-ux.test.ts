@@ -4339,7 +4339,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(sourceInputs, /github_trending/);
   assert.match(sourceInputs, /product_hunt_top_products/);
   assert.match(sourceInputs, /export function placeholderForSourceId/);
-  assert.match(sourceInputs, /Apple Podcasts URL or RSS feed URL/);
+  assert.match(sourceInputs, /Apple Podcasts URL or podcast RSS feed/);
   assert.doesNotMatch(sourceInputs, /podcasts\.apple\.com\/\.\.\.|id\.\.\./);
   assert.doesNotMatch(addBuilderForm, /const FIXED_SOURCE_VALUE_BY_ID/);
   assert.doesNotMatch(addBuilderForm, /function placeholderForSourceId/);
@@ -5526,7 +5526,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /<details className="settings-rules-panel fb-panel" open>[\s\S]*Source fetching rules/);
   assert.equal((settingsPage.match(/<details className="settings-rules-panel fb-panel" open>/g) ?? []).length, 1);
   assert.doesNotMatch(settingsPage, /Fetch sources rules|Source fetch rules/);
-  assert.match(settingsPage, /Fetch and summarize source posts\./);
+  assert.match(settingsPage, /Fetch and summarize source posts\. Blog \/ Article Feed covers article pages and feeds; Podcast \/ Audio Feed covers podcast pages and audio feeds\./);
   assert.doesNotMatch(settingsPage, /Rules for fetching and summarizing source posts\.|Runs before AI Digest: discover source posts/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /ADMIN_DIGEST_PROMPT_COUNT/);
@@ -5553,6 +5553,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /Digest composition/);
   assert.match(settingsPage, /className="settings-rules-body"/);
   assert.match(settingsPage, /className="settings-config-form settings-config-form--common"/);
+  assert.match(adminSourceTypeManager, /settingsSourceTypeLabel/);
+  assert.match(adminSourceTypeManager, /Blog \/ Article Feed/);
+  assert.match(adminSourceTypeManager, /Podcast \/ Audio Feed/);
   assert.match(settingsPage, /<Suspense fallback=\{<SettingsRulesSkeleton \/>/);
   assert.match(settingsPage, /@\/components\/SettingsRulesSkeleton/);
   assert.doesNotMatch(settingsPage, /function SourceTypeConfigSkeleton/);

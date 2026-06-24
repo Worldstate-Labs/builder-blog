@@ -53,7 +53,6 @@ import {
 } from "@/lib/library-hub";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
-import { FEED_SOURCE_ID } from "@/lib/source-inputs";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 
 type BuilderWithCount = {
@@ -690,17 +689,16 @@ function serializeAgentTokens(
 function sourceOptionsForForms(
   sources: Array<{ id: string; label: string }>,
 ) {
-  return sources.map((source) =>
-    source.id === "podcast"
-      ? {
-          id: FEED_SOURCE_ID,
-          label: "Feed URL",
-        }
-      : {
-          id: source.id,
-          label: source.label,
-        },
-  );
+  return sources.map((source) => ({
+    id: source.id,
+    label: formSourceTypeLabel(source),
+  }));
+}
+
+function formSourceTypeLabel(source: { id: string; label: string }) {
+  if (source.id === "blog") return "Blog / Article Feed";
+  if (source.id === "podcast") return "Podcast / Audio Feed";
+  return source.label;
 }
 
 async function FetchSourcesSection({

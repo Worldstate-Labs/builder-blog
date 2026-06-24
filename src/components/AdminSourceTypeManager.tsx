@@ -150,6 +150,7 @@ function SourceTypeCard({
     [baseline, canEditQualityGates],
   );
   const dirty = JSON.stringify(editableDraft) !== JSON.stringify(editableBaseline);
+  const displayLabel = settingsSourceTypeLabel(config);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -261,7 +262,7 @@ function SourceTypeCard({
           description="Source-specific extraction instructions."
         >
           <OptionalMarkdownField
-            ariaLabel={`${config.label} fetch prompt`}
+            ariaLabel={`${displayLabel} fetch prompt`}
             buttonLabel="Add fetch prompt"
             emptyText="No fetch prompt set."
             expanded={fetchPromptExpanded}
@@ -279,7 +280,7 @@ function SourceTypeCard({
           description="Defines each post summary; the run prompt sets language."
         >
           <MarkdownEditor
-            ariaLabel={`${config.label} summary prompt`}
+            ariaLabel={`${displayLabel} summary prompt`}
             height={420}
             placeholder={SUMMARY_PROMPT_PLACEHOLDER}
             value={draft.summaryPromptBody}
@@ -428,7 +429,7 @@ function CardHeader({
   return (
     <div className="source-type-config-header">
       <SourceBadge decorative showLabel={false} sourceType={config.sourceId} />
-      <span className="source-type-config-title">{config.label}</span>
+      <span className="source-type-config-title">{settingsSourceTypeLabel(config)}</span>
       {dirty ? (
         <span
           className="source-type-config-dirty"
@@ -440,4 +441,10 @@ function CardHeader({
       ) : null}
     </div>
   );
+}
+
+function settingsSourceTypeLabel(config: Pick<AdminSourceTypeConfig, "sourceId" | "label">) {
+  if (config.sourceId === "blog") return "Blog / Article Feed";
+  if (config.sourceId === "podcast") return "Podcast / Audio Feed";
+  return config.label;
 }

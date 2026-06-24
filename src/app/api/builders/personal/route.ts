@@ -101,7 +101,13 @@ export async function POST(request: Request) {
     };
   });
   if (!probe.ok) {
-    return NextResponse.json({ error: probe.hardError }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: probe.hardError,
+        ...(probe.suggestId ? { suggestId: probe.suggestId } : {}),
+      },
+      { status: 400 },
+    );
   }
   // Gate: warnings flagged as requiresConfirmation must be acknowledged
   // by the client before we persist. The client re-POSTs with

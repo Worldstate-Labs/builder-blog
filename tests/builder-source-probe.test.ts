@@ -140,6 +140,38 @@ test("probe accepts direct blog RSS without requiring page-scrape confirmation",
   }
 });
 
+test("probe rejects podcast RSS pasted as Blog / Article Feed with a source-type suggestion", async () => {
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      `<?xml version="1.0"?>
+      <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+        <channel>
+          <title>Example Podcast</title>
+          <item>
+            <title>Episode one</title>
+            <enclosure url="https://cdn.example.com/e1.mp3" type="audio/mpeg" />
+          </item>
+        </channel>
+      </rss>`,
+      { status: 200, headers: { "content-type": "application/rss+xml" } },
+    );
+  try {
+    const outcome = await probeAndEnrichSource({
+      sourceType: "blog",
+      sourceUrl: "https://podcast.example.com/rss",
+      fetchUrl: null,
+      handle: null,
+    });
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.hardError, "This looks like a Podcast / Audio Feed. Switch source type?");
+    assert.equal(outcome.suggestId, "podcast");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("probe requires confirmation when an HTML page cannot be verified", async () => {
   const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
   const originalFetch = globalThis.fetch;
@@ -192,6 +224,7 @@ test("POST route maps a hard probe failure to a 400 with the hardError", () => {
   // user-facing hardError reason.
   assert.match(POST_ROUTE, /probe\.ok/);
   assert.match(POST_ROUTE, /probe\.hardError/);
+  assert.match(POST_ROUTE, /probe\.suggestId/);
   assert.match(POST_ROUTE, /status:\s*400/);
 });
 
@@ -213,6 +246,7 @@ test("PATCH route mirrors POST: probe hard → 400, soft → combined warning", 
   assert.match(PATCH_ROUTE, /probeAndEnrichSource/);
   assert.match(PATCH_ROUTE, /probe\.ok/);
   assert.match(PATCH_ROUTE, /probe\.hardError/);
+  assert.match(PATCH_ROUTE, /probe\.suggestId/);
   assert.match(PATCH_ROUTE, /status:\s*400/);
   assert.match(PATCH_ROUTE, /combineWarnings/);
   assert.match(PATCH_ROUTE, /resolution\.warning/);

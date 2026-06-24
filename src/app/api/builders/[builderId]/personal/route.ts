@@ -154,7 +154,13 @@ export async function PATCH(request: Request, { params }: Params) {
     };
   });
   if (!probe.ok) {
-    return NextResponse.json({ error: probe.hardError }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: probe.hardError,
+        ...(probe.suggestId ? { suggestId: probe.suggestId } : {}),
+      },
+      { status: 400 },
+    );
   }
   if (probe.requiresConfirmation && !parsed.data.confirmedWarning) {
     return NextResponse.json(

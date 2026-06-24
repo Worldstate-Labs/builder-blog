@@ -22,6 +22,7 @@
  * shared SSRF guard, and with the same FollowBriefBot User-Agent.
  */
 import { validatePublicHttpUrl } from "@/lib/safe-url";
+import type { DetectedSourceId } from "@/lib/source-value-detect";
 
 export type BuilderEnrichment = {
   name?: string;
@@ -38,6 +39,8 @@ export type ProbeOutcome = {
   ok: boolean;
   /** Present iff ok=false; user-facing reason the add should be rejected. */
   hardError?: string;
+  /** Optional source-type suggestion for hard mismatches discovered during probing. */
+  suggestId?: DetectedSourceId;
   /**
    * Present iff ok=true and the source was reachable but degraded
    * (slow, partial, bot-walled); surfaced as info to the UI but doesn't
@@ -376,6 +379,14 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
     };
   }
   if (input.sourceType === "blog" && looksLikeXmlFeed(contentType, html)) {
+    if (looksLikePodcastXmlFeed(html)) {
+      return {
+        ok: false,
+        hardError: "This looks like a Podcast / Audio Feed. Switch source type?",
+        suggestId: "podcast",
+        enrichment: {},
+      };
+    }
     const title = extractFeedTitleFromXml(html);
     return {
       ok: true,
@@ -712,6 +723,14 @@ function looksLikeXmlFeed(contentType: string, body: string) {
     contentType.startsWith("text/xml") ||
     trimmed.startsWith("<?xml") ||
     /^<(?:rss|feed)\b/i.test(trimmed)
+  );
+}
+
+function looksLikePodcastXmlFeed(body: string) {
+  return (
+    /xmlns:itunes=|<itunes:/i.test(body) ||
+    /<enclosure\b[^>]*\btype=["']audio\//i.test(body) ||
+    /<podcast:/i.test(body)
   );
 }
 

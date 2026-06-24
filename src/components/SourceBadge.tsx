@@ -25,7 +25,7 @@ export function SourceBadge({
   const base = builder ? sourceDisplayForBuilder(builder) : sourceDisplayForType(sourceType);
   // For podcast builders, derive a platform-specific label from the URL
   // so users see "Apple Podcasts" / "Spotify" / "小宇宙" instead of the
-  // generic "Podcast RSS". Underlying sourceType is still `podcast` —
+  // generic "Podcast / Audio Feed". Underlying sourceType is still `podcast` —
   // these platforms are all just directories over the same RSS feed.
   const source =
     builder && base.id === "podcast"
@@ -76,7 +76,7 @@ function podcastPlatformLabel(builder: SourceBadgeBuilder) {
   if (haystack.includes("music.amazon")) return "Amazon Music";
   if (haystack.includes("overcast.fm")) return "Overcast";
   if (haystack.includes("pca.st") || haystack.includes("pocketcasts.com")) return "Pocket Casts";
-  return "Podcast RSS";
+  return "Podcast / Audio Feed";
 }
 
 function sameDisplayLabel(a: string, b: string | null | undefined) {

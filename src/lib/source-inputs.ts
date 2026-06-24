@@ -2,7 +2,6 @@ export const GITHUB_TRENDING_SOURCE_ID = "github_trending";
 export const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 export const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
 export const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
-export const FEED_SOURCE_ID = "feed";
 
 export const FIXED_SOURCE_VALUE_BY_ID: Record<string, string> = {
   [GITHUB_TRENDING_SOURCE_ID]: GITHUB_TRENDING_URL,
@@ -14,9 +13,8 @@ const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
   blog: "https://example.com/blog or https://example.com/feed.xml",
   github_trending: GITHUB_TRENDING_URL,
   product_hunt_top_products: PRODUCT_HUNT_TOP_PRODUCTS_URL,
-  feed: "RSS, Atom, or Apple Podcasts URL",
   youtube: "https://youtube.com/@deepmind",
-  podcast: "Apple Podcasts URL or RSS feed URL",
+  podcast: "Apple Podcasts URL or podcast RSS feed",
   website: "https://example.com",
 };
 

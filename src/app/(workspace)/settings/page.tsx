@@ -81,7 +81,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source fetching rules</h3>
             <p className="settings-rules-summary-desc">
-              Fetch and summarize source posts.
+              Fetch and summarize source posts. Blog / Article Feed covers article pages and feeds; Podcast / Audio Feed covers podcast pages and audio feeds.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">

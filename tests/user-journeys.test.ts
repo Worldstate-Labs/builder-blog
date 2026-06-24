@@ -32,7 +32,6 @@ import {
   personalSourceIdentityKeys,
 } from "../src/lib/personal-source-identity";
 import { resolvePersonalBuilderInput } from "../src/lib/personal-builder-input";
-import { FEED_SOURCE_ID } from "../src/lib/source-inputs";
 import {
   candidateSearchTerms,
   didYouMeanSearch,
@@ -191,73 +190,38 @@ test("manual builder input derives canonical fields from one handle or URL", asy
   });
 });
 
-test("Feed URL input routes article RSS to the blog source type", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(
-      `<?xml version="1.0"?>
-      <rss version="2.0">
-        <channel>
-          <title>Example Articles</title>
-          <item><title>Post one</title></item>
-        </channel>
-      </rss>`,
-      { status: 200, headers: { "content-type": "application/rss+xml" } },
-    );
-  try {
-    const result = await resolvePersonalBuilderInput({
-      displayName: "",
-      sourceType: FEED_SOURCE_ID,
-      sourceValue: "https://example.com/feed.xml",
-    });
-    assert.ok(result.ok);
-    assert.deepEqual(result.value, {
-      kind: BuilderKind.BLOG,
-      sourceType: "blog",
-      name: "Example Articles",
-      handle: null,
-      sourceUrl: "https://example.com/feed.xml",
-      fetchUrl: "https://example.com/feed.xml",
-    });
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+test("Blog / Article Feed input accepts article feed URLs as the blog source type", async () => {
+  const result = await resolvePersonalBuilderInput({
+    displayName: "",
+    sourceType: "blog",
+    sourceValue: "https://example.com/feed.xml",
+  });
+  assert.ok(result.ok);
+  assert.deepEqual(result.value, {
+    kind: BuilderKind.BLOG,
+    sourceType: "blog",
+    name: "example.com",
+    handle: null,
+    sourceUrl: "https://example.com/feed.xml",
+    fetchUrl: null,
+  });
 });
 
-test("Feed URL input routes podcast RSS to the podcast source type", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(
-      `<?xml version="1.0"?>
-      <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
-        <channel>
-          <title>Example Podcast</title>
-          <item>
-            <title>Episode one</title>
-            <enclosure url="https://cdn.example.com/e1.mp3" type="audio/mpeg" />
-          </item>
-        </channel>
-      </rss>`,
-      { status: 200, headers: { "content-type": "application/rss+xml" } },
-    );
-  try {
-    const result = await resolvePersonalBuilderInput({
-      displayName: "",
-      sourceType: FEED_SOURCE_ID,
-      sourceValue: "https://podcast.example.com/rss",
-    });
-    assert.ok(result.ok);
-    assert.deepEqual(result.value, {
-      kind: BuilderKind.PODCAST,
-      sourceType: "podcast",
-      name: "Example Podcast",
-      handle: null,
-      sourceUrl: "https://podcast.example.com/rss",
-      fetchUrl: "https://podcast.example.com/rss",
-    });
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+test("Podcast / Audio Feed input accepts podcast feed URLs as the podcast source type", async () => {
+  const result = await resolvePersonalBuilderInput({
+    displayName: "",
+    sourceType: "podcast",
+    sourceValue: "https://podcast.example.com/rss",
+  });
+  assert.ok(result.ok);
+  assert.deepEqual(result.value, {
+    kind: BuilderKind.PODCAST,
+    sourceType: "podcast",
+    name: "podcast.example.com",
+    handle: null,
+    sourceUrl: "https://podcast.example.com/rss",
+    fetchUrl: null,
+  });
 });
 
 test("source value detection recognizes feed-shaped URLs for automatic source switching", () => {
@@ -266,15 +230,16 @@ test("source value detection recognizes feed-shaped URLs for automatic source sw
   assert.equal(detectSourceTypeFromValue("https://youtube.com/@openai"), "youtube");
   assert.equal(detectSourceTypeFromValue("https://github.com/trending?since=daily"), "github_trending");
   assert.equal(detectSourceTypeFromValue("https://www.producthunt.com/"), "product_hunt_top_products");
-  assert.equal(detectSourceTypeFromValue("https://example.com/feed.xml"), "feed");
-  assert.equal(detectSourceTypeFromValue("https://example.com/rss"), "feed");
-  assert.equal(detectSourceTypeFromValue("https://example.com/?format=atom"), "feed");
+  assert.equal(detectSourceTypeFromValue("https://example.com/feed.xml"), "blog");
+  assert.equal(detectSourceTypeFromValue("https://example.com/rss"), "blog");
+  assert.equal(detectSourceTypeFromValue("https://example.com/?format=atom"), "blog");
   assert.equal(detectSourceTypeFromValue("https://claude.com/blog"), "blog");
   assert.equal(detectSourceTypeFromValue("https://example.com"), "website");
   assert.equal(detectSourceTypeFromValue("https://podcasts.apple.com/us/podcast/example/id123"), "podcast");
-  assert.deepEqual(crossTypeWarning("blog", "https://example.com/feed.xml"), {
-    suggestId: "feed",
-    message: "This looks like a Feed URL. Switch source type?",
+  assert.equal(crossTypeWarning("podcast", "https://podcast.example.com/rss"), null);
+  assert.deepEqual(crossTypeWarning("website", "https://example.com/feed.xml"), {
+    suggestId: "blog",
+    message: "This looks like a Blog / Article Feed URL. Switch source type?",
   });
 });
 
@@ -3279,7 +3244,7 @@ test("source registry centralizes current source categories", () => {
       sourceUrl: "https://example.com/blog",
       fetchUrl: null,
     }),
-    "Blog",
+    "Blog / Article Feed",
   );
 });
 
