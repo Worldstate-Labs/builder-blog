@@ -62,8 +62,11 @@ test("probe classifies blog/website responses with 404 / 410 as hard reject", ()
   // 404 and 410 are gone-for-good.
   assert.match(PROBE_SOURCE, /404/);
   assert.match(PROBE_SOURCE, /410/);
-  // 403 / 429 / 5xx are degraded (Could not reach the page).
+  // 403 / 429 / 5xx are degraded but must require confirmation
+  // instead of silently adding an unverified source.
   assert.match(PROBE_SOURCE, /Could not reach the page/);
+  assert.match(PROBE_SOURCE, /Confirm the URL opens in your browser before saving it\./);
+  assert.match(PROBE_SOURCE, /requiresConfirmation:\s*true/);
   assert.doesNotMatch(PROBE_SOURCE, /Couldn't reach/);
   assert.match(PROBE_SOURCE, /The page could not be found/);
   assert.match(PROBE_SOURCE, /Could not verify the page/);
@@ -78,6 +81,55 @@ test("probe user-facing status copy avoids transport codes", () => {
     PROBE_SOURCE,
     /Got HTTP \$\{response\.status\}|returned HTTP \$\{response\.status\}|\(HTTP \$\{response\.status\}\)|HTTP 404/,
   );
+});
+
+test("probe treats soft-404 HTML pages as hard not-found failures", () => {
+  assert.match(PROBE_SOURCE, /function\s+isHtmlNotFoundPage/);
+  assert.match(PROBE_SOURCE, /extractTitleTag\(html\)/);
+  assert.match(PROBE_SOURCE, /extractMetaContent\(html,\s*"og:title"\)/);
+  assert.match(PROBE_SOURCE, /firstHeadingText\(html,\s*"h1"\)/);
+  assert.match(PROBE_SOURCE, /isHtmlNotFoundPage\(html\)[\s\S]*hardError:\s*"The page could not be found\."/);
+});
+
+test("probe rejects a 200 HTML page whose visible title is not found", async () => {
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      '<!doctype html><html><head><title>Page not found</title></head><body><h1>Page not found</h1></body></html>',
+      { status: 200, headers: { "content-type": "text/html" } },
+    );
+  try {
+    const outcome = await probeAndEnrichSource({
+      sourceType: "blog",
+      sourceUrl: "https://example.com/missing",
+      fetchUrl: null,
+      handle: null,
+    });
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.hardError, "The page could not be found.");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("probe requires confirmation when an HTML page cannot be verified", async () => {
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("", { status: 403 });
+  try {
+    const outcome = await probeAndEnrichSource({
+      sourceType: "blog",
+      sourceUrl: "https://example.com/bot-walled",
+      fetchUrl: null,
+      handle: null,
+    });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.requiresConfirmation, true);
+    assert.match(outcome.warning ?? "", /Confirm the URL opens in your browser/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("probe respects the 4s timeout and the standard User-Agent", () => {

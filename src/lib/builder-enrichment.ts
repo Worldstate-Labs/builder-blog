@@ -54,9 +54,8 @@ export type ProbeOutcome = {
   /**
    * When true, the warning is significant enough that the route should
    * surface it as a confirmation prompt BEFORE persisting — e.g. a
-   * blog with no RSS feed (fetch still works via the agent, but the
-   * user should know they're opting into the slower path). Transient
-   * warnings (network timeouts, 503s) don't set this flag.
+   * blog with no RSS feed, or a page the server could not verify even
+   * though it may still be reachable from the user's browser / Local Agent.
    */
   requiresConfirmation?: boolean;
   /** What we managed to pull (name, avatarUrl). May be empty. */
@@ -352,14 +351,18 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: "Could not reach the page. Local Agent retries at sync time.",
+      warning:
+        "Could not reach the page. Confirm the URL opens in your browser before saving it.",
+      requiresConfirmation: true,
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: "Could not verify the page. Local Agent retries at sync time.",
+      warning:
+        "Could not verify the page. Confirm the URL opens in your browser before saving it.",
+      requiresConfirmation: true,
       enrichment: {},
     };
   }
@@ -368,6 +371,13 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
     return {
       ok: true,
       warning: "The page returned an empty body. Local Agent retries at sync time.",
+      enrichment: {},
+    };
+  }
+  if (isHtmlNotFoundPage(html)) {
+    return {
+      ok: false,
+      hardError: "The page could not be found.",
       enrichment: {},
     };
   }
@@ -651,6 +661,35 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+function isHtmlNotFoundPage(html: string) {
+  const title = extractTitleTag(html);
+  const ogTitle = extractMetaContent(html, "og:title");
+  const h1 = firstHeadingText(html, "h1");
+  return [title, ogTitle, h1].some((value) => {
+    const normalized = normalizeVisibleText(value);
+    return (
+      /^(?:404\s*)?(?:page\s+)?not\s+found[.!]?$/i.test(normalized) ||
+      /^404\b.*\bnot\s+found\b/i.test(normalized)
+    );
+  });
+}
+
+function firstHeadingText(html: string, tagName: "h1" | "h2") {
+  const pattern = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]{0,240}?)<\\/${tagName}>`, "i");
+  const match = html.match(pattern);
+  return match?.[1] ? stripHtmlTags(match[1]) : null;
+}
+
+function stripHtmlTags(value: string) {
+  return decodeHtmlEntities(value.replace(/<[^>]+>/g, " "));
+}
+
+function normalizeVisibleText(value: string | null | undefined) {
+  return stripHtmlTags(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
