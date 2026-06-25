@@ -558,7 +558,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-worker-group"/);
   assert.doesNotMatch(panel, /className="mono sync-panel-task-worker-meta"/);
   assert.match(panel, /className="sync-panel-task-source-group"/);
-  assert.match(panel, /className="mono sync-panel-task-source-meta"/);
+  assert.match(panel, /className="sync-panel-task-source-meta"/);
+  assert.doesNotMatch(panel, /className="mono sync-panel-task-source-meta"/);
   assert.doesNotMatch(panel, /className="sync-panel-status-brief"/);
   assert.match(panel, /className="sync-panel-layout is-log-only"/);
   assert.doesNotMatch(panel, /<dt>Schedule enabled<\/dt>/);

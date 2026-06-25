@@ -189,8 +189,8 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="workspace\.sources" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="nav\.hub" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
@@ -497,7 +497,7 @@ test("public entry pages use the centered product layout", () => {
   const authButtons = source("src/components/AuthButtons.tsx");
   const globals = source("src/app/globals.css");
 
-  assert.match(authButtons, /`Opening \$\{label\}`/);
+  assert.match(authButtons, /t\("auth\.opening", \{ provider: label \}\)/);
   assert.doesNotMatch(authButtons, /Opening \$\{label\}\.\.\./);
   assert.match(landingPage, /<PublicHeader current="home" \/>/);
   assert.match(publicHeader, /className="fb-top fb-public-top"/);
@@ -825,7 +825,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /className="user-menu-popover" id=\{popoverId\}/);
   assert.match(userMenu, /className="user-menu-icon"/);
   assert.doesNotMatch(userMenu, /h-4 w-4|w-full text-left/);
-  assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
+  assert.match(userMenu, /t\("nav\.accountMenuForEmail", \{ email \}\)[\s\S]*t\("nav\.accountMenuForName", \{ name \}\)/);
   assert.match(userMenu, /detailsRef\.current\.open = false/);
   assert.match(userMenu, /const summaryRef = useRef<HTMLElement>\(null\)/);
   assert.match(userMenu, /document\.addEventListener\("mousedown", handlePointerDown\)/);
@@ -1256,7 +1256,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(mobileSearchLink, /const active = pathname === "\/search" \|\| returnTo\.startsWith\("\/search"\)/);
   assert.match(mobileSearchLink, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(mobileSearchLink, /data-active=\{active \? "true" : undefined\}/);
-  assert.match(mobileSearchLink, /aria-label="Search"/);
+  assert.match(mobileSearchLink, /aria-label=\{t\("common\.search"\)\}/);
   assert.match(appNav, /const returnTo = postReturnToFromPath\(pathname, searchParams\.get\("returnTo"\)\)/);
   assert.doesNotMatch(appNav, /returnTo\.startsWith\("\/recommendations"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
@@ -2326,7 +2326,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-source-group-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-details" open/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-summary"/);
-  assert.match(fetchLogPanel, /className="mono sync-panel-task-source-meta"/);
+  assert.match(fetchLogPanel, /className="sync-panel-task-source-meta"/);
+  assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-task-source-meta"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-live-dot"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-card fb-task"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-summary fb-task-summary"/);
@@ -2578,12 +2579,15 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-run-card-head\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.sync-panel-run-card-title\s*{[\s\S]*font-weight:\s*650/);
   assert.match(globals, /\.sync-panel-log-dialog-head\s*{[\s\S]*min-height:\s*2\.75rem/);
+  assert.match(globals, /\.sync-panel-log-dialog\s*{[\s\S]*font-family:\s*var\(--font-geist-sans\),\s*system-ui,\s*sans-serif/);
+  assert.match(globals, /\.sync-panel-log-dialog-head h3\s*{[\s\S]*font-weight:\s*var\(--text-role-title-weight\)/);
   assert.match(globals, /\.sync-panel-log-dialog-body > \.sync-panel-run-card\s*{[\s\S]*background:\s*transparent[\s\S]*border:\s*0[\s\S]*padding:\s*0/);
   assert.match(globals, /\.sync-panel-log-dialog-body > \.sync-panel-run-card \.sync-panel-run-card-title\s*{[\s\S]*margin:\s*0 0 0\.55rem/);
   assert.match(globals, /@media \(max-width: 640px\)[\s\S]*\.sync-panel-log-dialog-backdrop\s*{[\s\S]*align-items:\s*flex-start/);
   assert.match(globals, /\.sync-panel-run-card-live-dot\s*{[\s\S]*animation:\s*sync-panel-live-dot-pulse/);
   assert.match(globals, /@keyframes sync-panel-live-dot-pulse/);
-  assert.match(globals, /\.sync-panel-run-card-summary\s*{[\s\S]*line-height:\s*1\.55/);
+  assert.match(globals, /\.sync-panel-run-card-summary\s*{[\s\S]*line-height:\s*1\.5/);
+  assert.match(globals, /\.sync-panel-task-source-stat strong\s*{[\s\S]*font-family:\s*var\(--font-geist-mono\),\s*monospace/);
   assert.match(globals, /\.sync-panel-run-card-details\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.sync-panel-run-card-details-summary::before\s*{[\s\S]*transform:\s*rotate\(-45deg\)/);
   assert.match(globals, /\.sync-panel-run-card-details-count\s*{[\s\S]*border-radius:\s*999px/);
@@ -2850,13 +2854,13 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(buildersPage, /SourcesTabShell/);
   assert.match(buildersPage, /ariaLabel="Sources and AI Digest tabs"/);
   assert.doesNotMatch(buildersPage, /ariaLabel="Sources and AI Digest"/);
-  assert.match(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders\?tab=fetch"/);
+  assert.match(buildersPage, /label:\s*<I18nText id="tabs\.sources" \/>[\s\S]*href:\s*"\/builders\?tab=fetch"/);
   assert.match(buildersPage, /panelId:\s*"sources-panel-fetch"/);
   assert.match(buildersPage, /tabId:\s*"sources-tab-fetch"/);
   assert.doesNotMatch(buildersPage, /label:\s*"Source Library"/);
   assert.doesNotMatch(buildersPage, /label:\s*"Fetch"[\s\S]*href:\s*"\/builders"/);
   assert.match(buildersPage, /selectedTab === "digest"/);
-  assert.match(buildersPage, /label:\s*"AI Digest"[\s\S]*href:\s*"\/builders\?tab=digest"/);
+  assert.match(buildersPage, /label:\s*<I18nText id="tabs\.aiDigest" \/>[\s\S]*href:\s*"\/builders\?tab=digest"/);
   assert.match(buildersPage, /panelId:\s*"sources-panel-digest"/);
   assert.match(buildersPage, /tabId:\s*"sources-tab-digest"/);
   assert.match(buildersPage, /const selectedTabItem = selectedSourcesTabItem\(selectedTab\)/);
@@ -3535,7 +3539,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /<span className="sr-only">Loading AI Digest controls<\/span>/);
   assert.doesNotMatch(buildersPage, /Loading AI Digest settings/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Manage your sources, AI Digests, and source subscriptions\./);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.sources" \/>\}[\s\S]*description=\{<I18nText id="workspace\.sourcesDesc" \/>\}/);
   assert.doesNotMatch(buildersPage, /Follow sources, run Fetch sources, and choose what feeds AI Digest issues and Following posts\.|choose what feeds AI Digest issues and Following posts\./);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
@@ -4009,7 +4013,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Manage your sources, AI Digests, and source subscriptions\./);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.sources" \/>\}[\s\S]*description=\{<I18nText id="workspace\.sourcesDesc" \/>\}/);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
@@ -5205,7 +5209,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.hub-card-action-button:disabled\s*{[\s\S]*cursor:\s*wait/);
   assert.match(globals, /\.hub-card-action-button\.is-imported\s*{/);
   const importedActionRule = cssRule(globals, ".hub-card-action-button.is-imported");
-  assert.match(importedActionRule, /background:\s*color-mix\(in oklch, var\(--paper-strong\) 72%, transparent\)/);
+  assert.match(importedActionRule, /background:\s*var\(--surface\)/);
   assert.match(importedActionRule, /border-color:\s*var\(--line\)/);
   assert.match(importedActionRule, /color:\s*var\(--ink\)/);
   assert.doesNotMatch(importedActionRule, /--signal/);

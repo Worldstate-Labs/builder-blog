@@ -2489,7 +2489,7 @@ function DetailsBody({
                                 <span className="sync-panel-task-source-name">{group.name}</span>
                                 <span
                                   aria-label={`${group.name}: ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
-                                  className="mono sync-panel-task-source-meta"
+                                  className="sync-panel-task-source-meta"
                                 >
                                   <span className="sync-panel-task-source-stat">
                                     <strong>{formatCount(stats.planned)}</strong> planned
