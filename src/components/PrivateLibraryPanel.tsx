@@ -8,6 +8,7 @@ import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
 } from "@/lib/builder-library-events";
+import type { SourceCandidate } from "@/lib/source-candidates";
 
 type SourceOption = {
   id: string;
@@ -21,6 +22,7 @@ export function PrivateLibraryPanel({
   hideHeader = false,
   title,
   sourceOptions,
+  sourceCandidates,
   visibilityToggle,
   children,
 }: {
@@ -30,6 +32,7 @@ export function PrivateLibraryPanel({
   hideHeader?: boolean;
   title: string;
   sourceOptions: SourceOption[];
+  sourceCandidates: SourceCandidate[];
   visibilityToggle?: ReactNode;
   children: ReactNode;
 }) {
@@ -94,7 +97,10 @@ export function PrivateLibraryPanel({
           addPanel={
             addOpen ? (
               <div className="add-source-panel fb-panel" id={addPanelId}>
-                <AddBuilderForm sourceOptions={sourceOptions} />
+                <AddBuilderForm
+                  sourceCandidates={sourceCandidates}
+                  sourceOptions={sourceOptions}
+                />
               </div>
             ) : null
           }

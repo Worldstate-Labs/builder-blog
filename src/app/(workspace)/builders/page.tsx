@@ -54,6 +54,7 @@ import {
 } from "@/lib/library-hub";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
+import { ensureSourceCandidateLibraryFromAdminSources } from "@/lib/source-candidate-library";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 
 type BuilderWithCount = {
@@ -567,9 +568,10 @@ async function loadBuildersPageData() {
       description: ownSharedLibrary.description,
     });
   }
-  const [latestPostCreatedAtByBuilderId, mergedSourceDefinitions] = await Promise.all([
+  const [latestPostCreatedAtByBuilderId, mergedSourceDefinitions, sourceCandidates] = await Promise.all([
     latestPostCreationTimes(poolBuilderIds),
     getMergedSourceDefinitions(),
+    ensureSourceCandidateLibraryFromAdminSources(),
   ]);
   const sourceLabelOptions = sourceOptionsForForms(mergedSourceDefinitions);
 
@@ -653,6 +655,7 @@ async function loadBuildersPageData() {
     sessionUserEmail: session.user.email,
     sessionUserName: session.user.name,
     sourceLabelOptions,
+    sourceCandidates,
     subscribed,
     subscribedCount,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
@@ -766,6 +769,7 @@ async function FetchSourcesSection({
         className="your-library-panel library-section-panel"
         description="Sources in your library. You control when and how to fetch and summarize them."
         headingId="sources-library-section-title"
+        sourceCandidates={data.sourceCandidates}
         sourceOptions={data.sourceLabelOptions}
         title="Your source library"
         visibilityToggle={
@@ -789,6 +793,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
+          editableSourceCandidates={data.sourceCandidates}
           emptyBody="Add sources, then copy a Fetch sources prompt."
           emptyTitle="No sources yet"
         />

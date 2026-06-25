@@ -4,6 +4,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -25,12 +26,19 @@ function splitTaggedError(error: string): {
   };
 }
 import { Globe, Plus } from "lucide-react";
+import { SourceAvatar } from "@/components/SourceAvatar";
+import { SourceCandidateList } from "@/components/SourceCandidateList";
 import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
 } from "@/lib/builder-library-events";
 import { sourceLabelForType } from "@/lib/source-display";
 import { sourceIcons } from "@/lib/source-icons";
+import {
+  type SourceCandidate,
+  sourceCandidateMatches,
+  sourceCandidateValue,
+} from "@/lib/source-candidates";
 import {
   crossTypeWarning,
   detectSourceTypeFromValue,
@@ -108,7 +116,14 @@ function deriveDisplayName(sourceType: string, sourceValue: string): string {
   return "";
 }
 
-export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[] }) {
+export function AddBuilderForm({
+  sourceCandidates,
+  sourceOptions,
+}: {
+  sourceCandidates: SourceCandidate[];
+  sourceOptions: SourceOption[];
+}) {
+  const sourceCandidateListId = useId();
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   // Pre-add confirmation: when the server returns a warning flagged
@@ -122,6 +137,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   const [isPending, startTransition] = useTransition();
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
   const [sourceValue, setSourceValue] = useState("");
+  const [selectedCandidate, setSelectedCandidate] = useState<SourceCandidate | null>(null);
+  const [sourceCandidatesOpen, setSourceCandidatesOpen] = useState(false);
   const lastAutoSwitchedValueRef = useRef("");
   // Display name auto-derives from sourceType + sourceValue when the
   // user hasn't typed in the field themselves. Once they edit (or
@@ -180,14 +197,46 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
     [sourceType, debouncedValue],
   );
   const effectiveName = nameTouched ? name : derivedName;
+  const sourceCandidateSuggestions = useMemo(
+    () =>
+      sourceCandidatesOpen && !sourceValueIsFixed
+        ? sourceCandidates
+            .filter((candidate) => sourceCandidateMatches(candidate, resolvedSourceValue))
+            .slice(0, 6)
+        : [],
+    [resolvedSourceValue, sourceCandidates, sourceCandidatesOpen, sourceValueIsFixed],
+  );
+  const displayNameAvatarSource = selectedCandidate ?? {
+    avatarDataUrl: null,
+    avatarUrl: null,
+    fetchUrl: null,
+    name: effectiveName || sourceLabelForType(sourceType),
+    sourceType,
+    sourceUrl: sourceUrlFromInput(resolvedSourceValue),
+  };
 
   function applySuggestion(target: DetectedSourceId) {
     selectSourceType(target);
     setError("");
   }
 
+  function applySourceCandidate(candidate: SourceCandidate) {
+    setSelectedCandidate(candidate);
+    setSourceType(candidate.sourceType);
+    setSourceValue(sourceCandidateValue(candidate));
+    setName(candidate.name);
+    setNameTouched(true);
+    setSourceCandidatesOpen(false);
+    setError("");
+    setStatus("");
+    setWarning("");
+    setPendingConfirmation(null);
+    lastAutoSwitchedValueRef.current = sourceCandidateValue(candidate).trim();
+  }
+
   function selectSourceType(nextSourceType: string) {
     setSourceType(nextSourceType);
+    setSelectedCandidate(null);
     // The pending confirmation was tied to the previous source type —
     // invalidate so the user isn't asked to confirm a different source
     // than the one shown.
@@ -280,6 +329,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           }),
         );
         setSourceValue("");
+        setSelectedCandidate(null);
+        setSourceCandidatesOpen(false);
         setName("");
         setNameTouched(false);
         setPendingConfirmation(null);
@@ -337,22 +388,39 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         })}
       </div>
       <div className="add-source-primary-row">
-        <input
-          aria-label="Handle or URL"
-          className="fb-input"
-          name="sourceValue"
-          placeholder={placeholderForSourceId(sourceType)}
-          value={resolvedSourceValue}
-          readOnly={sourceValueIsFixed}
-          aria-readonly={sourceValueIsFixed}
-          onChange={(event) => {
-            if (sourceValueIsFixed) return;
-            setSourceValue(event.target.value);
-            // Editing the URL invalidates a stale confirm prompt.
-            setPendingConfirmation(null);
-          }}
-          required
-        />
+        <div className="source-url-combobox">
+          <input
+            aria-autocomplete="list"
+            aria-controls={
+              sourceCandidateSuggestions.length > 0 ? sourceCandidateListId : undefined
+            }
+            aria-expanded={sourceCandidateSuggestions.length > 0}
+            aria-label="Handle or URL"
+            aria-readonly={sourceValueIsFixed}
+            className="fb-input"
+            name="sourceValue"
+            onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
+            onChange={(event) => {
+              if (sourceValueIsFixed) return;
+              setSourceValue(event.target.value);
+              setSelectedCandidate(null);
+              setSourceCandidatesOpen(true);
+              // Editing the URL invalidates a stale confirm prompt.
+              setPendingConfirmation(null);
+            }}
+            onFocus={() => setSourceCandidatesOpen(true)}
+            placeholder={placeholderForSourceId(sourceType)}
+            readOnly={sourceValueIsFixed}
+            required
+            role="combobox"
+            value={resolvedSourceValue}
+          />
+          <SourceCandidateList
+            candidates={sourceCandidateSuggestions}
+            id={sourceCandidateListId}
+            onSelect={applySourceCandidate}
+          />
+        </div>
         <button
           className="fb-btn dark add-source-submit"
           disabled={isPending || Boolean(pendingConfirmation)}
@@ -385,17 +453,24 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         </div>
       ) : null}
       <div className="add-source-name-row">
-        <input
-          aria-label="Display name"
-          className="fb-input add-source-name-input"
-          name="name"
-          placeholder="Display name (optional)"
-          value={effectiveName}
-          onChange={(event) => {
-            setName(event.target.value);
-            setNameTouched(true);
-          }}
-        />
+        <div className="source-display-name-control">
+          <SourceAvatar
+            className="source-display-name-avatar"
+            imageSize={28}
+            source={displayNameAvatarSource}
+          />
+          <input
+            aria-label="Display name"
+            className="fb-input add-source-name-input"
+            name="name"
+            onChange={(event) => {
+              setName(event.target.value);
+              setNameTouched(true);
+            }}
+            placeholder="Display name (optional)"
+            value={effectiveName}
+          />
+        </div>
         <span aria-live="polite" className="add-source-inline-note">
           {errorMessage ? (
             <>
@@ -466,6 +541,16 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
 
 function sourceTypeOptionId(sourceId: string) {
   return `add-source-type-${sourceId}`;
+}
+
+function sourceUrlFromInput(value: string) {
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return null;
+  }
 }
 
 function formSourceTypeForValue(

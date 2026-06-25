@@ -22,6 +22,7 @@ import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
 } from "@/lib/builder-library-events";
+import type { SourceCandidate } from "@/lib/source-candidates";
 
 export type BuilderLibraryListItem = BuilderLibraryEventItem;
 
@@ -41,6 +42,7 @@ type BuilderLibraryListProps = {
    * Omit on lists that don't grant edit rights (e.g. central pool).
    */
   editableSourceOptions?: SourceOption[];
+  editableSourceCandidates?: SourceCandidate[];
 };
 
 export function BuilderLibraryList({
@@ -49,6 +51,7 @@ export function BuilderLibraryList({
   emptyBody,
   emptyTitle,
   editableSourceOptions,
+  editableSourceCandidates = [],
 }: BuilderLibraryListProps) {
   const [addedBuilders, setAddedBuilders] = useState<BuilderLibraryListItem[]>([]);
   const [showAllSources, setShowAllSources] = useState(false);
@@ -221,6 +224,7 @@ export function BuilderLibraryList({
           <BuilderCard
             builder={builder}
             key={builder.id}
+            editableSourceCandidates={editableSourceCandidates}
             editableSourceOptions={editableSourceOptions}
             removeError={removeErrors[builder.id]}
             onRemoveStateChange={onRemoveStateChange}
@@ -247,12 +251,14 @@ export function BuilderLibraryList({
 function BuilderCard({
   builder,
   editableSourceOptions,
+  editableSourceCandidates,
   onRemoveStateChange,
   onSubscriptionStateChange,
   removeError,
 }: {
   builder: BuilderLibraryListItem;
   editableSourceOptions?: SourceOption[];
+  editableSourceCandidates: SourceCandidate[];
   onRemoveStateChange: (builderId: string, removed: boolean) => void;
   onSubscriptionStateChange: (
     builderId: string,
@@ -291,6 +297,7 @@ function BuilderCard({
           <BuilderEditDialog
             builder={builder}
             onRemoveStateChange={onRemoveStateChange}
+            sourceCandidates={editableSourceCandidates}
             sourceOptions={editableSourceOptions}
           />
         </div>

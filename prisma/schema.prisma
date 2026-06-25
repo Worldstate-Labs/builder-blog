@@ -241,6 +241,25 @@ model Builder {
   @@index([sourceType])
 }
 
+model SourceCandidate {
+  id            String   @id @default(cuid())
+  sourceKey     String   @unique
+  name          String
+  sourceType    String
+  sourceUrl     String?
+  fetchUrl      String?
+  handle        String?
+  avatarUrl     String?
+  avatarDataUrl String?
+  seedBuilderId String?
+  seededFrom    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([sourceType])
+  @@index([updatedAt])
+}
+
 model BuilderEntity {
   id            String                  @id @default(cuid())
   canonicalKey  String                  @unique

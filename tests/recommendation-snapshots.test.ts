@@ -467,7 +467,7 @@ test("post card keeps the source type badge when there is no original action", (
   );
 
   const metaHtml = html.match(/<div class="post-meta">([\s\S]*?)<\/div>/)?.[1] ?? "";
-  assert.match(metaHtml, /class="source-badge" data-source="blog" title="Blog"/);
+  assert.match(metaHtml, /class="source-badge" data-source="blog" title="Blog \/ Article Feed"/);
   assert.doesNotMatch(html, /class="post-source-original"/);
   assert.doesNotMatch(html, />Original</);
 });
@@ -684,7 +684,7 @@ test("digest renderer uses source link metadata before section heading fallbacks
   assert.match(html, /favicons\?domain=www\.producthunt\.com/);
 });
 
-test("digest renderer links source headings that include an episode suffix", () => {
+test("digest renderer links source headings from canonical source metadata", () => {
   const html = renderToStaticMarkup(
     createElement(DigestContent, {
       items: [
@@ -723,7 +723,7 @@ test("digest renderer links source headings that include an episode suffix", () 
     }),
   );
 
-  assert.match(html, /href="\/builder\/entity_unsupervised_learning"[\s\S]*With Jacob Effron/);
+  assert.match(html, /href="\/builder\/entity_unsupervised_learning"[\s\S]*Unsupervised Learning/);
   assert.match(html, /digest-group-source-avatar/);
   assert.doesNotMatch(html, /<h4 class="digest-group-heading">With Jacob Effron<\/h4>/);
 });

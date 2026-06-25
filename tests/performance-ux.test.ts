@@ -68,6 +68,74 @@ test("primary app navigation keeps route prefetching enabled", () => {
   assert.doesNotMatch(appNav, /className="h-4 w-4"/);
 });
 
+test("add and edit source forms use the independent source candidate library", () => {
+  const schema = source("prisma/schema.prisma");
+  const migration = source("prisma/migrations/000077_source_candidates/migration.sql");
+  const candidateLib = source("src/lib/source-candidate-library.ts");
+  const candidateUtils = source("src/lib/source-candidates.ts");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const privateLibraryPanel = source("src/components/PrivateLibraryPanel.tsx");
+  const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
+  const addBuilderForm = source("src/components/AddBuilderForm.tsx");
+  const editDialog = source("src/components/BuilderEditDialog.tsx");
+  const candidateList = source("src/components/SourceCandidateList.tsx");
+  const globals = source("src/app/globals.css");
+
+  assert.match(schema, /model SourceCandidate \{/);
+  assert.match(schema, /sourceKey\s+String\s+@unique/);
+  assert.match(schema, /seedBuilderId\s+String\?/);
+  assert.match(schema, /seededFrom\s+String\?/);
+  assert.match(migration, /CREATE TABLE "SourceCandidate"/);
+  assert.match(migration, /INSERT INTO "SourceCandidate"/);
+  assert.match(migration, /FROM "LibraryHubEntry"[\s\S]*"LibraryHubEntry"\."isFeatured" = true/);
+  assert.match(migration, /'admin_source_library'/);
+
+  assert.match(candidateLib, /ensureSourceCandidateLibraryFromAdminSources/);
+  assert.match(candidateLib, /seedSourceCandidatesFromAdminLibrary/);
+  assert.match(candidateLib, /prisma\.sourceCandidate\.findMany/);
+  assert.match(candidateLib, /prisma\.sourceCandidate\.upsert/);
+  assert.match(candidateLib, /existing\.seededFrom !== ADMIN_SOURCE_CANDIDATE_SEED/);
+  assert.match(candidateUtils, /export type SourceCandidate/);
+  assert.match(candidateUtils, /sourceCandidateMatches/);
+  assert.match(candidateUtils, /sourceCandidateValue/);
+
+  assert.match(buildersPage, /ensureSourceCandidateLibraryFromAdminSources/);
+  assert.match(buildersPage, /sourceCandidates/);
+  assert.match(privateLibraryPanel, /sourceCandidates: SourceCandidate\[\]/);
+  assert.match(privateLibraryPanel, /<AddBuilderForm[\s\S]*sourceCandidates=\{sourceCandidates\}/);
+  assert.match(builderLibraryList, /editableSourceCandidates\?: SourceCandidate\[\]/);
+  assert.match(builderLibraryList, /<BuilderEditDialog[\s\S]*sourceCandidates=\{editableSourceCandidates\}/);
+
+  assert.match(addBuilderForm, /sourceCandidates: SourceCandidate\[\]/);
+  assert.match(addBuilderForm, /SourceCandidateList/);
+  assert.match(addBuilderForm, /aria-autocomplete="list"/);
+  assert.match(addBuilderForm, /applySourceCandidate\(candidate: SourceCandidate\)/);
+  assert.match(addBuilderForm, /setSourceType\(candidate\.sourceType\)/);
+  assert.match(addBuilderForm, /setSourceValue\(sourceCandidateValue\(candidate\)\)/);
+  assert.match(addBuilderForm, /setName\(candidate\.name\)/);
+  assert.match(addBuilderForm, /source-display-name-control/);
+  assert.match(addBuilderForm, /SourceAvatar/);
+
+  assert.match(editDialog, /sourceCandidates: SourceCandidate\[\]/);
+  assert.match(editDialog, /SourceCandidateList/);
+  assert.match(editDialog, /aria-autocomplete="list"/);
+  assert.match(editDialog, /applySourceCandidate\(candidate: SourceCandidate\)/);
+  assert.match(editDialog, /setSourceType\(candidate\.sourceType\)/);
+  assert.match(editDialog, /setSourceValue\(sourceCandidateValue\(candidate\)\)/);
+  assert.match(editDialog, /setName\(candidate\.name\)/);
+  assert.match(editDialog, /source-display-name-control/);
+  assert.match(editDialog, /SourceAvatar/);
+
+  assert.match(candidateList, /role="listbox"/);
+  assert.match(candidateList, /role="option"/);
+  assert.match(candidateList, /SourceAvatar/);
+  assert.match(candidateList, /sourceLabelForType\(candidate\.sourceType\)/);
+  assert.match(globals, /\.source-url-combobox\s*{/);
+  assert.match(globals, /\.source-candidate-list\s*{/);
+  assert.match(globals, /\.source-candidate-option\s*{/);
+  assert.match(globals, /\.source-display-name-control\s*{/);
+});
+
 test("app shell reuses the page session instead of fetching it again", () => {
   const rootLayout = source("src/app/layout.tsx");
   const appShell = source("src/components/AppShell.tsx");

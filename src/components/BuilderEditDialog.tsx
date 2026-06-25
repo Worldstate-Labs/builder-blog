@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
+import { SourceAvatar } from "@/components/SourceAvatar";
+import { SourceCandidateList } from "@/components/SourceCandidateList";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
+import { sourceLabelForType } from "@/lib/source-display";
 import {
   FIXED_SOURCE_VALUE_BY_ID,
   placeholderForSourceId,
 } from "@/lib/source-inputs";
+import {
+  type SourceCandidate,
+  sourceCandidateMatches,
+  sourceCandidateValue,
+} from "@/lib/source-candidates";
 import {
   crossTypeWarning,
   detectSourceTypeFromValue,
@@ -70,13 +78,16 @@ function computePreview(sourceType: string, value: string): Preview {
 export function BuilderEditDialog({
   builder,
   onRemoveStateChange,
+  sourceCandidates,
   sourceOptions,
 }: {
   builder: BuilderLibraryEventItem;
   onRemoveStateChange?: (builderId: string, removed: boolean) => void;
+  sourceCandidates: SourceCandidate[];
   sourceOptions: SourceOption[];
 }) {
   const router = useRouter();
+  const sourceCandidateListId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const lastAutoSwitchedValueRef = useRef("");
   const [open, setOpen] = useState(false);
@@ -89,6 +100,8 @@ export function BuilderEditDialog({
   const [name, setName] = useState(builder.name);
   const [sourceType, setSourceType] = useState(builder.sourceType);
   const [sourceValue, setSourceValue] = useState(initialSourceValue);
+  const [selectedCandidate, setSelectedCandidate] = useState<SourceCandidate | null>(null);
+  const [sourceCandidatesOpen, setSourceCandidatesOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorSuggestId, setErrorSuggestId] = useState<DetectedSourceId | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -113,6 +126,25 @@ export function BuilderEditDialog({
   ]
     .filter(Boolean)
     .join(" ");
+  const sourceCandidateSuggestions = useMemo(
+    () =>
+      sourceCandidatesOpen && !sourceValueIsFixed
+        ? sourceCandidates
+            .filter((candidate) => sourceCandidateMatches(candidate, resolvedSourceValue))
+            .slice(0, 6)
+        : [],
+    [resolvedSourceValue, sourceCandidates, sourceCandidatesOpen, sourceValueIsFixed],
+  );
+  const editingOriginalSource =
+    sourceType === builder.sourceType && resolvedSourceValue === initialSourceValue;
+  const displayNameAvatarSource = selectedCandidate ?? {
+    avatarDataUrl: editingOriginalSource ? builder.avatarDataUrl : null,
+    avatarUrl: editingOriginalSource ? builder.avatarUrl : null,
+    fetchUrl: editingOriginalSource ? builder.fetchUrl : null,
+    name: name || sourceLabelForType(sourceType),
+    sourceType,
+    sourceUrl: sourceUrlFromInput(resolvedSourceValue),
+  };
 
   // Sync the underlying <dialog>'s open state with React state.
   useEffect(() => {
@@ -167,6 +199,8 @@ export function BuilderEditDialog({
     setName(builder.name);
     setSourceType(builder.sourceType);
     setSourceValue(initialSourceValue);
+    setSelectedCandidate(null);
+    setSourceCandidatesOpen(false);
     setError(null);
     setErrorSuggestId(null);
     setWarning(null);
@@ -178,10 +212,21 @@ export function BuilderEditDialog({
 
   function applySuggestion(target: DetectedSourceId) {
     setSourceType(target);
+    setSelectedCandidate(null);
     setError(null);
     setErrorSuggestId(null);
     setWarning(null);
     setPendingConfirmation(null);
+  }
+
+  function applySourceCandidate(candidate: SourceCandidate) {
+    setSelectedCandidate(candidate);
+    setSourceType(candidate.sourceType);
+    setSourceValue(sourceCandidateValue(candidate));
+    setName(candidate.name);
+    setSourceCandidatesOpen(false);
+    clearSourceFeedback();
+    lastAutoSwitchedValueRef.current = sourceCandidateValue(candidate).trim();
   }
 
   function clearSourceFeedback() {
@@ -328,6 +373,7 @@ export function BuilderEditDialog({
                 value={sourceType}
                 onChange={(e) => {
                   setSourceType(e.target.value);
+                  setSelectedCandidate(null);
                   clearSourceFeedback();
                 }}
               >
@@ -341,21 +387,40 @@ export function BuilderEditDialog({
 
             <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">Handle or URL</span>
-              <input
-                aria-describedby={sourceDescriptionIds || undefined}
-                aria-invalid={error ? "true" : undefined}
-                aria-readonly={sourceValueIsFixed}
-                className="fb-input mono"
-                value={resolvedSourceValue}
-                onChange={(e) => {
-                  if (sourceValueIsFixed) return;
-                  setSourceValue(e.target.value);
-                  clearSourceFeedback();
-                }}
-                placeholder={placeholderForSourceId(sourceType)}
-                readOnly={sourceValueIsFixed}
-                required
-              />
+              <div className="source-url-combobox">
+                <input
+                  aria-autocomplete="list"
+                  aria-controls={
+                    sourceCandidateSuggestions.length > 0
+                      ? sourceCandidateListId
+                      : undefined
+                  }
+                  aria-describedby={sourceDescriptionIds || undefined}
+                  aria-expanded={sourceCandidateSuggestions.length > 0}
+                  aria-invalid={error ? "true" : undefined}
+                  aria-readonly={sourceValueIsFixed}
+                  className="fb-input mono"
+                  onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
+                  onChange={(e) => {
+                    if (sourceValueIsFixed) return;
+                    setSourceValue(e.target.value);
+                    setSelectedCandidate(null);
+                    setSourceCandidatesOpen(true);
+                    clearSourceFeedback();
+                  }}
+                  onFocus={() => setSourceCandidatesOpen(true)}
+                  placeholder={placeholderForSourceId(sourceType)}
+                  readOnly={sourceValueIsFixed}
+                  required
+                  role="combobox"
+                  value={resolvedSourceValue}
+                />
+                <SourceCandidateList
+                  candidates={sourceCandidateSuggestions}
+                  id={sourceCandidateListId}
+                  onSelect={applySourceCandidate}
+                />
+              </div>
             </label>
 
             {preview.kind !== "idle" ? (
@@ -386,15 +451,22 @@ export function BuilderEditDialog({
               <span className="builder-edit-dialog-field-label">
                 Display name (optional)
               </span>
-              <input
-                className="fb-input"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setWarning(null);
-                }}
-                placeholder="Use detected name if blank"
-              />
+              <div className="source-display-name-control">
+                <SourceAvatar
+                  className="source-display-name-avatar"
+                  imageSize={28}
+                  source={displayNameAvatarSource}
+                />
+                <input
+                  className="fb-input"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setWarning(null);
+                  }}
+                  placeholder="Use detected name if blank"
+                  value={name}
+                />
+              </div>
             </label>
 
             {error ? (
@@ -505,6 +577,16 @@ export function BuilderEditDialog({
       </dialog>
     </>
   );
+}
+
+function sourceUrlFromInput(value: string) {
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return null;
+  }
 }
 
 function formSourceTypeForValue(
