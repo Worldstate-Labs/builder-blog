@@ -20,19 +20,19 @@ export default function BuildersLoading() {
               className="workspace-top-tabs fb-segmented-tabs sources-loading-tabs"
               role="tablist"
             >
-              {[
-                { label: "Sources", selected: true },
-                { label: "AI Digest", selected: false },
-              ].map(({ label, selected }) => (
+             {[
+                { id: "tabs.sources" as const, selected: true },
+                { id: "tabs.aiDigest" as const, selected: false },
+              ].map(({ id, selected }) => (
                 <span
                   aria-disabled="true"
                   aria-selected={selected}
                   className="fb-btn sources-loading-tab"
-                  key={label}
+                  key={id}
                   role="tab"
                   tabIndex={-1}
                 >
-                  {label}
+                  <I18nText id={id} />
                 </span>
               ))}
             </div>

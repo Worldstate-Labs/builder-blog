@@ -20,19 +20,19 @@ export default function DashboardLoading() {
             role="tablist"
           >
             {[
-              { label: "AI Digest", selected: true },
-              { label: "Following", selected: false },
-              { label: "Favorites", selected: false },
-            ].map(({ label, selected }) => (
+              { id: "tabs.aiDigest" as const, selected: true },
+              { id: "tabs.following" as const, selected: false },
+              { id: "tabs.favorites" as const, selected: false },
+            ].map(({ id, selected }) => (
               <span
                 aria-disabled="true"
                 aria-selected={selected}
                 className="fb-btn home-loading-tab"
-                key={label}
+                key={id}
                 role="tab"
                 tabIndex={-1}
               >
-                {label}
+                <I18nText id={id} />
               </span>
             ))}
           </div>
@@ -41,9 +41,12 @@ export default function DashboardLoading() {
         <section className="home-tab-panel" aria-label="Loading Today content">
           <div className="ai-digest-stack home-loading-ai-digest" aria-hidden="true">
             <section className="digest-control-bar home-loading-control">
-              {["AI Digest collection", "AI Digest issue"].map((label) => (
-                <div className="digest-control-field" key={label}>
-                  <span className="digest-control-label">{label}</span>
+              {[
+                { id: "tabs.aiDigestCollection" as const },
+                { id: "tabs.aiDigestIssue" as const },
+              ].map(({ id }) => (
+                <div className="digest-control-field" key={id}>
+                  <span className="digest-control-label"><I18nText id={id} /></span>
                   <span className="home-loading-control-shell" />
                 </div>
               ))}

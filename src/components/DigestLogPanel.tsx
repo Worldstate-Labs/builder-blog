@@ -770,7 +770,7 @@ function DigestTimelineRow({
             onClick={() => onOpenLog(entry.logRef!)}
             type="button"
           >
-            Open log
+            Details
           </button>
         ) : null}
       </div>

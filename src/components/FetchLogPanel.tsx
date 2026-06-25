@@ -1637,7 +1637,7 @@ function FetchTimelineRow({
             onClick={() => onOpenLog(entry.logRef!)}
             type="button"
           >
-            Open log
+            Details
           </button>
         ) : null}
       </div>
@@ -2124,7 +2124,7 @@ function JobRunCard({
       {onOpenLog ? (
         <div className="sync-panel-run-card-actions">
           <button className="fb-btn light compact" onClick={onOpenLog} type="button">
-            Open log
+            Details
           </button>
         </div>
       ) : null}
@@ -2227,7 +2227,7 @@ function RunCard({
       {onOpenLog ? (
         <div className="sync-panel-run-card-actions">
           <button className="fb-btn light compact" onClick={onOpenLog} type="button">
-            Open log
+            Details
           </button>
         </div>
       ) : null}

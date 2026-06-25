@@ -38,20 +38,20 @@ export default function SearchLoading() {
             role="tablist"
           >
             {[
-              { label: "All", selected: true },
-              { label: "Sources", selected: false },
-              { label: "Posts", selected: false },
-              { label: "AI Digest issues", selected: false },
-            ].map(({ label, selected }) => (
+              { id: "tabs.all" as const, selected: true },
+              { id: "tabs.sources" as const, selected: false },
+              { id: "tabs.posts" as const, selected: false },
+              { id: "tabs.aiDigestIssues" as const, selected: false },
+            ].map(({ id, selected }) => (
               <span
                 aria-disabled="true"
                 aria-selected={selected}
                 className="fb-btn compact search-loading-tab"
-                key={label}
+                key={id}
                 role="tab"
                 tabIndex={-1}
               >
-                {label}
+                <I18nText id={id} />
               </span>
             ))}
           </nav>

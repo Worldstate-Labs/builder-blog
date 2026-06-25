@@ -20,18 +20,18 @@ export default function LibraryHubLoading() {
             role="tablist"
           >
             {[
-              { label: "Source libraries", selected: true },
-              { label: "AI Digest collections", selected: false },
-            ].map(({ label, selected }) => (
+              { id: "tabs.sourceLibraries" as const, selected: true },
+              { id: "tabs.aiDigestCollections" as const, selected: false },
+            ].map(({ id, selected }) => (
               <span
                 aria-disabled="true"
                 aria-selected={selected}
                 className="fb-btn hub-loading-tab"
-                key={label}
+                key={id}
                 role="tab"
                 tabIndex={-1}
               >
-                {label}
+                <I18nText id={id} />
               </span>
             ))}
           </div>

@@ -678,7 +678,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /jobRunDomId/);
   assert.doesNotMatch(panel, /onOpenRun/);
   assert.match(panel, /const openLog = useCallback\(\(logRef: FetchLogRef\) => \{[\s\S]*setDetailsOpen\(true\);[\s\S]*setSelectedLog\(logRef\);[\s\S]*\}, \[\]\);/);
-  assert.match(panel, /Open log/);
+  assert.match(panel, /Details/);
+  assert.doesNotMatch(panel, /Open log/);
   assert.match(panel, /rowEntries\.map/);
   assert.doesNotMatch(panel, /entries\.slice\(\)\.reverse\(\)\.slice\(0, 6\)/);
   assert.match(panel, /if \(jobRun\.status === "succeeded"\) return \[\];/);
@@ -844,7 +845,8 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
   assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest|digest build record|The Local Agent is running|Waiting for the Local Agent to save AI Digest|Runtime job did not create/);
-  assert.match(panel, /Open log/);
+  assert.match(panel, /Details/);
+  assert.doesNotMatch(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);
   assert.match(panel, /className="sync-panel-error"/);
   assert.match(source("src/components/DigestLogPanel.tsx"), /if \(response\.status === 401\) \{[\s\S]*setError\(null\);[\s\S]*return;[\s\S]*\}/);

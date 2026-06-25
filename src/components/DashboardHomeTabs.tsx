@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { FeedLoadingState } from "@/components/FeedState";
+import { I18nText } from "@/components/I18nProvider";
 import { WorkspaceTabShell } from "@/components/WorkspaceTabShell";
 import type { WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 
@@ -8,21 +9,21 @@ type DashboardTab = "ai-digest" | "following" | "favorites";
 const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
     value: "ai-digest",
-    label: "AI Digest",
+    label: <I18nText id="tabs.aiDigest" />,
     href: "/dashboard?tab=ai-digest",
     panelId: "home-panel-ai-digest",
     tabId: "home-tab-ai-digest",
   },
   {
     value: "following",
-    label: "Following",
+    label: <I18nText id="tabs.following" />,
     href: "/dashboard?tab=following",
     panelId: "home-panel-following",
     tabId: "home-tab-following",
   },
   {
     value: "favorites",
-    label: "Favorites",
+    label: <I18nText id="tabs.favorites" />,
     href: "/dashboard?tab=favorites",
     panelId: "home-panel-favorites",
     tabId: "home-tab-favorites",
@@ -88,9 +89,12 @@ function HomeAiDigestFallback() {
     <div className="ai-digest-stack home-loading-ai-digest" aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading AI Digest</span>
       <section className="digest-control-bar home-loading-control">
-        {["AI Digest collection", "AI Digest issue"].map((label) => (
-          <div className="digest-control-field" key={label}>
-            <span className="digest-control-label">{label}</span>
+        {[
+          { id: "tabs.aiDigestCollection" as const },
+          { id: "tabs.aiDigestIssue" as const },
+        ].map(({ id }) => (
+          <div className="digest-control-field" key={id}>
+            <span className="digest-control-label"><I18nText id={id} /></span>
             <span className="home-loading-control-shell" />
           </div>
         ))}

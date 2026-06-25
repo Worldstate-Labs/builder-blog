@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import * as ts from "typescript";
 import { translateUiPhrase } from "../src/lib/i18n-phrases";
 
 test("Sources page UI phrases translate while product and source names stay stable", () => {
@@ -47,3 +50,127 @@ test("Sources page UI phrases translate while product and source names stay stab
     assert.equal(translateUiPhrase("zh-CN", source) ?? source, source, source);
   }
 });
+
+test("visible app TSX phrases have translations for supported non-English locales", () => {
+  const locales = ["zh-CN", "zh-TW", "ja", "ko", "es"] as const;
+  const files = execSync("rg --files src | rg '\\.(tsx)$'", { encoding: "utf8" })
+    .trim()
+    .split(/\n/u)
+    .filter((file) => file && !file.includes(".stories."));
+  const visibleNames = new Set([
+    "aria-label",
+    "ariaLabel",
+    "alt",
+    "body",
+    "buttonLabel",
+    "copy",
+    "description",
+    "emptyBody",
+    "emptyMessage",
+    "emptyText",
+    "emptyTitle",
+    "fallback",
+    "heading",
+    "headingText",
+    "kicker",
+    "label",
+    "message",
+    "placeholder",
+    "prefix",
+    "summary",
+    "text",
+    "title",
+  ]);
+  const stableProductPhrases = new Set([
+    "AI Digest",
+    "Apple",
+    "Claude Code",
+    "Codex",
+    "DELETE",
+    "Deutsch (German)",
+    "DigestRun",
+    "English",
+    "Español (Spanish)",
+    "Favorites",
+    "FollowBrief",
+    "Français (French)",
+    "Gemini CLI",
+    "GitHub",
+    "GitHub Trending",
+    "Google",
+    "Hub",
+    "Local Agent",
+    "OpenAI",
+    "OpenClaw",
+    "Product Hunt",
+    "RESET",
+    "中文 (Chinese)",
+    "日本語 (Japanese)",
+    "한국어 (Korean)",
+  ]);
+  const missing: Array<string> = [];
+
+  function clean(value: string) {
+    return value.replace(/\s+/gu, " ").trim();
+  }
+
+  function record(phrase: string, location: string) {
+    const normalized = clean(phrase);
+    if (!/[A-Za-z]/u.test(normalized) || normalized.length <= 1) return;
+    if (stableProductPhrases.has(normalized)) return;
+    if (/^[a-z0-9_-]+$/iu.test(normalized)) return;
+    if (/^\/[a-z0-9/?=&._-]+$/iu.test(normalized)) return;
+    if (/^https?:\/\//iu.test(normalized)) return;
+    if (/^[A-Z_]+$/u.test(normalized)) return;
+    for (const locale of locales) {
+      if (!translateUiPhrase(locale, normalized)) {
+        missing.push(`${location}: ${locale}: ${normalized}`);
+      }
+    }
+  }
+
+  function getPropertyName(name: ts.PropertyName | undefined) {
+    if (!name) return null;
+    if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+      return name.text;
+    }
+    return null;
+  }
+
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+
+    function location(node: ts.Node) {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      return `${file}:${position.line + 1}`;
+    }
+
+    function visit(node: ts.Node) {
+      if (ts.isJsxText(node)) {
+        record(node.getText(sourceFile), location(node));
+      }
+      if (ts.isJsxAttribute(node) && visibleNames.has(node.name.getText(sourceFile))) {
+        const initializer = node.initializer;
+        if (initializer && ts.isStringLiteral(initializer)) {
+          record(initializer.text, `${location(node)} ${node.name.getText(sourceFile)}`);
+        }
+      }
+      if (ts.isPropertyAssignment(node)) {
+        const name = getPropertyName(node.name);
+        if (name && visibleNames.has(name) && ts.isStringLiteralLike(node.initializer)) {
+          record(initializerText(node.initializer), `${location(node)} ${name}`);
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+  }
+
+  assert.deepEqual(missing, []);
+});
+
+function initializerText(node: ts.StringLiteralLike) {
+  return node.text;
+}

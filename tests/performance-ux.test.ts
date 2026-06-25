@@ -190,7 +190,7 @@ test("every app route has an explicit centered layout role", () => {
 
   const workspaceRoutes = [
     ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="workspace\.sources" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="nav\.hub" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="workspace\.hub" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
@@ -201,9 +201,9 @@ test("every app route has an explicit centered layout role", () => {
 
   const readingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/page.tsx", /className="page-pad page-pad--reading builder-detail-page"/],
-    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<PageHeader[\s\S]*title="Today"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/],
+    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="workspace\.today" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/],
     ["src/components/PostDetailPage.tsx", /className="page-pad page-pad--reading reading-page"/],
-    ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<PageHeader[\s\S]*title="Search"/],
+    ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="common\.search" \/>\}/],
   ] as const;
   for (const [path, pattern] of readingRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered reading rail`);
@@ -228,7 +228,7 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
-    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./,
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="workspace\.settings" \/>\}[\s\S]*description=\{<I18nText id="workspace\.settingsDesc" \/>\}/,
   );
   assert.doesNotMatch(
     source("src/app/(workspace)/settings/page.tsx"),
@@ -257,7 +257,8 @@ test("every app route has an explicit centered layout role", () => {
     /query\.set\("returnTo", "\/dashboard\?tab=following"\)[\s\S]*query\.set\("returnLabel", "Following"\)/,
   );
 
-  assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
+  assert.match(source("src/app/loading.tsx"), /label=\{<I18nText id="common\.loading" \/>\}/);
+  assert.match(source("src/app/loading.tsx"), /title=\{<><I18nText id="common\.loading" \/> FollowBrief<\/>\}/);
   const postDetailLoadingRoutes = [
     "src/app/(workspace)/posts/[feedItemId]/loading.tsx",
     "src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx",
@@ -310,7 +311,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.settings" \/>\}[\s\S]*description=\{<I18nText id="workspace\.settingsDesc" \/>\}/);
   assert.doesNotMatch(settingsLoading, /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
@@ -331,23 +332,23 @@ test("every app route has an explicit centered layout role", () => {
   const dashboardLoading = source("src/app/(workspace)/dashboard/loading.tsx");
   assert.doesNotMatch(dashboardLoading, /RouteLoading/);
   assert.match(dashboardLoading, /className="page-pad page-pad--reading home-page home-loading"/);
-  assert.match(dashboardLoading, /<PageHeader[\s\S]*title="Today"[\s\S]*Catch up on AI Digest issues and Following posts\./);
+  assert.match(dashboardLoading, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.today" \/>\}[\s\S]*description=\{<I18nText id="workspace\.todayDesc" \/>\}/);
   assert.doesNotMatch(dashboardLoading, /<h1 className="sr-only">Loading Today<\/h1>/);
   assert.match(dashboardLoading, /aria-label="Today feed tabs"/);
   assert.doesNotMatch(dashboardLoading, /home-loading-tab is-active/);
-  assert.match(dashboardLoading, /label:\s*"AI Digest",\s*selected:\s*true/);
-  assert.match(dashboardLoading, /label:\s*"Following",\s*selected:\s*false/);
-  assert.match(dashboardLoading, /label:\s*"Favorites",\s*selected:\s*false/);
+  assert.match(dashboardLoading, /id:\s*"tabs\.aiDigest" as const,\s*selected:\s*true/);
+  assert.match(dashboardLoading, /id:\s*"tabs\.following" as const,\s*selected:\s*false/);
+  assert.match(dashboardLoading, /id:\s*"tabs\.favorites" as const,\s*selected:\s*false/);
   assert.match(dashboardLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(dashboardLoading, /data-active=/);
-  assert.match(dashboardLoading, /home-loading-tab[\s\S]*AI Digest/);
-  assert.match(dashboardLoading, /home-loading-tab[\s\S]*Following/);
-  assert.match(dashboardLoading, /home-loading-tab[\s\S]*Favorites/);
+  assert.match(dashboardLoading, /home-loading-tab[\s\S]*<I18nText id=\{id\} \/>/);
+  assert.match(dashboardLoading, /id:\s*"tabs\.favorites" as const/);
   assert.match(dashboardLoading, /className="home-tab-panel" aria-label="Loading Today content"/);
   assert.doesNotMatch(dashboardLoading, /Loading Home|Home feed tabs|Loading Home content/);
   assert.match(dashboardLoading, /className="ai-digest-stack home-loading-ai-digest"/);
   assert.match(dashboardLoading, /className="digest-control-bar home-loading-control"/);
-  assert.match(dashboardLoading, /\["AI Digest collection", "AI Digest issue"\]\.map/);
+  assert.match(dashboardLoading, /id:\s*"tabs\.aiDigestCollection" as const/);
+  assert.match(dashboardLoading, /id:\s*"tabs\.aiDigestIssue" as const/);
   assert.match(dashboardLoading, /className="home-loading-control-shell"/);
   assert.match(dashboardLoading, /className="home-loading-digest-card"/);
   assert.match(dashboardLoading, /className="home-loading-post-list"/);
@@ -358,20 +359,20 @@ test("every app route has an explicit centered layout role", () => {
   const buildersLoading = source("src/app/(workspace)/builders/loading.tsx");
   assert.doesNotMatch(buildersLoading, /RouteLoading/);
   assert.match(buildersLoading, /className="page-pad sources-loading"/);
-  assert.match(buildersLoading, /<PageHeader[\s\S]*title="Sources"[\s\S]*Manage your sources, AI Digests, and source subscriptions\./);
+  assert.match(buildersLoading, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.sources" \/>\}[\s\S]*description=\{<I18nText id="workspace\.sourcesDesc" \/>\}/);
   assert.doesNotMatch(buildersLoading, /<h1 className="sr-only">Loading Sources<\/h1>/);
   assert.match(buildersLoading, /aria-label="Sources and AI Digest tabs"/);
   assert.match(buildersLoading, /role="tablist"/);
   assert.match(buildersLoading, /aria-disabled="true"/);
-  assert.match(buildersLoading, /label:\s*"Sources",\s*selected:\s*true/);
-  assert.match(buildersLoading, /label:\s*"AI Digest",\s*selected:\s*false/);
+  assert.match(buildersLoading, /id:\s*"tabs\.sources" as const,\s*selected:\s*true/);
+  assert.match(buildersLoading, /id:\s*"tabs\.aiDigest" as const,\s*selected:\s*false/);
   assert.match(buildersLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(buildersLoading, /data-active=/);
   assert.match(buildersLoading, /role="tab"/);
   assert.match(buildersLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(buildersLoading, /sources-loading-tab is-active/);
-  assert.match(buildersLoading, /sources-loading-tab[\s\S]*Sources/);
-  assert.match(buildersLoading, /sources-loading-tab[\s\S]*AI Digest/);
+  assert.match(buildersLoading, /sources-loading-tab[\s\S]*<I18nText id=\{id\} \/>/);
+  assert.match(buildersLoading, /id:\s*"tabs\.aiDigest" as const/);
   assert.match(buildersLoading, /className="sources-tab-body" aria-label="Loading Sources content"/);
   assert.doesNotMatch(buildersLoading, /sources-tab-body--fetch/);
   assert.match(buildersLoading, /className="sources-section-stack"/);
@@ -390,20 +391,20 @@ test("every app route has an explicit centered layout role", () => {
   const hubLoading = source("src/app/(workspace)/library-hub/loading.tsx");
   assert.doesNotMatch(hubLoading, /RouteLoading/);
   assert.match(hubLoading, /className="page-pad hub-loading"/);
-  assert.match(hubLoading, /<PageHeader[\s\S]*title="Hub"[\s\S]*Browse and import shared source libraries and AI Digest collections\./);
+  assert.match(hubLoading, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.hub" \/>\}[\s\S]*description=\{<I18nText id="workspace\.hubDesc" \/>\}/);
   assert.doesNotMatch(hubLoading, /<h1 className="sr-only">Loading Hub<\/h1>/);
   assert.match(hubLoading, /aria-label="Hub tabs"/);
   assert.match(hubLoading, /role="tablist"/);
   assert.match(hubLoading, /aria-disabled="true"/);
-  assert.match(hubLoading, /label:\s*"Source libraries",\s*selected:\s*true/);
-  assert.match(hubLoading, /label:\s*"AI Digest collections",\s*selected:\s*false/);
+  assert.match(hubLoading, /id:\s*"tabs\.sourceLibraries" as const,\s*selected:\s*true/);
+  assert.match(hubLoading, /id:\s*"tabs\.aiDigestCollections" as const,\s*selected:\s*false/);
   assert.match(hubLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(hubLoading, /data-active=/);
   assert.match(hubLoading, /role="tab"/);
   assert.match(hubLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(hubLoading, /hub-loading-tab is-active/);
-  assert.match(hubLoading, /hub-loading-tab[\s\S]*Source libraries/);
-  assert.match(hubLoading, /hub-loading-tab[\s\S]*AI Digest collections/);
+  assert.match(hubLoading, /hub-loading-tab[\s\S]*<I18nText id=\{id\} \/>/);
+  assert.match(hubLoading, /id:\s*"tabs\.aiDigestCollections" as const/);
   assert.match(hubLoading, /aria-label="Loading Hub content"/);
   assert.match(hubLoading, /<span className="sr-only">Loading Hub content<\/span>/);
   assert.doesNotMatch(hubLoading, /aria-label="Loading source libraries"/);
@@ -418,7 +419,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(searchLoading, /RouteLoading/);
   assert.match(searchLoading, /@\/components\/PageHeader/);
   assert.match(searchLoading, /className="page-pad page-pad--reading search-page search-loading"/);
-  assert.match(searchLoading, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, and AI Digest issues\./);
+  assert.match(searchLoading, /<PageHeader[\s\S]*title=\{<I18nText id="common\.search" \/>\}[\s\S]*description=\{<I18nText id="workspace\.searchDesc" \/>\}/);
   assert.doesNotMatch(searchLoading, /in one place/);
   assert.match(searchLoading, /className="workspace-content-stack search-results-workspace"/);
   assert.match(searchLoading, /className="search-hero-form" aria-label="Loading search controls"/);
@@ -426,17 +427,17 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(searchLoading, /className="fb-segmented-tabs filter-tabs search-loading-tabs"/);
   assert.match(searchLoading, /role="tablist"/);
   assert.match(searchLoading, /aria-disabled="true"/);
-  assert.match(searchLoading, /label:\s*"All",\s*selected:\s*true/);
-  assert.match(searchLoading, /label:\s*"Sources",\s*selected:\s*false/);
-  assert.match(searchLoading, /label:\s*"Posts",\s*selected:\s*false/);
-  assert.match(searchLoading, /label:\s*"AI Digest issues",\s*selected:\s*false/);
+  assert.match(searchLoading, /id:\s*"tabs\.all" as const,\s*selected:\s*true/);
+  assert.match(searchLoading, /id:\s*"tabs\.sources" as const,\s*selected:\s*false/);
+  assert.match(searchLoading, /id:\s*"tabs\.posts" as const,\s*selected:\s*false/);
+  assert.match(searchLoading, /id:\s*"tabs\.aiDigestIssues" as const,\s*selected:\s*false/);
   assert.match(searchLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(searchLoading, /data-active=/);
   assert.match(searchLoading, /role="tab"/);
   assert.match(searchLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(searchLoading, /search-loading-tab is-active/);
-  assert.match(searchLoading, /search-loading-tab[\s\S]*All/);
-  assert.match(searchLoading, /search-loading-tab[\s\S]*AI Digest issues/);
+  assert.match(searchLoading, /search-loading-tab[\s\S]*<I18nText id=\{id\} \/>/);
+  assert.match(searchLoading, /id:\s*"tabs\.aiDigestIssues" as const/);
   assert.match(searchLoading, /className="search-meta-skeleton search-meta-skeleton--count"/);
   assert.match(searchLoading, /className="search-result-skeleton" key=\{index\}/);
   assert.equal(existsSync(join(root, "src/app/history/page.tsx")), false);
@@ -510,7 +511,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(publicHeader, /UserMenu/);
   assert.match(publicHeader, /const isLegalPage = current === "privacy" \|\| current === "terms"/);
   assert.match(publicHeader, /const showLegalLinks = isLegalPage && !session/);
-  assert.match(publicHeader, /showLegalLinks \? \([\s\S]*href="\/privacy"[\s\S]*Privacy[\s\S]*href="\/terms"[\s\S]*Terms/);
+  assert.match(publicHeader, /showLegalLinks \? \([\s\S]*href="\/privacy"[\s\S]*t\("common\.privacy"\)[\s\S]*href="\/terms"[\s\S]*t\("common\.terms"\)/);
   assert.doesNotMatch(publicHeader, /showMobileLegalLinks|PublicHeaderSurface|surface="(?:desktop|mobile)"/);
   assert.match(publicHeader, /<UserMenu compact session=\{session\} \/>/);
   assert.match(publicHeader, /href="\/privacy"/);
@@ -519,27 +520,29 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(publicHeader, /SearchForm|MobileSearchLink|fb-public-nav|fb-login-nav(?:["\s]|-brand|-actions|-name)/);
   assert.match(landingPage, /fb-public-section fb-public-hero/);
   assert.match(landingPage, /fb-public-title/);
-  assert.match(landingPage, /Follow sources worth reading\.\{" "\}/);
-  assert.match(landingPage, /Read their updates as one cited AI Digest\./);
+  assert.match(landingPage, /<I18nText id="home\.heroTitle" \/>/);
+  assert.match(landingPage, /<I18nText id="home\.heroCopy" \/>/);
   assert.doesNotMatch(landingPage, /Keep up with sources worth following|Read their updates as one AI Digest issue/);
   assert.match(landingPage, /className="fb-public-title-break"/);
   assert.doesNotMatch(landingPage, /people and sources you follow/);
   assert.doesNotMatch(landingPage, /people<br \/>and sources you follow/);
   assert.match(landingPage, /fb-public-copy/);
   assert.match(landingPage, /fb-public-actions/);
-  assert.match(landingPage, />\s*Sign in\s*<\/Link>/);
+  assert.match(landingPage, /<I18nText id="common\.signIn" \/>/);
   assert.doesNotMatch(landingPage, /Sign in to workspace|Open workspace/);
   assert.match(landingPage, /fb-public-flow/);
   assert.match(landingPage, /fb-public-flow-step/);
-  assert.match(landingPage, /\["Follow sources", "Build AI Digest", "Search"\]/);
+  assert.match(landingPage, /\["login\.followSources", "follow"\]/);
+  assert.match(landingPage, /\["login\.buildDigest", "digest"\]/);
+  assert.match(landingPage, /\["login\.search", "search"\]/);
   assert.doesNotMatch(landingPage, /Search workspace|\["Follow", "Build AI Digest", "Search"\]/);
-  assert.match(landingPage, /Build AI Digest/);
+  assert.match(landingPage, /"login\.buildDigest"/);
   assert.doesNotMatch(landingPage, /"Brief"/);
   assert.match(landingPage, /fb-product-preview-head/);
   assert.match(landingPage, /fb-product-preview-title-row/);
-  assert.match(landingPage, />\s*Sources, citations, recall\s*<\/div>/);
+  assert.match(landingPage, /<I18nText id="home\.previewTitle" \/>/);
   assert.match(landingPage, /aria-label="Preview data"/);
-  assert.match(landingPage, />\s*Local Agent\s*<\/span>/);
+  assert.match(landingPage, /<I18nText id="home\.localAgent" \/>/);
   assert.doesNotMatch(landingPage, />\s*Local Agent loop\s*<\/span>|>\s*Live loop\s*<\/span>/);
   assert.doesNotMatch(landingPage, />\s*Preview\s*<\/div>|>\s*Demo\s*<\/div>|>\s*Sample\s*<\/span>/);
   assert.match(landingPage, /fb-product-demo/);
@@ -559,20 +562,20 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-card-copy/);
   assert.match(landingPage, /fb-public-workspace/);
   assert.match(landingPage, /fb-public-feature-grid/);
-  assert.match(landingPage, />\s*Search\s*<\/span>/);
-  assert.match(landingPage, /Build AI Digest/);
+  assert.match(landingPage, /<I18nText id="common\.search" \/>/);
+  assert.match(landingPage, /\["login\.buildDigest", "digest"\]/);
   assert.doesNotMatch(landingPage, /read AI Digest|read an AI Digest issue/);
-  assert.match(landingPage, /builds a cited AI Digest you can search later/);
+  assert.match(landingPage, /copyId: "home\.stepBuildCopy"/);
   assert.doesNotMatch(landingPage, /reading the AI Digest|reading AI Digests|builds a\s+cited AI Digest issue|builds cited AI Digests/);
-  assert.match(landingPage, />AI Digest<\/span>/);
-  assert.match(landingPage, /Find sources, posts, and AI Digest issues when details matter/);
+  assert.match(landingPage, /<I18nText id="home\.aiDigest" \/>/);
+  assert.match(landingPage, /detailId: "home\.signalSearchDetail"/);
   assert.doesNotMatch(landingPage, /Find sources, posts, saved posts, and AI Digest issues/);
   assert.doesNotMatch(landingPage, /Find sources, saved posts, and AI Digest issues/);
   assert.doesNotMatch(landingPage, /posts you've saved/);
-  assert.match(landingPage, /Open originals and search sources, posts, and AI Digest issues later\./);
+  assert.match(landingPage, /copyId: "home\.stepSearchCopy"/);
   assert.doesNotMatch(landingPage, /Open original posts and search sources, posts, and AI Digest issues later/);
-  assert.match(landingPage, /title="Search"/);
-  assert.match(landingPage, /Sources, posts, and AI Digest issues share one search surface\./);
+  assert.match(landingPage, /titleId: "home\.stepSearchTitle"/);
+  assert.match(landingPage, /copy=\{<I18nText id="home\.featureSearchCopy" \/>\}/);
   assert.doesNotMatch(landingPage, /sources, posts, Favorites, and AI Digests|Sources, posts, Favorites, and AI Digests/);
   assert.match(landingPage, /Start from shared source libraries/);
   assert.doesNotMatch(landingPage, /Start from shared libraries/);
@@ -596,36 +599,36 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Sparkles/);
   assert.match(landingPage, /GitHub Trending/);
   assert.match(landingPage, /Product Hunt/);
-  assert.match(landingPage, /Read their updates as one cited AI Digest\./);
+  assert.match(landingPage, /<I18nText id="home\.heroCopy" \/>/);
   assert.doesNotMatch(landingPage, /Read them as one AI Digest issue|Read their updates as one AI Digest issue/);
-  assert.match(landingPage, /Your Local Agent fetches updates, summarizes source material/);
+  assert.match(landingPage, /copyId: "home\.stepBuildCopy"/);
   assert.match(landingPage, /add blogs, channels, feeds, GitHub Trending, and Product Hunt/);
   assert.match(landingPage, /assembles a cited AI Digest/);
   assert.doesNotMatch(landingPage, /build a cited AI Digest issue|build a cited AI Digest from the summaries/);
   assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|agent-fetchable sources|Local Agent sources/);
-  assert.match(landingPage, /AI Digest workflow/);
+  assert.match(landingPage, /<I18nText id="home\.workflow" \/>/);
   assert.doesNotMatch(landingPage, /Daily AI Digest flow/);
-  assert.match(landingPage, /One cited AI Digest/);
+  assert.match(landingPage, /titleId: "home\.signalDigestTitle"/);
   assert.doesNotMatch(landingPage, /One cited AI Digest issue|One cited AI Digest\./);
   assert.doesNotMatch(landingPage, /One cited brief/);
-  assert.match(landingPage, /Posts, videos, launches, and projects stay readable together/);
+  assert.match(landingPage, /detailId: "home\.signalDigestDetail"/);
   assert.doesNotMatch(landingPage, /New posts, videos, launches, and projects stay readable together|Daily updates become one AI Digest|New posts, videos, launches, and projects become a readable AI Digest/);
-  assert.match(landingPage, /Sources stay visible/);
+  assert.match(landingPage, /titleId: "home\.signalSourcesTitle"/);
   assert.doesNotMatch(landingPage, /Sources stay connected|Your sources stay connected\./);
   assert.doesNotMatch(landingPage, /readable AI Digest/);
   assert.doesNotMatch(landingPage, /Build AI Digests/);
-  assert.match(landingPage, /Today reading lanes/);
+  assert.match(landingPage, /<I18nText id="home\.featureReadingTitle" \/>/);
   assert.doesNotMatch(landingPage, /Home reading lanes/);
-  assert.match(landingPage, /AI Digest, Following, and Favorites stay separate/);
+  assert.match(landingPage, /<I18nText id="home\.featureReadingCopy" \/>/);
   assert.doesNotMatch(landingPage, /Home stays focused on readable AI Digests/);
-  assert.match(landingPage, /Following posts/);
-  assert.match(landingPage, /Unread posts stay separate from generated AI Digest issues\./);
+  assert.match(landingPage, /<I18nText id="home\.featureFollowingTitle" \/>/);
+  assert.match(landingPage, /<I18nText id="home\.featureFollowingCopy" \/>/);
   assert.doesNotMatch(landingPage, /Unread posts stay separate from AI Digest issues\.|Unread posts from followed sources stay separate from AI Digest issues\.|Unread posts from followed sources stay separate from the AI Digest\./);
   assert.doesNotMatch(landingPage, /Digest-first home/);
   assert.doesNotMatch(landingPage, /Daily brief flow|Generate briefs|readable digest|readable briefings|following, briefing/);
-  assert.match(landingPage, /Follow sources, build a cited AI Digest, search later\./);
+  assert.match(landingPage, /<I18nText id="home\.workflowNote" \/>/);
   assert.match(landingPage, /Search and revisit/);
-  assert.match(landingPage, /Search later/);
+  assert.match(landingPage, /titleId: "home\.signalSearchTitle"/);
   assert.doesNotMatch(landingPage, /Search when needed|Search after reading|Search after the read\./);
   assert.doesNotMatch(landingPage, /Context windows became product infrastructure/);
   assert.doesNotMatch(landingPage, /Private sources belong in the brief/);
@@ -641,15 +644,15 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /fb-login-brand-row/);
   assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
-  assert.match(loginPage, /Sign in/);
-  assert.match(loginPage, /SessionRequired: "Sign in to continue\."/);
+  assert.match(loginPage, /<I18nText id="login\.panelTitle" \/>/);
+  assert.match(loginPage, /SessionRequired: "login\.error\.SessionRequired"/);
   assert.doesNotMatch(loginPage, /Please sign in to continue/);
-  assert.match(loginPage, /OAuthSignin: "Could not start sign in\. Try again\."/);
-  assert.match(loginPage, /OAuthCallback: "Could not finish sign in\. Try again\."/);
-  assert.match(loginPage, /Callback: "Could not finish sign in\. Try again\."/);
-  assert.match(loginPage, /This email uses a different sign-in method\. Use that method or contact support\./);
-  assert.match(loginPage, /AccessDenied: "Sign in was denied\."/);
-  assert.match(loginPage, /Could not sign in\. Try again\./);
+  assert.match(loginPage, /OAuthSignin: "login\.error\.OAuthSignin"/);
+  assert.match(loginPage, /OAuthCallback: "login\.error\.OAuthCallback"/);
+  assert.match(loginPage, /Callback: "login\.error\.Callback"/);
+  assert.match(loginPage, /OAuthAccountNotLinked: "login\.error\.OAuthAccountNotLinked"/);
+  assert.match(loginPage, /AccessDenied: "login\.error\.AccessDenied"/);
+  assert.match(loginPage, /return messages\[code\] \?\? "login\.error\.default"/);
   assert.doesNotMatch(loginPage, /This email uses another sign-in method\. Use that sign-in method, or contact support\.|This email is linked to another sign-in method|Use the linked method|sign-in flow|sign-in service|Sign-in could not finish|Sign-in was denied|Sign-in failed|merge accounts/);
   assert.match(loginPage, /FollowBrief/);
   assert.doesNotMatch(loginPage, /AI Digest workspace/);
@@ -657,9 +660,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /className="fb-login-title-break"/);
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
   assert.doesNotMatch(loginPage, /your<br \/>FollowBrief workspace/);
-  assert.match(loginPage, /Sign in to\{" "\}/);
-  assert.match(loginPage, /Follow sources, build AI Digest, and search your\s*workspace\./);
-  assert.match(loginPage, /search your\s*workspace/);
+  assert.match(loginPage, /<I18nText id="login\.titlePrefix" \/>\{" "\}/);
+  assert.match(loginPage, /<I18nText id="login\.copy" \/>/);
   assert.doesNotMatch(loginPage, /Follow sources, build cited AI Digest issues|Follow sources, read the cited AI Digest|Follow source libraries|Follow source libraries, read AI Digests|read cited AI Digests|search them\s*alongside sources and posts later|search sources,\s*posts, and AI Digest issues|search sources,\s*posts, and issues|search them with\s*sources and posts/);
   assert.doesNotMatch(loginPage, /sources,\s*posts, and AI Digest issues searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digest issues searchable/);
@@ -667,14 +669,14 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
   assert.match(loginPage, /import \{ BookOpenCheck, Rss, Search \} from "lucide-react"/);
-  assert.match(loginPage, /<LoginProof icon=\{Rss\} label="Follow sources" \/>/);
+  assert.match(loginPage, /<LoginProof icon=\{Rss\} label=\{<I18nText id="login\.followSources" \/>\} \/>/);
   assert.doesNotMatch(loginPage, /UsersRound/);
-  assert.match(loginPage, /label="Follow sources"/);
+  assert.match(loginPage, /label=\{<I18nText id="login\.followSources" \/>\}/);
   assert.doesNotMatch(loginPage, /label="Follow"/);
-  assert.match(loginPage, /label="Build AI Digest"/);
-  assert.match(loginPage, /label="Search"/);
+  assert.match(loginPage, /label=\{<I18nText id="login\.buildDigest" \/>\}/);
+  assert.match(loginPage, /label=\{<I18nText id="login\.search" \/>\}/);
   assert.doesNotMatch(loginPage, /label="Search workspace"/);
-  assert.match(loginPage, /Use one account for the app and Local Agent\./);
+  assert.match(loginPage, /<I18nText id="login\.panelCopy" \/>/);
   assert.doesNotMatch(loginPage, /Use the same account for the app and Local Agent\.|Use one account for your AI Digests and Local Agent\.|Use one account for FollowBrief and your Local Agent\.|Use the same FollowBrief account for the app and Local Agent\./);
   assert.doesNotMatch(loginPage, /Add Local Agent access keys|After sign-in|Access keys are set up after sign-in from Settings\.|After signing in, add access keys in Settings\./);
   assert.doesNotMatch(loginPage, /label="Local Agent"/);
@@ -1171,20 +1173,20 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /const settingsActive = pathname === "\/settings"/);
   assert.match(userMenu, /aria-current=\{settingsActive \? "page" : undefined\}/);
   assert.match(userMenu, /data-active=\{settingsActive \? "true" : undefined\}/);
-  assert.match(userMenu, /href="\/settings"[\s\S]*onClick=\{\(\) => closeMenu\(\)\}[\s\S]*Settings/);
+  assert.match(userMenu, /href="\/settings"[\s\S]*onClick=\{\(\) => closeMenu\(\)\}[\s\S]*t\("nav\.settings"\)/);
   assert.match(userMenu, /function toggleTheme\(\) \{[\s\S]*setTheme\(theme === "dark" \? "light" : "dark"\);[\s\S]*closeMenu\(\);[\s\S]*\}/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
-  assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
+  assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*t\("nav\.signOut"\)/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
-  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
+  assert.match(settingsPage, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.settings" \/>\}[\s\S]*description=\{<I18nText id="workspace\.settingsDesc" \/>\}/);
   assert.doesNotMatch(settingsPage, /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.settings" \/>\}[\s\S]*description=\{<I18nText id="workspace\.settingsDesc" \/>\}/);
   assert.doesNotMatch(settingsLoading, /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
@@ -1287,7 +1289,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(searchForm, /name="sort"/);
   assert.match(searchForm, /name="after"/);
   assert.match(searchForm, /name="before"/);
-  assert.match(searchForm, />\s*Searching\s*<\/span>/);
+  assert.match(searchForm, /t\("search\.searching"\)/);
   assert.doesNotMatch(searchForm, /Searching\.\.\./);
   assert.match(globals, /\.search-mode-select\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.search-date-range\s*{[\s\S]*display:\s*inline-flex/);
@@ -1298,10 +1300,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailActions, /\{isPending \? "Updating" : subscribed \? "Following" : "Follow"\}/);
   assert.doesNotMatch(builderDetailActions, /Updating\.\.\./);
   assert.match(appNavView, /desktopLayout = "rail"/);
-  assert.match(appNavView, /const desktopAriaLabel =/);
+  assert.match(appNavView, /const resolvedDesktopAriaLabel =/);
   assert.match(appNavView, /desktopLayout === "bar" \? "Primary" : "Desktop primary"/);
-  assert.match(appNavView, /<nav className=\{desktopClassName\} aria-label=\{desktopAriaLabel\}>/);
-  assert.match(appNavView, /aria-label="Mobile primary"/);
+  assert.match(appNavView, /<nav className=\{desktopClassName\} aria-label=\{resolvedDesktopAriaLabel\}>/);
+  assert.match(appNavView, /mobileAriaLabel = "Mobile primary"/);
   assert.doesNotMatch(appNavView, /className="fb-m-tabbar"[\s\S]*aria-label="Primary"/);
   assert.match(appNavView, /fb-nav-list-bar/);
   assert.match(appNavView, /fb-nav-list-rail/);
@@ -1312,7 +1314,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /actions \? <div className="fb-page-head-actions">\{actions\}<\/div> : null/);
   assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
   assert.match(dashboardPage, /@\/components\/PageHeader/);
-  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Catch up on AI Digest issues and Following posts\./);
+  assert.match(dashboardPage, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.today" \/>\}[\s\S]*description=\{<I18nText id="workspace\.todayDesc" \/>\}/);
   assert.doesNotMatch(dashboardPage, /Read AI Digest and Following updates, then save or open originals\./);
   assert.doesNotMatch(dashboardPage, /save or open originals/);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
@@ -1462,7 +1464,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(workspaceTopTabsView, /className: "fb-btn compact"/);
   assert.doesNotMatch(dashboardTabs, /fb-tabs|fb-tab|fb-m-segctl|fb-m-seg/);
   assert.match(globals, /\.fb-segmented-tabs/);
-  assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*background:\s*var\(--paper-strong\)/);
+  assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*background:\s*var\(--surface-muted\)/);
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*display:\s*inline-flex/);
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*padding:\s*0\.25rem/);
@@ -1509,13 +1511,13 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardTabs, /router\.replace/);
   assert.doesNotMatch(dashboardTabs, /window\.history\.pushState/);
   assert.doesNotMatch(dashboardTabs, /router\.push/);
-  assert.match(dashboardTabs, /AI Digest/);
+  assert.match(dashboardTabs, /<I18nText id="tabs\.aiDigest" \/>/);
   assert.match(dashboardTabs, /ai-digest/);
-  assert.match(dashboardTabs, /AI Digest[\s\S]*Following/);
+  assert.match(dashboardTabs, /id="tabs\.aiDigest"[\s\S]*id="tabs\.following"/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /Favorites/);
+  assert.match(dashboardTabs, /<I18nText id="tabs\.favorites" \/>/);
   assert.match(dashboardTabs, /home-panel-favorites|home-tab-favorites/);
-  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
+  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: <I18nText id="tabs\.aiDigest" \/>[\s\S]*value: "following"[\s\S]*label: <I18nText id="tabs\.following" \/>[\s\S]*value: "favorites"[\s\S]*label: <I18nText id="tabs\.favorites" \/>/);
   assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"[\s\S]*id="home-panel-favorites"/);
   assert.match(
     dashboardPage,
@@ -1597,7 +1599,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /<\/div>\s*<\/div>\s*<div className="builder-detail-control-row">/);
   assert.match(builderDetailLoading, /<\/div>\s*<\/div>\s*<div className="builder-detail-control-row">/);
   assert.match(globals, /\.builder-detail-control-row\s*{[\s\S]*justify-self:\s*end/);
-  assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-control-row\s*{[\s\S]*justify-self:\s*start/);
+  assert.match(cssRule(globals, ".builder-detail-control-row"), /justify-self:\s*end/);
   assert.match(builderDetailPage, /@\/components\/OriginalSourceAction/);
   assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{displaySourceName\}`\}/);
   assert.match(builderDetailPage, /ariaLabel=\{`Original: \$\{sourceName\}`\}/);
@@ -1781,11 +1783,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const mobileTopRule = cssRule(globals, ".fb-m-top");
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*padding:\s*0\.5rem var\(--workspace-gutter\)/);
-  assert.match(topRule, /border-bottom:\s*0/);
+  assert.match(topRule, /border-bottom:\s*1px solid color-mix\(in oklch, var\(--line\) 62%, transparent\)/);
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-top\s*{[\s\S]*padding-left:\s*0/);
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-top\s*{[\s\S]*padding-right:\s*0/);
   assert.match(globals, /\.fb-m-top\s*{[\s\S]*padding:\s*0\.5rem var\(--workspace-gutter\) 0\.625rem/);
-  assert.match(mobileTopRule, /border-bottom:\s*0/);
+  assert.match(mobileTopRule, /border-bottom:\s*1px solid color-mix\(in oklch, var\(--line\) 62%, transparent\)/);
   assert.match(globals, /\.fb-m-top \.fb-brand\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /\.fb-m-top \.fb-brand\s*{[\s\S]*width:\s*auto/);
   assert.match(globals, /--top-search-max:\s*34rem/);
@@ -1806,7 +1808,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-top-user\s*{[\s\S]*margin-right:\s*var\(--workspace-gutter\)/);
   assert.match(globals, /\.fb-top-user \.user-avatar\s*{[\s\S]*height:\s*1\.875rem/);
   assert.match(globals, /\.fb-top-user \.user-avatar\s*{[\s\S]*width:\s*1\.875rem/);
-  assert.match(globals, /\.fb-m-icon:hover,[\s\S]*\.fb-m-icon\[data-active="true"\]\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
+  assert.match(globals, /\.fb-m-icon:hover,[\s\S]*\.fb-m-icon\[data-active="true"\]\s*{[\s\S]*background:\s*var\(--surface-hover\)/);
   assert.match(globals, /\.fb-m-icon\[data-active="true"\]\s*{[\s\S]*border-color:\s*color-mix/);
   assert.match(globals, /\.fb-brand\s*{[\s\S]*grid-row:\s*1/);
   assert.match(globals, /\.fb-brand\s*{[\s\S]*margin-left:\s*var\(--workspace-gutter\)/);
@@ -3108,7 +3110,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-meta-skeleton\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.search-meta-skeleton--count\s*{[\s\S]*width:\s*min\(14rem,\s*62%\)/);
   assert.match(globals, /\.search-meta-skeleton--page\s*{[\s\S]*width:\s*min\(8rem,\s*32%\)/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, and AI Digest issues\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title=\{<I18nText id="common\.search" \/>\}[\s\S]*description=\{<I18nText id="workspace\.searchDesc" \/>\}/);
   assert.doesNotMatch(searchPage, /in one place/);
   assert.doesNotMatch(searchPage, /Find sources, posts, saved posts, and AI Digest issues in one place\./);
   assert.doesNotMatch(searchPage, /Find sources, posts, saved posts, and AI Digests in one place\./);
@@ -3174,7 +3176,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchForm, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
   assert.doesNotMatch(formSubmitButton, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"[\s\S]*<button[\s\S]*className="search-suggestion-chip"/);
-  assert.match(searchForm, /aria-label=\{`Search for \$\{suggestion\.query\}`\}/);
+  assert.match(searchForm, /aria-label=\{t\("search\.searchFor", \{ query: suggestion\.query \}\)\}/);
   assert.match(searchForm, /className="search-suggestion-remove"/);
   assert.doesNotMatch(searchForm, /role="option"[\s\S]{0,220}onClick=\{\(\) => \{[\s\S]{0,220}submitSuggestion\(suggestion/);
   assert.match(globals, /\.search-suggestion-chip\s*{[\s\S]*cursor:\s*pointer/);
@@ -3347,7 +3349,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /File type|Query type|Remove excluded file types|Remove file type/);
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
-  assert.match(searchForm, /Searching/);
+  assert.match(searchForm, /t\("search\.searching"\)/);
   assert.match(searchForm, /const recentSearchesStorageKey = "followbrief-searches"/);
   assert.match(searchForm, /const legacyRecentSearchesStorageKey = "builder-blog-searches"/);
   assert.match(searchForm, /function readRecentSearches/);
@@ -3357,7 +3359,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /localStorage\.setItem\(recentSearchesStorageKey, JSON\.stringify\(recentSearches\)\)/);
   assert.doesNotMatch(searchForm, /localStorage\.setItem\("builder-blog-searches"/);
   assert.match(searchForm, /normalizeRecentSearches/);
-  assert.match(searchForm, />Mode<\/span>/);
+  assert.match(searchForm, /<span>\{t\("search\.mode"\)\}<\/span>/);
   assert.doesNotMatch(searchForm, /Match style/);
   assert.match(searchForm, /variant\?: "page" \| "header"/);
   assert.match(searchForm, /header-search-suggestion/);
@@ -3366,8 +3368,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /className="search-suggestion-icon"/);
   assert.doesNotMatch(searchForm, /h-4 w-4|h-3\.5 w-3\.5|text-\[var\(--muted\)\]|search-query-label min-w-0/);
   assert.match(searchForm, /\/api\/search\/suggest/);
-  assert.match(searchForm, />Time<\/span>/);
-  assert.match(searchForm, />Sort<\/span>/);
+  assert.match(searchForm, /<span>\{t\("search\.time"\)\}<\/span>/);
+  assert.match(searchForm, /<span>\{t\("search\.sort"\)\}<\/span>/);
   assert.doesNotMatch(searchForm, /Time range|Sort by/);
   assert.match(searchForm, /Custom date range/);
   assert.match(searchForm, /withDateSearchOperators/);
@@ -3377,11 +3379,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /name="after"/);
   assert.match(searchForm, /name="before"/);
   assert.match(searchForm, /useRef<HTMLInputElement>/);
-  assert.match(searchForm, /Clear search query/);
+  assert.match(searchForm, /aria-label=\{t\("search\.clear"\)\}/);
   assert.match(searchForm, /clearQuery/);
   assert.match(searchForm, /inputRef\.current\?\.focus/);
   assert.match(searchForm, /recentSuggestionKeys/);
-  assert.match(searchForm, /Remove recent search/);
+  assert.match(searchForm, /t\("search\.removeRecent"/);
   assert.match(searchForm, /removeRecentSearch/);
   assert.match(searchForm, /normalizeSuggestionKey/);
   assert.doesNotMatch(searchForm, /datalist/);
@@ -3402,12 +3404,12 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
-  assert.match(searchForm, /placeholder="Search sources, posts, and AI Digest issues"/);
+  assert.match(searchForm, /placeholder=\{t\("search\.placeholder"\)\}/);
   assert.doesNotMatch(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digest issues"/);
   assert.doesNotMatch(searchForm, /saved items|Favorites/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"/);
-  assert.match(searchForm, /<button[\s\S]*aria-label=\{`Search for \$\{suggestion\.query\}`\}[\s\S]*className="search-suggestion-chip"/);
+  assert.match(searchForm, /<button[\s\S]*aria-label=\{t\("search\.searchFor", \{ query: suggestion\.query \}\)\}[\s\S]*className="search-suggestion-chip"/);
   assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)/);
   assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*onMouseDown=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)/);
   assert.doesNotMatch(searchForm, /<span className="search-suggestion-chip">/);
@@ -3571,8 +3573,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
     /selectedTab === "ai-digests" \? loadDigestPipelineHubPageData\(\) : null/,
   );
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
-  assert.match(libraryHubPage, /label: "Source libraries"/);
-  assert.match(libraryHubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
+  assert.match(libraryHubPage, /label:\s*<I18nText id="tabs\.sourceLibraries" \/>/);
+  assert.match(libraryHubPage, /label:\s*<I18nText id="tabs\.sourceLibraries" \/>[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
   assert.match(libraryHubPage, /Import shared source libraries for AI Digest and Following\./);
   assert.doesNotMatch(libraryHubPage, /Import libraries that feed AI Digest and Following\.|Import shared source libraries into Sources\.|Import shared source libraries into Sources for AI Digest and Following\.|Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources\.|Import shared libraries into Sources, Following, and AI Digest\./);
@@ -3581,7 +3583,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
   assert.match(libraryHubPage, /@\/components\/PageHeader/);
-  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*Browse and import shared source libraries and AI Digest collections\./);
+  assert.match(libraryHubPage, /<PageHeader[\s\S]*title=\{<I18nText id="workspace\.hub" \/>\}[\s\S]*description=\{<I18nText id="workspace\.hubDesc" \/>\}/);
   assert.doesNotMatch(libraryHubPage, /Browse shared source libraries and AI Digest collections, then import the ones you need\./);
   assert.match(libraryHubPage, /<WorkspaceTabShell[\s\S]*selectedValue=\{selectedTab\}/);
   assert.match(libraryHubPage, /fallbackByValue=\{\{/);
@@ -3593,7 +3595,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /tabId:\s*"hub-tab-source-library"/);
   assert.match(libraryHubPage, /panelId:\s*"hub-panel-ai-digests"/);
   assert.match(libraryHubPage, /tabId:\s*"hub-tab-ai-digests"/);
-  assert.match(libraryHubPage, /label:\s*"AI Digest collections"/);
+  assert.match(libraryHubPage, /label:\s*<I18nText id="tabs\.aiDigestCollections" \/>/);
   assert.doesNotMatch(libraryHubPage, /label:\s*"AI Digest archives"/);
   assert.doesNotMatch(libraryHubPage, /label:\s*"AI Digests"/);
   assert.match(libraryHubPage, /const selectedTabItem = selectedHubTabItem\(selectedTab\)/);

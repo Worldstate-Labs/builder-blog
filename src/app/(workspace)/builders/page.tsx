@@ -85,14 +85,14 @@ type BuildersSearchParams = Promise<{
 const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
   {
     value: "fetch",
-    label: "Sources",
+    label: <I18nText id="tabs.sources" />,
     href: "/builders?tab=fetch",
     panelId: "sources-panel-fetch",
     tabId: "sources-tab-fetch",
   },
   {
     value: "digest",
-    label: "AI Digest",
+    label: <I18nText id="tabs.aiDigest" />,
     href: "/builders?tab=digest",
     panelId: "sources-panel-digest",
     tabId: "sources-tab-digest",

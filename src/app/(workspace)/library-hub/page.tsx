@@ -39,14 +39,14 @@ type LibraryHubSearchParams = Promise<{
 const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
   {
     value: "source-library",
-    label: "Source libraries",
+    label: <I18nText id="tabs.sourceLibraries" />,
     href: "/library-hub?tab=source-library",
     panelId: "hub-panel-source-library",
     tabId: "hub-tab-source-library",
   },
   {
     value: "ai-digests",
-    label: "AI Digest collections",
+    label: <I18nText id="tabs.aiDigestCollections" />,
     href: "/library-hub?tab=ai-digests",
     panelId: "hub-panel-ai-digests",
     tabId: "hub-tab-ai-digests",
