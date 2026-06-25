@@ -84,11 +84,6 @@ function PublicHeaderActions({
     <>
       <LanguageSwitcher compact />
       <ThemeToggle />
-      {current !== "home" && !session ? (
-        <Link className="fb-login-nav-link" href="/">
-          {t("common.home")}
-        </Link>
-      ) : null}
       <Link className="fb-login-nav-link" href="/privacy">
         {t("common.privacy")}
       </Link>

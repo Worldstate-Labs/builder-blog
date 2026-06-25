@@ -514,6 +514,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(publicHeader, /showLegalLinks \? \([\s\S]*href="\/privacy"[\s\S]*t\("common\.privacy"\)[\s\S]*href="\/terms"[\s\S]*t\("common\.terms"\)/);
   assert.doesNotMatch(publicHeader, /showMobileLegalLinks|PublicHeaderSurface|surface="(?:desktop|mobile)"/);
   assert.match(publicHeader, /<HeaderAccountControls session=\{session\} \/>/);
+  assert.doesNotMatch(publicHeader, /t\("common\.home"\)|className="fb-login-nav-link" href="\/"/);
   assert.match(publicHeader, /href="\/privacy"/);
   assert.match(publicHeader, /href="\/terms"/);
   assert.match(publicHeader, /href="\/login"/);
