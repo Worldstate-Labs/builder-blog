@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import * as ts from "typescript";
+import { translate } from "../src/lib/i18n";
 import { translateUiPhrase } from "../src/lib/i18n-phrases";
 
 test("Sources page UI phrases translate while product and source names stay stable", () => {
@@ -27,6 +28,9 @@ test("Sources page UI phrases translate while product and source names stay stab
     ["Remove from Hub", "从 Hub 移除"],
     ["Add a source", "添加信息源"],
     ["Following", "已关注"],
+    ["Favorites", "收藏"],
+    ["Loading Favorites", "正在加载收藏"],
+    ["No Favorites yet", "还没有收藏"],
     ["Show 9 more sources", "再显示 9 个信息源"],
     ["Source libraries imported from Hub.", "从 Hub 导入的信息源库。"],
     ["No imported source libraries", "还没有导入的信息源库"],
@@ -91,7 +95,6 @@ test("visible app TSX phrases have translations for supported non-English locale
     "DigestRun",
     "English",
     "Español (Spanish)",
-    "Favorites",
     "FollowBrief",
     "Français (French)",
     "Hermes",
@@ -169,6 +172,18 @@ test("visible app TSX phrases have translations for supported non-English locale
   }
 
   assert.deepEqual(missing, []);
+});
+
+test("Favorites tab and home copy are localized by locale keys", () => {
+  assert.equal(translate("zh-CN", "tabs.favorites"), "收藏");
+  assert.equal(translate("zh-TW", "tabs.favorites"), "收藏");
+  assert.equal(translate("ja", "tabs.favorites"), "お気に入り");
+  assert.equal(translate("ko", "tabs.favorites"), "즐겨찾기");
+  assert.equal(translate("es", "tabs.favorites"), "Favoritos");
+  assert.equal(
+    translate("zh-CN", "home.featureReadingCopy"),
+    "AI Digest、Following 和收藏分开呈现，让补读更聚焦。",
+  );
 });
 
 function initializerText(node: ts.StringLiteralLike) {

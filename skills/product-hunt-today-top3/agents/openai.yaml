@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Hunt Today Top 3"
+  short_description: "Find today's top PH launches"
+  default_prompt: "Use $product-hunt-today-top3 to find today's top 3 Product Hunt launches."

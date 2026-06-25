@@ -8,6 +8,7 @@ import { SearchForm } from "@/components/SearchForm";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
+  { href: "/dashboard", label: "Home", icon: "home" },
   { href: "/builders", label: "Sources", icon: "sources" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
 ];

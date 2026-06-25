@@ -1251,8 +1251,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const workspaceTabShell = source("src/components/WorkspaceTabShell.tsx");
   const globals = source("src/app/globals.css");
 
-  assert.doesNotMatch(appShell, /label: "Home"/);
-  assert.doesNotMatch(appShell, /href: "\/dashboard",\s*label: "Home"/);
+  assert.match(appShell, /\{ href: "\/dashboard", label: "Home", icon: "home" \}/);
   assert.match(appShell, /HeaderAccountControls/);
   assert.match(headerAccountControls, /<LanguageSwitcher compact \/>[\s\S]*<ThemeToggle \/>[\s\S]*<UserMenu compact isAdmin=\{isAdmin\} session=\{session\} \/>/);
   assert.match(brandMark, /<span aria-hidden="true" className=\{\`\$\{base\} \$\{className\}`\.trim\(\)\}>/);
