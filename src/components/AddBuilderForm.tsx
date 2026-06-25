@@ -397,6 +397,8 @@ export function AddBuilderForm({
             aria-expanded={sourceCandidateSuggestions.length > 0}
             aria-label="Handle or URL"
             aria-readonly={sourceValueIsFixed}
+            autoComplete="off"
+            autoCorrect="off"
             className="fb-input"
             name="sourceValue"
             onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
@@ -413,6 +415,7 @@ export function AddBuilderForm({
             readOnly={sourceValueIsFixed}
             required
             role="combobox"
+            spellCheck={false}
             value={resolvedSourceValue}
           />
           <SourceCandidateList

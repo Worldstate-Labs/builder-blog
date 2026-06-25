@@ -109,6 +109,8 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(addBuilderForm, /sourceCandidates: SourceCandidate\[\]/);
   assert.match(addBuilderForm, /SourceCandidateList/);
   assert.match(addBuilderForm, /aria-autocomplete="list"/);
+  assert.match(addBuilderForm, /autoComplete="off"/);
+  assert.match(addBuilderForm, /spellCheck=\{false\}/);
   assert.match(addBuilderForm, /applySourceCandidate\(candidate: SourceCandidate\)/);
   assert.match(addBuilderForm, /setSourceType\(candidate\.sourceType\)/);
   assert.match(addBuilderForm, /setSourceValue\(sourceCandidateValue\(candidate\)\)/);
@@ -119,6 +121,8 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(editDialog, /sourceCandidates: SourceCandidate\[\]/);
   assert.match(editDialog, /SourceCandidateList/);
   assert.match(editDialog, /aria-autocomplete="list"/);
+  assert.match(editDialog, /autoComplete="off"/);
+  assert.match(editDialog, /spellCheck=\{false\}/);
   assert.match(editDialog, /applySourceCandidate\(candidate: SourceCandidate\)/);
   assert.match(editDialog, /setSourceType\(candidate\.sourceType\)/);
   assert.match(editDialog, /setSourceValue\(sourceCandidateValue\(candidate\)\)/);

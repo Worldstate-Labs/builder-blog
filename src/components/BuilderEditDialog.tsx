@@ -399,6 +399,8 @@ export function BuilderEditDialog({
                   aria-expanded={sourceCandidateSuggestions.length > 0}
                   aria-invalid={error ? "true" : undefined}
                   aria-readonly={sourceValueIsFixed}
+                  autoComplete="off"
+                  autoCorrect="off"
                   className="fb-input mono"
                   onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
                   onChange={(e) => {
@@ -413,6 +415,7 @@ export function BuilderEditDialog({
                   readOnly={sourceValueIsFixed}
                   required
                   role="combobox"
+                  spellCheck={false}
                   value={resolvedSourceValue}
                 />
                 <SourceCandidateList
