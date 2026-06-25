@@ -99,6 +99,11 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(candidateLib, /Hugging Face Blog/);
   assert.match(candidateLib, /Latent Space Podcast/);
   assert.match(candidateLib, /OpenAI on X/);
+  assert.match(candidateLib, /avatarUrlForCuratedCandidate/);
+  assert.match(candidateLib, /pbs\.twimg\.com\/profile_images/);
+  assert.match(candidateLib, /yt3\.googleusercontent\.com/);
+  assert.match(candidateLib, /google\.com\/s2\/favicons/);
+  assert.match(candidateLib, /avatarUrl: seed\.avatarUrl/);
   assert.doesNotMatch(candidateLib, /xAI News/);
   assert.doesNotMatch(candidateLib, /Perplexity Blog/);
   assert.doesNotMatch(candidateLib, /TWIML/);
