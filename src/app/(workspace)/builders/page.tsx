@@ -693,10 +693,30 @@ function serializeAgentTokens(
 function sourceOptionsForForms(
   sources: Array<{ id: string; label: string }>,
 ) {
-  return sources.map((source) => ({
-    id: source.id,
-    label: formSourceTypeLabel(source),
-  }));
+  return [...sources]
+    .sort(
+      (a, b) =>
+        sourceFormOrderRank(a.id) - sourceFormOrderRank(b.id) ||
+        formSourceTypeLabel(a).localeCompare(formSourceTypeLabel(b)),
+    )
+    .map((source) => ({
+      id: source.id,
+      label: formSourceTypeLabel(source),
+    }));
+}
+
+function sourceFormOrderRank(sourceId: string) {
+  const order = [
+    "podcast",
+    "blog",
+    "youtube",
+    "x",
+    "github_trending",
+    "product_hunt_top_products",
+    "website",
+  ];
+  const index = order.indexOf(sourceId);
+  return index >= 0 ? index : order.length;
 }
 
 function formSourceTypeLabel(source: { id: string; label: string }) {

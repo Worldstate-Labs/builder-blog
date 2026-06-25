@@ -4466,8 +4466,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(personalBuilderInput, /Source URL or handle is required|URL is malformed|X handle must look|Enter a youtube\.com or youtu\.be URL|YouTube source must be|Apple lookup failed|Apple returned no RSS feed|has no record|this podcast with Apple Podcasts|resolve the RSS feed/);
   assert.match(addBuilderForm, /className="add-source-form"/);
   assert.match(addBuilderForm, /className="add-source-type-list"/);
-  assert.match(addBuilderForm, /className="add-source-primary-row"/);
   assert.match(addBuilderForm, /className="add-source-name-row"/);
+  assert.match(addBuilderForm, /className="add-source-action-row"/);
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
   assert.match(addBuilderForm, /Display name \(optional\)/);
   assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL/);
@@ -4496,6 +4496,26 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(addBuilderForm, /fb-input flex-1/);
   assert.doesNotMatch(addBuilderForm, /className="mt-1 rounded-md border/);
   assert.doesNotMatch(addBuilderForm, /h-3\.5 w-3\.5|w-full justify-center|sm:w-auto/);
+  assert.ok(
+    addBuilderForm.indexOf('name="sourceValue"') <
+      addBuilderForm.indexOf('className="add-source-name-row"'),
+    "Add source form should show the URL input before display name.",
+  );
+  assert.ok(
+    addBuilderForm.indexOf('className="add-source-name-row"') <
+      addBuilderForm.indexOf('className="add-source-type-list"'),
+    "Add source form should show display name before source type.",
+  );
+  assert.ok(
+    addBuilderForm.indexOf('className="add-source-type-list"') <
+      addBuilderForm.indexOf('className="add-source-action-row"'),
+    "Add source form should show source type before the submit button.",
+  );
+  assert.match(buildersPage, /function sourceFormOrderRank\(sourceId: string\)/);
+  assert.match(
+    buildersPage,
+    /const order = \[[\s\S]*"podcast"[\s\S]*"blog"[\s\S]*"youtube"[\s\S]*"x"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"website"[\s\S]*\]/,
+  );
   const privateLibraryPanel = source("src/components/PrivateLibraryPanel.tsx");
   assert.match(privateLibraryPanel, /useId/);
   assert.match(privateLibraryPanel, /const addPanelId = useId\(\)/);
@@ -4560,6 +4580,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(cssRule(globals, ".source-library-items-area .builder-library-source-list"), /padding:\s*0/);
   assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(globals, /\.add-source-name-input\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.add-source-action-row\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.add-source-submit\s*{[\s\S]*justify-content:\s*center/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.add-source-submit\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.add-source-callout/);

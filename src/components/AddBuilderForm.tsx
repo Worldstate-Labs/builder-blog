@@ -358,80 +358,41 @@ export function AddBuilderForm({
 
   return (
     <form className="add-source-form" onSubmit={addBuilder}>
-      <div
-        aria-label="Source type"
-        className="add-source-type-list"
-        onKeyDown={handleSourceTypeKeyDown}
-        role="radiogroup"
-      >
-        {sourceOptions.map((source) => {
-          const Icon = sourceIcons[source.id] ?? Globe;
-          const selected = source.id === sourceType;
-          return (
-            <button
-              aria-checked={selected}
-              className="source-pick"
-              data-selected={selected ? "true" : undefined}
-              id={sourceTypeOptionId(source.id)}
-              key={source.id}
-              onClick={() => {
-                selectSourceType(source.id);
-              }}
-              role="radio"
-              tabIndex={selected ? 0 : -1}
-              type="button"
-            >
-              <Icon aria-hidden="true" />
-              <span>{source.label}</span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="add-source-primary-row">
-        <div className="source-url-combobox">
-          <input
-            aria-autocomplete="list"
-            aria-controls={
-              sourceCandidateSuggestions.length > 0 ? sourceCandidateListId : undefined
-            }
-            aria-expanded={sourceCandidateSuggestions.length > 0}
-            aria-label="Handle or URL"
-            aria-readonly={sourceValueIsFixed}
-            autoComplete="off"
-            autoCorrect="off"
-            className="fb-input"
-            name="sourceValue"
-            onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
-            onChange={(event) => {
-              if (sourceValueIsFixed) return;
-              setSourceValue(event.target.value);
-              setSelectedCandidate(null);
-              setSourceCandidatesOpen(true);
-              // Editing the URL invalidates a stale confirm prompt.
-              setPendingConfirmation(null);
-            }}
-            onFocus={() => setSourceCandidatesOpen(true)}
-            placeholder={placeholderForSourceId(sourceType)}
-            readOnly={sourceValueIsFixed}
-            required
-            role="combobox"
-            spellCheck={false}
-            value={resolvedSourceValue}
-          />
-          <SourceCandidateList
-            candidates={sourceCandidateSuggestions}
-            id={sourceCandidateListId}
-            onSelect={applySourceCandidate}
-          />
-        </div>
-        <button
-          className="fb-btn dark add-source-submit"
-          disabled={isPending || Boolean(pendingConfirmation)}
-          type="submit"
-        >
-          <Plus aria-hidden="true" />
-          {isPending ? "Adding" : "Add source"}
-        </button>
+      <div className="source-url-combobox">
+        <input
+          aria-autocomplete="list"
+          aria-controls={
+            sourceCandidateSuggestions.length > 0 ? sourceCandidateListId : undefined
+          }
+          aria-expanded={sourceCandidateSuggestions.length > 0}
+          aria-label="Handle or URL"
+          aria-readonly={sourceValueIsFixed}
+          autoComplete="off"
+          autoCorrect="off"
+          className="fb-input"
+          name="sourceValue"
+          onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
+          onChange={(event) => {
+            if (sourceValueIsFixed) return;
+            setSourceValue(event.target.value);
+            setSelectedCandidate(null);
+            setSourceCandidatesOpen(true);
+            // Editing the URL invalidates a stale confirm prompt.
+            setPendingConfirmation(null);
+          }}
+          onFocus={() => setSourceCandidatesOpen(true)}
+          placeholder={placeholderForSourceId(sourceType)}
+          readOnly={sourceValueIsFixed}
+          required
+          role="combobox"
+          spellCheck={false}
+          value={resolvedSourceValue}
+        />
+        <SourceCandidateList
+          candidates={sourceCandidateSuggestions}
+          id={sourceCandidateListId}
+          onSelect={applySourceCandidate}
+        />
       </div>
       {preview.kind !== "idle" ? (
         <div
@@ -495,6 +456,45 @@ export function AddBuilderForm({
             <span className="add-source-inline-note is-success">{status}</span>
           ) : null}
         </span>
+      </div>
+      <div
+        aria-label="Source type"
+        className="add-source-type-list"
+        onKeyDown={handleSourceTypeKeyDown}
+        role="radiogroup"
+      >
+        {sourceOptions.map((source) => {
+          const Icon = sourceIcons[source.id] ?? Globe;
+          const selected = source.id === sourceType;
+          return (
+            <button
+              aria-checked={selected}
+              className="source-pick"
+              data-selected={selected ? "true" : undefined}
+              id={sourceTypeOptionId(source.id)}
+              key={source.id}
+              onClick={() => {
+                selectSourceType(source.id);
+              }}
+              role="radio"
+              tabIndex={selected ? 0 : -1}
+              type="button"
+            >
+              <Icon aria-hidden="true" />
+              <span>{source.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="add-source-action-row">
+        <button
+          className="fb-btn dark add-source-submit"
+          disabled={isPending || Boolean(pendingConfirmation)}
+          type="submit"
+        >
+          <Plus aria-hidden="true" />
+          {isPending ? "Adding" : "Add source"}
+        </button>
       </div>
       {pendingConfirmation ? (
         <div

@@ -2953,12 +2953,17 @@ summary.library-section-summary::after {
   width: 0.875rem;
 }
 
-.add-source-primary-row,
 .add-source-name-row {
   align-items: center;
   display: grid;
   gap: 0.5rem;
   grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.add-source-action-row {
+  display: flex;
+  justify-content: flex-start;
   min-width: 0;
 }
 
@@ -3485,7 +3490,6 @@ summary.library-section-summary::after {
     content: none;
   }
 
-  .add-source-primary-row,
   .add-source-name-row {
     grid-template-columns: 1fr;
   }
