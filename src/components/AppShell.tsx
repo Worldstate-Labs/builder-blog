@@ -2,13 +2,12 @@ import Link from "next/link";
 import type { Session } from "next-auth";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
+import { HeaderAccountControls } from "@/components/HeaderAccountControls";
 import { MobileSearchLink } from "@/components/MobileSearchLink";
 import { SearchForm } from "@/components/SearchForm";
-import { UserMenu } from "@/components/UserMenu";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
-  { href: "/dashboard", label: "Home", icon: "home" },
   { href: "/builders", label: "Sources", icon: "sources" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
 ];
@@ -34,7 +33,7 @@ export function AppShell({
             <SearchForm query="" variant="header" />
           </div>
           <div className="fb-top-user">
-            <UserMenu compact isAdmin={isAdmin} session={session} />
+            <HeaderAccountControls isAdmin={isAdmin} session={session} />
           </div>
         </div>
       </header>
@@ -46,7 +45,7 @@ export function AppShell({
         </Link>
         <span className="fb-m-spacer" />
         <MobileSearchLink />
-        <UserMenu compact isAdmin={isAdmin} session={session} />
+        <HeaderAccountControls isAdmin={isAdmin} session={session} />
       </header>
 
       <div className="app-body">

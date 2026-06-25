@@ -3,9 +3,9 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
 import { BrandMark } from "@/components/BrandMark";
+import { HeaderAccountControls } from "@/components/HeaderAccountControls";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { UserMenu } from "@/components/UserMenu";
 import { useI18n } from "@/components/I18nProvider";
 
 type PublicHeaderPage = "home" | "login" | "privacy" | "terms";
@@ -59,7 +59,7 @@ function PublicHeaderActions({
 
   if (isLegalPage) {
     return session ? (
-      <UserMenu compact session={session} />
+      <HeaderAccountControls session={session} />
     ) : (
       <>
         {showLegalLinks ? (
@@ -84,7 +84,7 @@ function PublicHeaderActions({
     <>
       <LanguageSwitcher compact />
       <ThemeToggle />
-      {current !== "home" ? (
+      {current !== "home" && !session ? (
         <Link className="fb-login-nav-link" href="/">
           {t("common.home")}
         </Link>

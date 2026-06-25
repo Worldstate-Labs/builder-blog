@@ -507,13 +507,13 @@ test("public entry pages use the centered product layout", () => {
   assert.match(publicHeader, /className="fb-public-top-actions"/);
   assert.match(publicHeader, /className="fb-public-mobile-actions"/);
   assert.match(publicHeader, /<PublicHeaderActions current=\{current\} session=\{session\} \/>/);
+  assert.match(publicHeader, /HeaderAccountControls/);
   assert.match(publicHeader, /ThemeToggle/);
-  assert.match(publicHeader, /UserMenu/);
   assert.match(publicHeader, /const isLegalPage = current === "privacy" \|\| current === "terms"/);
   assert.match(publicHeader, /const showLegalLinks = isLegalPage && !session/);
   assert.match(publicHeader, /showLegalLinks \? \([\s\S]*href="\/privacy"[\s\S]*t\("common\.privacy"\)[\s\S]*href="\/terms"[\s\S]*t\("common\.terms"\)/);
   assert.doesNotMatch(publicHeader, /showMobileLegalLinks|PublicHeaderSurface|surface="(?:desktop|mobile)"/);
-  assert.match(publicHeader, /<UserMenu compact session=\{session\} \/>/);
+  assert.match(publicHeader, /<HeaderAccountControls session=\{session\} \/>/);
   assert.match(publicHeader, /href="\/privacy"/);
   assert.match(publicHeader, /href="\/terms"/);
   assert.match(publicHeader, /href="\/login"/);
@@ -807,10 +807,11 @@ test("settings live in the clickable user avatar menu", () => {
   const markdownEditor = source("src/components/settings/MarkdownEditor.tsx");
   const commonRulesForm = source("src/components/CommonSummaryRulesForm.tsx");
   const digestPrompts = source("src/lib/digest-prompts.ts");
+  const headerAccountControls = source("src/components/HeaderAccountControls.tsx");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
   assert.doesNotMatch(appNav, /"key"/);
-  assert.match(appShell, /@\/components\/UserMenu/);
+  assert.match(appShell, /@\/components\/HeaderAccountControls/);
   assert.match(userMenu, /"use client"/);
   assert.match(userMenu, /usePathname/);
   assert.match(userMenu, /useId/);
@@ -836,7 +837,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /event\.key !== "Escape"/);
   assert.match(userMenu, /closeMenu\(\{ restoreFocus: true \}\)/);
   assert.match(userMenu, /summaryRef\.current\?\.focus\(\)/);
-  assert.match(userMenu, /themeHydrated/);
+  assert.match(headerAccountControls, /<LanguageSwitcher compact \/>[\s\S]*<ThemeToggle \/>[\s\S]*<UserMenu compact isAdmin=\{isAdmin\} session=\{session\} \/>/);
   assert.match(agentTokenPanel, /timeZone:\s*"UTC"/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
   assert.match(digestDetails, /View AI Digest/);
@@ -1174,7 +1175,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /aria-current=\{settingsActive \? "page" : undefined\}/);
   assert.match(userMenu, /data-active=\{settingsActive \? "true" : undefined\}/);
   assert.match(userMenu, /href="\/settings"[\s\S]*onClick=\{\(\) => closeMenu\(\)\}[\s\S]*t\("nav\.settings"\)/);
-  assert.match(userMenu, /function toggleTheme\(\) \{[\s\S]*setTheme\(theme === "dark" \? "light" : "dark"\);[\s\S]*closeMenu\(\);[\s\S]*\}/);
+  assert.doesNotMatch(userMenu, /LanguageSwitcher|ThemeToggle|setTheme|toggleTheme|nav\.lightMode|nav\.darkMode|user-menu-language/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*t\("nav\.signOut"\)/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
@@ -1206,6 +1207,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
   assert.match(globals, /\.user-menu-popover/);
+  assert.match(globals, /\.fb-account-controls\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.fb-account-controls \.user-menu-compact\s*{[\s\S]*margin-left:\s*0/);
+  assert.doesNotMatch(globals, /\.user-menu-language/);
   assert.match(globals, /details:not\(\[open\]\) > :not\(summary\)\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*text-align:\s*left/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*width:\s*100%/);
@@ -1219,6 +1223,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
   const appNavView = source("src/components/AppNavView.tsx");
+  const headerAccountControls = source("src/components/HeaderAccountControls.tsx");
   const mobileSearchLink = source("src/components/MobileSearchLink.tsx");
   const brandMark = source("src/components/BrandMark.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
@@ -1240,7 +1245,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const workspaceTabShell = source("src/components/WorkspaceTabShell.tsx");
   const globals = source("src/app/globals.css");
 
-  assert.match(appShell, /label: "Home"/);
+  assert.doesNotMatch(appShell, /label: "Home"/);
+  assert.doesNotMatch(appShell, /href: "\/dashboard",\s*label: "Home"/);
+  assert.match(appShell, /HeaderAccountControls/);
+  assert.match(headerAccountControls, /<LanguageSwitcher compact \/>[\s\S]*<ThemeToggle \/>[\s\S]*<UserMenu compact isAdmin=\{isAdmin\} session=\{session\} \/>/);
   assert.match(brandMark, /<span aria-hidden="true" className=\{\`\$\{base\} \$\{className\}`\.trim\(\)\}>/);
   assert.doesNotMatch(brandMark, /className=\{\`\$\{base\} \$\{className\} aria-hidden="true"`/);
   assert.doesNotMatch(appShell, /label: "Digest"/);
@@ -4992,6 +5000,7 @@ test("library hub exposes share and multi-import flows", () => {
   const globals = source("src/app/globals.css");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
+  const headerAccountControls = source("src/components/HeaderAccountControls.tsx");
 
   assert.match(builderActions, /\{isPending \? "Updating" : subscribed \? "Following" : "Follow"\}/);
   assert.doesNotMatch(builderActions, /Updating\.\.\./);
@@ -5000,7 +5009,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(workspaceLayout, /builderLibraryState/);
   assert.match(workspaceLayout, /WorkspaceAutoRefresh/);
   assert.doesNotMatch(appShell, /\{ href: "\/admin"/);
-  assert.match(appShell, /UserMenu/);
+  assert.match(appShell, /HeaderAccountControls/);
+  assert.match(headerAccountControls, /UserMenu/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
   assert.match(buildersPage, /adminCommunityLibraryName/);
   assert.match(builderSubscriptionRoute, /Source is not in your source library\./);

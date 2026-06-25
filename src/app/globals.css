@@ -756,6 +756,18 @@ details:not([open]) > :not(summary) {
   margin-left: auto;
 }
 
+.fb-account-controls {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.fb-account-controls .user-menu-compact {
+  margin-left: 0;
+}
+
 .user-menu > summary {
   list-style: none;
 }
@@ -900,15 +912,6 @@ details:not([open]) > :not(summary) {
   background: var(--line);
   height: 1px;
   margin: 0.25rem 0.1rem;
-}
-
-.user-menu-language {
-  cursor: default;
-  padding: 0.35rem;
-}
-
-.user-menu-language:hover {
-  background: transparent;
 }
 
 .language-switcher {
@@ -12756,6 +12759,25 @@ mark.fb-mark-highlight {
 
 .fb-m-top .fb-brand-name {
   font-size: 0.875rem;
+}
+
+.fb-m-top .fb-account-controls {
+  gap: 0.375rem;
+}
+
+.fb-m-top .language-switcher-compact {
+  min-height: 2.15rem;
+  padding-inline: 0.5rem 0.3rem;
+}
+
+.fb-m-top .theme-toggle {
+  height: 2.15rem;
+  width: 2.15rem;
+}
+
+.fb-m-top .fb-account-controls .user-avatar {
+  height: 2.15rem;
+  width: 2.15rem;
 }
 
 .fb-public-mobile-actions {

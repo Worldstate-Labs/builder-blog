@@ -6,9 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
-import { FileText, LogOut, Moon, Scale, Settings, ShieldCheck, Sun } from "lucide-react";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { setTheme, useHydrated, useTheme } from "@/components/ThemeToggle";
+import { FileText, LogOut, Scale, Settings, ShieldCheck } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { UserName } from "@/components/UserName";
 
@@ -26,8 +24,6 @@ export function UserMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const popoverId = useId();
   const pathname = usePathname();
-  const theme = useTheme();
-  const themeHydrated = useHydrated();
   const { t } = useI18n();
   const user = session?.user;
   const name = user?.name || user?.email?.split("@")[0] || "User";
@@ -43,11 +39,6 @@ export function UserMenu({
       summaryRef.current?.focus();
     }
   }, []);
-
-  function toggleTheme() {
-    setTheme(theme === "dark" ? "light" : "dark");
-    closeMenu();
-  }
 
   useEffect(() => {
     closeMenu();
@@ -153,21 +144,6 @@ export function UserMenu({
           <Scale className="user-menu-icon" />
           {t("common.terms")}
         </Link>
-        <div className="user-menu-item user-menu-language">
-          <LanguageSwitcher />
-        </div>
-        <button
-          className="user-menu-item"
-          onClick={toggleTheme}
-          type="button"
-        >
-          {themeHydrated && theme === "dark" ? (
-            <Sun className="user-menu-icon" aria-hidden="true" />
-          ) : (
-            <Moon className="user-menu-icon" aria-hidden="true" />
-          )}
-          {themeHydrated && theme === "dark" ? t("nav.lightMode") : t("nav.darkMode")}
-        </button>
         <div className="user-menu-separator" />
         <button
           className="user-menu-item"
