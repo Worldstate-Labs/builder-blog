@@ -98,16 +98,20 @@ The initial run command below passes the selected settings as env vars; step 7
 writes the pins immediately before installing the new schedule.
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
-cron) run with a minimal PATH; the runner injects
-`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`, so the relevant binary must
-live in one of those. Check:
+cron) do not inherit the interactive shell PATH; the runner injects this
+FollowBrief scheduler-safe PATH so default user-level installs can still be
+found:
 
 ```bash
-PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" command -v {{AGENT_RUNTIME}}
+SCHEDULER_PATH="$HOME/.local/bin:$HOME/bin:$HOME/.codex/bin:$HOME/.bun/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin"
+PATH="$SCHEDULER_PATH" command -v {{AGENT_RUNTIME}}
 ```
 
-If the path printed is empty, install or symlink the CLI into
-`/usr/local/bin` before continuing — the scheduler will not find it otherwise.
+If the path printed is empty, stop before installing the schedule: the selected
+runtime is not installed in a location FollowBrief can find from launchd/cron.
+Reinstall that runtime with its normal installer, or configure
+`BUILDER_BLOG_AGENT_COMMAND` to an absolute command path, then re-run this
+setup prompt.
 
 For OpenClaw only, also verify that scheduled runs will not wait for exec
 approval prompts. Do not change OpenClaw policy from this setup prompt; just

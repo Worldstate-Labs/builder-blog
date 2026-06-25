@@ -23,7 +23,11 @@ else
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
 
-PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+# launchd/cron do not inherit the user's interactive shell PATH. Include the
+# common user-level install locations used by local agent CLIs so scheduled
+# jobs can find runtimes installed with their default installers.
+SCHEDULER_SAFE_PATH="$HOME/.local/bin:$HOME/bin:$HOME/.codex/bin:$HOME/.bun/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin"
+PATH="$SCHEDULER_SAFE_PATH:$PATH"
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
 # runner so the per-user fetch log can distinguish scheduled jobs from
 # manual terminal invocations.

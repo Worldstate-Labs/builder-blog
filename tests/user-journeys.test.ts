@@ -1078,6 +1078,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /LaunchAgent plist exists/);
   assert.match(libraryCronSetupPrompt, /the user whether to\s+override/);
   assert.match(libraryCronSetupPrompt, /\(none found\)/);
+  assert.match(libraryCronSetupPrompt, /SCHEDULER_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
+  assert.match(digestCronSetupPrompt, /SCHEDULER_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
+  assert.match(runner, /SCHEDULER_SAFE_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
   // The setup does one real initial run; cron-setup must NOT restate the
   // fetch-task execution steps.
   assert.match(
