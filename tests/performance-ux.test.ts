@@ -494,6 +494,7 @@ test("public entry pages use the centered product layout", () => {
   const landingPage = source("src/app/page.tsx");
   const loginPage = source("src/app/login/page.tsx");
   const publicHeader = source("src/components/PublicHeader.tsx");
+  const languageSwitcher = source("src/components/LanguageSwitcher.tsx");
   const rootLayout = source("src/app/layout.tsx");
   const authButtons = source("src/components/AuthButtons.tsx");
   const globals = source("src/app/globals.css");
@@ -511,10 +512,13 @@ test("public entry pages use the centered product layout", () => {
   assert.match(publicHeader, /ThemeToggle/);
   assert.match(publicHeader, /const isLegalPage = current === "privacy" \|\| current === "terms"/);
   assert.match(publicHeader, /const showLegalLinks = isLegalPage && !session/);
-  assert.match(publicHeader, /showLegalLinks \? \([\s\S]*href="\/privacy"[\s\S]*t\("common\.privacy"\)[\s\S]*href="\/terms"[\s\S]*t\("common\.terms"\)/);
+  assert.match(publicHeader, /showLegalLinks \? \([\s\S]*<LanguageSwitcher compact \/>[\s\S]*<ThemeToggle \/>[\s\S]*href="\/privacy"[\s\S]*t\("common\.privacy"\)[\s\S]*href="\/terms"[\s\S]*t\("common\.terms"\)/);
   assert.doesNotMatch(publicHeader, /showMobileLegalLinks|PublicHeaderSurface|surface="(?:desktop|mobile)"/);
   assert.match(publicHeader, /<HeaderAccountControls session=\{session\} \/>/);
   assert.doesNotMatch(publicHeader, /t\("common\.home"\)|className="fb-login-nav-link" href="\/"/);
+  assert.match(languageSwitcher, /import \{ Globe \} from "lucide-react"/);
+  assert.match(languageSwitcher, /<Globe aria-hidden="true" className="language-switcher-icon" \/>/);
+  assert.doesNotMatch(languageSwitcher, /Languages/);
   assert.match(publicHeader, /href="\/privacy"/);
   assert.match(publicHeader, /href="\/terms"/);
   assert.match(publicHeader, /href="\/login"/);
@@ -731,6 +735,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.fb-login-nav-link\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /@media \(max-width:\s*520px\)[\s\S]*\.fb-public-m-top \.fb-brand-name\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.fb-login-title\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.fb-login-title\s*{[\s\S]*font-size:\s*2\.55rem/);
   assert.match(globals, /\.fb-login-panel-title\s*{[\s\S]*font-family:\s*var\(--font-geist-sans\)/);

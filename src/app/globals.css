@@ -12800,7 +12800,7 @@ mark.fb-mark-highlight {
   flex-shrink: 0;
 }
 
-@media (max-width: 380px) {
+@media (max-width: 520px) {
   .fb-public-m-top .fb-brand-name {
     display: none;
   }

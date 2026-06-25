@@ -65,6 +65,7 @@ function PublicHeaderActions({
         {showLegalLinks ? (
           <>
             <LanguageSwitcher compact />
+            <ThemeToggle />
             <Link className="fb-login-nav-link" href="/privacy">
               {t("common.privacy")}
             </Link>

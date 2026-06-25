@@ -1,6 +1,6 @@
 "use client";
 
-import { Languages } from "lucide-react";
+import { Globe } from "lucide-react";
 import { useId } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import { uiLocaleOptions, type UiLocale } from "@/lib/i18n";
@@ -15,7 +15,7 @@ export function LanguageSwitcher({
 
   return (
     <label className={`language-switcher${compact ? " language-switcher-compact" : ""}`} htmlFor={id}>
-      <Languages aria-hidden="true" className="language-switcher-icon" />
+      <Globe aria-hidden="true" className="language-switcher-icon" />
       <span className="sr-only">{t("language.label")}</span>
       <select
         aria-label={t("language.label")}
