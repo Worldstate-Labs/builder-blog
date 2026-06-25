@@ -590,7 +590,11 @@ test("web app serves the agent skill and setup command", () => {
   // the setup prompt derives the concrete cron/launchd schedule from the
   // install-time anchor after validation succeeds.
   assert.match(skillJobRoute, /cronFrequencies/);
-  assert.match(skillJobRoute, /new Set\(\["claude", "codex", "gemini", "openclaw"\]\)/);
+  assert.match(skillJobRoute, /new Set\(\["claude", "codex", "hermes", "openclaw"\]\)/);
+  assert.match(skillJobRoute, /hermes: "Hermes"/);
+  assert.match(skillPromptActions, /id: "hermes"/);
+  assert.match(skillPromptActions, /label: "Hermes"/);
+  assert.doesNotMatch(`${skillJobRoute}\n${skillPromptActions}`, /Gemini CLI|id: "gemini"|gemini: "Gemini CLI"/);
   assert.match(skillJobRoute, /openclaw: "OpenClaw"/);
   assert.match(skillPromptActions, /id: "openclaw"/);
   assert.match(skillPromptActions, /label: "OpenClaw"/);
@@ -959,6 +963,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestOncePrompt, /builder-digest\.mjs" prepare/);
   assert.doesNotMatch(digestOncePrompt, /render-digest/);
   assert.doesNotMatch(digestOncePrompt, /builder-digest\.mjs" sync/);
+  for (const oncePrompt of [libraryOncePrompt, digestOncePrompt]) {
+    assert.match(oncePrompt, /exits with code 75 and says a one-time FollowBrief run is already/);
+    assert.match(oncePrompt, /ask the user whether to replace the active one-time run/);
+    assert.match(oncePrompt, /BUILDER_BLOG_REPLACE_ACTIVE_ONETIME=1/);
+    assert.match(oncePrompt, /Do not set this flag for any other failure/);
+  }
   assert.match(digestOncePrompt, /Run only the numbered shell blocks below, in order/);
   assert.match(digestOncePrompt, /It owns candidate preparation,[\s\S]*summary JSON handoff, rendering/);
   assert.doesNotMatch(digestOncePrompt, /JSON schema, or success criteria/);
@@ -1294,14 +1304,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /_timeout="\$\(job_timeout_seconds\)"/);
   assert.match(runner, /_whole_timeout="\$\(job_timeout_seconds\)"/);
   assert.doesNotMatch(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
-  assert.match(runner, /gemini -p/);
+  assert.match(runner, /hermes chat -q/);
+  assert.doesNotMatch(runner, /gemini -p|run_with_gemini_unattended/);
   // Pinned-runtime dispatch for *-cron jobs: each runtime has an
   // _unattended variant with the matching allowlist / auto-approve
   // flags so cron never trips a permission prompt.
   assert.match(runner, /run_with_claude_unattended/);
   assert.match(runner, /run_with_codex_unattended/);
-  assert.match(runner, /run_with_gemini_unattended/);
+  assert.match(runner, /run_with_hermes_unattended/);
   assert.match(runner, /run_with_openclaw_unattended/);
+  assert.match(runner, /hermes chat -Q --yolo --accept-hooks --source tool -q/);
   assert.match(runner, /--permission-mode acceptEdits/);
   assert.match(runner, /--full-auto/);
   assert.match(runner, /--yolo/);

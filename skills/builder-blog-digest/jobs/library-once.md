@@ -8,6 +8,11 @@ Execution contract:
   variables, flags, and output locations unchanged.
 - Use the runner in step 2 as the fetch command. It owns source discovery,
   fetch-task sharding, validation, syncing, and fetch-log updates.
+- If step 2 exits with code 75 and says a one-time FollowBrief run is already
+  active, ask the user whether to replace the active one-time run. If the user
+  agrees, re-run the same step 2 command with
+  `BUILDER_BLOG_REPLACE_ACTIVE_ONETIME=1` added to the environment. If the user
+  declines, stop without retrying. Do not set this flag for any other failure.
 
 1. Install or refresh the skill:
 

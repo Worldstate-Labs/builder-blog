@@ -298,8 +298,8 @@ run_with_openclaw() {
   fi
 }
 
-run_with_gemini() {
-  gemini -p "$(cat "$PROMPT_FILE")"
+run_with_hermes() {
+  hermes chat -q "$(cat "$PROMPT_FILE")"
 }
 
 agent_output_file() {
@@ -622,26 +622,26 @@ NODE
   return 1
 }
 
-run_with_gemini_unattended() {
-  _gemini_output="$(agent_output_file gemini)"
-  LAST_AGENT_OUTPUT_FILE="$_gemini_output"
+run_with_hermes_unattended() {
+  _hermes_output="$(agent_output_file hermes)"
+  LAST_AGENT_OUTPUT_FILE="$_hermes_output"
   set +e
-  gemini --yolo -p "$(cat "$PROMPT_FILE")" > "$_gemini_output" 2>&1
-  _gemini_code="$?"
+  hermes chat -Q --yolo --accept-hooks --source tool -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
+  _hermes_code="$?"
   set -e
-  cat "$_gemini_output"
-  if agent_output_has_timeout "$_gemini_output"; then
+  cat "$_hermes_output"
+  if agent_output_has_timeout "$_hermes_output"; then
     return 124
   fi
-  if [ "$_gemini_code" -eq 0 ] && ! digest_output_completed "$_gemini_output"; then
+  if [ "$_hermes_code" -eq 0 ] && ! digest_output_completed "$_hermes_output"; then
     return 1
   fi
-  return "$_gemini_code"
+  return "$_hermes_code"
 }
 
 run_shell_library_fallback() {
   echo "No local agent runtime found; running non-AI library fetch fallback." >&2
-  echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or gemini." >&2
+  echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or hermes." >&2
   refresh_skill_files
   RESULT_FILE="$JOB_TMP_DIR/library-fallback-fetch-result.json"
   node "$AGENT_DIR/builder-digest.mjs" fetch-personal --days "${BUILDER_BLOG_FETCH_DAYS:-30}" --limit 3 > "$RESULT_FILE"
@@ -654,7 +654,7 @@ if (fetchTasks > 0) {
   console.error(
     "Library fetch produced fetchTasks, but no local agent runtime is available to complete them.",
   );
-  console.error("Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND.");
+  console.error("Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND.");
   process.exit(78);
 }
 NODE
@@ -754,7 +754,7 @@ read_runtime_pin() {
 
 normalize_runtime() {
   case "${1:-}" in
-    claude|codex|gemini|openclaw) printf '%s\n' "$1" ;;
+    claude|codex|hermes|openclaw) printf '%s\n' "$1" ;;
     *) printf '%s\n' "" ;;
   esac
 }
@@ -793,7 +793,7 @@ case "$INCOMING_INTERVAL_MINUTES" in
 esac
 export INTERVAL_MINUTES="$RESOLVED_INTERVAL_MINUTES"
 
-# The resolved runtime is a single word: claude | codex | gemini | openclaw.
+# The resolved runtime is a single word: claude | codex | hermes | openclaw.
 # One-time prompts pass BUILDER_BLOG_AGENT_RUNTIME as a per-run override.
 # Otherwise read a runtime pin for this exact job (or the legacy global pin).
 # Do not fall back from one-time jobs to cron runtime pins.
@@ -806,7 +806,7 @@ fi
 # Surface the resolved runtime to the CLI so the fetch-run record (and the web
 # fetch log) can label which agent ran it. The CLI also auto-detects
 # codex/claude from their own env, but the pin is authoritative and is the only
-# signal for gemini/openclaw. Empty for un-pinned interactive runs → the CLI
+# signal for hermes/openclaw. Empty for un-pinned interactive runs → the CLI
 # falls back to env detection.
 export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
 
@@ -1026,7 +1026,7 @@ verify_followbrief_pid() {
   [ -n "$_pid" ] || return 1
   kill -0 "$_pid" 2>/dev/null || return 1
   _args="$(ps -p "$_pid" -o command= 2>/dev/null || true)"
-  printf '%s' "$_args" | grep -q "BUILDER_BLOG_WORKER_MODE=1\|builder-agent-runner.sh\|codex exec\|claude -p\|gemini\|openclaw" || return 1
+  printf '%s' "$_args" | grep -q "BUILDER_BLOG_WORKER_MODE=1\|builder-agent-runner.sh\|codex exec\|claude -p\|hermes chat\|openclaw" || return 1
 }
 
 process_tree_pids() {
@@ -1319,6 +1319,62 @@ run_cron_worker() {
   run_with_job_tracking "${BUILDER_BLOG_JOB_TRIGGER:-scheduled}"
 }
 
+run_one_time_with_lock() {
+  INSTANCE_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
+  EXPECTED_AT="${BUILDER_BLOG_EXPECTED_AT:-$STARTED_AT}"
+  CURRENT_FILE="$JOB_TMP_DIR/current.json"
+
+  if [ -r "$CURRENT_FILE" ]; then
+    OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
+    OLD_INSTANCE="$(json_get_string instanceId "$CURRENT_FILE")"
+    OLD_STARTED="$(json_get_string startedAt "$CURRENT_FILE")"
+    OLD_EXPECTED="$(json_get_string expectedAt "$CURRENT_FILE")"
+    if [ -n "$OLD_PID" ] && verify_followbrief_pid "$OLD_PID"; then
+      if [ "${BUILDER_BLOG_REPLACE_ACTIVE_ONETIME:-0}" != "1" ]; then
+        echo "A one-time FollowBrief $JOB_NAME run is already active for ${BUILDER_BLOG_ACCOUNT:-default}." >&2
+        echo "Active pid: $OLD_PID${OLD_INSTANCE:+ · instance: $OLD_INSTANCE}" >&2
+        echo "Wait for it to finish, or re-run this one-time command with BUILDER_BLOG_REPLACE_ACTIVE_ONETIME=1 to replace it." >&2
+        return 75
+      fi
+
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        replaced "Replaced by a newer one-time run." "status replaced one_time_replace_requested"
+      if ! terminate_process_tree "$OLD_PID" TERM 30; then
+        terminate_process_tree "$OLD_PID" KILL 3 || true
+        if verify_followbrief_pid "$OLD_PID"; then
+          job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+            killed "Previous one-time run could not be stopped before replacement." "status killed one_time_replace_failed"
+          echo "Previous one-time FollowBrief $JOB_NAME run is still active after forced termination; not starting a second run." >&2
+          return 75
+        fi
+        job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+          killed "Previous one-time run was force-killed before replacement." "status killed one_time_replace_requested"
+      fi
+      clear_current_file "$CURRENT_FILE" "$OLD_INSTANCE"
+    elif [ -n "$OLD_INSTANCE" ]; then
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        stale "Previous one-time run pid was no longer alive." "stale_pid_one_time"
+      clear_current_file "$CURRENT_FILE" "$OLD_INSTANCE"
+    fi
+  fi
+
+  export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
+  export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
+  export BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
+  export BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+  export BUILDER_BLOG_WORKER_PID="$$"
+  export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
+  write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$BUILDER_BLOG_WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
+
+  set +e
+  run_with_job_tracking one_time
+  _code="$?"
+  set -e
+  clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
+  return "$_code"
+}
+
 run_with_job_tracking() {
   _trigger="$1"
   export BUILDER_BLOG_JOB_TRIGGER="$_trigger"
@@ -1409,7 +1465,7 @@ run_selected_runtime() {
     # Interactive permission gates are kept (the user is at a TTY). A missing
     # binary falls back to the discovery chain rather than failing the run.
     case "$PINNED_RUNTIME" in
-      claude|codex|gemini|openclaw)
+      claude|codex|hermes|openclaw)
         if command -v "$PINNED_RUNTIME" >/dev/null 2>&1; then
           "run_with_$PINNED_RUNTIME"
           return "$?"
@@ -1432,9 +1488,9 @@ run_selected_runtime() {
         command -v codex >/dev/null 2>&1 || { echo "Pinned runtime 'codex' not on PATH for cron." >&2; exit 78; }
         run_with_codex_unattended
         ;;
-      gemini)
-        command -v gemini >/dev/null 2>&1 || { echo "Pinned runtime 'gemini' not on PATH for cron." >&2; exit 78; }
-        run_with_gemini_unattended
+      hermes)
+        command -v hermes >/dev/null 2>&1 || { echo "Pinned runtime 'hermes' not on PATH for cron." >&2; exit 78; }
+        run_with_hermes_unattended
         ;;
       openclaw)
         command -v openclaw >/dev/null 2>&1 || { echo "Pinned runtime 'openclaw' not on PATH for cron." >&2; exit 78; }
@@ -1453,17 +1509,17 @@ run_selected_runtime() {
       run_with_claude
     elif command -v openclaw >/dev/null 2>&1; then
       run_with_openclaw
-    elif command -v gemini >/dev/null 2>&1; then
-      run_with_gemini
+    elif command -v hermes >/dev/null 2>&1; then
+      run_with_hermes
     elif { [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; } && [ -z "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" ]; then
       run_shell_library_fallback
     elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
       echo "No local agent runtime found for FollowBrief library ${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-agent} work." >&2
-      echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+      echo "Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND." >&2
       exit 78
     else
       echo "No local agent runtime found for FollowBrief digest generation." >&2
-      echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+      echo "Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND." >&2
       echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
       exit 78
     fi
@@ -2266,7 +2322,7 @@ if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
   fi
   exit "$_code"
 elif [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "digest-once" ]; then
-  run_with_job_tracking one_time
+  run_one_time_with_lock
 else
   run_selected_runtime
 fi

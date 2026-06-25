@@ -94,7 +94,7 @@ test("visible app TSX phrases have translations for supported non-English locale
     "Favorites",
     "FollowBrief",
     "Français (French)",
-    "Gemini CLI",
+    "Hermes",
     "GitHub",
     "GitHub Trending",
     "Google",

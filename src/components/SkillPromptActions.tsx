@@ -19,7 +19,7 @@ import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
-type AgentRuntime = "claude" | "codex" | "gemini" | "openclaw";
+type AgentRuntime = "claude" | "codex" | "hermes" | "openclaw";
 
 const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
@@ -33,9 +33,9 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
     hint: "Runs with Codex.",
   },
   {
-    id: "gemini",
-    label: "Gemini CLI",
-    hint: "Runs with Gemini CLI.",
+    id: "hermes",
+    label: "Hermes",
+    hint: "Runs with Hermes.",
   },
   {
     id: "openclaw",

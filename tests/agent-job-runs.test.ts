@@ -68,6 +68,12 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /job-run-update/);
   assert.match(cli, /\/api\/skill\/job-runs/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
+  assert.match(cli, /hermes: "Hermes"/);
+  assert.match(cli, /case "Hermes":[\s\S]*return detectedHermesModel\(\)/);
+  assert.match(cli, /function detectedHermesModel\(\)/);
+  assert.match(cli, /process\.env\.HERMES_MODEL/);
+  assert.match(cli, /process\.env\.HERMES_CONFIG_PATH/);
+  assert.doesNotMatch(cli, /Gemini CLI|detectedGeminiModel|GEMINI_MODEL/);
 });
 
 test("terminal agent job runs cannot be regressed by late runtime updates", () => {
@@ -158,6 +164,12 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /clear_current_file/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
+  assert.match(runner, /run_one_time_with_lock/);
+  assert.match(runner, /BUILDER_BLOG_REPLACE_ACTIVE_ONETIME/);
+  assert.match(runner, /A one-time FollowBrief \$JOB_NAME run is already active/);
+  assert.match(runner, /Replaced by a newer one-time run/);
+  assert.match(runner, /one_time_replace_requested/);
+  assert.match(runner, /stale_pid_one_time/);
   assert.match(runner, /WORKER_PID="\$\$"/);
   assert.match(runner, /BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH/);
   assert.match(runner, /worker_bootstrap_failed/);
@@ -196,7 +208,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /_codex_output="\$\(agent_output_file codex\)"/);
   assert.match(runner, /_claude_output="\$\(agent_output_file claude\)"/);
   assert.match(runner, /_openclaw_output="\$\(agent_output_file openclaw\)"/);
-  assert.match(runner, /_gemini_output="\$\(agent_output_file gemini\)"/);
+  assert.match(runner, /_hermes_output="\$\(agent_output_file hermes\)"/);
   assert.doesNotMatch(runner, /agent-output-\$\$\.log/);
   assert.match(runner, /Request timed out before a response was generated/);
   assert.match(runner, /codex app-server turn idle timed out/);

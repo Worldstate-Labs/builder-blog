@@ -284,12 +284,12 @@ export async function GET(request: Request, { params }: Params) {
   // permission flags can be exact for that runtime. Whitelisted to a
   // closed set so no shell metacharacters slip into the rendered md.
   const runtimeRaw = url.searchParams.get("runtime");
-  const runtimeAllowed = new Set(["claude", "codex", "gemini", "openclaw"]);
+  const runtimeAllowed = new Set(["claude", "codex", "hermes", "openclaw"]);
   const runtime = runtimeRaw && runtimeAllowed.has(runtimeRaw) ? runtimeRaw : null;
   const runtimeLabels: Record<string, string> = {
     claude: "Claude Code",
     codex: "Codex",
-    gemini: "Gemini CLI",
+    hermes: "Hermes",
     openclaw: "OpenClaw",
   };
 
@@ -470,7 +470,7 @@ export async function GET(request: Request, { params }: Params) {
     // prompt. The cron-setup initial run and the launchd/crontab
     // account derive from this var, but only `node …builder-digest.mjs` lines
     // get an injected account below — the `builder-agent-runner.sh` initial
-    // run and the plist do not. codex/gemini run each command in a fresh
+    // run and the plist do not. codex/hermes run each command in a fresh
     // shell, so an un-exported `${BUILDER_BLOG_ACCOUNT}` is empty there and the
     // run dies with "No agent token". Since the exchange code already
     // identifies the account, substitute it so setup never relies on shell env.

@@ -175,7 +175,7 @@ if [ -r "$CURRENT_FILE" ]; then
   EXPECTED_AT="$(json_get_string expectedAt "$CURRENT_FILE")"
   if [ -n "$WORKER_PID" ] && kill -0 "$WORKER_PID" 2>/dev/null; then
     CMD="$(ps -p "$WORKER_PID" -o command= 2>/dev/null || true)"
-    if printf '%s' "$CMD" | grep -q 'builder-agent-runner.sh\|codex exec\|claude -p\|gemini\|openclaw'; then
+    if printf '%s' "$CMD" | grep -q 'builder-agent-runner.sh\|codex exec\|claude -p\|hermes chat\|openclaw'; then
       terminate_process_tree "$WORKER_PID" TERM 30 || terminate_process_tree "$WORKER_PID" KILL 3 || true
       node "$AGENT_DIR/builder-digest.mjs" job-run-update \
         --job-type digest-build \

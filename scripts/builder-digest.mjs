@@ -297,14 +297,14 @@ export function skillFetchTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
 
 function detectedAgentRuntime() {
   // The runner exports BUILDER_BLOG_RUNTIME with the pinned runtime for cron
-  // jobs. It's authoritative and covers gemini/openclaw, which the env sniff
+  // jobs. It's authoritative and covers hermes/openclaw, which the env sniff
   // below can't detect. Fall back to per-agent env signals for interactive
   // (un-pinned) runs.
   const pinned = process.env.BUILDER_BLOG_RUNTIME?.trim().toLowerCase();
   const pinnedLabels = {
     claude: "Claude Code",
     codex: "Codex",
-    gemini: "Gemini CLI",
+    hermes: "Hermes",
     openclaw: "OpenClaw",
   };
   if (pinned && pinnedLabels[pinned]) return pinnedLabels[pinned];
@@ -321,8 +321,8 @@ function detectedAgentModel(runtime = DEFAULT_AGENT_RUNTIME) {
   const override = process.env.BUILDER_BLOG_AGENT_MODEL?.trim();
   if (override) return override;
 
-  // Model detection must match the runtime — otherwise a gemini run would report
-  // a model sniffed from Codex's config (e.g. "Gemini CLI (model gpt-5.5)").
+  // Model detection must match the runtime — otherwise a Hermes run would report
+  // a model sniffed from Codex's config (e.g. "Hermes (model gpt-5.5)").
   // Each runtime reads only its own sources; an unknown source yields "" so the
   // label degrades to just the runtime name.
   switch (runtime) {
@@ -330,8 +330,8 @@ function detectedAgentModel(runtime = DEFAULT_AGENT_RUNTIME) {
       return detectedCodexModel();
     case "Claude Code":
       return process.env.ANTHROPIC_MODEL?.trim() || process.env.CLAUDE_MODEL?.trim() || "";
-    case "Gemini CLI":
-      return detectedGeminiModel();
+    case "Hermes":
+      return detectedHermesModel();
     case "OpenClaw":
       return detectedOpenClawModel();
     default:
@@ -373,18 +373,23 @@ function detectedOpenClawModel() {
   }
 }
 
-function detectedGeminiModel() {
-  const envModel = process.env.GEMINI_MODEL?.trim();
+function detectedHermesModel() {
+  const envModel = process.env.HERMES_MODEL?.trim();
   if (envModel) return envModel;
 
-  // Gemini CLI does not persist its model in settings.json today; read it
-  // defensively in case a future version does, otherwise report no model.
-  const geminiConfigPath = join(homedir(), ".gemini", "settings.json");
-  if (!existsSync(geminiConfigPath)) return "";
+  const hermesConfigPath =
+    process.env.HERMES_CONFIG_PATH?.trim() || join(homedir(), ".hermes", "config.yaml");
+  if (!existsSync(hermesConfigPath)) return "";
   try {
-    const settings = JSON.parse(readFileSync(geminiConfigPath, "utf8"));
-    const model = settings?.model?.name ?? settings?.model;
-    return typeof model === "string" ? model.trim() : "";
+    const config = readFileSync(hermesConfigPath, "utf8");
+    let inModelBlock = false;
+    for (const line of config.split(/\r?\n/)) {
+      if (/^\S/.test(line)) inModelBlock = /^model:\s*(?:#.*)?$/.test(line);
+      if (!inModelBlock) continue;
+      const modelMatch = line.match(/^\s+default\s*:\s*["']?([^"'\n#]+)["']?/);
+      if (modelMatch?.[1]) return modelMatch[1].trim();
+    }
+    return "";
   } catch {
     return "";
   }
