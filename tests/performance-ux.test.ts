@@ -92,9 +92,22 @@ test("add and edit source forms use the independent source candidate library", (
 
   assert.match(candidateLib, /ensureSourceCandidateLibraryFromAdminSources/);
   assert.match(candidateLib, /seedSourceCandidatesFromAdminLibrary/);
+  assert.match(candidateLib, /CURATED_AI_SOURCE_CANDIDATES/);
+  assert.match(candidateLib, /seedCuratedAiSourceCandidates/);
+  assert.match(candidateLib, /OpenAI News/);
+  assert.match(candidateLib, /Anthropic Engineering/);
+  assert.match(candidateLib, /Hugging Face Blog/);
+  assert.match(candidateLib, /Latent Space Podcast/);
+  assert.match(candidateLib, /OpenAI on X/);
+  assert.doesNotMatch(candidateLib, /xAI News/);
+  assert.doesNotMatch(candidateLib, /Perplexity Blog/);
+  assert.doesNotMatch(candidateLib, /TWIML/);
+  assert.doesNotMatch(candidateLib, /NVIDIA AI Podcast/);
   assert.match(candidateLib, /prisma\.sourceCandidate\.findMany/);
   assert.match(candidateLib, /prisma\.sourceCandidate\.upsert/);
   assert.match(candidateLib, /existing\.seededFrom !== ADMIN_SOURCE_CANDIDATE_SEED/);
+  assert.match(candidateLib, /canonicalBuilderKey/);
+  assert.match(candidateLib, /builderKindForSourceType/);
   assert.match(candidateUtils, /export type SourceCandidate/);
   assert.match(candidateUtils, /sourceCandidateMatches/);
   assert.match(candidateUtils, /sourceCandidateValue/);
