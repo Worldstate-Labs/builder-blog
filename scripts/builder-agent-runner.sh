@@ -931,7 +931,7 @@ NODE
   _base=$(( _interval * 48 ))
   _min=$(( 20 * 60 ))
   case "$_job" in
-    library-cron) _max=$(( 75 * 60 )) ;;
+    library-cron) _max=$(( 120 * 60 )) ;;
     digest-cron) _max=$(( 45 * 60 )) ;;
     *) _max=$(( 45 * 60 )) ;;
   esac
@@ -943,7 +943,21 @@ NODE
 job_timeout_seconds() {
   _override="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-}"
   case "$_override" in
-    ''|*[!0-9]*|0) timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME" ;;
+    ''|*[!0-9]*|0)
+      _timeout_interval="$RESOLVED_INTERVAL_MINUTES"
+      _timeout_job="$JOB_NAME"
+      case "$JOB_NAME" in
+        library-once)
+          _timeout_interval="720"
+          _timeout_job="library-cron"
+          ;;
+        digest-once)
+          _timeout_interval="720"
+          _timeout_job="digest-cron"
+          ;;
+      esac
+      timeout_seconds_for_job "$_timeout_interval" "$_timeout_job"
+      ;;
     *) printf '%s\n' "$_override" ;;
   esac
 }

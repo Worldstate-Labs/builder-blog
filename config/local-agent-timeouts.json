@@ -4,7 +4,7 @@
   "minSeconds": 1200,
   "defaultMaxSeconds": 2700,
   "jobMaxSeconds": {
-    "library-cron": 4500,
+    "library-cron": 7200,
     "digest-cron": 2700
   },
   "shardFraction": {

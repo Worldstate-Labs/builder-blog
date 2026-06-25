@@ -1238,6 +1238,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /Do not run FollowBrief fetch, digest, sync, cron-status, or setup commands/);
   assert.match(runner, /RESOLVED_INTERVAL_MINUTES/);
   assert.match(runner, /job_timeout_seconds\(\)/);
+  assert.match(runner, /library-once\)[\s\S]*_timeout_interval="720"[\s\S]*_timeout_job="library-cron"/);
+  assert.match(runner, /digest-once\)[\s\S]*_timeout_interval="720"[\s\S]*_timeout_job="digest-cron"/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /digest_output_completed\(\)/);
   assert.match(runner, /Digest job did not produce required artifact/);
