@@ -281,7 +281,7 @@ function usage() {
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   fetch-status-audit
   digest-status-audit
-  parse-runtime-usage --file runtime-output.log
+  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw|hermes] [--out runtime-usage.jsonl]
   aggregate-runtime-usage --out runtime-usage.json runtime-output-1.log runtime-output-2.log
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
@@ -517,31 +517,102 @@ function usageRecord(value) {
 function normalizeRuntimeUsage(value, source = "runtime_output") {
   const root = usageRecord(value);
   if (!root) return null;
-  const usage = usageRecord(root.usage) ?? usageRecord(root.tokenUsage) ?? usageRecord(root.token_usage) ?? root;
+  const message = usageRecord(root.message);
+  const response = usageRecord(root.response);
+  const result = usageRecord(root.result);
+  const data = usageRecord(root.data);
+  const usage =
+    usageRecord(root.usage) ??
+    usageRecord(root.tokenUsage) ??
+    usageRecord(root.token_usage) ??
+    usageRecord(message?.usage) ??
+    usageRecord(response?.usage) ??
+    usageRecord(result?.usage) ??
+    usageRecord(data?.usage) ??
+    root;
+  const inputDetails = usageRecord(usage.inputTokenDetails) ??
+    usageRecord(usage.input_token_details) ??
+    usageRecord(usage.input_tokens_details) ??
+    usageRecord(root.inputTokenDetails) ??
+    usageRecord(root.input_token_details) ??
+    usageRecord(root.input_tokens_details);
+  const outputDetails = usageRecord(usage.outputTokenDetails) ??
+    usageRecord(usage.output_token_details) ??
+    usageRecord(usage.output_tokens_details) ??
+    usageRecord(root.outputTokenDetails) ??
+    usageRecord(root.output_token_details) ??
+    usageRecord(root.output_tokens_details);
   const inputTokens = usageInt(
-    usage.inputTokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.prompt_tokens,
+    usage.inputTokens ??
+      usage.input_tokens ??
+      usage.promptTokens ??
+      usage.prompt_tokens ??
+      usage.prompt ??
+      root.inputTokens ??
+      root.input_tokens ??
+      root.promptTokens ??
+      root.prompt_tokens,
   );
   const outputTokens = usageInt(
-    usage.outputTokens ?? usage.output_tokens ?? usage.completionTokens ?? usage.completion_tokens,
+    usage.outputTokens ??
+      usage.output_tokens ??
+      usage.completionTokens ??
+      usage.completion_tokens ??
+      usage.completion ??
+      root.outputTokens ??
+      root.output_tokens ??
+      root.completionTokens ??
+      root.completion_tokens,
   );
   const cachedInputTokens = usageInt(
     usage.cachedInputTokens ??
       usage.cached_input_tokens ??
       usage.cacheReadInputTokens ??
-      usage.cache_read_input_tokens,
+      usage.cache_read_input_tokens ??
+      usage.cache_read_tokens ??
+      usage.cached_tokens ??
+      usage.cacheCreationInputTokens ??
+      usage.cache_creation_input_tokens ??
+      inputDetails?.cachedTokens ??
+      inputDetails?.cached_tokens ??
+      inputDetails?.cacheReadInputTokens ??
+      inputDetails?.cache_read_input_tokens ??
+      root.cachedInputTokens ??
+      root.cached_input_tokens,
   );
-  const reasoningTokens = usageInt(usage.reasoningTokens ?? usage.reasoning_tokens);
-  const explicitTotal = usageInt(usage.totalTokens ?? usage.total_tokens);
+  const reasoningTokens = usageInt(
+    usage.reasoningTokens ??
+      usage.reasoning_tokens ??
+      usage.reasoningOutputTokens ??
+      usage.reasoning_output_tokens ??
+      outputDetails?.reasoningTokens ??
+      outputDetails?.reasoning_tokens ??
+      root.reasoningTokens ??
+      root.reasoning_tokens,
+  );
+  const explicitTotal = usageInt(usage.totalTokens ?? usage.total_tokens ?? root.totalTokens ?? root.total_tokens);
   const totalTokens = explicitTotal ?? (
     inputTokens !== null || outputTokens !== null || reasoningTokens !== null
       ? (inputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
       : null
   );
   const costUsd = usageNumber(
-    usage.costUsd ?? usage.cost_usd ?? usage.totalCostUsd ?? usage.total_cost_usd ?? usage.totalCost ?? usage.total_cost,
+    usage.costUsd ??
+      usage.cost_usd ??
+      usage.totalCostUsd ??
+      usage.total_cost_usd ??
+      usage.totalCost ??
+      usage.total_cost ??
+      root.costUsd ??
+      root.cost_usd ??
+      root.totalCostUsd ??
+      root.total_cost_usd ??
+      root.totalCost ??
+      root.total_cost,
   );
-  const currency = typeof usage.currency === "string" && usage.currency.trim()
-    ? usage.currency.trim()
+  const currencyValue = usage.currency ?? root.currency;
+  const currency = typeof currencyValue === "string" && currencyValue.trim()
+    ? currencyValue.trim()
     : costUsd !== null
       ? "USD"
       : null;
@@ -565,8 +636,15 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
     totalTokens,
     costUsd,
     currency,
-    source,
+    source: typeof usage.source === "string" && usage.source.trim() ? usage.source.trim() : source,
   };
+}
+
+function runtimeUsageSource(runtime, format = "runtime_output") {
+  const normalized = String(runtime || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (!normalized) return format;
+  if (format.startsWith("runtime_")) return format.replace("runtime", normalized);
+  return `${normalized}_${format}`;
 }
 
 function addUsageSummaries(left, right) {
@@ -587,35 +665,62 @@ function addUsageSummaries(left, right) {
   };
 }
 
-function usageFromTextLine(line) {
+function usageFromTextLine(line, runtime = null) {
   const numberPattern = String.raw`([\d][\d,]*(?:\.\d+)?)`;
   const inputTokens = usageInt(line.match(new RegExp(String.raw`(?:input|prompt)\s*tokens?[^0-9]+${numberPattern}`, "i"))?.[1]);
   const outputTokens = usageInt(line.match(new RegExp(String.raw`(?:output|completion)\s*tokens?[^0-9]+${numberPattern}`, "i"))?.[1]);
   const totalTokens = usageInt(line.match(new RegExp(String.raw`total\s*tokens?[^0-9]+${numberPattern}`, "i"))?.[1]);
   const costUsd = usageNumber(line.match(new RegExp(String.raw`(?:total\s*)?cost[^0-9$]*\$?${numberPattern}`, "i"))?.[1]);
-  return normalizeRuntimeUsage({ inputTokens, outputTokens, totalTokens, costUsd }, "runtime_text");
+  return normalizeRuntimeUsage({ inputTokens, outputTokens, totalTokens, costUsd }, runtimeUsageSource(runtime, "runtime_text"));
 }
 
-function runtimeUsageFromText(text) {
+function jsonRuntimeUsages(value, runtime = null) {
+  const source = runtimeUsageSource(runtime, "runtime_jsonl");
+  const seen = new WeakSet();
+  function visit(node) {
+    if (!node || typeof node !== "object") return null;
+    if (seen.has(node)) return null;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      let usage = null;
+      for (const item of node) usage = addUsageSummaries(usage, visit(item));
+      return usage;
+    }
+
+    const normalized = normalizeRuntimeUsage(node, source);
+    if (normalized) return normalized;
+
+    let usage = null;
+    for (const [key, child] of Object.entries(node)) {
+      if (key === "delta" || key === "content" || key === "text") continue;
+      usage = addUsageSummaries(usage, visit(child));
+    }
+    return usage;
+  }
+  return visit(value);
+}
+
+function runtimeUsageFromText(text, runtime = null) {
   let usage = null;
   for (const rawLine of String(text || "").split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) continue;
     if (line.startsWith("{") && line.endsWith("}")) {
       try {
-        usage = addUsageSummaries(usage, normalizeRuntimeUsage(JSON.parse(line), "runtime_jsonl"));
+        usage = addUsageSummaries(usage, jsonRuntimeUsages(JSON.parse(line), runtime));
         continue;
       } catch {}
     }
-    usage = addUsageSummaries(usage, usageFromTextLine(line));
+    usage = addUsageSummaries(usage, usageFromTextLine(line, runtime));
   }
   return usage;
 }
 
-function runtimeUsageFromFile(path) {
+function runtimeUsageFromFile(path, runtime = null) {
   if (!path || !existsSync(path)) return null;
   try {
-    return runtimeUsageFromText(readFileSync(path, "utf8"));
+    return runtimeUsageFromText(readFileSync(path, "utf8"), runtime);
   } catch {
     return null;
   }
@@ -863,8 +968,15 @@ async function jobRunCommand(args, defaultStatus = "running") {
 }
 
 async function parseRuntimeUsageCommand(args) {
-  const usage = runtimeUsageFromFile(argValue(args, "--file", null));
-  console.log(JSON.stringify(usage ? { usage } : { usage: null }, null, 2));
+  const out = argValue(args, "--out", null);
+  const usage = runtimeUsageFromFile(argValue(args, "--file", null), argValue(args, "--runtime", null));
+  const payload = usage ? { usage } : { usage: null };
+  if (out) {
+    await mkdir(dirname(out), { recursive: true });
+    if (usage) await writeFile(out, `${JSON.stringify(payload)}\n`);
+    else await rm(out, { force: true });
+  }
+  console.log(JSON.stringify(payload, null, 2));
 }
 
 async function aggregateRuntimeUsageCommand(args) {
@@ -5388,14 +5500,18 @@ async function readShardPlans(resultsDir) {
       payload = {};
     }
     const workerLogFile = `${shard}-worker.log`;
+    const usageFile = `${shard}-usage.jsonl`;
     const workerLogText = await readOptionalText(join(resultsDir, workerLogFile));
+    const usage = runtimeUsageFromFile(join(resultsDir, usageFile), "runtime_sidecar") ??
+      (workerLogText ? runtimeUsageFromText(workerLogText) : null);
     plans.push({
       shard,
       resultFile: `${shard}-result.json`,
       workerLogFile,
+      usageFile,
       workerLogTail: workerLogText ? tailLines(workerLogText) : null,
       workerLogBytes: workerLogText ? Buffer.byteLength(workerLogText, "utf8") : null,
-      usage: workerLogText ? runtimeUsageFromText(workerLogText) : null,
+      usage,
       tasks: Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [],
     });
   }

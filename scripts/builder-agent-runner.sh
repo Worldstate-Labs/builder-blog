@@ -321,6 +321,35 @@ agent_output_file() {
   mktemp "$JOB_TMP_DIR/$_runtime-agent-output.XXXXXX"
 }
 
+agent_usage_file() {
+  _runtime="$1"
+  if [ -n "${BUILDER_BLOG_SHARD_RESULT:-}" ]; then
+    case "$BUILDER_BLOG_SHARD_RESULT" in
+      *-result.json) printf '%s\n' "${BUILDER_BLOG_SHARD_RESULT%-result.json}-usage.jsonl" ;;
+      *) printf '%s\n' "$BUILDER_BLOG_SHARD_RESULT-usage.jsonl" ;;
+    esac
+    return 0
+  fi
+  mkdir -p "$JOB_TMP_DIR"
+  mktemp "$JOB_TMP_DIR/$_runtime-agent-usage.XXXXXX.jsonl"
+}
+
+capture_runtime_usage() {
+  _runtime="$1"
+  _output="$2"
+  _usage="$3"
+  [ -n "$_usage" ] && [ -r "$_output" ] || return 0
+  node "$AGENT_DIR/builder-digest.mjs" parse-runtime-usage \
+    --runtime "$_runtime" \
+    --file "$_output" \
+    --out "$_usage" >/dev/null 2>&1 || true
+  [ -s "$_usage" ] || rm -f "$_usage" 2>/dev/null || true
+}
+
+structured_usage_enabled() {
+  [ "${BUILDER_BLOG_STRUCTURED_USAGE:-0}" = "1" ]
+}
+
 openclaw_default_session_id() {
   _suffix="${BUILDER_BLOG_JOB_RUN_ID:-$$}"
   printf 'followbrief-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$_suffix" | tr -c 'a-zA-Z0-9_.@+-' '_'
@@ -337,13 +366,22 @@ run_with_codex_unattended() {
   # generic "fetch failed". Re-enable network for the workspace sandbox so the
   # job can reach the network while keeping the filesystem sandbox intact.
   _codex_output="$(agent_output_file codex)"
+  _codex_usage="$(agent_usage_file codex)"
   LAST_AGENT_OUTPUT_FILE="$_codex_output"
+  LAST_AGENT_USAGE_FILE="$_codex_usage"
   set +e
-  codex exec --skip-git-repo-check --full-auto \
-    -c sandbox_workspace_write.network_access=true \
-    -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+  if structured_usage_enabled; then
+    codex exec --json --skip-git-repo-check --full-auto \
+      -c sandbox_workspace_write.network_access=true \
+      -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+  else
+    codex exec --skip-git-repo-check --full-auto \
+      -c sandbox_workspace_write.network_access=true \
+      -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+  fi
   _codex_code="$?"
   set -e
+  capture_runtime_usage codex "$_codex_output" "$_codex_usage"
   cat "$_codex_output"
   if agent_output_has_timeout "$_codex_output"; then
     return 124
@@ -359,14 +397,25 @@ run_with_claude_unattended() {
   # surface the library-once skill actually uses (Bash for node CLI +
   # curl, WebFetch for content extraction, file IO under tmp/).
   _claude_output="$(agent_output_file claude)"
+  _claude_usage="$(agent_usage_file claude)"
   LAST_AGENT_OUTPUT_FILE="$_claude_output"
+  LAST_AGENT_USAGE_FILE="$_claude_usage"
   set +e
-  claude -p "$(cat "$PROMPT_FILE")" \
-    --add-dir "$AGENT_DIR" \
-    --permission-mode acceptEdits \
-    --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
+  if structured_usage_enabled; then
+    claude -p "$(cat "$PROMPT_FILE")" \
+      --output-format stream-json \
+      --add-dir "$AGENT_DIR" \
+      --permission-mode acceptEdits \
+      --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
+  else
+    claude -p "$(cat "$PROMPT_FILE")" \
+      --add-dir "$AGENT_DIR" \
+      --permission-mode acceptEdits \
+      --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
+  fi
   _claude_code="$?"
   set -e
+  capture_runtime_usage claude "$_claude_output" "$_claude_usage"
   cat "$_claude_output"
   if agent_output_has_timeout "$_claude_output"; then
     return 124
@@ -396,7 +445,9 @@ run_with_openclaw_unattended() {
   _openclaw_timeout="${_timeout:-$(job_timeout_seconds)}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
+  _openclaw_usage="$(agent_usage_file openclaw)"
   LAST_AGENT_OUTPUT_FILE="$_openclaw_output"
+  LAST_AGENT_USAGE_FILE="$_openclaw_usage"
   _openclaw_session_id="${OPENCLAW_SESSION_ID:-$(openclaw_default_session_id)}"
   _openclaw_attempts="$(openclaw_capacity_attempts)"
   _openclaw_delay="$(openclaw_capacity_retry_delay_seconds)"
@@ -412,16 +463,25 @@ run_with_openclaw_unattended() {
       if [ "$_openclaw_model" = "__followbrief_default_model__" ]; then
         echo "Running OpenClaw Gateway attempt $_openclaw_attempt/$_openclaw_attempts with the configured default model."
         set +e
-        openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        if structured_usage_enabled; then
+          openclaw agent --json --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        else
+          openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        fi
         _openclaw_code="$?"
         set -e
       else
         echo "Running OpenClaw Gateway attempt $_openclaw_attempt/$_openclaw_attempts with model $_openclaw_model."
         set +e
-        openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --model "$_openclaw_model" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        if structured_usage_enabled; then
+          openclaw agent --json --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --model "$_openclaw_model" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        else
+          openclaw agent --session-id "$_openclaw_session_id" --timeout "$_openclaw_timeout" --model "$_openclaw_model" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+        fi
         _openclaw_code="$?"
         set -e
       fi
+      capture_runtime_usage openclaw "$_openclaw_output" "$_openclaw_usage"
       cat "$_openclaw_output"
       if agent_output_has_timeout "$_openclaw_output"; then
         return 124
@@ -637,11 +697,14 @@ NODE
 
 run_with_hermes_unattended() {
   _hermes_output="$(agent_output_file hermes)"
+  _hermes_usage="$(agent_usage_file hermes)"
   LAST_AGENT_OUTPUT_FILE="$_hermes_output"
+  LAST_AGENT_USAGE_FILE="$_hermes_usage"
   set +e
   hermes chat -Q --yolo --accept-hooks --source tool -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
   _hermes_code="$?"
   set -e
+  capture_runtime_usage hermes "$_hermes_output" "$_hermes_usage"
   cat "$_hermes_output"
   if agent_output_has_timeout "$_hermes_output"; then
     return 124
@@ -1014,6 +1077,17 @@ aggregate_runtime_usage_files() {
   [ -n "${BUILDER_BLOG_USAGE_FILE:-}" ] || return 0
   _usage_inputs=""
   for _usage_input in \
+    "$JOB_TMP_DIR"/*-agent-usage.* \
+    "$JOB_TMP_DIR"/shards/results/shard-*-usage.jsonl
+  do
+    [ -r "$_usage_input" ] || continue
+    _usage_inputs="$_usage_inputs $(shell_quote "$_usage_input")"
+  done
+  if [ -n "$_usage_inputs" ]; then
+    eval "node \"\$AGENT_DIR/builder-digest.mjs\" aggregate-runtime-usage --out \"\$BUILDER_BLOG_USAGE_FILE\" $_usage_inputs >/dev/null 2>&1" || true
+    return 0
+  fi
+  for _usage_input in \
     "$JOB_TMP_DIR"/codex-agent-output.* \
     "$JOB_TMP_DIR"/claude-agent-output.* \
     "$JOB_TMP_DIR"/openclaw-agent-output.* \
@@ -1040,6 +1114,8 @@ job_run_update() {
   _usage_file=""
   if [ -n "${BUILDER_BLOG_USAGE_FILE:-}" ] && [ -r "${BUILDER_BLOG_USAGE_FILE:-}" ]; then
     _usage_file="$BUILDER_BLOG_USAGE_FILE"
+  elif [ -n "${LAST_AGENT_USAGE_FILE:-}" ] && [ -r "${LAST_AGENT_USAGE_FILE:-}" ]; then
+    _usage_file="$LAST_AGENT_USAGE_FILE"
   elif [ -n "${LAST_AGENT_OUTPUT_FILE:-}" ] && [ -r "${LAST_AGENT_OUTPUT_FILE:-}" ]; then
     _usage_file="$LAST_AGENT_OUTPUT_FILE"
   fi
@@ -1217,6 +1293,7 @@ job_run_update_for_instance() {
   _saved_expected="${BUILDER_BLOG_EXPECTED_AT:-}"
   _saved_usage_file="${BUILDER_BLOG_USAGE_FILE:-}"
   _saved_last_agent_output="${LAST_AGENT_OUTPUT_FILE:-}"
+  _saved_last_agent_usage="${LAST_AGENT_USAGE_FILE:-}"
 
   BUILDER_BLOG_JOB_RUN_ID="$_target_instance"
   if [ -n "$_target_started" ]; then
@@ -1229,6 +1306,7 @@ job_run_update_for_instance() {
   fi
   unset BUILDER_BLOG_USAGE_FILE
   unset LAST_AGENT_OUTPUT_FILE
+  unset LAST_AGENT_USAGE_FILE
   export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
 
   job_run_update "$@"
@@ -1247,6 +1325,12 @@ job_run_update_for_instance() {
     export LAST_AGENT_OUTPUT_FILE
   else
     unset LAST_AGENT_OUTPUT_FILE
+  fi
+  if [ -n "$_saved_last_agent_usage" ]; then
+    LAST_AGENT_USAGE_FILE="$_saved_last_agent_usage"
+    export LAST_AGENT_USAGE_FILE
+  else
+    unset LAST_AGENT_USAGE_FILE
   fi
   export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
 }
@@ -1446,6 +1530,8 @@ run_with_job_tracking() {
   _usage_key="$(job_file_component "$BUILDER_BLOG_JOB_RUN_ID")"
   export BUILDER_BLOG_USAGE_FILE="$JOB_TMP_DIR/runtime-usage-$_usage_key.jsonl"
   rm -f "$BUILDER_BLOG_USAGE_FILE" \
+    "$JOB_TMP_DIR"/*-agent-usage.* \
+    "$JOB_TMP_DIR"/shards/results/shard-*-usage.jsonl \
     "$JOB_TMP_DIR"/codex-agent-output.* \
     "$JOB_TMP_DIR"/claude-agent-output.* \
     "$JOB_TMP_DIR"/openclaw-agent-output.* \
@@ -1679,6 +1765,7 @@ EOF
 
   echo "Running OpenClaw runtime preflight before FollowBrief fetch workers."
   LAST_AGENT_OUTPUT_FILE=""
+  LAST_AGENT_USAGE_FILE=""
   set +e
   run_selected_runtime
   _olp_code="$?"

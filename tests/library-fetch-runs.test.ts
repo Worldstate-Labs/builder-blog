@@ -159,9 +159,12 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /\/api\/skill\/job-runs[\s\S]*timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /function runtimeUsageFromFile/);
+  assert.match(cli, /function jsonRuntimeUsages/);
   assert.match(cli, /function readShardWorkerUsages/);
   assert.match(cli, /aggregateRuntimeUsageFromFiles/);
   assert.match(cli, /parse-runtime-usage/);
+  assert.match(cli, /argValue\(args, "--runtime", null\)/);
+  assert.match(cli, /argValue\(args, "--out", null\)/);
   assert.match(cli, /aggregate-runtime-usage/);
   assert.match(cli, /--usage-file/);
   assert.match(cli, /\.\.\.\(usage \? \{ usage \} : \{\}\)/);
@@ -183,6 +186,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /buildFetchRunSyncPatch/);
   assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
   assert.match(cli, /\.\.\.\(workerUsages\.length > 0 \? \{ workerUsages \} : \{\}\)/);
+  assert.match(cli, /const usageFile = `\$\{shard\}-usage\.jsonl`/);
+  assert.match(cli, /runtimeUsageFromFile\(join\(resultsDir, usageFile\), "runtime_sidecar"\)/);
   assert.match(cli, /fetchRun: buildFetchRunSyncPatch/);
   assert.doesNotMatch(cli, /discoveryExpanded: true/);
 });
@@ -229,6 +234,16 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
   assert.match(runner, /BUILDER_BLOG_USAGE_FILE/);
   assert.match(runner, /runtime-usage-\$_usage_key\.jsonl/);
+  assert.match(runner, /agent_usage_file\(\)/);
+  assert.match(runner, /capture_runtime_usage\(\)/);
+  assert.match(runner, /LAST_AGENT_USAGE_FILE/);
+  assert.match(runner, /parse-runtime-usage[\s\S]*--runtime "\$_runtime"[\s\S]*--out "\$_usage"/);
+  assert.match(runner, /BUILDER_BLOG_SHARD_RESULT%-result\.json/);
+  assert.match(runner, /shard-\*-usage\.jsonl/);
+  assert.match(runner, /BUILDER_BLOG_STRUCTURED_USAGE/);
+  assert.match(runner, /codex exec --json/);
+  assert.match(runner, /--output-format stream-json/);
+  assert.match(runner, /openclaw agent --json/);
   assert.match(runner, /rm -f "\$BUILDER_BLOG_USAGE_FILE"/);
   assert.match(runner, /aggregate_runtime_usage_files/);
   assert.match(runner, /--results-dir "\$_results_dir"/);
@@ -236,6 +251,7 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /codex-agent-output\.\*/);
   assert.match(runner, /openclaw-agent-output\.\*/);
   assert.match(runner, /unset LAST_AGENT_OUTPUT_FILE/);
+  assert.match(runner, /unset LAST_AGENT_USAGE_FILE/);
   assert.match(runner, /run_cron_supervisor/);
   assert.match(runner, /run_cron_scheduler_tick/);
   assert.match(runner, /run_cron_worker/);
