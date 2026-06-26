@@ -294,25 +294,84 @@ EOF
 # permission gates. Used when no runtime is pinned and the user is at
 # a TTY (library-once / digest-once from the command line).
 run_with_codex() {
-  codex exec --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE"
+  _codex_output="$(agent_output_file codex)"
+  _codex_usage="$(agent_usage_file codex)"
+  LAST_AGENT_OUTPUT_FILE="$_codex_output"
+  LAST_AGENT_USAGE_FILE="$_codex_usage"
+  set +e
+  if structured_usage_enabled; then
+    codex exec --json --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+  else
+    codex exec --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+  fi
+  _codex_code="$?"
+  set -e
+  capture_runtime_usage codex "$_codex_output" "$_codex_usage"
+  cat "$_codex_output"
+  return "$_codex_code"
 }
 
 run_with_claude() {
-  claude -p "$(cat "$PROMPT_FILE")" --add-dir "$AGENT_DIR"
+  _claude_output="$(agent_output_file claude)"
+  _claude_usage="$(agent_usage_file claude)"
+  LAST_AGENT_OUTPUT_FILE="$_claude_output"
+  LAST_AGENT_USAGE_FILE="$_claude_usage"
+  set +e
+  if structured_usage_enabled; then
+    claude -p "$(cat "$PROMPT_FILE")" \
+      --output-format stream-json \
+      --verbose \
+      --add-dir "$AGENT_DIR" > "$_claude_output" 2>&1
+  else
+    claude -p "$(cat "$PROMPT_FILE")" --add-dir "$AGENT_DIR" > "$_claude_output" 2>&1
+  fi
+  _claude_code="$?"
+  set -e
+  capture_runtime_usage claude "$_claude_output" "$_claude_usage"
+  cat "$_claude_output"
+  return "$_claude_code"
 }
 
 run_with_openclaw() {
   # `agent` requires a session selector on 2026.5.20+ (the bare form errors
   # with "Pass --to/--session-id/--agent"); default to the `main` agent.
+  _openclaw_output="$(agent_output_file openclaw)"
+  _openclaw_usage="$(agent_usage_file openclaw)"
+  LAST_AGENT_OUTPUT_FILE="$_openclaw_output"
+  LAST_AGENT_USAGE_FILE="$_openclaw_usage"
+  set +e
   if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
-    openclaw agent --local --session-id "$OPENCLAW_SESSION_ID" --message "$(cat "$PROMPT_FILE")"
+    if structured_usage_enabled; then
+      openclaw agent --json --local --session-id "$OPENCLAW_SESSION_ID" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+    else
+      openclaw agent --local --session-id "$OPENCLAW_SESSION_ID" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+    fi
   else
-    openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")"
+    if structured_usage_enabled; then
+      openclaw agent --json --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+    else
+      openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+    fi
   fi
+  _openclaw_code="$?"
+  set -e
+  capture_runtime_usage openclaw "$_openclaw_output" "$_openclaw_usage"
+  cat "$_openclaw_output"
+  return "$_openclaw_code"
 }
 
 run_with_hermes() {
-  hermes chat -q "$(cat "$PROMPT_FILE")"
+  _hermes_output="$(agent_output_file hermes)"
+  _hermes_usage="$(agent_usage_file hermes)"
+  LAST_AGENT_OUTPUT_FILE="$_hermes_output"
+  LAST_AGENT_USAGE_FILE="$_hermes_usage"
+  set +e
+  hermes chat -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
+  _hermes_code="$?"
+  set -e
+  capture_runtime_usage hermes "$_hermes_output" "$_hermes_usage"
+  cat "$_hermes_output"
+  return "$_hermes_code"
 }
 
 agent_output_file() {
