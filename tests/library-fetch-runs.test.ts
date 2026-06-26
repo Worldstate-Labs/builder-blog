@@ -189,6 +189,9 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
   assert.match(cli, /const shardPlans = await readShardPlans\(resultsDir\)/);
   assert.match(cli, /fetchRunPlannedTaskPatches\(fetchResult, \{ shardPlans \}\)/);
+  assert.match(cli, /async function emitCheckpointProgress[\s\S]*const workerUsages = await readShardWorkerUsages\(resultsDir, planned\)/);
+  assert.match(cli, /async function emitCheckpointProgress[\s\S]*patchFetchRunOutcomes\([\s\S]*\{ partialOutcomes: true, workerUsages \}/);
+  assert.doesNotMatch(cli, /loadConfig\(/);
   assert.match(cli, /\.\.\.\(workerUsages\.length > 0 \? \{ workerUsages \} : \{\}\)/);
   assert.match(cli, /const usageFile = `\$\{shard\}-usage\.jsonl`/);
   assert.match(cli, /runtimeUsageFromFile\(join\(resultsDir, usageFile\), "runtime_sidecar"\)/);

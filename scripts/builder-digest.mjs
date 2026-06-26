@@ -5913,12 +5913,25 @@ async function emitCheckpointProgress(args) {
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!resultsDir) throw new Error("Missing --results-dir");
 
-  const progress = await readFetchProgressState();
-  if (!progress) return;
-  const config = await loadConfig();
+  const config = await readConfig();
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const shardPlans = await readShardPlans(resultsDir);
   const planned = fetchRunPlannedTaskPatches(fetchResult, { shardPlans });
+  const workerUsages = await readShardWorkerUsages(resultsDir, planned);
+  if (workerUsages.length > 0) {
+    await patchFetchRunOutcomes(
+      config,
+      {},
+      {},
+      [],
+      [],
+      [],
+      null,
+      { partialOutcomes: true, workerUsages },
+    );
+  }
+  const progress = await readFetchProgressState();
+  if (!progress) return;
   const plannedById = new Map(planned.map((task) => [task.id, task]));
   const updates = [];
 
