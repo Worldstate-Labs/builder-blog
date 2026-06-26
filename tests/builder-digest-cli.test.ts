@@ -2106,16 +2106,21 @@ test("library fetch reconciliation defaults to the job-specific tmp directory", 
     delete process.env.BUILDER_BLOG_JOB_TMP_DIR;
     assert.equal(
       cli.defaultLibraryFetchResultFileForTest(),
-      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com/library-once/library-fetch-result.json",
+      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com_efbd0c2b/library-once/library-fetch-result.json",
     );
     assert.equal(
       cli.libraryFetchRunIdFileForTest(),
-      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com/library-once/library-fetch-run-id",
+      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com_efbd0c2b/library-once/library-fetch-run-id",
     );
     assert.equal(
       cli.defaultDigestContextFileForTest(),
-      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com/digest-once/builder-blog-context.json",
+      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com_efbd0c2b/digest-once/builder-blog-context.json",
     );
+
+    process.env.BUILDER_BLOG_ACCOUNT = "a-b@example.com";
+    const dashAccountPath = cli.defaultLibraryFetchResultFileForTest();
+    process.env.BUILDER_BLOG_ACCOUNT = "a_b@example.com";
+    assert.notEqual(cli.defaultLibraryFetchResultFileForTest(), dashAccountPath);
 
     process.env.BUILDER_BLOG_ACCOUNT_SLUG = "custom_slug";
     assert.equal(

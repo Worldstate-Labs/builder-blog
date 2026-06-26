@@ -53,16 +53,34 @@ unsure.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
-LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
-PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+legacy_account_slug() {
+  node - "${1:-default}" <<'NODE'
+const account = String(process.argv[2] || "default");
+console.log(account.replace(/[^a-zA-Z0-9]/g, "_"));
+NODE
+}
+LABEL="com.followbrief.digest.$(account_slug "$ACCT")"
+LEGACY_LABEL="com.followbrief.digest.$(legacy_account_slug "$ACCT")"
 FOUND=0
-if launchctl list 2>/dev/null | awk '{ print $3 }' | grep -x "$LABEL"; then
-  FOUND=1
-fi
-if [ -f "$PLIST" ]; then
-  echo "LaunchAgent plist exists: $PLIST"
-  FOUND=1
-fi
+for CANDIDATE_LABEL in "$LABEL" "$LEGACY_LABEL"; do
+  PLIST="$HOME/Library/LaunchAgents/$CANDIDATE_LABEL.plist"
+  if launchctl list 2>/dev/null | awk '{ print $3 }' | grep -x "$CANDIDATE_LABEL"; then
+    FOUND=1
+  fi
+  if [ -f "$PLIST" ]; then
+    echo "LaunchAgent plist exists: $PLIST"
+    FOUND=1
+  fi
+done
 if [ "$FOUND" -eq 0 ]; then
   echo "(none found)"
 fi
@@ -145,7 +163,16 @@ of output as a hang before the command exits or the runner timeout fires.
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 ACCT="${BUILDER_BLOG_ACCOUNT}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 SETUP_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-direct"
 mkdir -p "$SETUP_TMP_DIR"
 BUILDER_BLOG_JOB_TMP_DIR="$SETUP_TMP_DIR" \
@@ -186,7 +213,16 @@ the recurring job replaces the existing same-day digest.
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 ANCHOR_FILE="$AGENT_DIR/schedule-anchor-digest-cron-$ACCOUNT_SLUG"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-schedule"
 printf '{{AGENT_RUNTIME}}\n' > "$AGENT_DIR/runtime-digest-cron-$ACCOUNT_SLUG"
@@ -214,10 +250,19 @@ entries derived from the install anchor.
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-schedule"
 LAUNCHD_SCHEDULE_XML="$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")"
-LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+LABEL="com.followbrief.digest.$(account_slug "$ACCT")"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$PLIST" <<PLISTEOF
@@ -268,10 +313,19 @@ job:
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-schedule"
 CRON_SCHEDULE_EXPR="$(cat "$SCHEDULE_SPEC_DIR/cron.txt")"
-LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+LABEL="com.followbrief.digest.$(account_slug "$ACCT")"
 (
   crontab -l 2>/dev/null | grep -v "# FollowBrief digest cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh digest-cron"
   printf "# FollowBrief digest cron · %s\n%s BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh digest-cron >> %s/.builder-blog/logs/%s.log 2>&1\n" "$ACCT" "$CRON_SCHEDULE_EXPR" "$ACCT" "$HOME" "$HOME" "$LABEL"
@@ -287,7 +341,16 @@ both finished successfully.
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 ACCT="${BUILDER_BLOG_ACCOUNT}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 ANCHOR_FILE="$AGENT_DIR/schedule-anchor-digest-cron-$ACCOUNT_SLUG"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-schedule"
 ANCHOR_AT="$(cat "$ANCHOR_FILE")"

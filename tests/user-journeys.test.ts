@@ -1109,7 +1109,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /com\\?\.followbrief\\?\.library\\?\./);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\\?\.sh library-cron/);
   assert.match(libraryCronSetupPrompt, /launchctl list/);
-  assert.match(libraryCronSetupPrompt, /grep -x "\$LABEL"/);
+  assert.match(libraryCronSetupPrompt, /legacy_account_slug/);
+  assert.match(libraryCronSetupPrompt, /grep -x "\$CANDIDATE_LABEL"/);
   assert.match(libraryCronSetupPrompt, /\[ -f "\$PLIST" \]/);
   assert.match(libraryCronSetupPrompt, /LaunchAgent plist exists/);
   assert.match(libraryCronSetupPrompt, /the user whether to\s+override/);
@@ -1174,7 +1175,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\$LABEL\.log/);
   assert.match(
     libraryCronSetupPrompt,
-    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*ACCOUNT_SLUG="\$\(printf '%s' "\$ACCT" \| tr -c 'a-zA-Z0-9' '_'\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/,
+    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*account_slug\(\) \{[\s\S]*createHash[\s\S]*ACCOUNT_SLUG="\$\(account_slug "\$ACCT"\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/,
   );
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
   assert.match(
@@ -1217,7 +1218,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   // Same pre-install detection + override gate as library.
   assert.match(digestCronSetupPrompt, /com\\?\.followbrief\\?\.digest\\?\./);
-  assert.match(digestCronSetupPrompt, /grep -x "\$LABEL"/);
+  assert.match(digestCronSetupPrompt, /legacy_account_slug/);
+  assert.match(digestCronSetupPrompt, /grep -x "\$CANDIDATE_LABEL"/);
   assert.match(digestCronSetupPrompt, /\[ -f "\$PLIST" \]/);
   assert.match(digestCronSetupPrompt, /LaunchAgent plist exists/);
   assert.match(digestCronSetupPrompt, /the user whether to\s+override/);
@@ -1226,7 +1228,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key><string>1<\/string>/);
   assert.match(
     digestCronSetupPrompt,
-    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*ACCOUNT_SLUG="\$\(printf '%s' "\$ACCT" \| tr -c 'a-zA-Z0-9' '_'\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/,
+    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*account_slug\(\) \{[\s\S]*createHash[\s\S]*ACCOUNT_SLUG="\$\(account_slug "\$ACCT"\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/,
   );
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
   assert.match(digestCronSetupPrompt, /SCHEDULE_STATUS="\$\(cat "\$SCHEDULE_SPEC_DIR\/status\.txt"\)"/);

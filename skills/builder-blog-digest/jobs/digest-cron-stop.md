@@ -35,8 +35,17 @@ this machine's OS — run `uname` if unsure.
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 JOB_PREFIX="com.followbrief.digest"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
 if [ -n "$ACCT" ]; then
-  LABEL="$JOB_PREFIX.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+  LABEL="$JOB_PREFIX.$(account_slug "$ACCT")"
   PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
   if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
     printf 'loaded:%s\n' "$LABEL"
@@ -85,8 +94,17 @@ label printed in step 2.
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
 if [ -n "$ACCT" ]; then
-  LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+  LABEL="com.followbrief.digest.$(account_slug "$ACCT")"
 fi
 # If BUILDER_BLOG_ACCOUNT is unset, set LABEL to the exact label from step 2,
 # e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
@@ -141,7 +159,16 @@ fires; the current worker may already have been detached by the supervisor.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 CURRENT_FILE="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron/current.json"
 
@@ -213,7 +240,16 @@ fi
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
 rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOUNT_SLUG" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
 ```

@@ -24,7 +24,16 @@ Execution contract:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "${BUILDER_BLOG_ACCOUNT:-default}")"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 BUILDER_BLOG_AGENT_RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" \
 BUILDER_BLOG_DIGEST_REGENERATE="${BUILDER_BLOG_DIGEST_REGENERATE-{{DIGEST_REGENERATE_FLAG}}}" \
