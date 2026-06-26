@@ -548,6 +548,8 @@ function usageRateModelKey(value) {
 // below still win; this table exists so OpenClaw/Gateway logs that include
 // provider+model can produce a useful estimated cost without per-user setup.
 const DEFAULT_USAGE_PRICES_PER_1M = {
+  "openai-codex:gpt-5-5": { input: 5, cachedInput: 0.5, output: 30 },
+  "openai:gpt-5-5": { input: 5, cachedInput: 0.5, output: 30 },
   "openai-codex:gpt-5-4": { input: 2.5, cachedInput: 0.25, output: 15 },
   "openai:gpt-5-4": { input: 2.5, cachedInput: 0.25, output: 15 },
   "openai-codex:gpt-5-4-mini": { input: 0.375, cachedInput: 0.0375, output: 2.25 },
