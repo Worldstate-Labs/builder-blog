@@ -824,7 +824,6 @@ async function FetchSyncSection({
           initialHasMoreHistory={data.hasMoreFetchHistory}
           initialScheduledJobRuns={data.scheduledJobRuns}
           initialRuns={data.fetchRuns}
-          isAdmin={data.isAdmin}
           summaryLanguage={data.summaryLanguage}
         />
       </div>

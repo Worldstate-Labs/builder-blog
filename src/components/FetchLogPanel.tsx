@@ -126,15 +126,6 @@ type FetchTaskLog = {
   token_usage?: unknown;
 };
 
-type PromptBundle = {
-  summary?: string | null;
-  fetch?: string | null;
-  // When true, the prompt above uses the common fetching rules without a
-  // source-specific fetch prompt. UI flags this with a small "default" pill so
-  // users know the source-specific optional field is empty.
-  fetchIsDefault?: boolean;
-};
-
 type DetailsShape = {
   perBuilder?: PerBuilder[];
   userActions?: UserAction[];
@@ -144,7 +135,6 @@ type DetailsShape = {
   fetchTasks?: FetchTaskLog[];
   shardPlans?: FetchTaskShardPlan[];
   workerUsages?: FetchTaskWorkerUsage[];
-  prompts?: Record<string, PromptBundle>;
   // Which agent ran the fetch and the model it used. Recorded by the CLI at
   // emit time; absent on runs from before this was captured.
   agentRuntime?: string | null;
@@ -995,7 +985,6 @@ export function FetchLogPanel({
   initialScheduledJobRuns = [],
   initialCronJob,
   initialHasMoreHistory = false,
-  isAdmin = false,
   actions,
   actionsPlacement = "end",
   summaryLanguage,
@@ -1006,7 +995,6 @@ export function FetchLogPanel({
   initialScheduledJobRuns?: AgentJobRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
   initialHasMoreHistory?: boolean;
-  isAdmin?: boolean;
   actions?: ReactNode;
   actionsPlacement?: "start" | "end";
   summaryLanguage?: string | null;
@@ -1275,7 +1263,6 @@ export function FetchLogPanel({
       {selectedLog ? (
         <FetchLogDialog
           cronJob={cronJob}
-          isAdmin={isAdmin}
           jobRuns={jobRuns}
           logRef={selectedLog}
           onClose={() => {
@@ -2159,7 +2146,6 @@ function JobRunCard({
 
 function RunCard({
   cronJob,
-  isAdmin = false,
   jobRun,
   onOpenLog,
   run,
@@ -2167,7 +2153,6 @@ function RunCard({
   suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
-  isAdmin?: boolean;
   jobRun?: AgentJobRunListItem;
   onOpenLog?: () => void;
   run: LibraryFetchRunListItem;
@@ -2267,7 +2252,7 @@ function RunCard({
           ) : null}
         </summary>
         <div className="sync-panel-run-card-details-body">
-          <DetailsBody details={details} isAdmin={isAdmin} liveProgress={liveProgress} />
+          <DetailsBody details={details} liveProgress={liveProgress} />
         </div>
       </details>
     </article>
@@ -2276,7 +2261,6 @@ function RunCard({
 
 function FetchLogDialog({
   cronJob,
-  isAdmin,
   jobRuns,
   logRef,
   onClose,
@@ -2284,7 +2268,6 @@ function FetchLogDialog({
   suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
-  isAdmin: boolean;
   jobRuns: AgentJobRunListItem[];
   logRef: FetchLogRef;
   onClose: () => void;
@@ -2323,7 +2306,6 @@ function FetchLogDialog({
             <RunCard
               cronJob={cronJob}
               domId={null}
-              isAdmin={isAdmin}
               jobRun={resolvedJobRun ?? undefined}
               run={run}
               suppressStalled={suppressStalled}
@@ -2566,11 +2548,9 @@ function formatInlineUsage(usage: UsageSummary | null): string | null {
 
 function DetailsBody({
   details,
-  isAdmin,
   liveProgress,
 }: {
   details: DetailsShape;
-  isAdmin: boolean;
   liveProgress: FetchJobProgress | null;
 }) {
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
@@ -2585,11 +2565,6 @@ function DetailsBody({
     workerUsageMap(details.workerUsages),
     shardAssignmentMap(details.shardPlans),
   );
-  const prompts =
-    details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
-      ? details.prompts
-      : {};
-  const promptEntries = Object.entries(prompts);
 
   return (
     <div className="sync-panel-run-card-details-stack">
@@ -2658,57 +2633,6 @@ function DetailsBody({
               );
             })}
           </ul>
-        </div>
-      ) : null}
-
-      {isAdmin && promptEntries.length > 0 ? (
-        <div>
-          <h3 className="sync-panel-run-card-detail-heading">
-            Prompt instructions
-          </h3>
-          <p className="sync-panel-detail-note">
-            Prompts used to read and summarize each source type in this update.
-          </p>
-          <div className="sync-panel-detail-card-list">
-            {promptEntries.map(([sourceType, bundle]) => (
-              <details
-                key={sourceType}
-                className="sync-panel-detail-card"
-              >
-                <summary
-                  className="sync-panel-detail-card-summary mono"
-                >
-                  {sourceType}
-                </summary>
-                <div className="sync-panel-detail-card-body">
-                  <div>
-                    <p className="sync-panel-detail-kicker">
-                      Summary instructions
-                    </p>
-                    <pre className="mono sync-panel-detail-code">
-                      {bundle.summary ?? "(none)"}
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="sync-panel-detail-kicker-row">
-                      <span>Read instructions</span>
-                      {bundle.fetchIsDefault ? (
-                        <span
-                          className="sync-panel-detail-default-pill"
-                          title="No fetch prompt set for this source; using common fetching rules."
-                        >
-                          default
-                        </span>
-                      ) : null}
-                    </p>
-                    <pre className="mono sync-panel-detail-code">
-                      {bundle.fetch ?? "(none)"}
-                    </pre>
-                  </div>
-                </div>
-              </details>
-            ))}
-          </div>
         </div>
       ) : null}
 
@@ -2789,7 +2713,6 @@ function DetailsBody({
       {userActions.length === 0 &&
       localErrors.length === 0 &&
       fetchTasks.length === 0 &&
-      (!isAdmin || promptEntries.length === 0) &&
       !details.cliFlags &&
       !details.error ? (
         <p className="sync-panel-detail-empty">

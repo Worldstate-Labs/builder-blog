@@ -148,11 +148,10 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /rm\(libraryFetchRunIdFile\(\), \{ force: true \}\)/);
   // Original error is printed and rethrown so the user still sees it.
   assert.match(cli, /console\.error\(message\);[\s\S]*throw error;/);
-  // Fetch-run details carry an audit trail of the queued tasks plus
-  // the deduped per-source-type prompts the agent was instructed with.
+  // Fetch-run details carry an audit trail of the queued tasks.
   assert.match(cli, /summarizeFetchTasksForLog/);
   assert.match(cli, /fetchTasks: slimFetchTasks/);
-  assert.match(cli, /prompts: promptsBySourceType/);
+  assert.doesNotMatch(cli, /prompts: promptsBySourceType/);
   assert.match(cli, /Read \$\{itemsFetched\} post/);
   assert.doesNotMatch(cli, /Fetched \$\{itemsFetched\} post/);
   assert.doesNotMatch(cli, /Synced \$\{itemsFetched\} post/);
@@ -702,23 +701,11 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-lifecycle"/);
   assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
-  assert.match(panel, /className="sync-panel-detail-note"/);
-  assert.match(panel, /isAdmin = false/);
-  assert.match(panel, /isAdmin && promptEntries\.length > 0/);
-  assert.match(panel, /Prompts used to read and summarize each source type in this update\./);
-  assert.match(panel, /Prompt instructions/);
   assert.doesNotMatch(panel, /Helper instructions/);
   assert.doesNotMatch(panel, /The instructions used to read and summarize each source type/);
-  assert.match(panel, /className="sync-panel-detail-card-list"/);
   assert.match(panel, /className="sync-panel-detail-card"/);
   assert.match(panel, /className="sync-panel-detail-card-summary"/);
-  assert.match(panel, /className="sync-panel-detail-card-body"/);
-  assert.match(panel, /className="sync-panel-detail-kicker"/);
-  assert.match(panel, /className="sync-panel-detail-kicker-row"/);
-  assert.match(panel, /className="sync-panel-detail-default-pill"/);
-  assert.match(panel, /No fetch prompt set for this source; using common fetching rules\./);
   assert.doesNotMatch(panel, /No fetch prompt is configured for this source; the Local Agent used common fetching rules\./);
-  assert.match(panel, /className="mono sync-panel-detail-code"/);
   assert.match(panel, /className="sync-panel-detail-action-list"/);
   assert.match(panel, /className="sync-panel-detail-action-row"/);
   assert.match(panel, /className="sync-panel-detail-link"/);
@@ -1045,7 +1032,6 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
-  assert.match(buildersPage, /isAdmin=\{data\.isAdmin\}/);
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /context="digest"/);

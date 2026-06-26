@@ -1385,7 +1385,6 @@ async function fetchPersonal(args) {
   // asked to follow. Filled before each emitFetchRunRecord call so the
   // catch path also reports whatever made it into the queue.
   let slimFetchTasks = [];
-  let promptsBySourceType = {};
 
   try {
     const context = await getJson(
@@ -1639,12 +1638,7 @@ async function fetchPersonal(args) {
     }
 
     perBuilder = [...builderStats.values()];
-    ({ slimFetchTasks, promptsBySourceType } = summarizeFetchTasksForLog(
-      fetchTasks,
-      sources,
-      commonFetchRules,
-      commonSummaryRules,
-    ));
+    ({ slimFetchTasks } = summarizeFetchTasksForLog(fetchTasks));
 
     const payload = { status: "ok", localErrors, fetchTasks };
     console.log(JSON.stringify(payload, null, 2));
@@ -1673,7 +1667,6 @@ async function fetchPersonal(args) {
         localErrors,
         cliFlags,
         fetchTasks: slimFetchTasks,
-        prompts: promptsBySourceType,
       },
     });
   } catch (error) {
@@ -1697,7 +1690,6 @@ async function fetchPersonal(args) {
         localErrors,
         cliFlags,
         fetchTasks: slimFetchTasks,
-        prompts: promptsBySourceType,
         error: {
           message,
           stack: error instanceof Error ? error.stack : undefined,
@@ -1709,22 +1701,15 @@ async function fetchPersonal(args) {
 }
 
 // Build the audit-trail companion to a fetch run: a slim per-task
-// summary (no body, no full prompt) plus the per-source-type prompts
-// deduplicated by sourceType. This is what the user sees in the
-// Fetch log details panel — small enough for the 100 KB cap, but
-// faithful enough that the prompt history survives admin edits.
+// summary (no body) of the queued tasks. This is what the user sees in
+// the Fetch log details panel.
 export function textStats(value) {
   const s = typeof value === "string" ? value : "";
   const trimmed = s.trim();
   return { chars: s.length, words: trimmed ? trimmed.split(/\s+/).length : 0 };
 }
 
-export function summarizeFetchTasksForLog(
-  fetchTasks,
-  sources = {},
-  commonFetchRules = DEFAULT_FETCH_GUIDANCE,
-  commonSummaryRules = "",
-) {
+export function summarizeFetchTasksForLog(fetchTasks) {
   const logFetchTasks = fetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
   const slimFetchTasks = logFetchTasks.map((task) => {
     const ready = task?.contentStatus === "ready";
@@ -1752,35 +1737,7 @@ export function summarizeFetchTasksForLog(
       status: isUserAction ? "action_needed" : ready ? "fetched" : "pending",
     };
   });
-  const sourceTypesUsed = new Set();
-  for (const task of logFetchTasks) {
-    if (task?.sourceType) sourceTypesUsed.add(task.sourceType);
-  }
-  // Emit the *composed* prompt strings — exactly what the agent reads
-  // as `task.summaryInstructions.prompt` (always) and
-  // `task.fetchInstructions.prompt` (when admin set a custom
-  // fetchPromptBody for the source). When fetchInstructions is null,
-  // we mirror that here as null so the UI can label it "default
-  // extraction" rather than fabricating a fetch prompt.
-  const promptsBySourceType = {};
-  for (const sourceType of sourceTypesUsed) {
-    const source = sources?.[sourceType];
-    if (!source) continue;
-    const summaryInstructions = (() => {
-      try {
-        return singlePostSummaryInstructions(sourceType, sources, commonSummaryRules);
-      } catch {
-        return null;
-      }
-    })();
-    const fetchInstructions = singlePostFetchInstructions(sourceType, sources, commonFetchRules);
-    promptsBySourceType[sourceType] = {
-      summary: summaryInstructions?.prompt ?? null,
-      fetch: fetchInstructions.prompt,
-      fetchIsDefault: fetchInstructions.isDefault,
-    };
-  }
-  return { slimFetchTasks, promptsBySourceType };
+  return { slimFetchTasks };
 }
 
 function isRecoverableFetchFallback(task) {
