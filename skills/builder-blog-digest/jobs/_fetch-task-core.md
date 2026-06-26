@@ -58,9 +58,16 @@ How to execute each `fetchTask`:
     `task.fetchInstructions.prompt` for EACH task independently.
 - Use only this run's scratch space for reusable local artifacts.
   `$BUILDER_BLOG_JOB_TMP_DIR`, `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR`, and the
-  shard file/result directories define the current account/job boundary. Do not
-  read or reuse local artifacts from other accounts, other job types, or global
-  scratch directories. Never read from `~/.builder-blog/tmp/accounts/<other account>`,
+  shard file/result directories define the current account/job boundary.
+  Globally installed tools and their normal binary, package, model, and auth
+  caches may live outside this directory. Per-job content artifacts from this
+  run must stay under `$BUILDER_BLOG_JOB_TMP_DIR`: audio/video downloads,
+  subtitles, transcripts, browser profiles, screenshots, page dumps, and scratch
+  files. Do not write those per-job artifacts to `/tmp`, `/var/folders`,
+  `~/Downloads`, `~/.cache`, another account/job directory, or global scratch.
+  Do not read or reuse local artifacts from other accounts, other job types, or
+  global scratch directories.
+  Never read from `~/.builder-blog/tmp/accounts/<other account>`,
   `~/.builder-blog/tmp/whisper`, or another account's transcript/audio cache. If
   a useful artifact exists outside the current account/job boundary, treat it as
   unavailable and fetch or transcribe the task inside the current scratch path,

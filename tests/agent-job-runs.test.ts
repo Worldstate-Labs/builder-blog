@@ -165,7 +165,15 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /scheduler_last_fired_file/);
   assert.match(runner, /schedule-anchor-\$JOB_NAME-\$ACCOUNT_SLUG/);
   assert.match(runner, /INSTANCE_ID=/);
-  assert.match(runner, /CURRENT_FILE=/);
+  assert.match(runner, /JOB_STATE_DIR=/);
+  assert.match(runner, /RUNS_DIR="\$JOB_STATE_DIR\/runs"/);
+  assert.match(runner, /prepare_run_tmp_dir/);
+  assert.match(runner, /write_run_owner_file/);
+  assert.match(runner, /validate_run_tmp_dir/);
+  assert.match(runner, /cleanup_job_tmp_dir/);
+  assert.match(runner, /cleanup_old_job_runs/);
+  assert.match(runner, /tracked_job_signal_cleanup\(\)[\s\S]*terminate_process_tree "\$RUNTIME_PID" TERM 10/);
+  assert.match(runner, /CURRENT_FILE="\$JOB_STATE_DIR\/current\.json"/);
   assert.match(runner, /clear_current_file/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
@@ -229,6 +237,9 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
+  assert.doesNotMatch(runner, /rm -rf "\$JOB_STATE_DIR"/);
+  assert.doesNotMatch(runner, /rm -rf "\$AGENT_DIR\/tmp"/);
+  assert.doesNotMatch(runner, /rm -rf "\$AGENT_DIR\/tmp\/accounts"/);
 
   assert.match(workerPrompt, /Live progress checkpoints/);
   assert.match(workerPrompt, /\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/progress\/<hash>\.json/);

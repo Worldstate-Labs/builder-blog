@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { homedir, hostname, platform, release, tmpdir, userInfo } from "node:os";
+import { homedir, hostname, platform, release, userInfo } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -4936,7 +4936,9 @@ async function fetchYouTubeLocalAsr(videoUrl, {
     return { text: "" };
   }
 
-  const workDir = await mkdtemp(join(tmpdir(), "followbrief-youtube-asr-"));
+  const asrRoot = join(jobTmpDir("library-cron"), "youtube-asr");
+  await mkdir(asrRoot, { recursive: true });
+  const workDir = await mkdtemp(join(asrRoot, "run-"));
   try {
     const rawTemplate = join(workDir, "audio.%(ext)s");
     const download = await commandRunner(

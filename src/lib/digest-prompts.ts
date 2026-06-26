@@ -59,7 +59,8 @@ notes text extracted from the RSS \`<item>\`).
    ad copy, or a list of social handles — use the show notes verbatim
    as the item body.
 2. Otherwise, fall back to audio:
-   - Download the audio enclosure to a temp file on the local machine.
+   - Download the audio enclosure to a temp file under the current job temp
+     directory when one is available.
    - Run OpenAI Whisper (or another local ASR you have configured) on
      the audio to produce a full transcript.
    - Use the transcript as the item body. Mark \`rawJson.transcriptSource\`

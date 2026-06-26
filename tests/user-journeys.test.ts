@@ -938,6 +938,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryWorkerExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
   assert.match(libraryWorkerExpanded, /fetchTasks/);
   assert.match(libraryWorkerExpanded, /BUILDER_BLOG_JOB_TMP_DIR/);
+  assert.match(libraryWorkerExpanded, /Globally installed tools[\s\S]*normal binary, package, model, and auth[\s\S]*caches may live outside this directory/);
+  assert.match(libraryWorkerExpanded, /Per-job content artifacts from this[\s\S]*run must stay under `\$BUILDER_BLOG_JOB_TMP_DIR`/);
+  assert.match(libraryWorkerExpanded, /audio\/video downloads,[\s\S]*subtitles, transcripts, browser profiles, screenshots, page dumps, and scratch[\s\S]*files/);
   assert.match(libraryWorkerExpanded, /Do not\s+read or reuse local artifacts from other accounts/);
   assert.match(libraryWorkerExpanded, /Never read from `~\/\.builder-blog\/tmp\/accounts\/<other account>`/);
   assert.match(libraryWorkerExpanded, /single-post\s+`?summary`?/);
@@ -1274,9 +1277,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /INCOMING_FETCH_DAYS_SET/);
   assert.match(runner, /INCOMING_PARALLEL_WORKERS_SET/);
   assert.match(runner, /MAX_PARALLEL_WORKERS="\$INCOMING_PARALLEL_WORKERS"/);
-  assert.match(runner, /DEFAULT_JOB_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/\$JOB_NAME"/);
+  assert.match(runner, /DEFAULT_JOB_STATE_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/\$JOB_NAME"/);
+  assert.match(runner, /DEFAULT_JOB_TMP_DIR="\$DEFAULT_JOB_STATE_DIR"/);
   assert.match(runner, /JOB_TMP_DIR="\$BUILDER_BLOG_JOB_TMP_DIR"/);
-  assert.match(runner, /JOB_TMP_DIR="\$DEFAULT_JOB_TMP_DIR-direct"/);
+  assert.match(runner, /JOB_STATE_DIR="\$DEFAULT_JOB_STATE_DIR-direct"/);
+  assert.match(runner, /BUILDER_BLOG_JOB_STATE_DIR/);
   assert.match(runner, /run_cron_worker\(\) \{[\s\S]*run_with_job_tracking "\$\{BUILDER_BLOG_JOB_TRIGGER:-scheduled\}"/);
   assert.match(runner, /job_run_update starting "Runtime job accepted by local runner\." "runtime_job_started"[\s\S]*job_run_update running "Runtime agent started\." "runtime_agent_started"/);
   assert.match(runner, /run_cron_scheduler_tick\(\)/);
@@ -1307,7 +1312,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /run_runtime_smoke_check\(\)[\s\S]*_timeout="\$\(job_timeout_seconds\)"/);
   assert.match(skillJobRoute, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
-  assert.match(runner, /codex exec --skip-git-repo-check/);
+  assert.match(runner, /codex exec[\s\S]*--skip-git-repo-check/);
   assert.match(runner, /claude -p/);
   // openclaw 2026.5.20+ requires a session selector. Interactive runs may use
   // `--agent`, but unattended scheduled jobs use an isolated deterministic
@@ -1374,7 +1379,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /DEFAULT_JOB_TMP_DIR=/);
   assert.match(runner, /if \[ -n "\$\{BUILDER_BLOG_JOB_TMP_DIR:-\}" \]/);
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
-  assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
+  assert.match(runner, /JOB_STATE_DIR/);
+  assert.match(runner, /CURRENT_FILE="\$JOB_STATE_DIR\/current\.json"/);
+  assert.match(runner, /JOB_TMP_DIR="\$RUNS_DIR\/\$_run_component"/);
+  assert.match(runner, /\.run-owner\.json/);
+  assert.match(runner, /cleanup_job_tmp_dir/);
+  assert.match(runner, /cleanup_old_job_runs/);
+  assert.doesNotMatch(runner, /rm -rf "\$JOB_STATE_DIR"/);
   assert.match(runner, /run_cron_supervisor/);
   assert.match(runner, /Scheduled worker running in launchd foreground/);
   assert.match(runner, /terminate_process_tree/);

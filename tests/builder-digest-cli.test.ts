@@ -2139,6 +2139,14 @@ test("library fetch reconciliation defaults to the job-specific tmp directory", 
   }
 });
 
+test("YouTube local ASR work directory stays inside the job tmp tree", async () => {
+  const cli = await readFile("scripts/builder-digest.mjs", "utf8");
+  assert.match(cli, /const asrRoot = join\(jobTmpDir\("library-cron"\), "youtube-asr"\)/);
+  assert.match(cli, /await mkdir\(asrRoot, \{ recursive: true \}\)/);
+  assert.match(cli, /const workDir = await mkdtemp\(join\(asrRoot, "run-"\)\)/);
+  assert.doesNotMatch(cli, /mkdtemp\(join\(tmpdir\(\), "followbrief-youtube-asr-"\)\)/);
+});
+
 // --- Per-task terminal-state accountability (taskOutcomes) ---
 
 function youtubePlannedTask(cli: typeof import("../scripts/builder-digest.mjs"), externalId: string) {

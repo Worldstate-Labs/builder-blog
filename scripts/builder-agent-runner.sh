@@ -15,20 +15,30 @@ console.log(`${base}_${hash}`);
 NODE
 }
 ACCOUNT_SLUG="$(account_slug "${BUILDER_BLOG_ACCOUNT:-default}")"
-DEFAULT_JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
+DEFAULT_JOB_STATE_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
+DEFAULT_JOB_TMP_DIR="$DEFAULT_JOB_STATE_DIR"
 # A direct worker-mode invocation (the setup initial run, or any manual
 # BUILDER_BLOG_WORKER_MODE=1 run) bypasses run_cron_supervisor and its
 # current.json single-instance lock. Only such direct calls carry WORKER_MODE=1
 # at entry — the scheduled path enters without it and the supervisor sets it
-# later in-process, after JOB_TMP_DIR is already fixed. Give the bypassing run
-# an isolated temp dir so it can never race a launchd-scheduled run of the same
-# job over the shared library-cron/digest-cron temp files.
-if [ -n "${BUILDER_BLOG_JOB_TMP_DIR:-}" ]; then
-  JOB_TMP_DIR="$BUILDER_BLOG_JOB_TMP_DIR"
+# later in-process, after JOB_STATE_DIR is already fixed. Give the bypassing run
+# an isolated state dir so it can never race a launchd-scheduled run of the same
+# job over current.json or schedule bookkeeping.
+if [ -n "${BUILDER_BLOG_JOB_STATE_DIR:-}" ]; then
+  JOB_STATE_DIR="$BUILDER_BLOG_JOB_STATE_DIR"
+elif [ -n "${BUILDER_BLOG_JOB_TMP_DIR:-}" ] && [ "${BUILDER_BLOG_JOB_TMP_IS_RUN_DIR:-0}" != "1" ]; then
+  # Backward compatibility: existing setup prompts pass BUILDER_BLOG_JOB_TMP_DIR
+  # before a job run id exists. Treat that path as the stable job state root; the
+  # tracked run later rewrites BUILDER_BLOG_JOB_TMP_DIR to runs/<instanceId>.
+  JOB_STATE_DIR="$BUILDER_BLOG_JOB_TMP_DIR"
 elif [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
-  JOB_TMP_DIR="$DEFAULT_JOB_TMP_DIR-direct"
+  JOB_STATE_DIR="$DEFAULT_JOB_STATE_DIR-direct"
 else
-  JOB_TMP_DIR="$DEFAULT_JOB_TMP_DIR"
+  JOB_STATE_DIR="$DEFAULT_JOB_STATE_DIR"
+fi
+JOB_TMP_DIR="$JOB_STATE_DIR"
+if [ "${BUILDER_BLOG_JOB_TMP_IS_RUN_DIR:-0}" = "1" ] && [ -n "${BUILDER_BLOG_JOB_TMP_DIR:-}" ]; then
+  JOB_TMP_DIR="$BUILDER_BLOG_JOB_TMP_DIR"
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
 
@@ -42,14 +52,14 @@ PATH="$SCHEDULER_SAFE_PATH:$PATH"
 # manual terminal invocations.
 BUILDER_BLOG_RUN_SOURCE=cron
 export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" BUILDER_BLOG_RUN_SOURCE
-export BUILDER_BLOG_ACCOUNT_SLUG="$ACCOUNT_SLUG" BUILDER_BLOG_JOB_TMP_DIR="$JOB_TMP_DIR"
+export BUILDER_BLOG_ACCOUNT_SLUG="$ACCOUNT_SLUG" BUILDER_BLOG_JOB_STATE_DIR="$JOB_STATE_DIR" BUILDER_BLOG_JOB_TMP_DIR="$JOB_TMP_DIR"
 
 if [ -z "$JOB_NAME" ]; then
   echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron>" >&2
   exit 64
 fi
 
-mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp" "$JOB_TMP_DIR"
+mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp" "$JOB_STATE_DIR" "$JOB_TMP_DIR"
 
 # Self-update: pull the latest runner and, if it changed, atomically swap it
 # in and re-exec, so scheduled jobs pick up runner fixes from the server
@@ -1046,7 +1056,7 @@ schedule_anchor_file() {
 }
 
 scheduler_last_fired_file() {
-  printf '%s\n' "$JOB_TMP_DIR/last-fired-expected-at"
+  printf '%s\n' "$JOB_STATE_DIR/last-fired-expected-at"
 }
 
 timeout_seconds_for_job() {
@@ -1148,6 +1158,239 @@ iso_now() {
 
 job_file_component() {
   printf '%s' "${1:-}" | tr -c 'a-zA-Z0-9_.@+-' '_'
+}
+
+write_run_owner_file() {
+  [ -n "${BUILDER_BLOG_JOB_RUN_ID:-}" ] || return 1
+  mkdir -p "$JOB_TMP_DIR"
+  node - "$JOB_TMP_DIR/.run-owner.json" "$ACCOUNT_SLUG" "$JOB_NAME" "$BUILDER_BLOG_JOB_RUN_ID" "$$" "${BUILDER_BLOG_JOB_STARTED_AT:-}" <<'NODE'
+const fs = require("fs");
+const [file, accountSlug, jobName, instanceId, pid, startedAt] = process.argv.slice(2);
+fs.writeFileSync(file, `${JSON.stringify({
+  app: "followbrief",
+  accountSlug,
+  jobName,
+  instanceId,
+  pid: Number(pid) || null,
+  startedAt: startedAt || null,
+  createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+}, null, 2)}\n`, { mode: 0o600 });
+NODE
+}
+
+validate_run_tmp_dir() {
+  [ -n "${JOB_TMP_DIR:-}" ] && [ -n "${JOB_STATE_DIR:-}" ] || return 1
+  case "$JOB_TMP_DIR" in
+    "$JOB_STATE_DIR"/runs/*) ;;
+    *) return 1 ;;
+  esac
+  [ -d "$JOB_TMP_DIR" ] || return 1
+  [ ! -L "$JOB_TMP_DIR" ] || return 1
+  [ -f "$JOB_TMP_DIR/.run-owner.json" ] || return 1
+  node - "$JOB_TMP_DIR/.run-owner.json" "$ACCOUNT_SLUG" "$JOB_NAME" "${BUILDER_BLOG_JOB_RUN_ID:-}" <<'NODE'
+const fs = require("fs");
+const [file, accountSlug, jobName, instanceId] = process.argv.slice(2);
+let owner;
+try {
+  owner = JSON.parse(fs.readFileSync(file, "utf8"));
+} catch {
+  process.exit(1);
+}
+if (
+  owner?.app !== "followbrief" ||
+  owner?.accountSlug !== accountSlug ||
+  owner?.jobName !== jobName ||
+  owner?.instanceId !== instanceId
+) {
+  process.exit(1);
+}
+NODE
+}
+
+copy_tail_file() {
+  _source="$1"
+  _dest="$2"
+  _bytes="${3:-200000}"
+  [ -r "$_source" ] || return 0
+  mkdir -p "$(dirname "$_dest")"
+  tail -c "$_bytes" "$_source" > "$_dest" 2>/dev/null || cp "$_source" "$_dest" 2>/dev/null || true
+}
+
+write_cleanup_debug_bundle() {
+  _status="$1"
+  _reason="${2:-}"
+  _debug_dir="$JOB_TMP_DIR/debug"
+  mkdir -p "$_debug_dir/errors" "$_debug_dir/worker-log-tails"
+  node - "$_debug_dir/runner-summary.json" "$ACCOUNT_SLUG" "$JOB_NAME" "${BUILDER_BLOG_JOB_RUN_ID:-}" "$_status" "$_reason" "$JOB_TMP_DIR" "$JOB_STATE_DIR" "${BUILDER_BLOG_RUNTIME:-}" "${BUILDER_BLOG_USAGE_FILE:-}" <<'NODE'
+const fs = require("fs");
+const [file, accountSlug, jobName, instanceId, status, reason, runTmpDir, jobStateDir, runtime, usageFile] = process.argv.slice(2);
+fs.writeFileSync(file, `${JSON.stringify({
+  accountSlug,
+  jobName,
+  instanceId,
+  status,
+  reason,
+  runTmpDir,
+  jobStateDir,
+  runtime: runtime || null,
+  usageFile: usageFile || null,
+  cleanedAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+}, null, 2)}\n`, { mode: 0o600 });
+NODE
+
+  for _debug_source in \
+    "$JOB_TMP_DIR"/*.err \
+    "$JOB_TMP_DIR"/*.out \
+    "$JOB_TMP_DIR"/runtime-usage-*.jsonl \
+    "$JOB_TMP_DIR"/*-agent-usage.* \
+    "$JOB_TMP_DIR"/merge-task-results*.json \
+    "$JOB_TMP_DIR"/library-fetch.err \
+    "$JOB_TMP_DIR"/library-expand-discovery.err \
+    "$JOB_TMP_DIR"/digest-prepare.err \
+    "$JOB_TMP_DIR"/digest-render.err \
+    "$JOB_TMP_DIR"/digest-sync.err
+  do
+    [ -e "$_debug_source" ] || continue
+    copy_tail_file "$_debug_source" "$_debug_dir/errors/$(basename "$_debug_source")"
+  done
+
+  for _worker_log in "$JOB_TMP_DIR"/shards/results/*-worker.log; do
+    [ -e "$_worker_log" ] || continue
+    copy_tail_file "$_worker_log" "$_debug_dir/worker-log-tails/$(basename "$_worker_log")"
+  done
+
+  {
+    find "$JOB_TMP_DIR" -type f \( \
+      -name '*.mp3' -o -name '*.m4a' -o -name '*.aac' -o -name '*.wav' -o -name '*.webm' -o -name '*.opus' -o -name '*.ogg' -o -name '*.flac' \
+      -o -name '*.mp4' -o -name '*.mkv' -o -name '*.mov' -o -name '*.part' -o -name '*.ytdl' -o -name '*.frag' \
+      -o -name '*.vtt' -o -name '*.srt' -o -name '*.json3' -o -name '*.ttml' \
+    \) ! -path "$_debug_dir/*" -print 2>/dev/null || true
+  } | while IFS= read -r _artifact; do
+    [ -n "$_artifact" ] || continue
+    _bytes="$(wc -c < "$_artifact" 2>/dev/null | tr -d ' ' || true)"
+    printf '%s\t%s\n' "${_bytes:-0}" "$_artifact"
+  done > "$_debug_dir/media-cleanup-manifest.tsv"
+
+  for _path_log in "$JOB_TMP_DIR"/*-agent-output.* "$JOB_TMP_DIR"/shards/results/*-worker.log; do
+    [ -r "$_path_log" ] || continue
+    grep -Eo '(/tmp|/var/folders|/Users/[^[:space:]]+/(Downloads|\.cache))[^[:space:]`"'"'"'<>]+' "$_path_log" 2>/dev/null || true
+  done | sort -u > "$_debug_dir/external-artifact-warnings.txt"
+}
+
+cleanup_job_tmp_dir() {
+  _status="$1"
+  _reason="${2:-}"
+  [ -d "${JOB_TMP_DIR:-}" ] || return 0
+  if ! validate_run_tmp_dir; then
+    echo "Skipping FollowBrief run cleanup: run temp dir ownership check failed for ${JOB_TMP_DIR:-unset}." >&2
+    return 0
+  fi
+  case "$_status" in
+    succeeded)
+      rm -rf "$JOB_TMP_DIR"
+      ;;
+    *)
+      write_cleanup_debug_bundle "$_status" "$_reason"
+      find "$JOB_TMP_DIR" -mindepth 1 -maxdepth 1 ! -name debug ! -name .run-owner.json -exec rm -rf {} + 2>/dev/null || true
+      ;;
+  esac
+}
+
+cleanup_old_job_runs() {
+  node - "$JOB_STATE_DIR" "$ACCOUNT_SLUG" "$JOB_NAME" <<'NODE' >/dev/null 2>&1 || true
+const fs = require("fs");
+const path = require("path");
+const [stateDir, accountSlug, jobName] = process.argv.slice(2);
+const runsDir = path.join(stateDir, "runs");
+let currentId = null;
+try {
+  currentId = JSON.parse(fs.readFileSync(path.join(stateDir, "current.json"), "utf8"))?.instanceId || null;
+} catch {}
+let entries = [];
+try {
+  entries = fs.readdirSync(runsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+} catch {
+  process.exit(0);
+}
+const now = Date.now();
+const retainedFailures = [];
+for (const entry of entries) {
+  const dir = path.join(runsDir, entry.name);
+  const ownerFile = path.join(dir, ".run-owner.json");
+  let owner;
+  try {
+    owner = JSON.parse(fs.readFileSync(ownerFile, "utf8"));
+  } catch {
+    continue;
+  }
+  if (owner?.app !== "followbrief" || owner?.accountSlug !== accountSlug || owner?.jobName !== jobName) continue;
+  if (owner?.instanceId && owner.instanceId === currentId) continue;
+  let summary = {};
+  try {
+    summary = JSON.parse(fs.readFileSync(path.join(dir, "debug", "runner-summary.json"), "utf8"));
+  } catch {}
+  const status = String(summary.status || "");
+  let stat;
+  try {
+    stat = fs.statSync(dir);
+  } catch {
+    continue;
+  }
+  const ageMs = now - stat.mtimeMs;
+  const oneDay = 24 * 60 * 60 * 1000;
+  const sevenDays = 7 * oneDay;
+  const threshold =
+    status === "failed" || status === "timed_out" ? sevenDays :
+    status === "killed" || status === "replaced" || status === "stale" ? oneDay :
+    oneDay;
+  if (status === "failed" || status === "timed_out") {
+    retainedFailures.push({ dir, mtimeMs: stat.mtimeMs, ageMs });
+    if (ageMs <= threshold) continue;
+  } else if (ageMs <= threshold) {
+    continue;
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+retainedFailures
+  .sort((a, b) => b.mtimeMs - a.mtimeMs)
+  .slice(5)
+  .forEach((entry) => {
+    if (entry.ageMs > oneDay) fs.rmSync(entry.dir, { recursive: true, force: true });
+  });
+NODE
+}
+
+prepare_run_tmp_dir() {
+  [ -n "${BUILDER_BLOG_JOB_RUN_ID:-}" ] || return 1
+  RUNS_DIR="$JOB_STATE_DIR/runs"
+  _run_component="$(job_file_component "$BUILDER_BLOG_JOB_RUN_ID")"
+  [ -n "$_run_component" ] || _run_component="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  JOB_TMP_DIR="$RUNS_DIR/$_run_component"
+  mkdir -p "$JOB_TMP_DIR"
+  export BUILDER_BLOG_JOB_STATE_DIR="$JOB_STATE_DIR"
+  export BUILDER_BLOG_JOB_TMP_DIR="$JOB_TMP_DIR"
+  export BUILDER_BLOG_JOB_TMP_IS_RUN_DIR=1
+  write_run_owner_file
+  cleanup_old_job_runs
+}
+
+TRACKED_JOB_FINALIZED=0
+tracked_job_signal_cleanup() {
+  _signal="${1:-TERM}"
+  [ "$TRACKED_JOB_FINALIZED" = "0" ] || exit 130
+  TRACKED_JOB_FINALIZED=1
+  if [ -n "${RUNTIME_PID:-}" ]; then
+    terminate_process_tree "$RUNTIME_PID" TERM 10 || true
+  fi
+  aggregate_runtime_usage_files || true
+  job_run_update killed "Runtime interrupted before normal cleanup completed." "runner_interrupted" \
+    --stage "interrupted" \
+    --signal "$_signal" || true
+  cleanup_job_tmp_dir killed "runner_interrupted" || true
+  if [ -n "${BUILDER_BLOG_CURRENT_FILE:-}" ]; then
+    clear_current_file "$BUILDER_BLOG_CURRENT_FILE" "${BUILDER_BLOG_JOB_RUN_ID:-}" || true
+  fi
+  exit 130
 }
 
 aggregate_runtime_usage_files() {
@@ -1416,7 +1659,7 @@ run_cron_supervisor() {
   INSTANCE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   STARTED_AT="$(iso_now)"
   EXPECTED_AT="$STARTED_AT"
-  CURRENT_FILE="$JOB_TMP_DIR/current.json"
+  CURRENT_FILE="$JOB_STATE_DIR/current.json"
   export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
   export BUILDER_BLOG_JOB_TRIGGER="scheduled"
   export BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
@@ -1458,7 +1701,7 @@ run_cron_supervisor() {
 }
 
 run_cron_scheduler_tick() {
-  CURRENT_FILE="$JOB_TMP_DIR/current.json"
+  CURRENT_FILE="$JOB_STATE_DIR/current.json"
   EXPECTED_AT="$(due_expected_at || true)"
   if [ -z "$EXPECTED_AT" ]; then
     return 0
@@ -1527,12 +1770,15 @@ run_cron_scheduler_tick() {
   BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
   BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
   BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+  BUILDER_BLOG_JOB_STATE_DIR="$JOB_STATE_DIR"
   BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH=1
   BUILDER_BLOG_RUNNER_UPDATED=1
+  unset BUILDER_BLOG_JOB_TMP_DIR
+  unset BUILDER_BLOG_JOB_TMP_IS_RUN_DIR
   unset BUILDER_BLOG_RUNNER_PID
   export BUILDER_BLOG_SCHEDULER_TICK BUILDER_BLOG_WORKER_MODE BUILDER_BLOG_JOB_TRIGGER
   export BUILDER_BLOG_SCHEDULE_JOB BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_EXPECTED_AT
-  export BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_CURRENT_FILE
+  export BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_CURRENT_FILE BUILDER_BLOG_JOB_STATE_DIR
   export BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH BUILDER_BLOG_RUNNER_UPDATED
   exec "$0" "$JOB_NAME"
 }
@@ -1545,7 +1791,7 @@ run_one_time_with_lock() {
   INSTANCE_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
   STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
   EXPECTED_AT="${BUILDER_BLOG_EXPECTED_AT:-$STARTED_AT}"
-  CURRENT_FILE="$JOB_TMP_DIR/current.json"
+  CURRENT_FILE="$JOB_STATE_DIR/current.json"
 
   if [ -r "$CURRENT_FILE" ]; then
     OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
@@ -1585,6 +1831,7 @@ run_one_time_with_lock() {
   export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
   export BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
   export BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+  export BUILDER_BLOG_JOB_STATE_DIR="$JOB_STATE_DIR"
   export BUILDER_BLOG_WORKER_PID="$$"
   export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
   write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$BUILDER_BLOG_WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
@@ -1599,11 +1846,15 @@ run_one_time_with_lock() {
 
 run_with_job_tracking() {
   _trigger="$1"
+  TRACKED_JOB_FINALIZED=0
   export BUILDER_BLOG_JOB_TRIGGER="$_trigger"
   export BUILDER_BLOG_SCHEDULE_JOB="$(schedule_job_for_name)"
   export BUILDER_BLOG_JOB_RUN_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
   export BUILDER_BLOG_JOB_STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
   export BUILDER_BLOG_EXPECTED_AT="${BUILDER_BLOG_EXPECTED_AT:-$BUILDER_BLOG_JOB_STARTED_AT}"
+  prepare_run_tmp_dir
+  trap 'tracked_job_signal_cleanup TERM' TERM
+  trap 'tracked_job_signal_cleanup INT' INT
   _usage_key="$(job_file_component "$BUILDER_BLOG_JOB_RUN_ID")"
   export BUILDER_BLOG_USAGE_FILE="$JOB_TMP_DIR/runtime-usage-$_usage_key.jsonl"
   rm -f "$BUILDER_BLOG_USAGE_FILE" \
@@ -1649,6 +1900,9 @@ run_with_job_tracking() {
         --timeout-stage "runtime" \
         --timed-out-worker-pid "$RUNTIME_PID" \
         --termination "$_termination"
+      TRACKED_JOB_FINALIZED=1
+      cleanup_job_tmp_dir timed_out "timeout_seconds_for_job"
+      cleanup_old_job_runs
       return 124
     fi
     if [ $(( _elapsed % HEARTBEAT_INTERVAL_SECONDS )) -eq 0 ]; then
@@ -1659,6 +1913,8 @@ run_with_job_tracking() {
   done
   wait "$RUNTIME_PID"
   _code="$?"
+  _cleanup_status="succeeded"
+  _cleanup_reason="runtime_finished"
   if [ "$_code" -eq 0 ]; then
     if [ "$JOB_NAME" = "digest-once" ] || [ "$JOB_NAME" = "digest-cron" ]; then
       _digest_final_context="$JOB_TMP_DIR/builder-blog-context.json"
@@ -1669,6 +1925,7 @@ run_with_job_tracking() {
       if [ "$_digest_final_count" = "0" ]; then
         job_run_update succeeded "No update. Prepared 0 candidates." "no_update" \
           --stage "no_update"
+        _cleanup_reason="no_update"
       else
         job_run_update succeeded "Runtime completed successfully." "runtime_finished"
       fi
@@ -1676,10 +1933,17 @@ run_with_job_tracking() {
       job_run_update succeeded "Runtime completed successfully." "runtime_finished"
     fi
   elif [ "$_code" -eq 124 ]; then
+    _cleanup_status="timed_out"
+    _cleanup_reason="runtime_reported_timeout"
     job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout"
   else
+    _cleanup_status="failed"
+    _cleanup_reason="runtime_finished"
     job_run_update failed "Runtime exited with code $_code." "runtime_finished"
   fi
+  TRACKED_JOB_FINALIZED=1
+  cleanup_job_tmp_dir "$_cleanup_status" "$_cleanup_reason"
+  cleanup_old_job_runs
   return "$_code"
 }
 
