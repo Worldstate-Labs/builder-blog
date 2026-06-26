@@ -106,6 +106,7 @@
   --text-role-meta-size: 0.75rem;
   --text-role-control-size: 0.8125rem;
   --text-role-label-weight: var(--fw-medium);
+  --text-role-meta-weight: var(--fw-medium);
   --text-role-value-weight: var(--fw-bold);
   --text-role-title-weight: var(--fw-bold);
   --text-role-tracking: 0;
@@ -7477,7 +7478,7 @@ summary.library-section-summary::after {
   cursor: pointer;
   display: grid;
   gap: 0.35rem 0.75rem;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   padding: 0.625rem 0.75rem;
 }
 
@@ -7524,6 +7525,15 @@ summary.library-section-summary::after {
   line-height: 1.3;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.sync-panel-task-worker-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: var(--text-role-meta-weight);
+  justify-self: end;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .sync-panel-task-worker-details > .sync-panel-task-source-group-list {
@@ -7587,6 +7597,10 @@ summary.library-section-summary::after {
   font-weight: var(--text-role-value-weight);
 }
 
+.sync-panel-task-source-stat.is-danger strong {
+  color: var(--danger);
+}
+
 .sync-panel-task-source-details > .sync-panel-run-card-candidate-list {
   border-top: 1px solid var(--line);
   padding: 0.5rem;
@@ -7595,6 +7609,11 @@ summary.library-section-summary::after {
 @media (max-width: 640px) {
   .sync-panel-task-worker-summary {
     align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sync-panel-task-worker-meta {
+    justify-self: start;
   }
 
   .sync-panel-task-source-summary {

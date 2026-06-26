@@ -18,9 +18,14 @@ export type FetchRunTaskOutcomePatch = {
   plannedTask?: FetchRunTask;
 } & FetchRunTask;
 
+export type FetchRunWorkerUsagePatch = {
+  workerId: string;
+} & FetchRunTask;
+
 export type MergeFetchRunDetailsInput = {
   plannedTasks?: FetchRunPlannedTaskPatch[];
   taskOutcomes?: FetchRunTaskOutcomePatch[];
+  workerUsages?: FetchRunWorkerUsagePatch[];
 };
 
 export type MergeFetchRunDetailsResult = {
@@ -89,6 +94,27 @@ function mergeOutcomeTask(existing: FetchRunTask, outcome: FetchRunTaskOutcomePa
   return { ...existing, ...outcomePatch(outcome) };
 }
 
+function mergeWorkerUsages(
+  details: Record<string, unknown>,
+  workerUsages: FetchRunWorkerUsagePatch[],
+) {
+  if (workerUsages.length === 0) return;
+  const byWorkerId = new Map<string, FetchRunTask>();
+  const existing = Array.isArray(details.workerUsages) ? details.workerUsages : [];
+  for (const value of existing) {
+    const record = taskRecord(value);
+    const workerId = typeof record.workerId === "string" ? record.workerId : "";
+    if (workerId) byWorkerId.set(workerId, record);
+  }
+  for (const value of workerUsages) {
+    const record = taskRecord(value);
+    const workerId = typeof record.workerId === "string" ? record.workerId : "";
+    if (!workerId) continue;
+    byWorkerId.set(workerId, { ...(byWorkerId.get(workerId) ?? {}), ...record });
+  }
+  details.workerUsages = [...byWorkerId.values()];
+}
+
 function builderIdsFromDetails(details: Record<string, unknown>): Set<string> {
   return new Set(
     (Array.isArray(details.perBuilder) ? details.perBuilder : [])
@@ -155,7 +181,7 @@ export function deriveFetchRunStatusFromDetails(
 
 export function mergeFetchRunDetails(
   existingDetails: unknown,
-  { plannedTasks = [], taskOutcomes = [] }: MergeFetchRunDetailsInput,
+  { plannedTasks = [], taskOutcomes = [], workerUsages = [] }: MergeFetchRunDetailsInput,
 ): MergeFetchRunDetailsResult {
   const details =
     existingDetails && typeof existingDetails === "object" && !Array.isArray(existingDetails)
@@ -233,6 +259,7 @@ export function mergeFetchRunDetails(
   if (runtimes.length) {
     details.agentRuntime = runtimes.length === 1 ? runtimes[0] : runtimes.join(" / ");
   }
+  mergeWorkerUsages(details, workerUsages);
 
   return { details, matched, planned };
 }

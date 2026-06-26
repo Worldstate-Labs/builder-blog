@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -2931,6 +2931,59 @@ test("split-sync-slices isolates synced items and outcomes by source", async () 
   assert.equal(sourceX.payload.taskOutcomes.length, 0);
 });
 
+test("split-sync-slices can isolate synced items and outcomes by task", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "a1", agentWorkType: "fetch_post", builderSync: { builderId: "source-a" } },
+      { id: "a2", agentWorkType: "fetch_post", builderSync: { builderId: "source-a" } },
+      { id: "fallback", agentWorkType: "fetch_builder_fallback", builderSync: { builderId: "source-a" } },
+    ],
+  };
+  const payload = {
+    builders: [
+      {
+        builderId: "source-a",
+        name: "Source A",
+        items: [
+          { externalId: "post-a1", rawJson: { fetchTaskId: "a1" } },
+          { externalId: "fallback-1", rawJson: { fetchTaskId: "fallback" } },
+          { externalId: "fallback-2", rawJson: { fetchTaskId: "fallback" } },
+        ],
+      },
+    ],
+    taskOutcomes: [{ fetchTaskId: "a2", status: "failed", reason: "summary_error" }],
+  };
+
+  const slices = cli.splitSyncPayloadByTask(fetchResult, payload);
+  const byKey = new Map(slices.map((slice: { key: string }) => [slice.key, slice]));
+
+  const a1 = byKey.get("task:a1") as unknown as {
+    tasks: { fetchTasks: { id: string }[] };
+    payload: { builders: { items: { externalId: string }[] }[]; taskOutcomes: unknown[] };
+  };
+  assert.deepEqual(a1.tasks.fetchTasks.map((task) => task.id), ["a1"]);
+  assert.deepEqual(a1.payload.builders[0].items.map((item) => item.externalId), ["post-a1"]);
+  assert.equal(a1.payload.taskOutcomes.length, 0);
+
+  const a2 = byKey.get("task:a2") as unknown as {
+    tasks: { fetchTasks: { id: string }[] };
+    payload: { builders: unknown[]; taskOutcomes: { fetchTaskId: string }[] };
+  };
+  assert.deepEqual(a2.tasks.fetchTasks.map((task) => task.id), ["a2"]);
+  assert.equal(a2.payload.builders.length, 0);
+  assert.deepEqual(a2.payload.taskOutcomes.map((outcome) => outcome.fetchTaskId), ["a2"]);
+
+  const fallback = byKey.get("task:fallback") as unknown as {
+    payload: { builders: { items: { externalId: string }[] }[] };
+  };
+  assert.deepEqual(
+    fallback.payload.builders[0].items.map((item) => item.externalId),
+    ["fallback-1", "fallback-2"],
+  );
+});
+
 test("fail-sync-slice marks only non-user-action tasks failed", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-fail-sync-slice-"));
   const tasksFile = join(tmp, "slice-tasks.json");
@@ -3187,6 +3240,76 @@ test("merge-task-results preserves task checkpoints when a shard result is missi
   assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
     ["lost", "worker_missing_result"],
   ]);
+});
+
+test("merge-task-results can exclude checkpoint-synced task ids from final sync output", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-exclude-"));
+  const resultsDir = join(tmp, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "remaining-payload.json");
+  const tasksOutFile = join(tmp, "remaining-tasks.json");
+  const excludeFile = join(tmp, "synced-ids.txt");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        { id: "already", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+        { id: "remaining", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(excludeFile, "already\n", "utf8");
+  await mkdir(resultsDir);
+  await writeFile(
+    join(resultsDir, "shard-0-result.json"),
+    `${JSON.stringify({
+      builders: [
+        {
+          builderId: "b1",
+          items: [
+            { externalId: "already-item", rawJson: { fetchTaskId: "already" } },
+            { externalId: "remaining-item", rawJson: { fetchTaskId: "remaining" } },
+          ],
+        },
+      ],
+      taskOutcomes: [],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--exclude-task-ids-file",
+      excludeFile,
+      "--tasks-out",
+      tasksOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const remainingTasks = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  assert.deepEqual(
+    payload.builders.flatMap((builder: { items: { externalId: string }[] }) =>
+      builder.items.map((item) => item.externalId),
+    ),
+    ["remaining-item"],
+  );
+  assert.deepEqual(
+    remainingTasks.fetchTasks.map((task: { id: string }) => task.id),
+    ["remaining"],
+  );
 });
 
 test("merge-task-results classifies missing OpenClaw auth-failed shards", async () => {

@@ -2367,7 +2367,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /runs=\{dialogRuns\}/);
   assert.match(fetchLogPanel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(fetchLogPanel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(fetchLogPanel, /taskWorkerGroups\(postTasks, liveTasks, fallbackTaskWorkerName\(liveProgress\)\)/);
+  assert.match(fetchLogPanel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*\)/);
   assert.match(fetchLogPanel, /Post task details/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-count"/);
   assert.doesNotMatch(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);
@@ -2442,7 +2442,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-chev fb-task-chev"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-source-type"/);
   assert.doesNotMatch(fetchLogPanel, /\{group\.sourceType\}<\/span>/);
-  assert.match(fetchLogPanel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.read\} read, \$\{stats\.summarized\} summarized, \$\{stats\.synced\} synced`\}/);
+  assert.match(fetchLogPanel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.accounted\} accounted\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
+  assert.match(fetchLogPanel, /\{formatCount\(stats\.accounted\)\}<\/strong> accounted/);
+  assert.match(fetchLogPanel, /className="sync-panel-task-source-stat is-danger"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-task-title"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-builder"/);

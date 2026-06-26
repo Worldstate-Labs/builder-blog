@@ -36,7 +36,7 @@ function stringValue(value: unknown): string | null {
 }
 
 function readUsageFromRecord(value: Record<string, unknown>): UsageSummary | null {
-  const usage = record(value.usage) ?? value;
+  const usage = record(value.usage) ?? record(value.tokenUsage) ?? record(value.token_usage) ?? value;
   const inputTokens = intValue(
     usage.inputTokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.prompt_tokens,
   );

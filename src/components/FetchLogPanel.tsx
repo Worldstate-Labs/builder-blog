@@ -23,7 +23,12 @@ import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
-import { readUsageSummary } from "@/lib/usage-summary";
+import {
+  formatUsageCost,
+  formatUsageTokens,
+  readUsageSummary,
+  type UsageSummary,
+} from "@/lib/usage-summary";
 import {
   scheduledJobRunStatusLabel,
   scheduledRunTriggerLabel,
@@ -116,6 +121,9 @@ type FetchTaskLog = {
   // Per-task evidence for a skipped (no-content) outcome, e.g.
   // { meanVolumeDb: -91, hasCaptions: false }.
   evidence?: Record<string, unknown> | null;
+  usage?: unknown;
+  tokenUsage?: unknown;
+  token_usage?: unknown;
 };
 
 type PromptBundle = {
@@ -134,6 +142,7 @@ type DetailsShape = {
   cliFlags?: Record<string, unknown>;
   error?: { message?: string; stack?: string };
   fetchTasks?: FetchTaskLog[];
+  workerUsages?: FetchTaskWorkerUsage[];
   prompts?: Record<string, PromptBundle>;
   // Which agent ran the fetch and the model it used. Recorded by the CLI at
   // emit time; absent on runs from before this was captured.
@@ -164,8 +173,14 @@ type FetchTaskSourceGroup = {
 type FetchTaskWorkerGroup = {
   key: string;
   name: string;
+  usage: UsageSummary | null;
   sourceGroups: FetchTaskSourceGroup[];
   tasks: FetchTaskLog[];
+};
+
+type FetchTaskWorkerUsage = {
+  workerId?: string | null;
+  usage?: unknown;
 };
 
 type LifecycleStep = {
@@ -2040,7 +2055,7 @@ function JobLifecycle({
     {
       key: "sync",
       label: "Sync",
-      outcome: ratioText(stats.synced, stats.planned, "post"),
+      outcome: ratioText(doneOrAccounted, stats.planned, "post"),
       tone: lifecycleTone(doneOrAccounted, stats.planned, { failed: stats.failed }),
       open: Boolean(recentEvent?.message || stats.failed || stats.skipped || stats.actionNeeded),
       children: (
@@ -2412,6 +2427,7 @@ function taskWorkerGroups(
   fetchTasks: FetchTaskLog[],
   liveTasks: Map<string, FetchTaskProgress>,
   fallbackWorkerName: string,
+  workerUsages: Map<string, UsageSummary>,
 ): FetchTaskWorkerGroup[] {
   const groups = new Map<string, FetchTaskWorkerGroup>();
   for (const task of fetchTasks) {
@@ -2423,6 +2439,7 @@ function taskWorkerGroups(
       group = {
         key,
         name: workerId ?? fallbackWorkerName,
+        usage: workerId ? workerUsages.get(workerId) ?? null : null,
         sourceGroups: [],
         tasks: [],
       };
@@ -2443,13 +2460,59 @@ function fallbackTaskWorkerName(liveProgress: FetchJobProgress | null): string {
 }
 
 function groupedTaskStats(tasks: FetchTaskLog[]) {
+  const synced = tasks.filter((task) => task.status === "synced").length;
+  const skipped = tasks.filter((task) => task.status === "skipped").length;
+  const failed = tasks.filter((task) => task.status === "failed").length;
+  const actionNeeded = tasks.filter((task) => task.status === "action_needed" || isBlocked(task)).length;
   return {
     discovery: tasks.filter(isCandidateDiscoveryTask).length,
     planned: tasks.filter(isPlannedPostTask).length,
-    read: tasks.filter(isReadForStats).length,
-    summarized: tasks.filter(isSummarizedForStats).length,
-    synced: tasks.filter((task) => task.status === "synced").length,
+    synced,
+    accounted: synced + skipped + failed + actionNeeded,
+    skipped,
+    failed,
+    actionNeeded,
   };
+}
+
+function mergeUsageSummary(left: UsageSummary | null, right: UsageSummary | null): UsageSummary | null {
+  if (!left) return right;
+  if (!right) return left;
+  const sum = (key: "inputTokens" | "outputTokens" | "cachedInputTokens" | "reasoningTokens" | "totalTokens" | "costUsd") => {
+    const leftValue = left[key];
+    const rightValue = right[key];
+    return leftValue === null && rightValue === null ? null : (leftValue ?? 0) + (rightValue ?? 0);
+  };
+  return {
+    inputTokens: sum("inputTokens"),
+    outputTokens: sum("outputTokens"),
+    cachedInputTokens: sum("cachedInputTokens"),
+    reasoningTokens: sum("reasoningTokens"),
+    totalTokens: sum("totalTokens"),
+    costUsd: sum("costUsd"),
+    currency: left.currency ?? right.currency,
+    source: left.source ?? right.source,
+  };
+}
+
+function workerUsageMap(workerUsages: FetchTaskWorkerUsage[] | undefined): Map<string, UsageSummary> {
+  const byWorkerId = new Map<string, UsageSummary>();
+  for (const value of Array.isArray(workerUsages) ? workerUsages : []) {
+    const workerId = typeof value?.workerId === "string" ? value.workerId.trim() : "";
+    if (!workerId) continue;
+    const usage = readUsageSummary(value.usage, value);
+    if (!usage) continue;
+    byWorkerId.set(workerId, mergeUsageSummary(byWorkerId.get(workerId) ?? null, usage) ?? usage);
+  }
+  return byWorkerId;
+}
+
+function formatInlineUsage(usage: UsageSummary | null): string | null {
+  if (!usage) return null;
+  const parts: string[] = [];
+  if (usage.totalTokens !== null) parts.push(`${formatUsageTokens(usage.totalTokens)} tokens`);
+  if (usage.costUsd !== null) parts.push(formatUsageCost(usage));
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function DetailsBody({
@@ -2466,7 +2529,12 @@ function DetailsBody({
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
   const postTasks = fetchTasks.filter(isPlannedPostTask);
   const liveTasks = fetchTaskProgressMap(liveProgress);
-  const taskGroups = taskWorkerGroups(postTasks, liveTasks, fallbackTaskWorkerName(liveProgress));
+  const taskGroups = taskWorkerGroups(
+    postTasks,
+    liveTasks,
+    fallbackTaskWorkerName(liveProgress),
+    workerUsageMap(details.workerUsages),
+  );
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
       ? details.prompts
@@ -2479,11 +2547,20 @@ function DetailsBody({
         <div>
           <ul className="sync-panel-task-worker-group-list">
             {taskGroups.map((workerGroup) => {
+              const usageText = formatInlineUsage(workerGroup.usage);
               return (
                 <li className="sync-panel-task-worker-group" key={workerGroup.key}>
                   <details className="sync-panel-task-worker-details" open>
                     <summary className="sync-panel-task-worker-summary">
                       <span className="sync-panel-task-worker-name">{workerGroup.name}</span>
+                      {usageText ? (
+                        <span
+                          aria-label={`${workerGroup.name}: ${usageText}`}
+                          className="sync-panel-task-worker-meta"
+                        >
+                          {usageText}
+                        </span>
+                      ) : null}
                     </summary>
                     <ul className="sync-panel-task-source-group-list">
                       {workerGroup.sourceGroups.map((group) => {
@@ -2494,21 +2571,20 @@ function DetailsBody({
                               <summary className="sync-panel-task-source-summary">
                                 <span className="sync-panel-task-source-name">{group.name}</span>
                                 <span
-                                  aria-label={`${group.name}: ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
+                                  aria-label={`${group.name}: ${stats.planned} planned, ${stats.accounted} accounted${stats.failed > 0 ? `, ${stats.failed} failed` : ""}`}
                                   className="sync-panel-task-source-meta"
                                 >
                                   <span className="sync-panel-task-source-stat">
                                     <strong>{formatCount(stats.planned)}</strong> planned
                                   </span>
                                   <span className="sync-panel-task-source-stat">
-                                    <strong>{formatCount(stats.read)}</strong> read
+                                    <strong>{formatCount(stats.accounted)}</strong> accounted
                                   </span>
-                                  <span className="sync-panel-task-source-stat">
-                                    <strong>{formatCount(stats.summarized)}</strong> summarized
-                                  </span>
-                                  <span className="sync-panel-task-source-stat">
-                                    <strong>{formatCount(stats.synced)}</strong> synced
-                                  </span>
+                                  {stats.failed > 0 ? (
+                                    <span className="sync-panel-task-source-stat is-danger">
+                                      <strong>{formatCount(stats.failed)}</strong> failed
+                                    </span>
+                                  ) : null}
                                 </span>
                               </summary>
                               <ul className="sync-panel-run-card-candidate-list">
@@ -2771,6 +2847,9 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   content_too_short: "The readable content was too short",
   content_validation_failed: "Fetched content failed validation",
   runtime_auth_failed: "OpenClaw auth failed before this post could be fetched",
+  task_validation_failed: "Sync payload for this post failed validation",
+  task_sync_failed: "FollowBrief could not save this post",
+  slice_sync_failed: "FollowBrief could not save this post",
   // Parallel-run outcomes backfilled by merge-task-results when a shard
   // worker never reported a task (crash/timeout) or discovery never expanded.
   worker_missing_result: "Local Agent shard did not write a result file for this post",

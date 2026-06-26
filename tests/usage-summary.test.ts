@@ -38,6 +38,25 @@ test("usage summary prefers the first available details payload", () => {
   assert.equal(usage?.costUsd, 0.0004);
 });
 
+test("usage summary reads tokenUsage aliases", () => {
+  assert.deepEqual(readUsageSummary({
+    tokenUsage: {
+      input_tokens: 10,
+      completion_tokens: 5,
+      total_cost: "0.0025",
+    },
+  }), {
+    inputTokens: 10,
+    outputTokens: 5,
+    cachedInputTokens: null,
+    reasoningTokens: null,
+    totalTokens: 15,
+    costUsd: 0.0025,
+    currency: "USD",
+    source: null,
+  });
+});
+
 test("usage display format handles missing values and small USD costs", () => {
   assert.equal(formatUsageTokens(null), "Not reported");
   assert.equal(formatUsageTokens(1234567), "1,234,567");

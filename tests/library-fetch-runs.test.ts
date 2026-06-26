@@ -96,6 +96,8 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   // present in this run's perBuilder snapshot.
   assert.match(patchRoute, /PlannedTaskSchema/);
   assert.match(patchRoute, /plannedTasks: z\.array\(PlannedTaskSchema\)\.max\(500\)\.optional\(\)/);
+  assert.match(patchRoute, /WorkerUsageSchema/);
+  assert.match(patchRoute, /workerUsages: z\.array\(WorkerUsageSchema\)\.max\(20\)\.optional\(\)/);
   assert.match(patchRoute, /TERMINAL_FETCH_TASK_STATUSES/);
   assert.match(patchRoute, /MAX_FETCH_TASK_ID/);
   assert.match(patchRoute, /mergeFetchRunDetails/);
@@ -157,6 +159,7 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /\/api\/skill\/job-runs[\s\S]*timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /function runtimeUsageFromFile/);
+  assert.match(cli, /function readShardWorkerUsages/);
   assert.match(cli, /aggregateRuntimeUsageFromFiles/);
   assert.match(cli, /parse-runtime-usage/);
   assert.match(cli, /aggregate-runtime-usage/);
@@ -178,6 +181,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /discoveryExpansionById/);
   assert.match(cli, /discovery_expanded/);
   assert.match(cli, /buildFetchRunSyncPatch/);
+  assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
+  assert.match(cli, /\.\.\.\(workerUsages\.length > 0 \? \{ workerUsages \} : \{\}\)/);
   assert.match(cli, /fetchRun: buildFetchRunSyncPatch/);
   assert.doesNotMatch(cli, /discoveryExpanded: true/);
 });
@@ -226,6 +231,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /runtime-usage-\$_usage_key\.jsonl/);
   assert.match(runner, /rm -f "\$BUILDER_BLOG_USAGE_FILE"/);
   assert.match(runner, /aggregate_runtime_usage_files/);
+  assert.match(runner, /--results-dir "\$_results_dir"/);
+  assert.match(runner, /--partial-outcomes --results-dir/);
   assert.match(runner, /codex-agent-output\.\*/);
   assert.match(runner, /openclaw-agent-output\.\*/);
   assert.match(runner, /unset LAST_AGENT_OUTPUT_FILE/);
@@ -261,9 +268,13 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /OpenClaw selected model was at capacity; retrying/);
   assert.match(runner, /GatewayClientRequestError:/);
   assert.match(runner, /--provider-error "\$_agent_provider_error"/);
+  assert.match(runner, /--granularity "\$_sps_granularity"/);
+  assert.match(runner, /validate-agent-sync[\s\S]*--tasks "\$_slice_tasks"/);
   assert.match(runner, /validation-failed-payload\.json/);
   assert.match(runner, /--exclude-task-ids-file "\$_checkpoint_synced_ids_file"/);
-  assert.match(runner, /--reason "content_validation_failed"/);
+  assert.match(runner, /--reason "task_validation_failed"/);
+  assert.match(runner, /--reason "task_sync_failed"/);
+  assert.doesNotMatch(runner, /library-repair-prompt\.md/);
   assert.doesNotMatch(runner, /--reason "validation_failed"/);
   assert.match(runner, /run_openclaw_library_preflight\(\)/);
   assert.match(runner, /followbriefRuntimePreflight/);
@@ -362,7 +373,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /runs=\{dialogRuns\}/);
   assert.match(panel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks, fallbackTaskWorkerName\(liveProgress\)\)/);
+  assert.match(panel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*\)/);
   assert.match(panel, /function fallbackTaskWorkerName/);
   assert.match(panel, /Worker assignment pending/);
   assert.match(panel, /worker_missing_result: "Local Agent shard did not write a result file for this post"/);
@@ -390,9 +401,14 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /workerStats = groupedTaskStats\(workerGroup\.tasks\)/);
   assert.doesNotMatch(panel, /className="mono sync-panel-task-worker-meta"/);
   assert.match(panel, /\{formatCount\(stats\.planned\)\}<\/strong> planned/);
-  assert.match(panel, /\{formatCount\(stats\.read\)\}<\/strong> read/);
-  assert.match(panel, /\{formatCount\(stats\.summarized\)\}<\/strong> summarized/);
-  assert.match(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
+  assert.doesNotMatch(panel, /\{formatCount\(stats\.read\)\}<\/strong> read/);
+  assert.doesNotMatch(panel, /\{formatCount\(stats\.summarized\)\}<\/strong> summarized/);
+  assert.doesNotMatch(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
+  assert.match(panel, /\{formatCount\(stats\.accounted\)\}<\/strong> accounted/);
+  assert.match(panel, /readUsageSummary\(value\.usage, value\)/);
+  assert.match(panel, /const usageText = formatInlineUsage\(workerGroup\.usage\)/);
+  assert.match(panel, /className="sync-panel-task-worker-meta"/);
+  assert.doesNotMatch(panel, /className="sync-panel-task-source-usage"/);
   assert.doesNotMatch(panel, /\{formatCount\(workerGroup\.tasks\.length\)\}<\/strong> tasks/);
   assert.doesNotMatch(panel, /\{formatCount\(stats\.planned\)\}<\/strong> posts/);
   assert.match(panel, /function discoveryTaskState/);
@@ -462,6 +478,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /Cleanup did not finish/);
   assert.match(panel, /runtime_auth_failed: "OpenClaw auth failed before this post could be fetched"/);
   assert.match(panel, /content_validation_failed: "Fetched content failed validation"/);
+  assert.match(panel, /task_validation_failed: "Sync payload for this post failed validation"/);
+  assert.match(panel, /task_sync_failed: "FollowBrief could not save this post"/);
   assert.match(panel, /task\.failureReason === "runtime_auth_failed"/);
   assert.match(panel, /providerError/);
   assert.match(panel, /label: "Provider"/);
@@ -638,7 +656,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-chev fb-task-chev"/);
   assert.doesNotMatch(panel, /className="sync-panel-task-source-type"/);
   assert.doesNotMatch(panel, /\{group\.sourceType\}<\/span>/);
-  assert.match(panel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.read\} read, \$\{stats\.summarized\} summarized, \$\{stats\.synced\} synced`\}/);
+  assert.match(panel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.accounted\} accounted\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
+  assert.match(panel, /\{formatCount\(stats\.accounted\)\}<\/strong> accounted/);
+  assert.match(panel, /className="sync-panel-task-source-stat is-danger"/);
   assert.match(panel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-title"/);
   assert.doesNotMatch(panel, /className="sync-panel-task-builder"/);

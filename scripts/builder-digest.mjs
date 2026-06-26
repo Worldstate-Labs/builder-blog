@@ -270,7 +270,7 @@ function usage() {
   patch-fetch-run-plan --tasks fetch-result.json
   shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ --out library-agent-sync.json
-  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/
+  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task]
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
@@ -5122,12 +5122,14 @@ function normalizeShardPlan(plan) {
   if (!shard) return null;
   const resultFile = String(plan.resultFile || `${shard}-result.json`);
   const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
+  const usage = normalizeRuntimeUsage(plan.usage, "runtime_shard");
   return {
     shard,
     resultFile,
     workerLogFile: String(plan.workerLogFile || `${shard}-worker.log`),
     workerLogTail: typeof plan.workerLogTail === "string" ? plan.workerLogTail : null,
     workerLogBytes: Number.isFinite(Number(plan.workerLogBytes)) ? Number(plan.workerLogBytes) : null,
+    usage,
     taskCount: Number.isFinite(Number(plan.taskCount)) ? Number(plan.taskCount) : tasks.length,
     taskIds: tasks.map((task) => String(task?.id || fetchTaskId(task))),
     taskTitles: tasks
@@ -5393,10 +5395,33 @@ async function readShardPlans(resultsDir) {
       workerLogFile,
       workerLogTail: workerLogText ? tailLines(workerLogText) : null,
       workerLogBytes: workerLogText ? Buffer.byteLength(workerLogText, "utf8") : null,
+      usage: workerLogText ? runtimeUsageFromText(workerLogText) : null,
       tasks: Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [],
     });
   }
   return plans;
+}
+
+async function readShardWorkerUsages(resultsDir, plannedTasks = []) {
+  if (!resultsDir) return [];
+  const plannedTaskIds = new Set(
+    (Array.isArray(plannedTasks) ? plannedTasks : [])
+      .map((task) => String(task?.id || fetchTaskId(task)))
+      .filter(Boolean),
+  );
+  const workerUsages = [];
+  for (const plan of (await readShardPlans(resultsDir)).map(normalizeShardPlan).filter(Boolean)) {
+    if (!plan.usage) continue;
+    if (plannedTaskIds.size > 0 && !plan.taskIds.some((taskId) => plannedTaskIds.has(taskId))) {
+      continue;
+    }
+    workerUsages.push({
+      workerId: plan.shard,
+      usage: plan.usage,
+      taskCount: plan.taskCount,
+    });
+  }
+  return workerUsages;
 }
 
 async function readShardCheckpointResults(resultsDir) {
@@ -5681,10 +5706,11 @@ async function mergeTaskResults(args) {
   const selectedIds = new Set(
     [...availableIds].filter((id) => !excluded.has(id)),
   );
-  const payloadOut = completedOnly
+  const shouldFilterOutput = completedOnly || excluded.size > 0;
+  const payloadOut = shouldFilterOutput
     ? filterSyncPayloadToTaskIds(merged.payload, selectedIds)
     : merged.payload;
-  const tasksOut = completedOnly
+  const tasksOut = shouldFilterOutput
     ? filterFetchResultToTaskIds(fetchResult, selectedIds)
     : null;
   await writeFile(outFile, `${JSON.stringify(payloadOut, null, 2)}\n`, "utf8");
@@ -5838,13 +5864,24 @@ function addBuilderItemToSlice(slice, builder, item) {
   target.items.push(item);
 }
 
-export function splitSyncPayloadBySource(fetchResult, payload = {}) {
+function splitKeyForTaskGranularity(task) {
+  return `task:${taskIdForSync(task)}`;
+}
+
+function splitKeyForSourceGranularity(task) {
+  return shardGroupKey(task);
+}
+
+function splitSyncPayload(fetchResult, payload = {}, options = {}) {
+  const granularity = options.granularity === "task" ? "task" : "source";
+  const keyForTask =
+    granularity === "task" ? splitKeyForTaskGranularity : splitKeyForSourceGranularity;
   const slices = new Map();
   const taskKeyById = new Map();
   const fetchTasks = extractFetchTasks(fetchResult);
 
   for (const task of fetchTasks) {
-    const key = shardGroupKey(task);
+    const key = keyForTask(task);
     const id = taskIdForSync(task);
     taskKeyById.set(id, key);
     ensureSyncSlice(slices, key).fetchTasks.push(task);
@@ -5867,7 +5904,7 @@ export function splitSyncPayloadBySource(fetchResult, payload = {}) {
       const taskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
       const key =
         (taskId && taskKeyById.get(taskId)) ||
-        shardGroupKey(builderLikeTask(builder, item));
+        keyForTask(builderLikeTask(builder, item));
       const slice = ensureSyncSlice(slices, key);
       addBuilderItemToSlice(slice, builder, item);
     }
@@ -5897,17 +5934,26 @@ export function splitSyncPayloadBySource(fetchResult, payload = {}) {
   }));
 }
 
+export function splitSyncPayloadBySource(fetchResult, payload = {}) {
+  return splitSyncPayload(fetchResult, payload, { granularity: "source" });
+}
+
+export function splitSyncPayloadByTask(fetchResult, payload = {}) {
+  return splitSyncPayload(fetchResult, payload, { granularity: "task" });
+}
+
 function failedSyncPayloadForTasks(fetchResult, { reason, message } = {}) {
   const taskOutcomes = [];
+  const failureReason = reason || "slice_sync_failed";
   for (const task of extractFetchTasks(fetchResult)) {
     if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
     const id = taskIdForSync(task);
     taskOutcomes.push({
       fetchTaskId: id,
       status: "failed",
-      reason: reason || "slice_sync_failed",
+      reason: failureReason,
       evidence: {
-        failureKind: "slice_sync_failed",
+        failureKind: failureReason,
         failedBy: "sync-builders-slice",
         ...(message ? { message } : {}),
       },
@@ -5920,13 +5966,17 @@ async function splitSyncSlices(args) {
   const tasksFile = argValue(args, "--tasks");
   const payloadFile = argValue(args, "--file");
   const outDir = argValue(args, "--out-dir");
+  const granularity = argValue(args, "--granularity", "source");
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!payloadFile) throw new Error("Missing --file library-agent-sync.json");
   if (!outDir) throw new Error("Missing --out-dir sync-slices/");
+  if (granularity !== "source" && granularity !== "task") {
+    throw new Error("--granularity must be source or task");
+  }
 
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const payload = JSON.parse(await readFile(payloadFile, "utf8"));
-  const slices = splitSyncPayloadBySource(fetchResult, payload);
+  const slices = splitSyncPayload(fetchResult, payload, { granularity });
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
@@ -5951,7 +6001,7 @@ async function splitSyncSlices(args) {
     });
   }
 
-  console.log(JSON.stringify({ status: "ok", slices: written }, null, 2));
+  console.log(JSON.stringify({ status: "ok", granularity, slices: written }, null, 2));
 }
 
 async function failSyncSlice(args) {
@@ -6890,6 +6940,7 @@ async function syncBuilders(args) {
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
   const { plannedTasks, plannedTaskOutcomes, discoveryExpansions } = await readPlannedFetchResult(tasksFile);
+  const workerUsages = await readShardWorkerUsages(argValue(args, "--results-dir", null), plannedTasks);
   payload = filterStaleSyncItemsByFetchCutoff(payload, plannedTasks);
   const plannedPostTasks = plannedTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
   const fetchProgress =
@@ -6938,7 +6989,7 @@ async function syncBuilders(args) {
       plannedTaskOutcomes,
       discoveryExpansions,
       fetchProgress,
-      { partialOutcomes },
+      { partialOutcomes, workerUsages },
     );
     console.log(JSON.stringify(
       {
@@ -6982,7 +7033,7 @@ async function syncBuilders(args) {
     plannedTaskOutcomes,
     discoveryExpansions,
     fetchProgress,
-    { partialOutcomes },
+    { partialOutcomes, workerUsages },
   );
 }
 
@@ -7239,6 +7290,7 @@ async function patchFetchRunOutcomes(
 ) {
   if (!config?.appUrl || !config?.token) return;
   const partialOutcomes = options.partialOutcomes === true;
+  const workerUsages = Array.isArray(options.workerUsages) ? options.workerUsages : [];
   let runId = "";
   try {
     runId = (await readFile(libraryFetchRunIdFile(), "utf8")).trim();
@@ -7394,7 +7446,7 @@ async function patchFetchRunOutcomes(
     for (const event of discoveryProgressEvents) appendFetchProgressEvent(fetchProgress, event);
     applyFetchProgressTaskOutcomes(fetchProgress, taskOutcomes, taskIds);
   }
-  if (taskOutcomes.length === 0) {
+  if (taskOutcomes.length === 0 && workerUsages.length === 0) {
     if (!partialOutcomes && fetchProgress) {
       await emitFetchJobProgress(config, fetchProgress, {
         stage: "reconciled",
@@ -7410,7 +7462,10 @@ async function patchFetchRunOutcomes(
   try {
     await patchJson(
       `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`,
-      { taskOutcomes },
+      {
+        ...(taskOutcomes.length > 0 ? { taskOutcomes } : {}),
+        ...(workerUsages.length > 0 ? { workerUsages } : {}),
+      },
       config.token,
       { label: "fetch log task patch" },
     );

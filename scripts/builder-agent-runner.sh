@@ -1856,12 +1856,15 @@ sync_payload_slices() {
   _sps_payload_file="$2"
   _sps_slices_dir="$3"
   _sps_label="${4:-library result}"
-  _sps_sync_args="${5:-}"
+  _sps_granularity="${SYNC_PAYLOAD_SLICE_GRANULARITY:-task}"
+  _sps_synced_ids_file="${SYNC_PAYLOAD_SYNCED_IDS_FILE:-}"
+  shift 4 || true
 
   node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
     --tasks "$_sps_tasks_file" \
     --file "$_sps_payload_file" \
-    --out-dir "$_sps_slices_dir"
+    --out-dir "$_sps_slices_dir" \
+    --granularity "$_sps_granularity"
 
   _sps_failures=0
   for _slice_payload in "$_sps_slices_dir"/slice-*-payload.json; do
@@ -1870,17 +1873,55 @@ sync_payload_slices() {
     _slice_name="$(basename "$_slice_payload" .json)"
     _slice_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-sync.out"
     _slice_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-sync.err"
+    _slice_validate="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validate.out"
+    set +e
+    node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
+      --tasks "$_slice_tasks" \
+      --file "$_slice_payload" > "$_slice_validate" 2>&1
+    _slice_validate_code="$?"
+    set -e
+    cat "$_slice_validate"
+    if [ "$_slice_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_slice_validate"; then
+      _sps_failures=$(( _sps_failures + 1 ))
+      echo "validate-agent-sync failed for $_sps_label $_slice_name (exit $_slice_validate_code); marking only this slice failed." >&2
+      _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-payload.json"
+      node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
+        --tasks "$_slice_tasks" \
+        --out "$_failed_payload" \
+        --reason "task_validation_failed" \
+        --message "validate-agent-sync failed for $_sps_label $_slice_name with exit $_slice_validate_code"
+
+      _failed_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-sync.out"
+      _failed_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-sync.err"
+      set +e
+      node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+        --file "$_failed_payload" \
+        --tasks "$_slice_tasks" \
+        "$@" > "$_failed_stdout" 2> "$_failed_stderr"
+      _failed_code="$?"
+      set -e
+      [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
+      [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
+      if [ "$_failed_code" -eq 0 ]; then
+        append_task_ids_from_fetch_result "$_slice_tasks" "$_sps_synced_ids_file"
+      else
+        echo "Failed to patch validation-failed outcomes for $_sps_label $_slice_name (exit $_failed_code)." >&2
+      fi
+      continue
+    fi
+
     echo "Syncing $_sps_label slice $_slice_name."
     set +e
     node "$AGENT_DIR/builder-digest.mjs" sync-builders \
       --file "$_slice_payload" \
       --tasks "$_slice_tasks" \
-      $_sps_sync_args > "$_slice_stdout" 2> "$_slice_stderr"
+      "$@" > "$_slice_stdout" 2> "$_slice_stderr"
     _slice_code="$?"
     set -e
     [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
     [ ! -s "$_slice_stderr" ] || cat "$_slice_stderr" >&2
     if [ "$_slice_code" -eq 0 ]; then
+      append_task_ids_from_fetch_result "$_slice_tasks" "$_sps_synced_ids_file"
       continue
     fi
 
@@ -1890,7 +1931,7 @@ sync_payload_slices() {
     node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
       --tasks "$_slice_tasks" \
       --out "$_failed_payload" \
-      --reason "slice_sync_failed" \
+      --reason "task_sync_failed" \
       --message "sync-builders failed for $_sps_label $_slice_name with exit $_slice_code"
 
     _failed_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-sync.out"
@@ -1899,17 +1940,40 @@ sync_payload_slices() {
     node "$AGENT_DIR/builder-digest.mjs" sync-builders \
       --file "$_failed_payload" \
       --tasks "$_slice_tasks" \
-      $_sps_sync_args > "$_failed_stdout" 2> "$_failed_stderr"
+      "$@" > "$_failed_stdout" 2> "$_failed_stderr"
     _failed_code="$?"
     set -e
     [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
     [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
     if [ "$_failed_code" -ne 0 ]; then
       echo "Failed to patch failed outcomes for $_sps_label $_slice_name (exit $_failed_code)." >&2
+    else
+      append_task_ids_from_fetch_result "$_slice_tasks" "$_sps_synced_ids_file"
     fi
   done
 
   [ "$_sps_failures" -eq 0 ]
+}
+
+append_task_ids_from_fetch_result() {
+  _atifr_tasks_file="$1"
+  _atifr_out_file="${2:-}"
+  [ -n "$_atifr_out_file" ] || return 0
+  node - "$_atifr_tasks_file" >> "$_atifr_out_file" <<'NODE'
+const fs = require("fs");
+let payload = {};
+try {
+  payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+} catch {
+  process.exit(0);
+}
+for (const task of Array.isArray(payload.fetchTasks) ? payload.fetchTasks : []) {
+  const id = task && (task.id || task.fetchTaskId);
+  if (id) console.log(String(id));
+}
+NODE
+  sort -u "$_atifr_out_file" > "$_atifr_out_file.tmp"
+  mv "$_atifr_out_file.tmp" "$_atifr_out_file"
 }
 
 sync_completed_checkpoints() {
@@ -1941,27 +2005,14 @@ sync_completed_checkpoints() {
   echo "Best-effort syncing $_scc_count completed library task(s) before the full run finishes."
   cat "$_scc_merge"
 
-  _scc_validate="$_scc_work_dir/validate-agent-sync-result.json"
-  set +e
-  node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
-    --tasks "$_scc_tasks" \
-    --file "$_scc_payload" > "$_scc_validate" 2>&1
-  _scc_validate_code="$?"
-  set -e
-  cat "$_scc_validate"
-  if [ "$_scc_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_scc_validate"; then
-    echo "Completed checkpoint partial payload did not validate; leaving it for final merge." >&2
+  SYNC_PAYLOAD_SYNCED_IDS_FILE="$_scc_synced_ids_file"
+  if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint" --partial-outcomes --results-dir "$_scc_results_dir"; then
+    SYNC_PAYLOAD_SYNCED_IDS_FILE=""
     return 0
   fi
+  SYNC_PAYLOAD_SYNCED_IDS_FILE=""
 
-  if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint" "--partial-outcomes"; then
-    cat "$_scc_ids" >> "$_scc_synced_ids_file"
-    sort -u "$_scc_synced_ids_file" > "$_scc_synced_ids_file.tmp"
-    mv "$_scc_synced_ids_file.tmp" "$_scc_synced_ids_file"
-    return 0
-  fi
-
-  echo "Completed checkpoint partial sync failed; leaving it for final merge." >&2
+  echo "One or more completed checkpoint task syncs failed; terminal outcomes were patched where possible." >&2
   return 0
 }
 
@@ -2206,152 +2257,25 @@ try {
 NODE
 )"
 
-  # Validate-and-repair loop. The runner validates the merged payload because
-  # workers can time out, crash, miss a task, or leave invalid JSON despite the
-  # prompt contract. On failure, the runner hands the exact error list to one
-  # repair agent that fixes ONLY the failing items in the merged payload, then
-  # re-validates. Bounded at 2 rounds so a hopeless payload still fails fast
-  # instead of looping.
-  # validate-agent-sync exits non-zero when any task fails validation; capture
-  # the exit code (instead of letting set -e abort) so the validation details
-  # always land in the job log before we refuse to sync.
-  _validate_file="$JOB_TMP_DIR/validate-agent-sync-result.json"
-  _sync_payload="$JOB_TMP_DIR/library-agent-sync.json"
-  _repair_round=0
-  job_run_update running "Validating source fetch results." "validate_started" --stage "validate_results"
-  while :; do
-    set +e
-    node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
-      --tasks "$_result_file" \
-      --file "$_sync_payload" > "$_validate_file" 2>&1
-    _validate_code="$?"
-    set -e
-    cat "$_validate_file"
-    if [ "$_validate_code" -eq 0 ] && grep -q '"status": "ok"' "$_validate_file"; then
-      break
-    fi
-    if [ "$_repair_round" -ge 2 ]; then
-      echo "validate-agent-sync still failing after $_repair_round repair round(s) (exit $_validate_code); not syncing." >&2
-      _failed_payload="$JOB_TMP_DIR/validation-failed-payload.json"
-      _failed_tasks="$JOB_TMP_DIR/validation-failed-tasks.json"
-      node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
-        --tasks "$_result_file" \
-        --tasks-out "$_failed_tasks" \
-        --out "$_failed_payload" \
-        --exclude-task-ids-file "$_checkpoint_synced_ids_file" \
-        --reason "content_validation_failed" \
-        --message "validate-agent-sync still failing after $_repair_round repair round(s); marking unfinished tasks failed"
-      _failed_stdout="$JOB_TMP_DIR/validation-failed-sync.out"
-      _failed_stderr="$JOB_TMP_DIR/validation-failed-sync.err"
-      set +e
-      node "$AGENT_DIR/builder-digest.mjs" sync-builders \
-        --file "$_failed_payload" \
-        --tasks "$_failed_tasks" > "$_failed_stdout" 2> "$_failed_stderr"
-      _failed_code="$?"
-      set -e
-      [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
-      [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
-      if [ "$_failed_code" -ne 0 ]; then
-        echo "Failed to patch validation-failed outcomes (exit $_failed_code)." >&2
-      fi
-      return 65
-    fi
-    _repair_round=$(( _repair_round + 1 ))
-    echo "validate-agent-sync failed (exit $_validate_code); running repair agent, round $_repair_round of 2."
-    REPAIR_PROMPT_FILE="$JOB_TMP_DIR/library-repair-prompt.md"
-    cat > "$REPAIR_PROMPT_FILE" <<EOF
-Use the FollowBrief skill to repair a merged library sync payload that failed
-validation. This is an unattended repair pass. Do not ask the user questions.
-
-Files:
-- Validation errors (read first): $_validate_file
-- Merged sync payload — fix it IN PLACE at this exact path: $_sync_payload
-- Planned fetch tasks with authoritative per-task instructions: $_result_file
-
-Fix ONLY the tasks listed in the validation errors. Do not touch items that
-validated, do not add or remove any other items, and keep the payload shape
-exactly: builders (each with items) plus taskOutcomes.
-
-Per error type:
-- summary_too_long: rewrite that one item's summary to under 1200 characters,
-  still following that task's summaryInstructions.prompt.
-- content-quality errors (for example description_or_title_is_not_primary_content):
-  re-extract real primary content for that task per its fetchInstructions.prompt
-  and minimumContentQuality, replace the item body, and re-summarize it. If real
-  primary content genuinely cannot be obtained, remove that item and add one
-  taskOutcomes entry with fetchTaskId, status (skipped or failed), reason, and
-  per-task evidence.
-- source retention policy is applied later by sync-builders. During repair,
-  keep item.body as the real primary content needed for validation and
-  summarization, but do not place raw HTML, raw transcripts, raw API objects, or
-  copied source content inside rawJson.
-- any other error: resolve it per that task's instructions in the fetch tasks
-  file; every planned task must keep exactly one terminal state.
-
-Hard rules: do NOT run validate-agent-sync, sync-builders, fetch-personal, or
-expand-discovery; do NOT fetch tasks that are not listed in the errors. Write
-the corrected JSON back to the payload path, print one line {"repairDone": true},
-and stop.
-EOF
-    if ! ( PROMPT_FILE="$REPAIR_PROMPT_FILE"
-           BUILDER_BLOG_LIBRARY_AGENT_STAGE=repair
-           export BUILDER_BLOG_LIBRARY_AGENT_STAGE
-           IS_CRON_JOB=1
-           run_selected_runtime ); then
-      echo "Repair agent round $_repair_round exited non-zero; re-validating anyway." >&2
-    fi
-  done
+  _remaining_payload="$JOB_TMP_DIR/library-agent-sync-remaining.json"
+  _remaining_tasks="$JOB_TMP_DIR/library-fetch-remaining.json"
+  _remaining_merge="$JOB_TMP_DIR/merge-task-results-remaining.json"
+  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
+    --tasks "$_result_file" \
+    --results-dir "$_results_dir" \
+    --shard-timeout-seconds "$_shard_timeout" \
+    --exclude-task-ids-file "$_checkpoint_synced_ids_file" \
+    --tasks-out "$_remaining_tasks" \
+    --out "$_remaining_payload" | tee "$_remaining_merge"
 
   _sync_slices_dir="$JOB_TMP_DIR/sync-slices"
   job_run_update running "Saving fetched posts to FollowBrief." "sync_started" --stage "sync_to_followbrief"
-  node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
-    --tasks "$_result_file" \
-    --file "$JOB_TMP_DIR/library-agent-sync.json" \
-    --out-dir "$_sync_slices_dir"
-
   _sync_failures=0
-  for _slice_payload in "$_sync_slices_dir"/slice-*-payload.json; do
-    [ -e "$_slice_payload" ] || continue
-    _slice_tasks="${_slice_payload%-payload.json}-tasks.json"
-    _slice_name="$(basename "$_slice_payload" .json)"
-    _slice_stdout="$JOB_TMP_DIR/${_slice_name}-sync.out"
-    _slice_stderr="$JOB_TMP_DIR/${_slice_name}-sync.err"
-    echo "Syncing library result slice $_slice_name."
-    set +e
-    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
-      --file "$_slice_payload" \
-      --tasks "$_slice_tasks" > "$_slice_stdout" 2> "$_slice_stderr"
-    _slice_code="$?"
-    set -e
-    [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
-    [ ! -s "$_slice_stderr" ] || cat "$_slice_stderr" >&2
-    if [ "$_slice_code" -eq 0 ]; then
-      continue
-    fi
-
-    _sync_failures=$(( _sync_failures + 1 ))
-    echo "sync-builders failed for $_slice_name (exit $_slice_code); marking only this slice failed." >&2
-    _failed_payload="$JOB_TMP_DIR/${_slice_name}-failed-payload.json"
-    node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
-      --tasks "$_slice_tasks" \
-      --out "$_failed_payload" \
-      --reason "slice_sync_failed" \
-      --message "sync-builders failed for $_slice_name with exit $_slice_code"
-
-    _failed_stdout="$JOB_TMP_DIR/${_slice_name}-failed-sync.out"
-    _failed_stderr="$JOB_TMP_DIR/${_slice_name}-failed-sync.err"
-    set +e
-    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
-      --file "$_failed_payload" \
-      --tasks "$_slice_tasks" > "$_failed_stdout" 2> "$_failed_stderr"
-    _failed_code="$?"
-    set -e
-    [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
-    [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
-    if [ "$_failed_code" -ne 0 ]; then
-      echo "Failed to patch failed outcomes for $_slice_name (exit $_failed_code)." >&2
-    fi
-  done
+  SYNC_PAYLOAD_SYNCED_IDS_FILE="$_checkpoint_synced_ids_file"
+  if ! sync_payload_slices "$_remaining_tasks" "$_remaining_payload" "$_sync_slices_dir" "library-result" --results-dir "$_results_dir"; then
+    _sync_failures=1
+  fi
+  SYNC_PAYLOAD_SYNCED_IDS_FILE=""
 
   if [ "$_sync_failures" -gt 0 ]; then
     echo "$_sync_failures library result slice(s) failed to sync." >&2

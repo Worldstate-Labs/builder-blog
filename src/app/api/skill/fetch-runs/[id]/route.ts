@@ -39,12 +39,21 @@ const TaskOutcomeSchema = z.object({
   evidence: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
+const WorkerUsageSchema = z.object({
+  workerId: z.string().min(1).max(120),
+  usage: z.record(z.string(), z.unknown()).optional(),
+}).passthrough();
+
 const PatchSchema = z.object({
   plannedTasks: z.array(PlannedTaskSchema).max(500).optional(),
   taskOutcomes: z.array(TaskOutcomeSchema).max(500).optional(),
+  workerUsages: z.array(WorkerUsageSchema).max(20).optional(),
 }).refine(
-  (value) => (value.plannedTasks?.length ?? 0) + (value.taskOutcomes?.length ?? 0) > 0,
-  { message: "plannedTasks or taskOutcomes is required" },
+  (value) =>
+    (value.plannedTasks?.length ?? 0) +
+    (value.taskOutcomes?.length ?? 0) +
+    (value.workerUsages?.length ?? 0) > 0,
+  { message: "plannedTasks, taskOutcomes, or workerUsages is required" },
 );
 
 type Params = { params: Promise<{ id: string }> };
@@ -84,6 +93,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const { details, matched, planned } = mergeFetchRunDetails(run.details, {
     plannedTasks: parsed.data.plannedTasks ?? [],
     taskOutcomes: parsed.data.taskOutcomes ?? [],
+    workerUsages: parsed.data.workerUsages ?? [],
   });
   const nextStatus = deriveFetchRunStatusFromDetails(
     { status: run.status as "ok" | "partial" | "failed", errorCount: run.errorCount },

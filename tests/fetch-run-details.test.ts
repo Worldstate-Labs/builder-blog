@@ -116,6 +116,52 @@ test("fetch run details do not downgrade a synced task after a late failed slice
   ]);
 });
 
+test("fetch run details merge shard worker usage separately from post tasks", () => {
+  const result = mergeFetchRunDetails(
+    {
+      fetchTasks: [
+        {
+          id: "fetch_post:builder_1:post_1",
+          builderId: "builder_1",
+          status: "pending",
+        },
+      ],
+    },
+    {
+      workerUsages: [
+        {
+          workerId: "shard-0",
+          usage: {
+            inputTokens: 100,
+            outputTokens: 25,
+            totalTokens: 125,
+            costUsd: 0.01,
+          },
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(result.details.fetchTasks, [
+    {
+      id: "fetch_post:builder_1:post_1",
+      builderId: "builder_1",
+      status: "pending",
+    },
+  ]);
+  assert.deepEqual(result.details.workerUsages, [
+    {
+      workerId: "shard-0",
+      usage: {
+        inputTokens: 100,
+        outputTokens: 25,
+        totalTokens: 125,
+        costUsd: 0.01,
+      },
+    },
+  ]);
+});
+
 test("failed terminal post outcomes derive a failed fetch run status", () => {
   const result = mergeFetchRunDetails(
     {
