@@ -404,8 +404,12 @@ run_with_claude_unattended() {
   LAST_AGENT_USAGE_FILE="$_claude_usage"
   set +e
   if structured_usage_enabled; then
+    # `--print` (-p) with `--output-format stream-json` requires `--verbose`
+    # on current Claude CLI versions; without it the CLI exits immediately
+    # and the worker produces no shard result.
     claude -p "$(cat "$PROMPT_FILE")" \
       --output-format stream-json \
+      --verbose \
       --add-dir "$AGENT_DIR" \
       --permission-mode acceptEdits \
       --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1

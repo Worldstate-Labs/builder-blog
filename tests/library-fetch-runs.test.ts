@@ -250,6 +250,9 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \] && return 0/);
   assert.match(runner, /codex exec --json/);
   assert.match(runner, /--output-format stream-json/);
+  // `--print` + stream-json requires `--verbose` on current Claude CLI, else
+  // every worker exits immediately and writes no shard result.
+  assert.match(runner, /--output-format stream-json \\\n\s*--verbose/);
   assert.match(runner, /openclaw agent --json/);
   assert.match(runner, /rm -f "\$BUILDER_BLOG_USAGE_FILE"/);
   assert.match(runner, /aggregate_runtime_usage_files/);
