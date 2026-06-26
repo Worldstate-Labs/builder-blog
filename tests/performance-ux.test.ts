@@ -2368,6 +2368,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(fetchLogPanel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
   assert.match(fetchLogPanel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
+  assert.match(fetchLogPanel, /function liveProgressHasStartedTask/);
+  assert.match(fetchLogPanel, /!liveProgressHasStartedTask\(liveProgress\)[\s\S]*Worker assignment pending/);
+  assert.match(fetchLogPanel, /Worker unknown/);
   assert.match(fetchLogPanel, /Post task details/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-count"/);
   assert.doesNotMatch(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);

@@ -2467,11 +2467,32 @@ function taskWorkerGroups(
   return [...groups.values()];
 }
 
+function liveProgressHasStartedTask(liveProgress: FetchJobProgress | null): boolean {
+  return (liveProgress?.tasks ?? []).some((task) => {
+    const status = String(task.status ?? "").toLowerCase();
+    const phase = String(task.phase ?? "").toLowerCase();
+    return (
+      status === "reading" ||
+      status === "summarizing" ||
+      status === "summarized" ||
+      status === "synced" ||
+      status === "skipped" ||
+      status === "failed" ||
+      status === "action_needed" ||
+      phase === "read" ||
+      phase === "summarize" ||
+      (typeof task.bodyChars === "number" && task.bodyChars > 0) ||
+      (typeof task.summaryChars === "number" && task.summaryChars > 0)
+    );
+  });
+}
+
 function fallbackTaskWorkerName(liveProgress: FetchJobProgress | null): string {
   const stage = String(liveProgress?.stage ?? "").toLowerCase();
-  return stage.includes("worker") || stage.includes("shard") || stage.includes("task")
+  return !liveProgressHasStartedTask(liveProgress) &&
+    (stage.includes("worker") || stage.includes("shard") || stage.includes("task"))
     ? "Worker assignment pending"
-    : "Local Agent";
+    : "Worker unknown";
 }
 
 function shardAssignmentMap(shardPlans: FetchTaskShardPlan[] | undefined): Map<string, string> {

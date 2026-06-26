@@ -2719,6 +2719,47 @@ test("shard-tasks groups by builder, balances by weight, excludes non-work tasks
   assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
 });
 
+test("shard-tasks writes shard worker ids onto planned post tasks", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-shard-worker-id-"));
+  const tasksFile = join(tmp, "fetch-result.json");
+  const outDir = join(tmp, "shards");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "fetch_post:podcast:a",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "youtube",
+          builderSync: { builderId: "podcast" },
+          item: { title: "Episode A" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "shard-tasks",
+      "--tasks",
+      tasksFile,
+      "--out-dir",
+      outDir,
+      "--max-workers",
+      "3",
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const shard = JSON.parse(await readFile(join(outDir, "shard-0.json"), "utf8"));
+  assert.equal(shard.fetchTasks[0].workerId, "shard-0");
+});
+
 test("x token action tasks are logged and sharded as user actions", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {

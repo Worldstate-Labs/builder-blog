@@ -557,8 +557,9 @@ async function patchFetchRunForBuilderSync({
       taskOutcomes: outcomes,
     });
     const detailsJson = JSON.stringify(merged.details);
-    if (Buffer.byteLength(detailsJson, "utf8") > 50_000) {
-      console.error(`Fetch run ${fetchRun.id} details patch exceeded 50 KB; leaving log unpatched.`);
+    // Same column, same cap as the fetch-runs POST/PATCH writers (100 KB).
+    if (Buffer.byteLength(detailsJson, "utf8") > 100_000) {
+      console.error(`Fetch run ${fetchRun.id} details patch exceeded 100 KB; leaving log unpatched.`);
       return { status: "failed", reason: "details_too_large" };
     }
 

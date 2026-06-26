@@ -1094,6 +1094,7 @@ function upsertFetchProgressTask(progress, task) {
   const tasks = Array.isArray(progress.tasks) ? progress.tasks : [];
   const index = tasks.findIndex((item) => String(item.id ?? item.taskId ?? "") === id);
   const previous = index >= 0 ? tasks[index] : {};
+  const workerId = compactProgressText(task.workerId, 80) ?? previous.workerId ?? null;
   const value = {
     ...previous,
     id,
@@ -1105,7 +1106,7 @@ function upsertFetchProgressTask(progress, task) {
     sourceType: compactProgressText(task.sourceType, 80),
     title: compactProgressText(task.title, 220),
     url: compactProgressText(task.url, 500),
-    workerId: compactProgressText(task.workerId, 80),
+    workerId,
     bodyChars: Number.isFinite(Number(task.bodyChars)) ? Number(task.bodyChars) : previous.bodyChars ?? null,
     bodyWords: Number.isFinite(Number(task.bodyWords)) ? Number(task.bodyWords) : previous.bodyWords ?? null,
     summaryChars: Number.isFinite(Number(task.summaryChars)) ? Number(task.summaryChars) : previous.summaryChars ?? null,
@@ -1710,7 +1711,7 @@ async function fetchPersonal(args) {
 // Build the audit-trail companion to a fetch run: a slim per-task
 // summary (no body, no full prompt) plus the per-source-type prompts
 // deduplicated by sourceType. This is what the user sees in the
-// Fetch log details panel — small enough for the 50 KB cap, but
+// Fetch log details panel — small enough for the 100 KB cap, but
 // faithful enough that the prompt history survives admin edits.
 export function textStats(value) {
   const s = typeof value === "string" ? value : "";
@@ -5231,6 +5232,11 @@ async function shardTasks(args) {
   const shardFiles = [];
   for (const [index, shard] of shards.entries()) {
     const file = join(outDir, `shard-${index}.json`);
+    const workerId = `shard-${index}`;
+    const shardTasks = shard.tasks.map((task) => ({
+      ...task,
+      workerId: task?.workerId ?? workerId,
+    }));
     await writeFile(
       file,
       `${JSON.stringify(
@@ -5238,7 +5244,7 @@ async function shardTasks(args) {
           status: "ok",
           shardIndex: index,
           shardCount: shards.length,
-          fetchTasks: shard.tasks,
+          fetchTasks: shardTasks,
         },
         null,
         2,
@@ -5652,17 +5658,6 @@ async function readShardProgressFiles(resultsDir) {
   return results;
 }
 
-function plannedTaskSummary(task) {
-  return {
-    id: String(task?.id || fetchTaskId(task)),
-    builder: task?.builder ?? null,
-    builderId: task?.builderId ?? null,
-    sourceType: task?.sourceType ?? null,
-    title: task?.title ?? task?.item?.title ?? null,
-    url: task?.url ?? task?.item?.url ?? null,
-  };
-}
-
 function progressFromWorkerProgressEntry(entry, plannedById) {
   const payload = entry?.payload;
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
@@ -5681,7 +5676,7 @@ function progressFromWorkerProgressEntry(entry, plannedById) {
     sourceType: payload.sourceType ?? planned.sourceType ?? null,
     title: payload.title ?? planned.title ?? null,
     url: payload.url ?? planned.url ?? null,
-    workerId: payload.workerId ?? entry.workerId ?? null,
+    workerId: payload.workerId ?? entry.workerId ?? planned.workerId ?? null,
     bodyChars: payload.bodyChars ?? null,
     bodyWords: payload.bodyWords ?? null,
     summaryChars: payload.summaryChars ?? null,
@@ -5703,7 +5698,7 @@ function progressFromCheckpointItem(item, builder, entry, plannedById) {
     status: "summarized",
     phase: "summarize",
     message: "Summary ready; waiting for server sync.",
-    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
+    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? planned.workerId ?? null,
     builder: planned.builder ?? builder?.name ?? null,
     builderId: planned.builderId ?? builder?.builderId ?? null,
     sourceType: planned.sourceType ?? item?.sourceType ?? null,
@@ -5730,7 +5725,7 @@ function progressFromCheckpointOutcome(outcome, entry, plannedById) {
     message: outcome.failureReason
       ? `${String(status).replace(/_/g, " ")}: ${outcome.failureReason}`
       : `${String(status).replace(/_/g, " ")}.`,
-    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
+    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? planned.workerId ?? null,
   };
 }
 
@@ -5751,9 +5746,8 @@ async function emitCheckpointProgress(args) {
   if (!progress) return;
   const config = await loadConfig();
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
-  const planned = extractFetchTasks(fetchResult)
-    .filter((task) => !isCandidateDiscoveryFetchTask(task))
-    .map(plannedTaskSummary);
+  const shardPlans = await readShardPlans(resultsDir);
+  const planned = fetchRunPlannedTaskPatches(fetchResult, { shardPlans });
   const plannedById = new Map(planned.map((task) => [task.id, task]));
   const updates = [];
 
@@ -7614,16 +7608,39 @@ async function patchFetchRunOutcomes(
     return;
   }
 
+  const fetchRunUrl = `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`;
   try {
-    await patchJson(
-      `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`,
-      {
-        ...(taskOutcomes.length > 0 ? { taskOutcomes } : {}),
-        ...(workerUsages.length > 0 ? { workerUsages } : {}),
-      },
-      config.token,
-      { label: "fetch log task patch" },
-    );
+    try {
+      await patchJson(
+        fetchRunUrl,
+        {
+          ...(taskOutcomes.length > 0 ? { taskOutcomes } : {}),
+          ...(workerUsages.length > 0 ? { workerUsages } : {}),
+        },
+        config.token,
+        { label: "fetch log task patch" },
+      );
+    } catch (patchError) {
+      // The fetch log is best-effort. When the server-side merged details would
+      // blow the size cap, retry once with a slimmed per-post payload: identity,
+      // status and sizes only, dropping the redundant plannedTask echo (the
+      // server already has it from the planned-tasks POST) and any free-form
+      // evidence. Keeps each outcome recorded without re-inflating stored details.
+      if (taskOutcomes.length === 0 || !isDetailsTooLargeError(patchError)) throw patchError;
+      const slimOutcomes = taskOutcomes.map(slimFetchRunOutcome);
+      await patchJson(
+        fetchRunUrl,
+        {
+          taskOutcomes: slimOutcomes,
+          ...(workerUsages.length > 0 ? { workerUsages } : {}),
+        },
+        config.token,
+        { label: "fetch log task patch (slim)" },
+      );
+      console.error(
+        `Fetch log details near the size cap; attached ${slimOutcomes.length} per-post outcome(s) in slim form (no plannedTask/evidence).`,
+      );
+    }
     if (fetchProgress) {
       if (partialOutcomes) {
         const nextStage =
@@ -7653,6 +7670,25 @@ async function patchFetchRunOutcomes(
     const message = patchError instanceof Error ? patchError.message : String(patchError);
     console.error(`Failed to attach per-post info to the fetch log: ${message}`);
   }
+}
+
+// True when a fetch-log PATCH was rejected for exceeding the server-side
+// details size cap, so the caller can retry once with a slimmer payload.
+function isDetailsTooLargeError(error) {
+  return /too large/i.test(String(error?.message ?? ""));
+}
+
+// Slim a per-post outcome to what the fetch log needs when details are near
+// the cap: drop the redundant plannedTask echo and free-form evidence, keep
+// the identity, status, sizes, and failure reason.
+function slimFetchRunOutcome(outcome) {
+  if (!outcome || typeof outcome !== "object") return outcome;
+  const slim = {};
+  for (const [key, value] of Object.entries(outcome)) {
+    if (key === "plannedTask" || key === "evidence") continue;
+    slim[key] = value;
+  }
+  return slim;
 }
 
 function fetchTaskLogPatch(task, id) {

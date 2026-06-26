@@ -7,9 +7,11 @@ import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 
-// Cap details payload at ~50 KB serialized. Bigger than that and we'd
-// be storing crash dumps in Postgres for free — refuse politely.
-const MAX_DETAILS_BYTES = 50_000;
+// Cap details payload at ~100 KB serialized. A full library run legitimately
+// stores a per-post outcome row for every planned task plus the per-source
+// prompts panel (tens of KB); beyond 100 KB we'd be storing crash dumps in
+// Postgres for free — refuse politely.
+const MAX_DETAILS_BYTES = 100_000;
 const MAX_SUMMARY_CHARS = 280;
 const FETCH_RUN_PAGE_SIZE = 10;
 const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE + 1;
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
   }
   if (Buffer.byteLength(detailsJson, "utf8") > MAX_DETAILS_BYTES) {
     return NextResponse.json(
-      { error: "details payload too large; cap at 50 KB" },
+      { error: "details payload too large; cap at 100 KB" },
       { status: 400 },
     );
   }

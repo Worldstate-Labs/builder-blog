@@ -83,9 +83,9 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /z\.enum\(\["manual", "cron"\]\)/);
   // Summary is capped at 280 chars.
   assert.match(route, /MAX_SUMMARY_CHARS = 280/);
-  // details payload is rejected over 50 KB with the spec'd message.
-  assert.match(route, /MAX_DETAILS_BYTES = 50_000/);
-  assert.match(route, /details payload too large; cap at 50 KB/);
+  // details payload is rejected over 100 KB with the spec'd message.
+  assert.match(route, /MAX_DETAILS_BYTES = 100_000/);
+  assert.match(route, /details payload too large; cap at 100 KB/);
   // Server filters the GET by the caller's user id.
   assert.match(route, /where: \{ userId \}/);
   assert.match(route, /source: "cron"/);
@@ -186,7 +186,10 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /buildFetchRunSyncPatch/);
   assert.match(cli, /function seedFetchProgressPlannedTasks/);
   assert.match(cli, /seedFetchProgressPlannedTasks\(fetchProgress, plannedTasks\)/);
+  assert.match(cli, /const workerId = compactProgressText\(task\.workerId, 80\) \?\? previous\.workerId \?\? null/);
   assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
+  assert.match(cli, /const shardPlans = await readShardPlans\(resultsDir\)/);
+  assert.match(cli, /fetchRunPlannedTaskPatches\(fetchResult, \{ shardPlans \}\)/);
   assert.match(cli, /\.\.\.\(workerUsages\.length > 0 \? \{ workerUsages \} : \{\}\)/);
   assert.match(cli, /const usageFile = `\$\{shard\}-usage\.jsonl`/);
   assert.match(cli, /runtimeUsageFromFile\(join\(resultsDir, usageFile\), "runtime_sidecar"\)/);
@@ -396,9 +399,11 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
   assert.match(panel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
   assert.match(panel, /function shardAssignmentMap/);
-  assert.match(panel, /stage\.includes\("worker"\) \|\| stage\.includes\("shard"\) \|\| stage\.includes\("task"\)/);
+  assert.match(panel, /function liveProgressHasStartedTask/);
+  assert.match(panel, /!liveProgressHasStartedTask\(liveProgress\)[\s\S]*stage\.includes\("worker"\) \|\| stage\.includes\("shard"\) \|\| stage\.includes\("task"\)/);
   assert.match(panel, /function fallbackTaskWorkerName/);
   assert.match(panel, /Worker assignment pending/);
+  assert.match(panel, /Worker unknown/);
   assert.match(panel, /worker_missing_result: "Local Agent shard did not write a result file for this post"/);
   assert.match(panel, /function missingWorkerLogText/);
   assert.match(panel, /No worker log tail was captured for this shard\./);
