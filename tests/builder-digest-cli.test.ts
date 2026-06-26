@@ -1763,6 +1763,10 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
     assert.match(task.summaryInstructions.prompt, /do not read external prompt files/i);
     assert.match(task.summaryInstructions.prompt, /Summarize exactly one supplied task item/);
     assert.match(task.summaryInstructions.prompt, /Use task\.item\.body as the primary content/);
+    assert.match(task.summaryInstructions.prompt, /Ready-task output rule/);
+    assert.match(task.summaryInstructions.prompt, /do not fetch task\.item\.url/);
+    assert.match(task.summaryInstructions.prompt, /omit `item\.body` from your shard result/);
+    assert.match(task.summaryInstructions.prompt, /runner restores the original body before sync/);
     assert.match(task.summaryInstructions.prompt, /Keep `summary` between 40 and 1200 characters/);
     assert.match(task.summaryInstructions.prompt, /summary_too_long/);
     assert.match(task.summaryInstructions.prompt, /summary_duplicates_title/);
@@ -2145,6 +2149,15 @@ test("YouTube local ASR work directory stays inside the job tmp tree", async () 
   assert.match(cli, /await mkdir\(asrRoot, \{ recursive: true \}\)/);
   assert.match(cli, /const workDir = await mkdtemp\(join\(asrRoot, "run-"\)\)/);
   assert.doesNotMatch(cli, /mkdtemp\(join\(tmpdir\(\), "followbrief-youtube-asr-"\)\)/);
+});
+
+test("library worker prompt treats ready tasks as summary-only", async () => {
+  const prompt = await readFile("skills/builder-blog-digest/jobs/library-worker.md", "utf8");
+  assert.match(prompt, /contentStatus: "ready"/);
+  assert.match(prompt, /do NOT fetch the URL, download media/);
+  assert.match(prompt, /rewrite `item\.body`/);
+  assert.match(prompt, /omit `item\.body` from the ready-task sync item/);
+  assert.match(prompt, /runner restores[\s\S]*original body/);
 });
 
 // --- Per-task terminal-state accountability (taskOutcomes) ---
@@ -3245,6 +3258,110 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
     withDuplicate.payload.builders.flatMap((b: { items: unknown[] }) => b.items).length,
     1,
   );
+});
+
+test("merge-task-results restores ready task body when worker omits or rewrites it", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const omittedBodyTask = {
+    id: "ready-podcast-task",
+    type: "fetch_post",
+    contentStatus: "ready",
+    builder: "No Priors",
+    builderId: "podcast_builder",
+    sourceType: "podcast",
+    item: {
+      kind: "PODCAST_EPISODE",
+      externalId: "episode-1",
+      title: "Benchmarks and test-time compute",
+      url: "https://traffic.example/episode-1.mp3",
+      publishedAt: "2026-06-26T10:13:00.000Z",
+      sourceName: "No Priors",
+      body:
+        "Original RSS body with the full episode description. It explains why static AI benchmarks miss test-time compute, how model capability changes with longer reasoning budgets, and why evaluation design matters for agentic systems.",
+    },
+  };
+  const rewrittenBodyTask = {
+    ...omittedBodyTask,
+    id: "ready-blog-task",
+    builder: "Example Blog",
+    builderId: "blog_builder",
+    sourceType: "blog",
+    item: {
+      kind: "BLOG_POST",
+      externalId: "https://example.com/post",
+      title: "Durable agent logs",
+      url: "https://example.com/post",
+      publishedAt: "2026-06-26T11:00:00.000Z",
+      sourceName: "Example Blog",
+      body:
+        "Original blog body explaining durable agent logs, source-linked summaries, replayable task state, and why sync payloads must preserve fetched evidence.",
+    },
+  };
+  const fetchResult = { status: "ok", fetchTasks: [omittedBodyTask, rewrittenBodyTask] };
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          {
+            builderId: "podcast_builder",
+            kind: "PODCAST",
+            sourceType: "podcast",
+            name: "No Priors",
+            items: [
+              {
+                kind: "PODCAST_EPISODE",
+                externalId: "episode-1",
+                title: "Benchmarks and test-time compute",
+                url: "https://traffic.example/episode-1.mp3",
+                summary:
+                  "这期播客总结 test-time compute 如何改变 AI benchmark 的解读，并强调评估设计对 agentic systems 的重要性。来源：https://traffic.example/episode-1.mp3",
+                rawJson: { fetchTaskId: "ready-podcast-task" },
+              },
+            ],
+          },
+          {
+            builderId: "blog_builder",
+            kind: "BLOG",
+            sourceType: "blog",
+            name: "Example Blog",
+            items: [
+              {
+                kind: "BLOG_POST",
+                externalId: "https://example.com/post",
+                title: "Durable agent logs",
+                url: "https://example.com/post",
+                body: "Agent rewrote this into a short pseudo-body.",
+                summary:
+                  "这篇文章总结 durable agent logs 如何帮助回放任务状态、保留来源证据，并让 sync payload 更可靠。来源：https://example.com/post",
+                rawJson: { fetchTaskId: "ready-blog-task" },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ]);
+
+  const itemsByTaskId = new Map(
+    merged.payload.builders.flatMap((builder: { items: Array<{ rawJson?: { fetchTaskId?: string } }> }) =>
+      builder.items.map((item) => [item.rawJson?.fetchTaskId, item]),
+    ),
+  );
+  const omittedBodyItem = itemsByTaskId.get("ready-podcast-task");
+  assert.equal(omittedBodyItem?.body, omittedBodyTask.item.body);
+  assert.equal(omittedBodyItem?.summary.includes("test-time compute"), true);
+  assert.equal(omittedBodyItem?.rawJson.workerId, "shard-0");
+
+  const rewrittenBodyItem = itemsByTaskId.get("ready-blog-task");
+  assert.equal(rewrittenBodyItem?.body, rewrittenBodyTask.item.body);
+  assert.equal(rewrittenBodyItem?.summary.includes("durable agent logs"), true);
+  assert.equal(rewrittenBodyItem?.rawJson.workerId, "shard-0");
+
+  const validation = cli.validateAgentSyncPayload(fetchResult, merged.payload);
+  assert.equal(validation.status, "ok");
+  assert.equal(validation.validatedFetchTasks, 2);
 });
 
 test("merge-task-results preserves task checkpoints when a shard result is missing", async () => {

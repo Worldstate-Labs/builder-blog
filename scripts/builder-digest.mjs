@@ -2530,6 +2530,9 @@ function singlePostSummaryPrompt(source) {
     "",
     source.commonSummaryRules,
     "",
+    "Ready-task output rule:",
+    "- If task.contentStatus is `ready`, do not fetch task.item.url, download media, transcribe audio/video, or rewrite task.item.body. The supplied task.item.body is already the fetched source body. To save tokens, omit `item.body` from your shard result for ready tasks; the runner restores the original body before sync. Write only the `summary` from task.item.body.",
+    "",
     "Hard validation rules for the output `summary` string:",
     "- Keep `summary` between 40 and 1200 characters. If it is over 1200 characters, shorten it before writing JSON; otherwise validation fails with `summary_too_long`.",
     "- Do not duplicate the title; otherwise validation fails with `summary_duplicates_title`.",
@@ -5591,8 +5594,28 @@ function stampOutcomeWorkerId(outcome, workerId) {
   };
 }
 
+function preserveReadyTaskItem(item, task) {
+  if (!task || task?.contentStatus !== "ready") return item;
+  const original = task.item;
+  if (!original || typeof original !== "object" || Array.isArray(original)) return item;
+  return {
+    ...item,
+    kind: original.kind ?? item?.kind,
+    externalId: original.externalId ?? item?.externalId,
+    title: original.title ?? item?.title,
+    url: original.url ?? item?.url,
+    publishedAt: original.publishedAt ?? item?.publishedAt,
+    sourceName: original.sourceName ?? item?.sourceName,
+    description: original.description ?? item?.description,
+    body: original.body ?? item?.body,
+  };
+}
+
 export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) {
   const planned = extractFetchTasks(fetchResult).filter((task) => !isCandidateDiscoveryFetchTask(task));
+  const plannedTaskById = new Map(
+    planned.map((task) => [String(task?.id || fetchTaskId(task)), task]),
+  );
   const taskTypeById = new Map(
     planned.map((task) => [String(task?.id || fetchTaskId(task)), task?.agentWorkType || ""]),
   );
@@ -5640,10 +5663,13 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       for (const item of builder?.items ?? []) {
         const stampedItem = stampItemWorkerId(item, workerId);
         const taskId = stampedItem?.rawJson?.fetchTaskId ? String(stampedItem.rawJson.fetchTaskId) : null;
+        const mergedItem = taskId
+          ? preserveReadyTaskItem(stampedItem, plannedTaskById.get(taskId))
+          : stampedItem;
         if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.
-          const itemKey = `${taskId}\u0000${stampedItem?.externalId || stampedItem?.url || ""}`;
+          const itemKey = `${taskId}\u0000${mergedItem?.externalId || mergedItem?.url || ""}`;
           if (seenFallbackItems.has(itemKey)) continue;
           seenFallbackItems.add(itemKey);
         } else if (taskId) {
@@ -5651,7 +5677,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           syncedTaskIds.add(taskId);
         }
         if (taskId) accounted.add(taskId);
-        target.items.push(stampedItem);
+        target.items.push(mergedItem);
         itemCount += 1;
       }
     }

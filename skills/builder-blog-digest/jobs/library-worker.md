@@ -43,6 +43,11 @@ result file survives):
 - Complete CHEAP tasks first: all `ready` tasks (body provided, summary only),
   then light extractions (web articles), and only then heavy extractions
   (audio/video downloads, transcription).
+- For `contentStatus: "ready"` tasks, do NOT fetch the URL, download media,
+  transcribe audio/video, or rewrite `item.body`. The runner already fetched
+  the source body. Use `task.item.body` only to write `item.summary`. To save
+  tokens, omit `item.body` from the ready-task sync item; the runner restores
+  the original body before validation and sync.
 - After EACH completed task, write BOTH:
   - one task checkpoint JSON under `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR`;
   - the full shard result file (step 3 shape, containing every item and
