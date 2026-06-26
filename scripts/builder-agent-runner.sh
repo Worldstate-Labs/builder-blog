@@ -331,7 +331,7 @@ agent_usage_file() {
     return 0
   fi
   mkdir -p "$JOB_TMP_DIR"
-  mktemp "$JOB_TMP_DIR/$_runtime-agent-usage.XXXXXX.jsonl"
+  mktemp "$JOB_TMP_DIR/$_runtime-agent-usage.XXXXXX"
 }
 
 capture_runtime_usage() {
@@ -347,7 +347,9 @@ capture_runtime_usage() {
 }
 
 structured_usage_enabled() {
-  [ "${BUILDER_BLOG_STRUCTURED_USAGE:-0}" = "1" ]
+  [ "${BUILDER_BLOG_STRUCTURED_USAGE:-0}" = "1" ] && return 0
+  [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" = "worker" ] && return 0
+  return 1
 }
 
 openclaw_default_session_id() {

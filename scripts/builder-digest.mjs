@@ -1117,6 +1117,7 @@ function upsertFetchProgressTask(progress, task) {
     previous.status !== value.status ||
     previous.phase !== value.phase ||
     previous.message !== value.message ||
+    previous.workerId !== value.workerId ||
     previous.bodyChars !== value.bodyChars ||
     previous.summaryChars !== value.summaryChars;
   if (index >= 0) tasks[index] = value;
@@ -1125,6 +1126,43 @@ function upsertFetchProgressTask(progress, task) {
     .sort((a, b) => String(a.updatedAt ?? "").localeCompare(String(b.updatedAt ?? "")))
     .slice(-FETCH_PROGRESS_TASK_LIMIT);
   return changed;
+}
+
+function seedFetchProgressPlannedTasks(progress, plannedTasks) {
+  if (!progress || !Array.isArray(plannedTasks)) return;
+  const existingById = new Map(
+    (Array.isArray(progress.tasks) ? progress.tasks : [])
+      .map((task) => [String(task?.id ?? task?.taskId ?? ""), task])
+      .filter(([id]) => id),
+  );
+  const liveStatuses = new Set(["reading", "summarizing", "summarized", "synced", "skipped", "failed", "action_needed"]);
+  for (const task of plannedTasks) {
+    const id = String(task?.id || fetchTaskId(task));
+    if (!id) continue;
+    const existing = existingById.get(id);
+    const keepLiveStatus = existing?.status && liveStatuses.has(String(existing.status));
+    upsertFetchProgressTask(progress, {
+      id,
+      status: keepLiveStatus ? existing.status : task.status === "fetched" ? "fetched" : "planned",
+      phase: keepLiveStatus ? existing.phase ?? "read" : "plan",
+      message: keepLiveStatus
+        ? existing.message ?? null
+        : task.workerId
+          ? `Assigned to ${task.workerId}.`
+          : "Queued for worker assignment.",
+      builder: task.builder,
+      builderId: task.builderId,
+      sourceType: task.sourceType,
+      title: task.title,
+      url: task.url,
+      workerId: task.workerId,
+      bodyChars: task.bodyChars,
+      bodyWords: task.bodyWords,
+      summaryChars: task.summaryChars,
+      summaryWords: task.summaryWords,
+      updatedAt: existing?.updatedAt ?? new Date().toISOString(),
+    });
+  }
 }
 
 async function writeFetchProgressState(progress) {
@@ -7005,6 +7043,7 @@ async function patchFetchRunPlan(args) {
 
   const fetchProgress = await readFetchProgressState();
   if (fetchProgress) {
+    seedFetchProgressPlannedTasks(fetchProgress, plannedTasks);
     const discoveryExpansions = Array.isArray(fetchResult?.discoveryExpansions)
       ? fetchResult.discoveryExpansions
       : [];

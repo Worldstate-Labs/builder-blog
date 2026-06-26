@@ -184,6 +184,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /discoveryExpansionById/);
   assert.match(cli, /discovery_expanded/);
   assert.match(cli, /buildFetchRunSyncPatch/);
+  assert.match(cli, /function seedFetchProgressPlannedTasks/);
+  assert.match(cli, /seedFetchProgressPlannedTasks\(fetchProgress, plannedTasks\)/);
   assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
   assert.match(cli, /\.\.\.\(workerUsages\.length > 0 \? \{ workerUsages \} : \{\}\)/);
   assert.match(cli, /const usageFile = `\$\{shard\}-usage\.jsonl`/);
@@ -240,7 +242,10 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /parse-runtime-usage[\s\S]*--runtime "\$_runtime"[\s\S]*--out "\$_usage"/);
   assert.match(runner, /BUILDER_BLOG_SHARD_RESULT%-result\.json/);
   assert.match(runner, /shard-\*-usage\.jsonl/);
+  assert.match(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-usage\.XXXXXX"/);
+  assert.doesNotMatch(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-usage\.XXXXXX\.jsonl"/);
   assert.match(runner, /BUILDER_BLOG_STRUCTURED_USAGE/);
+  assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \] && return 0/);
   assert.match(runner, /codex exec --json/);
   assert.match(runner, /--output-format stream-json/);
   assert.match(runner, /openclaw agent --json/);
@@ -389,7 +394,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /runs=\{dialogRuns\}/);
   assert.match(panel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(panel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*\)/);
+  assert.match(panel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
+  assert.match(panel, /function shardAssignmentMap/);
+  assert.match(panel, /stage\.includes\("worker"\) \|\| stage\.includes\("shard"\) \|\| stage\.includes\("task"\)/);
   assert.match(panel, /function fallbackTaskWorkerName/);
   assert.match(panel, /Worker assignment pending/);
   assert.match(panel, /worker_missing_result: "Local Agent shard did not write a result file for this post"/);

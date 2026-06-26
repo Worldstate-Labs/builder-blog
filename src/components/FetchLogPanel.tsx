@@ -142,6 +142,7 @@ type DetailsShape = {
   cliFlags?: Record<string, unknown>;
   error?: { message?: string; stack?: string };
   fetchTasks?: FetchTaskLog[];
+  shardPlans?: FetchTaskShardPlan[];
   workerUsages?: FetchTaskWorkerUsage[];
   prompts?: Record<string, PromptBundle>;
   // Which agent ran the fetch and the model it used. Recorded by the CLI at
@@ -181,6 +182,11 @@ type FetchTaskWorkerGroup = {
 type FetchTaskWorkerUsage = {
   workerId?: string | null;
   usage?: unknown;
+};
+
+type FetchTaskShardPlan = {
+  shard?: string | null;
+  tasks?: FetchTaskLog[];
 };
 
 type LifecycleStep = {
@@ -2416,10 +2422,16 @@ function fallbackWorkerId(task: FetchTaskLog): string | null {
 function taskWorkerId(
   task: FetchTaskLog,
   liveTask?: FetchTaskProgress | null,
+  shardAssignments?: Map<string, string>,
 ): string | null {
   const liveWorker = liveTask?.workerId;
   if (typeof liveWorker === "string" && liveWorker.trim()) return liveWorker.trim();
   if (typeof task.workerId === "string" && task.workerId.trim()) return task.workerId.trim();
+  const id = typeof task.id === "string" ? task.id : "";
+  if (id) {
+    const shardWorker = shardAssignments?.get(id);
+    if (typeof shardWorker === "string" && shardWorker.trim()) return shardWorker.trim();
+  }
   return fallbackWorkerId(task);
 }
 
@@ -2428,11 +2440,12 @@ function taskWorkerGroups(
   liveTasks: Map<string, FetchTaskProgress>,
   fallbackWorkerName: string,
   workerUsages: Map<string, UsageSummary>,
+  shardAssignments: Map<string, string>,
 ): FetchTaskWorkerGroup[] {
   const groups = new Map<string, FetchTaskWorkerGroup>();
   for (const task of fetchTasks) {
     const liveTask = task.id ? liveTasks.get(task.id) ?? null : null;
-    const workerId = taskWorkerId(task, liveTask);
+    const workerId = taskWorkerId(task, liveTask, shardAssignments);
     const key = workerId ? `worker:${workerId}` : "worker:main";
     let group = groups.get(key);
     if (!group) {
@@ -2456,7 +2469,22 @@ function taskWorkerGroups(
 
 function fallbackTaskWorkerName(liveProgress: FetchJobProgress | null): string {
   const stage = String(liveProgress?.stage ?? "").toLowerCase();
-  return stage.includes("worker") ? "Worker assignment pending" : "Local Agent";
+  return stage.includes("worker") || stage.includes("shard") || stage.includes("task")
+    ? "Worker assignment pending"
+    : "Local Agent";
+}
+
+function shardAssignmentMap(shardPlans: FetchTaskShardPlan[] | undefined): Map<string, string> {
+  const assignments = new Map<string, string>();
+  for (const plan of Array.isArray(shardPlans) ? shardPlans : []) {
+    const shard = typeof plan?.shard === "string" ? plan.shard.trim() : "";
+    if (!shard) continue;
+    for (const task of Array.isArray(plan.tasks) ? plan.tasks : []) {
+      const id = typeof task?.id === "string" ? task.id.trim() : "";
+      if (id) assignments.set(id, shard);
+    }
+  }
+  return assignments;
 }
 
 function groupedTaskStats(tasks: FetchTaskLog[]) {
@@ -2534,6 +2562,7 @@ function DetailsBody({
     liveTasks,
     fallbackTaskWorkerName(liveProgress),
     workerUsageMap(details.workerUsages),
+    shardAssignmentMap(details.shardPlans),
   );
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
