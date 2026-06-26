@@ -254,6 +254,7 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /\$\{BUILDER_BLOG_STRUCTURED_USAGE:-1\}/);
   assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \] && return 0/);
   assert.match(runner, /run_with_codex\(\) \{[\s\S]*agent_output_file codex[\s\S]*codex exec --json[\s\S]*capture_runtime_usage codex/);
+  assert.match(runner, /capture_runtime_usage codex "\$_codex_output" "\$_codex_usage" openai-codex "\$_codex_model"/);
   assert.match(runner, /run_with_claude\(\) \{[\s\S]*agent_output_file claude[\s\S]*--output-format stream-json[\s\S]*--verbose[\s\S]*capture_runtime_usage claude/);
   assert.match(runner, /run_with_openclaw\(\) \{[\s\S]*agent_output_file openclaw[\s\S]*openclaw agent --json --local[\s\S]*capture_runtime_usage openclaw/);
   assert.match(runner, /run_with_hermes\(\) \{[\s\S]*agent_output_file hermes[\s\S]*capture_runtime_usage hermes/);

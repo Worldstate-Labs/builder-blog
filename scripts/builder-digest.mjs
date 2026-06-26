@@ -281,7 +281,7 @@ function usage() {
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   fetch-status-audit
   digest-status-audit
-  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw|hermes] [--out runtime-usage.jsonl]
+  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw|hermes] [--provider openai-codex] [--model gpt-5.4-mini] [--out runtime-usage.jsonl]
   aggregate-runtime-usage --out runtime-usage.json runtime-output-1.log runtime-output-2.log
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
@@ -800,6 +800,39 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
   };
 }
 
+function applyRuntimeUsageFallbacks(usage, { provider = null, model = null } = {}) {
+  if (!usage) return null;
+  const fallbackProvider = usageString(provider);
+  const fallbackModel = usageString(model);
+  const resolvedProvider = usage.provider ?? fallbackProvider;
+  const resolvedModel = usage.model ?? fallbackModel;
+  let costUsd = usage.costUsd;
+  let costEstimated = usage.costEstimated;
+  if (costUsd === null && (resolvedProvider || resolvedModel)) {
+    const estimatedCost = estimateRuntimeUsageCost({
+      cachedInputTokens: usage.cachedInputTokens,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      reasoningTokens: usage.reasoningTokens,
+      source: usage.source,
+      provider: resolvedProvider,
+      model: resolvedModel,
+    });
+    if (estimatedCost !== null) {
+      costUsd = estimatedCost;
+      costEstimated = true;
+    }
+  }
+  return {
+    ...usage,
+    costUsd,
+    costEstimated,
+    currency: usage.currency ?? (costUsd !== null ? "USD" : null),
+    provider: resolvedProvider,
+    model: resolvedModel,
+  };
+}
+
 function runtimeUsageSource(runtime, format = "runtime_output") {
   const normalized = String(runtime || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   if (!normalized) return format;
@@ -1185,7 +1218,13 @@ async function jobRunCommand(args, defaultStatus = "running") {
 
 async function parseRuntimeUsageCommand(args) {
   const out = argValue(args, "--out", null);
-  const usage = runtimeUsageFromFile(argValue(args, "--file", null), argValue(args, "--runtime", null));
+  const usage = applyRuntimeUsageFallbacks(
+    runtimeUsageFromFile(argValue(args, "--file", null), argValue(args, "--runtime", null)),
+    {
+      provider: argValue(args, "--provider", null),
+      model: argValue(args, "--model", null),
+    },
+  );
   const payload = usage ? { usage } : { usage: null };
   if (out) {
     await mkdir(dirname(out), { recursive: true });

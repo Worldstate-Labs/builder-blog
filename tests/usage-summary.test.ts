@@ -158,6 +158,42 @@ test("CLI parses runtime-specific JSON usage into a sidecar file", () => {
   assert.equal(payload.usage.source, "codex_jsonl");
 });
 
+test("CLI estimates Codex usage cost from runner model fallback", () => {
+  const dir = mkdtempSync(join(tmpdir(), "builder-runtime-codex-cost-"));
+  const input = join(dir, "codex.jsonl");
+  const out = join(dir, "codex-usage.jsonl");
+  writeFileSync(input, `${JSON.stringify({
+    type: "turn.completed",
+    usage: {
+      input_tokens: 1_000_000,
+      output_tokens: 1_000_000,
+      total_tokens: 2_000_000,
+    },
+  })}\n`);
+
+  execFileSync("node", [
+    "scripts/builder-digest.mjs",
+    "parse-runtime-usage",
+    "--runtime",
+    "codex",
+    "--provider",
+    "openai-codex",
+    "--model",
+    "gpt-5.4-mini",
+    "--file",
+    input,
+    "--out",
+    out,
+  ], { cwd: process.cwd(), encoding: "utf8" });
+
+  const payload = JSON.parse(readFileSync(out, "utf8"));
+  assert.equal(payload.usage.provider, "openai-codex");
+  assert.equal(payload.usage.model, "gpt-5.4-mini");
+  assert.equal(payload.usage.costEstimated, true);
+  assert.equal(payload.usage.costUsd, 2.625);
+  assert.equal(payload.usage.currency, "USD");
+});
+
 test("CLI parses nested Claude and OpenClaw runtime usage shapes", () => {
   const dir = mkdtempSync(join(tmpdir(), "builder-runtime-nested-"));
   const claude = join(dir, "claude.jsonl");

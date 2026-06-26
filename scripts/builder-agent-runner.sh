@@ -317,7 +317,7 @@ run_with_codex() {
   fi
   _codex_code="$?"
   set -e
-  capture_runtime_usage codex "$_codex_output" "$_codex_usage"
+  capture_runtime_usage codex "$_codex_output" "$_codex_usage" openai-codex "$_codex_model"
   cat "$_codex_output"
   return "$_codex_code"
 }
@@ -410,11 +410,22 @@ capture_runtime_usage() {
   _runtime="$1"
   _output="$2"
   _usage="$3"
+  _provider="${4:-}"
+  _model="${5:-}"
   [ -n "$_usage" ] && [ -r "$_output" ] || return 0
-  node "$AGENT_DIR/builder-digest.mjs" parse-runtime-usage \
-    --runtime "$_runtime" \
-    --file "$_output" \
-    --out "$_usage" >/dev/null 2>&1 || true
+  if [ -n "$_provider" ] || [ -n "$_model" ]; then
+    node "$AGENT_DIR/builder-digest.mjs" parse-runtime-usage \
+      --runtime "$_runtime" \
+      --provider "$_provider" \
+      --model "$_model" \
+      --file "$_output" \
+      --out "$_usage" >/dev/null 2>&1 || true
+  else
+    node "$AGENT_DIR/builder-digest.mjs" parse-runtime-usage \
+      --runtime "$_runtime" \
+      --file "$_output" \
+      --out "$_usage" >/dev/null 2>&1 || true
+  fi
   [ -s "$_usage" ] || rm -f "$_usage" 2>/dev/null || true
 }
 
@@ -459,7 +470,7 @@ run_with_codex_unattended() {
   fi
   _codex_code="$?"
   set -e
-  capture_runtime_usage codex "$_codex_output" "$_codex_usage"
+  capture_runtime_usage codex "$_codex_output" "$_codex_usage" openai-codex "$_codex_model"
   cat "$_codex_output"
   if agent_output_has_timeout "$_codex_output"; then
     return 124
