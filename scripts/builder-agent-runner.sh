@@ -298,11 +298,12 @@ run_with_codex() {
   _codex_usage="$(agent_usage_file codex)"
   LAST_AGENT_OUTPUT_FILE="$_codex_output"
   LAST_AGENT_USAGE_FILE="$_codex_usage"
+  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.5-mini}"
   set +e
   if structured_usage_enabled; then
-    codex exec --json --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+    codex exec --json --model "$_codex_model" --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   else
-    codex exec --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+    codex exec --model "$_codex_model" --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   fi
   _codex_code="$?"
   set -e
@@ -316,14 +317,16 @@ run_with_claude() {
   _claude_usage="$(agent_usage_file claude)"
   LAST_AGENT_OUTPUT_FILE="$_claude_output"
   LAST_AGENT_USAGE_FILE="$_claude_usage"
+  _claude_model="${BUILDER_BLOG_CLAUDE_MODEL:-sonnet}"
   set +e
   if structured_usage_enabled; then
     claude -p "$(cat "$PROMPT_FILE")" \
+      --model "$_claude_model" \
       --output-format stream-json \
       --verbose \
       --add-dir "$AGENT_DIR" > "$_claude_output" 2>&1
   else
-    claude -p "$(cat "$PROMPT_FILE")" --add-dir "$AGENT_DIR" > "$_claude_output" 2>&1
+    claude -p "$(cat "$PROMPT_FILE")" --model "$_claude_model" --add-dir "$AGENT_DIR" > "$_claude_output" 2>&1
   fi
   _claude_code="$?"
   set -e
@@ -431,13 +434,16 @@ run_with_codex_unattended() {
   _codex_usage="$(agent_usage_file codex)"
   LAST_AGENT_OUTPUT_FILE="$_codex_output"
   LAST_AGENT_USAGE_FILE="$_codex_usage"
+  # Default to a cheaper model to keep digest/library runs inexpensive;
+  # override per run/job with BUILDER_BLOG_CODEX_MODEL.
+  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.5-mini}"
   set +e
   if structured_usage_enabled; then
-    codex exec --json --skip-git-repo-check --full-auto \
+    codex exec --json --model "$_codex_model" --skip-git-repo-check --full-auto \
       -c sandbox_workspace_write.network_access=true \
       -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   else
-    codex exec --skip-git-repo-check --full-auto \
+    codex exec --model "$_codex_model" --skip-git-repo-check --full-auto \
       -c sandbox_workspace_write.network_access=true \
       -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   fi
@@ -462,12 +468,16 @@ run_with_claude_unattended() {
   _claude_usage="$(agent_usage_file claude)"
   LAST_AGENT_OUTPUT_FILE="$_claude_output"
   LAST_AGENT_USAGE_FILE="$_claude_usage"
+  # Default to the cheaper Sonnet tier to keep digest/library runs inexpensive;
+  # override per run/job with BUILDER_BLOG_CLAUDE_MODEL.
+  _claude_model="${BUILDER_BLOG_CLAUDE_MODEL:-sonnet}"
   set +e
   if structured_usage_enabled; then
     # `--print` (-p) with `--output-format stream-json` requires `--verbose`
     # on current Claude CLI versions; without it the CLI exits immediately
     # and the worker produces no shard result.
     claude -p "$(cat "$PROMPT_FILE")" \
+      --model "$_claude_model" \
       --output-format stream-json \
       --verbose \
       --add-dir "$AGENT_DIR" \
@@ -475,6 +485,7 @@ run_with_claude_unattended() {
       --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
   else
     claude -p "$(cat "$PROMPT_FILE")" \
+      --model "$_claude_model" \
       --add-dir "$AGENT_DIR" \
       --permission-mode acceptEdits \
       --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
