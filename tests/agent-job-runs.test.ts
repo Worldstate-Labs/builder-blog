@@ -67,6 +67,7 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /job-run-start/);
   assert.match(cli, /job-run-update/);
   assert.match(cli, /\/api\/skill\/job-runs/);
+  assert.match(cli, /runtimeUsageFromFile\(argValue\(args, "--usage-file", null\)\)/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
   assert.match(cli, /hermes: "Hermes"/);
   assert.match(cli, /case "Hermes":[\s\S]*return detectedHermesModel\(\)/);
@@ -74,6 +75,10 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /process\.env\.HERMES_MODEL/);
   assert.match(cli, /process\.env\.HERMES_CONFIG_PATH/);
   assert.doesNotMatch(cli, /Gemini CLI|detectedGeminiModel|GEMINI_MODEL/);
+
+  const runner = source("scripts/builder-agent-runner.sh");
+  assert.match(runner, /LAST_AGENT_OUTPUT_FILE/);
+  assert.match(runner, /--usage-file/);
 });
 
 test("terminal agent job runs cannot be regressed by late runtime updates", () => {

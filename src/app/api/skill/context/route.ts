@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { isAdminEmail } from "@/lib/admin";
+import { isAdminFetchOnlySourceType } from "@/lib/admin-fetch-only-sources";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import {
   getDigestConfig,
@@ -55,6 +57,7 @@ export async function GET(request: Request) {
   const isDigest = intent ? intent === "digest" : !url.searchParams.has("days");
   const isLibrary = !isDigest;
   const now = new Date();
+  const userIsAdmin = isAdminEmail(user.email);
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
   const [
@@ -191,6 +194,7 @@ export async function GET(request: Request) {
   const libraryFetchBuilders = isLibrary
     ? libraryBuilders.filter((builder) => {
         if (!subscribedBuilderIdSet.has(builder.id)) return false;
+        if (!userIsAdmin && isAdminFetchOnlySourceType(builder.sourceType)) return false;
         if (builder.ownerUserId === user.id) return true;
         return fetchedItemCountForBuilder(builder) === 0;
       })
@@ -199,7 +203,8 @@ export async function GET(request: Request) {
   const libraryFetchBuilderIdSet = new Set(libraryFetchBuilderIds);
 
   // Annotate the requesting user's own builders with scope="PERSONAL" so
-  // legacy local agent CLIs can still pick them up. New CLIs use
+  // legacy local agent CLIs can still pick them up, except for admin-fetch-only
+  // source types that non-admin users must never fetch. New CLIs use
   // `libraryFetchBuilders` below, which is recomputed on every context request:
   // only followed sources are fetched; imported followed sources are fetched
   // only when that source has no fetched posts yet. Strip the original
@@ -207,8 +212,13 @@ export async function GET(request: Request) {
   // other users' internal IDs through the API.
   const personalBuilderIdSet = new Set(personalBuilderIds);
   const annotateLibraryBuilder = (builder: (typeof libraryBuilders)[number]) => {
-    if (personalBuilderIdSet.has(builder.id)) {
+    const adminFetchOnlyForUser =
+      !userIsAdmin && isAdminFetchOnlySourceType(builder.sourceType);
+    if (personalBuilderIdSet.has(builder.id) && !adminFetchOnlyForUser) {
       return { ...builder, scope: "PERSONAL" as const };
+    }
+    if (adminFetchOnlyForUser) {
+      return { ...builder, ownerUserId: null, fetchDisabledReason: "admin_fetch_only_source" };
     }
     return { ...builder, ownerUserId: null };
   };
@@ -384,7 +394,7 @@ export async function GET(request: Request) {
     libraryFetchBuilders: annotatedLibraryFetchBuilders,
     libraryFetchSelection: {
       rule:
-        "fetch followed personal sources; fetch followed imported sources only when they have no fetched posts",
+        "fetch followed personal sources; fetch followed imported sources only when they have no fetched posts; admin-fetch-only source types are fetched by admin and shared by entity",
       followedBuilderCount: subscribedBuilderIdSet.size,
       selectedBuilderCount: annotatedLibraryFetchBuilders.length,
     },

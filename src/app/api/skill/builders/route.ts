@@ -2,6 +2,8 @@ import { BuilderPoolOrigin, FeedItemKind } from "@prisma/client";
 import { revalidateTag } from "next/cache";
 import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
+import { isAdminEmail } from "@/lib/admin";
+import { isAdminFetchOnlySourceType } from "@/lib/admin-fetch-only-sources";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import { checkBodyContentQuality } from "@/lib/content-quality";
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
     standardsBySourceId.get((sourceType ?? "").trim()) ??
     standardsBySourceId.get("website") ??
     null;
+  const userIsAdmin = isAdminEmail(user.email);
 
   try {
     const now = new Date();
@@ -116,6 +119,22 @@ export async function POST(request: Request) {
       const referencedBuilder = await findExistingPersonalBuilderForSync(user.id, input);
       if (referencedBuilder.status === "invalid") {
         throw builderSyncError(referencedBuilder.error, 400);
+      }
+      if (!userIsAdmin && isAdminFetchOnlySourceType(input.sourceType)) {
+        skippedFeedItems += input.items.length;
+        for (const item of input.items) {
+          const fetchTaskId = readFetchTaskId(item.rawJson);
+          if (fetchTaskId) {
+            itemResults.push({
+              fetchTaskId,
+              kind: item.kind,
+              externalId: item.externalId,
+              status: "failed",
+              reason: "admin_fetch_only_source",
+            });
+          }
+        }
+        continue;
       }
       const builder =
         referencedBuilder.builder ??

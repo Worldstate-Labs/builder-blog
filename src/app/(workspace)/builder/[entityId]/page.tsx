@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
-import { isAdminEmail } from "@/lib/admin";
+import { adminEmails, isAdminEmail } from "@/lib/admin";
+import {
+  ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS,
+  isAdminFetchOnlySourceType,
+} from "@/lib/admin-fetch-only-sources";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-channel-resolver";
 import { getEntityWithReachableChannels } from "@/lib/builder-entities";
@@ -94,7 +98,8 @@ export default async function BuilderDetailPage({ params }: Params) {
   // count so this page never reports global/private channel data the
   // current user cannot actually see.
   const channelIds = channels.map((c) => c.builderId);
-  const dedupedItemCount = await countDedupedItemsForEntity(channelIds);
+  const postBuilderIds = await postBuilderIdsForVisibleChannels(entityId, channels);
+  const dedupedItemCount = await countDedupedItemsForEntity(postBuilderIds);
 
   // BuilderEntity is the canonical creator; it may have multiple
   // Builder rows (channels) — typically the user's own row + the
@@ -215,6 +220,7 @@ export default async function BuilderDetailPage({ params }: Params) {
               entityId={entityId}
               sourceName={displaySourceName}
               channels={channels}
+              postBuilderIds={postBuilderIds}
             />
           </Suspense>
         </section>
@@ -258,6 +264,27 @@ async function countDedupedItemsForEntity(builderIds: string[]): Promise<number>
     select: { id: true },
   });
   return distinct.length;
+}
+
+async function postBuilderIdsForVisibleChannels(
+  entityId: string,
+  channels: ChannelInfo[],
+) {
+  const channelIds = channels.map((channel) => channel.builderId);
+  const hasAdminFetchOnlyChannel = channels.some((channel) =>
+    isAdminFetchOnlySourceType(channel.sourceType),
+  );
+  if (!hasAdminFetchOnlyChannel) return channelIds;
+
+  const adminBuilders = await prisma.builder.findMany({
+    where: {
+      entityId,
+      sourceType: { in: [...ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS] },
+      owner: { email: { in: adminEmails() } },
+    },
+    select: { id: true },
+  });
+  return [...new Set([...channelIds, ...adminBuilders.map((builder) => builder.id)])];
 }
 
 async function BuilderDetailActionsSlot({
@@ -366,17 +393,19 @@ async function RecentPostsSlot({
   entityId,
   sourceName,
   channels,
+  postBuilderIds,
 }: {
   userId: string;
   entityId: string;
   sourceName: string;
   channels: ChannelInfo[];
+  postBuilderIds: string[];
 }) {
   const [items, readKeySet] = await Promise.all([
     fetchDedupedFeedForEntities({
       userId,
       entityIds: [entityId],
-      builderIds: channels.map((channel) => channel.builderId),
+      builderIds: postBuilderIds,
       limit: 25,
     }),
     getReadEntityKeys(userId, [entityId]),

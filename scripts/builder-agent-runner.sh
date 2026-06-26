@@ -5,7 +5,16 @@ JOB_NAME="${1:-}"
 APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
-ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+ACCOUNT_SLUG="$(account_slug "${BUILDER_BLOG_ACCOUNT:-default}")"
 DEFAULT_JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
 # A direct worker-mode invocation (the setup initial run, or any manual
 # BUILDER_BLOG_WORKER_MODE=1 run) bypasses run_cron_supervisor and its
@@ -997,6 +1006,26 @@ iso_now() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
+job_file_component() {
+  printf '%s' "${1:-}" | tr -c 'a-zA-Z0-9_.@+-' '_'
+}
+
+aggregate_runtime_usage_files() {
+  [ -n "${BUILDER_BLOG_USAGE_FILE:-}" ] || return 0
+  _usage_inputs=""
+  for _usage_input in \
+    "$JOB_TMP_DIR"/codex-agent-output.* \
+    "$JOB_TMP_DIR"/claude-agent-output.* \
+    "$JOB_TMP_DIR"/openclaw-agent-output.* \
+    "$JOB_TMP_DIR"/hermes-agent-output.*
+  do
+    [ -r "$_usage_input" ] || continue
+    _usage_inputs="$_usage_inputs $(shell_quote "$_usage_input")"
+  done
+  [ -n "$_usage_inputs" ] || return 0
+  eval "node \"\$AGENT_DIR/builder-digest.mjs\" aggregate-runtime-usage --out \"\$BUILDER_BLOG_USAGE_FILE\" $_usage_inputs >/dev/null 2>&1" || true
+}
+
 job_run_update() {
   if [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-}" = "1" ]; then return 0; fi
   _status="$1"
@@ -1007,6 +1036,17 @@ job_run_update() {
   case "$_status" in
     succeeded|failed|timed_out|killed|replaced|stale) _finished="$(iso_now)" ;;
   esac
+  aggregate_runtime_usage_files
+  _usage_file=""
+  if [ -n "${BUILDER_BLOG_USAGE_FILE:-}" ] && [ -r "${BUILDER_BLOG_USAGE_FILE:-}" ]; then
+    _usage_file="$BUILDER_BLOG_USAGE_FILE"
+  elif [ -n "${LAST_AGENT_OUTPUT_FILE:-}" ] && [ -r "${LAST_AGENT_OUTPUT_FILE:-}" ]; then
+    _usage_file="$LAST_AGENT_OUTPUT_FILE"
+  fi
+  _usage_args=""
+  if [ -n "$_usage_file" ]; then
+    _usage_args="--usage-file"
+  fi
   node "$AGENT_DIR/builder-digest.mjs" job-run-update \
     --job-type "$(job_type_for_name)" \
     --trigger "${BUILDER_BLOG_JOB_TRIGGER:-manual_cli}" \
@@ -1022,6 +1062,7 @@ job_run_update() {
     --finished-at "$_finished" \
     --summary "$_summary" \
     --reason "$_reason" \
+    ${_usage_args:+"$_usage_args"} ${_usage_file:+"$_usage_file"} \
     "$@" >/dev/null 2>&1 || true
 }
 
@@ -1174,6 +1215,8 @@ job_run_update_for_instance() {
   _saved_instance="${BUILDER_BLOG_JOB_RUN_ID:-}"
   _saved_started="${BUILDER_BLOG_JOB_STARTED_AT:-}"
   _saved_expected="${BUILDER_BLOG_EXPECTED_AT:-}"
+  _saved_usage_file="${BUILDER_BLOG_USAGE_FILE:-}"
+  _saved_last_agent_output="${LAST_AGENT_OUTPUT_FILE:-}"
 
   BUILDER_BLOG_JOB_RUN_ID="$_target_instance"
   if [ -n "$_target_started" ]; then
@@ -1184,6 +1227,8 @@ job_run_update_for_instance() {
   elif [ -n "$_target_started" ]; then
     BUILDER_BLOG_EXPECTED_AT="$_target_started"
   fi
+  unset BUILDER_BLOG_USAGE_FILE
+  unset LAST_AGENT_OUTPUT_FILE
   export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
 
   job_run_update "$@"
@@ -1191,6 +1236,18 @@ job_run_update_for_instance() {
   BUILDER_BLOG_JOB_RUN_ID="$_saved_instance"
   BUILDER_BLOG_JOB_STARTED_AT="$_saved_started"
   BUILDER_BLOG_EXPECTED_AT="$_saved_expected"
+  if [ -n "$_saved_usage_file" ]; then
+    BUILDER_BLOG_USAGE_FILE="$_saved_usage_file"
+    export BUILDER_BLOG_USAGE_FILE
+  else
+    unset BUILDER_BLOG_USAGE_FILE
+  fi
+  if [ -n "$_saved_last_agent_output" ]; then
+    LAST_AGENT_OUTPUT_FILE="$_saved_last_agent_output"
+    export LAST_AGENT_OUTPUT_FILE
+  else
+    unset LAST_AGENT_OUTPUT_FILE
+  fi
   export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
 }
 
@@ -1386,6 +1443,13 @@ run_with_job_tracking() {
   export BUILDER_BLOG_JOB_RUN_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
   export BUILDER_BLOG_JOB_STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
   export BUILDER_BLOG_EXPECTED_AT="${BUILDER_BLOG_EXPECTED_AT:-$BUILDER_BLOG_JOB_STARTED_AT}"
+  _usage_key="$(job_file_component "$BUILDER_BLOG_JOB_RUN_ID")"
+  export BUILDER_BLOG_USAGE_FILE="$JOB_TMP_DIR/runtime-usage-$_usage_key.jsonl"
+  rm -f "$BUILDER_BLOG_USAGE_FILE" \
+    "$JOB_TMP_DIR"/codex-agent-output.* \
+    "$JOB_TMP_DIR"/claude-agent-output.* \
+    "$JOB_TMP_DIR"/openclaw-agent-output.* \
+    "$JOB_TMP_DIR"/hermes-agent-output.* 2>/dev/null || true
   export BUILDER_BLOG_WORKER_PID="$$"
   export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
   if [ "$_trigger" = "scheduled" ]; then
@@ -2118,6 +2182,7 @@ run_library_job() {
     echo "--- $(basename "$_worker_log") ---"
     cat "$_worker_log"
   done
+  aggregate_runtime_usage_files
 
   _merge_result_file="$JOB_TMP_DIR/merge-task-results.json"
   job_run_update running "Merging source fetch worker results." "merge_started" --stage "merge_results"

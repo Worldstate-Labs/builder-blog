@@ -17,11 +17,13 @@ import { RelativeTime } from "@/components/RelativeTime";
 import { relativeTime } from "@/lib/relative-time";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
+import { RunUsageSummary } from "@/components/RunUsageSummary";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
+import { readUsageSummary } from "@/lib/usage-summary";
 import {
   scheduledJobRunStatusLabel,
   scheduledRunTriggerLabel,
@@ -137,6 +139,7 @@ type DetailsShape = {
   // emit time; absent on runs from before this was captured.
   agentRuntime?: string | null;
   agentModel?: string | null;
+  usage?: unknown;
 };
 
 type FetchRunStats = {
@@ -186,6 +189,7 @@ type JobRunDetailsShape = {
   termination?: string | null;
   skippedWaitPids?: string | null;
   progress?: FetchJobProgress | null;
+  usage?: unknown;
 };
 
 type FetchJobProgress = {
@@ -2274,6 +2278,7 @@ function FetchLogDialog({
     ? runs.find((candidate) => candidate.id === logRef.runId) ?? null
     : runs.find((candidate) => candidate.jobRunId === logRef.instanceId) ?? null;
   const resolvedJobRun = jobRun ?? (run?.jobRunId ? jobsByInstanceId.get(run.jobRunId) ?? null : null);
+  const usage = readUsageSummary(resolvedJobRun?.details, run?.details);
 
   return (
     <div className="sync-panel-log-dialog-backdrop" role="presentation" onMouseDown={onClose}>
@@ -2292,6 +2297,7 @@ function FetchLogDialog({
           </button>
         </header>
         <div className="sync-panel-log-dialog-body">
+          <RunUsageSummary usage={usage} />
           {run ? (
             <RunCard
               cronJob={cronJob}

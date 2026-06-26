@@ -6,6 +6,10 @@ import { builderKindForSourceType } from "@/lib/source-registry";
 const ADMIN_SOURCE_CANDIDATE_SEED = "admin_source_library";
 const CURATED_AI_SOURCE_CANDIDATE_SEED = "curated_ai_sources";
 const SOURCE_CANDIDATE_LIMIT = 300;
+const SOURCE_CANDIDATE_SEED_TTL_MS = 5 * 60 * 1000;
+
+let sourceCandidateSeedPromise: Promise<void> | null = null;
+let sourceCandidateSeededAt = 0;
 
 type CuratedSourceCandidate = {
   name: string;
@@ -115,9 +119,29 @@ type BuilderSeedSource = {
 };
 
 export async function ensureSourceCandidateLibraryFromAdminSources() {
+  await ensureSourceCandidateSeeded();
+  return listSourceCandidates();
+}
+
+async function ensureSourceCandidateSeeded() {
+  const now = Date.now();
+  if (
+    sourceCandidateSeedPromise &&
+    now - sourceCandidateSeededAt < SOURCE_CANDIDATE_SEED_TTL_MS
+  ) {
+    return sourceCandidateSeedPromise;
+  }
+  sourceCandidateSeedPromise = seedSourceCandidateLibrary().catch((error) => {
+    sourceCandidateSeedPromise = null;
+    throw error;
+  });
+  await sourceCandidateSeedPromise;
+  sourceCandidateSeededAt = Date.now();
+}
+
+async function seedSourceCandidateLibrary() {
   await seedSourceCandidatesFromAdminLibrary();
   await seedCuratedAiSourceCandidates();
-  return listSourceCandidates();
 }
 
 export async function listSourceCandidates(): Promise<SourceCandidate[]> {

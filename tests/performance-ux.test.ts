@@ -91,6 +91,8 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(migration, /'admin_source_library'/);
 
   assert.match(candidateLib, /ensureSourceCandidateLibraryFromAdminSources/);
+  assert.match(candidateLib, /SOURCE_CANDIDATE_SEED_TTL_MS/);
+  assert.match(candidateLib, /sourceCandidateSeedPromise/);
   assert.match(candidateLib, /seedSourceCandidatesFromAdminLibrary/);
   assert.match(candidateLib, /CURATED_AI_SOURCE_CANDIDATES/);
   assert.match(candidateLib, /seedCuratedAiSourceCandidates/);
@@ -1689,7 +1691,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /headerHostLabel/);
   assert.doesNotMatch(builderDetailPage, /builder-detail-host/);
   assert.match(builderDetailPage, /<CountMeta label=\{headerItemCount === 1 \? "post" : "posts"\} value=\{headerItemCount\} \/>/);
-  assert.match(builderDetailPage, /const dedupedItemCount = await countDedupedItemsForEntity\(channelIds\)/);
+  assert.match(builderDetailPage, /const postBuilderIds = await postBuilderIdsForVisibleChannels\(entityId, channels\)/);
+  assert.match(builderDetailPage, /const dedupedItemCount = await countDedupedItemsForEntity\(postBuilderIds\)/);
   assert.match(builderDetailPage, /where: \{ builderId: \{ in: builderIds \} \}/);
   assert.doesNotMatch(builderDetailPage, /where: \{ builder: \{ entityId \} \}/);
   assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
@@ -1755,7 +1758,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /return "Community source library"/);
   assert.match(builderDetailPage, /channel\.libraryName\.trim\(\)\.toLowerCase\(\) === label\.toLowerCase\(\)/);
   assert.match(builderDetailPage, /via \$\{formatChannelLibraryName\(viaChannel\)\}/);
-  assert.match(builderDetailPage, /builderIds: channels\.map\(\(channel\) => channel\.builderId\)/);
+  assert.match(builderDetailPage, /builderIds: postBuilderIds/);
   assert.doesNotMatch(builderDetailPage, /" · own"|" · community"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-control"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-button"/);
@@ -3631,8 +3634,12 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(workspaceTabShell, /router\.push\(target\.href!\)/);
   assert.match(
     buildersPage,
-    /selectedTab === "fetch" \? loadBuildersPageData\(\) : null/,
+    /selectedTab === "fetch" \? startFetchTabData\(\) : null/,
   );
+  assert.match(buildersPage, /syncDataPromise: loadFetchSyncData\(user\)/);
+  assert.match(buildersPage, /libraryDataPromise: loadSourceLibraryData\(user\)/);
+  assert.match(buildersPage, /<Suspense fallback=\{<FetchSyncFallback \/>\}>/);
+  assert.match(buildersPage, /<Suspense fallback=\{<FetchLibraryFallback \/>\}>/);
   assert.match(
     buildersPage,
     /selectedTab === "digest" \? loadDigestSourcesPageData\(\) : null/,
@@ -4139,6 +4146,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /No personal sources yet|No sources in your library yet/);
   assert.match(feedItemsRoute, /Source is not in your source library\./);
   assert.doesNotMatch(feedItemsRoute, /Source is not in your library/);
+  assert.match(buildersPage, /sharedAdminPostStatsForBuilders/);
+  assert.match(buildersPage, /feedItemCount: sharedStats\?\.count \?\? builder\._count\.feedItems/);
+  assert.match(buildersPage, /owner: \{ email: \{ in: adminEmails\(\) \} \}/);
+  assert.match(builderDetailPage, /postBuilderIdsForVisibleChannels/);
+  assert.match(builderDetailPage, /ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS/);
+  assert.match(builderDetailPage, /owner: \{ email: \{ in: adminEmails\(\) \} \}/);
+  assert.match(builderDetailPage, /builderIds: postBuilderIds/);
   assert.match(personalBuilderRoute, /Source URL is not allowed: \$\{check\.reason\}\./);
   assert.match(personalBuilderRoute, /findConflictingPersonalSource/);
   assert.match(personalBuilderRoute, /DUPLICATE_PERSONAL_SOURCE_ERROR/);
@@ -4169,7 +4183,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /email:\s*data\.sessionUserEmail/);
   assert.match(postCard, /<RelativeTime className="post-footer-published" value=\{post\.publishedAt\}/);
   assert.doesNotMatch(postCard, /formatDate\(post\.publishedAt/);
-  assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{fetchSyncSection\}[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
+  assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*<FetchSyncSection dataPromise=\{data\.syncDataPromise\} \/>[\s\S]*<SourceLibrarySections dataPromise=\{data\.libraryDataPromise\} \/>/);
+  assert.match(buildersPage, /async function SourceLibrarySections[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
   assert.doesNotMatch(buildersPage, /title="Your library"|\bYour library\b/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);

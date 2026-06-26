@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { BuilderKind, FeedItemKind } from "@prisma/client";
+import {
+  ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS,
+  isAdminFetchOnlySourceType,
+  normalizeAdminFetchOnlySourceType,
+} from "../src/lib/admin-fetch-only-sources";
 import { isAdminEmail } from "../src/lib/admin";
 import {
   builderLibraryKey,
@@ -111,6 +116,17 @@ test("builder libraryKey scopes per owner; canonicalKey is shared across users",
     builderLibraryKey({ ownerUserId: "user_b", canonicalKey }),
     "user:user_b:X:openai",
   );
+});
+
+test("admin-fetch-only source types are normalized and explicit", () => {
+  assert.deepEqual(ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS, [
+    "github_trending",
+    "product_hunt_top_products",
+  ]);
+  assert.equal(isAdminFetchOnlySourceType("github_trending"), true);
+  assert.equal(isAdminFetchOnlySourceType("Product Hunt Top Products"), true);
+  assert.equal(normalizeAdminFetchOnlySourceType("GitHub-Trending"), "github_trending");
+  assert.equal(isAdminFetchOnlySourceType("blog"), false);
 });
 
 test("manual builder input derives canonical fields from one handle or URL", async () => {
@@ -323,7 +339,7 @@ test("non-admin users default-import the admin community library and digest", ()
   assert.match(libraryHub, /hidden: true/);
   assert.match(libraryHub, /setLibraryHidden/);
   assert.match(hubImportRoute, /export async function DELETE/);
-  assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
+  assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(user\.id\)/);
   assert.match(buildersPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
@@ -403,6 +419,9 @@ test("skill sync route binds agent task items to referenced personal builders", 
   const route = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
 
   assert.match(route, /findExistingPersonalBuilderForSync/);
+  assert.match(route, /isAdminFetchOnlySourceType\(input\.sourceType\)/);
+  assert.match(route, /reason: "admin_fetch_only_source"/);
+  assert.match(route, /continue/);
   assert.match(route, /builderIdFromItems/);
   assert.match(route, /ownerUserId: userId/);
   assert.match(route, /ownerUserId: userId/);
@@ -416,6 +435,9 @@ test("library fetch candidates are recomputed from followed sources every run", 
 
   assert.match(contextRoute, /const subscribedBuilderIdSet = new Set/);
   assert.match(contextRoute, /if \(!subscribedBuilderIdSet\.has\(builder\.id\)\) return false/);
+  assert.match(contextRoute, /isAdminFetchOnlySourceType\(builder\.sourceType\)/);
+  assert.match(contextRoute, /fetchDisabledReason: "admin_fetch_only_source"/);
+  assert.match(contextRoute, /admin-fetch-only source types are fetched by admin and shared by entity/);
   assert.match(contextRoute, /if \(builder\.ownerUserId === user\.id\) return true/);
   assert.match(contextRoute, /return fetchedItemCountForBuilder\(builder\) === 0/);
   assert.match(contextRoute, /libraryFetchBuilders: annotatedLibraryFetchBuilders/);
@@ -1611,6 +1633,8 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   // Server is the authoritative gate: a no-summary item is a recorded FAILURE
   // (with reason), not a silent skip, and per-task results come back to the CLI.
   const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
+  assert.match(buildersRoute, /isAdminFetchOnlySourceType\(input\.sourceType\)/);
+  assert.match(buildersRoute, /reason: "admin_fetch_only_source"/);
   assert.match(buildersRoute, /itemResults/);
   assert.match(buildersRoute, /reason: "summary_missing"/);
   assert.match(buildersRoute, /status: "failed"/);
@@ -1826,6 +1850,8 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.doesNotMatch(contextRoute, /limit: 80/);
   assert.match(contextRoute, /candidateLimit: digestCandidateLimit/);
   assert.match(contextRoute, /excludeDigestedForUserId: regenerate \? null : user\.id/);
+  assert.match(contextRoute, /isAdminFetchOnlySourceType\(builder\.sourceType\)/);
+  assert.match(contextRoute, /!userIsAdmin/);
   assert.doesNotMatch(contextRoute, /newly fetched items created after the last digest/);
   assert.match(contextRoute, /regenerate/);
   assert.doesNotMatch(contextRoute, /legacyPrompts/);

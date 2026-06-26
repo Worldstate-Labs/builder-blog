@@ -5,6 +5,7 @@ import { homedir, hostname, platform, release, tmpdir, userInfo } from "node:os"
 import { basename, dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -86,7 +87,9 @@ function accountSlug() {
   const fromEnv = process.env.BUILDER_BLOG_ACCOUNT_SLUG?.trim();
   if (fromEnv) return fromEnv;
   const account = process.env.BUILDER_BLOG_ACCOUNT?.trim() || "default";
-  return account.replace(/[^a-zA-Z0-9]/g, "_");
+  const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+  const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+  return `${base}_${hash}`;
 }
 function jobTmpDir(defaultJobName = "") {
   const explicit = process.env.BUILDER_BLOG_JOB_TMP_DIR?.trim();
@@ -278,6 +281,8 @@ function usage() {
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   fetch-status-audit
   digest-status-audit
+  parse-runtime-usage --file runtime-output.log
+  aggregate-runtime-usage --out runtime-usage.json runtime-output-1.log runtime-output-2.log
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
   status
@@ -489,6 +494,139 @@ function numberOrNull(value) {
   return numeric || null;
 }
 
+function usageNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const normalized = value.replace(/[$,\s]/g, "");
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function usageInt(value) {
+  const parsed = usageNumber(value);
+  return parsed === null ? null : Math.max(0, Math.round(parsed));
+}
+
+function usageRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
+function normalizeRuntimeUsage(value, source = "runtime_output") {
+  const root = usageRecord(value);
+  if (!root) return null;
+  const usage = usageRecord(root.usage) ?? usageRecord(root.tokenUsage) ?? usageRecord(root.token_usage) ?? root;
+  const inputTokens = usageInt(
+    usage.inputTokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.prompt_tokens,
+  );
+  const outputTokens = usageInt(
+    usage.outputTokens ?? usage.output_tokens ?? usage.completionTokens ?? usage.completion_tokens,
+  );
+  const cachedInputTokens = usageInt(
+    usage.cachedInputTokens ??
+      usage.cached_input_tokens ??
+      usage.cacheReadInputTokens ??
+      usage.cache_read_input_tokens,
+  );
+  const reasoningTokens = usageInt(usage.reasoningTokens ?? usage.reasoning_tokens);
+  const explicitTotal = usageInt(usage.totalTokens ?? usage.total_tokens);
+  const totalTokens = explicitTotal ?? (
+    inputTokens !== null || outputTokens !== null || reasoningTokens !== null
+      ? (inputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
+      : null
+  );
+  const costUsd = usageNumber(
+    usage.costUsd ?? usage.cost_usd ?? usage.totalCostUsd ?? usage.total_cost_usd ?? usage.totalCost ?? usage.total_cost,
+  );
+  const currency = typeof usage.currency === "string" && usage.currency.trim()
+    ? usage.currency.trim()
+    : costUsd !== null
+      ? "USD"
+      : null;
+
+  if (
+    inputTokens === null &&
+    outputTokens === null &&
+    cachedInputTokens === null &&
+    reasoningTokens === null &&
+    totalTokens === null &&
+    costUsd === null
+  ) {
+    return null;
+  }
+
+  return {
+    inputTokens,
+    outputTokens,
+    cachedInputTokens,
+    reasoningTokens,
+    totalTokens,
+    costUsd,
+    currency,
+    source,
+  };
+}
+
+function addUsageSummaries(left, right) {
+  if (!left) return right;
+  if (!right) return left;
+  const sum = (key) => (
+    left[key] === null && right[key] === null ? null : (left[key] ?? 0) + (right[key] ?? 0)
+  );
+  return {
+    inputTokens: sum("inputTokens"),
+    outputTokens: sum("outputTokens"),
+    cachedInputTokens: sum("cachedInputTokens"),
+    reasoningTokens: sum("reasoningTokens"),
+    totalTokens: sum("totalTokens"),
+    costUsd: sum("costUsd"),
+    currency: left.currency ?? right.currency ?? null,
+    source: left.source === right.source ? left.source : "runtime_output",
+  };
+}
+
+function usageFromTextLine(line) {
+  const numberPattern = String.raw`([\d][\d,]*(?:\.\d+)?)`;
+  const inputTokens = usageInt(line.match(new RegExp(String.raw`(?:input|prompt)\s*tokens?[^0-9]+${numberPattern}`, "i"))?.[1]);
+  const outputTokens = usageInt(line.match(new RegExp(String.raw`(?:output|completion)\s*tokens?[^0-9]+${numberPattern}`, "i"))?.[1]);
+  const totalTokens = usageInt(line.match(new RegExp(String.raw`total\s*tokens?[^0-9]+${numberPattern}`, "i"))?.[1]);
+  const costUsd = usageNumber(line.match(new RegExp(String.raw`(?:total\s*)?cost[^0-9$]*\$?${numberPattern}`, "i"))?.[1]);
+  return normalizeRuntimeUsage({ inputTokens, outputTokens, totalTokens, costUsd }, "runtime_text");
+}
+
+function runtimeUsageFromText(text) {
+  let usage = null;
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith("{") && line.endsWith("}")) {
+      try {
+        usage = addUsageSummaries(usage, normalizeRuntimeUsage(JSON.parse(line), "runtime_jsonl"));
+        continue;
+      } catch {}
+    }
+    usage = addUsageSummaries(usage, usageFromTextLine(line));
+  }
+  return usage;
+}
+
+function runtimeUsageFromFile(path) {
+  if (!path || !existsSync(path)) return null;
+  try {
+    return runtimeUsageFromText(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function aggregateRuntimeUsageFromFiles(files) {
+  let usage = null;
+  for (const file of files) usage = addUsageSummaries(usage, runtimeUsageFromFile(file));
+  return usage;
+}
+
 async function postJson(url, body, token, options = {}) {
   return requestJson(url, {
     method: "POST",
@@ -687,6 +825,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
   const scheduleJob =
     scheduleJobRaw === "library-cron" || scheduleJobRaw === "digest-cron" ? scheduleJobRaw : null;
   const statusValue = argValue(args, "--status", defaultStatus);
+  const usage = runtimeUsageFromFile(argValue(args, "--usage-file", null));
   const startedAt = stringOrNull(argValue(args, "--started-at", envIso("BUILDER_BLOG_JOB_STARTED_AT"))) ?? new Date().toISOString();
   const expectedAt = stringOrNull(argValue(args, "--expected-at", envIso("BUILDER_BLOG_EXPECTED_AT")));
   const finishedAt = stringOrNull(argValue(args, "--finished-at"));
@@ -717,9 +856,32 @@ async function jobRunCommand(args, defaultStatus = "running") {
       termination: argValue(args, "--termination", null),
       providerError: argValue(args, "--provider-error", null),
       skippedWaitPids: argValue(args, "--skipped-wait-pids", null),
+      ...(usage ? { usage } : {}),
     },
   });
   console.log(JSON.stringify(result ?? { status: "skipped" }, null, 2));
+}
+
+async function parseRuntimeUsageCommand(args) {
+  const usage = runtimeUsageFromFile(argValue(args, "--file", null));
+  console.log(JSON.stringify(usage ? { usage } : { usage: null }, null, 2));
+}
+
+async function aggregateRuntimeUsageCommand(args) {
+  const out = argValue(args, "--out", null);
+  const outIndex = args.indexOf("--out");
+  const files = args.filter((arg, index) => {
+    if (outIndex !== -1 && (index === outIndex || index === outIndex + 1)) return false;
+    return !String(arg).startsWith("--");
+  });
+  const usage = aggregateRuntimeUsageFromFiles(files);
+  const payload = usage ? { usage } : { usage: null };
+  if (out) {
+    await mkdir(dirname(out), { recursive: true });
+    if (usage) await writeFile(out, `${JSON.stringify(payload)}\n`);
+    else await rm(out, { force: true });
+  }
+  console.log(JSON.stringify(payload, null, 2));
 }
 
 const FETCH_PROGRESS_VERSION = 1;
@@ -7941,6 +8103,8 @@ async function main() {
   else if (command === "cron-status") await cronStatus(args);
   else if (command === "fetch-status-audit") await fetchStatusAudit();
   else if (command === "digest-status-audit") await digestStatusAudit();
+  else if (command === "parse-runtime-usage") await parseRuntimeUsageCommand(args);
+  else if (command === "aggregate-runtime-usage") await aggregateRuntimeUsageCommand(args);
   else if (command === "job-run-start") await jobRunCommand(args, "starting");
   else if (command === "job-run-update") await jobRunCommand(args, "running");
   else if (command === "status") await status();

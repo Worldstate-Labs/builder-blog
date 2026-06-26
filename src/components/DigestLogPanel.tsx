@@ -15,6 +15,7 @@ import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { CountBadge, CountMeta, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
+import { RunUsageSummary } from "@/components/RunUsageSummary";
 import { useHydrated } from "@/components/ThemeToggle";
 import { relativeTime } from "@/lib/relative-time";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
@@ -38,6 +39,7 @@ import type {
 } from "@/lib/digest-runs";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import { postDetailHref } from "@/lib/navigation";
+import { readUsageSummary } from "@/lib/usage-summary";
 import {
   scheduledJobRunStatusLabel,
   scheduledRunTriggerLabel,
@@ -1507,6 +1509,7 @@ function DigestLogDialog({
     : run?.jobRunId
       ? jobsByInstanceId.get(run.jobRunId) ?? null
       : null;
+  const usage = readUsageSummary(jobRun?.details);
 
   return (
     <div className="sync-panel-log-dialog-backdrop" role="presentation" onMouseDown={onClose}>
@@ -1525,6 +1528,7 @@ function DigestLogDialog({
           </button>
         </header>
         <div className="sync-panel-log-dialog-body">
+          <RunUsageSummary usage={usage} />
           {run ? (
             <RunCard domId={null} jobRun={jobRun ?? undefined} run={run} suppressStalled={suppressStalled} />
           ) : jobRun ? (

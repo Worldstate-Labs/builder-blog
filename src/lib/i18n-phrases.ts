@@ -902,6 +902,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "소스 동기화",
     es: "Sincronización de fuentes",
   },
+  "Task usage": {
+    "zh-CN": "任务用量",
+    "zh-TW": "任務用量",
+    ja: "タスク使用量",
+    ko: "작업 사용량",
+    es: "Uso de la tarea",
+  },
   "Sources": {
     "zh-CN": "信息源",
     "zh-TW": "資訊源",

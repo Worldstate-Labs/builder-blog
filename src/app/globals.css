@@ -6915,6 +6915,41 @@ summary.library-section-summary::after {
   padding: 0.75rem;
 }
 
+.sync-panel-usage-summary {
+  background: color-mix(in oklch, var(--surface) 78%, var(--surface-raised));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 0.625rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 0.875rem;
+  padding: 0.75rem;
+}
+
+.sync-panel-usage-summary-item {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.sync-panel-usage-summary-item span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.sync-panel-usage-summary-item strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .sync-panel-log-dialog-body > .sync-panel-run-card {
   background: transparent;
   border: 0;
@@ -7835,6 +7870,10 @@ summary.library-section-summary::after {
 
   .sync-panel-run-card.sync-panel-mobile-flat .sync-panel-run-card-details-body {
     padding-inline: 0;
+  }
+
+  .sync-panel-usage-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sync-panel-slot-row {

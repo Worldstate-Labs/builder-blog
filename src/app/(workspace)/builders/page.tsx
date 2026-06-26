@@ -29,7 +29,11 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourcesTabShell } from "@/components/SourcesTabShell";
 import type { WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
-import { isAdminEmail } from "@/lib/admin";
+import { adminEmails, isAdminEmail } from "@/lib/admin";
+import {
+  ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS,
+  isAdminFetchOnlySourceType,
+} from "@/lib/admin-fetch-only-sources";
 import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
 import {
@@ -75,7 +79,13 @@ type BuilderWithCount = {
 };
 
 type LatestPostCreatedAtByBuilderId = Map<string, Date | null>;
-type BuildersPageData = Awaited<ReturnType<typeof loadBuildersPageData>>;
+type SharedAdminPostStatsByEntityId = Map<
+  string,
+  { count: number; latestPostCreatedAt: Date | null }
+>;
+type FetchTabData = Awaited<ReturnType<typeof startFetchTabData>>;
+type FetchSyncData = Awaited<ReturnType<typeof loadFetchSyncData>>;
+type SourceLibraryData = Awaited<ReturnType<typeof loadSourceLibraryData>>;
 type DigestSourcesPageData = Awaited<ReturnType<typeof loadDigestSourcesPageData>>;
 type SourcesTab = "fetch" | "digest";
 
@@ -111,7 +121,7 @@ export default async function BuildersPage({
   const selectedTab = parseSourcesTab(firstParam(params.tab));
   const selectedTabItem = selectedSourcesTabItem(selectedTab);
   const fetchDataPromise =
-    selectedTab === "fetch" ? loadBuildersPageData() : null;
+    selectedTab === "fetch" ? startFetchTabData() : null;
   const digestDataPromise =
     selectedTab === "digest" ? loadDigestSourcesPageData() : null;
 
@@ -388,28 +398,39 @@ async function loadDigestSourcesPageData() {
   };
 }
 
-async function loadBuildersPageData() {
+async function startFetchTabData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const isAdmin = isAdminEmail(session.user.email);
-  await ensureDefaultCommunityLibraryImport(session.user.id);
+  const user = {
+    id: session.user.id,
+    email: session.user.email,
+    name: session.user.name,
+    isAdmin,
+  };
 
+  return {
+    syncDataPromise: loadFetchSyncData(user),
+    libraryDataPromise: loadSourceLibraryData(user),
+  };
+}
+
+async function loadSourceLibraryData(user: {
+  id: string;
+  email: string | null | undefined;
+  name: string | null | undefined;
+  isAdmin: boolean;
+}) {
+  await ensureDefaultCommunityLibraryImport(user.id);
   const [
     poolEntries,
     subscriptions,
     importedLibraries,
     ownSharedLibrary,
     adminLibVisibility,
-    rawTokens,
-    rawFetchRuns,
-    rawCronRuns,
-    rawLibraryCronJob,
-    jobRuns,
-    scheduledJobRuns,
-    feedPreference,
   ] = await Promise.all([
     prisma.builderPoolEntry.findMany({
-      where: { userId: session.user.id, removedAt: null },
+      where: { userId: user.id, removedAt: null },
       include: {
         builder: {
           include: {
@@ -420,11 +441,11 @@ async function loadBuildersPageData() {
       orderBy: { createdAt: "asc" },
     }),
     prisma.subscription.findMany({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
       select: { builderId: true },
     }),
     prisma.libraryImport.findMany({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
       include: {
         hubEntry: {
           include: {
@@ -445,7 +466,7 @@ async function loadBuildersPageData() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.libraryHubEntry.findFirst({
-      where: { ownerUserId: session.user.id },
+      where: { ownerUserId: user.id },
       select: {
         id: true,
         name: true,
@@ -461,45 +482,11 @@ async function loadBuildersPageData() {
       });
       if (!featuredLib) return null;
       const vis = await prisma.userLibraryVisibility.findUnique({
-        where: { userId_hubEntryId: { userId: session.user.id, hubEntryId: featuredLib.id } },
+        where: { userId_hubEntryId: { userId: user.id, hubEntryId: featuredLib.id } },
         select: { hidden: true },
       });
       return { hidden: Boolean(vis?.hidden) };
     })(),
-    prisma.agentToken.findMany({
-      where: { userId: session.user.id, revokedAt: null },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        lastUsedAt: true,
-        lastIp: true,
-        lastUserAgent: true,
-        lastHostname: true,
-        lastPlatform: true,
-        lastUser: true,
-      },
-    }),
-    prisma.libraryFetchRun.findMany({
-      where: { userId: session.user.id },
-      orderBy: { startedAt: "desc" },
-      take: FETCH_RUN_QUERY_SIZE,
-    }),
-    prisma.libraryFetchRun.findMany({
-      where: { userId: session.user.id, source: "cron" },
-      orderBy: { startedAt: "desc" },
-      take: FETCH_RUN_QUERY_SIZE,
-    }),
-    prisma.libraryCronJob.findUnique({
-      where: { userId: session.user.id },
-    }),
-    getAgentJobRuns(session.user.id, "library-fetch", FETCH_RUN_QUERY_SIZE),
-    getScheduledAgentJobRuns(session.user.id, "library-cron", FETCH_RUN_QUERY_SIZE),
-    prisma.userFeedPreference.findUnique({
-      where: { userId: session.user.id },
-      select: { summaryLanguage: true, digestMaxPostAgeDays: true },
-    }),
   ]);
 
   const subscribedBuilderIds = new Set(subscriptions.map((s) => s.builderId));
@@ -515,7 +502,7 @@ async function loadBuildersPageData() {
     .filter(
       (entry) =>
         entry.origin === BuilderPoolOrigin.PERSONAL_SYNC &&
-        entry.builder.ownerUserId === session.user.id,
+        entry.builder.ownerUserId === user.id,
     )
     .map((entry) => entry.builder)
     .sort(builderSort);
@@ -540,43 +527,105 @@ async function loadBuildersPageData() {
         .sort(builderSort),
     };
   });
-  const subscribedCount = poolBuilders.filter((builder) => subscribed.has(builder.id)).length;
-  const fetchedItems = poolBuilders.reduce(
-    (count, builder) => count + builder._count.feedItems,
-    0,
-  );
   const isAdminCommunityLibraryHidden = Boolean(adminLibVisibility?.hidden);
-  let isPublicLibrary = isAdmin ? !isAdminCommunityLibraryHidden : Boolean(ownSharedLibrary);
+  let isPublicLibrary = user.isAdmin ? !isAdminCommunityLibraryHidden : Boolean(ownSharedLibrary);
   if (
-    isAdmin &&
+    user.isAdmin &&
     !isAdminCommunityLibraryHidden &&
     (!ownSharedLibrary ||
       ownSharedLibrary.name !== adminCommunityLibraryName ||
       ownSharedLibrary.description !== adminCommunityLibraryDescription ||
       ownSharedLibrary._count.items !== privateBuilders.length)
   ) {
-    const result = await ensureAdminCommunityLibrary(session.user.id);
+    const result = await ensureAdminCommunityLibrary(user.id);
     isPublicLibrary = result.isPublic;
   } else if (
-    !isAdmin &&
+    !user.isAdmin &&
     ownSharedLibrary &&
     ownSharedLibrary._count.items !== privateBuilders.length
   ) {
     await sharePersonalLibraryToHub({
-      userId: session.user.id,
+      userId: user.id,
       name: ownSharedLibrary.name,
       description: ownSharedLibrary.description,
     });
   }
-  const [latestPostCreatedAtByBuilderId, mergedSourceDefinitions, sourceCandidates] = await Promise.all([
+  const [
+    latestPostCreatedAtByBuilderId,
+    sharedAdminPostStatsByEntityId,
+    mergedSourceDefinitions,
+    sourceCandidates,
+  ] = await Promise.all([
     latestPostCreationTimes(poolBuilderIds),
+    sharedAdminPostStatsForBuilders(poolBuilders),
     getMergedSourceDefinitions(),
     ensureSourceCandidateLibraryFromAdminSources(),
   ]);
   const sourceLabelOptions = sourceOptionsForForms(mergedSourceDefinitions);
+  return {
+    importedLibrarySections,
+    isAdmin: user.isAdmin,
+    isPublicLibrary,
+    latestPostCreatedAtByBuilderId,
+    sharedAdminPostStatsByEntityId,
+    privateBuilders,
+    sessionUserEmail: user.email,
+    sessionUserName: user.name,
+    sourceLabelOptions,
+    sourceCandidates,
+    subscribed,
+  };
+}
 
+async function loadFetchSyncData(user: {
+  id: string;
+  isAdmin: boolean;
+}) {
+  const [
+    rawTokens,
+    rawFetchRuns,
+    rawCronRuns,
+    rawLibraryCronJob,
+    jobRuns,
+    scheduledJobRuns,
+    feedPreference,
+  ] = await Promise.all([
+    prisma.agentToken.findMany({
+      where: { userId: user.id, revokedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        lastUsedAt: true,
+        lastIp: true,
+        lastUserAgent: true,
+        lastHostname: true,
+        lastPlatform: true,
+        lastUser: true,
+      },
+    }),
+    prisma.libraryFetchRun.findMany({
+      where: { userId: user.id },
+      orderBy: { startedAt: "desc" },
+      take: FETCH_RUN_QUERY_SIZE,
+    }),
+    prisma.libraryFetchRun.findMany({
+      where: { userId: user.id, source: "cron" },
+      orderBy: { startedAt: "desc" },
+      take: FETCH_RUN_QUERY_SIZE,
+    }),
+    prisma.libraryCronJob.findUnique({
+      where: { userId: user.id },
+    }),
+    getAgentJobRuns(user.id, "library-fetch", FETCH_RUN_QUERY_SIZE),
+    getScheduledAgentJobRuns(user.id, "library-cron", FETCH_RUN_QUERY_SIZE),
+    prisma.userFeedPreference.findUnique({
+      where: { userId: user.id },
+      select: { summaryLanguage: true, digestMaxPostAgeDays: true },
+    }),
+  ]);
   const activeTokens = serializeAgentTokens(rawTokens);
-
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
     startedAt: run.startedAt.toISOString(),
@@ -639,25 +688,13 @@ async function loadBuildersPageData() {
 
   return {
     activeTokens,
-    fetchedItems,
     cronRuns,
     fetchRuns,
     hasMoreFetchHistory,
     jobRuns: jobRuns.slice(0, FETCH_RUN_PAGE_SIZE),
     libraryCronJob,
     scheduledJobRuns: scheduledJobRuns.slice(0, FETCH_RUN_PAGE_SIZE),
-    importedLibrarySections,
-    isAdmin,
-    isPublicLibrary,
-    latestPostCreatedAtByBuilderId,
-    poolBuilders,
-    privateBuilders,
-    sessionUserEmail: session.user.email,
-    sessionUserName: session.user.name,
-    sourceLabelOptions,
-    sourceCandidates,
-    subscribed,
-    subscribedCount,
+    isAdmin: user.isAdmin,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
   };
@@ -728,19 +765,30 @@ function formSourceTypeLabel(source: { id: string; label: string }) {
 async function FetchSourcesSection({
   dataPromise,
 }: {
-  dataPromise: Promise<BuildersPageData>;
+  dataPromise: Promise<FetchTabData>;
+}) {
+  const data = await dataPromise;
+  return (
+    <section className="sources-section-stack">
+      <Suspense fallback={<FetchSyncFallback />}>
+        <FetchSyncSection dataPromise={data.syncDataPromise} />
+      </Suspense>
+      <Suspense fallback={<FetchLibraryFallback />}>
+        <SourceLibrarySections dataPromise={data.libraryDataPromise} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function FetchSyncSection({
+  dataPromise,
+}: {
+  dataPromise: Promise<FetchSyncData>;
 }) {
   const data = await dataPromise;
   const showStopLibraryCron = data.libraryCronJob?.status === "active";
-  const userLibraryName =
-    data.isAdmin
-      ? adminCommunityLibraryName
-      : personalSourceLibraryName({
-          name: data.sessionUserName,
-          email: data.sessionUserEmail,
-        });
 
-  const fetchSyncSection = (
+  return (
     <section
       className="sources-sync-section sources-sync-panel library-section-panel"
       aria-labelledby="source-syncing-section-title"
@@ -782,6 +830,21 @@ async function FetchSourcesSection({
       </div>
     </section>
   );
+}
+
+async function SourceLibrarySections({
+  dataPromise,
+}: {
+  dataPromise: Promise<SourceLibraryData>;
+}) {
+  const data = await dataPromise;
+  const userLibraryName =
+    data.isAdmin
+      ? adminCommunityLibraryName
+      : personalSourceLibraryName({
+          name: data.sessionUserName,
+          email: data.sessionUserEmail,
+        });
 
   const privateSection = (
     <section className="your-library-section" aria-labelledby="sources-library-section-title">
@@ -809,6 +872,7 @@ async function FetchSourcesSection({
               allowRemove: true,
               builder,
               latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+              sharedAdminPostStatsByEntityId: data.sharedAdminPostStatsByEntityId,
               subscribed: data.subscribed.has(builder.id),
             }),
           )}
@@ -859,6 +923,7 @@ async function FetchSourcesSection({
                   allowRemove: false,
                   builder,
                   latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+                  sharedAdminPostStatsByEntityId: data.sharedAdminPostStatsByEntityId,
                   subscribed: data.subscribed.has(builder.id),
                 }),
               )}
@@ -883,11 +948,10 @@ async function FetchSourcesSection({
   );
 
   return (
-    <section className="sources-section-stack">
-      {fetchSyncSection}
+    <>
       {privateSection}
       {importedSection}
-    </section>
+    </>
   );
 }
 
@@ -895,37 +959,49 @@ function FetchSourcesFallback() {
   return (
     <section className="sources-section-stack" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading Sources</span>
-      <section className="sources-sync-section sources-sync-panel library-section-panel">
-        <div className="library-section-summary library-section-summary--static">
+      <FetchSyncFallback />
+      <FetchLibraryFallback />
+    </section>
+  );
+}
+
+function FetchSyncFallback() {
+  return (
+    <section className="sources-sync-section sources-sync-panel library-section-panel">
+      <div className="library-section-summary library-section-summary--static">
+        <div className="library-section-summary-copy source-section-skeleton-copy">
+          <h2 className="fb-section-heading">Source syncing</h2>
+          <div className="source-section-skeleton-desc" />
+        </div>
+      </div>
+      <div className="library-section-body">
+        <div className="source-sync-skeleton-panel" />
+      </div>
+    </section>
+  );
+}
+
+function FetchLibraryFallback() {
+  return (
+    <section className="your-library-panel library-section-panel" aria-busy="true">
+      <div className="source-sync-skeleton-line" />
+      <div className="source-sync-skeleton-panel" />
+      <div className="library-section-panel">
+        <div className="library-section-summary">
           <div className="library-section-summary-copy source-section-skeleton-copy">
-            <h2 className="fb-section-heading">Source syncing</h2>
+            <div className="source-section-skeleton-title" />
             <div className="source-section-skeleton-desc" />
+          </div>
+          <div className="library-section-meta">
+            <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
+            <div className="source-section-skeleton-chip" />
           </div>
         </div>
         <div className="library-section-body">
-          <div className="source-sync-skeleton-panel" />
+          <div className="source-section-skeleton-row" />
+          <div className="source-section-skeleton-card" />
         </div>
-      </section>
-      <section className="your-library-panel library-section-panel">
-        <div className="source-sync-skeleton-line" />
-        <div className="source-sync-skeleton-panel" />
-        <div className="library-section-panel">
-          <div className="library-section-summary">
-            <div className="library-section-summary-copy source-section-skeleton-copy">
-              <div className="source-section-skeleton-title" />
-              <div className="source-section-skeleton-desc" />
-            </div>
-            <div className="library-section-meta">
-              <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
-              <div className="source-section-skeleton-chip" />
-            </div>
-          </div>
-          <div className="library-section-body">
-            <div className="source-section-skeleton-row" />
-            <div className="source-section-skeleton-card" />
-          </div>
-        </div>
-      </section>
+      </div>
     </section>
   );
 }
@@ -934,13 +1010,19 @@ function builderListItem({
   allowRemove,
   builder,
   latestPostCreatedAt,
+  sharedAdminPostStatsByEntityId,
   subscribed,
 }: {
   allowRemove: boolean;
   builder: BuilderWithCount;
   latestPostCreatedAt: Date | null;
+  sharedAdminPostStatsByEntityId: SharedAdminPostStatsByEntityId;
   subscribed: boolean;
 }): BuilderLibraryListItem {
+  const sharedStats = sharedAdminPostStatsForBuilder(
+    builder,
+    sharedAdminPostStatsByEntityId,
+  );
   return {
     id: builder.id,
     entityId: builder.entityId,
@@ -953,8 +1035,9 @@ function builderListItem({
     avatarUrl: builder.avatarUrl ?? null,
     avatarDataUrl: builder.avatarDataUrl ?? null,
     createdAt: builder.createdAt.toISOString(),
-    feedItemCount: builder._count.feedItems,
-    latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,
+    feedItemCount: sharedStats?.count ?? builder._count.feedItems,
+    latestPostCreatedAt:
+      (sharedStats?.latestPostCreatedAt ?? latestPostCreatedAt)?.toISOString() ?? null,
     subscribed,
     allowRemove,
   };
@@ -1114,4 +1197,83 @@ async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPost
   });
 
   return new Map(rows.flatMap((row) => (row.builderId ? [[row.builderId, row._max.publishedAt]] : [])));
+}
+
+async function sharedAdminPostStatsForBuilders(
+  builders: Array<Pick<BuilderWithCount, "entityId" | "sourceType">>,
+): Promise<SharedAdminPostStatsByEntityId> {
+  const entityIds = [
+    ...new Set(
+      builders
+        .filter(
+          (builder) =>
+            builder.entityId && isAdminFetchOnlySourceType(builder.sourceType),
+        )
+        .map((builder) => builder.entityId!),
+    ),
+  ];
+  if (entityIds.length === 0) return new Map();
+
+  const adminBuilders = await prisma.builder.findMany({
+    where: {
+      entityId: { in: entityIds },
+      sourceType: { in: [...ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS] },
+      owner: { email: { in: adminEmails() } },
+    },
+    select: { id: true, entityId: true },
+  });
+  const entityIdByAdminBuilderId = new Map(
+    adminBuilders.flatMap((builder) =>
+      builder.entityId ? [[builder.id, builder.entityId] as const] : [],
+    ),
+  );
+  const adminBuilderIds = [...entityIdByAdminBuilderId.keys()];
+  if (adminBuilderIds.length === 0) return new Map();
+
+  const rows = await prisma.feedItem.groupBy({
+    by: ["builderId", "kind", "externalId"],
+    where: { builderId: { in: adminBuilderIds } },
+    _max: { publishedAt: true, createdAt: true },
+  });
+
+  const statsByEntityId = new Map<
+    string,
+    { contentKeys: Set<string>; latestPostCreatedAt: Date | null }
+  >();
+  for (const row of rows) {
+    const entityId = row.builderId
+      ? entityIdByAdminBuilderId.get(row.builderId)
+      : null;
+    if (!entityId) continue;
+    const stats =
+      statsByEntityId.get(entityId) ??
+      { contentKeys: new Set<string>(), latestPostCreatedAt: null };
+    stats.contentKeys.add(`${row.kind}:${row.externalId}`);
+    const rowDate = row._max.publishedAt ?? row._max.createdAt;
+    if (!rowDate) continue;
+    if (!stats.latestPostCreatedAt || rowDate > stats.latestPostCreatedAt) {
+      stats.latestPostCreatedAt = rowDate;
+    }
+    statsByEntityId.set(entityId, stats);
+  }
+
+  return new Map(
+    Array.from(statsByEntityId, ([entityId, stats]) => [
+      entityId,
+      {
+        count: stats.contentKeys.size,
+        latestPostCreatedAt: stats.latestPostCreatedAt,
+      },
+    ]),
+  );
+}
+
+function sharedAdminPostStatsForBuilder(
+  builder: Pick<BuilderWithCount, "entityId" | "sourceType">,
+  sharedAdminPostStatsByEntityId: SharedAdminPostStatsByEntityId,
+) {
+  if (!builder.entityId || !isAdminFetchOnlySourceType(builder.sourceType)) {
+    return null;
+  }
+  return sharedAdminPostStatsByEntityId.get(builder.entityId) ?? null;
 }
