@@ -433,8 +433,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /\{formatCount\(stats\.planned\)\}<\/strong> planned/);
   assert.doesNotMatch(panel, /\{formatCount\(stats\.read\)\}<\/strong> read/);
   assert.doesNotMatch(panel, /\{formatCount\(stats\.summarized\)\}<\/strong> summarized/);
-  assert.doesNotMatch(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
-  assert.match(panel, /\{formatCount\(stats\.accounted\)\}<\/strong> accounted/);
+  assert.match(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
+  assert.doesNotMatch(panel, /\{formatCount\(stats\.accounted\)\}<\/strong> done/);
   assert.match(panel, /readUsageSummary\(value\.usage, value\)/);
   assert.match(panel, /const usageText = formatInlineUsage\(workerGroup\.usage\)/);
   assert.match(panel, /className="sync-panel-task-worker-meta"/);
@@ -686,8 +686,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-chev fb-task-chev"/);
   assert.doesNotMatch(panel, /className="sync-panel-task-source-type"/);
   assert.doesNotMatch(panel, /\{group\.sourceType\}<\/span>/);
-  assert.match(panel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.accounted\} accounted\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
-  assert.match(panel, /\{formatCount\(stats\.accounted\)\}<\/strong> accounted/);
+  assert.match(panel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.synced\} synced\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
+  assert.match(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
   assert.match(panel, /className="sync-panel-task-source-stat is-danger"/);
   assert.match(panel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-title"/);

@@ -2596,14 +2596,14 @@ function DetailsBody({
                               <summary className="sync-panel-task-source-summary">
                                 <span className="sync-panel-task-source-name">{group.name}</span>
                                 <span
-                                  aria-label={`${group.name}: ${stats.planned} planned, ${stats.accounted} accounted${stats.failed > 0 ? `, ${stats.failed} failed` : ""}`}
+                                  aria-label={`${group.name}: ${stats.planned} planned, ${stats.synced} synced${stats.failed > 0 ? `, ${stats.failed} failed` : ""}`}
                                   className="sync-panel-task-source-meta"
                                 >
                                   <span className="sync-panel-task-source-stat">
                                     <strong>{formatCount(stats.planned)}</strong> planned
                                   </span>
                                   <span className="sync-panel-task-source-stat">
-                                    <strong>{formatCount(stats.accounted)}</strong> accounted
+                                    <strong>{formatCount(stats.synced)}</strong> synced
                                   </span>
                                   {stats.failed > 0 ? (
                                     <span className="sync-panel-task-source-stat is-danger">
