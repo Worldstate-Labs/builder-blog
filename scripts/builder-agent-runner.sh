@@ -308,7 +308,7 @@ run_with_codex() {
   _codex_usage="$(agent_usage_file codex)"
   LAST_AGENT_OUTPUT_FILE="$_codex_output"
   LAST_AGENT_USAGE_FILE="$_codex_usage"
-  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.5-mini}"
+  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.4-mini}"
   set +e
   if structured_usage_enabled; then
     codex exec --json --model "$_codex_model" --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
@@ -446,7 +446,7 @@ run_with_codex_unattended() {
   LAST_AGENT_USAGE_FILE="$_codex_usage"
   # Default to a cheaper model to keep digest/library runs inexpensive;
   # override per run/job with BUILDER_BLOG_CODEX_MODEL.
-  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.5-mini}"
+  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.4-mini}"
   set +e
   if structured_usage_enabled; then
     codex exec --json --model "$_codex_model" --skip-git-repo-check --full-auto \
