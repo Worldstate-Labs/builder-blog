@@ -166,21 +166,60 @@ export async function GET(request: Request) {
   const personalBuilderIds = libraryBuilders
     .filter((builder) => builder.ownerUserId === user.id)
     .map((builder) => builder.id);
+  const activePoolBuilderIdSet = new Set(poolBuilderIds);
+  const subscribedBuilderIdSet = new Set(
+    subscriptions
+      .filter((sub) => activePoolBuilderIdSet.has(sub.builderId))
+      .map((sub) => sub.builderId),
+  );
+  const libraryFetchItemCounts = isLibrary && poolBuilderIds.length
+    ? await prisma.feedItem.groupBy({
+        by: ["builderId"],
+        where: {
+          builderId: { in: poolBuilderIds },
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const fetchedItemCountByBuilderId = new Map(
+    libraryFetchItemCounts
+      .filter((row) => row.builderId)
+      .map((row) => [row.builderId!, row._count._all]),
+  );
+  const fetchedItemCountForBuilder = (builder: (typeof libraryBuilders)[number]) =>
+    fetchedItemCountByBuilderId.get(builder.id) ?? builder.itemCount ?? 0;
+  const libraryFetchBuilders = isLibrary
+    ? libraryBuilders.filter((builder) => {
+        if (!subscribedBuilderIdSet.has(builder.id)) return false;
+        if (builder.ownerUserId === user.id) return true;
+        return fetchedItemCountForBuilder(builder) === 0;
+      })
+    : [];
+  const libraryFetchBuilderIds = libraryFetchBuilders.map((builder) => builder.id);
+  const libraryFetchBuilderIdSet = new Set(libraryFetchBuilderIds);
 
   // Annotate the requesting user's own builders with scope="PERSONAL" so
-  // the local agent CLI's personalBuildersForFetch filter can pick them up.
-  // Imported builders (from other users' hub libraries) are left without
-  // a scope — the codebase intentionally has no "CENTRAL" concept; the
-  // owner-based check is the source of truth. Strip the original
+  // legacy local agent CLIs can still pick them up. New CLIs use
+  // `libraryFetchBuilders` below, which is recomputed on every context request:
+  // only followed sources are fetched; imported followed sources are fetched
+  // only when that source has no fetched posts yet. Strip the original
   // `ownerUserId` from rows the requester does not own to avoid leaking
   // other users' internal IDs through the API.
   const personalBuilderIdSet = new Set(personalBuilderIds);
-  const annotatedLibraryBuilders = libraryBuilders.map((builder) => {
+  const annotateLibraryBuilder = (builder: (typeof libraryBuilders)[number]) => {
     if (personalBuilderIdSet.has(builder.id)) {
       return { ...builder, scope: "PERSONAL" as const };
     }
     return { ...builder, ownerUserId: null };
-  });
+  };
+  const annotatedLibraryBuilders = libraryBuilders.map(annotateLibraryBuilder);
+  const annotatedLibraryFetchBuilders = libraryFetchBuilders.map((builder) => ({
+    ...annotateLibraryBuilder(builder),
+    fetchScope: builder.ownerUserId === user.id
+      ? "followed_personal"
+      : "followed_imported_empty",
+    fetchedItemCount: fetchedItemCountForBuilder(builder),
+  }));
 
   // Subscriptions are per-channel; derive the entity set from the builder's entityId.
   const subscribedEntityIds = [
@@ -192,7 +231,7 @@ export async function GET(request: Request) {
   ];
   // Fetch-state per channel lives inline on Builder.
   const personalFetchStates = libraryBuilders
-    .filter((b) => personalBuilderIds.includes(b.id))
+    .filter((b) => libraryFetchBuilderIdSet.has(b.id))
     .map((b) => ({
       builderId: b.id,
       entityId: b.entityId,
@@ -225,11 +264,11 @@ export async function GET(request: Request) {
 
   // Library-only: the user's own fetched-item state (for dedup + recency).
   // Skipped for a digest prepare, which never reads these.
-  const personalEntityIds = isLibrary ? await projectBuildersToEntities(personalBuilderIds) : [];
+  const personalEntityIds = isLibrary ? await projectBuildersToEntities(libraryFetchBuilderIds) : [];
   const personalFetchedItems = isLibrary
     ? await prisma.feedItem.findMany({
         where: {
-          builderId: { in: personalBuilderIds },
+          builderId: { in: libraryFetchBuilderIds },
         },
         select: {
           builderId: true,
@@ -342,6 +381,13 @@ export async function GET(request: Request) {
         "include every subscribed-entity post the user has not yet had digested within the configured lookback window; regenerate=true re-includes already-digested posts",
     },
     libraryBuilders: annotatedLibraryBuilders,
+    libraryFetchBuilders: annotatedLibraryFetchBuilders,
+    libraryFetchSelection: {
+      rule:
+        "fetch followed personal sources; fetch followed imported sources only when they have no fetched posts",
+      followedBuilderCount: subscribedBuilderIdSet.size,
+      selectedBuilderCount: annotatedLibraryFetchBuilders.length,
+    },
     personalFetchStates,
     personalFetchedItems,
     personalEntityIds,

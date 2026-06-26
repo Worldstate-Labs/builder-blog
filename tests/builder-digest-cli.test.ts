@@ -2053,6 +2053,36 @@ test("personal fetcher keeps fetched builders eligible and tracks fetched post k
   );
 });
 
+test("personal fetcher uses the server-computed real-time library fetch candidates", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = {
+    libraryBuilders: [
+      {
+        id: "personal_followed",
+        scope: "PERSONAL",
+        kind: "BLOG",
+        name: "Personal followed source",
+        sourceUrl: "https://example.com/personal",
+      },
+    ],
+    libraryFetchBuilders: [
+      {
+        id: "imported_followed_empty",
+        scope: "IMPORTED",
+        fetchScope: "followed_imported_empty",
+        kind: "BLOG",
+        name: "Imported followed empty source",
+        sourceUrl: "https://example.com/imported",
+      },
+    ],
+  };
+
+  assert.deepEqual(
+    cli.personalBuildersForFetch(context).map((builder: { id: string }) => builder.id),
+    ["imported_followed_empty"],
+  );
+});
+
 test("library fetch reconciliation defaults to the job-specific tmp directory", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const previousJobTmp = process.env.BUILDER_BLOG_JOB_TMP_DIR;

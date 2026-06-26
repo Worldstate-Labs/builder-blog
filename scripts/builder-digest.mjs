@@ -2016,6 +2016,9 @@ function singlePostSummaryPrompt(source) {
 }
 
 export function personalBuildersForFetch(context) {
+  if (Array.isArray(context.libraryFetchBuilders)) {
+    return context.libraryFetchBuilders;
+  }
   return (context.libraryBuilders ?? []).filter(
     (builder) => builder.scope === "PERSONAL",
   );

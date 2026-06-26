@@ -410,6 +410,20 @@ test("skill sync route binds agent task items to referenced personal builders", 
   assert.doesNotMatch(route, /Referenced personal builder was not found/);
 });
 
+test("library fetch candidates are recomputed from followed sources every run", () => {
+  const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
+  const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
+
+  assert.match(contextRoute, /const subscribedBuilderIdSet = new Set/);
+  assert.match(contextRoute, /if \(!subscribedBuilderIdSet\.has\(builder\.id\)\) return false/);
+  assert.match(contextRoute, /if \(builder\.ownerUserId === user\.id\) return true/);
+  assert.match(contextRoute, /return fetchedItemCountForBuilder\(builder\) === 0/);
+  assert.match(contextRoute, /libraryFetchBuilders: annotatedLibraryFetchBuilders/);
+  assert.match(contextRoute, /libraryFetchSelection/);
+  assert.match(cli, /Array\.isArray\(context\.libraryFetchBuilders\)/);
+  assert.match(cli, /return context\.libraryFetchBuilders/);
+});
+
 test("web app serves the agent skill and setup command", () => {
   const settingsPanel = readFileSync("src/components/AgentTokenPanel.tsx", "utf8");
   const skillPromptActions = readFileSync("src/components/SkillPromptActions.tsx", "utf8");
