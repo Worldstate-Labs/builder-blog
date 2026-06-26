@@ -5,7 +5,10 @@ export type UsageSummary = {
   reasoningTokens: number | null;
   totalTokens: number | null;
   costUsd: number | null;
+  costEstimated: boolean;
   currency: string | null;
+  provider: string | null;
+  model: string | null;
   source: string | null;
 };
 
@@ -35,31 +38,49 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function booleanValue(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
+  }
+  return false;
+}
+
 function readUsageFromRecord(value: Record<string, unknown>): UsageSummary | null {
   const usage = record(value.usage) ?? record(value.tokenUsage) ?? record(value.token_usage) ?? value;
   const inputTokens = intValue(
-    usage.inputTokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.prompt_tokens,
+    usage.inputTokens ?? usage.input_tokens ?? usage.input ?? usage.promptTokens ?? usage.prompt_tokens,
   );
   const outputTokens = intValue(
-    usage.outputTokens ?? usage.output_tokens ?? usage.completionTokens ?? usage.completion_tokens,
+    usage.outputTokens ?? usage.output_tokens ?? usage.output ?? usage.completionTokens ?? usage.completion_tokens,
   );
   const cachedInputTokens = intValue(
     usage.cachedInputTokens ??
       usage.cached_input_tokens ??
       usage.cacheReadInputTokens ??
-      usage.cache_read_input_tokens,
+      usage.cache_read_input_tokens ??
+      usage.cacheRead ??
+      usage.cache_read ??
+      usage.cacheReadTokens ??
+      usage.cache_read_tokens,
   );
   const reasoningTokens = intValue(usage.reasoningTokens ?? usage.reasoning_tokens);
-  const explicitTotal = intValue(usage.totalTokens ?? usage.total_tokens);
+  const explicitTotal = intValue(usage.totalTokens ?? usage.total_tokens ?? usage.total);
   const totalTokens = explicitTotal ?? (
-    inputTokens !== null || outputTokens !== null || reasoningTokens !== null
-      ? (inputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
+    inputTokens !== null || outputTokens !== null || cachedInputTokens !== null || reasoningTokens !== null
+      ? (inputTokens ?? cachedInputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
       : null
   );
   const costUsd = numberValue(
     usage.costUsd ?? usage.cost_usd ?? usage.totalCostUsd ?? usage.total_cost_usd ?? usage.totalCost ?? usage.total_cost,
   );
+  const costEstimated = booleanValue(
+    usage.costEstimated ?? usage.cost_estimated ?? usage.estimatedCost ?? usage.estimated_cost,
+  );
   const currency = stringValue(usage.currency) ?? (costUsd !== null ? "USD" : null);
+  const provider = stringValue(usage.provider);
+  const model = stringValue(usage.model);
   const source = stringValue(usage.source);
 
   if (
@@ -80,7 +101,10 @@ function readUsageFromRecord(value: Record<string, unknown>): UsageSummary | nul
     reasoningTokens,
     totalTokens,
     costUsd,
+    costEstimated,
     currency,
+    provider,
+    model,
     source,
   };
 }
@@ -103,12 +127,14 @@ export function formatUsageCost(usage: UsageSummary): string {
   if (usage.costUsd === null) return "Not reported";
   const currency = usage.currency || "USD";
   try {
-    return new Intl.NumberFormat("en-US", {
+    const formatted = new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
       maximumFractionDigits: usage.costUsd < 1 ? 4 : 2,
     }).format(usage.costUsd);
+    return usage.costEstimated ? `est. ${formatted}` : formatted;
   } catch {
-    return `$${usage.costUsd.toFixed(usage.costUsd < 1 ? 4 : 2)}`;
+    const formatted = `$${usage.costUsd.toFixed(usage.costUsd < 1 ? 4 : 2)}`;
+    return usage.costEstimated ? `est. ${formatted}` : formatted;
   }
 }

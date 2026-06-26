@@ -2521,7 +2521,10 @@ function mergeUsageSummary(left: UsageSummary | null, right: UsageSummary | null
     reasoningTokens: sum("reasoningTokens"),
     totalTokens: sum("totalTokens"),
     costUsd: sum("costUsd"),
+    costEstimated: Boolean(left.costEstimated || right.costEstimated),
     currency: left.currency ?? right.currency,
+    provider: left.provider === right.provider ? left.provider : left.provider ?? right.provider,
+    model: left.model === right.model ? left.model : left.model ?? right.model,
     source: left.source ?? right.source,
   };
 }

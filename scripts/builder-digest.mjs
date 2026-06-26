@@ -514,6 +514,124 @@ function usageRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
 
+function usageBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "no") return false;
+  }
+  return false;
+}
+
+function usageString(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function usageEnvKeyPart(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function usageRateModelKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// Public OpenAI API text-token prices per 1M tokens. Runtime env overrides
+// below still win; this table exists so OpenClaw/Gateway logs that include
+// provider+model can produce a useful estimated cost without per-user setup.
+const DEFAULT_USAGE_PRICES_PER_1M = {
+  "openai-codex:gpt-5-4": { input: 2.5, cachedInput: 0.25, output: 15 },
+  "openai:gpt-5-4": { input: 2.5, cachedInput: 0.25, output: 15 },
+  "openai-codex:gpt-5-4-mini": { input: 0.375, cachedInput: 0.0375, output: 2.25 },
+  "openai:gpt-5-4-mini": { input: 0.375, cachedInput: 0.0375, output: 2.25 },
+  "openai-codex:gpt-5-4-nano": { input: 0.1, cachedInput: 0.01, output: 0.625 },
+  "openai:gpt-5-4-nano": { input: 0.1, cachedInput: 0.01, output: 0.625 },
+};
+
+function usagePriceEnvValue(names) {
+  for (const name of names) {
+    const value = process.env[name];
+    const parsed = usageNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+function usagePricePerMillion(kind, { runtime, provider, model }) {
+  const runtimeKey = usageEnvKeyPart(runtime);
+  const providerKey = usageEnvKeyPart(provider);
+  const modelKey = usageEnvKeyPart(model);
+  const kindKey = usageEnvKeyPart(kind);
+  const names = [];
+  if (runtimeKey && providerKey && modelKey) {
+    names.push(`BUILDER_BLOG_USAGE_${runtimeKey}_${providerKey}_${modelKey}_${kindKey}_PER_1M`);
+  }
+  if (runtimeKey && modelKey) {
+    names.push(`BUILDER_BLOG_USAGE_${runtimeKey}_${modelKey}_${kindKey}_PER_1M`);
+  }
+  if (runtimeKey) names.push(`BUILDER_BLOG_USAGE_${runtimeKey}_${kindKey}_PER_1M`);
+  names.push(`BUILDER_BLOG_USAGE_${kindKey}_PER_1M`);
+  const envValue = usagePriceEnvValue(names);
+  if (envValue !== null) return envValue;
+
+  const rateProviderKey = usageRateModelKey(provider);
+  const rateModelKey = usageRateModelKey(model);
+  const rates =
+    DEFAULT_USAGE_PRICES_PER_1M[`${rateProviderKey}:${rateModelKey}`] ??
+    DEFAULT_USAGE_PRICES_PER_1M[`openai:${rateModelKey}`];
+  if (!rates) return null;
+  if (kind === "input") return rates.input ?? null;
+  if (kind === "output") return rates.output ?? null;
+  if (kind === "cached_input") return rates.cachedInput ?? null;
+  if (kind === "reasoning") return rates.output ?? null;
+  return null;
+}
+
+function runtimeFromUsageSource(source) {
+  const value = String(source || "").trim();
+  const match = value.match(/^([a-z0-9]+)(?:_|$)/i);
+  return match?.[1] ?? null;
+}
+
+function estimateRuntimeUsageCost({
+  cachedInputTokens,
+  inputTokens,
+  outputTokens,
+  reasoningTokens,
+  source,
+  provider,
+  model,
+}) {
+  const runtime = runtimeFromUsageSource(source);
+  const context = { runtime, provider, model };
+  const rates = {
+    input: usagePricePerMillion("input", context),
+    output: usagePricePerMillion("output", context),
+    cachedInput: usagePricePerMillion("cached_input", context),
+    reasoning: usagePricePerMillion("reasoning", context),
+  };
+  let cost = 0;
+  let hasRate = false;
+  const add = (tokens, rate) => {
+    if (tokens === null || rate === null) return;
+    hasRate = true;
+    cost += (tokens * rate) / 1_000_000;
+  };
+  add(inputTokens, rates.input);
+  add(outputTokens, rates.output);
+  add(cachedInputTokens, rates.cachedInput);
+  add(reasoningTokens, rates.reasoning);
+  return hasRate ? cost : null;
+}
+
 function normalizeRuntimeUsage(value, source = "runtime_output") {
   const root = usageRecord(value);
   if (!root) return null;
@@ -545,22 +663,26 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
   const inputTokens = usageInt(
     usage.inputTokens ??
       usage.input_tokens ??
+      usage.input ??
       usage.promptTokens ??
       usage.prompt_tokens ??
       usage.prompt ??
       root.inputTokens ??
       root.input_tokens ??
+      root.input ??
       root.promptTokens ??
       root.prompt_tokens,
   );
   const outputTokens = usageInt(
     usage.outputTokens ??
       usage.output_tokens ??
+      usage.output ??
       usage.completionTokens ??
       usage.completion_tokens ??
       usage.completion ??
       root.outputTokens ??
       root.output_tokens ??
+      root.output ??
       root.completionTokens ??
       root.completion_tokens,
   );
@@ -569,6 +691,10 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
       usage.cached_input_tokens ??
       usage.cacheReadInputTokens ??
       usage.cache_read_input_tokens ??
+      usage.cacheRead ??
+      usage.cache_read ??
+      usage.cacheReadTokens ??
+      usage.cache_read_tokens ??
       usage.cache_read_tokens ??
       usage.cached_tokens ??
       usage.cacheCreationInputTokens ??
@@ -577,6 +703,8 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
       inputDetails?.cached_tokens ??
       inputDetails?.cacheReadInputTokens ??
       inputDetails?.cache_read_input_tokens ??
+      inputDetails?.cacheRead ??
+      inputDetails?.cache_read ??
       root.cachedInputTokens ??
       root.cached_input_tokens,
   );
@@ -590,13 +718,13 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
       root.reasoningTokens ??
       root.reasoning_tokens,
   );
-  const explicitTotal = usageInt(usage.totalTokens ?? usage.total_tokens ?? root.totalTokens ?? root.total_tokens);
+  const explicitTotal = usageInt(usage.totalTokens ?? usage.total_tokens ?? usage.total ?? root.totalTokens ?? root.total_tokens ?? root.total);
   const totalTokens = explicitTotal ?? (
-    inputTokens !== null || outputTokens !== null || reasoningTokens !== null
-      ? (inputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
+    inputTokens !== null || outputTokens !== null || cachedInputTokens !== null || reasoningTokens !== null
+      ? (inputTokens ?? cachedInputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
       : null
   );
-  const costUsd = usageNumber(
+  let costUsd = usageNumber(
     usage.costUsd ??
       usage.cost_usd ??
       usage.totalCostUsd ??
@@ -610,6 +738,33 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
       root.totalCost ??
       root.total_cost,
   );
+  let costEstimated = usageBoolean(
+    usage.costEstimated ??
+      usage.cost_estimated ??
+      usage.estimatedCost ??
+      usage.estimated_cost ??
+      root.costEstimated ??
+      root.cost_estimated ??
+      root.estimatedCost ??
+      root.estimated_cost,
+  );
+  const provider = usageString(usage.provider) ?? usageString(root.provider);
+  const model = usageString(usage.model) ?? usageString(root.model);
+  if (costUsd === null) {
+    const estimatedCost = estimateRuntimeUsageCost({
+      cachedInputTokens,
+      inputTokens,
+      outputTokens,
+      reasoningTokens,
+      source,
+      provider,
+      model,
+    });
+    if (estimatedCost !== null) {
+      costUsd = estimatedCost;
+      costEstimated = true;
+    }
+  }
   const currencyValue = usage.currency ?? root.currency;
   const currency = typeof currencyValue === "string" && currencyValue.trim()
     ? currencyValue.trim()
@@ -635,7 +790,10 @@ function normalizeRuntimeUsage(value, source = "runtime_output") {
     reasoningTokens,
     totalTokens,
     costUsd,
+    costEstimated,
     currency,
+    provider,
+    model,
     source: typeof usage.source === "string" && usage.source.trim() ? usage.source.trim() : source,
   };
 }
@@ -660,7 +818,10 @@ function addUsageSummaries(left, right) {
     reasoningTokens: sum("reasoningTokens"),
     totalTokens: sum("totalTokens"),
     costUsd: sum("costUsd"),
+    costEstimated: Boolean(left.costEstimated || right.costEstimated),
     currency: left.currency ?? right.currency ?? null,
+    provider: left.provider === right.provider ? left.provider : left.provider ?? right.provider ?? null,
+    model: left.model === right.model ? left.model : left.model ?? right.model ?? null,
     source: left.source === right.source ? left.source : "runtime_output",
   };
 }
@@ -701,7 +862,60 @@ function jsonRuntimeUsages(value, runtime = null) {
   return visit(value);
 }
 
+function jsonValuesFromText(text) {
+  const values = [];
+  const input = String(text || "");
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (start === -1) {
+      if (char === "{" || char === "[") {
+        start = i;
+        depth = 1;
+        inString = false;
+        escape = false;
+      }
+      continue;
+    }
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (char === "\\") {
+        escape = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+    } else if (char === "{" || char === "[") {
+      depth += 1;
+    } else if (char === "}" || char === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        const candidate = input.slice(start, i + 1);
+        try {
+          values.push(JSON.parse(candidate));
+          i = start + candidate.length - 1;
+        } catch {}
+        start = -1;
+      }
+    }
+  }
+  return values;
+}
+
 function runtimeUsageFromText(text, runtime = null) {
+  const jsonValues = jsonValuesFromText(text);
+  if (jsonValues.length > 0) {
+    let usage = null;
+    for (const value of jsonValues) usage = addUsageSummaries(usage, jsonRuntimeUsages(value, runtime));
+    if (usage) return usage;
+  }
   let usage = null;
   for (const rawLine of String(text || "").split(/\r?\n/)) {
     const line = rawLine.trim();

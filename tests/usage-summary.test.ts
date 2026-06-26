@@ -22,7 +22,10 @@ test("usage summary reads camelCase and snake_case runtime usage", () => {
     reasoningTokens: 10,
     totalTokens: 1550,
     costUsd: 0.0123,
+    costEstimated: false,
     currency: "USD",
+    provider: null,
+    model: null,
     source: null,
   });
 });
@@ -52,7 +55,10 @@ test("usage summary reads tokenUsage aliases", () => {
     reasoningTokens: null,
     totalTokens: 15,
     costUsd: 0.0025,
+    costEstimated: false,
     currency: "USD",
+    provider: null,
+    model: null,
     source: null,
   });
 });
@@ -67,9 +73,25 @@ test("usage display format handles missing values and small USD costs", () => {
     reasoningTokens: null,
     totalTokens: null,
     costUsd: 0.01234,
+    costEstimated: false,
     currency: "USD",
+    provider: null,
+    model: null,
     source: null,
   }), "$0.0123");
+  assert.equal(formatUsageCost({
+    inputTokens: null,
+    outputTokens: null,
+    cachedInputTokens: null,
+    reasoningTokens: null,
+    totalTokens: null,
+    costUsd: 0.01234,
+    costEstimated: true,
+    currency: "USD",
+    provider: null,
+    model: null,
+    source: null,
+  }), "est. $0.0123");
 });
 
 test("CLI aggregates token usage and cost across worker logs", () => {
@@ -176,4 +198,51 @@ test("CLI parses nested Claude and OpenClaw runtime usage shapes", () => {
   assert.equal(openclawPayload.usage.outputTokens, 9);
   assert.equal(openclawPayload.usage.costUsd, 0.003);
   assert.equal(openclawPayload.usage.source, "openclaw_jsonl");
+});
+
+test("CLI parses OpenClaw agentMeta usage and estimates known model cost", () => {
+  const dir = mkdtempSync(join(tmpdir(), "builder-runtime-openclaw-usage-"));
+  const openclaw = join(dir, "openclaw-agent-output.jsonl");
+  writeFileSync(openclaw, `Running OpenClaw Gateway attempt 1/3 with the configured default model.
+${JSON.stringify({
+    status: "ok",
+    result: {
+      meta: {
+        agentMeta: {
+          provider: "openai-codex",
+          model: "gpt-5.4",
+          usage: {
+            input: 2382,
+            output: 232,
+            cacheRead: 86400,
+            total: 89014,
+          },
+          promptTokens: 88782,
+        },
+      },
+    },
+  }, null, 2)}
+`);
+
+  const payload = JSON.parse(execFileSync("node", [
+    "scripts/builder-digest.mjs",
+    "parse-runtime-usage",
+    "--runtime",
+    "openclaw",
+    "--file",
+    openclaw,
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  }));
+
+  assert.equal(payload.usage.inputTokens, 2382);
+  assert.equal(payload.usage.outputTokens, 232);
+  assert.equal(payload.usage.cachedInputTokens, 86400);
+  assert.equal(payload.usage.totalTokens, 89014);
+  assert.equal(payload.usage.costEstimated, true);
+  assert.equal(payload.usage.costUsd, 0.031035);
+  assert.equal(payload.usage.provider, "openai-codex");
+  assert.equal(payload.usage.model, "gpt-5.4");
+  assert.equal(payload.usage.source, "openclaw_jsonl");
 });

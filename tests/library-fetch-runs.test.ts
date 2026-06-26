@@ -247,6 +247,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-usage\.XXXXXX"/);
   assert.doesNotMatch(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-usage\.XXXXXX\.jsonl"/);
   assert.match(runner, /BUILDER_BLOG_STRUCTURED_USAGE/);
+  assert.match(runner, /\[ "\$\{BUILDER_BLOG_STRUCTURED_USAGE:-\}" = "0" \] && return 1/);
+  assert.match(runner, /\$\{BUILDER_BLOG_STRUCTURED_USAGE:-1\}/);
   assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \] && return 0/);
   assert.match(runner, /codex exec --json/);
   assert.match(runner, /--output-format stream-json/);

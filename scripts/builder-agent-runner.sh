@@ -347,7 +347,8 @@ capture_runtime_usage() {
 }
 
 structured_usage_enabled() {
-  [ "${BUILDER_BLOG_STRUCTURED_USAGE:-0}" = "1" ] && return 0
+  [ "${BUILDER_BLOG_STRUCTURED_USAGE:-}" = "0" ] && return 1
+  [ "${BUILDER_BLOG_STRUCTURED_USAGE:-1}" = "1" ] && return 0
   [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" = "worker" ] && return 0
   return 1
 }
