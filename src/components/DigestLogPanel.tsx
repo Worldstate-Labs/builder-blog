@@ -1203,7 +1203,7 @@ function DigestLifecycle({
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {stepActive(1) ? <DigestFactRow label="Status" value={<span>Local Agent is writing digest summary JSON.</span>} /> : null}
           {synced ? <DigestFactRow label="Selected" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
-          {noUpdate ? <DigestFactRow label="Skipped" value={<span>No candidate posts required agent summarization.</span>} /> : null}
+          {noUpdate ? <DigestFactRow label="Skipped" value={<span>No candidate posts to include in the AI Digest.</span>} /> : null}
           {failedJob ? <DigestFactRow label="Failure" value={<span>{jobRun ? jobRunFailureReason(jobRun) : "Local Agent stopped before completing."}</span>} /> : null}
         </DigestLifecycleDetails>
       ),

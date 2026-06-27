@@ -1513,12 +1513,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "Local Agent가 digest summary JSON을 작성 중입니다.",
     es: "Local Agent está escribiendo el JSON de resumen del digest.",
   },
-  "No candidate posts required agent summarization.": {
-    "zh-CN": "没有候选帖子需要 agent 总结。",
-    "zh-TW": "沒有候選貼文需要 agent 摘要。",
-    ja: "エージェント要約が必要な候補投稿はありません。",
-    ko: "agent 요약이 필요한 후보 게시물이 없습니다.",
-    es: "No hubo publicaciones candidatas que requirieran resumen del agente.",
+  "No candidate posts to include in the AI Digest.": {
+    "zh-CN": "没有可纳入 AI Digest 的候选帖子。",
+    "zh-TW": "沒有可納入 AI Digest 的候選貼文。",
+    ja: "AI Digest に含める候補投稿はありません。",
+    ko: "AI Digest에 포함할 후보 게시물이 없습니다.",
+    es: "No hay publicaciones candidatas para incluir en el AI Digest.",
   },
   "The runner is validating and rendering the digest JSON.": {
     "zh-CN": "runner 正在验证并渲染 digest JSON。",
