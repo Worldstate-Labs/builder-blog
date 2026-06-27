@@ -9,6 +9,7 @@ import {
   describeAccessDevice,
   describeAccessStatus,
   sortAccessTokensByRecentConnection,
+  visibleAccessTokens,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
 import { EmptyState } from "@/components/EmptyState";
@@ -348,7 +349,7 @@ export function SkillPromptActions({
 }) {
   const config = PROMPT_CONFIG[context];
   const activeTokens = useMemo(
-    () => sortAccessTokensByRecentConnection(tokens.filter((token) => !token.revokedAt)),
+    () => visibleAccessTokens(tokens),
     [tokens],
   );
   // The `in` narrow keeps this typed against the per-context literal config

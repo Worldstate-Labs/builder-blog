@@ -6,6 +6,7 @@ import AppleProvider from "next-auth/providers/apple";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultAgentTokenForUser } from "@/lib/tokens";
 
 function authLogValue(value: unknown): unknown {
   if (value instanceof Error) {
@@ -85,6 +86,11 @@ export const authOptions: NextAuthOptions = {
         session.user.id = user.id;
       }
       return session;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      await ensureDefaultAgentTokenForUser(user.id);
     },
   },
   pages: {

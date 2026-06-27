@@ -88,6 +88,21 @@ test("agent token format is opaque bearer token with stable hash", () => {
   assert.notEqual(hashToken(token), token);
 });
 
+test("new users receive a default access key on account creation", () => {
+  const auth = readFileSync("src/lib/auth.ts", "utf8");
+  const tokens = readFileSync("src/lib/tokens.ts", "utf8");
+
+  assert.match(tokens, /DEFAULT_AGENT_TOKEN_NAME\s*=\s*"Default access key"/);
+  assert.match(tokens, /ensureDefaultAgentTokenForUser/);
+  assert.match(tokens, /agentToken\.findFirst/);
+  assert.match(tokens, /createAgentToken\(userId,\s*DEFAULT_AGENT_TOKEN_NAME\)/);
+
+  assert.match(auth, /ensureDefaultAgentTokenForUser/);
+  assert.match(auth, /events:\s*\{/);
+  assert.match(auth, /createUser\(\{ user \}\)/);
+  assert.match(auth, /ensureDefaultAgentTokenForUser\(user\.id\)/);
+});
+
 test("admin user path is restricted to configured admin emails", () => {
   const previous = process.env.ADMIN_EMAILS;
   process.env.ADMIN_EMAILS = "admin@example.com, jie@worldstatelabs.com";
@@ -3529,6 +3544,7 @@ test("content config is per-user, seeded from a system default", () => {
   // Settings page shows source/digest config to every user, but only admins can
   // edit the common fetching and post-summary rules shared defaults.
   const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
+  assert.match(settingsPage, /where: \{ userId, revokedAt: null \}/);
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
   assert.match(settingsPage, /getAllSourceConfigs\(\)/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);

@@ -13,9 +13,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const { tokenId } = await params;
   // Soft-delete: stamp `revokedAt` instead of dropping the row. The bearer
   // lookup rejects any token whose `revokedAt` is set (src/lib/tokens.ts:54),
-  // so access stops immediately, while the row persists for the audit trail and
-  // the "Revoked [date]" status the UI renders. Idempotent (only flips a token
-  // that's still active and owned by this user).
+  // so access stops immediately, while the row persists for the audit trail.
+  // Idempotent (only flips a token that's still active and owned by this user).
   await prisma.agentToken.updateMany({
     where: {
       id: tokenId,

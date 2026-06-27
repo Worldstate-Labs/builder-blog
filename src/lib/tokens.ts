@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "crypto";
 import { decryptToken, encryptToken } from "@/lib/token-encryption";
 
+export const DEFAULT_AGENT_TOKEN_NAME = "Default access key";
+
 export function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -23,6 +25,18 @@ export async function createAgentToken(userId: string, name: string) {
     },
   });
   return { token, record };
+}
+
+export async function ensureDefaultAgentTokenForUser(userId: string) {
+  const { prisma } = await import("@/lib/prisma");
+  const existing = await prisma.agentToken.findFirst({
+    where: { userId },
+    select: { id: true },
+  });
+  if (existing) return { created: false as const, recordId: existing.id };
+
+  const { record } = await createAgentToken(userId, DEFAULT_AGENT_TOKEN_NAME);
+  return { created: true as const, recordId: record.id };
 }
 
 /**

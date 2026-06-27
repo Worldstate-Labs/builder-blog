@@ -5,6 +5,7 @@ import {
   describeAccessStatus,
   formatRelativeCompact,
   sortAccessTokensByRecentConnection,
+  visibleAccessTokens,
   type AgentTokenListItem,
 } from "../src/components/AgentTokenPanel";
 
@@ -61,6 +62,22 @@ test("access keys sort by latest connection before creation time", () => {
   assert.deepEqual(
     sorted.map((item) => item.id),
     ["connected_recently", "created_recently", "connected_older"],
+  );
+});
+
+test("revoked access keys are hidden from visible access key lists", () => {
+  const visible = visibleAccessTokens([
+    token({ id: "active_key", createdAt: "2026-06-07T08:00:00.000Z" }),
+    token({
+      id: "revoked_key",
+      createdAt: "2026-06-08T08:00:00.000Z",
+      revokedAt: "2026-06-08T09:00:00.000Z",
+    }),
+  ]);
+
+  assert.deepEqual(
+    visible.map((item) => item.id),
+    ["active_key"],
   );
 });
 

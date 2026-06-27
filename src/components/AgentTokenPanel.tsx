@@ -96,6 +96,10 @@ export function sortAccessTokensByRecentConnection(
   });
 }
 
+export function visibleAccessTokens(tokens: AgentTokenListItem[]): AgentTokenListItem[] {
+  return sortAccessTokensByRecentConnection(tokens.filter((token) => !token.revokedAt));
+}
+
 export function describeAccessStatus(token: AgentTokenListItem, hydrated: boolean): string {
   if (token.revokedAt) return `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`;
   if (token.lastUsedAt) return `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`;
@@ -222,7 +226,7 @@ export function AgentTokenPanel({
   }
 
   const sortedTokens = useMemo(
-    () => sortAccessTokensByRecentConnection(tokens),
+    () => visibleAccessTokens(tokens),
     [tokens],
   );
 
@@ -299,12 +303,7 @@ export function AgentTokenPanel({
     closeRevokeDialog();
     setStatus("");
     const previousTokens = tokens;
-    const revokedAt = new Date().toISOString();
-    setTokens((current) =>
-      current.map((token) =>
-        token.id === tokenId ? { ...token, revokedAt } : token,
-      ),
-    );
+    setTokens((current) => current.filter((token) => token.id !== tokenId));
     startTransition(async () => {
       try {
         const response = await fetch(`/api/settings/tokens/${tokenId}`, {
@@ -572,7 +571,7 @@ function TokenRow({
 
   return (
     <li
-      className={`access-key-card access-key-device-row${token.revokedAt ? " access-key-card--revoked fb-row--revoked" : ""}`}
+      className="access-key-card access-key-device-row"
       aria-label={`${tokenLabel}. ${statusLabel}`}
     >
       <AccessKeyDeviceIcon token={token} />
@@ -580,22 +579,16 @@ function TokenRow({
         <div className="access-key-device-title">{tokenLabel}</div>
         <AccessStatusText className="access-key-device-status" id={statusId} token={token} />
       </div>
-      {token.revokedAt ? (
-        <span className="access-key-revoked-pill" aria-describedby={statusId}>
-          Access revoked
-        </span>
-      ) : (
-        <button
-          className="access-key-revoke-button"
-          disabled={isPending}
-          onClick={onRevoke}
-          type="button"
-          aria-label={`Revoke access for ${tokenLabel}`}
-          aria-describedby={statusId}
-        >
-          Revoke access
-        </button>
-      )}
+      <button
+        className="access-key-revoke-button"
+        disabled={isPending}
+        onClick={onRevoke}
+        type="button"
+        aria-label={`Revoke access for ${tokenLabel}`}
+        aria-describedby={statusId}
+      >
+        Revoke access
+      </button>
     </li>
   );
 }

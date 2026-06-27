@@ -163,7 +163,7 @@ async function SourceTypeConfigSection({
 
 async function AgentTokenSlot({ userId }: { userId: string }) {
   const tokens = await prisma.agentToken.findMany({
-    where: { userId },
+    where: { userId, revokedAt: null },
     orderBy: { createdAt: "desc" },
   });
   const serializedTokens = tokens.map((token) => ({

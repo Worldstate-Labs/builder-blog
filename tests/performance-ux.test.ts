@@ -1019,8 +1019,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /describeAccessStatus/);
   assert.match(skillPromptActions, /sortAccessTokensByRecentConnection/);
+  assert.match(skillPromptActions, /visibleAccessTokens/);
   assert.match(skillPromptActions, /useHydrated/);
-  assert.match(skillPromptActions, /const activeTokens = useMemo\([\s\S]*sortAccessTokensByRecentConnection\(tokens\.filter/);
+  assert.match(skillPromptActions, /const activeTokens = useMemo\([\s\S]*visibleAccessTokens\(tokens\)/);
   assert.match(skillPromptActions, /return sortAccessTokensByRecentConnection\(tokens\)\[0\]\?\.id \?\? ""/);
   assert.match(skillPromptActions, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(skillPromptActions, /const statusLabel = describeAccessStatus\(token, hydrated\)/);
@@ -1066,13 +1067,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents with access keys can update this account\.|Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);
   assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
-  assert.match(agentTokenPanel, /const sortedTokens = useMemo\([\s\S]*sortAccessTokensByRecentConnection\(tokens\)/);
+  assert.match(agentTokenPanel, /export function visibleAccessTokens/);
+  assert.match(agentTokenPanel, /const sortedTokens = useMemo\([\s\S]*visibleAccessTokens\(tokens\)/);
   assert.match(agentTokenPanel, /sortedTokens\.length > 0/);
   assert.match(agentTokenPanel, /sortedTokens\.map\(\(token\) =>/);
-  assert.match(agentTokenPanel, /token\.id === tokenId \? \{ \.\.\.token, revokedAt \} : token/);
-  assert.doesNotMatch(agentTokenPanel, /filter\(\(token\) => !token\.revokedAt\)/);
+  assert.match(agentTokenPanel, /current\.filter\(\(token\) => token\.id !== tokenId\)/);
+  assert.match(agentTokenPanel, /filter\(\(token\) => !token\.revokedAt\)/);
   assert.doesNotMatch(agentTokenPanel, /Revoked access is hidden from this list/);
-  assert.match(agentTokenPanel, /<li[\s\S]*className=\{`access-key-card access-key-device-row/);
+  assert.match(agentTokenPanel, /<li[\s\S]*className="access-key-card access-key-device-row"/);
   assert.doesNotMatch(agentTokenPanel, /role="listitem"/);
   assert.match(agentTokenPanel, /function describeAccessStatus/);
   assert.match(agentTokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
@@ -1080,7 +1082,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /<RelativeTime value=\{token\.lastUsedAt\} prefix="Last connected " \/>/);
   assert.match(agentTokenPanel, /Never connected/);
   assert.doesNotMatch(agentTokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
-  assert.match(agentTokenPanel, /className=\{`access-key-card/);
+  assert.doesNotMatch(agentTokenPanel, /className=\{`access-key-card/);
   assert.match(agentTokenPanel, /export function AccessKeyDeviceIcon/);
   assert.match(agentTokenPanel, /className = "access-key-device-icon"/);
   assert.match(agentTokenPanel, /<AccessKeyDeviceIcon token=\{token\} \/>/);
@@ -1096,14 +1098,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.4rem minmax\(0,\s*1fr\) max-content/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*0/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*0/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button\s*{[\s\S]*grid-column:\s*2/);
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*0\.9rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*0\.78rem/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*8px/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*font-weight:\s*650/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*border-radius:\s*8px/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*font-weight:\s*650/);
+  assert.doesNotMatch(globals, /\.access-key-revoked-pill/);
   assert.doesNotMatch(globals, /\.access-key-capability-list/);
   assert.match(globals, /\.token-picker-row\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.token-picker-row\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) max-content/);
@@ -5908,8 +5911,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /Revoke access key &ldquo;\{revokeTarget\.name\}&rdquo;/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
-  assert.match(tokenPanel, /className=\{`access-key-card access-key-device-row\$\{token\.revokedAt \? " access-key-card--revoked fb-row--revoked" : ""\}`\}/);
-  assert.match(tokenPanel, /sortAccessTokensByRecentConnection/);
+  assert.doesNotMatch(tokenPanel, /access-key-card--revoked|access-key-revoked-pill|Access revoked/);
+  assert.match(tokenPanel, /visibleAccessTokens/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /describeAccessStatus\(token, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
@@ -5953,24 +5956,24 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*0\.9rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*0\.78rem/);
   assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.2rem/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*justify-self:\s*end/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*font-weight:\s*650/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*0/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*white-space:\s*nowrap/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*justify-self:\s*end/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*font-weight:\s*650/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*0/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*0/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button\s*{[\s\S]*grid-column:\s*2/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button\s*{[\s\S]*min-height:\s*0/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button\s*{[\s\S]*min-width:\s*0/);
   const mobileAccessKeyActionBlock =
-    globals.match(/@media \(max-width:\s*767px\)[\s\S]*?\.access-key-revoke-button,\s*\.access-key-revoked-pill\s*{([^}]+)}/)?.[1] ?? "";
+    globals.match(/@media \(max-width:\s*767px\)[\s\S]*?\.access-key-revoke-button\s*{([^}]+)}/)?.[1] ?? "";
   assert.doesNotMatch(mobileAccessKeyActionBlock, /grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.access-key-card--skeleton\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.access-key-skeleton-icon\s*{[\s\S]*background:\s*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.access-key-skeleton-pill\s*{[\s\S]*justify-self:\s*end/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-skeleton-pill\s*{[\s\S]*grid-column:\s*2/);
   assert.doesNotMatch(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*20px/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*8px/);
+  assert.match(globals, /\.access-key-revoke-button\s*{[\s\S]*border-radius:\s*8px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);
   assert.match(digestMaxAgeRoute, /export async function PATCH/);
@@ -5991,8 +5994,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(builderDigestCli, /function requestJsonOnce\(url, options\)/);
   assert.match(builderDigestCli, /headers:\s*\{[\s\S]*\.\.\.MACHINE_HEADERS[\s\S]*authorization: `Bearer \$\{options\.token\}`/);
   assert.match(tokenRoute, /export async function DELETE/);
-  // Revoke is a SOFT delete: stamp revokedAt (keeps the row + audit trail +
-  // "Revoked [date]" UI), never a hard row delete.
+  // Revoke is a SOFT delete: stamp revokedAt (keeps the row + audit trail),
+  // never a hard row delete.
   assert.match(tokenRoute, /agentToken\.updateMany/);
   assert.match(tokenRoute, /revokedAt: new Date\(\)/);
   assert.doesNotMatch(tokenRoute, /agentToken\.deleteMany/);

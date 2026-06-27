@@ -12057,8 +12057,7 @@ a.builder-library-name:hover {
   width: 1.2rem;
 }
 
-.access-key-revoke-button,
-.access-key-revoked-pill {
+.access-key-revoke-button {
   align-items: center;
   align-self: center;
   background: transparent;
@@ -12089,10 +12088,6 @@ a.builder-library-name:hover {
 .access-key-revoke-button:disabled {
   cursor: wait;
   opacity: 0.6;
-}
-
-.access-key-revoked-pill {
-  color: var(--muted);
 }
 
 .access-keys-skeleton-copy {
@@ -12151,14 +12146,6 @@ a.builder-library-name:hover {
 
 .access-keys-list .access-key-card:last-child {
   border-bottom: 0;
-}
-
-.access-key-card--revoked {
-  opacity: 0.55;
-}
-
-.access-key-card--revoked .access-key-device-title {
-  color: var(--muted-strong);
 }
 
 /* Admin item row */
@@ -13688,8 +13675,7 @@ body {
     min-height: 4.5rem;
   }
 
-  .access-key-revoke-button,
-  .access-key-revoked-pill {
+  .access-key-revoke-button {
     font-size: 0.78rem;
     grid-column: 2;
     justify-self: start;
