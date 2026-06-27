@@ -15,8 +15,10 @@ test("YouTube transcripts are temporary by default while summaries persist", () 
   });
 
   assert.equal(prepared.policy.durableRawMode, "none");
-  assert.equal(prepared.body, "A concise YouTube summary with the important points and source link.");
+  assert.equal(prepared.body, "");
   assert.equal(prepared.rawRetained, false);
+  assert.equal((prepared.rawJson as Record<string, unknown>).rawContentPolicy && typeof (prepared.rawJson as Record<string, unknown>).rawContentPolicy, "object");
+  assert.equal(((prepared.rawJson as Record<string, unknown>).rawContentPolicy as Record<string, unknown>).bodyStored, false);
   assert.deepEqual((prepared.rawJson as Record<string, unknown>).transcript, "[removed raw content]");
 });
 
@@ -50,7 +52,8 @@ test("podcast transcripts are temporary while show notes may be stored as excerp
   });
 
   assert.equal(transcript.policy.durableRawMode, "none");
-  assert.equal(transcript.body, "Podcast transcript summary.");
+  assert.equal(transcript.body, "");
+  assert.equal(transcript.rawRetained, false);
   assert.equal(showNotes.policy.durableRawMode, "excerpt");
   assert.ok(showNotes.body.startsWith("Show notes paragraph."));
 });
@@ -70,10 +73,10 @@ test("X keeps tweet text but strips full raw API objects", () => {
   assert.equal((prepared.rawJson as Record<string, unknown>).tweet, "[removed raw content]");
 });
 
-test("facts-only sources persist summary before raw investigation body", () => {
+test("facts-only sources persist the structured body instead of using summary as body", () => {
   const prepared = prepareFeedItemStorage({
     sourceType: "product_hunt_top_products",
-    body: "Raw Product Hunt page and comments. ".repeat(200),
+    body: "Product: Acme Launch\nTagline: Helps teams review launches.\nRank: #3\nMaker note: Built for workflow-heavy teams.",
     summary: "Structured product facts and summary.",
     rawJson: {
       html: "<main>raw product page</main>",
@@ -82,7 +85,25 @@ test("facts-only sources persist summary before raw investigation body", () => {
   });
 
   assert.equal(prepared.policy.durableRawMode, "facts_only");
-  assert.equal(prepared.body, "Structured product facts and summary.");
+  assert.match(prepared.body, /^Product: Acme Launch/);
+  assert.equal(prepared.rawRetained, true);
   assert.equal((prepared.rawJson as Record<string, unknown>).html, "[removed raw content]");
   assert.equal((prepared.rawJson as Record<string, unknown>).comments, "[removed raw content]");
+});
+
+test("durable body storage never falls back to summary when body is absent", () => {
+  const prepared = prepareFeedItemStorage({
+    sourceType: "product_hunt_top_products",
+    body: "",
+    summary: "Structured product facts and summary.",
+    rawJson: {
+      fetchTaskId: "task-empty-facts",
+      html: "<main>raw product page</main>",
+    },
+  });
+
+  assert.equal(prepared.policy.durableRawMode, "facts_only");
+  assert.equal(prepared.body, "");
+  assert.equal(prepared.rawRetained, false);
+  assert.equal(((prepared.rawJson as Record<string, unknown>).rawContentPolicy as Record<string, unknown>).bodyStored, false);
 });

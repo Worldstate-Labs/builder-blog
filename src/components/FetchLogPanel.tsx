@@ -2353,6 +2353,7 @@ function isPlannedPostTask(task: FetchTaskLog): boolean {
 function isReadForStats(task: FetchTaskLog): boolean {
   if (!isPlannedPostTask(task) || isBlocked(task)) return false;
   if (typeof task.bodyChars === "number" && task.bodyChars > 0) return true;
+  if (isSummaryTranslationTask(task)) return false;
   if (task.contentStatus === "ready" && task.status !== "failed" && task.status !== "skipped") {
     return true;
   }
@@ -2767,6 +2768,12 @@ function describeWork(task: FetchTaskLog): WorkInfo {
         blurb: "The Local Agent uses the video transcript for this task.",
         fix: null,
       };
+    case "translate_summary_only":
+      return {
+        label: "Translate Hub summary",
+        blurb: "The Local Agent translates an existing Hub summary without fetching the source again.",
+        fix: null,
+      };
     case "fetch_builder_fallback":
       return {
         label: "Local Agent",
@@ -2799,6 +2806,14 @@ function isCandidateDiscoveryTask(task: FetchTaskLog): boolean {
   return task.agentWorkType === "candidate_discovery_fallback";
 }
 
+function isSummaryTranslationTask(task: FetchTaskLog): boolean {
+  return (
+    task.agentWorkType === "translate_summary_only" ||
+    task.hubSharedReuse?.summaryTranslated === true ||
+    task.summaryMethod === "Translated summary from a Hub-shared post"
+  );
+}
+
 function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (isCandidateDiscoveryTask(task) && task.status === "synced") {
     return { label: "Discovered", tone: "ok" };
@@ -2814,6 +2829,7 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   ) {
     return { label: "Not completed", tone: "fail" };
   }
+  if (isSummaryTranslationTask(task)) return { label: "Not reached", tone: "idle" };
   if (typeof task.bodyChars === "number" && task.bodyChars > 0)
     return { label: "Read", tone: "ok" };
   if (task.contentStatus === "ready") return { label: "Read", tone: "ok" };
@@ -2878,6 +2894,13 @@ function hasReadSignal(
   );
 }
 
+function hasSummarizeInputSignal(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): boolean {
+  return isSummaryTranslationTask(task) || hasReadSignal(task, liveTask);
+}
+
 function summarizeOutcome(
   task: FetchTaskLog,
   liveTask?: FetchTaskProgress | null,
@@ -2896,7 +2919,7 @@ function summarizeOutcome(
   // a failure, not a benign "pending".
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
-  if (!hasReadSignal(task, liveTask)) return { label: "Not reached", tone: "idle" };
+  if (!hasSummarizeInputSignal(task, liveTask)) return { label: "Not reached", tone: "idle" };
   return { label: "Pending", tone: "warn" };
 }
 
@@ -2919,6 +2942,13 @@ function taskStatusPill(
   if (task.status === "skipped" || liveStatus === "skipped") return { label: "skipped", tone: "idle" };
   if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
     return { label: "action", tone: "fail" };
+  }
+  if (isSummaryTranslationTask(task)) {
+    if (liveStatus === "summarizing" || livePhase === "summarize") {
+      return { label: "summarizing", tone: "warn" };
+    }
+    if (isSummarized(task) || liveStatus === "summarized") return { label: "syncing", tone: "warn" };
+    return { label: "summarizing", tone: "idle" };
   }
   if (liveStatus === "reading" || livePhase === "read") return { label: "reading", tone: "warn" };
   if (!hasReadSignal(task, liveTask)) return { label: "reading", tone: "idle" };
@@ -2946,11 +2976,12 @@ function statusBanner(
   if (task.status === "skipped") return { label: "Skipped: no content", tone: "idle" };
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
+  if (isSummaryTranslationTask(task) && isSummarized(task)) return { label: "Summarized", tone: "ok" };
   if (isSummarized(task)) return { label: "Read & summarized", tone: "ok" };
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
   if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
-  if (!hasReadSignal(task, liveTask)) {
+  if (!hasSummarizeInputSignal(task, liveTask)) {
     const status = String(liveTask?.status ?? "").toLowerCase();
     const phase = String(liveTask?.phase ?? "").toLowerCase();
     if (status === "reading" || phase === "read") return { label: "Reading", tone: "warn" };
@@ -2980,6 +3011,7 @@ function liveFetchOutcome(
 ): { label: string; tone: Tone } {
   const phase = String(liveTask?.phase ?? "").toLowerCase();
   const status = String(liveTask?.status ?? "").toLowerCase();
+  if (isSummaryTranslationTask(task)) return fetchOutcome(task);
   if (hasReadSignal(task, liveTask)) return { label: "Read", tone: "ok" };
   if (phase === "read" || status === "reading") return { label: "Reading", tone: "warn" };
   if (
@@ -3264,7 +3296,9 @@ function TaskRow({
       label: isDiscovery ? "Discover" : "Read",
       outcome: fetchRes.label,
       tone: fetchRes.tone,
-      open: fetchRes.tone === "fail" || (!isSummarized(task) && !isDiscovery && fetchRes.tone === "idle"),
+      open:
+        fetchRes.tone === "fail" ||
+        (!isSummarized(task) && !isDiscovery && !isSummaryTranslationTask(task) && fetchRes.tone === "idle"),
       children: (
         <dl className="sync-panel-task-fact-list">
           <FactRow label="Method" value={<span>{work.label}</span>} />

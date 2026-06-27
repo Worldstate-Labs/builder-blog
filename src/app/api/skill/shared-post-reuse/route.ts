@@ -61,17 +61,48 @@ function candidateBodyIsUsable(body: string, sourceType: string | null | undefin
   return checkBodyContentQuality(body, standards).ok;
 }
 
-function matchScore(match: { summary: string | null; body: string; createdAt: Date }) {
+function storedBodyCanBeReused(rawJson: Record<string, unknown>) {
+  const policy = rawJsonRecord(rawJson.rawContentPolicy);
+  if (Object.keys(policy).length === 0) return true;
+  if (policy.bodyStored === false) return false;
+  if (policy.rawRetained === false) return false;
+  if (rawString(policy.durableRawMode).toLowerCase() === "none") return false;
+  return true;
+}
+
+function matchScore(match: {
+  summary: string | null;
+  summaryMatchesTarget: boolean;
+  body: string | null;
+  bodyReused: boolean;
+  createdAt: Date;
+}) {
   return [
+    match.summaryMatchesTarget ? 1 : 0,
     match.summary ? 1 : 0,
-    match.body.length,
+    match.bodyReused ? 1 : 0,
+    match.body?.length ?? 0,
     match.createdAt.getTime(),
   ] as const;
 }
 
 function compareMatches(
-  left: { summary: string | null; body: string; createdAt: Date; feedItemId: string },
-  right: { summary: string | null; body: string; createdAt: Date; feedItemId: string },
+  left: {
+    summary: string | null;
+    summaryMatchesTarget: boolean;
+    body: string | null;
+    bodyReused: boolean;
+    createdAt: Date;
+    feedItemId: string;
+  },
+  right: {
+    summary: string | null;
+    summaryMatchesTarget: boolean;
+    body: string | null;
+    bodyReused: boolean;
+    createdAt: Date;
+    feedItemId: string;
+  },
 ) {
   const a = matchScore(left);
   const b = matchScore(right);
@@ -120,12 +151,21 @@ export async function POST(request: Request) {
   const canonicalUrls = [...candidateByCanonical.keys()];
   const rows = await prisma.feedItem.findMany({
     where: {
-      OR: [
-        { canonicalPost: { is: { canonicalUrl: { in: canonicalUrls } } } },
-        { url: { in: [...urlVariants] } },
+      AND: [
+        {
+          OR: [
+            { canonicalPost: { is: { canonicalUrl: { in: canonicalUrls } } } },
+            { url: { in: [...urlVariants] } },
+          ],
+        },
+        {
+          OR: [
+            { body: { not: "" } },
+            { summary: { not: null } },
+          ],
+        },
+        { builder: { is: { hubItems: { some: {} } } } },
       ],
-      body: { not: "" },
-      builder: { is: { hubItems: { some: {} } } },
     },
     select: {
       id: true,
@@ -162,9 +202,11 @@ export async function POST(request: Request) {
     builderId: string | null;
     builderName: string | null;
     url: string;
-    body: string;
+    body: string | null;
+    bodyReused: boolean;
     summary: string | null;
     summaryLanguage: string | null;
+    summaryMatchesTarget: boolean;
     createdAt: Date;
   }>();
 
@@ -174,23 +216,31 @@ export async function POST(request: Request) {
     const matchingCandidates = candidateByCanonical.get(canonical) ?? [];
     if (matchingCandidates.length === 0) continue;
     const rawJson = rawJsonRecord(row.rawJson);
+    const reusableStoredBody = storedBodyCanBeReused(rawJson);
     const rowSummary = rawString(row.summary);
     const rowSummaryLanguage = rawString(rawJson.summaryLanguage);
-    const summary = rowSummary && summaryLanguageMatches(rowSummaryLanguage, targetLanguage)
-      ? rowSummary
-      : null;
+    const summaryMatchesTarget = rowSummary
+      ? summaryLanguageMatches(rowSummaryLanguage, targetLanguage)
+      : false;
+    const summary = rowSummary || null;
 
     for (const candidate of matchingCandidates) {
-      if (!candidateBodyIsUsable(row.body, candidate.sourceType, standardsBySourceId)) continue;
+      const bodyReused =
+        reusableStoredBody &&
+        row.body.trim().length > 0 &&
+        candidateBodyIsUsable(row.body, candidate.sourceType, standardsBySourceId);
+      if (!bodyReused && !summary) continue;
       const match = {
         candidate,
         feedItemId: row.id,
         builderId: row.builderId,
         builderName: row.builder?.name ?? null,
         url: row.url,
-        body: row.body,
+        body: bodyReused ? row.body : null,
+        bodyReused,
         summary,
-        summaryLanguage: summary ? rowSummaryLanguage : null,
+        summaryLanguage: summary ? rowSummaryLanguage || null : null,
+        summaryMatchesTarget,
         createdAt: row.createdAt,
       };
       const existing = bestByCandidateId.get(candidate.id);
@@ -203,6 +253,7 @@ export async function POST(request: Request) {
   const matches = [...bestByCandidateId.values()].map((match) => ({
     id: match.candidate.id,
     body: match.body,
+    bodyReused: match.bodyReused,
     summary: match.summary,
     source: {
       feedItemId: match.feedItemId,
@@ -211,6 +262,7 @@ export async function POST(request: Request) {
       url: match.url,
     },
     summaryLanguage: match.summaryLanguage,
+    summaryMatchesTarget: match.summaryMatchesTarget,
   }));
 
   return NextResponse.json({ status: "ok", matches });

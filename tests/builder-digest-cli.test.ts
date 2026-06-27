@@ -1443,7 +1443,7 @@ test("agent sync validation accepts ready fetch task summaries", async () => {
   assert.equal("validatedFetchTaskItems" in result, false);
 });
 
-test("sync upload payload keeps YouTube transcript temporary but preserves summary", async () => {
+test("sync upload payload keeps YouTube transcript temporary without storing summary as body", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const payload = cli.prepareSyncPayloadForUpload({
     builders: [
@@ -1472,9 +1472,10 @@ test("sync upload payload keeps YouTube transcript temporary but preserves summa
   });
 
   const item = payload.builders[0].items[0];
-  assert.equal(item.body, "YouTube summary with the important details.");
+  assert.equal(item.body, "");
   assert.equal(item.rawJson.transcript, "[removed raw content]");
   assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "none");
+  assert.equal(item.rawJson.rawContentPolicy.bodyStored, false);
   assert.equal(item.rawJson.acquisition.provider, "youtube");
 });
 
@@ -1512,7 +1513,7 @@ test("sync upload payload strips raw tweet API objects", async () => {
   assert.equal(item.rawJson.acquisition.method, "x-api-v2");
 });
 
-test("sync upload payload keeps Product Hunt durable body facts-only", async () => {
+test("sync upload payload keeps Product Hunt durable facts body instead of summary fallback", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const payload = cli.prepareSyncPayloadForUpload({
     builders: [
@@ -1526,7 +1527,7 @@ test("sync upload payload keeps Product Hunt durable body facts-only", async () 
             kind: "POST",
             externalId: "product1",
             title: "Product",
-            body: "Raw Product Hunt page and comments. ".repeat(200),
+            body: "Product: Acme Launch\nTagline: Helps teams review launches.\nRank: #3\nMaker note: Built for workflow-heavy teams.",
             summary: "Structured product facts and summary.",
             url: "https://www.producthunt.com/posts/product1",
             rawJson: {
@@ -1541,10 +1542,43 @@ test("sync upload payload keeps Product Hunt durable body facts-only", async () 
   });
 
   const item = payload.builders[0].items[0];
-  assert.equal(item.body, "Structured product facts and summary.");
+  assert.match(item.body, /^Product: Acme Launch/);
   assert.equal(item.rawJson.html, "[removed raw content]");
   assert.equal(item.rawJson.comments, "[removed raw content]");
   assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "facts_only");
+  assert.equal(item.rawJson.rawContentPolicy.bodyStored, true);
+});
+
+test("sync upload payload never stores summary as durable body when item body is absent", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareSyncPayloadForUpload({
+    builders: [
+      {
+        builderId: "builder_yt",
+        kind: "PODCAST",
+        sourceType: "youtube",
+        name: "Example YouTube",
+        items: [
+          {
+            kind: "PODCAST_EPISODE",
+            externalId: "video1",
+            title: "Video",
+            body: "",
+            summary: "YouTube summary with the important details.",
+            url: "https://www.youtube.com/watch?v=video1",
+            rawJson: {
+              fetchTaskId: "task-yt-empty",
+              transcriptSource: "youtube-captions",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const item = payload.builders[0].items[0];
+  assert.equal(item.body, "");
+  assert.equal(item.rawJson.rawContentPolicy.bodyStored, false);
 });
 
 test("sync payload converts items older than the planned fetch cutoff to skipped outcomes", async () => {

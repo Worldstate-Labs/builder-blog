@@ -1119,3 +1119,35 @@ test("fetch run stats exclude candidate discovery from live post counters", () =
   assert.equal(stats.summarized, 3);
   assert.equal(stats.synced, 3);
 });
+
+test("fetch run stats do not count summary translation as source read", () => {
+  const stats = fetchRunStats({
+    details: {
+      fetchTasks: [
+        {
+          id: "fetch_post:blog:translated",
+          agentWorkType: "translate_summary_only",
+          contentStatus: "ready",
+          status: "synced",
+          bodyChars: 0,
+          bodyWords: 0,
+          summaryChars: 86,
+          summaryWords: 18,
+          summaryMethod: "Translated summary from a Hub-shared post",
+          hubSharedReuse: {
+            source: "hub_shared_post",
+            bodyReused: false,
+            summaryReused: false,
+            summaryTranslated: true,
+          },
+        },
+      ],
+    },
+    liveProgress: null,
+  });
+
+  assert.equal(stats.planned, 1);
+  assert.equal(stats.read, 0);
+  assert.equal(stats.summarized, 1);
+  assert.equal(stats.synced, 1);
+});

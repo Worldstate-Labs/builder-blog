@@ -221,17 +221,35 @@ export async function POST(request: Request) {
           }
           continue;
         }
+        const itemRawJson = rawJsonWithSummaryLanguage(item.rawJson, syncSummaryLanguage, summary);
         const storage = prepareFeedItemStorage({
           sourceType: input.sourceType,
           body: item.body,
           summary,
-          rawJson: rawJsonWithSummaryLanguage(item.rawJson, syncSummaryLanguage, summary),
+          rawJson: itemRawJson,
         });
+        const canSyncWithoutBody = itemCanSyncWithoutBody(storage.policy.durableRawMode, itemRawJson);
+        if (!storage.body.trim() && !canSyncWithoutBody) {
+          skippedFeedItems += 1;
+          if (fetchTaskId) {
+            itemResults.push({
+              fetchTaskId,
+              kind: item.kind,
+              externalId: item.externalId,
+              status: "failed",
+              reason: "body_missing",
+            });
+          }
+          continue;
+        }
         // Gate 1 — real crawled content. A post with no body (or junk/too-short
         // text below the source's floor) is a FAILURE: the agent didn't actually
         // fetch usable content. Mirrors the client validate length check so it
         // can't be bypassed by skipping validate. Recorded, not silently dropped.
-        if (storage.policy.durableRawMode === "full" || storage.policy.durableRawMode === "excerpt") {
+        if (
+          !canSyncWithoutBody &&
+          (storage.policy.durableRawMode === "full" || storage.policy.durableRawMode === "excerpt")
+        ) {
           const contentVerdict = checkBodyContentQuality(item.body, contentStandards);
           if (!contentVerdict.ok) {
             skippedFeedItems += 1;
@@ -597,6 +615,17 @@ function rawJsonRecord(rawJson: unknown): Record<string, unknown> {
   return rawJson && typeof rawJson === "object" && !Array.isArray(rawJson)
     ? rawJson as Record<string, unknown>
     : {};
+}
+
+function itemCanSyncWithoutBody(durableRawMode: string, rawJson: unknown) {
+  if (durableRawMode === "none") return true;
+  const record = rawJsonRecord(rawJson);
+  if (record.agentWorkType === "translate_summary_only") return true;
+  const hubSharedReuse = rawJsonRecord(record.hubSharedReuse);
+  return (
+    hubSharedReuse.bodyReused === false &&
+    (hubSharedReuse.summaryReused === true || hubSharedReuse.summaryTranslated === true)
+  );
 }
 
 function rawJsonWithSummaryLanguage(rawJson: unknown, summaryLanguage: string, summary: string) {

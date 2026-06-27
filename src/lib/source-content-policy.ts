@@ -25,6 +25,7 @@ type PreparedFeedItemStorage = {
   acquisition: Record<string, unknown>;
   rawRetained: boolean;
   rawTruncated: boolean;
+  bodyStored: boolean;
 };
 
 const RAW_STRING_LIMIT = 1000;
@@ -157,13 +158,10 @@ export function prepareFeedItemStorage(input: RawContentInput): PreparedFeedItem
   const acquisition = normalizeAcquisition(sourceType, rawContentKind, rawJsonObject);
   const preparedBody = durableBodyForPolicy({
     body: input.body,
-    summary: input.summary,
     policy,
   });
-  const rawRetained =
-    policy.durableRawMode === "full" ||
-    policy.durableRawMode === "excerpt" ||
-    policy.durableRawMode === "facts_only";
+  const bodyStored = normalizeContent(preparedBody).length > 0;
+  const rawRetained = bodyStored && bodyCanBeStoredForPolicy(policy);
   const rawTruncated =
     rawRetained &&
     policy.durableRawMaxChars > 0 &&
@@ -178,13 +176,23 @@ export function prepareFeedItemStorage(input: RawContentInput): PreparedFeedItem
       rawContentKind,
       rawRetained,
       rawTruncated,
+      bodyStored,
     }),
     policy,
     rawContentKind,
     acquisition,
     rawRetained,
     rawTruncated,
+    bodyStored,
   };
+}
+
+export function bodyCanBeStoredForPolicy(policy: RawContentPolicy): boolean {
+  return (
+    policy.durableRawMode === "full" ||
+    policy.durableRawMode === "excerpt" ||
+    policy.durableRawMode === "facts_only"
+  );
 }
 
 export function inferRawContentKind(
@@ -214,29 +222,26 @@ export function inferRawContentKind(
 
 function durableBodyForPolicy({
   body,
-  summary,
   policy,
 }: {
   body: string;
-  summary?: string | null;
   policy: RawContentPolicy;
 }) {
   const normalizedBody = normalizeContent(body);
-  const normalizedSummary = normalizeContent(summary);
 
   if (policy.durableRawMode === "none") {
-    return normalizedSummary || excerpt(normalizedBody, 500) || "Summary unavailable.";
+    return "";
   }
 
   if (policy.durableRawMode === "facts_only") {
-    return normalizedSummary || excerpt(normalizedBody, policy.durableRawMaxChars) || "Facts unavailable.";
+    return excerpt(normalizedBody, policy.durableRawMaxChars);
   }
 
   if (policy.durableRawMode === "excerpt") {
-    return excerpt(normalizedBody, policy.durableRawMaxChars) || normalizedSummary || "Excerpt unavailable.";
+    return excerpt(normalizedBody, policy.durableRawMaxChars);
   }
 
-  return excerpt(normalizedBody, policy.durableRawMaxChars) || normalizedSummary || "Content unavailable.";
+  return excerpt(normalizedBody, policy.durableRawMaxChars);
 }
 
 function sanitizeRawJson({
@@ -246,6 +251,7 @@ function sanitizeRawJson({
   rawContentKind,
   rawRetained,
   rawTruncated,
+  bodyStored,
 }: {
   rawJson: Record<string, unknown>;
   acquisition: Record<string, unknown>;
@@ -253,6 +259,7 @@ function sanitizeRawJson({
   rawContentKind: string;
   rawRetained: boolean;
   rawTruncated: boolean;
+  bodyStored: boolean;
 }) {
   return {
     ...sanitizeUnknownRecord(rawJson, 0),
@@ -263,6 +270,7 @@ function sanitizeRawJson({
       processingRaw: policy.processingRaw,
       durableRawMode: policy.durableRawMode,
       durableRawMaxChars: policy.durableRawMaxChars,
+      bodyStored,
       rawRetained,
       rawTruncated,
       hubRawSharing: false,

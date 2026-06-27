@@ -24,7 +24,7 @@ export const SkillFeedItemSchema = z.object({
   kind: z.enum(FeedItemKind),
   externalId: z.string().min(1).max(MAX_EXTERNAL_ID),
   title: z.string().max(MAX_TITLE).nullable().optional(),
-  body: z.string().min(1).max(MAX_BODY),
+  body: z.string().max(MAX_BODY).optional().default(""),
   summary: z.string().min(1).max(MAX_SUMMARY).nullable().optional(),
   url: z.string().url().max(MAX_URL),
   publishedAt: z.string().datetime().nullable().optional(),

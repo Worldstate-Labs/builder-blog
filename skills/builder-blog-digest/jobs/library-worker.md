@@ -43,6 +43,11 @@ result file survives):
 - Complete CHEAP tasks first: all `ready` tasks (body provided, summary only),
   then light extractions (web articles), and only then heavy extractions
   (audio/video downloads, transcription).
+- For `agentWorkType: "translate_summary_only"` tasks, do NOT fetch the URL,
+  download media, transcribe audio/video, or use `item.body` as source
+  content. Translate only `task.summaryTranslation.sourceSummary` into the
+  requested language. Leave `item.body` empty or omit it; the runner preserves
+  the planned empty body.
 - For `contentStatus: "ready"` tasks, do NOT fetch the URL, download media,
   transcribe audio/video, or rewrite `item.body`. The runner already fetched
   the source body. Use `task.item.body` only to write `item.summary`. To save
