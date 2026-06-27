@@ -5,6 +5,7 @@ import { builderKindForSourceType } from "@/lib/source-registry";
 
 const ADMIN_SOURCE_CANDIDATE_SEED = "admin_source_library";
 const CURATED_AI_SOURCE_CANDIDATE_SEED = "curated_ai_sources";
+const CURATED_NEWS_SOURCE_CANDIDATE_SEED = "curated_news_sources";
 const SOURCE_CANDIDATE_LIMIT = 300;
 const SOURCE_CANDIDATE_SEED_TTL_MS = 5 * 60 * 1000;
 
@@ -106,6 +107,39 @@ const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "Ethan Mollick on X", sourceType: "x", sourceUrl: "https://x.com/emollick", handle: "emollick", avatarUrl: "https://pbs.twimg.com/profile_images/1601382188712398850/3AAOlqrX_200x200.jpg" },
 ];
 
+// Finance / economics / politics & world-affairs sources. All chosen for OPEN,
+// non-paywalled content (RSS returns full text; podcasts are free audio).
+// Hard-paywalled outlets (FT, WSJ articles, The Economist, NYT articles,
+// Seeking Alpha, Foreign Affairs) and freemium/metered ones (Noahpinion,
+// Project Syndicate) are deliberately excluded. Every feed below was HTTP-checked
+// to return 200 + a valid RSS/Atom feed.
+const CURATED_NEWS_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
+  // Finance / markets
+  { name: "CNBC Top News", sourceType: "blog", sourceUrl: "https://www.cnbc.com/id/100003114/device/rss/rss.html", fetchUrl: "https://www.cnbc.com/id/100003114/device/rss/rss.html", avatarDomain: "cnbc.com" },
+  { name: "CNBC Finance", sourceType: "blog", sourceUrl: "https://www.cnbc.com/id/10000664/device/rss/rss.html", fetchUrl: "https://www.cnbc.com/id/10000664/device/rss/rss.html", avatarDomain: "cnbc.com" },
+  { name: "MarketWatch Top Stories", sourceType: "blog", sourceUrl: "https://feeds.content.dowjones.io/public/rss/mw_topstories", fetchUrl: "https://feeds.content.dowjones.io/public/rss/mw_topstories", avatarDomain: "marketwatch.com" },
+  { name: "Yahoo Finance", sourceType: "blog", sourceUrl: "https://finance.yahoo.com/news/rssindex", fetchUrl: "https://finance.yahoo.com/news/rssindex", avatarDomain: "finance.yahoo.com" },
+  // Economics
+  { name: "Marginal Revolution", sourceType: "blog", sourceUrl: "https://marginalrevolution.com/feed", fetchUrl: "https://marginalrevolution.com/feed", avatarDomain: "marginalrevolution.com" },
+  { name: "Calculated Risk", sourceType: "blog", sourceUrl: "https://www.calculatedriskblog.com/feeds/posts/default?alt=rss", fetchUrl: "https://www.calculatedriskblog.com/feeds/posts/default?alt=rss", avatarDomain: "calculatedriskblog.com" },
+  { name: "NY Fed Liberty Street Economics", sourceType: "blog", sourceUrl: "https://libertystreeteconomics.newyorkfed.org/feed/", fetchUrl: "https://libertystreeteconomics.newyorkfed.org/feed/", avatarDomain: "newyorkfed.org" },
+  { name: "NPR Economy", sourceType: "blog", sourceUrl: "https://feeds.npr.org/1017/rss.xml", fetchUrl: "https://feeds.npr.org/1017/rss.xml", avatarDomain: "npr.org" },
+  // Politics / world / current affairs
+  { name: "BBC World", sourceType: "blog", sourceUrl: "https://feeds.bbci.co.uk/news/world/rss.xml", fetchUrl: "https://feeds.bbci.co.uk/news/world/rss.xml", avatarDomain: "bbc.co.uk" },
+  { name: "The Guardian World", sourceType: "blog", sourceUrl: "https://www.theguardian.com/world/rss", fetchUrl: "https://www.theguardian.com/world/rss", avatarDomain: "theguardian.com" },
+  { name: "Politico", sourceType: "blog", sourceUrl: "https://rss.politico.com/politics-news.xml", fetchUrl: "https://rss.politico.com/politics-news.xml", avatarDomain: "politico.com" },
+  { name: "Axios", sourceType: "blog", sourceUrl: "https://api.axios.com/feed/", fetchUrl: "https://api.axios.com/feed/", avatarDomain: "axios.com" },
+  { name: "Al Jazeera", sourceType: "blog", sourceUrl: "https://www.aljazeera.com/xml/rss/all.xml", fetchUrl: "https://www.aljazeera.com/xml/rss/all.xml", avatarDomain: "aljazeera.com" },
+  { name: "NPR World", sourceType: "blog", sourceUrl: "https://feeds.npr.org/1004/rss.xml", fetchUrl: "https://feeds.npr.org/1004/rss.xml", avatarDomain: "npr.org" },
+  // Podcasts (free audio — no paywall)
+  { name: "Planet Money", sourceType: "podcast", sourceUrl: "https://feeds.npr.org/510289/podcast.xml", fetchUrl: "https://feeds.npr.org/510289/podcast.xml", avatarDomain: "npr.org" },
+  { name: "The Indicator from Planet Money", sourceType: "podcast", sourceUrl: "https://feeds.npr.org/510325/podcast.xml", fetchUrl: "https://feeds.npr.org/510325/podcast.xml", avatarDomain: "npr.org" },
+  { name: "Freakonomics Radio", sourceType: "podcast", sourceUrl: "https://feeds.simplecast.com/Y8lFbOT4", fetchUrl: "https://feeds.simplecast.com/Y8lFbOT4", avatarDomain: "freakonomics.com" },
+  { name: "NYT The Daily", sourceType: "podcast", sourceUrl: "https://feeds.simplecast.com/54nAGcIl", fetchUrl: "https://feeds.simplecast.com/54nAGcIl", avatarDomain: "nytimes.com" },
+  { name: "The Ezra Klein Show", sourceType: "podcast", sourceUrl: "https://feeds.simplecast.com/82FI35Px", fetchUrl: "https://feeds.simplecast.com/82FI35Px", avatarDomain: "nytimes.com" },
+  { name: "WSJ The Journal", sourceType: "podcast", sourceUrl: "https://video-api.wsj.com/podcast/rss/wsj/the-journal", fetchUrl: "https://video-api.wsj.com/podcast/rss/wsj/the-journal", avatarDomain: "wsj.com" },
+];
+
 type BuilderSeedSource = {
   id: string;
   canonicalKey: string;
@@ -142,6 +176,7 @@ async function ensureSourceCandidateSeeded() {
 async function seedSourceCandidateLibrary() {
   await seedSourceCandidatesFromAdminLibrary();
   await seedCuratedAiSourceCandidates();
+  await seedCuratedNewsSourceCandidates();
 }
 
 export async function listSourceCandidates(): Promise<SourceCandidate[]> {
@@ -205,9 +240,20 @@ async function seedSourceCandidatesFromAdminLibrary() {
 }
 
 async function seedCuratedAiSourceCandidates() {
+  await seedCuratedSourceCandidates(CURATED_AI_SOURCE_CANDIDATES, CURATED_AI_SOURCE_CANDIDATE_SEED);
+}
+
+async function seedCuratedNewsSourceCandidates() {
+  await seedCuratedSourceCandidates(CURATED_NEWS_SOURCE_CANDIDATES, CURATED_NEWS_SOURCE_CANDIDATE_SEED);
+}
+
+async function seedCuratedSourceCandidates(
+  candidates: CuratedSourceCandidate[],
+  seededFrom: string,
+) {
   await Promise.all(
-    CURATED_AI_SOURCE_CANDIDATES.map((candidate) => {
-      const seed = seedFromCuratedCandidate(candidate);
+    candidates.map((candidate) => {
+      const seed = seedFromCuratedCandidate(candidate, seededFrom);
       return prisma.sourceCandidate.upsert({
         where: { sourceKey: seed.sourceKey },
         update: {
@@ -219,7 +265,7 @@ async function seedCuratedAiSourceCandidates() {
           avatarUrl: seed.avatarUrl,
           avatarDataUrl: null,
           seedBuilderId: null,
-          seededFrom: CURATED_AI_SOURCE_CANDIDATE_SEED,
+          seededFrom,
         },
         create: seed,
       });
@@ -242,7 +288,10 @@ function seedFromBuilder(builder: BuilderSeedSource) {
   };
 }
 
-function seedFromCuratedCandidate(candidate: CuratedSourceCandidate) {
+function seedFromCuratedCandidate(
+  candidate: CuratedSourceCandidate,
+  seededFrom: string = CURATED_AI_SOURCE_CANDIDATE_SEED,
+) {
   return {
     sourceKey: sourceKeyForCuratedCandidate(candidate),
     name: candidate.name,
@@ -253,7 +302,7 @@ function seedFromCuratedCandidate(candidate: CuratedSourceCandidate) {
     avatarUrl: avatarUrlForCuratedCandidate(candidate),
     avatarDataUrl: null,
     seedBuilderId: null,
-    seededFrom: CURATED_AI_SOURCE_CANDIDATE_SEED,
+    seededFrom,
   };
 }
 
