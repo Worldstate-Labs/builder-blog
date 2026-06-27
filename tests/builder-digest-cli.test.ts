@@ -2740,32 +2740,61 @@ function digestRenderContext() {
   };
 }
 
-test("shard-tasks groups by builder, balances by weight, excludes non-work tasks", async () => {
+test("shard-tasks groups by URL domain, balances by weight, excludes non-work tasks", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
     status: "ok",
     fetchTasks: [
-      { id: "t1", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "youtube", builderSync: { builderId: "b1" } },
-      { id: "t2", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "youtube", builderSync: { builderId: "b1" } },
-      { id: "t3", agentWorkType: "fetch_post", contentStatus: "ready", sourceType: "blog", builderSync: { builderId: "b2" } },
-      { id: "t4", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "website", builderSync: { builderId: "b3" } },
+      {
+        id: "t1",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/a" },
+      },
+      {
+        id: "t2",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b2", sourceUrl: "https://www.example.com/news.xml" },
+        item: { url: "https://www.example.com/posts/b" },
+      },
+      {
+        id: "t3",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b3", sourceUrl: "https://other.example/feed.xml" },
+        item: { url: "https://other.example/posts/c" },
+      },
+      {
+        id: "t4",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "website",
+        builderSync: { builderId: "b4", sourceUrl: "https://third.example" },
+      },
       { id: "t5", agentWorkType: "x_token_missing", builderSync: { builderId: "b4" }, agentMessage: "needs token" },
       { id: "t6", agentWorkType: "candidate_discovery_fallback", builderSync: { builderId: "b5" } },
     ],
   };
   const { shards, userActionTasks, discoveryTasks } = cli.shardFetchTasksForWorkers(fetchResult, 3);
 
-  // One source's tasks never split across shards (per-source serialization).
+  // One domain's tasks never split across shards (per-domain serialization),
+  // but the same source type can still fan out when domains differ.
   const shardOfTask = new Map<string, number>();
   shards.forEach((shard: { tasks: { id: string }[] }, index: number) => {
     for (const task of shard.tasks) shardOfTask.set(task.id, index);
   });
   assert.equal(shardOfTask.get("t1"), shardOfTask.get("t2"));
+  assert.notEqual(shardOfTask.get("t1"), shardOfTask.get("t3"));
   // All work tasks are covered exactly once; non-work tasks are excluded.
   assert.deepEqual([...shardOfTask.keys()].sort(), ["t1", "t2", "t3", "t4"]);
   assert.deepEqual(userActionTasks.map((t: { id: string }) => t.id), ["t5"]);
   assert.deepEqual(discoveryTasks.map((t: { id: string }) => t.id), ["t6"]);
-  // maxWorkers caps shard count; builder count caps it too.
+  // maxWorkers caps shard count; URL domain count caps it too.
   assert.ok(shards.length <= 3);
   assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
 });

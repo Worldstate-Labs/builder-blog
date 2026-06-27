@@ -5573,10 +5573,11 @@ async function expandDiscovery(args) {
 // shard-tasks splits a fetch result's fetchTasks into at most N worker shard
 // files, and merge-task-results reassembles the workers' per-shard payloads
 // into the single sync payload that validate-agent-sync / sync-builders
-// consume. Grouping is by builder so one source's tasks are never fetched by
-// two concurrent workers (per-source serialization is the rate-limit
-// contract), and weights bias the bin-packing so transcript-heavy sources
-// don't pile onto one shard.
+// consume. Worker grouping is by URL domain so one domain's tasks are never
+// fetched by two concurrent workers (per-domain serialization is the rate-limit
+// contract), while unrelated domains in the same source type can run in
+// parallel. Weights bias the bin-packing so transcript-heavy sources don't pile
+// onto one shard.
 
 function shardTaskWeight(task) {
   if (task?.contentStatus === "ready") return 1;
@@ -5594,11 +5595,33 @@ function isDeterministicSyncFetchTask(task) {
   );
 }
 
-function shardGroupKey(task) {
+function sourceGroupKey(task) {
   const sync = task?.builderSync ?? {};
   return String(
     sync.builderId || task?.builderId || sync.sourceUrl || sync.handle || task?.builder || "ungrouped",
   );
+}
+
+function urlDomainKey(value) {
+  if (!value) return null;
+  try {
+    const hostname = new URL(String(value)).hostname.toLowerCase().replace(/^www\./, "");
+    return hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+function shardGroupKey(task) {
+  const sync = task?.builderSync ?? {};
+  const domain =
+    urlDomainKey(task?.item?.url) ||
+    urlDomainKey(task?.item?.sourceUrl) ||
+    urlDomainKey(sync.fetchUrl) ||
+    urlDomainKey(sync.sourceUrl) ||
+    urlDomainKey(task?.sourceUrl) ||
+    urlDomainKey(task?.fetchUrl);
+  return domain ? `domain:${domain}` : sourceGroupKey(task);
 }
 
 export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
@@ -6534,7 +6557,7 @@ function splitKeyForTaskGranularity(task) {
 }
 
 function splitKeyForSourceGranularity(task) {
-  return shardGroupKey(task);
+  return sourceGroupKey(task);
 }
 
 function splitSyncPayload(fetchResult, payload = {}, options = {}) {
