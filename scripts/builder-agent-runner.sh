@@ -5,6 +5,11 @@ JOB_NAME="${1:-}"
 APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
+# launchd/cron do not inherit the user's interactive shell PATH. Set this
+# before any helper calls `node`, because account_slug runs before the rest of
+# the runner has initialized.
+SCHEDULER_SAFE_PATH="$HOME/.local/bin:$HOME/bin:$HOME/.codex/bin:$HOME/.bun/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin"
+PATH="$SCHEDULER_SAFE_PATH:$PATH"
 account_slug() {
   node - "${1:-default}" <<'NODE'
 const { createHash } = require("node:crypto");
@@ -42,11 +47,6 @@ if [ "${BUILDER_BLOG_JOB_TMP_IS_RUN_DIR:-0}" = "1" ] && [ -n "${BUILDER_BLOG_JOB
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
 
-# launchd/cron do not inherit the user's interactive shell PATH. Include the
-# common user-level install locations used by local agent CLIs so scheduled
-# jobs can find runtimes installed with their default installers.
-SCHEDULER_SAFE_PATH="$HOME/.local/bin:$HOME/bin:$HOME/.codex/bin:$HOME/.bun/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin"
-PATH="$SCHEDULER_SAFE_PATH:$PATH"
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
 # runner so the per-user fetch log can distinguish scheduled jobs from
 # manual terminal invocations.
@@ -76,6 +76,10 @@ self_update_and_reexec() {
   _self="$AGENT_DIR/builder-agent-runner.sh"
   _next="$AGENT_DIR/.builder-agent-runner.$ACCOUNT_SLUG.$JOB_NAME.next"
   if curl -fsSL "$APP_URL/api/skill/files/builder-agent-runner.sh" -o "$_next" 2>/dev/null && [ -s "$_next" ]; then
+    if ! runner_has_safe_bootstrap "$_next"; then
+      rm -f "$_next" 2>/dev/null || true
+      return 0
+    fi
     if ! cmp -s "$_next" "$_self" 2>/dev/null; then
       chmod +x "$_next" 2>/dev/null || true
       if mv "$_next" "$_self" 2>/dev/null; then
@@ -86,6 +90,14 @@ self_update_and_reexec() {
     fi
     rm -f "$_next" 2>/dev/null || true
   fi
+}
+runner_has_safe_bootstrap() {
+  _file="$1"
+  awk '
+    /PATH="\$SCHEDULER_SAFE_PATH:\$PATH"/ { pathLine = NR }
+    /ACCOUNT_SLUG="\$\(account_slug "\$\{BUILDER_BLOG_ACCOUNT:-default\}"\)"/ { slugLine = NR }
+    END { exit !(pathLine > 0 && slugLine > 0 && pathLine < slugLine) }
+  ' "$_file" 2>/dev/null
 }
 if [ "${BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH:-0}" != "1" ] && { [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; }; then
   self_update_and_reexec "$@"

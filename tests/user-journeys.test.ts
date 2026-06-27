@@ -1121,6 +1121,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /SCHEDULER_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
   assert.match(digestCronSetupPrompt, /SCHEDULER_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
   assert.match(runner, /SCHEDULER_SAFE_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
+  assert.ok(
+    runner.indexOf('PATH="$SCHEDULER_SAFE_PATH:$PATH"') <
+      runner.indexOf('ACCOUNT_SLUG="$(account_slug "${BUILDER_BLOG_ACCOUNT:-default}")"'),
+    "runner must set launchd-safe PATH before account_slug invokes node",
+  );
+  assert.match(runner, /runner_has_safe_bootstrap/);
+  assert.match(runner, /runner_has_safe_bootstrap "\$_next"/);
   // The setup does one real initial run; cron-setup must NOT restate the
   // fetch-task execution steps.
   assert.match(
