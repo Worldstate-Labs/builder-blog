@@ -3,6 +3,7 @@
 import {
   type FormEvent,
   type KeyboardEvent,
+  type SyntheticEvent,
   useEffect,
   useId,
   useMemo,
@@ -26,7 +27,6 @@ function splitTaggedError(error: string): {
   };
 }
 import { Globe, Plus } from "lucide-react";
-import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceCandidateList } from "@/components/SourceCandidateList";
 import {
   builderLibraryBuilderAdded,
@@ -123,7 +123,9 @@ export function AddBuilderForm({
   sourceCandidates: SourceCandidate[];
   sourceOptions: SourceOption[];
 }) {
+  const sourceValueInputId = useId();
   const sourceCandidateListId = useId();
+  const nameCandidateListId = useId();
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   // Pre-add confirmation: when the server returns a warning flagged
@@ -138,7 +140,9 @@ export function AddBuilderForm({
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
   const [sourceValue, setSourceValue] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<SourceCandidate | null>(null);
+  const [failedDisplayNameAvatarUrl, setFailedDisplayNameAvatarUrl] = useState<string | null>(null);
   const [sourceCandidatesOpen, setSourceCandidatesOpen] = useState(false);
+  const [sourceCandidatesField, setSourceCandidatesField] = useState<"source" | "name" | null>(null);
   const lastAutoSwitchedValueRef = useRef("");
   // Display name auto-derives from sourceType + sourceValue when the
   // user hasn't typed in the field themselves. Once they edit (or
@@ -197,23 +201,24 @@ export function AddBuilderForm({
     [sourceType, debouncedValue],
   );
   const effectiveName = nameTouched ? name : derivedName;
+  const sourceCandidateQuery =
+    sourceCandidatesField === "name" && !resolvedSourceValue.trim()
+      ? effectiveName
+      : resolvedSourceValue;
   const sourceCandidateSuggestions = useMemo(
     () =>
       sourceCandidatesOpen && !sourceValueIsFixed
         ? sourceCandidates
-            .filter((candidate) => sourceCandidateMatches(candidate, resolvedSourceValue))
+            .filter((candidate) => sourceCandidateMatches(candidate, sourceCandidateQuery))
             .slice(0, 6)
         : [],
-    [resolvedSourceValue, sourceCandidates, sourceCandidatesOpen, sourceValueIsFixed],
+    [sourceCandidateQuery, sourceCandidates, sourceCandidatesOpen, sourceValueIsFixed],
   );
-  const displayNameAvatarSource = selectedCandidate ?? {
-    avatarDataUrl: null,
-    avatarUrl: null,
-    fetchUrl: null,
-    name: effectiveName || sourceLabelForType(sourceType),
-    sourceType,
-    sourceUrl: sourceUrlFromInput(resolvedSourceValue),
-  };
+  const displayNameAvatarUrl =
+    selectedCandidate?.avatarDataUrl || selectedCandidate?.avatarUrl || null;
+  const shouldShowDisplayNameAvatar = Boolean(
+    displayNameAvatarUrl && displayNameAvatarUrl !== failedDisplayNameAvatarUrl,
+  );
 
   function applySuggestion(target: DetectedSourceId) {
     selectSourceType(target);
@@ -221,12 +226,14 @@ export function AddBuilderForm({
   }
 
   function applySourceCandidate(candidate: SourceCandidate) {
+    setFailedDisplayNameAvatarUrl(null);
     setSelectedCandidate(candidate);
     setSourceType(candidate.sourceType);
     setSourceValue(sourceCandidateValue(candidate));
     setName(candidate.name);
     setNameTouched(true);
     setSourceCandidatesOpen(false);
+    setSourceCandidatesField(null);
     setError("");
     setStatus("");
     setWarning("");
@@ -331,6 +338,7 @@ export function AddBuilderForm({
         setSourceValue("");
         setSelectedCandidate(null);
         setSourceCandidatesOpen(false);
+        setSourceCandidatesField(null);
         setName("");
         setNameTouched(false);
         setPendingConfirmation(null);
@@ -358,41 +366,57 @@ export function AddBuilderForm({
 
   return (
     <form className="add-source-form" onSubmit={addBuilder}>
-      <div className="source-url-combobox">
-        <input
-          aria-autocomplete="list"
-          aria-controls={
-            sourceCandidateSuggestions.length > 0 ? sourceCandidateListId : undefined
-          }
-          aria-expanded={sourceCandidateSuggestions.length > 0}
-          aria-label="Handle or URL"
-          aria-readonly={sourceValueIsFixed}
-          autoComplete="off"
-          autoCorrect="off"
-          className="fb-input"
-          name="sourceValue"
-          onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
-          onChange={(event) => {
-            if (sourceValueIsFixed) return;
-            setSourceValue(event.target.value);
-            setSelectedCandidate(null);
-            setSourceCandidatesOpen(true);
-            // Editing the URL invalidates a stale confirm prompt.
-            setPendingConfirmation(null);
-          }}
-          onFocus={() => setSourceCandidatesOpen(true)}
-          placeholder={placeholderForSourceId(sourceType)}
-          readOnly={sourceValueIsFixed}
-          required
-          role="combobox"
-          spellCheck={false}
-          value={resolvedSourceValue}
-        />
-        <SourceCandidateList
-          candidates={sourceCandidateSuggestions}
-          id={sourceCandidateListId}
-          onSelect={applySourceCandidate}
-        />
+      <div className="add-source-url-row">
+        <label className="add-source-field-label" htmlFor={sourceValueInputId}>
+          URL
+        </label>
+        <div className="source-url-combobox">
+          <input
+            aria-autocomplete="list"
+            aria-controls={
+              sourceCandidatesField === "source" && sourceCandidateSuggestions.length > 0
+                ? sourceCandidateListId
+                : undefined
+            }
+            aria-expanded={
+              sourceCandidatesField === "source" && sourceCandidateSuggestions.length > 0
+            }
+            aria-label="Handle or URL"
+            aria-readonly={sourceValueIsFixed}
+            autoComplete="off"
+            autoCorrect="off"
+            className="fb-input"
+            id={sourceValueInputId}
+            name="sourceValue"
+            onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
+            onChange={(event) => {
+              if (sourceValueIsFixed) return;
+              setSourceValue(event.target.value);
+              setSelectedCandidate(null);
+              setSourceCandidatesOpen(true);
+              setSourceCandidatesField("source");
+              // Editing the URL invalidates a stale confirm prompt.
+              setPendingConfirmation(null);
+            }}
+            onFocus={() => {
+              setSourceCandidatesOpen(true);
+              setSourceCandidatesField("source");
+            }}
+            placeholder={placeholderForSourceId(sourceType)}
+            readOnly={sourceValueIsFixed}
+            required
+            role="combobox"
+            spellCheck={false}
+            value={resolvedSourceValue}
+          />
+          {sourceCandidatesField === "source" ? (
+            <SourceCandidateList
+              candidates={sourceCandidateSuggestions}
+              id={sourceCandidateListId}
+              onSelect={applySourceCandidate}
+            />
+          ) : null}
+        </div>
       </div>
       {preview.kind !== "idle" ? (
         <div
@@ -417,23 +441,54 @@ export function AddBuilderForm({
         </div>
       ) : null}
       <div className="add-source-name-row">
-        <div className="source-display-name-control">
-          <SourceAvatar
-            className="source-display-name-avatar"
-            imageSize={28}
-            source={displayNameAvatarSource}
-          />
+        <div
+          className={`source-display-name-control add-source-display-name-control${
+            shouldShowDisplayNameAvatar ? "" : " without-avatar"
+          }`}
+        >
+          {shouldShowDisplayNameAvatar && displayNameAvatarUrl ? (
+            <ResolvedSourceAvatar
+              src={displayNameAvatarUrl}
+              onError={() => setFailedDisplayNameAvatarUrl(displayNameAvatarUrl)}
+            />
+          ) : null}
           <input
+            aria-autocomplete="list"
+            aria-controls={
+              sourceCandidatesField === "name" && sourceCandidateSuggestions.length > 0
+                ? nameCandidateListId
+                : undefined
+            }
+            aria-expanded={sourceCandidatesField === "name" && sourceCandidateSuggestions.length > 0}
             aria-label="Display name"
             className="fb-input add-source-name-input"
             name="name"
+            onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
             onChange={(event) => {
               setName(event.target.value);
               setNameTouched(true);
+              if (!resolvedSourceValue.trim()) {
+                setSourceCandidatesOpen(true);
+                setSourceCandidatesField("name");
+              }
+            }}
+            onFocus={() => {
+              if (!resolvedSourceValue.trim()) {
+                setSourceCandidatesOpen(true);
+                setSourceCandidatesField("name");
+              }
             }}
             placeholder="Display name (optional)"
+            role="combobox"
             value={effectiveName}
           />
+          {sourceCandidatesField === "name" ? (
+            <SourceCandidateList
+              candidates={sourceCandidateSuggestions}
+              id={nameCandidateListId}
+              onSelect={applySourceCandidate}
+            />
+          ) : null}
         </div>
         <span aria-live="polite" className="add-source-inline-note">
           {errorMessage ? (
@@ -546,16 +601,6 @@ function sourceTypeOptionId(sourceId: string) {
   return `add-source-type-${sourceId}`;
 }
 
-function sourceUrlFromInput(value: string) {
-  const trimmed = value.trim();
-  if (!/^https?:\/\//i.test(trimmed)) return null;
-  try {
-    return new URL(trimmed).toString();
-  } catch {
-    return null;
-  }
-}
-
 function formSourceTypeForValue(
   value: string,
   sourceOptionIds: ReadonlySet<string>,
@@ -563,4 +608,26 @@ function formSourceTypeForValue(
   const detected = detectSourceTypeFromValue(value);
   if (!detected) return null;
   return sourceOptionIds.has(detected) ? detected : null;
+}
+
+function ResolvedSourceAvatar({
+  onError,
+  src,
+}: {
+  onError: (event: SyntheticEvent<HTMLImageElement>) => void;
+  src: string;
+}) {
+  return (
+    <span aria-hidden="true" className="fb-src-icon source-display-name-avatar">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        alt=""
+        height={28}
+        loading="lazy"
+        onError={onError}
+        src={src}
+        width={28}
+      />
+    </span>
+  );
 }

@@ -2972,6 +2972,22 @@ summary.library-section-summary::after {
   justify-content: center;
 }
 
+.add-source-url-row {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+}
+
+.add-source-field-label {
+  color: var(--muted-strong);
+  font-size: 0.71875rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
 .source-url-combobox {
   min-width: 0;
   position: relative;
@@ -3053,11 +3069,24 @@ summary.library-section-summary::after {
   gap: 0.5rem;
   grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
+  position: relative;
+}
+
+.add-source-display-name-control.without-avatar {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .source-display-name-avatar {
   height: 1.75rem;
+  padding: 0;
   width: 1.75rem;
+}
+
+.source-display-name-avatar img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
 }
 
 .source-display-name-control .fb-input {

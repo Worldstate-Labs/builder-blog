@@ -131,12 +131,17 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(addBuilderForm, /aria-autocomplete="list"/);
   assert.match(addBuilderForm, /autoComplete="off"/);
   assert.match(addBuilderForm, /spellCheck=\{false\}/);
+  assert.match(addBuilderForm, /sourceCandidatesField === "name" && !resolvedSourceValue\.trim\(\)/);
+  assert.match(addBuilderForm, /setSourceCandidatesField\("name"\)/);
   assert.match(addBuilderForm, /applySourceCandidate\(candidate: SourceCandidate\)/);
   assert.match(addBuilderForm, /setSourceType\(candidate\.sourceType\)/);
   assert.match(addBuilderForm, /setSourceValue\(sourceCandidateValue\(candidate\)\)/);
   assert.match(addBuilderForm, /setName\(candidate\.name\)/);
   assert.match(addBuilderForm, /source-display-name-control/);
-  assert.match(addBuilderForm, /SourceAvatar/);
+  assert.match(addBuilderForm, /displayNameAvatarUrl/);
+  assert.match(addBuilderForm, /selectedCandidate\?\.avatarDataUrl \|\| selectedCandidate\?\.avatarUrl/);
+  assert.match(addBuilderForm, /ResolvedSourceAvatar/);
+  assert.doesNotMatch(addBuilderForm, /displayNameAvatarSource/);
 
   assert.match(editDialog, /sourceCandidates: SourceCandidate\[\]/);
   assert.match(editDialog, /SourceCandidateList/);
@@ -157,7 +162,11 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(globals, /\.source-url-combobox\s*{/);
   assert.match(globals, /\.source-candidate-list\s*{/);
   assert.match(globals, /\.source-candidate-option\s*{/);
+  assert.match(globals, /\.add-source-url-row\s*{/);
+  assert.match(globals, /\.add-source-field-label\s*{/);
   assert.match(globals, /\.source-display-name-control\s*{/);
+  assert.match(globals, /\.source-display-name-control\s*{[\s\S]*position:\s*relative/);
+  assert.match(globals, /\.add-source-display-name-control\.without-avatar\s*{/);
 });
 
 test("app shell reuses the page session instead of fetching it again", () => {
@@ -4473,6 +4482,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(personalBuilderInput, /Could not reach Apple Podcasts to find the RSS feed\./);
   assert.doesNotMatch(personalBuilderInput, /Source URL or handle is required|URL is malformed|X handle must look|Enter a youtube\.com or youtu\.be URL|YouTube source must be|Apple lookup failed|Apple returned no RSS feed|has no record|this podcast with Apple Podcasts|resolve the RSS feed/);
   assert.match(addBuilderForm, /className="add-source-form"/);
+  assert.match(addBuilderForm, /className="add-source-url-row"/);
+  assert.match(addBuilderForm, />\s*URL\s*<\/label>/);
   assert.match(addBuilderForm, /className="add-source-type-list"/);
   assert.match(addBuilderForm, /className="add-source-name-row"/);
   assert.match(addBuilderForm, /className="add-source-action-row"/);
