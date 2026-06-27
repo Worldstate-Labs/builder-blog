@@ -260,7 +260,7 @@ test("different-language Hub summary becomes a ready fetch_post subtask that onl
 
   const shards = cli.shardFetchTasksForWorkers(fetchResult, 3);
   assert.equal(shards.shards.length, 1);
-  assert.equal(shards.shards[0].tasks[0].agentWorkType, "translate_summary_only");
+  assert.equal((shards.shards[0].tasks[0] as { agentWorkType?: string }).agentWorkType, "translate_summary_only");
 
   const merged = cli.mergeShardSyncPayloads(fetchResult, [
     {

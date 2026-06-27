@@ -3379,7 +3379,7 @@ test("merge-task-results restores ready task body when worker omits or rewrites 
   ]);
 
   const itemsByTaskId = new Map(
-    merged.payload.builders.flatMap((builder: { items: Array<{ rawJson?: { fetchTaskId?: string } }> }) =>
+    merged.payload.builders.flatMap((builder: { items: Array<{ body: string; summary: string; rawJson: { fetchTaskId?: string; workerId?: string } }> }) =>
       builder.items.map((item) => [item.rawJson?.fetchTaskId, item]),
     ),
   );
