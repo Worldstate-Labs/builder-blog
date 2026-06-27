@@ -105,6 +105,11 @@ const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "Hugging Face on X", sourceType: "x", sourceUrl: "https://x.com/huggingface", handle: "huggingface", avatarUrl: "https://pbs.twimg.com/profile_images/1991559933473497089/mbrRS49P_200x200.jpg" },
   { name: "Andrew Ng on X", sourceType: "x", sourceUrl: "https://x.com/AndrewYNg", handle: "AndrewYNg", avatarUrl: "https://pbs.twimg.com/profile_images/733174243714682880/oyG30NEH_200x200.jpg" },
   { name: "Ethan Mollick on X", sourceType: "x", sourceUrl: "https://x.com/emollick", handle: "emollick", avatarUrl: "https://pbs.twimg.com/profile_images/1601382188712398850/3AAOlqrX_200x200.jpg" },
+  // Tech & analysis
+  { name: "Benedict Evans", sourceType: "blog", sourceUrl: "https://www.ben-evans.com/benedictevans?format=rss", fetchUrl: "https://www.ben-evans.com/benedictevans?format=rss", avatarDomain: "ben-evans.com" },
+  { name: "Dan Luu", sourceType: "blog", sourceUrl: "https://danluu.com/atom.xml", fetchUrl: "https://danluu.com/atom.xml", avatarDomain: "danluu.com" },
+  { name: "Julia Evans", sourceType: "blog", sourceUrl: "https://jvns.ca/atom.xml", fetchUrl: "https://jvns.ca/atom.xml", avatarDomain: "jvns.ca" },
+  { name: "Scott Alexander — Astral Codex Ten", sourceType: "blog", sourceUrl: "https://www.astralcodexten.com/feed", fetchUrl: "https://www.astralcodexten.com/feed", avatarDomain: "astralcodexten.com" },
 ];
 
 // Finance / economics / politics & world-affairs sources. All chosen for OPEN,
@@ -119,11 +124,16 @@ const CURATED_NEWS_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "CNBC Finance", sourceType: "blog", sourceUrl: "https://www.cnbc.com/id/10000664/device/rss/rss.html", fetchUrl: "https://www.cnbc.com/id/10000664/device/rss/rss.html", avatarDomain: "cnbc.com" },
   { name: "MarketWatch Top Stories", sourceType: "blog", sourceUrl: "https://feeds.content.dowjones.io/public/rss/mw_topstories", fetchUrl: "https://feeds.content.dowjones.io/public/rss/mw_topstories", avatarDomain: "marketwatch.com" },
   { name: "Yahoo Finance", sourceType: "blog", sourceUrl: "https://finance.yahoo.com/news/rssindex", fetchUrl: "https://finance.yahoo.com/news/rssindex", avatarDomain: "finance.yahoo.com" },
+  { name: "Aswath Damodaran — Musings on Markets", sourceType: "blog", sourceUrl: "https://aswathdamodaran.blogspot.com/feeds/posts/default?alt=rss", fetchUrl: "https://aswathdamodaran.blogspot.com/feeds/posts/default?alt=rss", avatarDomain: "aswathdamodaran.blogspot.com" },
+  { name: "Ben Carlson — A Wealth of Common Sense", sourceType: "blog", sourceUrl: "https://awealthofcommonsense.com/feed/", fetchUrl: "https://awealthofcommonsense.com/feed/", avatarDomain: "awealthofcommonsense.com" },
+  { name: "Patrick McKenzie — Bits about Money", sourceType: "blog", sourceUrl: "https://www.bitsaboutmoney.com/archive/rss/", fetchUrl: "https://www.bitsaboutmoney.com/archive/rss/", avatarDomain: "bitsaboutmoney.com" },
   // Economics
   { name: "Marginal Revolution", sourceType: "blog", sourceUrl: "https://marginalrevolution.com/feed", fetchUrl: "https://marginalrevolution.com/feed", avatarDomain: "marginalrevolution.com" },
   { name: "Calculated Risk", sourceType: "blog", sourceUrl: "https://www.calculatedriskblog.com/feeds/posts/default?alt=rss", fetchUrl: "https://www.calculatedriskblog.com/feeds/posts/default?alt=rss", avatarDomain: "calculatedriskblog.com" },
   { name: "NY Fed Liberty Street Economics", sourceType: "blog", sourceUrl: "https://libertystreeteconomics.newyorkfed.org/feed/", fetchUrl: "https://libertystreeteconomics.newyorkfed.org/feed/", avatarDomain: "newyorkfed.org" },
   { name: "NPR Economy", sourceType: "blog", sourceUrl: "https://feeds.npr.org/1017/rss.xml", fetchUrl: "https://feeds.npr.org/1017/rss.xml", avatarDomain: "npr.org" },
+  { name: "John Cochrane — The Grumpy Economist", sourceType: "blog", sourceUrl: "https://www.grumpy-economist.com/feed", fetchUrl: "https://www.grumpy-economist.com/feed", avatarDomain: "grumpy-economist.com" },
+  { name: "Scott Sumner — The Money Illusion", sourceType: "blog", sourceUrl: "https://www.themoneyillusion.com/feed/", fetchUrl: "https://www.themoneyillusion.com/feed/", avatarDomain: "themoneyillusion.com" },
   // Politics / world / current affairs
   { name: "BBC World", sourceType: "blog", sourceUrl: "https://feeds.bbci.co.uk/news/world/rss.xml", fetchUrl: "https://feeds.bbci.co.uk/news/world/rss.xml", avatarDomain: "bbc.co.uk" },
   { name: "The Guardian World", sourceType: "blog", sourceUrl: "https://www.theguardian.com/world/rss", fetchUrl: "https://www.theguardian.com/world/rss", avatarDomain: "theguardian.com" },
