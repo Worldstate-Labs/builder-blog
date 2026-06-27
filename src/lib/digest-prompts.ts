@@ -305,31 +305,4 @@ You are writing an optional source-level summary for exactly one source in a Fol
 Use \`context.language\`. If \`context.language\` is \`source\`, write in the dominant language of this source group's supplied post summaries. The input contains one source and that source's candidate posts only. Write a short source-level summary only when this source has multiple candidate posts and those posts are meaningfully about the same actor, source, or main subject. If the posts are unrelated, too sparse, or there is only one candidate post, output an empty string.
 
 Do not summarize every post again. Do not add facts beyond the supplied post summaries and metadata.`,
-  translate: `# Translation Prompt
-
-You are rewriting, translating, and compressing an already-written per-post
-summary into the target language given by context.language. If context.language
-is source, keep each per-post summary in the same language as the supplied
-summary instead of translating it to a fixed language.
-
-## Instructions
-
-- Render only the supplied per-post summary into natural, fluent prose in
-  context.language. If context.language is source, use the supplied summary's
-  own language. It must read as if originally written in that language, not
-  translated.
-- Keep the output to 500 words or fewer. Preserve the original per-post
-  summary's key points, viewpoints, insights, important claims, concrete facts,
-  names, numbers, URLs, and source attribution.
-- Compress wording, not meaning. Do not drop a key claim just to make the copy
-  shorter unless it is repetitive or low-signal.
-- Do not write headlineSummary.
-- Do not write source-level summaries.
-- Keep technical terms in English where professionals in that language typically
-  use them: AI, LLM, GPU, API, fine-tuning, RAG, token, prompt, agent,
-  transformer, etc.
-- Keep all proper nouns in English: names of people, companies, products, and tools.
-- Keep all URLs unchanged.
-- The tone should be professional but conversational, like a knowledgeable friend briefing you.
-- Never use em dashes.`,
 } as const;

@@ -12,7 +12,6 @@ export type AdminDigestConfig = {
   id: string;
   headlinePrompt: string;
   perSourceSummaryPrompt: string;
-  translate: string;
   updatedAt: string;
   updatedBy: string | null;
 };
@@ -35,16 +34,6 @@ const PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER = [
   "If there is only one post or the posts are unrelated, output an empty string.",
 ].join("\n");
 
-const TRANSLATE_PROMPT_PLACEHOLDER = [
-  "Example:",
-  "Rewrite or translate the supplied per-post summary into context.language.",
-  "Keep the output to 500 words or fewer.",
-  "Preserve key points, viewpoints, insights, claims, names, numbers, URLs, and source attribution.",
-  "",
-  "Do not write headlineSummary or source-level summaries.",
-  "Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
-].join("\n");
-
 export function AdminDigestConfigForm({
   initialConfig,
   canEditDigestAssemblyPrompts = true,
@@ -56,15 +45,13 @@ export function AdminDigestConfigForm({
   const [draft, setDraft] = useState({
     headlinePrompt: initialConfig.headlinePrompt,
     perSourceSummaryPrompt: initialConfig.perSourceSummaryPrompt,
-    translate: initialConfig.translate,
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
   const dirty =
-    (canEditDigestAssemblyPrompts &&
-      (draft.headlinePrompt !== config.headlinePrompt ||
-        draft.perSourceSummaryPrompt !== config.perSourceSummaryPrompt)) ||
-    draft.translate !== config.translate;
+    canEditDigestAssemblyPrompts &&
+    (draft.headlinePrompt !== config.headlinePrompt ||
+      draft.perSourceSummaryPrompt !== config.perSourceSummaryPrompt);
 
   function update<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -75,7 +62,6 @@ export function AdminDigestConfigForm({
     setDraft({
       headlinePrompt: config.headlinePrompt,
       perSourceSummaryPrompt: config.perSourceSummaryPrompt,
-      translate: config.translate,
     });
     setStatus({ kind: "idle" });
   }
@@ -89,17 +75,10 @@ export function AdminDigestConfigForm({
       setStatus({ kind: "error", message: "Headline prompt cannot be empty." });
       return;
     }
-    if (draft.translate.trim().length === 0) {
-      setStatus({ kind: "error", message: "Post summary prompt cannot be empty." });
-      return;
-    }
     const patch: {
       headlinePrompt?: string;
       perSourceSummaryPrompt?: string;
-      translate: string;
-    } = {
-      translate: draft.translate,
-    };
+    } = {};
     if (canEditDigestAssemblyPrompts) {
       patch.headlinePrompt = draft.headlinePrompt;
       patch.perSourceSummaryPrompt =
@@ -125,7 +104,6 @@ export function AdminDigestConfigForm({
         setDraft({
           headlinePrompt: body.config.headlinePrompt,
           perSourceSummaryPrompt: body.config.perSourceSummaryPrompt,
-          translate: body.config.translate,
         });
         setStatus({ kind: "saved", message: "Saved" });
       } catch {
@@ -168,18 +146,6 @@ export function AdminDigestConfigForm({
           </FieldBlock>
         </>
       ) : null}
-      <FieldBlock
-        label="Post summary prompt"
-        description="Writes post summaries in the selected language."
-      >
-        <MarkdownEditor
-          ariaLabel="Post summary prompt"
-          height={340}
-          placeholder={TRANSLATE_PROMPT_PLACEHOLDER}
-          value={draft.translate}
-          onChange={(value) => update("translate", value)}
-        />
-      </FieldBlock>
 
       <FooterBar
         dirty={dirty}

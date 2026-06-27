@@ -20,7 +20,6 @@ const DigestPatchSchema = z
   .object({
     headlinePrompt: z.string().min(1).max(20_000).optional(),
     perSourceSummaryPrompt: z.string().max(20_000).optional(),
-    translate: z.string().min(1).max(20_000).optional(),
     commonFetchRules: z.string().min(1).max(20_000).optional(),
     commonSummaryRules: z.string().min(1).max(20_000).optional(),
   })

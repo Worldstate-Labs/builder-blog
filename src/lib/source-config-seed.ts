@@ -42,7 +42,6 @@ export type DigestConfigShape = {
   digestIntro: string;
   headlinePrompt: string;
   perSourceSummaryPrompt: string;
-  translate: string;
   digestOrder: string[];
   commonFetchRules: string;
   commonSummaryRules: string;
@@ -126,7 +125,6 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro,
   headlinePrompt: DEFAULT_DIGEST_PROMPTS.headline,
   perSourceSummaryPrompt: DEFAULT_DIGEST_PROMPTS.perSourceSummary,
-  translate: DEFAULT_DIGEST_PROMPTS.translate,
   digestOrder: [
     "x",
     "blog",
@@ -171,7 +169,6 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
         digestIntro: DEFAULT_DIGEST_CONFIG.digestIntro,
         headlinePrompt: DEFAULT_DIGEST_CONFIG.headlinePrompt,
         perSourceSummaryPrompt: DEFAULT_DIGEST_CONFIG.perSourceSummaryPrompt,
-        translate: DEFAULT_DIGEST_CONFIG.translate,
         digestOrder: DEFAULT_DIGEST_CONFIG.digestOrder as object,
         commonFetchRules: DEFAULT_DIGEST_CONFIG.commonFetchRules,
         commonSummaryRules: DEFAULT_DIGEST_CONFIG.commonSummaryRules,

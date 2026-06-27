@@ -149,7 +149,6 @@ async function SourceTypeConfigSection({
               id: digestConfig.userId,
               headlinePrompt: digestConfig.headlinePrompt,
               perSourceSummaryPrompt: digestConfig.perSourceSummaryPrompt,
-              translate: digestConfig.translate,
               updatedAt: digestConfig.updatedAt.toISOString(),
               updatedBy: digestConfig.updatedBy,
             }}

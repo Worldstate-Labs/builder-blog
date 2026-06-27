@@ -2030,7 +2030,6 @@ test("digest generation user path exposes source-specific prompt instructions", 
       "summarizePodcast",
       "summarizeProductHuntTopProduct",
       "summarizeTweets",
-      "translate",
     ].sort(),
   );
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
@@ -2078,18 +2077,6 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /context\.language/);
-  // Translate step is language-agnostic and only rewrites existing per-post
-  // summaries; headline/source summaries use their own prompts.
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by context\.language/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /per-post summary/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /500 words or fewer/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /key points, viewpoints, insights/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /Do not write headlineSummary/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /Do not write source-level summaries/);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /Maintain the same structure and formatting as the source digest/);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /Do not change digest structure or add section headings/);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /300 Chinese characters|300 words or fewer/);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese|Mandarin/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
 });
 
@@ -3594,14 +3581,14 @@ test("content config is per-user, seeded from a system default", () => {
   assert.doesNotMatch(digestForm, /Prompts used to generate AI Digest\./);
   assert.doesNotMatch(digestForm, /Prompts used after posts already have per-post summaries\./);
   assert.match(digestForm, /Writes the headline summary in the selected language/);
-  assert.match(digestForm, /Writes post summaries in the selected language/);
   assert.doesNotMatch(digestForm, /selected AI Digest language/);
-  assert.match(digestForm, /Post summary prompt/);
+  // The per-post "translate" prompt field is gone; post summaries are copied
+  // verbatim by the CLI, so the form no longer exposes a post-summary prompt.
+  assert.doesNotMatch(digestForm, /Post summary prompt/);
+  assert.doesNotMatch(digestForm, /Writes post summaries in the selected language/);
+  assert.doesNotMatch(digestForm, /draft\.translate/);
   assert.match(digestForm, /Headline prompt cannot be empty\./);
-  assert.match(digestForm, /Post summary prompt cannot be empty\./);
   assert.match(digestForm, /canEditDigestAssemblyPrompts/);
-  assert.match(digestForm, /500 words or fewer/);
-  assert.match(digestForm, /key points, viewpoints, insights/);
   assert.match(digestForm, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(digestForm, /Could not save AI Digest rules\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);

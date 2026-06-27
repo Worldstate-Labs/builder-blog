@@ -687,13 +687,12 @@ model SourceTypeConfig {
 
 /// Singleton (id="global") that holds digest-level prompts. digestIntro and
 /// digestOrder are legacy compatibility fields; current digest assembly is
-/// deterministic and uses headlinePrompt / perSourceSummaryPrompt / translate.
+/// deterministic and uses headlinePrompt / perSourceSummaryPrompt.
 model DigestConfig {
   id                     String   @id @default("global")
   digestIntro            String
   headlinePrompt         String
   perSourceSummaryPrompt String
-  translate              String
   digestOrder            Json
   commonFetchRules       String
   commonSummaryRules     String
@@ -734,7 +733,6 @@ model UserDigestConfig {
   digestIntro            String
   headlinePrompt         String
   perSourceSummaryPrompt String
-  translate              String
   digestOrder            Json
   commonFetchRules       String
   commonSummaryRules     String

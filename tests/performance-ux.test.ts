@@ -1163,14 +1163,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminDigestConfig, /Prompts used after posts already have per-post summaries\./);
   assert.match(adminDigestConfig, /Writes the headline summary in the selected language/);
   assert.match(adminDigestConfig, /Adds an optional note above a source's posts/);
-  assert.match(adminDigestConfig, /Writes post summaries in the selected language/);
+  // Post-summary prompt field removed; post summaries are copied verbatim by the CLI.
+  assert.doesNotMatch(adminDigestConfig, /Writes post summaries in the selected language/);
   assert.doesNotMatch(adminDigestConfig, /Creates the headline summary in the selected AI Digest language|Adds an optional source-level note above that source's posts|Creates post summaries in the selected AI Digest language without dropping key points/);
   assert.match(adminDigestConfig, /Could not save AI Digest rules\./);
   assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
   assert.doesNotMatch(adminDigestConfig, /throw new Error\(body\?\.error/);
   assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
-  assert.match(adminDigestConfig, /Post summary prompt cannot be empty\./);
+  assert.doesNotMatch(adminDigestConfig, /Post summary prompt cannot be empty\./);
   assert.match(adminDigestConfig, /canEditDigestAssemblyPrompts/);
   assert.match(adminDigestConfig, /canEditDigestAssemblyPrompts && draft\.headlinePrompt/);
   assert.match(adminDigestConfig, /canEditDigestAssemblyPrompts \? \(/);
@@ -1189,25 +1190,18 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
-  assert.match(adminDigestConfig, /label="Post summary prompt"/);
-  assert.match(adminDigestConfig, /ariaLabel="Post summary prompt"/);
+  assert.doesNotMatch(adminDigestConfig, /label="Post summary prompt"/);
+  assert.doesNotMatch(adminDigestConfig, /ariaLabel="Post summary prompt"/);
   assert.doesNotMatch(adminDigestConfig, /without dropping key points, viewpoints, or insights/);
   assert.doesNotMatch(adminDigestConfig, /label="Localized post summary prompt"|ariaLabel="Localized post summary prompt"|label="Translate prompt"|ariaLabel="Translate prompt"/);
-  assert.match(adminDigestConfig, /500 words or fewer/);
-  assert.match(adminDigestConfig, /Preserve key points, viewpoints, insights/);
   assert.doesNotMatch(adminDigestConfig, /under 300 Chinese characters|under 300 words/);
   assert.doesNotMatch(adminDigestConfig, /Preserve the original summary's key claims/);
   assert.doesNotMatch(adminDigestConfig, /OrderedChoiceField/);
   assert.doesNotMatch(adminDigestConfig, /settings-field-label mb-1/);
   assert.doesNotMatch(adminDigestConfig, /style=\{\{/);
-  assert.match(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
-  assert.match(digestPrompts, /500 words or fewer/);
-  assert.match(digestPrompts, /key points, viewpoints, insights/);
-  assert.match(digestPrompts, /Preserve the original[\s\S]*important claims/);
-  assert.match(digestPrompts, /Compress wording, not meaning/);
-  assert.doesNotMatch(digestPrompts, /Maintain the same structure and formatting as the source digest/);
-  assert.doesNotMatch(digestPrompts, /Do not change digest structure or add section headings/);
-  assert.doesNotMatch(digestPrompts, /300 Chinese characters|300 words or fewer/);
+  assert.doesNotMatch(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
+  // The DEFAULT_DIGEST_PROMPTS.translate prompt was removed along with the field.
+  assert.doesNotMatch(digestPrompts, /# Translation Prompt/);
   const digestConfigRoute = source("src/app/api/settings/digest-config/route.ts");
   assert.match(digestConfigRoute, /perSourceSummaryPrompt: z\.string\(\)\.max\(20_000\)\.optional\(\)/);
   assert.match(digestConfigRoute, /writesAdminOnlyDigestPrompts/);

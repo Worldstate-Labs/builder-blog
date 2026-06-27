@@ -20,7 +20,6 @@ async function main() {
       digestIntro: true,
       headlinePrompt: true,
       perSourceSummaryPrompt: true,
-      translate: true,
     },
   });
   if (!def) {
@@ -36,13 +35,12 @@ async function main() {
     def.perSourceSummaryPrompt,
     DEFAULT_DIGEST_PROMPTS.perSourceSummary,
   );
-  await refreshField("translate", def.translate, DEFAULT_DIGEST_PROMPTS.translate);
 
   console.log("Done. Regenerate today's digest to see the changes.");
 }
 
 async function refreshField(
-  field: "digestIntro" | "headlinePrompt" | "perSourceSummaryPrompt" | "translate",
+  field: "digestIntro" | "headlinePrompt" | "perSourceSummaryPrompt",
   oldValue: string,
   newValue: string,
 ) {
