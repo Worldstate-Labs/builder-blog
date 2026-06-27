@@ -1550,7 +1550,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronExpanded, /Do not write a no-updates digest JSON/);
   assert.match(digestCronExpanded, /reopen[\s\S]*builder-blog-digest-agent-output\.json[\s\S]*self-check/);
   assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);
-  assert.match(digestCronExpanded, /context\.digest\.translate/);
+  // Post summaries are copied verbatim by the CLI now — the agent must not
+  // rewrite or translate them, so the prompt drops context.digest.translate.
+  assert.match(digestCronExpanded, /Do not write per-post summaries/);
+  assert.match(digestCronExpanded, /into the digest verbatim/);
+  assert.doesNotMatch(digestCronExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestCronExpanded, /context\.digest\.digestIntro/);
   assert.doesNotMatch(digestCronPrompt, /builder-digest\.mjs" prepare/);
   assert.doesNotMatch(digestCronPrompt, /render-digest/);

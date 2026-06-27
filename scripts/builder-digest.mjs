@@ -7120,13 +7120,16 @@ function hostLabel(value) {
   }
 }
 
-function postSummaryFromAgentOutput(agentOutput) {
+// Per-post summaries are copied verbatim from the existing summary on each
+// context item — the digest agent no longer produces (or rewrites/translates)
+// them. Building the map here keeps the copy deterministic and CLI-owned.
+function postSummaryFromContextItems(context) {
   const map = new Map();
-  const rows = Array.isArray(agentOutput?.postSummaries) ? agentOutput.postSummaries : [];
-  for (const row of rows) {
-    const summary = stringOrNull(row?.summary);
-    if (!summary) continue;
-    if (row?.feedItemId) map.set(String(row.feedItemId), summary);
+  const items = Array.isArray(context?.items) ? context.items : [];
+  for (const item of items) {
+    const id = stringOrNull(item?.id);
+    const summary = stringOrNull(item?.summary);
+    if (id && summary) map.set(id, summary);
   }
   return map;
 }
@@ -7159,27 +7162,11 @@ function validateDigestAgentOutput(context, agentOutput, postSummaries) {
     }
     if (seenItemIds.has(id)) errors.push(`duplicate context item id: ${id}`);
     seenItemIds.add(id);
-    if (!postSummaries.has(id)) errors.push(`postSummaries missing feedItemId: ${id}`);
+    // Post summaries are copied verbatim from each context item's existing
+    // summary; a missing one means there is nothing to copy for that item.
+    if (!postSummaries.has(id)) errors.push(`context item ${id} has no existing summary to copy`);
   }
 
-  if (!Array.isArray(agentOutput.postSummaries)) {
-    errors.push("postSummaries must be an array");
-  } else {
-    const outputItemIds = new Set();
-    for (const row of agentOutput.postSummaries) {
-      const feedItemId = stringOrNull(row?.feedItemId);
-      if (!feedItemId) {
-        errors.push("post summary is missing feedItemId");
-      } else {
-        if (outputItemIds.has(feedItemId)) errors.push(`duplicate post summary feedItemId: ${feedItemId}`);
-        outputItemIds.add(feedItemId);
-        if (!seenItemIds.has(feedItemId)) errors.push(`post summary has unknown feedItemId: ${feedItemId}`);
-      }
-      if (!stringOrNull(row?.summary)) {
-        errors.push(`post summary is empty for feedItemId: ${row?.feedItemId || "unknown"}`);
-      }
-    }
-  }
   const sourceSummaries = Array.isArray(agentOutput.sourceSummaries)
     ? agentOutput.sourceSummaries
     : [];
@@ -7322,7 +7309,7 @@ export function renderStructuredDigest(context, agentOutput = {}) {
     throw new Error("No digest items: structured digest sync requires at least one context item.");
   }
 
-  const postSummaries = postSummaryFromAgentOutput(agentOutput);
+  const postSummaries = postSummaryFromContextItems(context);
   validateDigestAgentOutput(context, agentOutput, postSummaries);
   const sourceSummaries = sourceSummaryFromAgentOutput(agentOutput);
   const structuredItems = [];

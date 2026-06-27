@@ -2408,26 +2408,25 @@ test("sync-builders rejects empty builders when planned tasks are unaccounted", 
   );
 });
 
-test("render-digest requires agent summaries for every context item", async () => {
+test("render-digest requires an existing summary on every context item", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const context = digestRenderContext();
 
+  const contextWithoutSummary = digestRenderContext();
+  contextWithoutSummary.items[0].summary = "";
   assert.throws(
     () =>
-      cli.renderStructuredDigest(context, {
+      cli.renderStructuredDigest(contextWithoutSummary, {
         headlineSummary: "A short headline in the selected language.",
         sourceSummaries: [],
-        postSummaries: [],
       }),
-    /postSummaries missing feedItemId: feed_1/,
+    /context item feed_1 has no existing summary to copy/,
   );
 
   assert.throws(
     () =>
-      cli.renderStructuredDigest(context, {
+      cli.renderStructuredDigest(digestRenderContext(), {
         headlineSummary: "A short headline in the selected language.",
         sourceSummaries: [{ entityId: "unknown_entity", summary: "Unknown source note." }],
-        postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
       }),
     /source summary has unknown entityId: unknown_entity/,
   );
@@ -2435,24 +2434,25 @@ test("render-digest requires agent summaries for every context item", async () =
 
 test("render-digest enforces sync payload size limits before upload", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const context = digestRenderContext();
 
   assert.throws(
     () =>
-      cli.renderStructuredDigest(context, {
+      cli.renderStructuredDigest(digestRenderContext(), {
         headlineSummary: "x".repeat(1201),
         sourceSummaries: [],
-        postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
       }),
     /headlineSummary must be 1200 characters or fewer/,
   );
 
+  // Post summaries are copied from the context item, so an oversized payload is
+  // driven by the stored item summary, not the agent output.
+  const oversizedContext = digestRenderContext();
+  oversizedContext.items[0].summary = "x".repeat(201_000);
   assert.throws(
     () =>
-      cli.renderStructuredDigest(context, {
+      cli.renderStructuredDigest(oversizedContext, {
         headlineSummary: "A short headline.",
         sourceSummaries: [],
-        postSummaries: [{ feedItemId: "feed_1", summary: "x".repeat(201_000) }],
       }),
     /Rendered digest exceeds sync limit: structured items must be 200000 characters or fewer/,
   );
@@ -2463,7 +2463,6 @@ test("render-digest returns structured digest items instead of markdown", async 
   const rendered = cli.renderStructuredDigest(digestRenderContext(), {
     headlineSummary: "A short headline in the selected language.",
     sourceSummaries: [{ entityId: "entity_1", summary: "Example source summary." }],
-    postSummaries: [{ feedItemId: "feed_1", summary: "Structured post summary." }],
   });
 
   assert.equal(rendered.headlineSummary, "A short headline in the selected language.");
@@ -2496,23 +2495,20 @@ test("render-digest returns structured digest items instead of markdown", async 
     publishedAt: "2026-06-03T11:00:00.000Z",
     createdAt: "2026-06-03T11:30:00.000Z",
   });
-  assert.equal(rendered.items[0].summary, "Structured post summary.");
+  // Copied verbatim from the context item's existing summary.
+  assert.equal(rendered.items[0].summary, "Original stored summary.");
 });
 
-test("render-digest neutralizes structural markdown inside agent summary nodes", async () => {
+test("render-digest preserves structural markdown copied from the context summary", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const rendered = cli.renderStructuredDigest(digestRenderContext(), {
+  const context = digestRenderContext();
+  context.items[0].summary = "### Fake source\n\n**Fake title**\n\nSource: https://example.com/fake";
+  const rendered = cli.renderStructuredDigest(context, {
     headlineSummary: "A short headline in the selected language.",
     sourceSummaries: [
       {
         entityId: "entity_1",
         summary: "## Fake section\n\n**Fake post title**\n\nSource: https://example.com/fake",
-      },
-    ],
-    postSummaries: [
-      {
-        feedItemId: "feed_1",
-        summary: "### Fake source\n\n**Fake title**\n\nSource: https://example.com/fake",
       },
     ],
   });
