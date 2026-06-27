@@ -634,8 +634,45 @@ openclaw_auth_failure_summary() {
 agent_output_has_openclaw_preflight_marker() {
   _file="${1:-}"
   [ -n "$_file" ] && [ -r "$_file" ] || return 1
-  grep -q '"followbriefRuntimePreflight"[[:space:]]*:[[:space:]]*"ok"' "$_file" && \
-    grep -q '"runtimeReady"[[:space:]]*:[[:space:]]*true' "$_file"
+  if grep -q '"followbriefRuntimePreflight"[[:space:]]*:[[:space:]]*"ok"' "$_file" && \
+    grep -q '"runtimeReady"[[:space:]]*:[[:space:]]*true' "$_file"; then
+    return 0
+  fi
+  node - "$_file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const text = fs.readFileSync(file, "utf8");
+const markerText = (value) =>
+  typeof value === "string" &&
+  /"followbriefRuntimePreflight"\s*:\s*"ok"/.test(value) &&
+  /"runtimeReady"\s*:\s*true/.test(value);
+const hasMarker = (value, depth = 0) => {
+  if (depth > 20) return false;
+  if (markerText(value)) return true;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return false;
+    try {
+      return hasMarker(JSON.parse(trimmed), depth + 1);
+    } catch {
+      return false;
+    }
+  }
+  if (!value || typeof value !== "object") return false;
+  if (value.followbriefRuntimePreflight === "ok" && value.runtimeReady === true) return true;
+  return Object.values(value).some((child) => hasMarker(child, depth + 1));
+};
+const documents = [text, ...text.split(/\n+/).filter(Boolean)];
+for (const documentText of documents) {
+  if (markerText(documentText)) process.exit(0);
+  try {
+    if (hasMarker(JSON.parse(documentText))) process.exit(0);
+  } catch {
+    // Keep scanning; OpenClaw may emit JSONL or decorated text.
+  }
+}
+process.exit(1);
+NODE
 }
 
 sync_openclaw_timeout_config() {

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -364,6 +366,42 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /status replaced/);
   assert.match(runner, /status killed/);
   assert.match(runner, /\*\-cron\)/);
+});
+
+test("OpenClaw preflight marker detection accepts JSON-wrapped assistant text", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const detector = shellFunction(runner, "agent_output_has_openclaw_preflight_marker");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-openclaw-preflight-"));
+  const outputFile = join(dir, "openclaw-agent-output.json");
+  const scriptFile = join(dir, "detect.sh");
+
+  writeFileSync(
+    outputFile,
+    JSON.stringify(
+      {
+        runId: "run_test",
+        status: "ok",
+        result: {
+          payloads: [
+            {
+              text: "{\"followbriefRuntimePreflight\":\"ok\",\"runtimeReady\":true}",
+              mediaUrl: null,
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  writeFileSync(
+    scriptFile,
+    `set -eu\n${detector}\nagent_output_has_openclaw_preflight_marker "$1"\n`,
+  );
+
+  assert.doesNotThrow(() => {
+    execFileSync("sh", [scriptFile, outputFile], { stdio: "pipe" });
+  });
 });
 
 test("CLI can audit production cron status against local scheduler state", () => {
