@@ -67,6 +67,7 @@ export const SkillFetchRunPlannedTaskSchema = z.object({
 export const SkillBuilderSyncSchema = z.object({
   force: z.boolean().default(false),
   fetchTool: z.string().min(1).max(160).default("Agent skill sync"),
+  summaryLanguage: z.string().max(40).nullable().optional(),
   builders: z.array(SkillBuilderSchema).min(1).max(MAX_BUILDERS_PER_SYNC),
   // Per-task outcomes for tasks not synced as items (skipped / failed / blocked).
   taskOutcomes: z.array(SkillTaskOutcomeSchema).max(MAX_TASK_OUTCOMES).default([]),

@@ -1856,6 +1856,11 @@ async function fetchPersonal(args) {
     if (builders.length > 0) {
       fetchTasks.push(...fetchTasksForReadyBuilders(builders, sources, commonSummaryRules));
     }
+    const rewrittenFetchTasks = await applySharedPostReuseToFetchTasks(fetchTasks, {
+      config,
+      summaryLanguage: context.language ?? "zh",
+    });
+    fetchTasks.splice(0, fetchTasks.length, ...rewrittenFetchTasks);
 
     // Recount items/tasks: fetchTasksForReadyBuilders rewrote a task
     // per item, so totals belong to the final tasks array, not the
@@ -1895,7 +1900,7 @@ async function fetchPersonal(args) {
     perBuilder = [...builderStats.values()];
     ({ slimFetchTasks } = summarizeFetchTasksForLog(fetchTasks));
 
-    const payload = { status: "ok", localErrors, fetchTasks };
+    const payload = { status: "ok", localErrors, summaryLanguage: context.language ?? "zh", fetchTasks };
     console.log(JSON.stringify(payload, null, 2));
 
     const status = errorCount > 0 ? "partial" : "ok";
@@ -1973,6 +1978,8 @@ export function summarizeFetchTasksForLog(fetchTasks) {
     // it already fetched. The agent-stage fields (summary size, model, final
     // status) stay null until sync-builders PATCHes them by matching `id`.
     const readyBody = ready ? textStats(task?.item?.body) : { chars: null, words: null };
+    const readySummary = ready ? textStats(task?.item?.summary) : { chars: null, words: null };
+    const rawJson = objectRecord(task?.item?.rawJson);
     return {
       id: task?.id ?? null,
       builder: task?.builder ?? null,
@@ -1985,10 +1992,13 @@ export function summarizeFetchTasksForLog(fetchTasks) {
       fetchTool: task?.fetchTool ?? null,
       bodyChars: readyBody.chars,
       bodyWords: readyBody.words,
-      summaryChars: null,
-      summaryWords: null,
+      summaryChars: readySummary.chars || null,
+      summaryWords: readySummary.words || null,
       agentRuntime: null,
       agentModel: null,
+      readMethod: task?.readMethod ?? rawJson.readMethod ?? null,
+      summaryMethod: task?.summaryMethod ?? rawJson.summaryMethod ?? null,
+      hubSharedReuse: nonEmptyObjectRecord(rawJson.hubSharedReuse),
       status: isUserAction ? "action_needed" : ready ? "fetched" : "pending",
     };
   });
@@ -2167,6 +2177,103 @@ export function fetchTasksForReadyBuilders(builders, sources = {}, commonSummary
       id: fetchTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
   );
+}
+
+const HUB_SHARED_REUSE_READ_METHOD = "Copied body from a Hub-shared post with the same URL";
+const HUB_SHARED_REUSE_SUMMARY_METHOD = "Copied matching-language summary from a Hub-shared post";
+
+function sharedPostReuseCandidate(task) {
+  if (!task || isCandidateDiscoveryFetchTask(task)) return null;
+  if (isUserActionAgentWorkType(task?.agentWorkType)) return null;
+  const id = String(task?.id || fetchTaskId(task));
+  const url = stringValue(task?.item?.url);
+  if (!id || !url) return null;
+  return {
+    id,
+    url,
+    kind: task?.item?.kind ?? null,
+    sourceType: task?.sourceType ?? null,
+  };
+}
+
+function chunkArray(values, size) {
+  const chunks = [];
+  for (let i = 0; i < values.length; i += size) chunks.push(values.slice(i, i + size));
+  return chunks;
+}
+
+async function fetchSharedPostReuseMatches(config, candidates, summaryLanguage) {
+  if (candidates.length === 0) return new Map();
+  const matches = new Map();
+  for (const chunk of chunkArray(candidates, 500)) {
+    const response = await postJson(
+      `${config.appUrl}/api/skill/shared-post-reuse`,
+      { summaryLanguage, candidates: chunk },
+      config.token,
+      { label: "shared post reuse", retries: 1 },
+    );
+    for (const match of Array.isArray(response?.matches) ? response.matches : []) {
+      if (match?.id) matches.set(String(match.id), match);
+    }
+  }
+  return matches;
+}
+
+function sharedPostReuseRawJson(task, match, { summaryReused }) {
+  const rawJson = objectRecord(task?.item?.rawJson);
+  return {
+    ...rawJson,
+    fetchTaskId: rawJson.fetchTaskId ?? String(task?.id || fetchTaskId(task)),
+    readMethod: HUB_SHARED_REUSE_READ_METHOD,
+    ...(summaryReused ? { summaryMethod: HUB_SHARED_REUSE_SUMMARY_METHOD } : {}),
+    hubSharedReuse: {
+      source: "hub_shared_post",
+      bodyReused: true,
+      summaryReused,
+      feedItemId: match?.source?.feedItemId ?? null,
+      builderId: match?.source?.builderId ?? null,
+      builderName: match?.source?.builderName ?? null,
+      url: match?.source?.url ?? null,
+      summaryLanguage: match?.summaryLanguage ?? null,
+    },
+  };
+}
+
+function applySharedPostReuseToTask(task, match) {
+  if (!match || typeof match.body !== "string" || !match.body.trim()) return task;
+  const summary = typeof match.summary === "string" && match.summary.trim() ? match.summary.trim() : null;
+  const summaryReused = Boolean(summary);
+  return {
+    ...task,
+    contentStatus: "ready",
+    deterministicSync: summaryReused,
+    readMethod: HUB_SHARED_REUSE_READ_METHOD,
+    ...(summaryReused ? { summaryMethod: HUB_SHARED_REUSE_SUMMARY_METHOD } : {}),
+    item: {
+      ...(task.item ?? {}),
+      body: match.body,
+      ...(summary ? { summary } : {}),
+      rawJson: sharedPostReuseRawJson(task, match, { summaryReused }),
+    },
+  };
+}
+
+async function applySharedPostReuseToFetchTasks(fetchTasks, { config, summaryLanguage }) {
+  const candidates = fetchTasks.map(sharedPostReuseCandidate).filter(Boolean);
+  if (candidates.length === 0) return fetchTasks;
+  let matches;
+  try {
+    matches = await fetchSharedPostReuseMatches(config, candidates, summaryLanguage);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Shared Hub post reuse lookup failed; continuing without reuse: ${message}`);
+    return fetchTasks;
+  }
+  if (matches.size === 0) return fetchTasks;
+  return fetchTasks.map((task) => {
+    const id = String(task?.id || fetchTaskId(task));
+    return applySharedPostReuseToTask(task, matches.get(id));
+  });
 }
 
 const FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND = {
@@ -5384,6 +5491,15 @@ function shardTaskWeight(task) {
   return 2;
 }
 
+function isDeterministicSyncFetchTask(task) {
+  return (
+    task?.deterministicSync === true &&
+    task?.contentStatus === "ready" &&
+    typeof task?.item?.summary === "string" &&
+    task.item.summary.trim().length > 0
+  );
+}
+
 function shardGroupKey(task) {
   const sync = task?.builderSync ?? {};
   return String(
@@ -5400,7 +5516,8 @@ export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
   const workTasks = all.filter(
     (task) =>
       !isUserActionAgentWorkType(task?.agentWorkType) &&
-      task?.agentWorkType !== "candidate_discovery_fallback",
+      task?.agentWorkType !== "candidate_discovery_fallback" &&
+      !isDeterministicSyncFetchTask(task),
   );
 
   const groups = new Map();
@@ -5611,6 +5728,44 @@ function preserveReadyTaskItem(item, task) {
   };
 }
 
+function syncBuilderFromFetchTask(task) {
+  const sync = task?.builderSync ?? {};
+  return {
+    builderId: sync.builderId ?? task?.builderId ?? null,
+    kind: sync.kind ?? "BLOG",
+    sourceType: sync.sourceType ?? task?.sourceType ?? null,
+    name: sync.name ?? task?.builder ?? "Unknown source",
+    handle: sync.handle ?? null,
+    sourceUrl: sync.sourceUrl ?? null,
+    fetchUrl: sync.fetchUrl ?? null,
+    bio: sync.bio ?? null,
+    subscribe: Boolean(sync.subscribe),
+  };
+}
+
+function deterministicSyncItemFromFetchTask(task) {
+  const item = task?.item ?? {};
+  const id = String(task?.id || fetchTaskId(task));
+  const rawJson = objectRecord(item.rawJson);
+  return {
+    kind: item.kind,
+    externalId: item.externalId,
+    title: item.title ?? null,
+    url: item.url,
+    publishedAt: item.publishedAt ?? null,
+    sourceName: item.sourceName ?? task?.builder ?? null,
+    body: item.body,
+    summary: item.summary,
+    rawJson: {
+      ...rawJson,
+      fetchTaskId: rawJson.fetchTaskId ?? id,
+      readMethod: rawJson.readMethod ?? task?.readMethod ?? HUB_SHARED_REUSE_READ_METHOD,
+      summaryMethod: rawJson.summaryMethod ?? task?.summaryMethod ?? HUB_SHARED_REUSE_SUMMARY_METHOD,
+      deterministicSync: true,
+    },
+  };
+}
+
 export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) {
   const planned = extractFetchTasks(fetchResult).filter((task) => !isCandidateDiscoveryFetchTask(task));
   const plannedTaskById = new Map(
@@ -5641,6 +5796,27 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   const builderKey = (builder) =>
     String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
 
+  const syncBuilderTarget = (builder) => {
+    const key = builderKey(builder);
+    let target = builderIndex.get(key);
+    if (!target) {
+      target = { ...builder, items: [] };
+      builderIndex.set(key, target);
+      builders.push(target);
+    }
+    return target;
+  };
+
+  for (const task of planned) {
+    if (!isDeterministicSyncFetchTask(task)) continue;
+    const id = String(task?.id || fetchTaskId(task));
+    if (accounted.has(id)) continue;
+    const target = syncBuilderTarget(syncBuilderFromFetchTask(task));
+    target.items.push(deterministicSyncItemFromFetchTask(task));
+    accounted.add(id);
+    syncedTaskIds.add(id);
+  }
+
   for (const shard of shardResults) {
     const workerId = shard.workerId ?? workerIdFromShardResultName(shard.name);
     if (!shard.payload) {
@@ -5653,13 +5829,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     }
     let itemCount = 0;
     for (const builder of shard.payload?.builders ?? []) {
-      const key = builderKey(builder);
-      let target = builderIndex.get(key);
-      if (!target) {
-        target = { ...builder, items: [] };
-        builderIndex.set(key, target);
-        builders.push(target);
-      }
+      const target = syncBuilderTarget(builder);
       for (const item of builder?.items ?? []) {
         const stampedItem = stampItemWorkerId(item, workerId);
         const taskId = stampedItem?.rawJson?.fetchTaskId ? String(stampedItem.rawJson.fetchTaskId) : null;
@@ -5742,7 +5912,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   }
 
   return {
-    payload: { builders, taskOutcomes },
+    payload: { summaryLanguage: fetchResult?.summaryLanguage ?? null, builders, taskOutcomes },
     shards: shardSummaries,
     backfilledOutcomes: backfilled,
     accountedTaskIds: [...accounted],
@@ -7341,8 +7511,9 @@ async function syncBuilders(args) {
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
-  const { plannedTasks, plannedTaskOutcomes, discoveryExpansions } = await readPlannedFetchResult(tasksFile);
+  const { plannedTasks, plannedTaskOutcomes, discoveryExpansions, summaryLanguage } = await readPlannedFetchResult(tasksFile);
   const workerUsages = await readShardWorkerUsages(argValue(args, "--results-dir", null), plannedTasks);
+  payload.summaryLanguage ??= summaryLanguage ?? null;
   payload = filterStaleSyncItemsByFetchCutoff(payload, plannedTasks);
   const plannedPostTasks = plannedTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
   const fetchProgress =
@@ -7654,6 +7825,11 @@ function objectRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
+function nonEmptyObjectRecord(value) {
+  const record = objectRecord(value);
+  return Object.keys(record).length > 0 ? record : null;
+}
+
 function stringValue(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -7667,10 +7843,11 @@ async function readPlannedFetchResult(tasksFile) {
       discoveryExpansions: Array.isArray(fetchResult?.discoveryExpansions)
         ? fetchResult.discoveryExpansions
         : [],
+      summaryLanguage: typeof fetchResult?.summaryLanguage === "string" ? fetchResult.summaryLanguage : null,
     };
   } catch {
     // No planned-tasks file (e.g. ad-hoc sync) → reconcile against payload only.
-    return { plannedTasks: [], plannedTaskOutcomes: [], discoveryExpansions: [] };
+    return { plannedTasks: [], plannedTaskOutcomes: [], discoveryExpansions: [], summaryLanguage: null };
   }
 }
 
@@ -7716,6 +7893,9 @@ async function patchFetchRunOutcomes(
       agentRuntime: item?.rawJson?.agentRuntime ?? null,
       agentModel: item?.rawJson?.agentModel ?? null,
       workerId: item?.rawJson?.workerId ?? null,
+      readMethod: item?.rawJson?.readMethod ?? null,
+      summaryMethod: item?.rawJson?.summaryMethod ?? null,
+      hubSharedReuse: nonEmptyObjectRecord(item?.rawJson?.hubSharedReuse),
     });
   }
 
@@ -7948,6 +8128,10 @@ function fetchTaskLogPatch(task, id) {
   const readyBody = task?.contentStatus === "ready"
     ? textStats(task?.item?.body)
     : { chars: null, words: null };
+  const readySummary = task?.contentStatus === "ready"
+    ? textStats(task?.item?.summary)
+    : { chars: null, words: null };
+  const rawJson = objectRecord(task?.item?.rawJson);
   return {
     id,
     builder: task?.builder ?? null,
@@ -7960,11 +8144,14 @@ function fetchTaskLogPatch(task, id) {
     fetchTool: task?.fetchTool ?? null,
     bodyChars: readyBody.chars,
     bodyWords: readyBody.words,
-    summaryChars: null,
-    summaryWords: null,
+    summaryChars: readySummary.chars || null,
+    summaryWords: readySummary.words || null,
     agentRuntime: null,
     agentModel: null,
     workerId: task?.workerId ?? null,
+    readMethod: task?.readMethod ?? rawJson.readMethod ?? null,
+    summaryMethod: task?.summaryMethod ?? rawJson.summaryMethod ?? null,
+    hubSharedReuse: nonEmptyObjectRecord(rawJson.hubSharedReuse),
   };
 }
 

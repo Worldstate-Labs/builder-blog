@@ -405,6 +405,7 @@ model Subscription {
 model FeedItem {
   id                          String                       @id @default(cuid())
   builderId                   String?
+  canonicalPostId             String?
   kind                        FeedItemKind
   externalId                  String
   title                       String?
@@ -417,6 +418,7 @@ model FeedItem {
   rawJson                     String?
   createdAt                   DateTime                     @default(now())
   builder                     Builder?                     @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  canonicalPost               CanonicalPost?               @relation(fields: [canonicalPostId], references: [id], onDelete: SetNull)
   reads                       FeedRead[]
   favorites                   FeedFavorite[]
   digestedItems               DigestedItem[]
@@ -424,7 +426,16 @@ model FeedItem {
 
   @@unique([builderId, kind, externalId])
   @@index([builderId, publishedAt])
+  @@index([canonicalPostId])
   @@index([publishedAt])
+}
+
+model CanonicalPost {
+  id           String     @id @default(cuid())
+  canonicalUrl String     @unique
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  feedItems    FeedItem[]
 }
 
 model UserFeedPreference {

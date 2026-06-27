@@ -6,10 +6,12 @@ import { isAdminEmail } from "@/lib/admin";
 import { isAdminFetchOnlySourceType } from "@/lib/admin-fetch-only-sources";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
+import { canonicalPostUrl } from "@/lib/canonical-url";
 import { checkBodyContentQuality } from "@/lib/content-quality";
 import { mergeFetchRunDetails, type FetchRunTaskOutcomePatch } from "@/lib/fetch-run-details";
 import { getAllSourceConfigs } from "@/lib/source-config-store";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
+import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
@@ -99,6 +101,13 @@ export async function POST(request: Request) {
     standardsBySourceId.get("website") ??
     null;
   const userIsAdmin = isAdminEmail(user.email);
+  const preference = await prisma.userFeedPreference.findUnique({
+    where: { userId: user.id },
+    select: { summaryLanguage: true },
+  });
+  const syncSummaryLanguage = normalizeSummaryLanguagePreference(
+    parsed.data.summaryLanguage ?? preference?.summaryLanguage,
+  );
 
   try {
     const now = new Date();
@@ -216,7 +225,7 @@ export async function POST(request: Request) {
           sourceType: input.sourceType,
           body: item.body,
           summary,
-          rawJson: item.rawJson,
+          rawJson: rawJsonWithSummaryLanguage(item.rawJson, syncSummaryLanguage, summary),
         });
         // Gate 1 — real crawled content. A post with no body (or junk/too-short
         // text below the source's floor) is a FAILURE: the agent didn't actually
@@ -240,11 +249,13 @@ export async function POST(request: Request) {
         }
         const fetchTool =
           item.fetchTool ?? fetchToolFromRawJson(item.rawJson) ?? parsed.data.fetchTool;
+        const canonicalPostId = await ensureCanonicalPostId(item.url);
         if (!parsed.data.force && existingItemKeys.has(key)) {
           const updateData = {
             summary,
             body: storage.body,
             rawJson: JSON.stringify(storage.rawJson),
+            ...(canonicalPostId ? { canonicalPostId } : {}),
           };
           await prisma.feedItem.updateMany({
             where: {
@@ -288,6 +299,7 @@ export async function POST(request: Request) {
             body: storage.body,
             summary,
             url: item.url,
+            ...(canonicalPostId ? { canonicalPostId } : {}),
             // Only overwrite when the source supplied a real date. Otherwise
             // leave the existing value untouched (it was backfilled to fetch
             // time on insert) so re-syncs don't clobber or bump it.
@@ -304,6 +316,7 @@ export async function POST(request: Request) {
             body: storage.body,
             summary,
             url: item.url,
+            ...(canonicalPostId ? { canonicalPostId } : {}),
             // Fall back to fetch time when the source has no parseable date.
             // A null publishedAt would be silently excluded from digests (the
             // candidate query requires publishedAt >= cutoff), so every post
@@ -586,12 +599,35 @@ function rawJsonRecord(rawJson: unknown): Record<string, unknown> {
     : {};
 }
 
+function rawJsonWithSummaryLanguage(rawJson: unknown, summaryLanguage: string, summary: string) {
+  const record = rawJsonRecord(rawJson);
+  if (!summary.trim()) return record;
+  return {
+    ...record,
+    summaryLanguage: typeof record.summaryLanguage === "string" && record.summaryLanguage.trim()
+      ? record.summaryLanguage
+      : summaryLanguage,
+  };
+}
+
 function syncTextStats(value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
   return {
     chars: text.length,
     words: text ? text.split(/\s+/u).length : 0,
   };
+}
+
+async function ensureCanonicalPostId(url: string) {
+  const canonicalUrl = canonicalPostUrl(url);
+  if (!canonicalUrl) return null;
+  const canonicalPost = await prisma.canonicalPost.upsert({
+    where: { canonicalUrl },
+    update: {},
+    create: { canonicalUrl },
+    select: { id: true },
+  });
+  return canonicalPost.id;
 }
 
 async function existingFeedItemKeys(

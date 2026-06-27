@@ -113,6 +113,9 @@ type FetchTaskLog = {
   summaryWords?: number | null;
   agentRuntime?: string | null;
   agentModel?: string | null;
+  readMethod?: string | null;
+  summaryMethod?: string | null;
+  hubSharedReuse?: Record<string, unknown> | null;
   workerId?: string | null;
   status?: string | null;
   // Why a task failed (e.g. "summary_missing", "not_summarized"). Present only
@@ -2739,6 +2742,9 @@ type WorkInfo = {
 // description (and remediation for failure codes) so the panel reassures the
 // user about what actually happened, even when a fetch was blocked.
 function describeWork(task: FetchTaskLog): WorkInfo {
+  if (task.readMethod) {
+    return { label: task.readMethod, blurb: null, fix: null };
+  }
   const code = (task.agentWorkType ?? task.fetchTool ?? "").trim();
   switch (code) {
     case "candidate_discovery_fallback":
@@ -3187,6 +3193,7 @@ function TaskRow({
   const liveBodySize = sizeText(liveTask?.bodyChars, liveTask?.bodyWords);
   const liveSummarySize = sizeText(liveTask?.summaryChars, liveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
+  const summaryMethod = task.summaryMethod?.trim() || null;
   const bannerBlurb =
     banner.tone === "fail"
       ? failureReasonText(task) ?? work.blurb
@@ -3218,6 +3225,7 @@ function TaskRow({
     task.url;
   const hasSummaryDetail =
     agentLabel ||
+    summaryMethod ||
     discoveryExpansion ||
     summarySize ||
     liveSummarySize ||
@@ -3313,6 +3321,9 @@ function TaskRow({
         <dl className="sync-panel-task-fact-list">
           {agentLabel ? (
             <FactRow label="Local Agent" value={<span>{agentLabel}</span>} />
+          ) : null}
+          {summaryMethod ? (
+            <FactRow label="Method" value={<span>{summaryMethod}</span>} />
           ) : null}
           {discoveryExpansion ? (
             <FactRow label="Expanded into" value={<span>{discoveryExpansion}</span>} />
