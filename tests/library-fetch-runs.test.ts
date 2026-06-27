@@ -5,6 +5,13 @@ import test from "node:test";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
+const shellFunction = (text: string, name: string) => {
+  const start = text.indexOf(`${name}() {`);
+  assert.notEqual(start, -1, `missing shell function ${name}`);
+  const end = text.indexOf("\n}\n\n", start);
+  assert.notEqual(end, -1, `missing end of shell function ${name}`);
+  return text.slice(start, end + 3);
+};
 
 test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => {
   const schema = source("prisma/schema.prisma");
@@ -237,6 +244,7 @@ test("builder sync endpoint durably patches fetch-run outcomes server-side", () 
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
   const runner = source("scripts/builder-agent-runner.sh");
+  const openclawPreflight = shellFunction(runner, "run_openclaw_library_preflight");
   assert.match(runner, /BUILDER_BLOG_RUN_SOURCE=cron/);
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
   assert.match(runner, /BUILDER_BLOG_USAGE_FILE/);
@@ -323,6 +331,14 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /followbriefRuntimePreflight/);
   assert.match(runner, /agent_output_has_openclaw_auth_failure/);
   assert.match(runner, /openclaw_auth_failure_summary/);
+  assert.match(
+    openclawPreflight,
+    /if agent_output_has_openclaw_preflight_marker "\$\{LAST_AGENT_OUTPUT_FILE:-\}"; then\s+return 0\s+fi/,
+  );
+  assert.doesNotMatch(
+    openclawPreflight,
+    /\[ "\$_olp_code" -eq 0 \] && agent_output_has_openclaw_preflight_marker/,
+  );
   assert.match(
     runner,
     /run_openclaw_library_preflight[\s\S]*job_run_update failed "OpenClaw auth failed before fetch workers started\." "runtime_auth_failed"/,

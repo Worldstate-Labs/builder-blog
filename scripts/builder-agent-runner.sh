@@ -2155,7 +2155,7 @@ EOF
     unset _timeout
   fi
 
-  if [ "$_olp_code" -eq 0 ] && agent_output_has_openclaw_preflight_marker "${LAST_AGENT_OUTPUT_FILE:-}"; then
+  if agent_output_has_openclaw_preflight_marker "${LAST_AGENT_OUTPUT_FILE:-}"; then
     return 0
   fi
 
