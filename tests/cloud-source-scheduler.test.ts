@@ -258,3 +258,64 @@ test("cancelQueuedCloudFetchForTasks no-ops on an empty task list", async () => 
   assert.equal(result.cancelled, 0);
   assert.equal(called, false);
 });
+
+const generousConfig = {
+  maxTasksPerHour: 5,
+  maxActiveLeases: 5,
+  workerSecondsPerHour: 36_000,
+  planningHorizonHours: 48,
+  starvationReserveRatio: 0,
+  retryReserveRatio: 0,
+};
+
+test("work-conserving: a ready task with a far deadline is leased now when capacity is free", () => {
+  const plan = planCloudFetchWindow({
+    now,
+    config: generousConfig,
+    tasks: [
+      baseTask({
+        id: "fresh-daily",
+        releaseAt: now,
+        mustSucceedBy: minutesFromNow(24 * 60),
+        estimatedDurationSeconds: 600,
+      }),
+    ],
+  });
+
+  // The old latest-feasible-bucket planner parked this ~23h out; a
+  // work-conserving planner serves it now since the worker has capacity.
+  assert.deepEqual(plan.currentHourTaskIds, ["fresh-daily"]);
+});
+
+test("fills the current hour up to the count budget and defers the rest", () => {
+  const plan = planCloudFetchWindow({
+    now,
+    config: { ...generousConfig, maxTasksPerHour: 2 },
+    tasks: [
+      baseTask({ id: "a", mustSucceedBy: minutesFromNow(24 * 60), estimatedDurationSeconds: 600 }),
+      baseTask({ id: "b", mustSucceedBy: minutesFromNow(24 * 60), estimatedDurationSeconds: 600 }),
+      baseTask({ id: "c", mustSucceedBy: minutesFromNow(24 * 60), estimatedDurationSeconds: 600 }),
+    ],
+  });
+
+  assert.equal(plan.currentHourTaskIds.length, 2);
+  // The unselected ready task is deferred so it ages up on the next poll.
+  assert.equal(Object.keys(plan.debug.deferred).length, 1);
+});
+
+test("a task not yet released is not leased now", () => {
+  const plan = planCloudFetchWindow({
+    now,
+    config: generousConfig,
+    tasks: [
+      baseTask({
+        id: "backoff",
+        releaseAt: minutesFromNow(30),
+        mustSucceedBy: minutesFromNow(24 * 60),
+      }),
+    ],
+  });
+
+  assert.deepEqual(plan.currentHourTaskIds, []);
+  assert.equal(Object.keys(plan.debug.deferred).length, 0);
+});

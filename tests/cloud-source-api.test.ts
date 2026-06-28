@@ -113,3 +113,13 @@ test("cloud submission route exposes a GET summary of the user's active submissi
   assert.match(route, /getUserCloudSubmissionSummary/);
   assert.match(route, /hasActiveSubmission/);
 });
+
+test("cloud scheduler is work-conserving: releases by nextAttemptAt, no latest-bucket deferral", () => {
+  const scheduler = source("src/lib/cloud-source-scheduler.ts");
+
+  // releaseAt is no longer pushed forward to (mustSucceedBy - schedulingLeadMinutes),
+  // and the latest-feasible-bucket parking strategy is gone.
+  assert.doesNotMatch(scheduler, /const targetStartAt =/);
+  assert.match(scheduler, /releaseAt = maxDate\(params\.now, task\.nextAttemptAt/);
+  assert.doesNotMatch(scheduler, /latestFeasibleBucket/);
+});

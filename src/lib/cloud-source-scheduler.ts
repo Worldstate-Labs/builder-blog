@@ -122,10 +122,7 @@ export function planCloudFetchWindow(params: {
   };
   const activeCanonicalKeys = params.activeCanonicalKeys ?? new Set<string>();
   const horizonEnd = new Date(params.now.getTime() + params.config.planningHorizonHours * HOUR_MS);
-  const buckets = Array.from({ length: Math.max(1, params.config.planningHorizonHours) }, (_, index) => ({
-    start: new Date(params.now.getTime() + index * HOUR_MS),
-    tasks: [] as BucketTask[],
-  }));
+  const currentBucket: BucketPlan = { start: params.now, tasks: [] };
 
   const eligible = params.tasks.filter((task) => {
     if (task.circuitBreakerUntil && task.circuitBreakerUntil > params.now) {
@@ -143,13 +140,25 @@ export function planCloudFetchWindow(params: {
     return true;
   });
 
+  // Due now = released (backoff elapsed) and able to finish before its deadline
+  // from the current hour. The scheduler is work-conserving: a polling worker is
+  // handed every due task it has budget for, rather than parking work near its
+  // deadline. The deadline still drives priority via scoreTask's urgency term.
+  const due = eligible.filter((task) => canRunInBucket(task, currentBucket.start));
+  for (const task of eligible) {
+    if (!due.includes(task)) {
+      debug.skipped[task.id] = debug.skipped[task.id] ?? { reason: "not_due" };
+    }
+  }
+
+  // Starvation reserve: the most-deferred due tasks get guaranteed slots and are
+  // protected from eviction (see lowestScoreIndex).
   const reservedStarvationCount = reserveCount(
     params.config.maxTasksPerHour,
     params.config.starvationReserveRatio,
   );
-  const currentBucket = buckets[0];
-  const starvationTasks = eligible
-    .filter((task) => task.consecutiveDeferrals > 0 && canRunInBucket(task, currentBucket.start))
+  const starvationTasks = due
+    .filter((task) => task.consecutiveDeferrals > 0)
     .sort(compareStarvation)
     .slice(0, reservedStarvationCount);
   const reservedTaskIds = new Set(starvationTasks.map((task) => task.id));
@@ -157,33 +166,32 @@ export function planCloudFetchWindow(params: {
     currentBucket.tasks.push({ task, score: scoreTask(task, params.now), lane: "starvation" });
   }
 
-  const normalTasks = eligible
+  // Fill the remaining hourly budget by score, highest value/urgency first.
+  const rest = due
     .filter((task) => !reservedTaskIds.has(task.id))
-    .sort((a, b) => a.mustSucceedBy.getTime() - b.mustSucceedBy.getTime());
-
-  for (const task of normalTasks) {
-    const bucket = latestFeasibleBucket(task, buckets);
-    if (!bucket) {
-      debug.deferred[task.id] = { reason: "no_feasible_bucket" };
-      continue;
-    }
-    bucket.tasks.push({ task, score: scoreTask(task, params.now), lane: task.consecutiveFailures > 0 ? "retry" : "normal" });
-    evictOverCapacity(bucket, params.config, debug);
+    .sort((a, b) => scoreTask(b, params.now) - scoreTask(a, params.now));
+  for (const task of rest) {
+    currentBucket.tasks.push({
+      task,
+      score: scoreTask(task, params.now),
+      lane: task.consecutiveFailures > 0 ? "retry" : "normal",
+    });
   }
   evictOverCapacity(currentBucket, params.config, debug);
 
-  for (const bucket of buckets) {
-    for (const item of bucket.tasks) {
-      debug.selected[item.task.id] = {
-        lane: item.lane,
-        bucketStart: bucket.start.toISOString(),
-        score: item.score,
-      };
-    }
+  for (const item of currentBucket.tasks) {
+    debug.selected[item.task.id] = {
+      lane: item.lane,
+      bucketStart: currentBucket.start.toISOString(),
+      score: item.score,
+    };
   }
-  for (const task of eligible) {
-    if (!debug.selected[task.id] && !debug.skipped[task.id] && !debug.deferred[task.id]) {
-      debug.deferred[task.id] = { reason: "not_selected" };
+  // Due tasks that lost the current-hour budget competition are deferred so they
+  // gain aging/starvation priority on the next poll.
+  const selectedIds = new Set(currentBucket.tasks.map((item) => item.task.id));
+  for (const task of due) {
+    if (!selectedIds.has(task.id)) {
+      debug.deferred[task.id] = debug.deferred[task.id] ?? { reason: "hour_budget_full" };
     }
   }
 
@@ -192,10 +200,12 @@ export function planCloudFetchWindow(params: {
       .slice()
       .sort(compareBucketTasksForExecution)
       .map((item) => item.task.id),
-    buckets: buckets.map((bucket) => ({
-      start: bucket.start,
-      taskIds: bucket.tasks.map((item) => item.task.id),
-    })),
+    buckets: [
+      {
+        start: currentBucket.start,
+        taskIds: currentBucket.tasks.map((item) => item.task.id),
+      },
+    ],
     debug,
   };
 }
@@ -457,14 +467,6 @@ export function nextCloudTaskFailureSchedule(params: {
   };
 }
 
-function latestFeasibleBucket(task: CloudSchedulerTaskInput, buckets: BucketPlan[]) {
-  for (let index = buckets.length - 1; index >= 0; index -= 1) {
-    const bucket = buckets[index];
-    if (canRunInBucket(task, bucket.start)) return bucket;
-  }
-  return null;
-}
-
 function canRunInBucket(task: CloudSchedulerTaskInput, bucketStart: Date) {
   if (bucketStart < task.releaseAt) return false;
   const finishAt = bucketStart.getTime() + task.estimatedDurationSeconds * 1000;
@@ -607,8 +609,11 @@ async function loadEligibleCloudTasks(params: {
       .filter((task) => !activeQueuedTaskIds.has(task.id))
       .map((task) => {
         const mustSucceedBy = task.mustSucceedBy ?? taskDeadline(task.effectiveFrequency, task.lastSuccessAt ?? params.now);
-        const targetStartAt = new Date(mustSucceedBy.getTime() - params.config.schedulingLeadMinutes * MINUTE_MS);
-        const releaseAt = maxDate(params.now, targetStartAt, task.nextAttemptAt ?? params.now);
+        // Work-conserving: a task is releasable as soon as its retry backoff has
+        // elapsed (nextAttemptAt). The deadline drives PRIORITY (urgency), not
+        // release time — so a fresh source (nextAttemptAt = now) is due now
+        // instead of being parked until just before its first interval deadline.
+        const releaseAt = maxDate(params.now, task.nextAttemptAt ?? params.now);
         const estimate = estimateCloudTaskRuntime({
           sourceType: task.builder.sourceType,
           durationP75Seconds: task.durationP75Seconds,
