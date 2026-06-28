@@ -272,6 +272,12 @@ export async function leaseCloudFetchTasks(params: {
 
   const budget = await computeLeaseBudget({ prisma, now, config, requestedLimit: params.limit });
   if (budget.limit <= 0) {
+    await recordEmptyCloudFetchRun(prisma, {
+      leaseOwner: params.leaseOwner,
+      requestedLimit: params.limit,
+      now,
+      summary: "No lease budget available this round.",
+    });
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
 
@@ -310,6 +316,12 @@ export async function leaseCloudFetchTasks(params: {
   }
 
   if (selected.length === 0) {
+    await recordEmptyCloudFetchRun(prisma, {
+      leaseOwner: params.leaseOwner,
+      requestedLimit: params.limit,
+      now,
+      summary: "No cloud source tasks were due.",
+    });
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
 
@@ -369,6 +381,27 @@ export async function leaseCloudFetchTasks(params: {
     })),
     budget,
   };
+}
+
+// A polling round that leases nothing still records a finalized 0-task run, so
+// the admin cloud fetch log shows the poll happened instead of staying empty.
+async function recordEmptyCloudFetchRun(
+  prisma: PrismaClient,
+  params: { leaseOwner: string; requestedLimit: number; now: Date; summary: string },
+) {
+  await prisma.cloudFetchRun.create({
+    data: {
+      leaseOwner: params.leaseOwner,
+      requestedLimit: params.requestedLimit,
+      tasksClaimed: 0,
+      tasksSucceeded: 0,
+      tasksFailed: 0,
+      status: CloudFetchRunStatus.SUCCEEDED,
+      startedAt: params.now,
+      finishedAt: params.now,
+      summary: params.summary,
+    },
+  });
 }
 
 export async function heartbeatCloudFetchRun(params: {

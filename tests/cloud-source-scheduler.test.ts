@@ -5,6 +5,7 @@ import {
   cancelQueuedCloudFetchForTasks,
   estimateCloudTaskRuntime,
   heartbeatCloudFetchRun,
+  leaseCloudFetchTasks,
   nextCloudTaskFailureSchedule,
   nextCloudTaskSuccessSchedule,
   planCloudFetchWindow,
@@ -257,6 +258,55 @@ test("cancelQueuedCloudFetchForTasks no-ops on an empty task list", async () => 
 
   assert.equal(result.cancelled, 0);
   assert.equal(called, false);
+});
+
+test("leaseCloudFetchTasks records a finalized 0-task run when nothing is due", async () => {
+  const createdRuns: { data: Record<string, unknown> }[] = [];
+  const prisma = {
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudFetchQueueItem: {
+      updateMany: async () => ({ count: 0 }),
+      findMany: async () => [],
+      count: async () => 0,
+      create: async () => ({}),
+      update: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: { findMany: async () => [] },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => {
+        createdRuns.push(args);
+        return { id: "run_empty_1", ...args.data };
+      },
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  // The lease still reports empty (nothing for the runner to sync)...
+  assert.equal(result.status, "empty");
+  assert.equal(result.runId, null);
+  assert.deepEqual(result.tasks, []);
+  // ...but a finalized 0-task run is recorded so the cloud fetch log shows it.
+  assert.equal(createdRuns.length, 1);
+  const data = createdRuns[0].data;
+  assert.equal(data.tasksClaimed, 0);
+  assert.equal(data.tasksSucceeded, 0);
+  assert.equal(data.tasksFailed, 0);
+  assert.equal(data.status, "SUCCEEDED");
+  assert.equal(data.leaseOwner, "local-cloud-runner:test");
+  assert.ok(data.finishedAt instanceof Date);
+  assert.equal(typeof data.summary, "string");
 });
 
 const generousConfig = {
