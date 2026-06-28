@@ -3,12 +3,30 @@ import { getCurrentSession } from "@/lib/auth";
 import { normalizeCloudSourceSubmissionInput } from "@/lib/cloud-source-contracts";
 import {
   CloudSourceSubmissionError,
+  getUserCloudSubmissionSummary,
   submitUserPrivateLibraryToCloud,
 } from "@/lib/cloud-source-library";
 
 const CLOUD_SUBMISSION_RATE_LIMIT_MS = 60_000;
 
 const recentSubmissions = new Map<string, number>();
+
+export async function GET() {
+  const session = await getCurrentSession();
+  const userId = session?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const summary = await getUserCloudSubmissionSummary({ userId });
+  return NextResponse.json({
+    hasActiveSubmission: summary.hasActiveSubmission,
+    activeSourceCount: summary.activeSourceCount,
+    summaryLanguage: summary.summaryLanguage,
+    frequency: summary.frequency,
+    lastSubmittedAt: summary.lastSubmittedAt,
+  });
+}
 
 export async function POST(request: Request) {
   const session = await getCurrentSession();
@@ -42,6 +60,7 @@ export async function POST(request: Request) {
       status: "ok",
       sourcesSubmitted: result.sourcesSubmitted,
       tasksSubmitted: result.tasksSubmitted,
+      supersededSources: result.supersededSources,
       frequency: body.frequency,
       summaryLanguage: result.summaryLanguage,
     });

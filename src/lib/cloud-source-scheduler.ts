@@ -765,3 +765,20 @@ async function getPrismaClient() {
   const { prisma } = await import("@/lib/prisma");
   return prisma;
 }
+
+// Cancel still-queued fetches for tasks that a submission change superseded.
+// Only QUEUED items are cancelled; LEASED / in-flight runs are left to finish.
+export async function cancelQueuedCloudFetchForTasks(params: {
+  prisma: PrismaClient;
+  taskIds: string[];
+}): Promise<{ cancelled: number }> {
+  if (params.taskIds.length === 0) return { cancelled: 0 };
+  const result = await params.prisma.cloudFetchQueueItem.updateMany({
+    where: {
+      cloudSourceTaskId: { in: params.taskIds },
+      status: CloudFetchQueueStatus.QUEUED,
+    },
+    data: { status: CloudFetchQueueStatus.CANCELLED },
+  });
+  return { cancelled: result.count };
+}

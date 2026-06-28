@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  cancelQueuedCloudFetchForTasks,
   estimateCloudTaskRuntime,
   heartbeatCloudFetchRun,
   nextCloudTaskFailureSchedule,
@@ -214,4 +215,46 @@ test("cloud fetch heartbeat extends active leases for a running cloud run", asyn
       },
     },
   });
+});
+
+test("cancelQueuedCloudFetchForTasks cancels only queued items for the given tasks", async () => {
+  const calls: { where: Record<string, unknown>; data: Record<string, unknown> }[] = [];
+  const prisma = {
+    cloudFetchQueueItem: {
+      async updateMany(args: { where: Record<string, unknown>; data: Record<string, unknown> }) {
+        calls.push(args);
+        return { count: 2 };
+      },
+    },
+  };
+
+  const result = await cancelQueuedCloudFetchForTasks({
+    prisma: prisma as never,
+    taskIds: ["task_a", "task_b"],
+  });
+
+  assert.equal(result.cancelled, 2);
+  assert.deepEqual(calls[0].where.cloudSourceTaskId, { in: ["task_a", "task_b"] });
+  assert.equal(calls[0].where.status, "QUEUED");
+  assert.equal(calls[0].data.status, "CANCELLED");
+});
+
+test("cancelQueuedCloudFetchForTasks no-ops on an empty task list", async () => {
+  let called = false;
+  const prisma = {
+    cloudFetchQueueItem: {
+      async updateMany() {
+        called = true;
+        return { count: 0 };
+      },
+    },
+  };
+
+  const result = await cancelQueuedCloudFetchForTasks({
+    prisma: prisma as never,
+    taskIds: [],
+  });
+
+  assert.equal(result.cancelled, 0);
+  assert.equal(called, false);
 });

@@ -23,7 +23,8 @@ test("Fetch sources dialog exposes cloud runtime before frequency and keeps loca
   assert.match(skillPromptActions, /Your Local Agent/);
   assert.match(skillPromptActions, /CLOUD_FREQUENCY_OPTIONS[\s\S]*Every day[\s\S]*Every week/);
   assert.match(skillPromptActions, /runtimeType === "cloud"[\s\S]*\/api\/cloud-library\/source-submissions/);
-  assert.match(skillPromptActions, /runtimeType === "cloud"[\s\S]*submitting \? "Submitting" : "Submit"/);
+  assert.match(skillPromptActions, /const cloudSubmitLabel =/);
+  assert.match(skillPromptActions, /"Submitting"/);
   assert.match(skillPromptActions, /runtimeType === "local"[\s\S]*cron-parallel-workers/);
   assert.match(skillPromptActions, /runtimeType === "local"[\s\S]*cron-runtime/);
   assert.match(skillPromptActions, /runtimeType === "local"[\s\S]*cron-fetch-days/);
@@ -43,4 +44,15 @@ test("opening Fetch sources no longer requires an access key before choosing clo
     "Fetch sources should open the schedule dialog before checking Local Agent access keys",
   );
   assert.match(skillPromptActions, /continueCronCopy[\s\S]*activeTokens\.length === 0/);
+});
+
+test("cloud submit reminds the user before overwriting a prior submission and relabels the button", () => {
+  const skillPromptActions = source("src/components/SkillPromptActions.tsx");
+
+  // Loads the user's existing cloud submission state for cloud mode.
+  assert.match(skillPromptActions, /hasActiveSubmission/);
+  assert.match(skillPromptActions, /cloudExisting/);
+  // Shows an overwrite reminder and switches the primary button label.
+  assert.match(skillPromptActions, /already submitted/i);
+  assert.match(skillPromptActions, /Overwrite & submit/);
 });

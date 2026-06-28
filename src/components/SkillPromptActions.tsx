@@ -1110,9 +1110,23 @@ function CronConfigDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cloudSubmitMessage, setCloudSubmitMessage] = useState<string | null>(null);
+  const [cloudExisting, setCloudExisting] = useState<{
+    hasActiveSubmission: boolean;
+    activeSourceCount: number;
+    summaryLanguage: string | null;
+    frequency: "DAILY" | "WEEKLY" | null;
+    lastSubmittedAt: string | null;
+  } | null>(null);
   const dialogConfig = PROMPT_CONFIG[context];
   const runtimeHint = RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
   const isCloudMode = context === "library" && runtimeType === "cloud";
+  // One submission per user: when a prior submission exists, the submit becomes
+  // an explicit overwrite.
+  const cloudSubmitLabel = submitting
+    ? "Submitting"
+    : cloudExisting?.hasActiveSubmission
+      ? "Overwrite & submit"
+      : "Submit";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -1138,6 +1152,29 @@ function CronConfigDialog({
     d.addEventListener("close", onClose);
     return () => d.removeEventListener("close", onClose);
   }, [onCancel]);
+
+  // Load the user's existing cloud submission so we can warn before overwriting.
+  // Failures degrade silently: no notice, button stays "Submit".
+  useEffect(() => {
+    if (!open || !isCloudMode) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/cloud-library/source-submissions");
+        if (!res.ok) {
+          if (!cancelled) setCloudExisting(null);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setCloudExisting(data);
+      } catch {
+        if (!cancelled) setCloudExisting(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isCloudMode]);
 
   async function confirm() {
     if (submitting) return;
@@ -1188,8 +1225,11 @@ function CronConfigDialog({
           setSubmitting(false);
           return;
         }
+        const replaced = Number(body?.supersededSources ?? 0);
         setCloudSubmitMessage(
-          `Submitted ${body?.sourcesSubmitted ?? 0} source${body?.sourcesSubmitted === 1 ? "" : "s"} and ${body?.tasksSubmitted ?? 0} task${body?.tasksSubmitted === 1 ? "" : "s"}.`,
+          `Submitted ${body?.sourcesSubmitted ?? 0} source${body?.sourcesSubmitted === 1 ? "" : "s"} and ${body?.tasksSubmitted ?? 0} task${body?.tasksSubmitted === 1 ? "" : "s"}.${
+            replaced > 0 ? ` Replaced ${replaced} previous source${replaced === 1 ? "" : "s"}.` : ""
+          }`,
         );
         window.setTimeout(onCancel, 700);
         return;
@@ -1286,6 +1326,20 @@ function CronConfigDialog({
                 <option value="local">Your Local Agent</option>
               </select>
             </div>
+          ) : null}
+
+          {isCloudMode && cloudExisting?.hasActiveSubmission ? (
+            <p className="cron-field-hint" role="status">
+              {`You already submitted ${cloudExisting.activeSourceCount} ${
+                cloudExisting.activeSourceCount === 1 ? "source" : "sources"
+              }${
+                cloudExisting.frequency === "DAILY"
+                  ? " · Daily"
+                  : cloudExisting.frequency === "WEEKLY"
+                    ? " · Weekly"
+                    : ""
+              }. Submitting again overwrites your previous submission — switching language deactivates the old language.`}
+            </p>
           ) : null}
 
           <div className="cron-field">
@@ -1442,7 +1496,7 @@ function CronConfigDialog({
           >
             <Copy aria-hidden="true" />
             {runtimeType === "cloud"
-              ? (submitting ? "Submitting" : "Submit")
+              ? cloudSubmitLabel
               : (submitting ? "Copying" : "Copy")}
           </button>
         </footer>

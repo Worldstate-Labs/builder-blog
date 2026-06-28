@@ -1,5 +1,6 @@
 import { BuilderPoolOrigin, type BuilderKind, type PrismaClient } from "@prisma/client";
 import type { CloudFetchFrequency } from "@/lib/cloud-source-contracts";
+import { cancelQueuedCloudFetchForTasks } from "@/lib/cloud-source-scheduler";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
 const CLOUD_SOURCE_CANDIDATE_SEED = "cloud_source_library";
@@ -93,6 +94,80 @@ export function effectiveCloudFetchFrequency(frequencies: CloudFetchFrequency[])
   return null;
 }
 
+export type CloudSubmissionSummary = {
+  hasActiveSubmission: boolean;
+  activeSourceCount: number;
+  summaryLanguage: string | null;
+  frequency: CloudFetchFrequency | null;
+  lastSubmittedAt: Date | null;
+};
+
+type CloudSubmissionSummaryPrisma = {
+  cloudSourceSubmission: {
+    findMany(args: unknown): Promise<
+      { summaryLanguage: string; frequency: CloudFetchFrequency; submittedAt: Date }[]
+    >;
+  };
+};
+
+// Decide which prior active submissions a new submission supersedes. A user has
+// one logical cloud submission, so anything not in the new set is deactivated —
+// including every old-language submission when the user switches language.
+export function planSubmissionReconciliation(params: {
+  existingActive: { id: string; cloudBuilderId: string }[];
+  keepCloudBuilderIds: string[];
+}) {
+  const keep = new Set(params.keepCloudBuilderIds);
+  const superseded = params.existingActive.filter(
+    (submission) => !keep.has(submission.cloudBuilderId),
+  );
+  const staleCloudBuilderIds = [
+    ...new Set(superseded.map((submission) => submission.cloudBuilderId)),
+  ];
+  return {
+    deactivateSubmissionIds: superseded.map((submission) => submission.id),
+    staleCloudBuilderIds,
+  };
+}
+
+// Aggregate a user's active submissions into the single submission the UI shows
+// before letting the user overwrite it.
+export function summarizeActiveCloudSubmissions(
+  rows: { summaryLanguage: string; frequency: CloudFetchFrequency; submittedAt: Date }[],
+): CloudSubmissionSummary {
+  if (rows.length === 0) {
+    return {
+      hasActiveSubmission: false,
+      activeSourceCount: 0,
+      summaryLanguage: null,
+      frequency: null,
+      lastSubmittedAt: null,
+    };
+  }
+  const mostRecent = rows.reduce((latest, row) =>
+    row.submittedAt > latest.submittedAt ? row : latest,
+  );
+  return {
+    hasActiveSubmission: true,
+    activeSourceCount: rows.length,
+    summaryLanguage: mostRecent.summaryLanguage,
+    frequency: effectiveCloudFetchFrequency(rows.map((row) => row.frequency)),
+    lastSubmittedAt: mostRecent.submittedAt,
+  };
+}
+
+export async function getUserCloudSubmissionSummary(params: {
+  userId: string;
+  prisma?: CloudSubmissionSummaryPrisma;
+}): Promise<CloudSubmissionSummary> {
+  const prisma = params.prisma ?? (await getPrismaClient());
+  const rows = await prisma.cloudSourceSubmission.findMany({
+    where: { userId: params.userId, active: true },
+    select: { summaryLanguage: true, frequency: true, submittedAt: true },
+  });
+  return summarizeActiveCloudSubmissions(rows);
+}
+
 export function cloudLanguageLibraryHubName(summaryLanguage: string) {
   return `Community source library - ${displayLanguagePreference(summaryLanguage)}`;
 }
@@ -143,13 +218,22 @@ export async function submitUserPrivateLibraryToCloud(params: {
     throw new CloudSourceSubmissionError("Add at least one private source before submitting to Cloud.");
   }
 
+  // Snapshot the user's prior active submissions before activating the new set,
+  // so we can cancel whatever the new submission does not include.
+  const existingActive = await prisma.cloudSourceSubmission.findMany({
+    where: { userId: params.userId, active: true },
+    select: { id: true, cloudBuilderId: true },
+  });
+
   let tasksTouched = 0;
+  const keepCloudBuilderIds: string[] = [];
   for (const source of privateSources) {
     const cloudBuilder = await copyBuilderToCloudOwner({
       cloudOwnerUserId: cloudLibrary.ownerUserId,
       userBuilder: source.builder,
       upsert: params.copyBuilderUpsert,
     });
+    keepCloudBuilderIds.push(cloudBuilder.id);
     await prisma.cloudSourceSubmission.upsert({
       where: {
         userId_cloudBuilderId: {
@@ -182,10 +266,58 @@ export async function submitUserPrivateLibraryToCloud(params: {
     if (task) tasksTouched += 1;
   }
 
+  // Reconcile to a single active submission per user: deactivate every prior
+  // submission the new set does not cover (including all old-language ones when
+  // the language changed), pause any now-orphaned task, and cancel its queued
+  // fetch so a superseded source is not fetched once more.
+  const { deactivateSubmissionIds, staleCloudBuilderIds } = planSubmissionReconciliation({
+    existingActive,
+    keepCloudBuilderIds,
+  });
+  let supersededSources = 0;
+  if (deactivateSubmissionIds.length > 0) {
+    const deactivated = await prisma.cloudSourceSubmission.updateMany({
+      where: { id: { in: deactivateSubmissionIds } },
+      data: { active: false },
+    });
+    supersededSources = deactivated.count;
+
+    const staleTasks = await prisma.cloudSourceTask.findMany({
+      where: { builderId: { in: staleCloudBuilderIds } },
+      select: {
+        id: true,
+        builderId: true,
+        cloudLanguageLibraryId: true,
+        summaryLanguage: true,
+      },
+    });
+    for (const staleTask of staleTasks) {
+      // A stale cloud builder belongs to its own language owner, never the new
+      // submission's, so recompute with the task's own library/language.
+      await recomputeCloudSourceTask({
+        prisma,
+        cloudLanguageLibraryId: staleTask.cloudLanguageLibraryId,
+        builderId: staleTask.builderId,
+        summaryLanguage: staleTask.summaryLanguage,
+        now,
+      });
+    }
+
+    const pausedTasks = await prisma.cloudSourceTask.findMany({
+      where: { id: { in: staleTasks.map((task) => task.id) }, status: "PAUSED" },
+      select: { id: true },
+    });
+    await cancelQueuedCloudFetchForTasks({
+      prisma,
+      taskIds: pausedTasks.map((task) => task.id),
+    });
+  }
+
   await syncCloudLanguageLibraryHub(params.summaryLanguage, prisma);
   return {
     sourcesSubmitted: privateSources.length,
     tasksSubmitted: tasksTouched,
+    supersededSources,
     frequency: params.frequency,
     summaryLanguage: params.summaryLanguage,
   };

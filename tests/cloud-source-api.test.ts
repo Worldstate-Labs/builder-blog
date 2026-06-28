@@ -94,3 +94,22 @@ test("cloud source scheduler exposes DB-backed materialize and lease workflows",
   assert.match(scheduler, /maxActiveLeases/);
   assert.match(scheduler, /leaseExpiresAt/);
 });
+
+test("cloud submission reconciles to a single active submission and cancels superseded fetches", () => {
+  const library = source("src/lib/cloud-source-library.ts");
+
+  assert.match(library, /planSubmissionReconciliation/);
+  assert.match(library, /cloudSourceSubmission\.findMany/);
+  assert.match(library, /cloudSourceSubmission\.updateMany/);
+  assert.match(library, /active: false/);
+  assert.match(library, /cancelQueuedCloudFetchForTasks/);
+});
+
+test("cloud submission route exposes a GET summary of the user's active submission", () => {
+  const route = source("src/app/api/cloud-library/source-submissions/route.ts");
+
+  assert.match(route, /export async function GET/);
+  assert.match(route, /getCurrentSession\(\)/);
+  assert.match(route, /getUserCloudSubmissionSummary/);
+  assert.match(route, /hasActiveSubmission/);
+});

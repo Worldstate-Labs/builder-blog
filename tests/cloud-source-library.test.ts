@@ -6,6 +6,9 @@ import {
   cloudLanguageLibraryHubName,
   copyBuilderToCloudOwner,
   effectiveCloudFetchFrequency,
+  getUserCloudSubmissionSummary,
+  planSubmissionReconciliation,
+  summarizeActiveCloudSubmissions,
   upsertSourceCandidateFromCloudBuilder,
 } from "../src/lib/cloud-source-library";
 
@@ -133,4 +136,90 @@ test("cloud language backfill script copies featured Hub sources without user su
   assert.match(script, /recomputeCloudSourceTask/);
   assert.match(script, /syncCloudLanguageLibraryHub/);
   assert.doesNotMatch(script, /cloudSourceSubmission\.(create|upsert)/);
+});
+
+test("planSubmissionReconciliation deactivates active submissions not in the new set", () => {
+  const result = planSubmissionReconciliation({
+    existingActive: [
+      { id: "sub_keep", cloudBuilderId: "cb_a" },
+      { id: "sub_removed", cloudBuilderId: "cb_b" },
+      { id: "sub_old_lang", cloudBuilderId: "cb_zh_only" },
+    ],
+    keepCloudBuilderIds: ["cb_a"],
+  });
+
+  assert.deepEqual(result.deactivateSubmissionIds.sort(), ["sub_old_lang", "sub_removed"]);
+  assert.deepEqual(result.staleCloudBuilderIds.sort(), ["cb_b", "cb_zh_only"]);
+});
+
+test("planSubmissionReconciliation keeps everything when the new set covers all active submissions", () => {
+  const result = planSubmissionReconciliation({
+    existingActive: [
+      { id: "sub_a", cloudBuilderId: "cb_a" },
+      { id: "sub_b", cloudBuilderId: "cb_b" },
+    ],
+    keepCloudBuilderIds: ["cb_a", "cb_b", "cb_new"],
+  });
+
+  assert.deepEqual(result.deactivateSubmissionIds, []);
+  assert.deepEqual(result.staleCloudBuilderIds, []);
+});
+
+test("summarizeActiveCloudSubmissions reports effective frequency and most recent language", () => {
+  const summary = summarizeActiveCloudSubmissions([
+    {
+      summaryLanguage: "zh",
+      frequency: "WEEKLY",
+      submittedAt: new Date("2026-06-20T00:00:00.000Z"),
+    },
+    {
+      summaryLanguage: "zh",
+      frequency: "DAILY",
+      submittedAt: new Date("2026-06-24T00:00:00.000Z"),
+    },
+  ]);
+
+  assert.equal(summary.hasActiveSubmission, true);
+  assert.equal(summary.activeSourceCount, 2);
+  assert.equal(summary.frequency, "DAILY");
+  assert.equal(summary.summaryLanguage, "zh");
+  assert.deepEqual(summary.lastSubmittedAt, new Date("2026-06-24T00:00:00.000Z"));
+});
+
+test("summarizeActiveCloudSubmissions reports no submission for an empty set", () => {
+  assert.deepEqual(summarizeActiveCloudSubmissions([]), {
+    hasActiveSubmission: false,
+    activeSourceCount: 0,
+    summaryLanguage: null,
+    frequency: null,
+    lastSubmittedAt: null,
+  });
+});
+
+test("getUserCloudSubmissionSummary reads only the user's active submissions", async () => {
+  const calls: unknown[] = [];
+  const prisma = {
+    cloudSourceSubmission: {
+      async findMany(args: unknown) {
+        calls.push(args);
+        return [
+          {
+            summaryLanguage: "en",
+            frequency: "WEEKLY" as const,
+            submittedAt: new Date("2026-06-25T00:00:00.000Z"),
+          },
+        ];
+      },
+    },
+  };
+
+  const summary = await getUserCloudSubmissionSummary({ userId: "user_1", prisma });
+
+  assert.deepEqual(calls[0], {
+    where: { userId: "user_1", active: true },
+    select: { summaryLanguage: true, frequency: true, submittedAt: true },
+  });
+  assert.equal(summary.hasActiveSubmission, true);
+  assert.equal(summary.summaryLanguage, "en");
+  assert.equal(summary.frequency, "WEEKLY");
 });
