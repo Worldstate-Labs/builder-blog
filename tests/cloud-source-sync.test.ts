@@ -72,8 +72,8 @@ test("cloud sync marks a successful leased task and advances the next deadline w
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "SUCCEEDED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.lastSuccessAt, now);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 0);
-  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.mustSucceedBy.toISOString(), "2026-06-28T10:00:00.000Z");
-  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt.toISOString(), "2026-06-28T08:00:00.000Z");
+  assert.equal((prisma.cloudSourceTask.updateCalls[0].data.mustSucceedBy as Date).toISOString(), "2026-06-28T10:00:00.000Z");
+  assert.equal((prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(), "2026-06-28T08:00:00.000Z");
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.status, "SUCCEEDED");
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksSucceeded, 1);
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksFailed, 0);
@@ -138,7 +138,7 @@ test("cloud sync marks failures with backoff and keeps a mixed run partial", asy
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "FAILED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 2);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.lastFailureReason, "summary_missing");
-  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt.toISOString(), "2026-06-27T11:00:00.000Z");
+  assert.equal((prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(), "2026-06-27T11:00:00.000Z");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.circuitBreakerUntil, null);
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.status, "PARTIAL");
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksSucceeded, 1);
@@ -172,7 +172,7 @@ function fakeCloudSyncPrisma({
   const prisma = {
     cloudSourceTask: {
       findUniqueCalls: [] as unknown[],
-      updateCalls: [] as unknown[],
+      updateCalls: [] as Array<{ where: { id: string }; data: Record<string, unknown> }>,
       async findUnique(args: unknown) {
         this.findUniqueCalls.push(args);
         return task;
