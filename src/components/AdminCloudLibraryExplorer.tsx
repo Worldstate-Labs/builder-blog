@@ -1,19 +1,37 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { SourceAvatar } from "@/components/SourceAvatar";
+import { SourceBadge } from "@/components/SourceBadge";
 import type {
   CloudLibraryOverview,
+  CloudLibrarySource,
   CloudSourcePost,
   CloudSourceSubmitter,
 } from "@/lib/cloud-library-overview";
 
 type Drill = { submitters: CloudSourceSubmitter[]; posts: CloudSourcePost[] };
 
-function statusClass(status: string): string {
-  if (status === "ACTIVE") return "is-ok";
-  if (status === "PAUSED") return "is-partial";
-  return "is-failed";
+function statusTone(status: string): string {
+  if (status === "ACTIVE") return "active";
+  if (status === "PAUSED") return "paused";
+  return "error";
+}
+
+function frequencyLabel(frequency: string): string {
+  if (frequency === "DAILY") return "Daily";
+  if (frequency === "WEEKLY") return "Weekly";
+  return frequency;
+}
+
+function hostnameOf(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }
 
 function formatDate(iso: string | null): string {
@@ -28,6 +46,17 @@ function formatDate(iso: string | null): string {
   } catch {
     return iso;
   }
+}
+
+function avatarSource(source: CloudLibrarySource) {
+  return {
+    avatarDataUrl: source.avatarDataUrl,
+    avatarUrl: source.avatarUrl,
+    fetchUrl: source.fetchUrl,
+    name: source.sourceName ?? source.builderId,
+    sourceType: source.sourceType ?? "website",
+    sourceUrl: source.sourceUrl,
+  };
 }
 
 export function AdminCloudLibraryExplorer({
@@ -83,87 +112,137 @@ export function AdminCloudLibraryExplorer({
   return (
     <div className="cloud-library-explorer">
       {libraries.map((library) => (
-        <div key={library.id} className="cloud-library-group">
-          <h4 className="fb-section-title">
-            {library.summaryLanguage}
-            {library.ownerEmail ? ` · ${library.ownerEmail}` : ""}
-            {library.enabled ? "" : " · disabled"}
-            {` · ${library.sourceCount} ${library.sourceCount === 1 ? "source" : "sources"}`}
-          </h4>
+        <section key={library.id} className="cloud-library-group">
+          <header className="cloud-library-group-head">
+            <span className="cloud-library-group-lang">{library.summaryLanguage}</span>
+            {library.ownerEmail ? (
+              <span className="cloud-library-group-owner">{library.ownerEmail}</span>
+            ) : null}
+            <span className="cloud-library-group-count">
+              {library.sourceCount} {library.sourceCount === 1 ? "source" : "sources"}
+            </span>
+            {library.enabled ? null : (
+              <span className="cloud-status-chip is-paused">disabled</span>
+            )}
+          </header>
+
           {library.sources.length === 0 ? (
             <p className="cron-field-hint">No sources in this library yet.</p>
           ) : (
-            <ul className="cloud-library-source-list">
-              {library.sources.map((s) => {
-                const isOpen = expanded === s.builderId;
-                const detail = drill[s.builderId];
+            <ul className="cloud-source-list">
+              {library.sources.map((source) => {
+                const isOpen = expanded === source.builderId;
+                const detail = drill[source.builderId];
+                const host = hostnameOf(source.sourceUrl ?? source.fetchUrl);
                 return (
-                  <li key={s.builderId} className="cloud-library-source">
+                  <li key={source.builderId} className="cloud-source-item">
                     <button
                       type="button"
-                      className="cloud-library-source-head"
+                      className="cloud-source-head"
                       aria-expanded={isOpen}
-                      onClick={() => toggle(s.builderId)}
+                      onClick={() => toggle(source.builderId)}
                     >
-                      <span aria-hidden="true">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
-                      <span className={`cloud-fetch-log-status ${statusClass(s.status)}`}>
-                        {s.status}
+                      <SourceAvatar
+                        className="builder-library-avatar"
+                        imageSize={36}
+                        source={avatarSource(source)}
+                      />
+                      <span className="builder-library-info">
+                        <span className="builder-library-info-head">
+                          <span className="builder-library-name">
+                            {source.sourceName ?? source.builderId}
+                          </span>
+                          <SourceBadge sourceType={source.sourceType} />
+                          <span className={`cloud-status-chip is-${statusTone(source.status)}`}>
+                            {source.status}
+                          </span>
+                        </span>
+                        <span className="builder-library-meta">
+                          <span>{frequencyLabel(source.effectiveFrequency)}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>
+                            {source.submitterCount}{" "}
+                            {source.submitterCount === 1 ? "submitter" : "submitters"}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span>
+                            {source.postCount} {source.postCount === 1 ? "post" : "posts"}
+                          </span>
+                          {host ? (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="builder-library-source-link">{host}</span>
+                            </>
+                          ) : null}
+                        </span>
                       </span>
-                      <span className="cloud-library-source-name">
-                        {s.sourceName ?? s.builderId}
-                        {s.sourceType ? ` · ${s.sourceType}` : ""}
-                      </span>
-                      <span className="cloud-library-source-meta">
-                        {s.effectiveFrequency} · {s.submitterCount}{" "}
-                        {s.submitterCount === 1 ? "submitter" : "submitters"} · {s.postCount}{" "}
-                        {s.postCount === 1 ? "post" : "posts"}
-                      </span>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className="cloud-source-chevron"
+                        data-open={isOpen ? "true" : undefined}
+                      />
                     </button>
+
                     {isOpen ? (
-                      <div className="cloud-library-source-detail">
-                        <p className="cron-field-hint">
-                          Last success: {formatDate(s.lastSuccessAt)} · Last failure:{" "}
-                          {formatDate(s.lastFailureAt)}
-                          {s.lastFailureReason ? ` (${s.lastFailureReason})` : ""} · Next attempt:{" "}
-                          {formatDate(s.nextAttemptAt)}
-                          {s.circuitBreakerUntil
-                            ? ` · circuit-broken until ${formatDate(s.circuitBreakerUntil)}`
+                      <div className="cloud-source-detail">
+                        <p className="cloud-source-status-line">
+                          Last success {formatDate(source.lastSuccessAt)} · Last failure{" "}
+                          {formatDate(source.lastFailureAt)}
+                          {source.lastFailureReason ? ` (${source.lastFailureReason})` : ""} · Next
+                          attempt {formatDate(source.nextAttemptAt)}
+                          {source.circuitBreakerUntil
+                            ? ` · circuit-broken until ${formatDate(source.circuitBreakerUntil)}`
                             : ""}
                         </p>
-                        {loading === s.builderId ? (
+
+                        {loading === source.builderId ? (
                           <p className="cron-field-hint">Loading…</p>
                         ) : detail ? (
                           <>
-                            <p className="cloud-library-detail-label">Submitters</p>
+                            <p className="cloud-source-detail-label">
+                              Submitters ({detail.submitters.length})
+                            </p>
                             {detail.submitters.length === 0 ? (
                               <p className="cron-field-hint">No active submitters.</p>
                             ) : (
-                              <ul className="cloud-library-submitters">
-                                {detail.submitters.map((sub, index) => (
-                                  <li key={sub.email ?? `submitter-${index}`} className="cron-field-hint">
-                                    {sub.email ?? sub.name ?? "unknown"} · {sub.frequency}
+                              <ul className="cloud-source-submitters">
+                                {detail.submitters.map((submitter, index) => (
+                                  <li key={submitter.email ?? `submitter-${index}`}>
+                                    <span className="cloud-source-submitter-id">
+                                      {submitter.email ?? submitter.name ?? "unknown"}
+                                    </span>
+                                    <span className="cloud-source-submitter-freq">
+                                      {frequencyLabel(submitter.frequency)}
+                                    </span>
                                   </li>
                                 ))}
                               </ul>
                             )}
-                            <p className="cloud-library-detail-label">Recent posts</p>
+
+                            <p className="cloud-source-detail-label">
+                              Recent posts ({detail.posts.length})
+                            </p>
                             {detail.posts.length === 0 ? (
                               <p className="cron-field-hint">No posts fetched yet.</p>
                             ) : (
-                              <ul className="cloud-library-posts">
+                              <ul className="cloud-source-posts">
                                 {detail.posts.map((post) => (
-                                  <li key={post.id} className="cloud-library-post">
+                                  <li key={post.id} className="cloud-source-post">
                                     <a
+                                      className="cloud-source-post-title"
                                       href={post.url}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="fb-link"
                                     >
                                       {post.title ?? post.url}
                                     </a>
-                                    <span className="cron-field-hint"> · {formatDate(post.publishedAt)}</span>
+                                    <span className="cloud-source-post-date">
+                                      {formatDate(post.publishedAt)}
+                                    </span>
                                     {post.summaryExcerpt ? (
-                                      <p className="cron-field-hint">{post.summaryExcerpt}</p>
+                                      <p className="cloud-source-post-excerpt">
+                                        {post.summaryExcerpt}
+                                      </p>
                                     ) : null}
                                   </li>
                                 ))}
@@ -178,7 +257,7 @@ export function AdminCloudLibraryExplorer({
               })}
             </ul>
           )}
-        </div>
+        </section>
       ))}
       {error ? <p className="cron-field-error">{error}</p> : null}
     </div>

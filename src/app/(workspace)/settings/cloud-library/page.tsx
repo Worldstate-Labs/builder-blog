@@ -42,7 +42,18 @@ export default async function CloudLibraryManagementPage() {
         owner: { select: { email: true } },
         sourceTasks: {
           orderBy: { id: "asc" },
-          include: { builder: { select: { name: true, sourceType: true, sourceUrl: true } } },
+          include: {
+            builder: {
+              select: {
+                name: true,
+                sourceType: true,
+                sourceUrl: true,
+                fetchUrl: true,
+                avatarUrl: true,
+                avatarDataUrl: true,
+              },
+            },
+          },
         },
       },
     }),

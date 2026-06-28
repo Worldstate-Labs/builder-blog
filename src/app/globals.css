@@ -13957,3 +13957,230 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Admin cloud library management ------------------------------------------- */
+
+.cloud-fetch-log,
+.cloud-library-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Status / outcome chip, shared by the fetch log and the library explorer. */
+.cloud-status-chip {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-family: var(--font-geist-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.18rem 0.45rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cloud-status-chip.is-active,
+.cloud-status-chip.is-ok {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 28%, var(--line));
+  color: color-mix(in oklch, var(--signal) 70%, var(--ink));
+}
+.cloud-status-chip.is-paused,
+.cloud-status-chip.is-partial {
+  background: var(--status-partial-soft);
+  border-color: color-mix(in oklch, var(--status-partial) 32%, var(--line));
+  color: color-mix(in oklch, var(--status-partial) 74%, var(--ink));
+}
+.cloud-status-chip.is-error,
+.cloud-status-chip.is-failed {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 30%, var(--line));
+  color: var(--danger);
+}
+
+/* Cloud fetch log (Section B) */
+.cloud-fetch-log-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cloud-fetch-log-row + .cloud-fetch-log-row {
+  border-top: 1px solid var(--line);
+}
+.cloud-fetch-log-head {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  text-align: left;
+  width: 100%;
+}
+.cloud-fetch-log-time {
+  font-size: 0.8125rem;
+}
+.cloud-fetch-log-counts {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+}
+.cloud-fetch-log-meta {
+  color: var(--muted-strong);
+  font-family: var(--font-geist-mono);
+  font-size: 0.6875rem;
+  margin-left: auto;
+}
+.cloud-fetch-log-detail {
+  padding: 0 0 0.7rem 1.6rem;
+}
+.cloud-fetch-log-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+.cloud-fetch-log-task {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  gap: 0.5rem;
+}
+.cloud-fetch-log-task-counts {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+}
+
+/* Cloud library explorer (Section C) */
+.cloud-library-group + .cloud-library-group {
+  border-top: 1px solid var(--line);
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+}
+.cloud-library-group-head {
+  align-items: baseline;
+  color: var(--muted-strong);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  margin-bottom: 0.4rem;
+}
+.cloud-library-group-lang {
+  color: var(--ink);
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cloud-library-group-owner {
+  font-size: 0.8125rem;
+}
+.cloud-library-group-count {
+  font-size: 0.75rem;
+}
+.cloud-source-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cloud-source-item + .cloud-source-item {
+  border-top: 1px solid var(--line);
+}
+.cloud-source-head {
+  align-items: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.6rem 0;
+  text-align: left;
+  width: 100%;
+}
+.cloud-source-chevron {
+  color: var(--muted-strong);
+  flex: 0 0 auto;
+  height: 1rem;
+  margin-left: auto;
+  transition: transform 140ms ease;
+  width: 1rem;
+}
+.cloud-source-chevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+.cloud-source-detail {
+  padding: 0 0 0.75rem calc(36px + 0.7rem);
+}
+.cloud-source-status-line {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  margin: 0 0 0.5rem;
+}
+.cloud-source-detail-label {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.cloud-source-submitters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cloud-source-submitters li {
+  align-items: baseline;
+  display: flex;
+  font-size: 0.8125rem;
+  gap: 0.5rem;
+}
+.cloud-source-submitter-freq {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+}
+.cloud-source-posts {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cloud-source-post {
+  padding: 0.4rem 0;
+}
+.cloud-source-post + .cloud-source-post {
+  border-top: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
+}
+.cloud-source-post-title {
+  color: var(--ink);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.cloud-source-post-title:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+.cloud-source-post-date {
+  color: var(--muted-strong);
+  font-size: 0.6875rem;
+  margin-left: 0.5rem;
+}
+.cloud-source-post-excerpt {
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  margin: 0.2rem 0 0;
+}

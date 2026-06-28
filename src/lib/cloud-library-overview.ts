@@ -10,6 +10,9 @@ export type CloudLibrarySource = {
   sourceName: string | null;
   sourceType: string | null;
   sourceUrl: string | null;
+  fetchUrl: string | null;
+  avatarUrl: string | null;
+  avatarDataUrl: string | null;
   status: string;
   effectiveFrequency: string;
   lastSuccessAt: string | null;
@@ -57,7 +60,14 @@ type CloudSourceTaskRow = {
   nextAttemptAt: Date | null;
   consecutiveFailures: number;
   circuitBreakerUntil: Date | null;
-  builder?: { name: string | null; sourceType: string | null; sourceUrl: string | null } | null;
+  builder?: {
+    name: string | null;
+    sourceType: string | null;
+    sourceUrl: string | null;
+    fetchUrl: string | null;
+    avatarUrl: string | null;
+    avatarDataUrl: string | null;
+  } | null;
 };
 
 export function serializeCloudLibrarySource(
@@ -69,6 +79,9 @@ export function serializeCloudLibrarySource(
     sourceName: task.builder?.name ?? null,
     sourceType: task.builder?.sourceType ?? null,
     sourceUrl: task.builder?.sourceUrl ?? null,
+    fetchUrl: task.builder?.fetchUrl ?? null,
+    avatarUrl: task.builder?.avatarUrl ?? null,
+    avatarDataUrl: task.builder?.avatarDataUrl ?? null,
     status: task.status,
     effectiveFrequency: task.effectiveFrequency,
     lastSuccessAt: task.lastSuccessAt ? task.lastSuccessAt.toISOString() : null,
