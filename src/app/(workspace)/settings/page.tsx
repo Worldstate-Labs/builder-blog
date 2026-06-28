@@ -71,6 +71,19 @@ async function AdminCloudFetchConfigSection() {
   ]);
   return (
     <section className="settings-rules">
+      <div className="settings-rules-panel fb-panel">
+        <div className="settings-rules-body">
+          <h3 className="fb-section-heading">Cloud library management</h3>
+          <p className="settings-rules-summary-desc">
+            Run the cloud source fetch from your local agent, review each polling round,
+            and inspect every cloud library&apos;s sources, submitters, and posts.
+          </p>
+          <Link href="/settings/cloud-library" className="fb-btn dark compact">
+            Open cloud library management →
+          </Link>
+        </div>
+      </div>
+
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
@@ -90,12 +103,6 @@ async function AdminCloudFetchConfigSection() {
           </span>
         </summary>
         <div className="settings-rules-body">
-          <p className="settings-rules-summary-desc">
-            <Link href="/settings/cloud-library" className="fb-link">
-              Open cloud library management →
-            </Link>{" "}
-            to run the cloud fetch from your local agent and review each polling round.
-          </p>
           <AdminCloudFetchConfigForm
             initialConfig={{
               ...serializeCloudFetchConfig(storedConfig),
