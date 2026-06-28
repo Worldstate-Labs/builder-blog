@@ -262,6 +262,7 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/recommendations/page.tsx",
     "src/app/(workspace)/search/loading.tsx",
     "src/app/(workspace)/search/page.tsx",
+    "src/app/(workspace)/settings/cloud-library/page.tsx",
     "src/app/(workspace)/settings/loading.tsx",
     "src/app/(workspace)/settings/page.tsx",
     "src/app/loading.tsx",

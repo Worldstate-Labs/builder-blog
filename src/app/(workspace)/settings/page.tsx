@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
@@ -89,6 +90,12 @@ async function AdminCloudFetchConfigSection() {
           </span>
         </summary>
         <div className="settings-rules-body">
+          <p className="settings-rules-summary-desc">
+            <Link href="/settings/cloud-library" className="fb-link">
+              Open cloud library management →
+            </Link>{" "}
+            to run the cloud fetch from your local agent and review each polling round.
+          </p>
           <AdminCloudFetchConfigForm
             initialConfig={{
               ...serializeCloudFetchConfig(storedConfig),

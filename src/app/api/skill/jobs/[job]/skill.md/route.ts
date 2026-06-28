@@ -338,7 +338,9 @@ export async function GET(request: Request, { params }: Params) {
       ? "library-cron"
       : job === "digest-cron-setup"
         ? "digest-cron"
-        : job;
+        : job === "cloud-library-cron-setup"
+          ? "cloud-library-cron"
+          : job;
   const cronTimeoutSeconds = localAgentTimeoutSeconds(cronInterval, cronTimeoutJob);
   const cronTimeoutNumber = Number(cronTimeoutSeconds);
   const openClawSetupTimeoutSeconds = Number.isFinite(cronTimeoutNumber)
