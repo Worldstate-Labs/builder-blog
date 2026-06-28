@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ComponentProps } from "react";
 import { useState } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -18,6 +19,9 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+type MarkdownEditorStoryProps = ComponentProps<typeof MarkdownEditor> & {
+  initialValue: string;
+};
 
 const SAMPLE = [
   "## Summary rules",
@@ -32,16 +36,15 @@ const SAMPLE = [
   "3. Evidence",
 ].join("\n");
 
-export const Default: StoryObj = {
-  render: (args) => {
-    const [value, setValue] = useState(SAMPLE);
-    return <MarkdownEditor {...args} value={value} onChange={setValue} ariaLabel="Summary rules" />;
-  },
+function MarkdownEditorStory({ initialValue, ...args }: MarkdownEditorStoryProps) {
+  const [value, setValue] = useState(initialValue);
+  return <MarkdownEditor {...args} value={value} onChange={setValue} ariaLabel="Summary rules" />;
+}
+
+export const Default: Story = {
+  render: (args) => <MarkdownEditorStory {...args} initialValue={SAMPLE} />,
 };
 
-export const Empty: StoryObj = {
-  render: (args) => {
-    const [value, setValue] = useState("");
-    return <MarkdownEditor {...args} value={value} onChange={setValue} ariaLabel="Summary rules" />;
-  },
+export const Empty: Story = {
+  render: (args) => <MarkdownEditorStory {...args} initialValue="" />,
 };

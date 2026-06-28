@@ -45,6 +45,8 @@ model User {
   digestRuns              DigestRun[]
   sourceTypeConfigs       UserSourceTypeConfig[]
   digestConfig            UserDigestConfig?
+  cloudLanguageLibraries  CloudLanguageLibrary[]
+  cloudSourceSubmissions  CloudSourceSubmission[]
 }
 
 model LibraryFetchRun {
@@ -204,35 +206,39 @@ model VerificationToken {
 }
 
 model Builder {
-  id            String                  @id @default(cuid())
-  ownerUserId   String
-  kind          BuilderKind             @default(X)
-  name          String
-  handle        String?
-  canonicalKey  String
-  libraryKey    String                  @unique
-  sourceType    String                  @default("auto")
-  sourceUrl     String?
-  fetchUrl      String?
-  avatarUrl     String?
-  avatarDataUrl String?
-  bio           String?
-  addedByUserId String?
-  entityId      String
-  lastFetchedAt DateTime?
-  lastForcedAt  DateTime?
-  itemCount     Int                     @default(0)
-  status        FetchStatus             @default(IDLE)
-  lastError     String?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-  owner         User                    @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  entity        BuilderEntity           @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  poolEntries   BuilderPoolEntry[]
-  subscriptions Subscription[]
-  feedItems     FeedItem[]
-  hubItems      LibraryHubItem[]
-  channelPrefs  UserChannelPreference[]
+  id                             String                  @id @default(cuid())
+  ownerUserId                    String
+  kind                           BuilderKind             @default(X)
+  name                           String
+  handle                         String?
+  canonicalKey                   String
+  libraryKey                     String                  @unique
+  sourceType                     String                  @default("auto")
+  sourceUrl                      String?
+  fetchUrl                       String?
+  avatarUrl                      String?
+  avatarDataUrl                  String?
+  bio                            String?
+  addedByUserId                  String?
+  entityId                       String
+  lastFetchedAt                  DateTime?
+  lastForcedAt                   DateTime?
+  itemCount                      Int                     @default(0)
+  status                         FetchStatus             @default(IDLE)
+  lastError                      String?
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime                @updatedAt
+  owner                          User                    @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  entity                         BuilderEntity           @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  poolEntries                    BuilderPoolEntry[]
+  subscriptions                  Subscription[]
+  feedItems                      FeedItem[]
+  hubItems                       LibraryHubItem[]
+  channelPrefs                   UserChannelPreference[]
+  cloudSubmissionsAsUserBuilder  CloudSourceSubmission[] @relation("CloudSubmissionUserBuilder")
+  cloudSubmissionsAsCloudBuilder CloudSourceSubmission[] @relation("CloudSubmissionCloudBuilder")
+  cloudSourceTask                CloudSourceTask?
+  cloudFetchRunTasks             CloudFetchRunTask[]
 
   @@index([ownerUserId, kind])
   @@index([entityId])
@@ -321,20 +327,21 @@ model BuilderPoolEntry {
 }
 
 model LibraryHubEntry {
-  id           String                  @id @default(cuid())
-  slug         String                  @unique
-  name         String
-  description  String?
-  ownerUserId  String?
-  isFeatured   Boolean                 @default(false)
-  importCount  Int                     @default(0)
-  viewCount    Int                     @default(0)
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
-  owner        User?                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  items        LibraryHubItem[]
-  imports      LibraryImport[]
-  visibilities UserLibraryVisibility[]
+  id                   String                  @id @default(cuid())
+  slug                 String                  @unique
+  name                 String
+  description          String?
+  ownerUserId          String?
+  isFeatured           Boolean                 @default(false)
+  importCount          Int                     @default(0)
+  viewCount            Int                     @default(0)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  owner                User?                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  items                LibraryHubItem[]
+  imports              LibraryImport[]
+  visibilities         UserLibraryVisibility[]
+  cloudLanguageLibrary CloudLanguageLibrary?
 
   @@index([ownerUserId])
   @@index([isFeatured])
@@ -436,6 +443,170 @@ model CanonicalPost {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   feedItems    FeedItem[]
+}
+
+model CloudFetchConfig {
+  id                             String   @id @default("global")
+  maxTasksPerHour                Int      @default(20)
+  maxActiveLeases                Int      @default(20)
+  workerSecondsPerHour           Int      @default(3600)
+  defaultBatchSize               Int      @default(10)
+  leaseTtlMinutes                Int      @default(60)
+  schedulingLeadMinutes          Int      @default(120)
+  planningHorizonHours           Int      @default(48)
+  retryBaseMinutes               Int      @default(30)
+  starvationReserveRatio         Float    @default(0.15)
+  retryReserveRatio              Float    @default(0.1)
+  failureCircuitBreakerThreshold Int      @default(5)
+  canonicalCooldownMinutes       Int      @default(60)
+  durationColdStartBufferRatio   Float    @default(0.5)
+  updatedAt                      DateTime @updatedAt
+  updatedByUserId                String?
+}
+
+model CloudLanguageLibrary {
+  id              String            @id @default(cuid())
+  summaryLanguage String            @unique
+  ownerUserId     String            @unique
+  hubEntryId      String?           @unique
+  enabled         Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  owner           User              @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  hubEntry        LibraryHubEntry?  @relation(fields: [hubEntryId], references: [id], onDelete: SetNull)
+  sourceTasks     CloudSourceTask[]
+
+  @@index([enabled])
+}
+
+model CloudSourceSubmission {
+  id              String              @id @default(cuid())
+  userId          String
+  userBuilderId   String?
+  cloudBuilderId  String
+  summaryLanguage String
+  frequency       CloudFetchFrequency
+  active          Boolean             @default(true)
+  submittedAt     DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userBuilder     Builder?            @relation("CloudSubmissionUserBuilder", fields: [userBuilderId], references: [id], onDelete: SetNull)
+  cloudBuilder    Builder             @relation("CloudSubmissionCloudBuilder", fields: [cloudBuilderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cloudBuilderId])
+  @@index([cloudBuilderId, active])
+  @@index([summaryLanguage, active])
+}
+
+model CloudSourceTask {
+  id                          String                @id @default(cuid())
+  cloudLanguageLibraryId      String
+  builderId                   String                @unique
+  summaryLanguage             String
+  effectiveFrequency          CloudFetchFrequency
+  status                      CloudSourceTaskStatus @default(ACTIVE)
+  lastQueuedAt                DateTime?
+  lastStartedAt               DateTime?
+  lastSuccessAt               DateTime?
+  lastFailureAt               DateTime?
+  lastFailureReason           String?
+  consecutiveFailures         Int                   @default(0)
+  consecutiveDeferrals        Int                   @default(0)
+  lastDeferredAt              DateTime?
+  estimatedDurationSeconds    Int?
+  estimatedSuccessProbability Float?
+  durationP50Seconds          Int?
+  durationP75Seconds          Int?
+  durationP90Seconds          Int?
+  durationSampleCount         Int                   @default(0)
+  successSampleCount          Int                   @default(0)
+  circuitBreakerUntil         DateTime?
+  circuitBreakerReason        String?
+  nextAttemptAt               DateTime?
+  mustSucceedBy               DateTime?
+  lastRunId                   String?
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  cloudLanguageLibrary        CloudLanguageLibrary  @relation(fields: [cloudLanguageLibraryId], references: [id], onDelete: Cascade)
+  builder                     Builder               @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  queueItems                  CloudFetchQueueItem[]
+  runTasks                    CloudFetchRunTask[]
+
+  @@index([cloudLanguageLibraryId, status])
+  @@index([status, nextAttemptAt])
+  @@index([mustSucceedBy])
+}
+
+model CloudFetchQueueItem {
+  id                String                @id @default(cuid())
+  cloudSourceTaskId String
+  status            CloudFetchQueueStatus @default(QUEUED)
+  priorityScore     Float                 @default(0)
+  dueAt             DateTime
+  mustSucceedBy     DateTime
+  leasedAt          DateTime?
+  leaseExpiresAt    DateTime?
+  leaseOwner        String?
+  runId             String?
+  attempts          Int                   @default(0)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  cloudSourceTask   CloudSourceTask       @relation(fields: [cloudSourceTaskId], references: [id], onDelete: Cascade)
+  run               CloudFetchRun?        @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([status, dueAt])
+  @@index([leaseOwner, leaseExpiresAt])
+  @@index([cloudSourceTaskId, status])
+}
+
+model CloudFetchRun {
+  id              String                @id @default(cuid())
+  leaseOwner      String
+  startedAt       DateTime              @default(now())
+  finishedAt      DateTime?
+  status          CloudFetchRunStatus   @default(RUNNING)
+  requestedLimit  Int
+  tasksClaimed    Int                   @default(0)
+  tasksSucceeded  Int                   @default(0)
+  tasksFailed     Int                   @default(0)
+  usageTokens     Int?
+  usageCostUsd    Decimal?              @db.Decimal(10, 4)
+  summary         String?
+  details         Json                  @default("{}")
+  createdByUserId String?
+  queueItems      CloudFetchQueueItem[]
+  tasks           CloudFetchRunTask[]
+
+  @@index([startedAt(sort: Desc)])
+  @@index([status])
+}
+
+model CloudFetchRunTask {
+  id                         String              @id @default(cuid())
+  runId                      String
+  cloudSourceTaskId          String
+  builderId                  String
+  summaryLanguage            String
+  status                     CloudFetchRunStatus
+  startedAt                  DateTime?
+  finishedAt                 DateTime?
+  plannedPosts               Int                 @default(0)
+  syncedPosts                Int                 @default(0)
+  failedPosts                Int                 @default(0)
+  estimatedDurationSeconds   Int?
+  actualDurationSeconds      Int?
+  successProbabilitySnapshot Float?
+  failureReason              String?
+  usageTokens                Int?
+  usageCostUsd               Decimal?            @db.Decimal(10, 4)
+  details                    Json                @default("{}")
+  run                        CloudFetchRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  cloudSourceTask            CloudSourceTask     @relation(fields: [cloudSourceTaskId], references: [id], onDelete: Cascade)
+  builder                    Builder             @relation(fields: [builderId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, cloudSourceTaskId])
+  @@index([cloudSourceTaskId, finishedAt])
+  @@index([builderId, finishedAt])
 }
 
 model UserFeedPreference {
@@ -769,4 +940,30 @@ enum FetchStatus {
   OK
   ERROR
   STALE
+}
+
+enum CloudFetchFrequency {
+  DAILY
+  WEEKLY
+}
+
+enum CloudSourceTaskStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+enum CloudFetchQueueStatus {
+  QUEUED
+  LEASED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum CloudFetchRunStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
 }

@@ -21,6 +21,7 @@ import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
 type AgentRuntime = "claude" | "codex" | "hermes" | "openclaw";
+type RuntimeType = "cloud" | "local";
 
 const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
@@ -139,6 +140,10 @@ const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: ScheduleFrequency; lab
   library: FREQUENCY_CHOICES,
   digest: FREQUENCY_CHOICES,
 };
+const CLOUD_FREQUENCY_OPTIONS: { id: "day" | "week"; label: string }[] = [
+  { id: "day", label: "Every day" },
+  { id: "week", label: "Every week" },
+];
 
 const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
   library: "once",
@@ -536,15 +541,14 @@ export function SkillPromptActions({
   async function copyCommand(target: CopyTarget) {
     setStatus(null);
 
-    if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: missingAccessMessage });
-      return;
-    }
-
     // Schedule dialog handles both one-time and recurring runs. Both selections
     // bake runtime into the prompt URL; recurring selections also bake cadence.
     if (target === "cron") {
       setCronConfigOpen(true);
+      return;
+    }
+    if (activeTokens.length === 0) {
+      setStatus({ kind: "info", text: missingAccessMessage });
       return;
     }
     if (activeTokens.length === 1) {
@@ -1084,9 +1088,11 @@ function CronConfigDialog({
   onConfirm: (selection: SchedulePromptSelection) => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [runtimeType, setRuntimeType] = useState<RuntimeType>("local");
   const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
   const freqOptions = FREQUENCY_OPTIONS[context];
   const [pickedFreq, setPickedFreq] = useState<ScheduleFrequency>(DEFAULT_FREQUENCY[context]);
+  const [pickedCloudFrequency, setPickedCloudFrequency] = useState<"day" | "week">("day");
   const isOneTime = pickedFreq === "once";
   const override = OVERRIDE_COPY[context];
   const savedLanguage = summaryLanguage ?? null;
@@ -1103,8 +1109,10 @@ function CronConfigDialog({
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cloudSubmitMessage, setCloudSubmitMessage] = useState<string | null>(null);
   const dialogConfig = PROMPT_CONFIG[context];
   const runtimeHint = RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
+  const isCloudMode = context === "library" && runtimeType === "cloud";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -1135,6 +1143,7 @@ function CronConfigDialog({
     if (submitting) return;
     setSubmitting(true);
     setError(null);
+    setCloudSubmitMessage(null);
     try {
       // Summary language is account-wide, so persist it server-side (not via
       // the cron URL) — /api/skill/context reads it at every fetch. No-op when
@@ -1158,6 +1167,32 @@ function CronConfigDialog({
           setSubmitting(false);
           return;
         }
+      }
+      if (isCloudMode) {
+        if (pickedLanguage === ORIGINAL_CONTENT_LANGUAGE_VALUE) {
+          setError("Choose a fixed summary language for cloud source fetching.");
+          setSubmitting(false);
+          return;
+        }
+        const response = await fetch("/api/cloud-library/source-submissions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            frequency: pickedCloudFrequency,
+            summaryLanguage: pickedLanguage,
+          }),
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          setError(body?.error ?? "Could not submit sources to FollowBrief Cloud.");
+          setSubmitting(false);
+          return;
+        }
+        setCloudSubmitMessage(
+          `Submitted ${body?.sourcesSubmitted ?? 0} source${body?.sourcesSubmitted === 1 ? "" : "s"} and ${body?.tasksSubmitted ?? 0} task${body?.tasksSubmitted === 1 ? "" : "s"}.`,
+        );
+        window.setTimeout(onCancel, 700);
+        return;
       }
       const fetchDays =
         context === "library" ? parseWindowDays(pickedFetchDays) : DEFAULT_PROMPT_WINDOW_DAYS;
@@ -1226,43 +1261,90 @@ function CronConfigDialog({
         </header>
 
         <div className="cron-config-body">
+          {context === "library" ? (
+            <div className="cron-field">
+              <label htmlFor="cron-runtime-type" className="cron-field-label">
+                Runtime type
+              </label>
+              <select
+                id="cron-runtime-type"
+                className="cron-field-select"
+                value={runtimeType}
+                onChange={(e) => {
+                  const next = e.target.value as RuntimeType;
+                  setRuntimeType(next);
+                  if (next === "cloud" && pickedLanguage === ORIGINAL_CONTENT_LANGUAGE_VALUE) {
+                    setPickedLanguage(
+                      savedLanguage && savedLanguage !== ORIGINAL_CONTENT_LANGUAGE_VALUE
+                        ? savedLanguage
+                        : "zh",
+                    );
+                  }
+                }}
+              >
+                <option value="cloud">Cloud</option>
+                <option value="local">Your Local Agent</option>
+              </select>
+            </div>
+          ) : null}
+
           <div className="cron-field">
             <label htmlFor="cron-freq" className="cron-field-label">
               Frequency
             </label>
-            <select
-              id="cron-freq"
-              className="cron-field-select"
-              value={pickedFreq}
-              onChange={(e) => setPickedFreq(e.target.value as ScheduleFrequency)}
-            >
-              {freqOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            {runtimeType === "cloud" ? (
+              <select
+                id="cron-freq"
+                className="cron-field-select"
+                value={pickedCloudFrequency}
+                onChange={(e) => setPickedCloudFrequency(e.target.value as "day" | "week")}
+              >
+                {CLOUD_FREQUENCY_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                id="cron-freq"
+                className="cron-field-select"
+                value={pickedFreq}
+                onChange={(e) => setPickedFreq(e.target.value as ScheduleFrequency)}
+              >
+                {freqOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-          <div className="cron-field">
-            <label htmlFor="cron-runtime" className="cron-field-label">
-              Runtime
-            </label>
-            <select
-              id="cron-runtime"
-              className="cron-field-select"
-              value={pickedRuntime}
-              onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
-            >
-              {RUNTIME_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <p className="cron-field-hint">{runtimeHint}</p>
 
-          {context === "library" ? (
+          {runtimeType === "local" ? (
+            <>
+              <div className="cron-field">
+                <label htmlFor="cron-runtime" className="cron-field-label">
+                  Runtime
+                </label>
+                <select
+                  id="cron-runtime"
+                  className="cron-field-select"
+                  value={pickedRuntime}
+                  onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
+                >
+                  {RUNTIME_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="cron-field-hint">{runtimeHint}</p>
+            </>
+          ) : null}
+
+          {context === "library" && runtimeType === "local" ? (
             <>
               <div className="cron-field">
                 <label htmlFor="cron-parallel-workers" className="cron-field-label">
@@ -1308,7 +1390,7 @@ function CronConfigDialog({
                 Default: 30 days. Range: 1-90.
               </p>
             </>
-          ) : (
+          ) : runtimeType === "local" ? (
             <>
               <MaxAgeField
                 id="cron-fetch-days"
@@ -1320,9 +1402,9 @@ function CronConfigDialog({
                 Default: 30 days. Range: 1-90.
               </p>
             </>
-          )}
+          ) : null}
 
-          {isOneTime ? (
+          {isOneTime && runtimeType === "local" ? (
             <label className="cron-check">
               <input
                 type="checkbox"
@@ -1341,6 +1423,7 @@ function CronConfigDialog({
           ) : null}
 
           {error ? <p className="cron-field-error">{error}</p> : null}
+          {cloudSubmitMessage ? <p className="cron-field-hint">{cloudSubmitMessage}</p> : null}
         </div>
 
         <footer className="token-picker-footer">
@@ -1358,7 +1441,9 @@ function CronConfigDialog({
             disabled={submitting}
           >
             <Copy aria-hidden="true" />
-            {submitting ? "Copying" : "Copy"}
+            {runtimeType === "cloud"
+              ? (submitting ? "Submitting" : "Submit")
+              : (submitting ? "Copying" : "Copy")}
           </button>
         </footer>
       </form>

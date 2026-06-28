@@ -909,6 +909,7 @@ test("settings live in the clickable user avatar menu", () => {
   const digestDetails = source("src/components/DigestDetails.tsx");
   const adminDigestConfig = source("src/components/AdminDigestConfigForm.tsx");
   const adminSourceTypeManager = source("src/components/AdminSourceTypeManager.tsx");
+  const adminCloudFetchConfig = source("src/components/AdminCloudFetchConfigForm.tsx");
   const adminSourceTypesRoute = source("src/app/api/settings/source-types/route.ts");
   const settingsFields = source("src/components/settings/SettingsFields.tsx");
   const markdownEditor = source("src/components/settings/MarkdownEditor.tsx");
@@ -1011,7 +1012,16 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /const missingAccessMessage = "Add an access key to copy Local Agent prompts\.|const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts\.|const missingAccessMessage = "Add an access key in Settings first"/);
   assert.doesNotMatch(skillPromptActions, /Connect a Local Agent in Settings first/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
-  assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
+  {
+    const copyCommand = skillPromptActions.slice(
+      skillPromptActions.indexOf("async function copyCommand"),
+      skillPromptActions.indexOf("function openStopDialog"),
+    );
+    assert.ok(
+      copyCommand.indexOf('if (target === "cron")') < copyCommand.indexOf("activeTokens.length === 0"),
+      "Fetch sources should open the runtime dialog before Local Agent access-key gating",
+    );
+  }
   assert.match(skillPromptActions, /<legend className="sr-only">Access keys<\/legend>/);
   assert.doesNotMatch(skillPromptActions, /Authorized devices and Local Agents/);
   assert.doesNotMatch(skillPromptActions, /Access keys for Local Agents/);
@@ -1167,6 +1177,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminDigestConfig, /Writes post summaries in the selected language/);
   assert.doesNotMatch(adminDigestConfig, /Creates the headline summary in the selected AI Digest language|Adds an optional source-level note above that source's posts|Creates post summaries in the selected AI Digest language without dropping key points/);
   assert.match(adminDigestConfig, /Could not save AI Digest rules\./);
+  assert.match(adminCloudFetchConfig, /\/api\/admin\/cloud-fetch\/config/);
+  assert.match(adminCloudFetchConfig, /\/api\/admin\/cloud-fetch\/language-libraries/);
+  assert.match(adminCloudFetchConfig, /FieldNumber/);
+  assert.match(adminCloudFetchConfig, /FieldText/);
+  assert.match(adminCloudFetchConfig, /FooterBar/);
+  assert.match(adminCloudFetchConfig, /className="fb-btn dark compact"/);
   assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
   assert.doesNotMatch(adminDigestConfig, /throw new Error\(body\?\.error/);
@@ -5131,6 +5147,7 @@ test("library hub exposes share and multi-import flows", () => {
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const globals = source("src/app/globals.css");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
+  const feedSync = source("src/lib/builder-feed-sync.ts");
   const schema = source("prisma/schema.prisma");
   const headerAccountControls = source("src/components/HeaderAccountControls.tsx");
 
@@ -5148,8 +5165,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderSubscriptionRoute, /Source is not in your source library\./);
   assert.match(builderLibraryRoute, /Source is not in your source library\./);
   assert.match(builderLibraryRoute, /Sources from imported source libraries cannot be removed individually\./);
-  assert.match(skillRoute, /Source URL is not allowed \(\$\{input\.name\}\): \$\{check\.reason\}\./);
-  assert.doesNotMatch(skillRoute, /Source URL rejected/);
+  assert.match(feedSync, /Source URL is not allowed \(\$\{input\.name\}\): \$\{check\.reason\}\./);
+  assert.doesNotMatch(feedSync, /Source URL rejected/);
   assert.match(builderEntitySubscriptionRoute, /No accessible channels for this entity in your source library\./);
   assert.doesNotMatch(
     `${builderSubscriptionRoute}\n${builderLibraryRoute}\n${builderEntitySubscriptionRoute}`,
@@ -5590,7 +5607,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
   assert.match(skillRoute, /syncPersonalLibraryHubForUser/);
-  assert.match(skillRoute, /fetchTool: "Legacy fetch\/import"/);
+  assert.match(feedSync, /fetchTool: "Legacy fetch\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
   assert.match(schema, /model DigestPipelineShare \{/);

@@ -432,16 +432,17 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
 
 test("skill sync route binds agent task items to referenced personal builders", () => {
   const route = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
+  const feedSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
 
-  assert.match(route, /findExistingPersonalBuilderForSync/);
-  assert.match(route, /isAdminFetchOnlySourceType\(input\.sourceType\)/);
-  assert.match(route, /reason: "admin_fetch_only_source"/);
-  assert.match(route, /continue/);
-  assert.match(route, /builderIdFromItems/);
-  assert.match(route, /ownerUserId: userId/);
-  assert.match(route, /ownerUserId: userId/);
-  assert.match(route, /Referenced source was not found/);
-  assert.doesNotMatch(route, /Referenced personal builder was not found/);
+  assert.match(route, /syncBuilderFeedItems/);
+  assert.match(feedSync, /findExistingBuilderForSync/);
+  assert.match(feedSync, /isAdminFetchOnlySourceType\(input\.sourceType\)/);
+  assert.match(feedSync, /reason: "admin_fetch_only_source"/);
+  assert.match(feedSync, /continue/);
+  assert.match(feedSync, /builderIdFromItems/);
+  assert.match(feedSync, /ownerUserId: mode\.user\.id/);
+  assert.match(feedSync, /Referenced source was not found/);
+  assert.doesNotMatch(feedSync, /Referenced personal builder was not found/);
 });
 
 test("library fetch candidates are recomputed from followed sources every run", () => {
@@ -561,7 +562,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Re-fetch existing posts/);
   assert.match(skillPromptActions, /Re-fetch existing source posts once/);
-  assert.match(skillPromptActions, /isOneTime \? \(/);
+  assert.match(skillPromptActions, /isOneTime && runtimeType === "local" \? \(/);
   assert.match(skillPromptActions, /overrideFetched: false/);
   assert.doesNotMatch(skillPromptActions, /Includes posts already in your source library|Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
   assert.doesNotMatch(skillPromptActions, /Re-fetch existing source posts each run|Reuse posts from past issues each run/);
@@ -1504,7 +1505,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" fetch-personal/);
   assert.match(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" expand-discovery/);
   assert.match(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" validate-agent-sync/);
-  assert.match(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" sync-builders/);
+  assert.match(runner, /_sps_sync_command="\$\{SYNC_BUILDERS_COMMAND:-sync-builders\}"/);
+  assert.match(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" "\$_sps_sync_command"/);
   assert.match(runner, /No update\. Planned 0 post tasks\./);
   assert.match(libraryDiscoveryPrompt, /candidate_discovery_fallback/);
   assert.match(libraryDiscoveryPrompt, /library-discovery-result\.json/);
@@ -1672,16 +1674,17 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   // Server is the authoritative gate: a no-summary item is a recorded FAILURE
   // (with reason), not a silent skip, and per-task results come back to the CLI.
   const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
-  assert.match(buildersRoute, /isAdminFetchOnlySourceType\(input\.sourceType\)/);
-  assert.match(buildersRoute, /reason: "admin_fetch_only_source"/);
+  const feedSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
+  assert.match(feedSync, /isAdminFetchOnlySourceType\(input\.sourceType\)/);
+  assert.match(feedSync, /reason: "admin_fetch_only_source"/);
   assert.match(buildersRoute, /itemResults/);
-  assert.match(buildersRoute, /reason: "summary_missing"/);
-  assert.match(buildersRoute, /status: "failed"/);
+  assert.match(feedSync, /reason: "summary_missing"/);
+  assert.match(feedSync, /status: "failed"/);
   assert.match(buildersRoute, /readFetchTaskId/);
   // Body / crawled-content gate: a post with no real content is also a recorded
   // failure server-side (not just client-side validate), symmetric with summary.
-  assert.match(buildersRoute, /checkBodyContentQuality/);
-  assert.match(buildersRoute, /contentVerdict/);
+  assert.match(feedSync, /checkBodyContentQuality/);
+  assert.match(feedSync, /contentVerdict/);
 
   // The fetch-log per-post outcome carries a failure reason.
   const fetchRunsRoute = readFileSync("src/app/api/skill/fetch-runs/[id]/route.ts", "utf8");
@@ -3551,6 +3554,8 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /isAdmin \?/);
   assert.match(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
+  assert.match(settingsPage, /AdminCloudFetchConfigForm/);
+  assert.match(settingsPage, /\{isAdmin \? <AdminCloudFetchConfigSection \/> : null\}/);
 
   // Runtime reads resolve source and digest assembly rules to the requesting
   // user's config, but common fetching and post-summary rules always come from
@@ -3564,9 +3569,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(contextRoute, /getDigestConfig\(\)/);
   assert.match(contextRoute, /commonFetchRules: defaultDigestConfig\.commonFetchRules/);
   assert.match(contextRoute, /commonSummaryRules: defaultDigestConfig\.commonSummaryRules/);
-  const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
-  assert.match(buildersRoute, /getAllSourceConfigs\(\)/);
-  assert.doesNotMatch(buildersRoute, /getUserSourceConfigs\(user\.id\)/);
+  const feedSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
+  assert.match(feedSync, /getAllSourceConfigs\(\)/);
+  assert.doesNotMatch(feedSync, /getUserSourceConfigs\(user\.id\)/);
 
   // The editing components post to the per-user endpoints.
   const srcManager = readFileSync("src/components/AdminSourceTypeManager.tsx", "utf8");

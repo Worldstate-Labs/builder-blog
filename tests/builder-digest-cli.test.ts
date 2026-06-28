@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -2320,6 +2321,147 @@ test("sync-builders treats explicit empty builders payload as a successful no-op
   assert.equal(result.builders, 0);
   assert.equal(result.feedItems, 0);
   assert.equal(result.taskOutcomes, 0);
+});
+
+test("cloud sync upload payload reuses builder sync sanitization and carries cloud task results", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [
+        {
+          kind: "YOUTUBE",
+          sourceType: "youtube",
+          name: "Video Source",
+          sourceUrl: "https://www.youtube.com/@example",
+          items: [
+            {
+              kind: "VIDEO",
+              externalId: "video_1",
+              title: "Video",
+              body: "transcript should not be durably stored",
+              summary: "Summary",
+              url: "https://www.youtube.com/watch?v=video_1",
+              rawJson: { fetchTaskId: "task_post_1", transcriptText: "raw transcript" },
+            },
+          ],
+        },
+      ],
+      taskResults: [
+        {
+          cloudSourceTaskId: "cloud_task_1",
+          status: "succeeded",
+          plannedPosts: 1,
+          syncedPosts: 1,
+          failedPosts: 0,
+        },
+      ],
+    },
+    "cloud_run_1",
+  );
+
+  assert.equal(payload.cloudRunId, "cloud_run_1");
+  assert.equal(payload.taskResults[0].cloudSourceTaskId, "cloud_task_1");
+  assert.equal(payload.builders[0].items[0].body, "");
+  assert.equal(payload.builders[0].items[0].rawJson.rawContentPolicy.durableRawMode, "none");
+});
+
+test("cloud sync task results are derived from planned cloud fetch tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const plannedTasks = [
+    {
+      id: "task_synced",
+      type: "fetch_post",
+      cloudRunId: "cloud_run_1",
+      cloudSourceTaskId: "cloud_task_1",
+      summaryLanguage: "zh",
+      builder: "OpenAI News",
+      builderId: "cloud_builder_1",
+      sourceType: "blog",
+      item: { kind: "BLOG_POST", externalId: "post_1", url: "https://openai.com/news/1" },
+    },
+    {
+      id: "task_failed",
+      type: "fetch_post",
+      cloudRunId: "cloud_run_1",
+      cloudSourceTaskId: "cloud_task_2",
+      summaryLanguage: "en",
+      builder: "OpenAI News EN",
+      builderId: "cloud_builder_2",
+      sourceType: "blog",
+      item: { kind: "BLOG_POST", externalId: "post_2", url: "https://openai.com/news/2" },
+    },
+  ];
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [
+        {
+          builderId: "cloud_builder_1",
+          kind: "BLOG",
+          sourceType: "blog",
+          name: "OpenAI News",
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: "post_1",
+              title: "Post 1",
+              body: "Long enough source body for a normal synced article item.",
+              summary: "This is a synced summary with enough text to pass the shape test.",
+              url: "https://openai.com/news/1",
+              rawJson: {
+                fetchTaskId: "task_synced",
+                agentRuntime: "codex",
+                agentExecutionProof: "read article",
+                agentCompletedAt: "2026-06-27T10:00:00.000Z",
+              },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [
+        {
+          fetchTaskId: "task_failed",
+          status: "failed",
+          reason: "worker_missing_result",
+          evidence: { failureKind: "missing_worker_result_file" },
+        },
+      ],
+    },
+    "cloud_run_1",
+    plannedTasks,
+  );
+
+  assert.equal(payload.taskResults.length, 2);
+  assert.deepEqual(
+    payload.taskResults.map((result: { cloudSourceTaskId: string; status: string; plannedPosts: number; syncedPosts: number; failedPosts: number }) => ({
+      cloudSourceTaskId: result.cloudSourceTaskId,
+      status: result.status,
+      plannedPosts: result.plannedPosts,
+      syncedPosts: result.syncedPosts,
+      failedPosts: result.failedPosts,
+    })),
+    [
+      { cloudSourceTaskId: "cloud_task_1", status: "succeeded", plannedPosts: 1, syncedPosts: 1, failedPosts: 0 },
+      { cloudSourceTaskId: "cloud_task_2", status: "failed", plannedPosts: 1, syncedPosts: 0, failedPosts: 1 },
+    ],
+  );
+  assert.equal(payload.taskResults[1].failureReason, "worker_missing_result");
+});
+
+test("builder digest CLI exposes sync-cloud-builders command", () => {
+  const script = readFileSync(join(process.cwd(), "scripts/builder-digest.mjs"), "utf8");
+
+  assert.match(script, /async function syncCloudBuilders/);
+  assert.match(script, /command === "sync-cloud-builders"/);
+  assert.match(script, /\/api\/admin\/cloud-fetch\/sync/);
+});
+
+test("builder digest CLI exposes lease-cloud-builders command", () => {
+  const script = readFileSync(join(process.cwd(), "scripts/builder-digest.mjs"), "utf8");
+
+  assert.match(script, /async function leaseCloudBuilders/);
+  assert.match(script, /command === "lease-cloud-builders"/);
+  assert.match(script, /\/api\/admin\/cloud-fetch\/lease/);
+  assert.match(script, /--lease-owner/);
 });
 
 test("schedule-spec emits anchor-aligned cron, launchd, and server schedule values", async () => {

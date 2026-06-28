@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin } from "@prisma/client";
+import { BuilderPoolOrigin, type PrismaClient } from "@prisma/client";
 import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import {
@@ -13,6 +13,8 @@ export const adminCommunityLibraryDescription =
 export const adminCommunityDigestTitle = "Community AI Digest";
 export const adminCommunityDigestDescription =
   "Community AI Digest curated by FollowBrief.";
+
+type LibraryHubPrisma = Pick<PrismaClient, "builder" | "libraryHubEntry" | "libraryHubItem">;
 
 export function personalSourceLibraryName(owner: {
   name?: string | null;
@@ -65,8 +67,10 @@ export async function sharePersonalLibraryToHub(params: {
   name: string;
   description?: string | null;
   email?: string | null;
+  prismaClient?: LibraryHubPrisma;
 }) {
-  const ownedBuilders = await prisma.builder.findMany({
+  const client = params.prismaClient ?? prisma;
+  const ownedBuilders = await client.builder.findMany({
     where: { ownerUserId: params.userId },
     select: { id: true },
     orderBy: { name: "asc" },
@@ -74,7 +78,7 @@ export async function sharePersonalLibraryToHub(params: {
 
   const featured = isAdminEmail(params.email);
 
-  const entry = await prisma.libraryHubEntry.upsert({
+  const entry = await client.libraryHubEntry.upsert({
     where: { slug: personalLibrarySlug(params.userId) },
     update: {
       name: params.name,
@@ -93,6 +97,7 @@ export async function sharePersonalLibraryToHub(params: {
   await replaceLibraryHubItems(
     entry.id,
     ownedBuilders.map((builder) => builder.id),
+    client,
   );
 
   return { entry, builderCount: ownedBuilders.length };
@@ -507,19 +512,18 @@ export function personalLibrarySlug(userId: string) {
   return `personal-${userId}`;
 }
 
-async function replaceLibraryHubItems(hubEntryId: string, builderIds: string[]) {
-  await prisma.$transaction([
-    prisma.libraryHubItem.deleteMany({ where: { hubEntryId } }),
-    ...(builderIds.length > 0
-      ? [
-          prisma.libraryHubItem.createMany({
-            data: builderIds.map((builderId) => ({
-              hubEntryId,
-              builderId,
-            })),
-            skipDuplicates: true,
-          }),
-        ]
-      : []),
-  ]);
+async function replaceLibraryHubItems(
+  hubEntryId: string,
+  builderIds: string[],
+  client: LibraryHubPrisma = prisma,
+) {
+  await client.libraryHubItem.deleteMany({ where: { hubEntryId } });
+  if (builderIds.length === 0) return;
+  await client.libraryHubItem.createMany({
+    data: builderIds.map((builderId) => ({
+      hubEntryId,
+      builderId,
+    })),
+    skipDuplicates: true,
+  });
 }

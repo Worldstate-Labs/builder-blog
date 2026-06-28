@@ -274,7 +274,11 @@ function usage() {
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
+  lease-cloud-builders [--limit 10] [--lease-owner local-cloud-runner]
+  fetch-cloud-library [--limit 10] [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--post-limit 3] [--force] [--agent-model gpt-5.5]
+  heartbeat-cloud-fetch --cloud-run-id <id> [--lease-owner local-cloud-runner]
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5] [--partial-outcomes]
+  sync-cloud-builders --file personal-builders.json --cloud-run-id <id> [--agent-model gpt-5.5]
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
   sync --file builder-blog-digest.json [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   schedule-spec --freq 12h --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt]
@@ -1601,6 +1605,266 @@ async function prepare(args = []) {
     label: "digest context",
   });
   console.log(JSON.stringify(context, null, 2));
+}
+
+function sourceConfigsForSummaryLanguage(sources = {}, summaryLanguage = null) {
+  if (!summaryLanguage) return sources;
+  return Object.fromEntries(
+    Object.entries(sources).map(([id, source]) => [
+      id,
+      {
+        ...source,
+        summaryPrompt: source?.summaryPrompt
+          ? { ...source.summaryPrompt, language: summaryLanguage }
+          : source?.summaryPrompt,
+      },
+    ]),
+  );
+}
+
+function cloudLanguageLabel(language) {
+  const normalized = String(language || "").trim().toLowerCase();
+  if (normalized === "zh" || normalized === "zh-cn") return "Chinese";
+  if (normalized === "zh-tw") return "Traditional Chinese";
+  if (normalized === "en") return "English";
+  if (normalized === "ja") return "Japanese";
+  if (normalized === "ko") return "Korean";
+  if (normalized === "es") return "Spanish";
+  return language || "the configured language";
+}
+
+function ensureSummaryInstructionsLanguage(instructions, summaryLanguage) {
+  if (!instructions || typeof instructions !== "object" || !summaryLanguage) return instructions;
+  if (String(instructions.language || "").trim().toLowerCase() === String(summaryLanguage).trim().toLowerCase()) {
+    return instructions;
+  }
+  return {
+    ...instructions,
+    language: summaryLanguage,
+    prompt: [
+      `Write one concise FollowBrief single-post summary in ${cloudLanguageLabel(summaryLanguage)} (${summaryLanguage}).`,
+      "",
+      String(instructions.prompt || ""),
+    ].filter(Boolean).join("\n"),
+  };
+}
+
+function buildCloudFetchTask(task, metadata) {
+  const summaryLanguage = metadata?.summaryLanguage ?? task?.summaryLanguage ?? task?.summaryInstructions?.language ?? null;
+  return {
+    ...task,
+    cloudRunId: metadata?.cloudRunId ?? task?.cloudRunId ?? null,
+    cloudSourceTaskId: metadata?.cloudSourceTaskId ?? task?.cloudSourceTaskId ?? null,
+    summaryLanguage,
+    builderSync: {
+      ...(task?.builderSync ?? {}),
+      builderId: task?.builderSync?.builderId ?? task?.builderId ?? metadata?.builderId ?? null,
+      cloudSourceTaskId: metadata?.cloudSourceTaskId ?? task?.builderSync?.cloudSourceTaskId ?? null,
+    },
+    summaryInstructions: ensureSummaryInstructionsLanguage(task?.summaryInstructions, summaryLanguage),
+  };
+}
+
+export function buildCloudFetchTaskForTest(task, metadata) {
+  return buildCloudFetchTask(task, metadata);
+}
+
+async function applySharedPostReuseBySummaryLanguage(fetchTasks, { config, defaultSummaryLanguage }) {
+  if (!config || webSyncDisabled()) return fetchTasks;
+  const grouped = new Map();
+  for (const task of fetchTasks) {
+    const language = String(task?.summaryLanguage || task?.summaryInstructions?.language || defaultSummaryLanguage || "zh");
+    const group = grouped.get(language) ?? [];
+    group.push(task);
+    grouped.set(language, group);
+  }
+  const rewritten = [];
+  for (const [summaryLanguage, tasks] of grouped) {
+    rewritten.push(...await applySharedPostReuseToFetchTasks(tasks, { config, summaryLanguage }));
+  }
+  const byId = new Map(rewritten.map((task) => [String(task?.id || fetchTaskId(task)), task]));
+  return fetchTasks.map((task) => byId.get(String(task?.id || fetchTaskId(task))) ?? task);
+}
+
+export async function buildFetchTasksForBuilders({
+  builders,
+  context,
+  force = false,
+  days = DEFAULT_PERSONAL_FETCH_DAYS,
+  limit = 3,
+  runStartedAt = new Date(),
+  agentModel = DEFAULT_AGENT_MODEL,
+  subscribedBuilderIds = null,
+  config = null,
+  defaultSummaryLanguage = null,
+  cloudTaskMetadataByBuilderId = new Map(),
+  onSourceProgress = null,
+} = {}) {
+  const sources = context?.sources ?? {};
+  const commonFetchRules = context?.commonFetchRules ?? context?.digest?.commonFetchRules ?? DEFAULT_FETCH_GUIDANCE;
+  const commonSummaryRules = context?.commonSummaryRules ?? context?.digest?.commonSummaryRules ?? "";
+  const subscriptions = subscribedBuilderIds ?? new Set(
+    (context?.subscriptions ?? []).map((builder) => builder.id),
+  );
+  const fallbackCutoff = new Date(runStartedAt.getTime() - days * 24 * 60 * 60 * 1000);
+  const readyBuilders = [];
+  const fetchTasks = [];
+  const builderStats = new Map();
+  let errorCount = 0;
+
+  for (const builder of builders) {
+    const cloudMetadata = cloudTaskMetadataByBuilderId.get(builder.id) ?? null;
+    const summaryLanguage = cloudMetadata?.summaryLanguage ?? defaultSummaryLanguage ?? context?.language ?? "zh";
+    const languageSources = sourceConfigsForSummaryLanguage(sources, summaryLanguage);
+    const builderStat = {
+      builderId: builder.id,
+      name: builder.name,
+      sourceType: sourceTypeIdForBuilder(builder),
+      summaryLanguage,
+      itemsFetched: 0,
+      tasksGenerated: 0,
+      discoveryTasksGenerated: 0,
+    };
+    builderStats.set(builder.id, builderStat);
+
+    const fallbackBuilderSync = {
+      builderId: builder.id,
+      kind: builder.kind,
+      sourceType: builderStat.sourceType,
+      name: builder.name,
+      handle: builder.handle,
+      sourceUrl: builder.sourceUrl,
+      fetchUrl: builder.fetchUrl,
+      bio: builder.bio,
+      subscribe: subscriptions.has(builder.id),
+      ...(cloudMetadata ? { cloudSourceTaskId: cloudMetadata.cloudSourceTaskId } : {}),
+    };
+    try {
+      const source = personalFetcherSourceForBuilder(builder);
+      if (!source) {
+        const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
+        const externalItems = await fetchPersonalWithExternalCommand(builder, {
+          fallbackCutoff,
+          force,
+          limit,
+          context,
+          agentModel,
+        });
+        if (!externalItems) {
+          const task = buildPersonalFetchErrorTask(builder, {
+            builderSync: fallbackBuilderSync,
+            error: new Error("No local fetcher configured for this personal source."),
+            limit,
+            now: runStartedAt,
+            sources: languageSources,
+            commonFetchRules,
+            commonSummaryRules,
+          });
+          fetchTasks.push(cloudMetadata ? buildCloudFetchTask(task, cloudMetadata) : task);
+          if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
+          else builderStat.tasksGenerated += 1;
+          continue;
+        }
+        const filtered = filterFetchedItems(externalItems, {
+          builderId: builder.id,
+          cutoff: builderCutoff,
+          limit,
+          fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
+        });
+        readyBuilders.push({
+          ...fallbackBuilderSync,
+          summaryLanguage,
+          fetchCutoff: builderCutoff?.toISOString() ?? null,
+          items: filtered,
+        });
+        builderStat.itemsFetched += filtered.length;
+        continue;
+      }
+      const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
+      const fetched = await source.fetch(builder, {
+        cutoff: builderCutoff,
+        limit,
+        agentModel,
+        fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
+        sources: languageSources,
+      });
+      const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
+      const filteredItems = filterFinalFetchedItemsByCutoff(items, builderCutoff);
+      const filteredAgentTasks = filterFinalAgentTasksByCutoff(sourceAgentTasks, builderCutoff);
+      const builderSync = {
+        ...fallbackBuilderSync,
+        kind: source.syncKind,
+        sourceType: source.id,
+      };
+      const fetchTasksFromAgentTasks = filteredAgentTasks.map((task) => {
+        const fetchTask = {
+          ...fetchTaskFromAgentTask(task, builderSync, languageSources, commonFetchRules, commonSummaryRules),
+          fetchCutoff: builderCutoff?.toISOString() ?? null,
+        };
+        return cloudMetadata ? buildCloudFetchTask(fetchTask, cloudMetadata) : fetchTask;
+      });
+      fetchTasks.push(...fetchTasksFromAgentTasks);
+      builderStat.tasksGenerated += fetchTasksFromAgentTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
+      builderStat.discoveryTasksGenerated += fetchTasksFromAgentTasks.filter(isCandidateDiscoveryFetchTask).length;
+      readyBuilders.push({
+        ...builderSync,
+        summaryLanguage,
+        fetchCutoff: builderCutoff?.toISOString() ?? null,
+        items: filteredItems,
+      });
+      builderStat.itemsFetched += filteredItems.length;
+      builderStat.sourceType = source.id;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const task = buildPersonalFetchErrorTask(builder, {
+        builderSync: fallbackBuilderSync,
+        error,
+        limit,
+        now: runStartedAt,
+        sources: languageSources,
+        commonFetchRules,
+        commonSummaryRules,
+      });
+      if (isRecoverableFetchFallback(task)) {
+        builderStat.fallback = sourceFallbackNotice(task, message);
+      } else {
+        builderStat.error = message;
+        errorCount += 1;
+      }
+      fetchTasks.push(cloudMetadata ? buildCloudFetchTask(task, cloudMetadata) : task);
+      if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
+      else builderStat.tasksGenerated += 1;
+    } finally {
+      if (onSourceProgress) await onSourceProgress(builderStat);
+    }
+  }
+
+  for (const builder of readyBuilders) {
+    const builderSources = sourceConfigsForSummaryLanguage(sources, builder.summaryLanguage);
+    const readyTasks = fetchTasksForReadyBuilders([builder], builderSources, commonSummaryRules)
+      .map((task) => {
+        const cloudMetadata = cloudTaskMetadataByBuilderId.get(task.builderId) ?? null;
+        return cloudMetadata ? buildCloudFetchTask(task, cloudMetadata) : task;
+      });
+    fetchTasks.push(...readyTasks);
+  }
+
+  const rewrittenFetchTasks = await applySharedPostReuseBySummaryLanguage(fetchTasks, {
+    config,
+    defaultSummaryLanguage: defaultSummaryLanguage ?? context?.language ?? "zh",
+  });
+  fetchTasks.splice(0, fetchTasks.length, ...rewrittenFetchTasks);
+
+  const postFetchTasks = fetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
+  return {
+    builders: readyBuilders,
+    fetchTasks,
+    builderStats,
+    errorCount,
+    itemsFetched: readyBuilders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0),
+    tasksGenerated: postFetchTasks.length,
+    agentTasks: postFetchTasks.filter((task) => task?.contentStatus !== "ready"),
+  };
 }
 
 async function fetchPersonal(args) {
@@ -7751,6 +8015,329 @@ export function prepareSyncPayloadForUpload(payload) {
   };
 }
 
+function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
+  const syncItemTaskIds = new Set(
+    extractSyncItems(payload)
+      .map(({ item }) => item?.rawJson?.fetchTaskId)
+      .filter(Boolean)
+      .map(String),
+  );
+  const outcomeByTaskId = new Map(
+    (Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [])
+      .filter((outcome) => outcome?.fetchTaskId)
+      .map((outcome) => [String(outcome.fetchTaskId), outcome]),
+  );
+  const grouped = new Map();
+  for (const task of plannedTasks) {
+    if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
+    const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+    if (!cloudSourceTaskId) continue;
+    const plannedFetchTaskId = String(task?.id || fetchTaskId(task));
+    const group = grouped.get(cloudSourceTaskId) ?? {
+      cloudSourceTaskId,
+      status: "succeeded",
+      plannedPosts: 0,
+      syncedPosts: 0,
+      failedPosts: 0,
+      failureReason: null,
+      details: { fetchTaskIds: [] },
+    };
+    group.plannedPosts += 1;
+    group.details.fetchTaskIds.push(plannedFetchTaskId);
+    if (syncItemTaskIds.has(plannedFetchTaskId)) {
+      group.syncedPosts += 1;
+    } else {
+      const outcome = outcomeByTaskId.get(plannedFetchTaskId);
+      if (outcome?.status === "failed" || outcome?.status === "blocked") {
+        group.failedPosts += 1;
+        group.failureReason ??= String(outcome.reason || outcome.status || "cloud_task_failed").slice(0, 400);
+      }
+    }
+    grouped.set(cloudSourceTaskId, group);
+  }
+  return [...grouped.values()].map((group) => {
+    const failed = group.syncedPosts === 0 && group.failedPosts > 0 && group.failedPosts >= group.plannedPosts;
+    return {
+      cloudSourceTaskId: group.cloudSourceTaskId,
+      status: failed ? "failed" : "succeeded",
+      plannedPosts: group.plannedPosts,
+      syncedPosts: group.syncedPosts,
+      failedPosts: group.failedPosts,
+      ...(failed ? { failureReason: group.failureReason || "cloud_task_failed" } : {}),
+      details: group.details,
+    };
+  });
+}
+
+export function buildCloudSyncTaskResultsForTest(plannedTasks, payload) {
+  return buildCloudSyncTaskResults(plannedTasks, payload);
+}
+
+export function prepareCloudSyncPayloadForUpload(payload, cloudRunId, plannedTasks = []) {
+  const prepared = prepareSyncPayloadForUpload(payload);
+  if (!prepared || typeof prepared !== "object") return prepared;
+  const taskResults = Array.isArray(prepared.taskResults) && prepared.taskResults.length > 0
+    ? prepared.taskResults
+    : buildCloudSyncTaskResults(plannedTasks, prepared);
+  return {
+    ...prepared,
+    cloudRunId: String(cloudRunId || prepared.cloudRunId || "").trim(),
+    taskResults,
+  };
+}
+
+async function syncCloudBuilders(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+
+  const file = argValue(args, "--file");
+  if (!file) throw new Error("Missing --file personal-builders.json");
+  let rawPayload = JSON.parse(await readFile(file, "utf8"));
+  rawPayload.fetchTool ??= skillFetchTool(
+    "cloud JSON sync",
+    argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
+  );
+  const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
+  const { plannedTasks, summaryLanguage } = await readPlannedFetchResult(tasksFile);
+  rawPayload.summaryLanguage ??= summaryLanguage ?? null;
+  rawPayload = filterStaleSyncItemsByFetchCutoff(rawPayload, plannedTasks);
+  validateAgentSyncPayload({ fetchTasks: plannedTasks }, rawPayload);
+  const cloudRunId =
+    argValue(args, "--cloud-run-id") ||
+    rawPayload.cloudRunId ||
+    process.env.BUILDER_BLOG_CLOUD_RUN_ID ||
+    "";
+  if (!String(cloudRunId).trim()) {
+    throw new Error("Missing --cloud-run-id <id> for sync-cloud-builders.");
+  }
+  const uploadPayload = prepareCloudSyncPayloadForUpload(rawPayload, cloudRunId, plannedTasks);
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify(
+      {
+        status: "skipped",
+        webSyncDisabled: true,
+        cloudRunId: uploadPayload.cloudRunId,
+        builders: Array.isArray(uploadPayload.builders) ? uploadPayload.builders.length : 0,
+        taskResults: Array.isArray(uploadPayload.taskResults) ? uploadPayload.taskResults.length : 0,
+        message: "Web sync disabled for smoke check; no cloud builders or cloud fetch status were uploaded.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
+  const result = await postJson(
+    `${config.appUrl}/api/admin/cloud-fetch/sync`,
+    uploadPayload,
+    config.token,
+    {
+      label: "cloud builder sync",
+      timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS,
+      retries: 1,
+    },
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
+function leasedCloudTaskBuilder(task) {
+  const source = task?.source ?? {};
+  return {
+    id: task?.builderId ?? source.id,
+    kind: source.kind ?? "BLOG",
+    sourceType: source.sourceType ?? null,
+    name: source.name ?? "Cloud source",
+    handle: source.handle ?? null,
+    sourceUrl: source.sourceUrl ?? null,
+    fetchUrl: source.fetchUrl ?? source.sourceUrl ?? null,
+    bio: source.bio ?? null,
+    canonicalKey: source.canonicalKey ?? null,
+  };
+}
+
+async function fetchCloudLibrary(args) {
+  const startedAt = new Date();
+  const rawDays = Number(argValue(args, "--days", String(DEFAULT_PERSONAL_FETCH_DAYS)));
+  const days = Number.isFinite(rawDays)
+    ? Math.min(90, Math.max(1, Math.floor(rawDays)))
+    : DEFAULT_PERSONAL_FETCH_DAYS;
+  const rawPostLimit = Number(argValue(args, "--post-limit", argValue(args, "--fetch-limit", "3")));
+  const postLimit = Number.isFinite(rawPostLimit) ? Math.max(1, Math.min(20, Math.floor(rawPostLimit))) : 3;
+  const rawCloudLimit = Number(argValue(args, "--limit", process.env.BUILDER_BLOG_CLOUD_FETCH_LIMIT || "10"));
+  const cloudLimit = Number.isFinite(rawCloudLimit)
+    ? Math.max(1, Math.min(100, Math.floor(rawCloudLimit)))
+    : 10;
+  const force = args.includes("--force");
+  const agentModel = argValue(args, "--agent-model", DEFAULT_AGENT_MODEL);
+  const leaseOwner =
+    argValue(args, "--lease-owner") ||
+    process.env.BUILDER_BLOG_CLOUD_LEASE_OWNER ||
+    `local-cloud-runner:${RUN_HOSTNAME || "unknown"}`;
+  const config = await readConfig();
+  requireLoggedIn(config);
+
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify(
+      {
+        status: "skipped",
+        webSyncDisabled: true,
+        cloudRunId: null,
+        leasedTasks: 0,
+        localErrors: [],
+        fetchTasks: [],
+        message: "Web sync disabled for smoke check; no cloud fetch tasks were leased.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
+
+  const lease = await postJson(
+    `${config.appUrl}/api/admin/cloud-fetch/lease`,
+    { limit: cloudLimit, leaseOwner },
+    config.token,
+    { label: "cloud fetch lease", retries: 1 },
+  );
+  if (lease.status !== "ok" || !lease.runId || !Array.isArray(lease.tasks) || lease.tasks.length === 0) {
+    console.log(JSON.stringify(
+      {
+        status: "ok",
+        cloudRunId: lease.runId ?? null,
+        leasedTasks: 0,
+        localErrors: [],
+        summaryLanguage: null,
+        fetchTasks: [],
+      },
+      null,
+      2,
+    ));
+    return;
+  }
+
+  const context = await getJson(
+    `${config.appUrl}/api/skill/context?intent=library&days=${encodeURIComponent(String(days))}`,
+    config.token,
+    { label: "cloud library context" },
+  );
+  const cloudTaskMetadataByBuilderId = new Map();
+  const builders = lease.tasks.map((task) => {
+    const builder = leasedCloudTaskBuilder(task);
+    cloudTaskMetadataByBuilderId.set(builder.id, {
+      cloudRunId: lease.runId,
+      cloudSourceTaskId: task.cloudSourceTaskId,
+      builderId: builder.id,
+      summaryLanguage: task.summaryLanguage,
+    });
+    return builder;
+  });
+  const planned = await buildFetchTasksForBuilders({
+    builders,
+    context: {
+      ...context,
+      subscriptions: [],
+      personalFetchedItems: [],
+      latestPersonalFetchedItems: [],
+    },
+    force,
+    days,
+    limit: postLimit,
+    runStartedAt: startedAt,
+    agentModel,
+    config,
+    defaultSummaryLanguage: null,
+    cloudTaskMetadataByBuilderId,
+  });
+  console.log(JSON.stringify(
+    {
+      status: "ok",
+      cloudRunId: lease.runId,
+      leasedTasks: builders.length,
+      localErrors: [],
+      summaryLanguage: null,
+      fetchTasks: planned.fetchTasks,
+    },
+    null,
+    2,
+  ));
+}
+
+async function heartbeatCloudFetch(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const cloudRunId =
+    argValue(args, "--cloud-run-id") ||
+    process.env.BUILDER_BLOG_CLOUD_RUN_ID ||
+    "";
+  if (!String(cloudRunId).trim()) {
+    throw new Error("Missing --cloud-run-id <id> for heartbeat-cloud-fetch.");
+  }
+  const leaseOwner =
+    argValue(args, "--lease-owner") ||
+    process.env.BUILDER_BLOG_CLOUD_LEASE_OWNER ||
+    "";
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify(
+      {
+        status: "skipped",
+        webSyncDisabled: true,
+        cloudRunId,
+        message: "Web sync disabled for smoke check; no cloud fetch heartbeat was uploaded.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
+  const result = await postJson(
+    `${config.appUrl}/api/admin/cloud-fetch/heartbeat`,
+    {
+      runId: cloudRunId,
+      ...(leaseOwner ? { leaseOwner } : {}),
+    },
+    config.token,
+    { label: "cloud fetch heartbeat", retries: 0 },
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function leaseCloudBuilders(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+
+  const requestedLimit = Number(argValue(args, "--limit", "10"));
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.max(1, Math.min(100, Math.floor(requestedLimit)))
+    : 10;
+  const leaseOwner =
+    argValue(args, "--lease-owner") ||
+    process.env.BUILDER_BLOG_CLOUD_LEASE_OWNER ||
+    `local-cloud-runner:${RUN_HOSTNAME || "unknown"}`;
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify(
+      {
+        status: "skipped",
+        webSyncDisabled: true,
+        limit,
+        leaseOwner,
+        message: "Web sync disabled for smoke check; no cloud fetch tasks were leased.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
+  const result = await postJson(
+    `${config.appUrl}/api/admin/cloud-fetch/lease`,
+    { limit, leaseOwner },
+    config.token,
+    {
+      label: "cloud fetch lease",
+      retries: 1,
+    },
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
 function prepareSyncItemForUpload(sourceType, item) {
   const rawJson = objectRecord(item?.rawJson);
   const body = String(item?.body ?? "");
@@ -8911,7 +9498,11 @@ async function main() {
   else if (command === "fail-sync-slice") await failSyncSlice(args);
   else if (command === "prepare") await prepare(args);
   else if (command === "validate-agent-sync") await validateAgentSync(args);
+  else if (command === "lease-cloud-builders") await leaseCloudBuilders(args);
+  else if (command === "fetch-cloud-library") await fetchCloudLibrary(args);
+  else if (command === "heartbeat-cloud-fetch") await heartbeatCloudFetch(args);
   else if (command === "sync-builders") await syncBuilders(args);
+  else if (command === "sync-cloud-builders") await syncCloudBuilders(args);
   else if (command === "render-digest") await renderDigest(args);
   else if (command === "sync") await sync(args);
   else if (command === "cron-audit") await cronAudit(args);

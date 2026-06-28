@@ -55,7 +55,7 @@ export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" BUIL
 export BUILDER_BLOG_ACCOUNT_SLUG="$ACCOUNT_SLUG" BUILDER_BLOG_JOB_STATE_DIR="$JOB_STATE_DIR" BUILDER_BLOG_JOB_TMP_DIR="$JOB_TMP_DIR"
 
 if [ -z "$JOB_NAME" ]; then
-  echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron>" >&2
+  echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron|cloud-library-cron>" >&2
   exit 64
 fi
 
@@ -112,6 +112,7 @@ refresh_skill_files() {
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" "$AGENT_DIR/jobs/library-cron-setup.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" "$AGENT_DIR/jobs/digest-cron-setup.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-cloud-library-cron.md" "$AGENT_DIR/jobs/cloud-library-cron.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
   download_skill_file "$APP_URL/api/skill/files/local-agent-timeouts.json" "$AGENT_DIR/local-agent-timeouts.json"
@@ -1097,7 +1098,7 @@ if [ "$MAX_PARALLEL_WORKERS" -gt 8 ]; then MAX_PARALLEL_WORKERS="8"; fi
 
 job_type_for_name() {
   case "$JOB_NAME" in
-    library-*) printf '%s\n' "library-fetch" ;;
+    library-*|cloud-library-*) printf '%s\n' "library-fetch" ;;
     digest-*) printf '%s\n' "digest-build" ;;
     *) printf '%s\n' "library-fetch" ;;
   esac
@@ -1106,6 +1107,7 @@ job_type_for_name() {
 schedule_job_for_name() {
   case "$JOB_NAME" in
     library-cron) printf '%s\n' "library-cron" ;;
+    cloud-library-cron) printf '%s\n' "cloud-library-cron" ;;
     digest-cron) printf '%s\n' "digest-cron" ;;
     *) printf '%s\n' "" ;;
   esac
@@ -2066,9 +2068,9 @@ run_selected_runtime() {
       run_with_openclaw
     elif command -v hermes >/dev/null 2>&1; then
       run_with_hermes
-    elif { [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; } && [ -z "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" ]; then
+    elif { [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "cloud-library-cron" ]; } && [ -z "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" ]; then
       run_shell_library_fallback
-    elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
+    elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "cloud-library-cron" ]; then
       echo "No local agent runtime found for FollowBrief library ${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-agent} work." >&2
       echo "Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND." >&2
       exit 78
@@ -2093,6 +2095,12 @@ run_job_payload() {
       ;;
     library-once|library-cron)
       run_library_job
+      return "$?"
+      ;;
+    cloud-library-cron)
+      BUILDER_BLOG_RUN_SOURCE=cloud
+      export BUILDER_BLOG_RUN_SOURCE
+      run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library"
       return "$?"
       ;;
   esac
@@ -2346,6 +2354,8 @@ sync_payload_slices() {
   _sps_label="${4:-library result}"
   _sps_granularity="${SYNC_PAYLOAD_SLICE_GRANULARITY:-task}"
   _sps_synced_ids_file="${SYNC_PAYLOAD_SYNCED_IDS_FILE:-}"
+  _sps_sync_command="${SYNC_BUILDERS_COMMAND:-sync-builders}"
+  _sps_extra_args="${SYNC_BUILDERS_EXTRA_ARGS:-}"
   shift 4 || true
 
   node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
@@ -2382,10 +2392,10 @@ sync_payload_slices() {
       _failed_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-sync.out"
       _failed_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-sync.err"
       set +e
-      node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+      node "$AGENT_DIR/builder-digest.mjs" "$_sps_sync_command" \
         --file "$_failed_payload" \
         --tasks "$_slice_tasks" \
-        "$@" > "$_failed_stdout" 2> "$_failed_stderr"
+        "$@" $_sps_extra_args > "$_failed_stdout" 2> "$_failed_stderr"
       _failed_code="$?"
       set -e
       [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
@@ -2400,10 +2410,10 @@ sync_payload_slices() {
 
     echo "Syncing $_sps_label slice $_slice_name."
     set +e
-    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+    node "$AGENT_DIR/builder-digest.mjs" "$_sps_sync_command" \
       --file "$_slice_payload" \
       --tasks "$_slice_tasks" \
-      "$@" > "$_slice_stdout" 2> "$_slice_stderr"
+      "$@" $_sps_extra_args > "$_slice_stdout" 2> "$_slice_stderr"
     _slice_code="$?"
     set -e
     [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
@@ -2414,21 +2424,21 @@ sync_payload_slices() {
     fi
 
     _sps_failures=$(( _sps_failures + 1 ))
-    echo "sync-builders failed for $_sps_label $_slice_name (exit $_slice_code); marking only this slice failed." >&2
+    echo "$_sps_sync_command failed for $_sps_label $_slice_name (exit $_slice_code); marking only this slice failed." >&2
     _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-payload.json"
     node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
       --tasks "$_slice_tasks" \
       --out "$_failed_payload" \
       --reason "task_sync_failed" \
-      --message "sync-builders failed for $_sps_label $_slice_name with exit $_slice_code"
+      --message "$_sps_sync_command failed for $_sps_label $_slice_name with exit $_slice_code"
 
     _failed_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-sync.out"
     _failed_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-sync.err"
     set +e
-    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+    node "$AGENT_DIR/builder-digest.mjs" "$_sps_sync_command" \
       --file "$_failed_payload" \
       --tasks "$_slice_tasks" \
-      "$@" > "$_failed_stdout" 2> "$_failed_stderr"
+      "$@" $_sps_extra_args > "$_failed_stdout" 2> "$_failed_stderr"
     _failed_code="$?"
     set -e
     [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
@@ -2504,14 +2514,28 @@ sync_completed_checkpoints() {
   return 0
 }
 
+cloud_fetch_heartbeat() {
+  _cfh_run_id="${1:-}"
+  [ -n "$_cfh_run_id" ] || return 0
+  [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-}" = "1" ] && return 0
+  node "$AGENT_DIR/builder-digest.mjs" heartbeat-cloud-fetch --cloud-run-id "$_cfh_run_id" >/dev/null 2>&1 || true
+}
+
 run_library_job() {
+  _fetch_command="${1:-fetch-personal}"
+  _sync_command="${2:-sync-builders}"
+  _result_basename="${3:-library-fetch-result.json}"
+  _job_label="${4:-library}"
   _shards_dir="$JOB_TMP_DIR/shards"
   _results_dir="$_shards_dir/results"
   rm -rf "$_shards_dir"
   mkdir -p "$_results_dir"
-  _result_file="$JOB_TMP_DIR/library-fetch-result.json"
+  _result_file="$JOB_TMP_DIR/$_result_basename"
+  _sync_extra_args=""
+  _cloud_run_id=""
+  _last_cloud_heartbeat=0
 
-  echo "FollowBrief library run: $MAX_PARALLEL_WORKERS worker(s)."
+  echo "FollowBrief $_job_label run: $MAX_PARALLEL_WORKERS worker(s)."
 
   run_openclaw_library_preflight || return "$?"
 
@@ -2519,10 +2543,18 @@ run_library_job() {
   _fetch_stderr="$JOB_TMP_DIR/library-fetch.err"
   _discovery_failed=0
   set +e
-  node "$AGENT_DIR/builder-digest.mjs" fetch-personal \
-    --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
-    --limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
-    ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file" 2> "$_fetch_stderr"
+  if [ "$_fetch_command" = "fetch-cloud-library" ]; then
+    node "$AGENT_DIR/builder-digest.mjs" fetch-cloud-library \
+      --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
+      --post-limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
+      --limit "${BUILDER_BLOG_CLOUD_FETCH_LIMIT:-10}" \
+      ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file" 2> "$_fetch_stderr"
+  else
+    node "$AGENT_DIR/builder-digest.mjs" fetch-personal \
+      --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
+      --limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
+      ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file" 2> "$_fetch_stderr"
+  fi
   _fetch_code="$?"
   set -e
   [ ! -s "$_fetch_stderr" ] || cat "$_fetch_stderr" >&2
@@ -2533,6 +2565,25 @@ run_library_job() {
     return "$_fetch_code"
   fi
   cat "$_result_file"
+  if [ "$_sync_command" = "sync-cloud-builders" ]; then
+    _cloud_run_id="$(node - "$_result_file" <<'NODE'
+const fs = require("fs");
+try {
+  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  console.log(result.cloudRunId || "");
+} catch {
+  console.log("");
+}
+NODE
+	)"
+	    if [ -n "$_cloud_run_id" ]; then
+	      _sync_extra_args="--cloud-run-id $_cloud_run_id"
+	      cloud_fetch_heartbeat "$_cloud_run_id"
+	    fi
+	  fi
+  SYNC_BUILDERS_COMMAND="$_sync_command"
+  SYNC_BUILDERS_EXTRA_ARGS="$_sync_extra_args"
+  export SYNC_BUILDERS_COMMAND SYNC_BUILDERS_EXTRA_ARGS
 
   if library_has_discovery_tasks "$_result_file"; then
     echo "Discovery entries present; running the discovery agent pre-pass."
@@ -2602,6 +2653,13 @@ run_library_job() {
     job_run_update succeeded "No update. Planned 0 post tasks." "no_update" \
       --stage "no_update"
     return 0
+  fi
+
+  if [ "$_sync_command" = "sync-cloud-builders" ] && [ -z "$_cloud_run_id" ]; then
+    echo "Cloud fetch result did not include cloudRunId." >&2
+    job_run_update failed "Cloud fetch result did not include cloudRunId." "cloud_run_id_missing" \
+      --stage "fetch_sources"
+    return 65
   fi
 
   job_run_update running "Sharding $_task_count fetch task(s)." "shard_started" --stage "shard_fetch_tasks"
@@ -2698,9 +2756,19 @@ run_library_job() {
           _alive=$(( _alive + 1 ))
         fi
       fi
-    done
-    [ "$_alive" -eq 0 ] && break
-    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
+	    done
+	    [ "$_alive" -eq 0 ] && break
+	    if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "$_cloud_run_id" ]; then
+	      _cloud_heartbeat_interval="${BUILDER_BLOG_CLOUD_HEARTBEAT_SECONDS:-60}"
+	      case "$_cloud_heartbeat_interval" in
+	        ''|*[!0-9]*) _cloud_heartbeat_interval=60 ;;
+	      esac
+	      if [ $(( _now - _last_cloud_heartbeat )) -ge "$_cloud_heartbeat_interval" ]; then
+	        cloud_fetch_heartbeat "$_cloud_run_id"
+	        _last_cloud_heartbeat="$_now"
+	      fi
+	    fi
+	    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
       --tasks "$_result_file" \
       --results-dir "$_results_dir" \
       --stage "workers_running" >/dev/null 2>&1 || true

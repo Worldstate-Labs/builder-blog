@@ -29,11 +29,12 @@ function ensureTicker() {
 export function useNow(): number | null {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
-    setNow(Date.now());
+    const frame = window.requestAnimationFrame(() => setNow(Date.now()));
     const notify = (value: number) => setNow(value);
     subscribers.add(notify);
     ensureTicker();
     return () => {
+      window.cancelAnimationFrame(frame);
       subscribers.delete(notify);
       if (subscribers.size === 0 && ticker) {
         clearInterval(ticker);

@@ -70,6 +70,7 @@ const nextConfig: NextConfig = {
       "./skills/builder-blog-digest/jobs/library-once.md",
       "./skills/builder-blog-digest/jobs/digest-once.md",
       "./skills/builder-blog-digest/jobs/library-cron-setup.md",
+      "./skills/builder-blog-digest/jobs/cloud-library-cron.md",
       "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
       "./skills/builder-blog-digest/jobs/digest-cron.md",
       "./skills/builder-blog-digest/jobs/library-worker.md",
@@ -91,6 +92,7 @@ const nextConfig: NextConfig = {
       "./skills/builder-blog-digest/jobs/library-once.md",
       "./skills/builder-blog-digest/jobs/digest-once.md",
       "./skills/builder-blog-digest/jobs/library-cron-setup.md",
+      "./skills/builder-blog-digest/jobs/cloud-library-cron.md",
       "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
       "./skills/builder-blog-digest/jobs/digest-cron.md",
       // Stop prompt is served by this route too; without it Vercel omits the

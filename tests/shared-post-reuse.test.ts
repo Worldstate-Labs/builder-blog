@@ -37,7 +37,7 @@ test("shared post reuse skips stored bodies when raw content was not retained", 
 test("shared post reuse uses a persisted canonical post identity", () => {
   const schema = readFileSync("prisma/schema.prisma", "utf8");
   const route = readFileSync("src/app/api/skill/shared-post-reuse/route.ts", "utf8");
-  const builderSync = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
+  const builderSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
 
   assert.match(schema, /model CanonicalPost \{/);
   assert.match(schema, /canonicalUrl\s+String\s+@unique/);
@@ -47,7 +47,7 @@ test("shared post reuse uses a persisted canonical post identity", () => {
 
   assert.match(route, /canonicalPost:\s*\{\s*is:\s*\{\s*canonicalUrl:\s*\{\s*in:/);
   assert.match(route, /OR:\s*\[\s*\{\s*canonicalPost:/);
-  assert.match(builderSync, /ensureCanonicalPostId\(item\.url\)/);
+  assert.match(builderSync, /ensureCanonicalPostId\(prisma, item\.url\)/);
   assert.match(builderSync, /canonicalPostUrl\(url\)/);
   assert.match(builderSync, /prisma\.canonicalPost\.upsert/);
   assert.match(builderSync, /canonicalPostId/);
@@ -66,9 +66,10 @@ test("canonical post migration creates a unique URL identity without making feed
 
 test("builder sync records summaryLanguage for future same-language reuse", () => {
   const route = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
-  assert.match(route, /rawJsonWithSummaryLanguage/);
+  const feedSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
+  assert.match(feedSync, /rawJsonWithSummaryLanguage/);
   assert.match(route, /normalizeSummaryLanguagePreference/);
-  assert.match(route, /summaryLanguage/);
+  assert.match(feedSync, /summaryLanguage/);
 });
 
 test("fetch log treats summary translation as summarize work without claiming a source read", () => {

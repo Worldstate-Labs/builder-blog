@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ComponentProps } from "react";
 import { useState } from "react";
 import { PostFavoriteButton } from "./PostFavoriteButton";
 
@@ -27,15 +28,17 @@ export const Disabled: Story = {
   args: { disabled: true },
 };
 
+function InteractivePostFavoriteButton(args: ComponentProps<typeof PostFavoriteButton>) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  return (
+    <PostFavoriteButton
+      {...args}
+      isFavorite={isFavorite}
+      onToggle={() => setIsFavorite((v) => !v)}
+    />
+  );
+}
+
 export const Interactive: Story = {
-  render: (args) => {
-    const [isFavorite, setIsFavorite] = useState(false);
-    return (
-      <PostFavoriteButton
-        {...args}
-        isFavorite={isFavorite}
-        onToggle={() => setIsFavorite((v) => !v)}
-      />
-    );
-  },
+  render: (args) => <InteractivePostFavoriteButton {...args} />,
 };
