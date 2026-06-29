@@ -369,3 +369,30 @@ test("a task not yet released is not leased now", () => {
   assert.deepEqual(plan.currentHourTaskIds, []);
   assert.equal(Object.keys(plan.debug.deferred).length, 0);
 });
+
+test("an overdue but released task is still leasable (catch-up), not abandoned", () => {
+  const plan = planCloudFetchWindow({
+    now,
+    config: generousConfig,
+    tasks: [
+      // deadline already passed an hour ago, but it is released and active
+      baseTask({ id: "overdue", releaseAt: now, mustSucceedBy: minutesFromNow(-60) }),
+    ],
+  });
+
+  assert.deepEqual(plan.currentHourTaskIds, ["overdue"]);
+});
+
+test("an overdue catch-up task yields the only slot to an on-time task", () => {
+  const plan = planCloudFetchWindow({
+    now,
+    config: { ...generousConfig, maxTasksPerHour: 1 },
+    tasks: [
+      baseTask({ id: "overdue", releaseAt: now, mustSucceedBy: minutesFromNow(-60) }),
+      baseTask({ id: "ontime", releaseAt: now, mustSucceedBy: minutesFromNow(30) }),
+    ],
+  });
+
+  // Overdue work is lowest priority: it must not displace an on-time task.
+  assert.deepEqual(plan.currentHourTaskIds, ["ontime"]);
+});

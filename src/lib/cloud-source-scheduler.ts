@@ -144,7 +144,13 @@ export function planCloudFetchWindow(params: {
   // from the current hour. The scheduler is work-conserving: a polling worker is
   // handed every due task it has budget for, rather than parking work near its
   // deadline. The deadline still drives priority via scoreTask's urgency term.
-  const due = eligible.filter((task) => canRunInBucket(task, currentBucket.start));
+  // Released = retry backoff elapsed (circuit breaker is already filtered above).
+  // Deadline feasibility is NOT a gate: an overdue task stays leasable as
+  // low-priority catch-up (see scoreTask) instead of being abandoned forever
+  // once its mustSucceedBy passes.
+  const due = eligible.filter(
+    (task) => task.releaseAt.getTime() <= currentBucket.start.getTime(),
+  );
   for (const task of eligible) {
     if (!due.includes(task)) {
       debug.skipped[task.id] = debug.skipped[task.id] ?? { reason: "not_due" };
@@ -500,12 +506,6 @@ export function nextCloudTaskFailureSchedule(params: {
   };
 }
 
-function canRunInBucket(task: CloudSchedulerTaskInput, bucketStart: Date) {
-  if (bucketStart < task.releaseAt) return false;
-  const finishAt = bucketStart.getTime() + task.estimatedDurationSeconds * 1000;
-  return finishAt <= task.mustSucceedBy.getTime();
-}
-
 function evictOverCapacity(
   bucket: BucketPlan,
   config: CloudSchedulerConfig,
@@ -535,14 +535,37 @@ function totalDurationSeconds(tasks: BucketTask[]) {
   return tasks.reduce((sum, item) => sum + item.task.estimatedDurationSeconds, 0);
 }
 
+// Lower than any on-time task's urgency even after max aging, so overdue
+// catch-up work never outranks an on-time task.
+const CATCHUP_URGENCY = 1e-12;
+
+function hashTaskId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
 function scoreTask(task: CloudSchedulerTaskInput, now: Date) {
   const baseValue = 1;
   const submissionWeight = Math.sqrt(Math.max(1, task.activeSubmissionCount));
-  const urgency = 1 / Math.max(MINUTE_MS, task.mustSucceedBy.getTime() - now.getTime());
+  const slackMs = task.mustSucceedBy.getTime() - now.getTime();
+  // Overdue work is catch-up: a low, fixed urgency so it never displaces an
+  // on-time task but still runs with spare capacity. On-time tasks keep
+  // deadline-driven urgency.
+  const urgency = slackMs <= 0 ? CATCHUP_URGENCY : 1 / Math.max(MINUTE_MS, slackMs);
   const aging = 1 + Math.min(task.consecutiveDeferrals, 10) * 0.15;
   const expectedValue =
     baseValue * submissionWeight * clamp(task.estimatedSuccessProbability, 0.01, 1) * aging;
-  return (expectedValue * urgency) / Math.max(task.estimatedDurationSeconds, MIN_DURATION_SECONDS);
+  // Tiny deterministic jitter breaks exact score ties so synchronized identical
+  // tasks are not starved by array position; far smaller than the aging signal,
+  // so it never reorders meaningfully-different tasks.
+  const jitter = 1 + (hashTaskId(task.id) % 997) / 1_000_000;
+  return (
+    (expectedValue * urgency * jitter) /
+    Math.max(task.estimatedDurationSeconds, MIN_DURATION_SECONDS)
+  );
 }
 
 function compareStarvation(a: CloudSchedulerTaskInput, b: CloudSchedulerTaskInput) {
