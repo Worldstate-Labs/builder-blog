@@ -162,9 +162,8 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
           </div>
 
           <p className="cron-field-hint">
-            Run the readiness check
-            (<code>npx tsx scripts/check-cloud-source-fetch-readiness.mts --language zh</code>)
-            before the first real run.
+            First-time setup: confirm the cloud library is ready for your summary language
+            (<code>check-cloud-source-fetch-readiness</code>) before the first real run.
           </p>
 
           {status ? (

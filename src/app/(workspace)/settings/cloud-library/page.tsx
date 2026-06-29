@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { AdminCloudFetchLog } from "@/components/AdminCloudFetchLog";
 import { AdminCloudFetchRunActions } from "@/components/AdminCloudFetchRunActions";
 import { AdminCloudLibraryExplorer } from "@/components/AdminCloudLibraryExplorer";
+import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -100,49 +102,71 @@ export default async function CloudLibraryManagementPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Cloud library management"
-        description="Run the cloud source fetch from your local agent and review each polling round."
+        description="Trigger the cloud source fetch from your local agent, review each polling round, and inspect every cloud library's sources."
       />
 
       <div className="workspace-content-stack settings-workspace">
         <section className="settings-rules">
-          <div className="settings-rules-panel fb-panel">
+          <details className="settings-rules-panel fb-panel" open>
+            <summary className="settings-rules-summary">
+              <div className="settings-rules-summary-copy">
+                <h3 className="fb-section-heading">Run cloud fetch</h3>
+                <p className="settings-rules-summary-desc">
+                  Pick a frequency, copy the prompt, and send it to your local agent. The agent
+                  authenticates as you and runs the cloud fetch — once, or on a recurring schedule.
+                </p>
+              </div>
+              <span className="settings-rules-toggle-icon" aria-hidden="true">
+                <ChevronDown className="settings-rules-toggle-svg" />
+              </span>
+            </summary>
             <div className="settings-rules-body">
-              <h3 className="fb-section-heading">Run cloud fetch</h3>
-              <p className="settings-rules-summary-desc">
-                Copy a prompt and send it to your local agent. Recurring polling installs a
-                schedule that leases and fetches a batch every interval; run-once leases and
-                fetches a single batch.
-              </p>
               <AdminCloudFetchRunActions activeTokens={tokens} />
             </div>
-          </div>
-        </section>
+          </details>
 
-        <section className="settings-rules">
-          <div className="settings-rules-panel fb-panel">
+          <details className="settings-rules-panel fb-panel" open>
+            <summary className="settings-rules-summary">
+              <div className="settings-rules-summary-copy">
+                <h3 className="fb-section-heading">Cloud fetch log</h3>
+                <p className="settings-rules-summary-desc">
+                  Each entry is one polling round — a leased batch of cloud source tasks. Expand an
+                  entry to see per-source outcomes.
+                </p>
+              </div>
+              <span className="settings-rules-toggle-icon" aria-hidden="true">
+                <ChevronDown className="settings-rules-toggle-svg" />
+              </span>
+            </summary>
             <div className="settings-rules-body">
-              <h3 className="fb-section-heading">Cloud fetch log</h3>
-              <p className="settings-rules-summary-desc">
-                Each row is one polling round — a leased batch of cloud source tasks the
-                runner fetched and synced. Expand a row to see per-source outcomes.
-              </p>
               <AdminCloudFetchLog initialRuns={runs} initialHasMore={hasMore} />
             </div>
-          </div>
-        </section>
+          </details>
 
-        <section className="settings-rules">
-          <div className="settings-rules-panel fb-panel">
+          <details className="settings-rules-panel fb-panel">
+            <summary className="settings-rules-summary">
+              <div className="settings-rules-summary-copy">
+                <h3 className="fb-section-heading">Cloud libraries</h3>
+                <p className="settings-rules-summary-desc">
+                  Each language library and its sources — fetch status, how many users submitted
+                  each source, and how many posts it has. Expand a source for its submitters and
+                  recent posts.
+                </p>
+              </div>
+              <span className="settings-rules-summary-meta source-summary-line">
+                <CountMeta
+                  label={libraries.length === 1 ? "language library" : "language libraries"}
+                  value={libraries.length}
+                />
+              </span>
+              <span className="settings-rules-toggle-icon" aria-hidden="true">
+                <ChevronDown className="settings-rules-toggle-svg" />
+              </span>
+            </summary>
             <div className="settings-rules-body">
-              <h3 className="fb-section-heading">Cloud libraries</h3>
-              <p className="settings-rules-summary-desc">
-                Each language library and its sources, with fetch status, how many users
-                submitted each source, and how many posts it has fetched. Expand a source to
-                see its submitters and recent posts.
-              </p>
               <AdminCloudLibraryExplorer libraries={libraries} />
             </div>
-          </div>
+          </details>
         </section>
       </div>
     </div>

@@ -135,7 +135,7 @@ export function AdminCloudFetchLog({
                 <span aria-hidden="true">
                   {isOpen ? <ChevronDown /> : <ChevronRight />}
                 </span>
-                <span className={`cloud-fetch-log-status ${statusClass(run.status)}`}>
+                <span className={`cloud-status-chip ${statusClass(run.status)}`}>
                   {run.status}
                 </span>
                 <span className="cloud-fetch-log-time">{formatTime(run.startedAt)}</span>
@@ -157,7 +157,7 @@ export function AdminCloudFetchLog({
                     <ul className="cloud-fetch-log-tasks">
                       {run.tasks.map((task) => (
                         <li key={task.id} className="cloud-fetch-log-task">
-                          <span className={`cloud-fetch-log-status ${statusClass(task.status)}`}>
+                          <span className={`cloud-status-chip ${statusClass(task.status)}`}>
                             {task.status}
                           </span>
                           <span className="cloud-fetch-log-task-name">
