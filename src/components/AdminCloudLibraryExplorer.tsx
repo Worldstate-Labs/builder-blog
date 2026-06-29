@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { SourceAvatar } from "@/components/SourceAvatar";
-import { SourceBadge } from "@/components/SourceBadge";
 import type {
   CloudLibraryOverview,
   CloudLibrarySource,
@@ -144,7 +143,7 @@ export function AdminCloudLibraryExplorer({
                     >
                       <SourceAvatar
                         className="builder-library-avatar"
-                        imageSize={36}
+                        imageSize={40}
                         source={avatarSource(source)}
                       />
                       <span className="builder-library-info">
@@ -152,7 +151,6 @@ export function AdminCloudLibraryExplorer({
                           <span className="builder-library-name">
                             {source.sourceName ?? source.builderId}
                           </span>
-                          <SourceBadge sourceType={source.sourceType} />
                           <span className={`cloud-status-chip is-${statusTone(source.status)}`}>
                             {source.status}
                           </span>

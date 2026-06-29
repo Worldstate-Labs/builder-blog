@@ -14099,6 +14099,9 @@ body {
   border-top: 1px solid var(--line);
 }
 .cloud-source-head {
+  /* Provide the avatar-size token the shared .builder-library-avatar rule reads,
+     so the source avatar matches the Sources page instead of collapsing. */
+  --source-list-avatar-size: 2.5rem;
   align-items: center;
   background: none;
   border: 0;
@@ -14121,7 +14124,7 @@ body {
   transform: rotate(180deg);
 }
 .cloud-source-detail {
-  padding: 0 0 0.75rem calc(36px + 0.7rem);
+  padding: 0 0 0.75rem calc(2.5rem + 0.7rem);
 }
 .cloud-source-status-line {
   color: var(--muted-strong);
