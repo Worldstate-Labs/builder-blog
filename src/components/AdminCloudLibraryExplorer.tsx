@@ -24,15 +24,6 @@ function frequencyLabel(frequency: string): string {
   return frequency;
 }
 
-function hostnameOf(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-}
-
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
@@ -132,7 +123,6 @@ export function AdminCloudLibraryExplorer({
               {library.sources.map((source) => {
                 const isOpen = expanded === source.builderId;
                 const detail = drill[source.builderId];
-                const host = hostnameOf(source.sourceUrl ?? source.fetchUrl);
                 return (
                   <li key={source.builderId} className="cloud-source-item">
                     <button
@@ -151,9 +141,6 @@ export function AdminCloudLibraryExplorer({
                           <span className="builder-library-name">
                             {source.sourceName ?? source.builderId}
                           </span>
-                          <span className={`cloud-status-chip is-${statusTone(source.status)}`}>
-                            {source.status}
-                          </span>
                         </span>
                         <span className="builder-library-meta">
                           <span>{frequencyLabel(source.effectiveFrequency)}</span>
@@ -166,12 +153,10 @@ export function AdminCloudLibraryExplorer({
                           <span>
                             {source.postCount} {source.postCount === 1 ? "post" : "posts"}
                           </span>
-                          {host ? (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span className="builder-library-source-link">{host}</span>
-                            </>
-                          ) : null}
+                          <span aria-hidden="true">·</span>
+                          <span className={`cloud-status-chip is-${statusTone(source.status)}`}>
+                            {source.status}
+                          </span>
                         </span>
                       </span>
                       <ChevronDown
