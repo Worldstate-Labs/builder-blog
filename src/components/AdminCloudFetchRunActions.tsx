@@ -14,7 +14,10 @@ const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "openclaw", label: "OpenClaw" },
 ];
 
+// "once" runs a single lease+fetch; every other value installs a recurring
+// polling schedule on that cadence.
 const FREQUENCY_OPTIONS: { id: string; label: string }[] = [
+  { id: "once", label: "One time" },
   { id: "30m", label: "Every 30 minutes" },
   { id: "1h", label: "Every hour" },
   { id: "12h", label: "Every 12 hours" },
@@ -122,7 +125,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
 
           <div className="cron-field">
             <label htmlFor="cloud-run-frequency" className="cron-field-label">
-              Recurring frequency
+              Frequency
             </label>
             <select
               id="cloud-run-frequency"
@@ -143,19 +146,18 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
               type="button"
               className="fb-btn dark compact"
               disabled={busy !== null}
-              onClick={() => copyPrompt("cloud-library-cron-setup")}
+              onClick={() =>
+                copyPrompt(
+                  frequency === "once" ? "cloud-library-once" : "cloud-library-cron-setup",
+                )
+              }
             >
               <Copy aria-hidden="true" />
-              {busy === "cloud-library-cron-setup" ? "Preparing" : "Copy recurring-polling prompt"}
-            </button>
-            <button
-              type="button"
-              className="fb-btn light compact"
-              disabled={busy !== null}
-              onClick={() => copyPrompt("cloud-library-once")}
-            >
-              <Copy aria-hidden="true" />
-              {busy === "cloud-library-once" ? "Preparing" : "Copy run-once prompt"}
+              {busy !== null
+                ? "Preparing"
+                : frequency === "once"
+                  ? "Copy run-once prompt"
+                  : "Copy recurring-polling prompt"}
             </button>
           </div>
 

@@ -48,6 +48,15 @@ test("cloud run actions component copies prompts for both cloud jobs via exchang
   assert.match(actions, /\/api\/skill\/jobs\//);
 });
 
+test("cloud run actions fold run-once into the frequency select instead of a second button", () => {
+  const actions = source("src/components/AdminCloudFetchRunActions.tsx");
+
+  // A "One time" frequency option drives the single copy button to the
+  // run-once job; any other cadence installs the recurring schedule.
+  assert.match(actions, /label: "One time"/);
+  assert.match(actions, /frequency === "once" \? "cloud-library-once" : "cloud-library-cron-setup"/);
+});
+
 test("cloud fetch log component reads the admin runs endpoint", () => {
   const log = source("src/components/AdminCloudFetchLog.tsx");
 
