@@ -24,6 +24,9 @@ test("cloud-library management page is admin-gated and mounts both Phase 1 secti
   assert.match(page, /redirect\(/);
   assert.match(page, /AdminCloudFetchRunActions/);
   assert.match(page, /AdminCloudFetchLog/);
+  // The scheduler config form was moved here from the main Settings page.
+  assert.match(page, /AdminCloudFetchConfigForm/);
+  assert.match(page, /CLOUD_FETCH_CONFIG_ID/);
 });
 
 test("settings page links to the cloud library management route for admins", () => {

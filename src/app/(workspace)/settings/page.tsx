@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
-import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
 import { AdminMaintenancePanel } from "@/components/AdminMaintenancePanel";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AccountDataPanel } from "@/components/AccountDataPanel";
@@ -19,7 +18,6 @@ import {
 } from "@/components/CommonSummaryRulesForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
-import { CLOUD_FETCH_CONFIG_ID, serializeCloudFetchConfig } from "@/lib/cloud-source-config";
 import { prisma } from "@/lib/prisma";
 import {
   getAllSourceConfigs,
@@ -61,64 +59,22 @@ export default async function SettingsPage() {
   );
 }
 
-async function AdminCloudFetchConfigSection() {
-  const [storedConfig, libraries] = await Promise.all([
-    prisma.cloudFetchConfig.findUnique({ where: { id: CLOUD_FETCH_CONFIG_ID } }),
-    prisma.cloudLanguageLibrary.findMany({
-      include: { owner: { select: { email: true, name: true } } },
-      orderBy: { summaryLanguage: "asc" },
-    }),
-  ]);
+function AdminCloudFetchConfigSection() {
   return (
     <section className="settings-rules">
       <div className="settings-rules-panel fb-panel">
         <div className="settings-rules-body">
           <h3 className="fb-section-heading">Cloud library management</h3>
           <p className="settings-rules-summary-desc">
-            Run the cloud source fetch from your local agent, review each polling round,
-            and inspect every cloud library&apos;s sources, submitters, and posts.
+            Run the cloud source fetch, configure the scheduler, and inspect every cloud
+            library&apos;s sources, submitters, and posts — all on the cloud library
+            management page.
           </p>
           <Link href="/settings/cloud-library" className="fb-btn dark compact">
             Open cloud library management →
           </Link>
         </div>
       </div>
-
-      <details className="settings-rules-panel fb-panel">
-        <summary className="settings-rules-summary">
-          <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">Cloud source fetching</h3>
-            <p className="settings-rules-summary-desc">
-              Configure cloud source queueing and language library owners.
-            </p>
-          </div>
-          <span className="settings-rules-summary-meta source-summary-line">
-            <CountMeta
-              label={libraries.length === 1 ? "language library" : "language libraries"}
-              value={libraries.length}
-            />
-          </span>
-          <span className="settings-rules-toggle-icon" aria-hidden="true">
-            <ChevronDown className="settings-rules-toggle-svg" />
-          </span>
-        </summary>
-        <div className="settings-rules-body">
-          <AdminCloudFetchConfigForm
-            initialConfig={{
-              ...serializeCloudFetchConfig(storedConfig),
-              updatedAt: storedConfig?.updatedAt.toISOString() ?? new Date(0).toISOString(),
-            }}
-            initialLibraries={libraries.map((library) => ({
-              id: library.id,
-              summaryLanguage: library.summaryLanguage,
-              ownerUserId: library.ownerUserId,
-              ownerEmail: library.owner.email,
-              ownerName: library.owner.name,
-              enabled: library.enabled,
-            }))}
-          />
-        </div>
-      </details>
     </section>
   );
 }

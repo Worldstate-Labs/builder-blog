@@ -3554,7 +3554,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /isAdmin \?/);
   assert.match(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
-  assert.match(settingsPage, /AdminCloudFetchConfigForm/);
+  // The cloud-fetch config form now lives on the Cloud library management page;
+  // Settings only keeps a pointer section to it.
+  assert.doesNotMatch(settingsPage, /AdminCloudFetchConfigForm/);
   assert.match(settingsPage, /\{isAdmin \? <AdminCloudFetchConfigSection \/> : null\}/);
 
   // Runtime reads resolve source and digest assembly rules to the requesting

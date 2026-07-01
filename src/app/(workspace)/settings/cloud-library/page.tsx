@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
+import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
 import { AdminCloudFetchLog } from "@/components/AdminCloudFetchLog";
 import { AdminCloudFetchRunActions } from "@/components/AdminCloudFetchRunActions";
 import { AdminCloudLibraryExplorer } from "@/components/AdminCloudLibraryExplorer";
@@ -8,6 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { serializeCloudFetchRun } from "@/lib/cloud-fetch-run-log";
+import { CLOUD_FETCH_CONFIG_ID, serializeCloudFetchConfig } from "@/lib/cloud-source-config";
 import {
   serializeCloudLibrary,
   serializeCloudLibrarySource,
@@ -22,7 +24,7 @@ export default async function CloudLibraryManagementPage() {
   if (!isAdminEmail(session.user.email)) redirect("/settings");
   const userId = session.user.id;
 
-  const [tokens, runRows, libraryRows] = await Promise.all([
+  const [tokens, runRows, libraryRows, cloudConfig] = await Promise.all([
     prisma.agentToken.findMany({
       where: { userId, revokedAt: null },
       orderBy: { createdAt: "desc" },
@@ -41,7 +43,7 @@ export default async function CloudLibraryManagementPage() {
     prisma.cloudLanguageLibrary.findMany({
       orderBy: { summaryLanguage: "asc" },
       include: {
-        owner: { select: { email: true } },
+        owner: { select: { email: true, name: true } },
         sourceTasks: {
           orderBy: { id: "asc" },
           include: {
@@ -61,6 +63,7 @@ export default async function CloudLibraryManagementPage() {
         },
       },
     }),
+    prisma.cloudFetchConfig.findUnique({ where: { id: CLOUD_FETCH_CONFIG_ID } }),
   ]);
 
   const hasMore = runRows.length > PAGE_SIZE;
@@ -167,6 +170,36 @@ export default async function CloudLibraryManagementPage() {
             </summary>
             <div className="settings-rules-body">
               <AdminCloudLibraryExplorer libraries={libraries} />
+            </div>
+          </details>
+
+          <details className="settings-rules-panel fb-panel">
+            <summary className="settings-rules-summary">
+              <div className="settings-rules-summary-copy">
+                <h3 className="fb-section-heading">Cloud source fetching</h3>
+                <p className="settings-rules-summary-desc">
+                  Configure cloud source queueing and language library owners.
+                </p>
+              </div>
+              <span className="settings-rules-toggle-icon" aria-hidden="true">
+                <ChevronDown className="settings-rules-toggle-svg" />
+              </span>
+            </summary>
+            <div className="settings-rules-body">
+              <AdminCloudFetchConfigForm
+                initialConfig={{
+                  ...serializeCloudFetchConfig(cloudConfig),
+                  updatedAt: cloudConfig?.updatedAt.toISOString() ?? new Date(0).toISOString(),
+                }}
+                initialLibraries={libraryRows.map((library) => ({
+                  id: library.id,
+                  summaryLanguage: library.summaryLanguage,
+                  ownerUserId: library.ownerUserId,
+                  ownerEmail: library.owner.email,
+                  ownerName: library.owner.name,
+                  enabled: library.enabled,
+                }))}
+              />
             </div>
           </details>
         </section>
