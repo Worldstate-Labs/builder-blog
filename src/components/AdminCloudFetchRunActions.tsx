@@ -14,8 +14,8 @@ const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "openclaw", label: "OpenClaw" },
 ];
 
-// "once" runs a single lease+fetch; every other value installs a recurring
-// polling schedule on that cadence.
+// "once" runs one local cloud worker session; every other value installs a
+// schedule that starts worker sessions on that cadence.
 const FREQUENCY_OPTIONS: { id: string; label: string }[] = [
   { id: "once", label: "One time" },
   { id: "30m", label: "Every 30 minutes" },
@@ -194,7 +194,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
 
           <div className="cron-field">
             <label htmlFor="cloud-run-frequency" className="cron-field-label">
-              Frequency
+              Start cadence
             </label>
             <select
               id="cloud-run-frequency"
@@ -244,7 +244,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
             </select>
           </div>
           <p className="cron-field-hint">
-            Local workers control this admin machine only. Same-domain tasks still stay on one worker.
+            Local workers control this admin machine during each worker session. Same-domain tasks stay on one worker.
           </p>
 
           <div className="settings-footer-bar">
@@ -262,14 +262,14 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
               {busy !== null
                 ? "Preparing"
                 : frequency === "once"
-                  ? "Copy run-once prompt"
-                  : "Copy recurring-polling prompt"}
+                  ? "Copy one-time worker prompt"
+                  : "Copy scheduled worker prompt"}
             </button>
           </div>
 
           <p className="cron-field-hint">
             First-time setup: confirm the cloud library is ready for your summary language
-            (<code>check-cloud-source-fetch-readiness</code>) before the first real run.
+            (<code>check-cloud-source-fetch-readiness</code>) before the first worker session.
           </p>
 
           {status ? (

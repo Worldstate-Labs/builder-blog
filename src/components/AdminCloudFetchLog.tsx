@@ -57,8 +57,8 @@ function formatDuration(ms: number | null): string {
   return `${minutes}m ${seconds - minutes * 60}s`;
 }
 
-function formatStage(value: string | null): string {
-  return value ? value.replace(/_/g, " ") : "idle";
+function formatStage(value: string | null, fallback = "idle"): string {
+  return value ? value.replace(/_/g, " ") : fallback;
 }
 
 function formatMetric(value: number | null): string {
@@ -67,7 +67,12 @@ function formatMetric(value: number | null): string {
 
 function statusClass(status: string | null): string {
   const normalized = String(status ?? "").toLowerCase();
-  if (!normalized || normalized === "offline" || normalized === "no worker host seen") {
+  if (
+    !normalized ||
+    normalized === "offline" ||
+    normalized === "no worker host seen" ||
+    normalized === "no host heartbeat"
+  ) {
     return "is-muted";
   }
   if (normalized === "succeeded" || normalized === "synced" || normalized === "online" || normalized === "ok") {
@@ -130,21 +135,38 @@ function postToFetchTaskLog(
 }
 
 function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
-  return [
-    workerHost.hostname ?? "No host",
+  const parts = [
+    workerHost.hostname,
     workerHost.platform,
     workerHost.runtime,
     workerHost.localWorkers != null
       ? `${workerHost.localWorkers} ${workerHost.localWorkers === 1 ? "worker" : "workers"}`
       : null,
-    `heartbeat ${formatNullableTime(workerHost.heartbeatAt)}`,
   ].filter(Boolean) as string[];
+  if (workerHost.heartbeatAt) {
+    parts.push(`heartbeat ${formatNullableTime(workerHost.heartbeatAt)}`);
+  } else if (parts.length > 0) {
+    parts.push("heartbeat missing");
+  }
+  return parts.length > 0 ? parts : ["No host heartbeat yet"];
 }
 
-function WorkerHostPanel({ workerHost }: { workerHost: CloudWorkerHostStatus }) {
+function WorkerHostPanel({
+  workerHost,
+  runningLeaseBatches,
+}: {
+  workerHost: CloudWorkerHostStatus;
+  runningLeaseBatches: number;
+}) {
   const progress = workerHost.progress;
   const tasks = useMemo(() => sortedWorkerTasks(workerHost.tasks).slice(0, 20), [workerHost.tasks]);
   const events = workerHost.recentEvents.slice(-5).reverse();
+  const runningWithoutHeartbeat = workerHost.startedAt == null && runningLeaseBatches > 0;
+  const statusLabel = runningWithoutHeartbeat ? "No host heartbeat" : workerHost.statusLabel;
+  const stage = progress?.stage ?? workerHost.stage ?? (runningWithoutHeartbeat ? "waiting_for_heartbeat" : null);
+  const summary = runningWithoutHeartbeat
+    ? `${runningLeaseBatches} source lease ${runningLeaseBatches === 1 ? "batch is" : "batches are"} still running without a worker heartbeat.`
+    : workerHost.summary;
   const sourceProgress =
     progress?.sourcesTotal != null
       ? `${formatMetric(progress.sourcesChecked ?? 0)}/${formatMetric(progress.sourcesTotal)}`
@@ -159,20 +181,20 @@ function WorkerHostPanel({ workerHost }: { workerHost: CloudWorkerHostStatus }) 
       <div className="cloud-worker-host-head">
         <div className="cloud-worker-host-titleblock">
           <div className="cloud-worker-host-titleline">
-            <span className={`cloud-status-chip ${statusClass(workerHost.status)}`}>
-              {workerHost.statusLabel}
+            <span className={`cloud-status-chip ${statusClass(statusLabel)}`}>
+              {statusLabel}
             </span>
             <h4 className="cloud-worker-host-title">Worker host</h4>
           </div>
           <p className="cloud-worker-host-meta">{workerHostMeta(workerHost).join(" · ")}</p>
         </div>
-        {workerHost.summary ? <p className="cloud-worker-host-summary">{workerHost.summary}</p> : null}
+        {summary ? <p className="cloud-worker-host-summary">{summary}</p> : null}
       </div>
 
       <div className="cloud-worker-host-metrics" aria-label="Worker host metrics">
         <div className="cloud-worker-host-metric">
           <span>Stage</span>
-          <strong>{formatStage(progress?.stage ?? workerHost.stage)}</strong>
+          <strong>{formatStage(stage)}</strong>
         </div>
         <div className="cloud-worker-host-metric">
           <span>Post tasks</span>
@@ -213,7 +235,9 @@ function WorkerHostPanel({ workerHost }: { workerHost: CloudWorkerHostStatus }) 
           <span>{tasks.length} recent</span>
         </div>
         {tasks.length === 0 ? (
-          <p className="cron-field-hint">No post task activity yet.</p>
+          <p className="cron-field-hint">
+            {runningWithoutHeartbeat ? "No post task heartbeat yet." : "No post task activity yet."}
+          </p>
         ) : (
           <ul className="cloud-worker-task-list">
             {tasks.map((task) => (
@@ -274,6 +298,7 @@ export function AdminCloudFetchLog({
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const runningLeaseBatches = leaseBatches.filter((batch) => batch.status === "RUNNING").length;
 
   const refresh = useCallback(async () => {
     try {
@@ -336,19 +361,19 @@ export function AdminCloudFetchLog({
 
   return (
     <div className="cloud-fetch-log">
-      <WorkerHostPanel workerHost={workerHost} />
+      <WorkerHostPanel workerHost={workerHost} runningLeaseBatches={runningLeaseBatches} />
 
       <div className="cloud-lease-batches-head">
-        <h4>Lease batches</h4>
+        <h4>Source lease batches</h4>
         <p>
-          Cloud source deliveries claimed by the worker host. Expand a batch for source and post
-          outcomes.
+          Cloud source deliveries claimed by local worker sessions. Expand a batch for source and
+          post outcomes.
         </p>
       </div>
 
       {leaseBatches.length === 0 ? (
         <p className="cron-field-hint">
-          No lease batches yet. Copy a prompt above and start the worker host.
+          No source lease batches yet. Copy a prompt above to start a worker session.
         </p>
       ) : (
         <ul className="cloud-fetch-log-list">

@@ -1,13 +1,15 @@
-Set up the FollowBrief Cloud source library scheduled fetch (admin).
+Set up scheduled FollowBrief Cloud worker sessions (admin).
 
-This installs a recurring local schedule that leases and fetches a batch of cloud
-source tasks every {{CRON_FREQUENCY_LABEL}}. This account must have admin Cloud
-Fetch access.
+This installs a recurring local schedule that starts a cloud worker session every
+{{CRON_FREQUENCY_LABEL}}. Each session leases cloud sources, keeps the local
+post-task queue fed until the queue is empty, a safety cap is reached, or the
+runner time buffer is reached, then syncs results back. This account must have
+admin Cloud Fetch access.
 
 Execution contract:
 - Run only the numbered shell blocks below, in order.
 - If a command fails, stop and report the command, exit code, and stderr.
-- Do NOT install the schedule until the initial validation run in step 4 exits 0.
+- Do NOT install the schedule until the initial validation run in step 5 exits 0.
 - Keep command paths, environment variables, flags, and output locations unchanged.
 
 1. Install or refresh the skill:
@@ -33,7 +35,65 @@ command -v "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" || echo "(runtime n
 If the path printed is empty, stop before installing the schedule: reinstall the
 runtime where launchd/cron can find it, then re-copy this prompt.
 
-4. Run one real cloud fetch now to validate before scheduling:
+4. Check whether a local cloud worker is already running for this account:
+
+```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+CURRENT_FILE="$AGENT_DIR/tmp/accounts/$(account_slug "$ACCT")/cloud-library-cron/current.json"
+node - "$CURRENT_FILE" <<'NODE'
+const fs = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const file = process.argv[2];
+function inactive() {
+  console.log("NO_ACTIVE_CLOUD_WORKER");
+}
+if (!file || !fs.existsSync(file)) {
+  inactive();
+  process.exit(0);
+}
+let current;
+try {
+  current = JSON.parse(fs.readFileSync(file, "utf8"));
+} catch {
+  inactive();
+  process.exit(0);
+}
+const pid = Number(current.workerPid || current.pid || 0);
+if (!Number.isFinite(pid) || pid <= 0) {
+  inactive();
+  process.exit(0);
+}
+try {
+  process.kill(pid, 0);
+} catch {
+  inactive();
+  process.exit(0);
+}
+const command = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" }).stdout || "";
+if (!/BUILDER_BLOG_WORKER_MODE=1|builder-agent-runner\.sh|codex exec|claude -p|hermes chat|openclaw/.test(command)) {
+  inactive();
+  process.exit(0);
+}
+console.log(`ACTIVE_CLOUD_WORKER pid=${pid} instance=${current.instanceId || ""} startedAt=${current.startedAt || ""}`);
+NODE
+```
+
+If the check prints `NO_ACTIVE_CLOUD_WORKER`, continue. If it prints
+`ACTIVE_CLOUD_WORKER`, STOP and ask the user whether to replace that active
+cloud worker. Continue only if the user explicitly confirms; otherwise stop and
+change nothing.
+
+5. Run one real cloud worker session now to validate before scheduling:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
@@ -46,10 +106,10 @@ BUILDER_BLOG_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKER
 "$AGENT_DIR/builder-agent-runner.sh" cloud-library-cron
 ```
 
-If this exits non-zero, report the command, exit code, and stderr, and stop — do
+If this exits non-zero, report the command, exit code, and stderr, and stop. Do
 not install the schedule.
 
-5. Install the recurring schedule (every {{CRON_INTERVAL_MINUTES}} minutes).
+6. Install the recurring worker session schedule (every {{CRON_INTERVAL_MINUTES}} minutes).
 
 macOS (launchd):
 
@@ -92,5 +152,5 @@ or systemd timer — that runs the SAME command from step 4 every
 {{CRON_INTERVAL_MINUTES}} minutes, writing output to
 `$AGENT_DIR/logs/cloud-library-cron.*.log`. Report the schedule you installed.
 
-6. Report the installed schedule label/interval and the initial run result
+7. Report the installed schedule label/interval and the initial worker session result
    (cloud source tasks leased, succeeded, and failed).

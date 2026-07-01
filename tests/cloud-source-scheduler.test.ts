@@ -281,7 +281,7 @@ test("cancelQueuedCloudFetchForTasks no-ops on an empty task list", async () => 
   assert.equal(called, false);
 });
 
-test("leaseCloudFetchTasks records a finalized 0-task run when nothing is due", async () => {
+test("leaseCloudFetchTasks skips lease batch history when nothing is due", async () => {
   const createdRuns: { data: Record<string, unknown> }[] = [];
   const prisma = {
     cloudFetchConfig: { findUnique: async () => null },
@@ -314,20 +314,12 @@ test("leaseCloudFetchTasks records a finalized 0-task run when nothing is due", 
     leaseOwner: "local-cloud-runner:test",
   });
 
-  // The lease still reports empty (nothing for the runner to sync)...
+  // The lease reports empty, but no lease batch is recorded because a worker
+  // session can ask repeatedly and empty asks are heartbeat/progress events.
   assert.equal(result.status, "empty");
   assert.equal(result.runId, null);
   assert.deepEqual(result.tasks, []);
-  // ...but a finalized 0-task run is recorded so the cloud fetch log shows it.
-  assert.equal(createdRuns.length, 1);
-  const data = createdRuns[0].data;
-  assert.equal(data.tasksClaimed, 0);
-  assert.equal(data.tasksSucceeded, 0);
-  assert.equal(data.tasksFailed, 0);
-  assert.equal(data.status, "SUCCEEDED");
-  assert.equal(data.leaseOwner, "local-cloud-runner:test");
-  assert.ok(data.finishedAt instanceof Date);
-  assert.equal(typeof data.summary, "string");
+  assert.equal(createdRuns.length, 0);
 });
 
 const generousConfig = {

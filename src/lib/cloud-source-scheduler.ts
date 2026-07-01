@@ -142,9 +142,10 @@ export function planCloudFetchWindow(params: {
   });
 
   // Due now = released (backoff elapsed) and able to finish before its deadline
-  // from the current hour. The scheduler is work-conserving: a polling worker is
-  // handed every due task it has budget for, rather than parking work near its
-  // deadline. The deadline still drives priority via scoreTask's urgency term.
+  // from the current hour. The scheduler is work-conserving: a local worker
+  // session is handed every due task it has budget for, rather than parking work
+  // near its deadline. The deadline still drives priority via scoreTask's
+  // urgency term.
   // Released = retry backoff elapsed (circuit breaker is already filtered above).
   // Deadline feasibility is NOT a gate: an overdue task stays leasable as
   // low-priority catch-up (see scoreTask) instead of being abandoned forever
@@ -293,12 +294,6 @@ export async function leaseCloudFetchTasks(params: {
 
   const budget = await computeLeaseBudget({ prisma, now, config, requestedLimit: params.limit });
   if (budget.limit <= 0) {
-    await recordEmptyCloudFetchRun(prisma, {
-      leaseOwner: params.leaseOwner,
-      requestedLimit: params.limit,
-      now,
-      summary: "No lease budget available this round.",
-    });
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
   await materializeDueCloudFetchQueue({
@@ -344,12 +339,6 @@ export async function leaseCloudFetchTasks(params: {
   }
 
   if (selected.length === 0) {
-    await recordEmptyCloudFetchRun(prisma, {
-      leaseOwner: params.leaseOwner,
-      requestedLimit: params.limit,
-      now,
-      summary: "No cloud source tasks were due.",
-    });
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
 
@@ -409,27 +398,6 @@ export async function leaseCloudFetchTasks(params: {
     })),
     budget,
   };
-}
-
-// A polling round that leases nothing still records a finalized 0-task run, so
-// the admin cloud fetch log shows the poll happened instead of staying empty.
-async function recordEmptyCloudFetchRun(
-  prisma: PrismaClient,
-  params: { leaseOwner: string; requestedLimit: number; now: Date; summary: string },
-) {
-  await prisma.cloudFetchRun.create({
-    data: {
-      leaseOwner: params.leaseOwner,
-      requestedLimit: params.requestedLimit,
-      tasksClaimed: 0,
-      tasksSucceeded: 0,
-      tasksFailed: 0,
-      status: CloudFetchRunStatus.SUCCEEDED,
-      startedAt: params.now,
-      finishedAt: params.now,
-      summary: params.summary,
-    },
-  });
 }
 
 export async function heartbeatCloudFetchRun(params: {

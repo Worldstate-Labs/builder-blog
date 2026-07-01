@@ -114,7 +114,7 @@ export default async function CloudLibraryManagementPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Cloud library management"
-        description="Monitor the admin worker host, its local post queue, and the cloud source batches feeding it."
+        description="Monitor scheduled cloud worker sessions, their local post queue, and the source lease batches feeding them."
       />
 
       <div className="workspace-content-stack settings-workspace">
@@ -122,10 +122,10 @@ export default async function CloudLibraryManagementPage() {
           <details className="settings-rules-panel fb-panel" open>
             <summary className="settings-rules-summary">
               <div className="settings-rules-summary-copy">
-                <h3 className="fb-section-heading">Run cloud fetch</h3>
+                <h3 className="fb-section-heading">Start cloud worker</h3>
                 <p className="settings-rules-summary-desc">
-                  Pick a frequency, copy the prompt, and send it to your local agent. The agent
-                  authenticates as you and runs the cloud fetch — once, or on a recurring schedule.
+                  Copy a prompt to run one cloud worker session now, or install a local schedule
+                  that starts sessions periodically.
                 </p>
               </div>
               <span className="settings-rules-toggle-icon" aria-hidden="true">
@@ -140,9 +140,9 @@ export default async function CloudLibraryManagementPage() {
           <details className="settings-rules-panel fb-panel" open>
             <summary className="settings-rules-summary">
               <div className="settings-rules-summary-copy">
-                <h3 className="fb-section-heading">Worker host activity</h3>
+                <h3 className="fb-section-heading">Worker session activity</h3>
                 <p className="settings-rules-summary-desc">
-                  The host is the long-running local agent. Lease batches below are cloud source
+                  Shows the latest local worker session. Source lease batches below are cloud
                   deliveries; post task status comes from the local queue and sync results.
                 </p>
               </div>
@@ -189,7 +189,7 @@ export default async function CloudLibraryManagementPage() {
               <div className="settings-rules-summary-copy">
                 <h3 className="fb-section-heading">Cloud source fetching</h3>
                 <p className="settings-rules-summary-desc">
-                  Configure cloud source queueing and language library owners.
+                  Configure cloud source queueing, retry safety, and language library owners.
                 </p>
               </div>
               <span className="settings-rules-toggle-icon" aria-hidden="true">

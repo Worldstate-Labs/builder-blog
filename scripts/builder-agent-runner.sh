@@ -2683,12 +2683,14 @@ NODE
 }
 
 cloud_refill_limit() {
-  _crl_value="${BUILDER_BLOG_CLOUD_REFILL_LIMIT:-3}"
+  # Safety cap for a cloud worker session. Normal stopping conditions are an
+  # empty cloud lease response or the runner's timeout buffer.
+  _crl_value="${BUILDER_BLOG_CLOUD_REFILL_LIMIT:-100}"
   case "$_crl_value" in
-    ''|*[!0-9]*) _crl_value=3 ;;
+    ''|*[!0-9]*) _crl_value=100 ;;
   esac
   if [ "$_crl_value" -lt 0 ]; then _crl_value=0; fi
-  if [ "$_crl_value" -gt 20 ]; then _crl_value=20; fi
+  if [ "$_crl_value" -gt 1000 ]; then _crl_value=1000; fi
   printf '%s\n' "$_crl_value"
 }
 

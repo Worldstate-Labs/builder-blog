@@ -168,7 +168,7 @@ export function serializeCloudWorkerHost(
   if (!job) {
     return {
       status: "offline",
-      statusLabel: "No worker host seen",
+      statusLabel: "No host heartbeat",
       hostname: null,
       platform: null,
       runtime: null,

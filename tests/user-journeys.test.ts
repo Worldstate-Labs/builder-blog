@@ -1034,6 +1034,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR=/);
   assert.match(libraryOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
+  const cloudOncePrompt = readFileSync("skills/builder-blog-digest/jobs/cloud-library-once.md", "utf8");
+  const cloudCronSetupPrompt = readFileSync(
+    "skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
+    "utf8",
+  );
+  for (const cloudPrompt of [cloudOncePrompt, cloudCronSetupPrompt]) {
+    assert.match(cloudPrompt, /Check whether a local cloud worker is already running/);
+    assert.match(cloudPrompt, /ACTIVE_CLOUD_WORKER/);
+    assert.match(cloudPrompt, /NO_ACTIVE_CLOUD_WORKER/);
+    assert.match(cloudPrompt, /ask the user whether to replace that active/);
+  }
   assert.match(digestOncePrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-once/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);

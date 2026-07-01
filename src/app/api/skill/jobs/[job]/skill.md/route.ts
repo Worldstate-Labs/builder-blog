@@ -80,8 +80,8 @@ function buildOpenClawInitialRunBootstrap({
   setupTimeoutSeconds: string;
 }): string {
   return [
-    "6. Queue the OpenClaw initial run and schedule install.",
-    "Run this block after steps 1-5 pass. If it prints",
+    "Next: Queue the OpenClaw initial run and schedule install.",
+    "Run this block after the setup checks pass and before any manual schedule install. If it prints",
     "`FOLLOWBRIEF_OPENCLAW_QUEUED=1`, report the printed setup job name and stop.",
     "",
     "```bash",

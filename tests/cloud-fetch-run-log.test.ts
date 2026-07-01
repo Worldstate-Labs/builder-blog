@@ -232,6 +232,6 @@ test("serializeCloudWorkerHost marks stale and missing hosts clearly", () => {
 
   const offline = serializeCloudWorkerHost(null);
   assert.equal(offline.status, "offline");
-  assert.equal(offline.statusLabel, "No worker host seen");
+  assert.equal(offline.statusLabel, "No host heartbeat");
   assert.deepEqual(offline.tasks, []);
 });

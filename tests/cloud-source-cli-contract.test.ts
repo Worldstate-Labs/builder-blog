@@ -76,6 +76,9 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /assign_dynamic_fetch_workers\(\)/);
   assert.match(runner, /assign-fetch-tasks/);
   assert.match(runner, /fetch_more_cloud_sources\(\)/);
+  assert.match(runner, /BUILDER_BLOG_CLOUD_REFILL_LIMIT:-100/);
+  assert.match(runner, /_crl_value=100/);
+  assert.match(runner, /_crl_value" -gt 1000/);
   assert.match(runner, /merge-fetch-results/);
   assert.match(runner, /SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-run"/);
   assert.match(runner, /cloud_fetch_heartbeat_all\(\)/);
@@ -116,6 +119,10 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
 
   for (const prompt of [oncePrompt, setupPrompt]) {
     assert.doesNotMatch(prompt, /BUILDER_BLOG_CLOUD_FETCH_LIMIT/);
+    assert.match(prompt, /Check whether a local cloud worker is already running/);
+    assert.match(prompt, /ACTIVE_CLOUD_WORKER/);
+    assert.match(prompt, /NO_ACTIVE_CLOUD_WORKER/);
+    assert.match(prompt, /ask the user whether to replace that active/);
     assert.match(
       prompt,
       /BUILDER_BLOG_FETCH_LIMIT="\$\{BUILDER_BLOG_FETCH_LIMIT-\{\{FETCH_LIMIT\}\}\}"/,
