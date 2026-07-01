@@ -14050,15 +14050,108 @@ body {
   padding: 0;
 }
 .cloud-fetch-log-task {
+  display: block;
+  font-size: 0.8125rem;
+}
+.cloud-fetch-log-task-head {
   align-items: center;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
   display: flex;
   flex-wrap: wrap;
-  font-size: 0.8125rem;
   gap: 0.5rem;
+  padding: 0.35rem 0;
+  text-align: left;
+  width: 100%;
+}
+.cloud-fetch-log-task-head:disabled {
+  cursor: default;
 }
 .cloud-fetch-log-task-counts {
   color: var(--muted-strong);
   font-size: 0.75rem;
+}
+.cloud-fetch-log-task-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin: 0 0 0.2rem;
+  padding-left: 0.2rem;
+}
+
+/* Live progress line for a RUNNING cloud round */
+.cloud-fetch-log-live {
+  align-items: center;
+  color: color-mix(in oklch, var(--status-partial) 74%, var(--ink));
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  gap: 0.4rem;
+  padding: 0 0 0.5rem 1.6rem;
+}
+.cloud-fetch-log-live-dot {
+  animation: cloud-live-pulse 1.4s ease-in-out infinite;
+  background: var(--status-partial);
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 0.5rem;
+  width: 0.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloud-fetch-log-live-dot {
+    animation: none;
+  }
+}
+@keyframes cloud-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.cloud-fetch-log-live-stage {
+  font-family: var(--font-geist-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.cloud-fetch-log-live-current {
+  color: var(--muted-strong);
+}
+
+/* Per-post outcomes inside a source */
+.cloud-fetch-log-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0.2rem 0 0.5rem;
+  padding: 0 0 0 1.2rem;
+}
+.cloud-fetch-log-post {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.cloud-fetch-log-post-title {
+  color: var(--ink);
+  max-width: min(100%, 28rem);
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cloud-fetch-log-post-title:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+.cloud-fetch-log-post-meta {
+  color: var(--muted-strong);
+  font-size: 0.6875rem;
 }
 
 /* Cloud library explorer (Section C) */

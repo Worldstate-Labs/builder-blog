@@ -4,6 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { CloudFetchRunLogItem } from "@/lib/cloud-fetch-run-log";
 
+type LiveProgress = {
+  stage: string | null;
+  updatedAt: string | null;
+  runtime: string | null;
+  sourcesTotal: number | null;
+  sourcesChecked: number | null;
+  tasksPlanned: number | null;
+  tasksDone: number | null;
+  synced: number | null;
+  failed: number | null;
+  skipped: number | null;
+  currentSource: string | null;
+};
+
 function mergeRuns(current: CloudFetchRunLogItem[], incoming: CloudFetchRunLogItem[]) {
   const byId = new Map(current.map((run) => [run.id, run]));
   for (const run of incoming) byId.set(run.id, run);
@@ -36,9 +50,8 @@ function formatDuration(ms: number | null): string {
 }
 
 function statusClass(status: string): string {
-  if (status === "SUCCEEDED") return "is-ok";
-  if (status === "PARTIAL") return "is-partial";
-  if (status === "RUNNING") return "is-partial";
+  if (status === "SUCCEEDED" || status === "synced") return "is-ok";
+  if (status === "PARTIAL" || status === "RUNNING" || status === "skipped") return "is-partial";
   return "is-failed";
 }
 
@@ -52,6 +65,8 @@ export function AdminCloudFetchLog({
   const [runs, setRuns] = useState(initialRuns);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [live, setLive] = useState<LiveProgress | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +81,7 @@ export function AdminCloudFetchLog({
         setRuns((current) => mergeRuns(current, body.runs));
         setHasMore(Boolean(body.hasMore));
       }
+      setLive(body?.liveProgress ?? null);
     } catch {
       // keep showing what we have; transient errors self-heal on the next tick
     }
@@ -119,11 +135,15 @@ export function AdminCloudFetchLog({
     );
   }
 
+  // Attach the live-progress line to the newest RUNNING round only.
+  const liveRunId = live ? (runs.find((run) => run.status === "RUNNING")?.id ?? null) : null;
+
   return (
     <div className="cloud-fetch-log">
       <ul className="cloud-fetch-log-list">
         {runs.map((run) => {
           const isOpen = expanded === run.id;
+          const showLive = live && run.id === liveRunId;
           return (
             <li key={run.id} className="cloud-fetch-log-row">
               <button
@@ -132,45 +152,121 @@ export function AdminCloudFetchLog({
                 aria-expanded={isOpen}
                 onClick={() => setExpanded(isOpen ? null : run.id)}
               >
-                <span aria-hidden="true">
-                  {isOpen ? <ChevronDown /> : <ChevronRight />}
-                </span>
-                <span className={`cloud-status-chip ${statusClass(run.status)}`}>
-                  {run.status}
-                </span>
+                <span aria-hidden="true">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
+                <span className={`cloud-status-chip ${statusClass(run.status)}`}>{run.status}</span>
                 <span className="cloud-fetch-log-time">{formatTime(run.startedAt)}</span>
                 <span className="cloud-fetch-log-counts">
-                  {run.tasksClaimed} claimed · {run.tasksSucceeded} ok · {run.tasksFailed} failed
+                  {run.tasksClaimed} {run.tasksClaimed === 1 ? "source" : "sources"} · {run.tasksSucceeded} ok ·{" "}
+                  {run.tasksFailed} failed
                 </span>
                 <span className="cloud-fetch-log-meta">
+                  {run.syncedPosts}/{run.plannedPosts} posts
+                  {run.failedPosts > 0 ? ` · ${run.failedPosts} failed` : ""}
+                  {" · "}
                   {formatDuration(run.durationMs)}
-                  {run.usageTokens != null ? ` · ${run.usageTokens} tok` : ""}
+                  {run.usageTokens != null ? ` · ${run.usageTokens.toLocaleString()} tok` : ""}
                   {run.usageCostUsd != null ? ` · $${run.usageCostUsd.toFixed(2)}` : ""}
                 </span>
               </button>
+
+              {showLive ? (
+                <div className="cloud-fetch-log-live" role="status">
+                  <span className="cloud-fetch-log-live-dot" aria-hidden="true" />
+                  {live!.stage ? (
+                    <span className="cloud-fetch-log-live-stage">{live!.stage.replace(/_/g, " ")}</span>
+                  ) : (
+                    <span className="cloud-fetch-log-live-stage">running</span>
+                  )}
+                  {live!.sourcesTotal != null ? (
+                    <span>
+                      {live!.sourcesChecked ?? 0}/{live!.sourcesTotal} sources
+                    </span>
+                  ) : null}
+                  {live!.tasksPlanned != null ? (
+                    <span>
+                      {live!.tasksDone ?? 0}/{live!.tasksPlanned} posts
+                    </span>
+                  ) : null}
+                  {live!.synced != null ? <span>{live!.synced} synced</span> : null}
+                  {live!.failed ? <span>{live!.failed} failed</span> : null}
+                  {live!.currentSource ? (
+                    <span className="cloud-fetch-log-live-current">· {live!.currentSource}</span>
+                  ) : null}
+                </div>
+              ) : null}
+
               {isOpen ? (
                 <div className="cloud-fetch-log-detail">
                   {run.summary ? <p className="cron-field-hint">{run.summary}</p> : null}
                   {run.tasks.length === 0 ? (
-                    <p className="cron-field-hint">No per-source tasks recorded.</p>
+                    <p className="cron-field-hint">
+                      No per-source outcomes yet — they appear as the runner syncs each source.
+                    </p>
                   ) : (
                     <ul className="cloud-fetch-log-tasks">
-                      {run.tasks.map((task) => (
-                        <li key={task.id} className="cloud-fetch-log-task">
-                          <span className={`cloud-status-chip ${statusClass(task.status)}`}>
-                            {task.status}
-                          </span>
-                          <span className="cloud-fetch-log-task-name">
-                            {task.sourceName ?? task.builderId}
-                            {task.sourceType ? ` · ${task.sourceType}` : ""} · {task.summaryLanguage}
-                          </span>
-                          <span className="cloud-fetch-log-task-counts">
-                            {task.syncedPosts}/{task.plannedPosts} synced
-                            {task.failedPosts > 0 ? ` · ${task.failedPosts} failed` : ""}
-                            {task.failureReason ? ` · ${task.failureReason}` : ""}
-                          </span>
-                        </li>
-                      ))}
+                      {run.tasks.map((task) => {
+                        const taskOpen = expandedTask === task.id;
+                        const hasPosts = task.posts.length > 0;
+                        return (
+                          <li key={task.id} className="cloud-fetch-log-task">
+                            <button
+                              type="button"
+                              className="cloud-fetch-log-task-head"
+                              aria-expanded={taskOpen}
+                              disabled={!hasPosts}
+                              onClick={() => hasPosts && setExpandedTask(taskOpen ? null : task.id)}
+                            >
+                              <span className={`cloud-status-chip ${statusClass(task.status)}`}>
+                                {task.status}
+                              </span>
+                              <span className="cloud-fetch-log-task-name">
+                                {task.sourceName ?? task.builderId}
+                                {task.sourceType ? ` · ${task.sourceType}` : ""} · {task.summaryLanguage}
+                              </span>
+                              <span className="cloud-fetch-log-task-counts">
+                                {task.syncedPosts}/{task.plannedPosts} synced
+                                {task.failedPosts > 0 ? ` · ${task.failedPosts} failed` : ""}
+                                {task.durationMs != null ? ` · ${formatDuration(task.durationMs)}` : ""}
+                                {task.usageTokens != null ? ` · ${task.usageTokens.toLocaleString()} tok` : ""}
+                                {task.usageCostUsd != null ? ` · $${task.usageCostUsd.toFixed(2)}` : ""}
+                              </span>
+                            </button>
+                            {task.failureReason ? (
+                              <p className="cloud-fetch-log-task-error">{task.failureReason}</p>
+                            ) : null}
+                            {taskOpen && hasPosts ? (
+                              <ul className="cloud-fetch-log-posts">
+                                {task.posts.map((post, index) => (
+                                  <li key={post.url ?? index} className="cloud-fetch-log-post">
+                                    <span className={`cloud-status-chip ${statusClass(post.status ?? "")}`}>
+                                      {post.status ?? "—"}
+                                    </span>
+                                    {post.url ? (
+                                      <a
+                                        className="cloud-fetch-log-post-title"
+                                        href={post.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {post.title ?? post.url}
+                                      </a>
+                                    ) : (
+                                      <span className="cloud-fetch-log-post-title">
+                                        {post.title ?? "(untitled)"}
+                                      </span>
+                                    )}
+                                    <span className="cloud-fetch-log-post-meta">
+                                      {post.failureReason ? `${post.failureReason} · ` : ""}
+                                      {post.fetchTool ? `${post.fetchTool} · ` : ""}
+                                      {post.summaryChars != null ? `${post.summaryChars} sum chars` : ""}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -182,12 +278,7 @@ export function AdminCloudFetchLog({
 
       {error ? <p className="cron-field-error">{error}</p> : null}
       {hasMore ? (
-        <button
-          type="button"
-          className="fb-btn light compact"
-          disabled={loadingMore}
-          onClick={loadMore}
-        >
+        <button type="button" className="fb-btn light compact" disabled={loadingMore} onClick={loadMore}>
           {loadingMore ? "Loading" : "Load older runs"}
         </button>
       ) : null}

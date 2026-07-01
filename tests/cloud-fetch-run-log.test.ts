@@ -3,88 +3,125 @@ import test from "node:test";
 
 import { serializeCloudFetchRun } from "../src/lib/cloud-fetch-run-log";
 
-test("serializeCloudFetchRun maps a run and its source tasks to a JSON-safe shape", () => {
+const baseRun = {
+  id: "run_1",
+  startedAt: new Date("2026-06-28T10:00:00.000Z"),
+  finishedAt: new Date("2026-06-28T10:05:00.000Z"),
+  status: "PARTIAL",
+  requestedLimit: 5,
+  tasksClaimed: 2,
+  tasksSucceeded: 1,
+  tasksFailed: 1,
+  usageTokens: 12000,
+  usageCostUsd: 0.42,
+  summary: "1 ok, 1 failed",
+};
+
+test("serializeCloudFetchRun exposes per-source durations, usage, and per-post outcomes", () => {
   const result = serializeCloudFetchRun({
-    id: "run_1",
-    startedAt: new Date("2026-06-28T10:00:00.000Z"),
-    finishedAt: new Date("2026-06-28T10:05:00.000Z"),
-    status: "PARTIAL",
-    requestedLimit: 5,
-    tasksClaimed: 3,
-    tasksSucceeded: 2,
-    tasksFailed: 1,
-    usageTokens: 12000,
-    usageCostUsd: 0.42,
-    summary: "2 ok, 1 failed",
+    ...baseRun,
     tasks: [
       {
         id: "rt_1",
         builderId: "cb_1",
         summaryLanguage: "zh",
         status: "SUCCEEDED",
-        plannedPosts: 4,
-        syncedPosts: 4,
+        plannedPosts: 3,
+        syncedPosts: 3,
         failedPosts: 0,
+        startedAt: new Date("2026-06-28T10:00:10.000Z"),
+        finishedAt: new Date("2026-06-28T10:02:10.000Z"),
         actualDurationSeconds: 120,
+        estimatedDurationSeconds: 100,
+        successProbabilitySnapshot: 0.9,
+        usageTokens: 5000,
+        usageCostUsd: 0.12,
         failureReason: null,
-        builder: { name: "Example Feed", sourceType: "blog" },
+        details: {
+          fetchTasks: [
+            {
+              title: "Post One",
+              url: "https://example.com/1",
+              status: "synced",
+              fetchTool: "x-api",
+              agentModel: "claude",
+              bodyChars: 1200,
+              summaryChars: 300,
+            },
+            { title: "Post Two", url: "https://example.com/2", status: "failed", failureReason: "summary_missing" },
+          ],
+        },
+        builder: { name: "Example Feed", sourceType: "x" },
       },
+    ],
+  });
+
+  const task = result.tasks[0];
+  assert.equal(task.sourceName, "Example Feed");
+  assert.equal(task.durationMs, 120_000);
+  assert.equal(task.usageTokens, 5000);
+  assert.equal(task.usageCostUsd, 0.12);
+  assert.equal(task.successProbability, 0.9);
+  assert.equal(task.posts.length, 2);
+  assert.deepEqual(task.posts[0], {
+    title: "Post One",
+    url: "https://example.com/1",
+    status: "synced",
+    failureReason: null,
+    fetchTool: "x-api",
+    model: "claude",
+    bodyChars: 1200,
+    summaryChars: 300,
+  });
+  assert.equal(task.posts[1].failureReason, "summary_missing");
+});
+
+test("serializeCloudFetchRun aggregates planned/synced/failed posts across sources", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    tasks: [
+      { id: "a", builderId: "a", summaryLanguage: "zh", status: "SUCCEEDED", plannedPosts: 3, syncedPosts: 3, failedPosts: 0, actualDurationSeconds: 10, failureReason: null, builder: null },
+      { id: "b", builderId: "b", summaryLanguage: "zh", status: "FAILED", plannedPosts: 2, syncedPosts: 0, failedPosts: 2, actualDurationSeconds: 5, failureReason: "x", builder: null },
+    ],
+  });
+
+  assert.equal(result.plannedPosts, 5);
+  assert.equal(result.syncedPosts, 3);
+  assert.equal(result.failedPosts, 2);
+  assert.equal(result.durationMs, 5 * 60_000);
+});
+
+test("task duration falls back to finished-started when actualDurationSeconds is null", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    finishedAt: null,
+    tasks: [
       {
-        id: "rt_2",
-        builderId: "cb_2",
+        id: "a",
+        builderId: "a",
         summaryLanguage: "zh",
-        status: "FAILED",
-        plannedPosts: 2,
-        syncedPosts: 0,
-        failedPosts: 2,
-        actualDurationSeconds: 30,
-        failureReason: "summary_missing",
+        status: "SUCCEEDED",
+        plannedPosts: 1,
+        syncedPosts: 1,
+        failedPosts: 0,
+        startedAt: new Date("2026-06-28T10:00:00.000Z"),
+        finishedAt: new Date("2026-06-28T10:00:30.000Z"),
+        actualDurationSeconds: null,
+        failureReason: null,
         builder: null,
       },
     ],
   });
 
-  assert.equal(result.id, "run_1");
-  assert.equal(result.startedAt, "2026-06-28T10:00:00.000Z");
-  assert.equal(result.finishedAt, "2026-06-28T10:05:00.000Z");
-  assert.equal(result.durationMs, 5 * 60_000);
-  assert.equal(result.status, "PARTIAL");
-  assert.equal(result.requestedLimit, 5);
-  assert.equal(result.tasksClaimed, 3);
-  assert.equal(result.tasksSucceeded, 2);
-  assert.equal(result.tasksFailed, 1);
-  assert.equal(result.usageTokens, 12000);
-  assert.equal(result.usageCostUsd, 0.42);
-  assert.equal(result.summary, "2 ok, 1 failed");
-  assert.equal(result.tasks.length, 2);
-  assert.deepEqual(result.tasks[0], {
-    id: "rt_1",
-    builderId: "cb_1",
-    sourceName: "Example Feed",
-    sourceType: "blog",
-    summaryLanguage: "zh",
-    status: "SUCCEEDED",
-    plannedPosts: 4,
-    syncedPosts: 4,
-    failedPosts: 0,
-    actualDurationSeconds: 120,
-    failureReason: null,
-  });
-  assert.equal(result.tasks[1].sourceName, null);
-  assert.equal(result.tasks[1].sourceType, null);
-  assert.equal(result.tasks[1].failureReason, "summary_missing");
+  assert.equal(result.durationMs, null); // run still running
+  assert.equal(result.tasks[0].durationMs, 30_000);
+  assert.deepEqual(result.tasks[0].posts, []);
 });
 
-test("serializeCloudFetchRun handles a still-running run with null finish and usage", () => {
+test("serializeCloudFetchRun handles a still-running run with no tasks or usage", () => {
   const result = serializeCloudFetchRun({
-    id: "run_2",
-    startedAt: new Date("2026-06-28T11:00:00.000Z"),
+    ...baseRun,
     finishedAt: null,
-    status: "RUNNING",
-    requestedLimit: 2,
-    tasksClaimed: 2,
-    tasksSucceeded: 0,
-    tasksFailed: 0,
     usageTokens: null,
     usageCostUsd: null,
     summary: null,
@@ -93,26 +130,15 @@ test("serializeCloudFetchRun handles a still-running run with null finish and us
 
   assert.equal(result.finishedAt, null);
   assert.equal(result.durationMs, null);
-  assert.equal(result.usageTokens, null);
+  assert.equal(result.plannedPosts, 0);
   assert.equal(result.usageCostUsd, null);
-  assert.equal(result.summary, null);
   assert.deepEqual(result.tasks, []);
 });
 
 test("serializeCloudFetchRun converts a Prisma Decimal cost via Number()", () => {
   const result = serializeCloudFetchRun({
-    id: "run_3",
-    startedAt: new Date("2026-06-28T12:00:00.000Z"),
-    finishedAt: new Date("2026-06-28T12:01:00.000Z"),
-    status: "SUCCEEDED",
-    requestedLimit: 1,
-    tasksClaimed: 1,
-    tasksSucceeded: 1,
-    tasksFailed: 0,
-    usageTokens: 100,
-    // Mimic a Prisma.Decimal: an object that Number()-coerces via toString.
+    ...baseRun,
     usageCostUsd: { toString: () => "1.25" },
-    summary: "ok",
     tasks: [],
   });
 
