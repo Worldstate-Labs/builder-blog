@@ -94,7 +94,7 @@ type UserAction = {
   helpUrl?: string;
 };
 
-type FetchTaskLog = {
+export type FetchTaskLog = {
   id?: string | null;
   builder?: string | null;
   builderId?: string | null;
@@ -248,7 +248,7 @@ type FetchJobProgress = {
   }>;
 };
 
-type FetchTaskProgress = {
+export type FetchTaskProgress = {
   id?: string | null;
   taskId?: string | null;
   status?: string | null;
@@ -3184,7 +3184,7 @@ function FactRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function TaskRow({
+export function TaskRow({
   groupTasks,
   liveTask,
   liveTasks,

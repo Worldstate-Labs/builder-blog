@@ -67,6 +67,23 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /tasksClaimed/);
 });
 
+test("cloud fetch log reuses the personal fetch log's per-post staged renderer", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+
+  // Genuine reuse: import and render the personal FetchLogPanel's TaskRow so
+  // each cloud post shows the same read → summarize → sync lifecycle and
+  // per-stage debug, instead of a bespoke per-post row.
+  assert.match(log, /import \{ TaskRow[^}]*\} from "@\/components\/FetchLogPanel"/);
+  assert.match(log, /<TaskRow/);
+  assert.match(log, /postToFetchTaskLog/);
+
+  // FetchLogPanel exports the shared renderer and the types cloud maps into.
+  const panel = source("src/components/FetchLogPanel.tsx");
+  assert.match(panel, /export function TaskRow/);
+  assert.match(panel, /export type FetchTaskLog/);
+  assert.match(panel, /export type FetchTaskProgress/);
+});
+
 test("cloud runs use a distinct jobType so they never leak into a personal fetch log", () => {
   // Server accepts the cloud jobType.
   const jobRunsRoute = source("src/app/api/skill/job-runs/route.ts");

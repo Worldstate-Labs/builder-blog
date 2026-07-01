@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { CloudFetchRunLogItem } from "@/lib/cloud-fetch-run-log";
+import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
+import type {
+  CloudFetchPostOutcome,
+  CloudFetchRunLogItem,
+  CloudFetchRunLogTask,
+} from "@/lib/cloud-fetch-run-log";
 
 type LiveProgress = {
   stage: string | null;
@@ -53,6 +58,34 @@ function statusClass(status: string): string {
   if (status === "SUCCEEDED" || status === "synced") return "is-ok";
   if (status === "PARTIAL" || status === "RUNNING" || status === "skipped") return "is-partial";
   return "is-failed";
+}
+
+// Reuse the personal fetch log's per-post staged renderer (TaskRow) so each
+// cloud source's posts show the same read → summarize → sync lifecycle and
+// per-stage debug facts. The sync CLI records each cloud source's per-post
+// outcomes in the same shape, so we map CloudFetchPostOutcome back into the
+// FetchTaskLog TaskRow expects. Finished rounds have no live overlay.
+const EMPTY_LIVE_TASKS = new Map<string, FetchTaskProgress>();
+
+function postToFetchTaskLog(
+  post: CloudFetchPostOutcome,
+  task: CloudFetchRunLogTask,
+  index: number,
+): FetchTaskLog {
+  return {
+    id: `${task.id}:${index}`,
+    builder: task.sourceName,
+    builderId: task.builderId,
+    sourceType: task.sourceType,
+    title: post.title,
+    url: post.url,
+    status: post.status,
+    failureReason: post.failureReason,
+    fetchTool: post.fetchTool,
+    agentModel: post.model,
+    bodyChars: post.bodyChars,
+    summaryChars: post.summaryChars,
+  };
 }
 
 export function AdminCloudFetchLog({
@@ -207,6 +240,9 @@ export function AdminCloudFetchLog({
                       {run.tasks.map((task) => {
                         const taskOpen = expandedTask === task.id;
                         const hasPosts = task.posts.length > 0;
+                        const mappedPosts = task.posts.map((post, index) =>
+                          postToFetchTaskLog(post, task, index),
+                        );
                         return (
                           <li key={task.id} className="cloud-fetch-log-task">
                             <button
@@ -235,32 +271,15 @@ export function AdminCloudFetchLog({
                               <p className="cloud-fetch-log-task-error">{task.failureReason}</p>
                             ) : null}
                             {taskOpen && hasPosts ? (
-                              <ul className="cloud-fetch-log-posts">
-                                {task.posts.map((post, index) => (
-                                  <li key={post.url ?? index} className="cloud-fetch-log-post">
-                                    <span className={`cloud-status-chip ${statusClass(post.status ?? "")}`}>
-                                      {post.status ?? "—"}
-                                    </span>
-                                    {post.url ? (
-                                      <a
-                                        className="cloud-fetch-log-post-title"
-                                        href={post.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        {post.title ?? post.url}
-                                      </a>
-                                    ) : (
-                                      <span className="cloud-fetch-log-post-title">
-                                        {post.title ?? "(untitled)"}
-                                      </span>
-                                    )}
-                                    <span className="cloud-fetch-log-post-meta">
-                                      {post.failureReason ? `${post.failureReason} · ` : ""}
-                                      {post.fetchTool ? `${post.fetchTool} · ` : ""}
-                                      {post.summaryChars != null ? `${post.summaryChars} sum chars` : ""}
-                                    </span>
-                                  </li>
+                              <ul className="sync-panel-run-card-candidate-list">
+                                {mappedPosts.map((mapped, index) => (
+                                  <TaskRow
+                                    key={mapped.id ?? index}
+                                    groupTasks={mappedPosts}
+                                    liveTask={null}
+                                    liveTasks={EMPTY_LIVE_TASKS}
+                                    task={mapped}
+                                  />
                                 ))}
                               </ul>
                             ) : null}
