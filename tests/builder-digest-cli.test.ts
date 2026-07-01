@@ -2377,6 +2377,12 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       builder: "OpenAI News",
       builderId: "cloud_builder_1",
       sourceType: "blog",
+      title: "Post 1",
+      url: "https://openai.com/news/1",
+      fetchTool: "fetch_builder_fallback",
+      agentModel: "codex",
+      bodyChars: 1200,
+      summaryChars: 300,
       item: { kind: "BLOG_POST", externalId: "post_1", url: "https://openai.com/news/1" },
     },
     {
@@ -2445,6 +2451,25 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
     ],
   );
   assert.equal(payload.taskResults[1].failureReason, "worker_missing_result");
+
+  // Each cloud task carries per-post outcomes so the cloud fetch log can render
+  // the same staged (read → summarize → sync) + debug rows as the personal log.
+  assert.deepEqual(payload.taskResults[0].details.posts, [
+    {
+      title: "Post 1",
+      url: "https://openai.com/news/1",
+      status: "synced",
+      failureReason: null,
+      fetchTool: "fetch_builder_fallback",
+      agentModel: "codex",
+      bodyChars: 1200,
+      summaryChars: 300,
+    },
+  ]);
+  assert.equal(payload.taskResults[1].details.posts.length, 1);
+  assert.equal(payload.taskResults[1].details.posts[0].status, "failed");
+  assert.equal(payload.taskResults[1].details.posts[0].failureReason, "worker_missing_result");
+  assert.equal(payload.taskResults[1].details.posts[0].url, "https://openai.com/news/2");
 });
 
 test("builder digest CLI exposes sync-cloud-builders command", () => {

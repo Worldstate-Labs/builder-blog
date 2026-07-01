@@ -8026,6 +8026,24 @@ export function prepareSyncPayloadForUpload(payload) {
   };
 }
 
+// Trim one planned/fetched cloud task into the per-post outcome the cloud fetch
+// log renders (mirrors CloudFetchPostOutcome / the personal log's fetchTasks).
+function cloudSyncPostOutcome(task, status, outcome) {
+  const text = (value) => (typeof value === "string" && value.trim() ? value : null);
+  const count = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+  const item = task?.item && typeof task.item === "object" ? task.item : {};
+  return {
+    title: text(task?.title ?? item.title),
+    url: text(task?.url ?? task?.canonicalUrl ?? item.url),
+    status,
+    failureReason: text(task?.failureReason ?? outcome?.reason),
+    fetchTool: text(task?.fetchTool ?? task?.readMethod ?? task?.agentWorkType),
+    agentModel: text(task?.agentModel),
+    bodyChars: count(task?.bodyChars),
+    summaryChars: count(task?.summaryChars),
+  };
+}
+
 function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
   const syncItemTaskIds = new Set(
     extractSyncItems(payload)
@@ -8051,19 +8069,26 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
       syncedPosts: 0,
       failedPosts: 0,
       failureReason: null,
-      details: { fetchTaskIds: [] },
+      details: { fetchTaskIds: [], posts: [] },
     };
     group.plannedPosts += 1;
     group.details.fetchTaskIds.push(plannedFetchTaskId);
+    const outcome = outcomeByTaskId.get(plannedFetchTaskId);
+    let postStatus;
     if (syncItemTaskIds.has(plannedFetchTaskId)) {
       group.syncedPosts += 1;
+      postStatus = "synced";
+    } else if (outcome?.status === "failed" || outcome?.status === "blocked") {
+      group.failedPosts += 1;
+      group.failureReason ??= String(outcome.reason || outcome.status || "cloud_task_failed").slice(0, 400);
+      postStatus = outcome.status;
     } else {
-      const outcome = outcomeByTaskId.get(plannedFetchTaskId);
-      if (outcome?.status === "failed" || outcome?.status === "blocked") {
-        group.failedPosts += 1;
-        group.failureReason ??= String(outcome.reason || outcome.status || "cloud_task_failed").slice(0, 400);
-      }
+      postStatus = String(outcome?.status || task?.status || "pending");
     }
+    // Persist each post's outcome so the cloud fetch log can render the same
+    // per-post staged (read → summarize → sync) + debug rows the personal log
+    // uses. Without this only fetchTaskIds were stored, so posts never rendered.
+    group.details.posts.push(cloudSyncPostOutcome(task, postStatus, outcome));
     grouped.set(cloudSourceTaskId, group);
   }
   return [...grouped.values()].map((group) => {
