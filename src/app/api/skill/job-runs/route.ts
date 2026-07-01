@@ -10,7 +10,7 @@ const MAX_SUMMARY_CHARS = 500;
 const TERMINAL_AGENT_JOB_STATUSES = new Set(["succeeded", "failed", "timed_out", "killed", "replaced", "stale"]);
 
 const AgentJobRunSchema = z.object({
-  jobType: z.enum(["library-fetch", "digest-build"]),
+  jobType: z.enum(["library-fetch", "cloud-library-fetch", "digest-build"]),
   trigger: z.enum(["scheduled", "one_time", "manual_cli"]),
   scheduleJob: z.enum(["library-cron", "digest-cron"]).nullable().optional(),
   instanceId: z.string().min(1).max(160),

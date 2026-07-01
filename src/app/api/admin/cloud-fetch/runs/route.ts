@@ -6,9 +6,10 @@ import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 20;
 
-// The cloud runner emits the same live "library-fetch" job progress the per-user
-// fetch log uses (stage + counters). Surface it so a RUNNING cloud round shows
-// progress before its first checkpoint sync lands.
+// The cloud runner emits the same live job progress the per-user fetch log uses
+// (stage + counters), but under a distinct "cloud-library-fetch" jobType so cloud
+// rounds never leak into a user's personal fetch log. Surface it so a RUNNING cloud
+// round shows progress before its first checkpoint sync lands.
 function extractLiveProgress(job: {
   status: string;
   details?: unknown;
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
   let liveProgress = null;
   if (!before && runs.some((run) => run.status === "RUNNING")) {
     try {
-      const jobRuns = await getAgentJobRuns(auth.user.id, "library-fetch", 5);
+      const jobRuns = await getAgentJobRuns(auth.user.id, "cloud-library-fetch", 5);
       const active = jobRuns.find((job) => job.status === "running" || job.status === "starting");
       liveProgress = active ? extractLiveProgress(active) : null;
     } catch {

@@ -67,6 +67,34 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /tasksClaimed/);
 });
 
+test("cloud runs use a distinct jobType so they never leak into a personal fetch log", () => {
+  // Server accepts the cloud jobType.
+  const jobRunsRoute = source("src/app/api/skill/job-runs/route.ts");
+  assert.match(jobRunsRoute, /jobType: z\.enum\(\["library-fetch", "cloud-library-fetch", "digest-build"\]\)/);
+
+  // The cloud management page reads cloud-library-fetch live progress...
+  const cloudRunsRoute = source("src/app/api/admin/cloud-fetch/runs/route.ts");
+  assert.match(cloudRunsRoute, /getAgentJobRuns\(auth\.user\.id, "cloud-library-fetch", 5\)/);
+
+  // ...while the personal fetch log stays on library-fetch (excludes cloud rounds).
+  const personalFetchRuns = source("src/app/api/skill/fetch-runs/route.ts");
+  assert.match(personalFetchRuns, /getAgentJobRuns\(userId, "library-fetch"/);
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  assert.match(buildersPage, /getAgentJobRuns\(user\.id, "library-fetch"/);
+});
+
+test("runner and CLI tag cloud rounds with the cloud-library-fetch jobType", () => {
+  // Runner: job_type_for_name maps cloud-library-* to the cloud jobType.
+  const runner = source("scripts/builder-agent-runner.sh");
+  assert.match(runner, /cloud-library-\*\) printf '%s\\n' "cloud-library-fetch"/);
+
+  // CLI live-progress emitter derives the jobType from BUILDER_BLOG_RUN_SOURCE=cloud
+  // instead of hardcoding "library-fetch".
+  const cli = source("scripts/builder-digest.mjs");
+  assert.match(cli, /BUILDER_BLOG_RUN_SOURCE\?\.trim\(\) === "cloud"\s*\n?\s*\? "cloud-library-fetch"/);
+  assert.match(cli, /jobType: envJobType\(\)/);
+});
+
 test("admin cloud source drill-down route is admin-gated and returns submitters", () => {
   const route = source("src/app/api/admin/cloud-fetch/sources/[builderId]/route.ts");
 

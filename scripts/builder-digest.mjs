@@ -484,6 +484,17 @@ function envScheduleJob() {
   return scheduleJob === "library-cron" || scheduleJob === "digest-cron" ? scheduleJob : null;
 }
 
+// Cloud library fetches reuse the shared fetch pipeline (buildFetchTasksForBuilders
+// → emitFetchJobProgress) but must NOT surface in a user's personal fetch log.
+// The runner marks cloud rounds with BUILDER_BLOG_RUN_SOURCE=cloud; tag their live
+// progress records with a distinct jobType so the personal log query skips them and
+// the cloud management page can read them.
+function envJobType() {
+  return process.env.BUILDER_BLOG_RUN_SOURCE?.trim() === "cloud"
+    ? "cloud-library-fetch"
+    : "library-fetch";
+}
+
 function envIso(name, fallback = null) {
   const value = process.env[name]?.trim();
   return value || fallback;
@@ -1459,7 +1470,7 @@ async function emitFetchJobProgress(config, progress, update = {}) {
   try {
     const fetchProgressSnapshotValue = fetchProgressSnapshot(progress);
     await emitAgentJobRunRecord(config, {
-      jobType: "library-fetch",
+      jobType: envJobType(),
       trigger: envJobTrigger(),
       scheduleJob: envScheduleJob(),
       instanceId: envJobRunId(),

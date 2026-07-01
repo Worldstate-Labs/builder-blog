@@ -48,7 +48,7 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   const cli = source("scripts/builder-digest.mjs");
 
   assert.match(route, /getUserFromBearer\(request\)/);
-  assert.match(route, /z\.enum\(\["library-fetch", "digest-build"\]\)/);
+  assert.match(route, /z\.enum\(\["library-fetch", "cloud-library-fetch", "digest-build"\]\)/);
   assert.match(route, /z\.enum\(\["scheduled", "one_time", "manual_cli"\]\)/);
   assert.match(
     route,

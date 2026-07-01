@@ -1098,7 +1098,8 @@ if [ "$MAX_PARALLEL_WORKERS" -gt 8 ]; then MAX_PARALLEL_WORKERS="8"; fi
 
 job_type_for_name() {
   case "$JOB_NAME" in
-    library-*|cloud-library-*) printf '%s\n' "library-fetch" ;;
+    cloud-library-*) printf '%s\n' "cloud-library-fetch" ;;
+    library-*) printf '%s\n' "library-fetch" ;;
     digest-*) printf '%s\n' "digest-build" ;;
     *) printf '%s\n' "library-fetch" ;;
   esac
