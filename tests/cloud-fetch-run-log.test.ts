@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { serializeCloudFetchRun } from "../src/lib/cloud-fetch-run-log";
+import { serializeCloudFetchRun, serializeCloudWorkerHost } from "../src/lib/cloud-fetch-run-log";
 
 const baseRun = {
   id: "run_1",
@@ -143,4 +143,95 @@ test("serializeCloudFetchRun converts a Prisma Decimal cost via Number()", () =>
   });
 
   assert.equal(result.usageCostUsd, 1.25);
+});
+
+test("serializeCloudWorkerHost exposes live host progress and post task queue", () => {
+  const result = serializeCloudWorkerHost(
+    {
+      status: "running",
+      startedAt: "2026-06-28T10:00:00.000Z",
+      heartbeatAt: "2026-06-28T10:01:30.000Z",
+      updatedAt: "2026-06-28T10:01:30.000Z",
+      runtime: "codex",
+      runnerPid: 1234,
+      workerPid: 1235,
+      hostname: "admin-mac",
+      platform: "darwin",
+      stage: "workers_running",
+      summary: "workers running · 1/2 tasks",
+      details: {
+        localWorkers: 4,
+        progress: {
+          stage: "workers_running",
+          updatedAt: "2026-06-28T10:01:29.000Z",
+          counters: {
+            sourcesTotal: 3,
+            sourcesChecked: 2,
+            tasksPlanned: 2,
+            tasksDone: 1,
+            synced: 1,
+            failed: 0,
+            skipped: 0,
+            actionNeeded: 0,
+          },
+          current: { source: "Example Feed", task: "Post One" },
+          tasks: [
+            {
+              id: "task_1",
+              status: "synced",
+              phase: "completed",
+              message: "synced.",
+              builder: "Example Feed",
+              builderId: "cb_1",
+              sourceType: "blog",
+              title: "Post One",
+              url: "https://example.com/1",
+              workerId: "shard-0",
+              updatedAt: "2026-06-28T10:01:20.000Z",
+            },
+          ],
+          recentEvents: [
+            {
+              at: "2026-06-28T10:01:20.000Z",
+              type: "task_completed",
+              taskId: "task_1",
+              status: "synced",
+              message: "task_1: synced.",
+            },
+          ],
+        },
+      },
+    },
+    new Date("2026-06-28T10:02:00.000Z"),
+  );
+
+  assert.equal(result.status, "online");
+  assert.equal(result.statusLabel, "Online");
+  assert.equal(result.hostname, "admin-mac");
+  assert.equal(result.localWorkers, 4);
+  assert.equal(result.progress?.stage, "workers_running");
+  assert.equal(result.progress?.currentTask, "Post One");
+  assert.equal(result.progress?.tasksPlanned, 2);
+  assert.equal(result.tasks.length, 1);
+  assert.equal(result.tasks[0].workerId, "shard-0");
+  assert.equal(result.recentEvents[0].status, "synced");
+});
+
+test("serializeCloudWorkerHost marks stale and missing hosts clearly", () => {
+  const stale = serializeCloudWorkerHost(
+    {
+      status: "running",
+      startedAt: "2026-06-28T10:00:00.000Z",
+      heartbeatAt: "2026-06-28T10:00:00.000Z",
+      details: {},
+    },
+    new Date("2026-06-28T10:03:01.000Z"),
+  );
+  assert.equal(stale.status, "stale");
+  assert.equal(stale.statusLabel, "Stale");
+
+  const offline = serializeCloudWorkerHost(null);
+  assert.equal(offline.status, "offline");
+  assert.equal(offline.statusLabel, "No worker host seen");
+  assert.deepEqual(offline.tasks, []);
 });

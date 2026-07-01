@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir, hostname, platform, release, userInfo } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -269,8 +269,10 @@ function usage() {
   expand-discovery --tasks fetch-result.json --file discovery-result.json [--out expanded-fetch-result.json]
   patch-fetch-run-plan --tasks fetch-result.json
   shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
+  assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
+  merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ --out library-agent-sync.json
-  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task]
+  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task|cloud-run]
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
@@ -1225,6 +1227,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
       termination: argValue(args, "--termination", null),
       providerError: argValue(args, "--provider-error", null),
       skippedWaitPids: argValue(args, "--skipped-wait-pids", null),
+      localWorkers: numberOrNull(argValue(args, "--local-workers", null)),
       ...(usage ? { usage } : {}),
     },
   });
@@ -1922,9 +1925,6 @@ async function fetchPersonal(args) {
       config.token,
       { label: "library context" },
     );
-    const sources = context.sources ?? {};
-    const commonFetchRules = context.commonFetchRules ?? context.digest?.commonFetchRules ?? DEFAULT_FETCH_GUIDANCE;
-    const commonSummaryRules = context.commonSummaryRules ?? context.digest?.commonSummaryRules ?? "";
     const subscribedBuilderIds = new Set(
       (context.subscriptions ?? []).map((builder) => builder.id),
     );
@@ -1980,116 +1980,18 @@ async function fetchPersonal(args) {
       return;
     }
 
-    const fallbackCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const builders = [];
-    const fetchTasks = [];
-    const builderStats = new Map();
-
-    for (const builder of personalBuilders) {
-      const builderStat = {
-        builderId: builder.id,
-        name: builder.name,
-        sourceType: sourceTypeIdForBuilder(builder),
-        itemsFetched: 0,
-        tasksGenerated: 0,
-        discoveryTasksGenerated: 0,
-      };
-      builderStats.set(builder.id, builderStat);
-
-      const fallbackBuilderSync = {
-        builderId: builder.id,
-        kind: builder.kind,
-        sourceType: builderStat.sourceType,
-        name: builder.name,
-        handle: builder.handle,
-        sourceUrl: builder.sourceUrl,
-        fetchUrl: builder.fetchUrl,
-        bio: builder.bio,
-        subscribe: subscribedBuilderIds.has(builder.id),
-      };
-      try {
-        const source = personalFetcherSourceForBuilder(builder);
-        if (!source) {
-          const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
-          const externalItems = await fetchPersonalWithExternalCommand(builder, {
-            fallbackCutoff,
-            force,
-            limit,
-            context,
-            agentModel,
-          });
-          if (!externalItems) {
-            const task = buildPersonalFetchErrorTask(builder, {
-              builderSync: fallbackBuilderSync,
-              error: new Error("No local fetcher configured for this personal source."),
-              limit,
-              now: startedAt,
-              sources,
-              commonFetchRules,
-              commonSummaryRules,
-            });
-            fetchTasks.push(task);
-            if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
-            else builderStat.tasksGenerated += 1;
-            continue;
-          }
-          const filtered = filterFetchedItems(externalItems, {
-            builderId: builder.id,
-            cutoff: builderCutoff,
-            limit,
-            fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
-          });
-          builders.push({ ...fallbackBuilderSync, fetchCutoff: builderCutoff?.toISOString() ?? null, items: filtered });
-          builderStat.itemsFetched += filtered.length;
-          continue;
-        }
-        const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
-        const fetched = await source.fetch(builder, {
-          cutoff: builderCutoff,
-          limit,
-          agentModel,
-          fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
-          sources,
-        });
-        const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
-        const filteredItems = filterFinalFetchedItemsByCutoff(items, builderCutoff);
-        const filteredAgentTasks = filterFinalAgentTasksByCutoff(sourceAgentTasks, builderCutoff);
-        const builderSync = {
-          ...fallbackBuilderSync,
-          kind: source.syncKind,
-          sourceType: source.id,
-        };
-        const fetchTasksFromAgentTasks = filteredAgentTasks.map((task) => ({
-          ...fetchTaskFromAgentTask(task, builderSync, sources, commonFetchRules, commonSummaryRules),
-          fetchCutoff: builderCutoff?.toISOString() ?? null,
-        }));
-        fetchTasks.push(...fetchTasksFromAgentTasks);
-        builderStat.tasksGenerated += fetchTasksFromAgentTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
-        builderStat.discoveryTasksGenerated += fetchTasksFromAgentTasks.filter(isCandidateDiscoveryFetchTask).length;
-        builders.push({ ...builderSync, fetchCutoff: builderCutoff?.toISOString() ?? null, items: filteredItems });
-        builderStat.itemsFetched += filteredItems.length;
-        builderStat.sourceType = source.id;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const task = buildPersonalFetchErrorTask(builder, {
-          builderSync: fallbackBuilderSync,
-          error,
-          limit,
-          now: startedAt,
-          sources,
-          commonFetchRules,
-          commonSummaryRules,
-        });
-        if (isRecoverableFetchFallback(task)) {
-          builderStat.fallback = sourceFallbackNotice(task, message);
-        } else {
-          builderStat.error = message;
-          errorCount += 1;
-        }
-        fetchTasks.push(task);
-        if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
-        else builderStat.tasksGenerated += 1;
-      } finally {
+    const planned = await buildFetchTasksForBuilders({
+      builders: personalBuilders,
+      context,
+      force,
+      days,
+      limit,
+      runStartedAt: startedAt,
+      agentModel,
+      subscribedBuilderIds,
+      config,
+      defaultSummaryLanguage: context.language ?? "zh",
+      onSourceProgress: async (builderStat) => {
         const checked = (fetchProgress.counters.sourcesChecked ?? 0) + 1;
         const sourceStatus = builderStat.error
           ? "failed"
@@ -2125,26 +2027,13 @@ async function fetchPersonal(args) {
             message: sourceProgressMessage(builderStat),
           },
         });
-      }
-    }
-
-    if (builders.length > 0) {
-      fetchTasks.push(...fetchTasksForReadyBuilders(builders, sources, commonSummaryRules));
-    }
-    const rewrittenFetchTasks = await applySharedPostReuseToFetchTasks(fetchTasks, {
-      config,
-      summaryLanguage: context.language ?? "zh",
+      },
     });
-    fetchTasks.splice(0, fetchTasks.length, ...rewrittenFetchTasks);
-
-    // Recount items/tasks: fetchTasksForReadyBuilders rewrote a task
-    // per item, so totals belong to the final tasks array, not the
-    // partial counters above. We keep builderStat per-builder counts
-    // separately for the UI's per-builder breakdown.
-    const postFetchTasks = fetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
-    const agentTasks = postFetchTasks.filter((task) => task?.contentStatus !== "ready");
-    itemsFetched = builders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0);
-    tasksGenerated = postFetchTasks.length;
+    const fetchTasks = planned.fetchTasks;
+    const agentTasks = planned.agentTasks;
+    itemsFetched = planned.itemsFetched;
+    tasksGenerated = planned.tasksGenerated;
+    errorCount = planned.errorCount;
     await emitFetchJobProgress(config, fetchProgress, {
       stage: "tasks_planned",
       counters: {
@@ -2172,7 +2061,7 @@ async function fetchPersonal(args) {
       }
     }
 
-    perBuilder = [...builderStats.values()];
+    perBuilder = [...planned.builderStats.values()];
     ({ slimFetchTasks } = summarizeFetchTasksForLog(fetchTasks));
 
     const payload = { status: "ok", localErrors, summaryLanguage: context.language ?? "zh", fetchTasks };
@@ -5870,6 +5759,21 @@ function isDeterministicSyncFetchTask(task) {
   );
 }
 
+function splitFetchTasksForWorkerQueue(fetchResult) {
+  const all = extractFetchTasks(fetchResult);
+  const userActionTasks = all.filter((task) => isUserActionAgentWorkType(task?.agentWorkType));
+  const discoveryTasks = all.filter(
+    (task) => task?.agentWorkType === "candidate_discovery_fallback",
+  );
+  const workTasks = all.filter(
+    (task) =>
+      !isUserActionAgentWorkType(task?.agentWorkType) &&
+      task?.agentWorkType !== "candidate_discovery_fallback" &&
+      !isDeterministicSyncFetchTask(task),
+  );
+  return { workTasks, userActionTasks, discoveryTasks };
+}
+
 function sourceGroupKey(task) {
   const sync = task?.builderSync ?? {};
   return String(
@@ -5900,20 +5804,31 @@ function shardGroupKey(task) {
 }
 
 export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
-  const all = extractFetchTasks(fetchResult);
-  const userActionTasks = all.filter((task) => isUserActionAgentWorkType(task?.agentWorkType));
-  const discoveryTasks = all.filter(
-    (task) => task?.agentWorkType === "candidate_discovery_fallback",
-  );
-  const workTasks = all.filter(
-    (task) =>
-      !isUserActionAgentWorkType(task?.agentWorkType) &&
-      task?.agentWorkType !== "candidate_discovery_fallback" &&
-      !isDeterministicSyncFetchTask(task),
-  );
+  const { assignments, userActionTasks, discoveryTasks } = planFetchQueueAssignments(fetchResult, {
+    maxWorkers,
+  });
+  return {
+    shards: assignments.map((assignment) => ({
+      weight: assignment.weight,
+      tasks: assignment.tasks,
+    })),
+    userActionTasks,
+    discoveryTasks,
+  };
+}
 
+export function planFetchQueueAssignments(fetchResult, {
+  maxWorkers = 1,
+  activeGroupKeys = new Set(),
+  excludeTaskIds = new Set(),
+  maxGroupsPerAssignment = Number.POSITIVE_INFINITY,
+} = {}) {
+  const { workTasks, userActionTasks, discoveryTasks } = splitFetchTasksForWorkerQueue(fetchResult);
+  const activeKeys = new Set(Array.from(activeGroupKeys, (key) => String(key)));
+  const excludedIds = new Set(Array.from(excludeTaskIds, (id) => String(id)));
   const groups = new Map();
   for (const task of workTasks) {
+    if (excludedIds.has(taskIdForSync(task))) continue;
     const key = shardGroupKey(task);
     const group = groups.get(key) ?? { key, weight: 0, tasks: [] };
     group.weight += shardTaskWeight(task);
@@ -5921,19 +5836,60 @@ export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
     groups.set(key, group);
   }
 
-  const shardCount = Math.max(1, Math.min(maxWorkers, groups.size));
-  const shards = Array.from({ length: shardCount }, () => ({ weight: 0, tasks: [] }));
-  const ordered = [...groups.values()].sort((a, b) => b.weight - a.weight);
+  const runnableGroups = [];
+  const blockedGroups = [];
+  for (const group of groups.values()) {
+    if (activeKeys.has(group.key)) blockedGroups.push(group);
+    else runnableGroups.push(group);
+  }
+
+  const workerLimit = Number.isFinite(Number(maxWorkers))
+    ? Math.max(1, Math.floor(Number(maxWorkers)))
+    : 1;
+  const groupLimit = Number.isFinite(Number(maxGroupsPerAssignment))
+    ? Math.max(1, Math.floor(Number(maxGroupsPerAssignment)))
+    : Number.POSITIVE_INFINITY;
+  const assignmentCount = groupLimit === Number.POSITIVE_INFINITY
+    ? Math.max(1, Math.min(workerLimit, runnableGroups.length))
+    : 0;
+  const assignments = groupLimit === Number.POSITIVE_INFINITY
+    ? Array.from(
+        { length: assignmentCount },
+        (_, index) => ({ id: `assignment-${index}`, weight: 0, groupKeys: [], tasks: [] }),
+      )
+    : [];
+  const pendingGroups = [];
+  const ordered = runnableGroups.sort((a, b) => b.weight - a.weight);
   for (const group of ordered) {
-    const target = shards.reduce(
-      (best, shard) => (shard.weight < best.weight ? shard : best),
-      shards[0],
-    );
+    let target = null;
+    if (groupLimit === Number.POSITIVE_INFINITY) {
+      target = assignments.reduce(
+        (best, assignment) => (assignment.weight < best.weight ? assignment : best),
+        assignments[0],
+      );
+    } else {
+      target = assignments
+        .filter((assignment) => assignment.groupKeys.length < groupLimit)
+        .sort((a, b) => a.weight - b.weight)[0] ?? null;
+      if (!target && assignments.length < workerLimit) {
+        target = { id: `assignment-${assignments.length}`, weight: 0, groupKeys: [], tasks: [] };
+        assignments.push(target);
+      }
+    }
+    if (!target) {
+      pendingGroups.push(group);
+      continue;
+    }
     target.weight += group.weight;
+    target.groupKeys.push(group.key);
     target.tasks.push(...group.tasks);
   }
   return {
-    shards: shards.filter((shard) => shard.tasks.length > 0),
+    assignments: assignments.filter((assignment) => assignment.tasks.length > 0),
+    blockedTasks: blockedGroups.flatMap((group) => group.tasks),
+    blockedGroupKeys: blockedGroups.map((group) => group.key),
+    pendingTasks: pendingGroups.flatMap((group) => group.tasks),
+    pendingGroupKeys: pendingGroups.map((group) => group.key),
     userActionTasks,
     discoveryTasks,
   };
@@ -5996,6 +5952,109 @@ async function shardTasks(args) {
       2,
     ),
   );
+}
+
+async function nextShardAssignmentIndex(outDir) {
+  try {
+    const names = await readdir(outDir);
+    const indexes = names
+      .map((name) => name.match(/^shard-(\d+)\.json$/)?.[1])
+      .filter(Boolean)
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+    return indexes.length > 0 ? Math.max(...indexes) + 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function assignFetchTasks(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const outDir = argValue(args, "--out-dir");
+  const maxWorkersRaw = Number(argValue(args, "--max-workers", "1"));
+  const maxWorkers = Number.isFinite(maxWorkersRaw)
+    ? Math.max(1, Math.min(8, Math.floor(maxWorkersRaw)))
+    : 1;
+  const assignedTaskIdsFile = argValue(args, "--assigned-task-ids-file", null);
+  const activeGroupKeysFile = argValue(args, "--active-group-keys-file", null);
+  const startIndexValue = argValue(args, "--start-index", null);
+  const startIndexRaw = startIndexValue === null ? null : Number(startIndexValue);
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!outDir) throw new Error("Missing --out-dir");
+
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const excludeTaskIds = await readIdSetFile(assignedTaskIdsFile);
+  const activeGroupKeys = await readIdSetFile(activeGroupKeysFile);
+  const plan = planFetchQueueAssignments(fetchResult, {
+    maxWorkers,
+    activeGroupKeys,
+    excludeTaskIds,
+    maxGroupsPerAssignment: 1,
+  });
+
+  await mkdir(outDir, { recursive: true });
+  let nextIndex = startIndexRaw !== null && Number.isFinite(startIndexRaw)
+    ? Math.max(0, Math.floor(startIndexRaw))
+    : await nextShardAssignmentIndex(outDir);
+  const shardFiles = [];
+  const assignedIds = [];
+  for (const assignment of plan.assignments) {
+    const shardName = `shard-${nextIndex}`;
+    nextIndex += 1;
+    const file = join(outDir, `${shardName}.json`);
+    const shardTasks = assignment.tasks.map((task) => ({
+      ...task,
+      workerId: task?.workerId ?? shardName,
+    }));
+    const taskIds = shardTasks.map((task) => taskIdForSync(task));
+    assignedIds.push(...taskIds);
+    await writeFile(
+      file,
+      `${JSON.stringify(
+        {
+          status: "ok",
+          shardIndex: nextIndex - 1,
+          shardCount: null,
+          dynamicAssignment: true,
+          groupKeys: assignment.groupKeys,
+          fetchTasks: shardTasks,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    shardFiles.push({
+      file,
+      shard: shardName,
+      tasks: shardTasks.length,
+      taskIds,
+      weight: assignment.weight,
+      groupKeys: assignment.groupKeys,
+    });
+  }
+  if (assignedTaskIdsFile && assignedIds.length > 0) {
+    await appendFile(assignedTaskIdsFile, `${assignedIds.join("\n")}\n`, "utf8");
+  }
+
+  console.log(JSON.stringify(
+    {
+      status: "ok",
+      shards: shardFiles,
+      assignedTaskIds: assignedIds,
+      pendingTasks: plan.pendingTasks.length,
+      pendingGroupKeys: plan.pendingGroupKeys,
+      blockedTasks: plan.blockedTasks.length,
+      blockedGroupKeys: plan.blockedGroupKeys,
+      discoveryTasks: plan.discoveryTasks.map((task) => task.id || fetchTaskId(task)),
+      userActions: plan.userActionTasks.map((task) => ({
+        fetchTaskId: task.id || fetchTaskId(task),
+        message: task.agentMessage ?? null,
+      })),
+    },
+    null,
+    2,
+  ));
 }
 
 function normalizeShardPlan(plan) {
@@ -6837,8 +6896,9 @@ function splitKeyForSourceGranularity(task) {
 
 function splitSyncPayload(fetchResult, payload = {}, options = {}) {
   const granularity = options.granularity === "task" ? "task" : "source";
-  const keyForTask =
-    granularity === "task" ? splitKeyForTaskGranularity : splitKeyForSourceGranularity;
+  const keyForTask = typeof options.keyForTask === "function"
+    ? options.keyForTask
+    : granularity === "task" ? splitKeyForTaskGranularity : splitKeyForSourceGranularity;
   const slices = new Map();
   const taskKeyById = new Map();
   const fetchTasks = extractFetchTasks(fetchResult);
@@ -6905,6 +6965,94 @@ export function splitSyncPayloadByTask(fetchResult, payload = {}) {
   return splitSyncPayload(fetchResult, payload, { granularity: "task" });
 }
 
+function splitKeyForCloudRun(task) {
+  const runId = String(task?.cloudRunId || task?.builderSync?.cloudRunId || "").trim();
+  return runId ? `cloudRun:${runId}` : "cloudRun:missing";
+}
+
+export function splitCloudSyncPayloadByRunId(fetchResult, payload = {}) {
+  return splitSyncPayload(fetchResult, payload, { keyForTask: splitKeyForCloudRun })
+    .map((slice) => ({
+      ...slice,
+      payload: {
+        ...slice.payload,
+        cloudRunId: slice.key.replace(/^cloudRun:/, ""),
+      },
+      cloudRunId: slice.key.replace(/^cloudRun:/, ""),
+    }));
+}
+
+function uniqueNonEmptyStrings(values) {
+  return [...new Set(
+    values
+      .map((value) => String(value || "").trim())
+      .filter(Boolean),
+  )];
+}
+
+export function mergeFetchResultsForQueue(baseResult = {}, nextResult = {}) {
+  const baseCloudRunIds = Array.isArray(baseResult?.cloudRunIds) ? baseResult.cloudRunIds : [];
+  const nextCloudRunIds = Array.isArray(nextResult?.cloudRunIds) ? nextResult.cloudRunIds : [];
+  const cloudRunIds = uniqueNonEmptyStrings([
+    ...baseCloudRunIds,
+    baseResult?.cloudRunId,
+    ...nextCloudRunIds,
+    nextResult?.cloudRunId,
+  ]);
+  const fetchTasks = [
+    ...(Array.isArray(baseResult?.fetchTasks) ? baseResult.fetchTasks : []),
+    ...(Array.isArray(nextResult?.fetchTasks) ? nextResult.fetchTasks : []),
+  ];
+  const localErrors = [
+    ...(Array.isArray(baseResult?.localErrors) ? baseResult.localErrors : []),
+    ...(Array.isArray(nextResult?.localErrors) ? nextResult.localErrors : []),
+  ];
+  const taskOutcomes = [
+    ...(Array.isArray(baseResult?.taskOutcomes) ? baseResult.taskOutcomes : []),
+    ...(Array.isArray(nextResult?.taskOutcomes) ? nextResult.taskOutcomes : []),
+  ];
+  const discoveryExpansions = [
+    ...(Array.isArray(baseResult?.discoveryExpansions) ? baseResult.discoveryExpansions : []),
+    ...(Array.isArray(nextResult?.discoveryExpansions) ? nextResult.discoveryExpansions : []),
+  ];
+  return {
+    ...baseResult,
+    status: baseResult?.status === "error" && nextResult?.status === "error" ? "error" : "ok",
+    cloudRunId: cloudRunIds[0] ?? baseResult?.cloudRunId ?? nextResult?.cloudRunId ?? null,
+    cloudRunIds,
+    leasedTasks: Number(baseResult?.leasedTasks || 0) + Number(nextResult?.leasedTasks || 0),
+    localErrors,
+    summaryLanguage: baseResult?.summaryLanguage ?? nextResult?.summaryLanguage ?? null,
+    fetchTasks,
+    ...(taskOutcomes.length > 0 ? { taskOutcomes } : {}),
+    ...(discoveryExpansions.length > 0 ? { discoveryExpansions } : {}),
+  };
+}
+
+async function mergeFetchResultsCommand(args) {
+  const baseFile = argValue(args, "--base");
+  const nextFile = argValue(args, "--next");
+  const outFile = argValue(args, "--out");
+  if (!baseFile) throw new Error("Missing --base fetch-result.json");
+  if (!nextFile) throw new Error("Missing --next next-fetch-result.json");
+  if (!outFile) throw new Error("Missing --out fetch-result.json");
+  const baseResult = JSON.parse(await readFile(baseFile, "utf8"));
+  const nextResult = JSON.parse(await readFile(nextFile, "utf8"));
+  const merged = mergeFetchResultsForQueue(baseResult, nextResult);
+  await writeFile(outFile, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
+  console.log(JSON.stringify(
+    {
+      status: "ok",
+      out: outFile,
+      cloudRunIds: merged.cloudRunIds,
+      fetchTasks: merged.fetchTasks.length,
+      leasedTasks: merged.leasedTasks,
+    },
+    null,
+    2,
+  ));
+}
+
 function failedSyncPayloadForTasks(fetchResult, { reason, message } = {}) {
   const taskOutcomes = [];
   const failureReason = reason || "slice_sync_failed";
@@ -6933,13 +7081,15 @@ async function splitSyncSlices(args) {
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!payloadFile) throw new Error("Missing --file library-agent-sync.json");
   if (!outDir) throw new Error("Missing --out-dir sync-slices/");
-  if (granularity !== "source" && granularity !== "task") {
-    throw new Error("--granularity must be source or task");
+  if (granularity !== "source" && granularity !== "task" && granularity !== "cloud-run") {
+    throw new Error("--granularity must be source, task, or cloud-run");
   }
 
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const payload = JSON.parse(await readFile(payloadFile, "utf8"));
-  const slices = splitSyncPayload(fetchResult, payload, { granularity });
+  const slices = granularity === "cloud-run"
+    ? splitCloudSyncPayloadByRunId(fetchResult, payload)
+    : splitSyncPayload(fetchResult, payload, { granularity });
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
@@ -9528,6 +9678,8 @@ async function main() {
   else if (command === "expand-discovery") await expandDiscovery(args);
   else if (command === "patch-fetch-run-plan") await patchFetchRunPlan(args);
   else if (command === "shard-tasks") await shardTasks(args);
+  else if (command === "assign-fetch-tasks") await assignFetchTasks(args);
+  else if (command === "merge-fetch-results") await mergeFetchResultsCommand(args);
   else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
   else if (command === "split-sync-slices") await splitSyncSlices(args);

@@ -25,6 +25,13 @@ const FREQUENCY_OPTIONS: { id: string; label: string }[] = [
   { id: "weekly", label: "Every week" },
 ];
 
+const FETCH_LIMIT_DEFAULT = 3;
+const FETCH_LIMIT_MAX = 20;
+const FETCH_DAYS_DEFAULT = 30;
+const FETCH_DAYS_MAX = 90;
+const PARALLEL_WORKERS_DEFAULT = 1;
+const PARALLEL_WORKERS_MAX = 8;
+
 async function copyText(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText && document.hasFocus()) {
@@ -37,10 +44,54 @@ async function copyText(text: string): Promise<boolean> {
   return false;
 }
 
+function normalizeNumberParam(value: string, fallback: number, min: number, max: number): string | null {
+  const trimmed = value.trim();
+  const numeric = trimmed === "" ? fallback : Number(trimmed);
+  if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) return null;
+  if (numeric < min || numeric > max) return null;
+  return String(numeric);
+}
+
+function NumberField({
+  id,
+  label,
+  max,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  max: number;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="cron-field">
+      <label htmlFor={id} className="cron-field-label">
+        {label}
+      </label>
+      <input
+        id={id}
+        className="cron-field-select"
+        type="number"
+        min={1}
+        max={max}
+        step={1}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: ActiveToken[] }) {
   const [tokenId, setTokenId] = useState(activeTokens[0]?.id ?? "");
   const [runtime, setRuntime] = useState<Runtime>("codex");
   const [frequency, setFrequency] = useState("12h");
+  const [fetchLimit, setFetchLimit] = useState(String(FETCH_LIMIT_DEFAULT));
+  const [fetchDays, setFetchDays] = useState(String(FETCH_DAYS_DEFAULT));
+  const [parallelWorkers, setParallelWorkers] = useState(String(PARALLEL_WORKERS_DEFAULT));
   const [busy, setBusy] = useState<CloudJob | null>(null);
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [manual, setManual] = useState<string | null>(null);
@@ -48,6 +99,21 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
   async function copyPrompt(job: CloudJob) {
     if (!tokenId) {
       setStatus({ kind: "error", text: "Create an agent access key first (Access keys in Settings)." });
+      return;
+    }
+    const postLimitParam = normalizeNumberParam(fetchLimit, FETCH_LIMIT_DEFAULT, 1, FETCH_LIMIT_MAX);
+    const daysParam = normalizeNumberParam(fetchDays, FETCH_DAYS_DEFAULT, 1, FETCH_DAYS_MAX);
+    const parallelParam = normalizeNumberParam(
+      parallelWorkers,
+      PARALLEL_WORKERS_DEFAULT,
+      1,
+      PARALLEL_WORKERS_MAX,
+    );
+    if (!postLimitParam || !daysParam || !parallelParam) {
+      setStatus({
+        kind: "error",
+        text: "Use whole numbers in range: posts 1-20, days 1-90, workers 1-8.",
+      });
       return;
     }
     setBusy(job);
@@ -62,6 +128,9 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
       }
       const params = new URLSearchParams({ ec: body.code, runtime });
       if (job === "cloud-library-cron-setup") params.set("freq", frequency);
+      params.set("postLimit", postLimitParam);
+      params.set("days", daysParam);
+      params.set("parallel", parallelParam);
       const url = `${window.location.origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
       const command = `Read ${url} and follow the instructions.`;
       if (await copyText(command)) {
@@ -140,6 +209,43 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
               ))}
             </select>
           </div>
+
+          <NumberField
+            id="cloud-run-post-limit"
+            label="Posts per source"
+            max={FETCH_LIMIT_MAX}
+            value={fetchLimit}
+            onChange={setFetchLimit}
+          />
+
+          <NumberField
+            id="cloud-run-fetch-days"
+            label="Lookback days"
+            max={FETCH_DAYS_MAX}
+            value={fetchDays}
+            onChange={setFetchDays}
+          />
+
+          <div className="cron-field">
+            <label htmlFor="cloud-run-parallel-workers" className="cron-field-label">
+              Local workers
+            </label>
+            <select
+              id="cloud-run-parallel-workers"
+              className="cron-field-select"
+              value={parallelWorkers}
+              onChange={(e) => setParallelWorkers(e.target.value)}
+            >
+              {Array.from({ length: PARALLEL_WORKERS_MAX }, (_, index) => index + 1).map((count) => (
+                <option key={count} value={count}>
+                  {count === 1 ? "1 worker" : `${count} workers`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="cron-field-hint">
+            Local workers control this admin machine only. Same-domain tasks still stay on one worker.
+          </p>
 
           <div className="settings-footer-bar">
             <button

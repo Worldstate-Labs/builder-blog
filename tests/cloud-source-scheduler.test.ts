@@ -22,6 +22,8 @@ const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTa
   releaseAt: overrides.releaseAt ?? now,
   mustSucceedBy: overrides.mustSucceedBy ?? minutesFromNow(60),
   estimatedDurationSeconds: overrides.estimatedDurationSeconds ?? 600,
+  estimatedTokenCost: overrides.estimatedTokenCost ?? 100_000,
+  estimatedPostYield: overrides.estimatedPostYield ?? 3,
   estimatedSuccessProbability: overrides.estimatedSuccessProbability ?? 0.9,
   activeSubmissionCount: overrides.activeSubmissionCount ?? 1,
   consecutiveDeferrals: overrides.consecutiveDeferrals ?? 0,
@@ -29,55 +31,77 @@ const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTa
   circuitBreakerUntil: overrides.circuitBreakerUntil,
 });
 
-test("duration-aware planning prefers more feasible short tasks under worker-seconds budget", () => {
+test("token-aware planning prefers higher-yield tasks under the hourly token budget", () => {
   const plan = planCloudFetchWindow({
     now,
+    requestedLimit: 3,
     config: {
-      maxTasksPerHour: 3,
-      maxActiveLeases: 3,
-      workerSecondsPerHour: 1_800,
-      planningHorizonHours: 2,
+      tokenBudgetPerHour: 200_000,
       starvationReserveRatio: 0,
-      retryReserveRatio: 0,
     },
     tasks: [
       baseTask({
-        id: "long-low-yield",
-        estimatedDurationSeconds: 1_800,
+        id: "expensive-low-yield",
+        estimatedTokenCost: 200_000,
         estimatedSuccessProbability: 0.5,
       }),
-      baseTask({ id: "short-a", estimatedDurationSeconds: 600, estimatedSuccessProbability: 0.95 }),
-      baseTask({ id: "short-b", estimatedDurationSeconds: 600, estimatedSuccessProbability: 0.95 }),
+      baseTask({ id: "efficient-a", estimatedTokenCost: 100_000, estimatedSuccessProbability: 0.95 }),
+      baseTask({ id: "efficient-b", estimatedTokenCost: 100_000, estimatedSuccessProbability: 0.95 }),
     ],
   });
 
-  assert.deepEqual(plan.currentHourTaskIds.sort(), ["short-a", "short-b"]);
-  assert.equal(plan.debug.skipped["long-low-yield"]?.reason, "evicted_low_score");
+  assert.deepEqual(plan.currentHourTaskIds.sort(), ["efficient-a", "efficient-b"]);
+  assert.equal(plan.debug.skipped["expensive-low-yield"]?.reason, "evicted_low_score");
+});
+
+test("token-aware planning scores expected synced posts, not just source count", () => {
+  const plan = planCloudFetchWindow({
+    now,
+    requestedLimit: 1,
+    config: {
+      tokenBudgetPerHour: 100_000,
+      starvationReserveRatio: 0,
+    },
+    tasks: [
+      baseTask({
+        id: "many-posts",
+        estimatedTokenCost: 100_000,
+        estimatedPostYield: 8,
+        estimatedSuccessProbability: 0.8,
+      }),
+      baseTask({
+        id: "one-post",
+        estimatedTokenCost: 80_000,
+        estimatedPostYield: 1,
+        estimatedSuccessProbability: 0.99,
+      }),
+    ],
+  });
+
+  assert.deepEqual(plan.currentHourTaskIds, ["many-posts"]);
+  assert.equal(plan.debug.skipped["one-post"]?.reason, "evicted_low_score");
 });
 
 test("starvation reserve admits an old deferred task before normal score-only candidates", () => {
   const plan = planCloudFetchWindow({
     now,
+    requestedLimit: 4,
     config: {
-      maxTasksPerHour: 4,
-      maxActiveLeases: 4,
-      workerSecondsPerHour: 3_600,
-      planningHorizonHours: 2,
+      tokenBudgetPerHour: 500_000,
       starvationReserveRatio: 0.25,
-      retryReserveRatio: 0,
     },
     tasks: [
       baseTask({
         id: "old-long",
-        estimatedDurationSeconds: 1_800,
+        estimatedTokenCost: 200_000,
         estimatedSuccessProbability: 0.5,
         consecutiveDeferrals: 9,
         lastDeferredAt: minutesFromNow(-240),
       }),
-      baseTask({ id: "short-a", estimatedDurationSeconds: 600 }),
-      baseTask({ id: "short-b", estimatedDurationSeconds: 600 }),
-      baseTask({ id: "short-c", estimatedDurationSeconds: 600 }),
-      baseTask({ id: "short-d", estimatedDurationSeconds: 600 }),
+      baseTask({ id: "short-a", estimatedTokenCost: 100_000 }),
+      baseTask({ id: "short-b", estimatedTokenCost: 100_000 }),
+      baseTask({ id: "short-c", estimatedTokenCost: 100_000 }),
+      baseTask({ id: "short-d", estimatedTokenCost: 100_000 }),
     ],
   });
 
@@ -89,13 +113,10 @@ test("starvation reserve admits an old deferred task before normal score-only ca
 test("planner excludes circuit-broken and active canonical source tasks", () => {
   const plan = planCloudFetchWindow({
     now,
+    requestedLimit: 4,
     config: {
-      maxTasksPerHour: 4,
-      maxActiveLeases: 4,
-      workerSecondsPerHour: 3_600,
-      planningHorizonHours: 2,
+      tokenBudgetPerHour: 500_000,
       starvationReserveRatio: 0,
-      retryReserveRatio: 0,
     },
     activeCanonicalKeys: new Set(["BLOG:https://example.com/live"]),
     tasks: [
@@ -310,17 +331,14 @@ test("leaseCloudFetchTasks records a finalized 0-task run when nothing is due", 
 });
 
 const generousConfig = {
-  maxTasksPerHour: 5,
-  maxActiveLeases: 5,
-  workerSecondsPerHour: 36_000,
-  planningHorizonHours: 48,
+  tokenBudgetPerHour: 1_000_000,
   starvationReserveRatio: 0,
-  retryReserveRatio: 0,
 };
 
 test("work-conserving: a ready task with a far deadline is leased now when capacity is free", () => {
   const plan = planCloudFetchWindow({
     now,
+    requestedLimit: 5,
     config: generousConfig,
     tasks: [
       baseTask({
@@ -337,10 +355,11 @@ test("work-conserving: a ready task with a far deadline is leased now when capac
   assert.deepEqual(plan.currentHourTaskIds, ["fresh-daily"]);
 });
 
-test("fills the current hour up to the count budget and defers the rest", () => {
+test("fills the current request up to the CLI-requested limit and defers the rest", () => {
   const plan = planCloudFetchWindow({
     now,
-    config: { ...generousConfig, maxTasksPerHour: 2 },
+    requestedLimit: 2,
+    config: generousConfig,
     tasks: [
       baseTask({ id: "a", mustSucceedBy: minutesFromNow(24 * 60), estimatedDurationSeconds: 600 }),
       baseTask({ id: "b", mustSucceedBy: minutesFromNow(24 * 60), estimatedDurationSeconds: 600 }),
@@ -356,6 +375,7 @@ test("fills the current hour up to the count budget and defers the rest", () => 
 test("a task not yet released is not leased now", () => {
   const plan = planCloudFetchWindow({
     now,
+    requestedLimit: 5,
     config: generousConfig,
     tasks: [
       baseTask({
@@ -373,6 +393,7 @@ test("a task not yet released is not leased now", () => {
 test("an overdue but released task is still leasable (catch-up), not abandoned", () => {
   const plan = planCloudFetchWindow({
     now,
+    requestedLimit: 5,
     config: generousConfig,
     tasks: [
       // deadline already passed an hour ago, but it is released and active
@@ -386,7 +407,8 @@ test("an overdue but released task is still leasable (catch-up), not abandoned",
 test("an overdue catch-up task yields the only slot to an on-time task", () => {
   const plan = planCloudFetchWindow({
     now,
-    config: { ...generousConfig, maxTasksPerHour: 1 },
+    requestedLimit: 1,
+    config: generousConfig,
     tasks: [
       baseTask({ id: "overdue", releaseAt: now, mustSucceedBy: minutesFromNow(-60) }),
       baseTask({ id: "ontime", releaseAt: now, mustSucceedBy: minutesFromNow(30) }),

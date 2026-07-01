@@ -13,6 +13,8 @@ export type CloudSchedulerTaskInput = {
   releaseAt: Date;
   mustSucceedBy: Date;
   estimatedDurationSeconds: number;
+  estimatedTokenCost: number;
+  estimatedPostYield: number;
   estimatedSuccessProbability: number;
   activeSubmissionCount: number;
   consecutiveDeferrals: number;
@@ -22,12 +24,8 @@ export type CloudSchedulerTaskInput = {
 };
 
 export type CloudSchedulerConfig = {
-  maxTasksPerHour: number;
-  maxActiveLeases: number;
-  workerSecondsPerHour: number;
-  planningHorizonHours: number;
+  tokenBudgetPerHour: number;
   starvationReserveRatio: number;
-  retryReserveRatio: number;
 };
 
 export type CloudTaskEstimateInput = {
@@ -45,7 +43,6 @@ export type CloudTaskEstimateInput = {
 export type CloudFetchFrequencyKey = "DAILY" | "WEEKLY";
 
 type CloudFetchConfigShape = CloudSchedulerConfig & {
-  defaultBatchSize: number;
   leaseTtlMinutes: number;
   schedulingLeadMinutes: number;
   retryBaseMinutes: number;
@@ -74,22 +71,28 @@ type PlanDebugRecord = {
 
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
-const MIN_DURATION_SECONDS = 60;
+const MIN_ESTIMATED_TOKENS = 1_000;
+const DEFAULT_MATERIALIZE_LIMIT = 100;
 
-const SOURCE_TYPE_PRIORS: Record<string, { durationP75Seconds: number; successProbability: number }> = {
-  podcast: { durationP75Seconds: 1_800, successProbability: 0.75 },
-  youtube: { durationP75Seconds: 1_200, successProbability: 0.78 },
-  video: { durationP75Seconds: 1_200, successProbability: 0.78 },
-  website: { durationP75Seconds: 900, successProbability: 0.8 },
-  blog: { durationP75Seconds: 600, successProbability: 0.85 },
-  rss: { durationP75Seconds: 600, successProbability: 0.85 },
-  x: { durationP75Seconds: 300, successProbability: 0.82 },
-  twitter: { durationP75Seconds: 300, successProbability: 0.82 },
-  auto: { durationP75Seconds: 900, successProbability: 0.8 },
+const SOURCE_TYPE_PRIORS: Record<string, {
+  durationP75Seconds: number;
+  successProbability: number;
+  estimatedTokenCost: number;
+  estimatedPostYield: number;
+}> = {
+  podcast: { durationP75Seconds: 1_800, successProbability: 0.75, estimatedTokenCost: 160_000, estimatedPostYield: 3 },
+  youtube: { durationP75Seconds: 1_200, successProbability: 0.78, estimatedTokenCost: 120_000, estimatedPostYield: 3 },
+  video: { durationP75Seconds: 1_200, successProbability: 0.78, estimatedTokenCost: 120_000, estimatedPostYield: 3 },
+  website: { durationP75Seconds: 900, successProbability: 0.8, estimatedTokenCost: 80_000, estimatedPostYield: 3 },
+  blog: { durationP75Seconds: 600, successProbability: 0.85, estimatedTokenCost: 60_000, estimatedPostYield: 3 },
+  rss: { durationP75Seconds: 600, successProbability: 0.85, estimatedTokenCost: 60_000, estimatedPostYield: 3 },
+  x: { durationP75Seconds: 300, successProbability: 0.82, estimatedTokenCost: 30_000, estimatedPostYield: 3 },
+  twitter: { durationP75Seconds: 300, successProbability: 0.82, estimatedTokenCost: 30_000, estimatedPostYield: 3 },
+  auto: { durationP75Seconds: 900, successProbability: 0.8, estimatedTokenCost: 80_000, estimatedPostYield: 3 },
 };
 
 export function estimateCloudTaskRuntime(input: CloudTaskEstimateInput) {
-  const prior = SOURCE_TYPE_PRIORS[input.sourceType.toLowerCase()] ?? SOURCE_TYPE_PRIORS.auto;
+  const prior = sourceTypePrior(input.sourceType);
   const historicalDuration = Math.max(
     input.durationP75Seconds ?? 0,
     input.durationP90Seconds ?? 0,
@@ -102,6 +105,8 @@ export function estimateCloudTaskRuntime(input: CloudTaskEstimateInput) {
   );
   return {
     estimatedDurationSeconds,
+    estimatedTokenCost: prior.estimatedTokenCost,
+    estimatedPostYield: prior.estimatedPostYield,
     estimatedSuccessProbability:
       input.successSampleCount > 0 && input.estimatedSuccessProbability != null
         ? clamp(input.estimatedSuccessProbability, 0.05, 0.99)
@@ -111,6 +116,7 @@ export function estimateCloudTaskRuntime(input: CloudTaskEstimateInput) {
 
 export function planCloudFetchWindow(params: {
   now: Date;
+  requestedLimit: number;
   config: CloudSchedulerConfig;
   tasks: CloudSchedulerTaskInput[];
   activeCanonicalKeys?: Set<string>;
@@ -121,7 +127,6 @@ export function planCloudFetchWindow(params: {
     deferred: {} as Record<string, PlanDebugRecord>,
   };
   const activeCanonicalKeys = params.activeCanonicalKeys ?? new Set<string>();
-  const horizonEnd = new Date(params.now.getTime() + params.config.planningHorizonHours * HOUR_MS);
   const currentBucket: BucketPlan = { start: params.now, tasks: [] };
 
   const eligible = params.tasks.filter((task) => {
@@ -131,10 +136,6 @@ export function planCloudFetchWindow(params: {
     }
     if (activeCanonicalKeys.has(task.canonicalKey)) {
       debug.skipped[task.id] = { reason: "canonical_active" };
-      return false;
-    }
-    if (task.releaseAt > horizonEnd) {
-      debug.skipped[task.id] = { reason: "outside_horizon" };
       return false;
     }
     return true;
@@ -160,7 +161,7 @@ export function planCloudFetchWindow(params: {
   // Starvation reserve: the most-deferred due tasks get guaranteed slots and are
   // protected from eviction (see lowestScoreIndex).
   const reservedStarvationCount = reserveCount(
-    params.config.maxTasksPerHour,
+    params.requestedLimit,
     params.config.starvationReserveRatio,
   );
   const starvationTasks = due
@@ -172,7 +173,7 @@ export function planCloudFetchWindow(params: {
     currentBucket.tasks.push({ task, score: scoreTask(task, params.now), lane: "starvation" });
   }
 
-  // Fill the remaining hourly budget by score, highest value/urgency first.
+  // Fill the remaining request budget by score, highest value/urgency first.
   const rest = due
     .filter((task) => !reservedTaskIds.has(task.id))
     .sort((a, b) => scoreTask(b, params.now) - scoreTask(a, params.now));
@@ -183,7 +184,7 @@ export function planCloudFetchWindow(params: {
       lane: task.consecutiveFailures > 0 ? "retry" : "normal",
     });
   }
-  evictOverCapacity(currentBucket, params.config, debug);
+  evictOverCapacity(currentBucket, params.config, params.requestedLimit, debug);
 
   for (const item of currentBucket.tasks) {
     debug.selected[item.task.id] = {
@@ -217,14 +218,29 @@ export function planCloudFetchWindow(params: {
 }
 
 export async function materializeDueCloudFetchQueue(params: {
+  limit?: number;
   now?: Date;
   prisma?: PrismaClient;
+  tokenBudgetRemaining?: number;
 } = {}) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
   const config = await loadCloudFetchConfig(prisma);
   const { tasks, activeCanonicalKeys } = await loadEligibleCloudTasks({ prisma, now, config });
-  const plan = planCloudFetchWindow({ now, config, tasks, activeCanonicalKeys });
+  const requestedLimit = normalizedLeaseLimit(params.limit ?? DEFAULT_MATERIALIZE_LIMIT);
+  const plan = planCloudFetchWindow({
+    now,
+    requestedLimit,
+    config: {
+      tokenBudgetPerHour: Math.max(
+        0,
+        Math.min(config.tokenBudgetPerHour, params.tokenBudgetRemaining ?? config.tokenBudgetPerHour),
+      ),
+      starvationReserveRatio: config.starvationReserveRatio,
+    },
+    tasks,
+    activeCanonicalKeys,
+  });
   const selectedIds = new Set(plan.currentHourTaskIds);
   const selectedTasks = tasks.filter((task) => selectedIds.has(task.id));
 
@@ -274,7 +290,6 @@ export async function leaseCloudFetchTasks(params: {
   const now = params.now ?? new Date();
   const config = await loadCloudFetchConfig(prisma);
   await expireStaleCloudFetchLeases({ prisma, now });
-  await materializeDueCloudFetchQueue({ prisma, now });
 
   const budget = await computeLeaseBudget({ prisma, now, config, requestedLimit: params.limit });
   if (budget.limit <= 0) {
@@ -286,6 +301,12 @@ export async function leaseCloudFetchTasks(params: {
     });
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
+  await materializeDueCloudFetchQueue({
+    prisma,
+    now,
+    limit: budget.limit,
+    tokenBudgetRemaining: budget.tokenBudget,
+  });
 
   const queuedItems = await prisma.cloudFetchQueueItem.findMany({
     where: { status: CloudFetchQueueStatus.QUEUED, dueAt: { lte: now } },
@@ -312,13 +333,14 @@ export async function leaseCloudFetchTasks(params: {
   });
 
   const selected = [];
-  let remainingWorkerSeconds = budget.workerSeconds;
+  let remainingTokens = budget.tokenBudget;
   for (const item of queuedItems) {
     if (selected.length >= budget.limit) break;
-    const estimate = estimatedDurationForTask(item.cloudSourceTask);
-    if (estimate > remainingWorkerSeconds) continue;
-    selected.push({ item, estimate });
-    remainingWorkerSeconds -= estimate;
+    const estimate = estimatedDurationForTask(item.cloudSourceTask, config);
+    const estimatedTokens = estimatedTokensForTask(item.cloudSourceTask);
+    if (estimatedTokens > remainingTokens) continue;
+    selected.push({ item, estimate, estimatedTokens });
+    remainingTokens -= estimatedTokens;
   }
 
   if (selected.length === 0) {
@@ -509,11 +531,12 @@ export function nextCloudTaskFailureSchedule(params: {
 function evictOverCapacity(
   bucket: BucketPlan,
   config: CloudSchedulerConfig,
+  requestedLimit: number,
   debug: { skipped: Record<string, PlanDebugRecord> },
 ) {
   while (
-    bucket.tasks.length > config.maxTasksPerHour ||
-    totalDurationSeconds(bucket.tasks) > config.workerSecondsPerHour
+    bucket.tasks.length > requestedLimit ||
+    totalEstimatedTokens(bucket.tasks) > config.tokenBudgetPerHour
   ) {
     const evictIndex = lowestScoreIndex(bucket.tasks);
     const [evicted] = bucket.tasks.splice(evictIndex, 1);
@@ -531,8 +554,8 @@ function lowestScoreIndex(tasks: BucketTask[]) {
   return index;
 }
 
-function totalDurationSeconds(tasks: BucketTask[]) {
-  return tasks.reduce((sum, item) => sum + item.task.estimatedDurationSeconds, 0);
+function totalEstimatedTokens(tasks: BucketTask[]) {
+  return tasks.reduce((sum, item) => sum + item.task.estimatedTokenCost, 0);
 }
 
 // Lower than any on-time task's urgency even after max aging, so overdue
@@ -548,7 +571,7 @@ function hashTaskId(id: string): number {
 }
 
 function scoreTask(task: CloudSchedulerTaskInput, now: Date) {
-  const baseValue = 1;
+  const expectedPosts = Math.max(0.1, task.estimatedPostYield);
   const submissionWeight = Math.sqrt(Math.max(1, task.activeSubmissionCount));
   const slackMs = task.mustSucceedBy.getTime() - now.getTime();
   // Overdue work is catch-up: a low, fixed urgency so it never displaces an
@@ -557,14 +580,14 @@ function scoreTask(task: CloudSchedulerTaskInput, now: Date) {
   const urgency = slackMs <= 0 ? CATCHUP_URGENCY : 1 / Math.max(MINUTE_MS, slackMs);
   const aging = 1 + Math.min(task.consecutiveDeferrals, 10) * 0.15;
   const expectedValue =
-    baseValue * submissionWeight * clamp(task.estimatedSuccessProbability, 0.01, 1) * aging;
+    expectedPosts * submissionWeight * clamp(task.estimatedSuccessProbability, 0.01, 1) * aging;
   // Tiny deterministic jitter breaks exact score ties so synchronized identical
   // tasks are not starved by array position; far smaller than the aging signal,
   // so it never reorders meaningfully-different tasks.
   const jitter = 1 + (hashTaskId(task.id) % 997) / 1_000_000;
   return (
     (expectedValue * urgency * jitter) /
-    Math.max(task.estimatedDurationSeconds, MIN_DURATION_SECONDS)
+    Math.max(task.estimatedTokenCost, MIN_ESTIMATED_TOKENS)
   );
 }
 
@@ -607,16 +630,11 @@ function cloudFrequencyIntervalMs(frequency: CloudFetchFrequencyKey) {
 async function loadCloudFetchConfig(prisma: PrismaClient): Promise<CloudFetchConfigShape> {
   const stored = await prisma.cloudFetchConfig.findUnique({ where: { id: "global" } });
   return {
-    maxTasksPerHour: stored?.maxTasksPerHour ?? 20,
-    maxActiveLeases: stored?.maxActiveLeases ?? 20,
-    workerSecondsPerHour: stored?.workerSecondsPerHour ?? 3_600,
-    defaultBatchSize: stored?.defaultBatchSize ?? 10,
+    tokenBudgetPerHour: stored?.tokenBudgetPerHour ?? 1_000_000,
     leaseTtlMinutes: stored?.leaseTtlMinutes ?? 60,
     schedulingLeadMinutes: stored?.schedulingLeadMinutes ?? 120,
-    planningHorizonHours: stored?.planningHorizonHours ?? 48,
     retryBaseMinutes: stored?.retryBaseMinutes ?? 30,
     starvationReserveRatio: stored?.starvationReserveRatio ?? 0.15,
-    retryReserveRatio: stored?.retryReserveRatio ?? 0.1,
     failureCircuitBreakerThreshold: stored?.failureCircuitBreakerThreshold ?? 5,
     canonicalCooldownMinutes: stored?.canonicalCooldownMinutes ?? 60,
     durationColdStartBufferRatio: stored?.durationColdStartBufferRatio ?? 0.5,
@@ -628,7 +646,6 @@ async function loadEligibleCloudTasks(params: {
   now: Date;
   config: CloudFetchConfigShape;
 }) {
-  const horizonEnd = new Date(params.now.getTime() + params.config.planningHorizonHours * HOUR_MS);
   const tasks = await params.prisma.cloudSourceTask.findMany({
     where: {
       status: "ACTIVE",
@@ -686,6 +703,8 @@ async function loadEligibleCloudTasks(params: {
           releaseAt,
           mustSucceedBy,
           estimatedDurationSeconds: task.estimatedDurationSeconds ?? estimate.estimatedDurationSeconds,
+          estimatedTokenCost: task.estimatedTokenCost ?? estimate.estimatedTokenCost,
+          estimatedPostYield: task.estimatedPostYield ?? estimate.estimatedPostYield,
           estimatedSuccessProbability:
             task.estimatedSuccessProbability ?? estimate.estimatedSuccessProbability,
           activeSubmissionCount: activeSubmissionCounts.get(task.builderId) ?? 1,
@@ -694,8 +713,7 @@ async function loadEligibleCloudTasks(params: {
           circuitBreakerUntil: task.circuitBreakerUntil,
           lastDeferredAt: task.lastDeferredAt,
         };
-      })
-      .filter((task) => task.releaseAt <= horizonEnd),
+      }),
   };
 }
 
@@ -760,27 +778,35 @@ async function computeLeaseBudget(params: {
   const [recentTasks, activeLeases] = await Promise.all([
     params.prisma.cloudFetchRunTask.findMany({
       where: { startedAt: { gte: oneHourAgo } },
-      select: { estimatedDurationSeconds: true },
+      select: { usageTokens: true },
     }),
-    params.prisma.cloudFetchQueueItem.count({
+    params.prisma.cloudFetchQueueItem.findMany({
       where: { status: CloudFetchQueueStatus.LEASED, leaseExpiresAt: { gt: params.now } },
+      select: {
+        cloudSourceTask: {
+          select: {
+            estimatedTokenCost: true,
+            builder: { select: { sourceType: true } },
+          },
+        },
+      },
     }),
   ]);
-  const recentEstimatedSeconds = recentTasks.reduce(
-    (sum, task) => sum + (task.estimatedDurationSeconds ?? 0),
+  const recentUsageTokens = recentTasks.reduce(
+    (sum, task) => sum + (task.usageTokens ?? 0),
     0,
   );
-  const countBudget = Math.max(0, params.config.maxTasksPerHour - recentTasks.length);
-  const activeLeaseBudget = Math.max(0, params.config.maxActiveLeases - activeLeases);
-  const workerSeconds = Math.max(0, params.config.workerSecondsPerHour - recentEstimatedSeconds);
+  const activeEstimatedTokens = activeLeases.reduce(
+    (sum, item) => sum + estimatedTokensForTask(item.cloudSourceTask),
+    0,
+  );
+  const tokenBudget = Math.max(0, params.config.tokenBudgetPerHour - recentUsageTokens - activeEstimatedTokens);
   return {
-    limit: Math.max(
-      0,
-      Math.min(params.requestedLimit, params.config.defaultBatchSize, countBudget, activeLeaseBudget),
-    ),
-    countBudget,
-    activeLeaseBudget,
-    workerSeconds,
+    limit: tokenBudget > 0 ? normalizedLeaseLimit(params.requestedLimit) : 0,
+    tokenBudget,
+    tokenBudgetPerHour: params.config.tokenBudgetPerHour,
+    recentUsageTokens,
+    activeEstimatedTokens,
   };
 }
 
@@ -792,7 +818,7 @@ function estimatedDurationForTask(task: {
   successSampleCount: number;
   estimatedSuccessProbability: number | null;
   builder: { sourceType: string };
-}) {
+}, config: { durationColdStartBufferRatio: number }) {
   return task.estimatedDurationSeconds ??
     estimateCloudTaskRuntime({
       sourceType: task.builder.sourceType,
@@ -801,8 +827,27 @@ function estimatedDurationForTask(task: {
       durationSampleCount: task.durationSampleCount,
       successSampleCount: task.successSampleCount,
       estimatedSuccessProbability: task.estimatedSuccessProbability,
-      config: { durationColdStartBufferRatio: 0.5 },
+      config,
     }).estimatedDurationSeconds;
+}
+
+function estimatedTokensForTask(task: {
+  estimatedTokenCost?: number | null;
+  builder: { sourceType: string };
+}) {
+  return Math.max(
+    MIN_ESTIMATED_TOKENS,
+    task.estimatedTokenCost ?? sourceTypePrior(task.builder.sourceType).estimatedTokenCost,
+  );
+}
+
+function sourceTypePrior(sourceType: string) {
+  return SOURCE_TYPE_PRIORS[sourceType.toLowerCase()] ?? SOURCE_TYPE_PRIORS.auto;
+}
+
+function normalizedLeaseLimit(limit: number) {
+  if (!Number.isFinite(limit)) return DEFAULT_MATERIALIZE_LIMIT;
+  return Math.max(0, Math.min(DEFAULT_MATERIALIZE_LIMIT, Math.floor(limit)));
 }
 
 function taskDeadline(frequency: CloudFetchFrequency, from: Date) {

@@ -2472,6 +2472,167 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
   assert.equal(payload.taskResults[1].details.posts[0].url, "https://openai.com/news/2");
 });
 
+test("cloud sync payload can split by cloud run id", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "task_run_1",
+        cloudRunId: "run_1",
+        cloudSourceTaskId: "cloud_task_1",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        builderSync: { builderId: "builder_1" },
+        item: { url: "https://a.example/post" },
+      },
+      {
+        id: "task_run_2",
+        cloudRunId: "run_2",
+        cloudSourceTaskId: "cloud_task_2",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        builderSync: { builderId: "builder_2" },
+        item: { url: "https://b.example/post" },
+      },
+    ],
+  };
+  const payload = {
+    builders: [
+      {
+        builderId: "builder_1",
+        items: [{ title: "A", rawJson: { fetchTaskId: "task_run_1" } }],
+      },
+      {
+        builderId: "builder_2",
+        items: [{ title: "B", rawJson: { fetchTaskId: "task_run_2" } }],
+      },
+    ],
+    taskOutcomes: [
+      { fetchTaskId: "task_run_1", status: "synced" },
+      { fetchTaskId: "task_run_2", status: "failed", reason: "blocked" },
+    ],
+  };
+
+  const slices = cli.splitCloudSyncPayloadByRunId(fetchResult, payload)
+    .sort((a: { cloudRunId: string }, b: { cloudRunId: string }) =>
+      a.cloudRunId.localeCompare(b.cloudRunId),
+    );
+
+  assert.deepEqual(slices.map((slice: { cloudRunId: string }) => slice.cloudRunId), ["run_1", "run_2"]);
+  assert.deepEqual(slices[0].tasks.fetchTasks.map((task: { id: string }) => task.id), ["task_run_1"]);
+  assert.deepEqual(slices[0].payload.builders[0].items.map((item: { title: string }) => item.title), ["A"]);
+  assert.deepEqual(slices[0].payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId), ["task_run_1"]);
+  assert.deepEqual(slices[1].tasks.fetchTasks.map((task: { id: string }) => task.id), ["task_run_2"]);
+  assert.deepEqual(slices[1].payload.builders[0].items.map((item: { title: string }) => item.title), ["B"]);
+  assert.deepEqual(slices[1].payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId), ["task_run_2"]);
+});
+
+test("split-sync-slices can write cloud-run slices with per-slice run ids", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-cloud-run-slices-"));
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "library-agent-sync.json");
+  const outDir = join(tmp, "sync-slices");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "task_run_1",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "cloud_task_1",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          builderSync: { builderId: "builder_1" },
+          item: { url: "https://a.example/post" },
+        },
+        {
+          id: "task_run_2",
+          cloudRunId: "run_2",
+          cloudSourceTaskId: "cloud_task_2",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          builderSync: { builderId: "builder_2" },
+          item: { url: "https://b.example/post" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    payloadFile,
+    `${JSON.stringify({
+      builders: [
+        {
+          builderId: "builder_1",
+          items: [{ title: "A", rawJson: { fetchTaskId: "task_run_1" } }],
+        },
+        {
+          builderId: "builder_2",
+          items: [{ title: "B", rawJson: { fetchTaskId: "task_run_2" } }],
+        },
+      ],
+      taskOutcomes: [],
+    })}\n`,
+    "utf8",
+  );
+
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "split-sync-slices",
+      "--tasks",
+      tasksFile,
+      "--file",
+      payloadFile,
+      "--out-dir",
+      outDir,
+      "--granularity",
+      "cloud-run",
+    ],
+    { cwd: process.cwd() },
+  );
+  const result = JSON.parse(stdout);
+  assert.equal(result.granularity, "cloud-run");
+  assert.deepEqual(result.slices.map((slice: { key: string }) => slice.key), [
+    "cloudRun:run_1",
+    "cloudRun:run_2",
+  ]);
+
+  const firstPayload = JSON.parse(await readFile(join(outDir, "slice-000-payload.json"), "utf8"));
+  const secondPayload = JSON.parse(await readFile(join(outDir, "slice-001-payload.json"), "utf8"));
+  assert.equal(firstPayload.cloudRunId, "run_1");
+  assert.equal(secondPayload.cloudRunId, "run_2");
+});
+
+test("merge-fetch-results appends repeated cloud leases into one local queue", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const merged = cli.mergeFetchResultsForQueue(
+    {
+      status: "ok",
+      cloudRunId: "run_1",
+      leasedTasks: 1,
+      localErrors: [{ message: "first warning" }],
+      fetchTasks: [{ id: "task_1" }],
+    },
+    {
+      status: "ok",
+      cloudRunId: "run_2",
+      leasedTasks: 2,
+      localErrors: [],
+      fetchTasks: [{ id: "task_2" }, { id: "task_3" }],
+    },
+  );
+
+  assert.deepEqual(merged.cloudRunIds, ["run_1", "run_2"]);
+  assert.equal(merged.cloudRunId, "run_1");
+  assert.equal(merged.leasedTasks, 3);
+  assert.deepEqual(merged.fetchTasks.map((task: { id: string }) => task.id), ["task_1", "task_2", "task_3"]);
+  assert.deepEqual(merged.localErrors, [{ message: "first warning" }]);
+});
+
 test("builder digest CLI exposes sync-cloud-builders command", () => {
   const script = readFileSync(join(process.cwd(), "scripts/builder-digest.mjs"), "utf8");
 
@@ -2964,6 +3125,213 @@ test("shard-tasks groups by URL domain, balances by weight, excludes non-work ta
   // maxWorkers caps shard count; URL domain count caps it too.
   assert.ok(shards.length <= 3);
   assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
+});
+
+test("fetch queue assignments honor active domain locks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "locked-a",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/a" },
+      },
+      {
+        id: "locked-b",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b2", sourceUrl: "https://www.example.com/news.xml" },
+        item: { url: "https://www.example.com/posts/b" },
+      },
+      {
+        id: "runnable",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b3", sourceUrl: "https://other.example/feed.xml" },
+        item: { url: "https://other.example/posts/c" },
+      },
+    ],
+  };
+
+  const plan = cli.planFetchQueueAssignments(fetchResult, {
+    maxWorkers: 3,
+    activeGroupKeys: new Set(["domain:example.com"]),
+  });
+
+  assert.deepEqual(plan.blockedGroupKeys, ["domain:example.com"]);
+  assert.deepEqual(plan.blockedTasks.map((task: { id: string }) => task.id).sort(), ["locked-a", "locked-b"]);
+  assert.deepEqual(
+    plan.assignments.flatMap((assignment: { tasks: { id: string }[] }) =>
+      assignment.tasks.map((task) => task.id),
+    ),
+    ["runnable"],
+  );
+});
+
+test("fetch queue assignments can leave runnable work pending for later workers", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "example-a",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/a" },
+      },
+      {
+        id: "example-b",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b2", sourceUrl: "https://www.example.com/news.xml" },
+        item: { url: "https://www.example.com/posts/b" },
+      },
+      {
+        id: "other",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b3", sourceUrl: "https://other.example/feed.xml" },
+        item: { url: "https://other.example/posts/c" },
+      },
+      {
+        id: "third",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "website",
+        builderSync: { builderId: "b4", sourceUrl: "https://third.example" },
+      },
+    ],
+  };
+
+  const plan = cli.planFetchQueueAssignments(fetchResult, {
+    maxWorkers: 1,
+    maxGroupsPerAssignment: 1,
+  });
+
+  assert.equal(plan.assignments.length, 1);
+  assert.deepEqual(plan.assignments[0].groupKeys, ["domain:example.com"]);
+  assert.deepEqual(plan.assignments[0].tasks.map((task: { id: string }) => task.id), [
+    "example-a",
+    "example-b",
+  ]);
+  assert.deepEqual(plan.pendingGroupKeys.sort(), ["domain:other.example", "domain:third.example"].sort());
+  assert.deepEqual(plan.pendingTasks.map((task: { id: string }) => task.id).sort(), ["other", "third"]);
+});
+
+test("assign-fetch-tasks writes dynamic shards and skips already assigned task ids", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-assign-fetch-tasks-"));
+  const tasksFile = join(tmp, "fetch-result.json");
+  const outDir = join(tmp, "shards");
+  const assignedIdsFile = join(tmp, "assigned-task-ids.txt");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "example-a",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "blog",
+          builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+          item: { url: "https://example.com/posts/a" },
+        },
+        {
+          id: "example-b",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "blog",
+          builderSync: { builderId: "b2", sourceUrl: "https://www.example.com/news.xml" },
+          item: { url: "https://www.example.com/posts/b" },
+        },
+        {
+          id: "other",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "blog",
+          builderSync: { builderId: "b3", sourceUrl: "https://other.example/feed.xml" },
+          item: { url: "https://other.example/posts/c" },
+        },
+        {
+          id: "third",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "website",
+          builderSync: { builderId: "b4", sourceUrl: "https://third.example" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  const first = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "assign-fetch-tasks",
+      "--tasks",
+      tasksFile,
+      "--out-dir",
+      outDir,
+      "--max-workers",
+      "2",
+      "--assigned-task-ids-file",
+      assignedIdsFile,
+    ],
+    { cwd: process.cwd() },
+  );
+  const firstResult = JSON.parse(first.stdout);
+  assert.equal(firstResult.shards.length, 2);
+  assert.deepEqual(
+    firstResult.shards.map((shard: { shard: string; groupKeys: string[] }) => [shard.shard, shard.groupKeys]),
+    [
+      ["shard-0", ["domain:example.com"]],
+      ["shard-1", ["domain:other.example"]],
+    ],
+  );
+  assert.deepEqual(firstResult.pendingGroupKeys, ["domain:third.example"]);
+
+  const shard0 = JSON.parse(await readFile(join(outDir, "shard-0.json"), "utf8"));
+  assert.equal(shard0.dynamicAssignment, true);
+  assert.equal(shard0.shardCount, null);
+  assert.deepEqual(shard0.groupKeys, ["domain:example.com"]);
+  assert.equal(shard0.fetchTasks[0].workerId, "shard-0");
+
+  const assignedAfterFirst = (await readFile(assignedIdsFile, "utf8")).trim().split(/\r?\n/).sort();
+  assert.deepEqual(assignedAfterFirst, ["example-a", "example-b", "other"]);
+
+  const second = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "assign-fetch-tasks",
+      "--tasks",
+      tasksFile,
+      "--out-dir",
+      outDir,
+      "--max-workers",
+      "2",
+      "--assigned-task-ids-file",
+      assignedIdsFile,
+    ],
+    { cwd: process.cwd() },
+  );
+  const secondResult = JSON.parse(second.stdout);
+  assert.deepEqual(
+    secondResult.shards.map((shard: { shard: string; taskIds: string[] }) => [shard.shard, shard.taskIds]),
+    [["shard-2", ["third"]]],
+  );
+  assert.deepEqual(secondResult.pendingGroupKeys, []);
 });
 
 test("shard-tasks writes shard worker ids onto planned post tasks", async () => {

@@ -1096,6 +1096,45 @@ case "$MAX_PARALLEL_WORKERS" in
 esac
 if [ "$MAX_PARALLEL_WORKERS" -gt 8 ]; then MAX_PARALLEL_WORKERS="8"; fi
 
+cloud_fetch_source_limit() {
+  # Backward compatibility: old copied prompts or hand-run shells may still pin
+  # the source lease size explicitly.
+  _cfsl_pinned="${BUILDER_BLOG_CLOUD_FETCH_LIMIT:-}"
+  case "$_cfsl_pinned" in
+    ''|*[!0-9]*) _cfsl_pinned="" ;;
+  esac
+  if [ -n "$_cfsl_pinned" ]; then
+    if [ "$_cfsl_pinned" -lt 1 ]; then _cfsl_pinned="1"; fi
+    if [ "$_cfsl_pinned" -gt 100 ]; then _cfsl_pinned="100"; fi
+    printf '%s\n' "$_cfsl_pinned"
+    return 0
+  fi
+
+  _cfsl_workers="$MAX_PARALLEL_WORKERS"
+  case "$_cfsl_workers" in
+    ''|*[!0-9]*) _cfsl_workers="1" ;;
+  esac
+  if [ "$_cfsl_workers" -lt 1 ]; then _cfsl_workers="1"; fi
+  if [ "$_cfsl_workers" -gt 8 ]; then _cfsl_workers="8"; fi
+
+  _cfsl_post_limit="${BUILDER_BLOG_FETCH_LIMIT:-3}"
+  case "$_cfsl_post_limit" in
+    ''|*[!0-9]*) _cfsl_post_limit="3" ;;
+  esac
+  if [ "$_cfsl_post_limit" -lt 1 ]; then _cfsl_post_limit="1"; fi
+  if [ "$_cfsl_post_limit" -gt 20 ]; then _cfsl_post_limit="20"; fi
+
+  # Ask for enough sources to likely produce several post tasks per worker.
+  # The cloud still enforces token budget and eligibility; this is only the
+  # local runner's capacity hint.
+  _cfsl_target_posts=$(( _cfsl_workers * 4 ))
+  _cfsl_limit=$(( ( _cfsl_target_posts + _cfsl_post_limit - 1 ) / _cfsl_post_limit ))
+  if [ "$_cfsl_limit" -lt "$_cfsl_workers" ]; then _cfsl_limit="$_cfsl_workers"; fi
+  if [ "$_cfsl_limit" -lt 1 ]; then _cfsl_limit="1"; fi
+  if [ "$_cfsl_limit" -gt 100 ]; then _cfsl_limit="100"; fi
+  printf '%s\n' "$_cfsl_limit"
+}
+
 job_type_for_name() {
   case "$JOB_NAME" in
     cloud-library-*) printf '%s\n' "cloud-library-fetch" ;;
@@ -1518,6 +1557,7 @@ job_run_update() {
     --runtime "${BUILDER_BLOG_RUNTIME:-}" \
     --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
     --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
+    --local-workers "${MAX_PARALLEL_WORKERS:-}" \
     --finished-at "$_finished" \
     --summary "$_summary" \
     --reason "$_reason" \
@@ -2136,6 +2176,19 @@ console.log(tasks.filter((task) => task?.agentWorkType !== "candidate_discovery_
 NODE
 }
 
+cloud_run_id_from_result() {
+  _crifr_file="$1"
+  node - "$_crifr_file" <<'NODE'
+const fs = require("fs");
+try {
+  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  console.log(result.cloudRunId || "");
+} catch {
+  console.log("");
+}
+NODE
+}
+
 library_has_discovery_tasks() {
   _lhdt_file="$1"
   node - "$_lhdt_file" <<'NODE'
@@ -2373,6 +2426,34 @@ sync_payload_slices() {
     _slice_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-sync.out"
     _slice_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-sync.err"
     _slice_validate="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validate.out"
+    _slice_extra_args=""
+    if [ "$_sps_sync_command" = "sync-cloud-builders" ]; then
+      _slice_cloud_run_id="$(node - "$_slice_payload" "$_slice_tasks" <<'NODE'
+const fs = require("fs");
+function firstRunIdFromTasks(file) {
+  try {
+    const payload = JSON.parse(fs.readFileSync(file, "utf8"));
+    const tasks = Array.isArray(payload?.fetchTasks) ? payload.fetchTasks : [];
+    for (const task of tasks) {
+      const runId = String(task?.cloudRunId || task?.builderSync?.cloudRunId || "").trim();
+      if (runId) return runId;
+    }
+  } catch {}
+  return "";
+}
+try {
+  const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const runId = String(payload?.cloudRunId || "").trim() || firstRunIdFromTasks(process.argv[3]);
+  console.log(runId);
+} catch {
+  console.log(firstRunIdFromTasks(process.argv[3]));
+}
+NODE
+)"
+      if [ -n "$_slice_cloud_run_id" ]; then
+        _slice_extra_args="--cloud-run-id $_slice_cloud_run_id"
+      fi
+    fi
     set +e
     node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
       --tasks "$_slice_tasks" \
@@ -2396,7 +2477,7 @@ sync_payload_slices() {
       node "$AGENT_DIR/builder-digest.mjs" "$_sps_sync_command" \
         --file "$_failed_payload" \
         --tasks "$_slice_tasks" \
-        "$@" $_sps_extra_args > "$_failed_stdout" 2> "$_failed_stderr"
+        "$@" $_sps_extra_args $_slice_extra_args > "$_failed_stdout" 2> "$_failed_stderr"
       _failed_code="$?"
       set -e
       [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
@@ -2414,7 +2495,7 @@ sync_payload_slices() {
     node "$AGENT_DIR/builder-digest.mjs" "$_sps_sync_command" \
       --file "$_slice_payload" \
       --tasks "$_slice_tasks" \
-      "$@" $_sps_extra_args > "$_slice_stdout" 2> "$_slice_stderr"
+      "$@" $_sps_extra_args $_slice_extra_args > "$_slice_stdout" 2> "$_slice_stderr"
     _slice_code="$?"
     set -e
     [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
@@ -2439,7 +2520,7 @@ sync_payload_slices() {
     node "$AGENT_DIR/builder-digest.mjs" "$_sps_sync_command" \
       --file "$_failed_payload" \
       --tasks "$_slice_tasks" \
-      "$@" $_sps_extra_args > "$_failed_stdout" 2> "$_failed_stderr"
+      "$@" $_sps_extra_args $_slice_extra_args > "$_failed_stdout" 2> "$_failed_stderr"
     _failed_code="$?"
     set -e
     [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
@@ -2522,6 +2603,204 @@ cloud_fetch_heartbeat() {
   node "$AGENT_DIR/builder-digest.mjs" heartbeat-cloud-fetch --cloud-run-id "$_cfh_run_id" >/dev/null 2>&1 || true
 }
 
+append_cloud_run_id() {
+  _acri_run_id="${1:-}"
+  [ -n "$_acri_run_id" ] || return 0
+  grep -qx "$_acri_run_id" "$_cloud_run_ids_file" 2>/dev/null && return 0
+  printf '%s\n' "$_acri_run_id" >> "$_cloud_run_ids_file"
+}
+
+cloud_fetch_heartbeat_all() {
+  [ -s "$_cloud_run_ids_file" ] || return 0
+  while IFS= read -r _cfha_run_id; do
+    [ -n "$_cfha_run_id" ] || continue
+    cloud_fetch_heartbeat "$_cfha_run_id"
+  done < "$_cloud_run_ids_file"
+}
+
+write_active_fetch_group_keys() {
+  _wafg_out="${1:-}"
+  [ -n "$_wafg_out" ] || return 0
+  : > "$_wafg_out"
+  for _wafg_entry in $_worker_entries; do
+    _wafg_pid="${_wafg_entry%%:*}"
+    _wafg_rest="${_wafg_entry#*:}"
+    _wafg_name="${_wafg_rest#*:}"
+    case " $_timed_out_worker_pids " in
+      *" $_wafg_pid "*) continue ;;
+    esac
+    kill -0 "$_wafg_pid" 2>/dev/null || continue
+    node - "$_shards_dir/$_wafg_name.json" <<'NODE' >> "$_wafg_out" 2>/dev/null || true
+const fs = require("fs");
+try {
+  const shard = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const keys = Array.isArray(shard?.groupKeys) ? shard.groupKeys : [];
+  for (const key of keys) {
+    if (String(key || "").trim()) console.log(String(key).trim());
+  }
+} catch {}
+NODE
+  done
+}
+
+assign_dynamic_fetch_workers() {
+  _adfw_slots="${1:-0}"
+  case "$_adfw_slots" in
+    ''|*[!0-9]*) _adfw_slots=0 ;;
+  esac
+  [ "$_adfw_slots" -gt 0 ] || return 0
+  _dynamic_assignment_count=$(( _dynamic_assignment_count + 1 ))
+  _adfw_out="$JOB_TMP_DIR/assign-fetch-tasks-$_dynamic_assignment_count.json"
+  write_active_fetch_group_keys "$_active_fetch_group_keys_file"
+  node "$AGENT_DIR/builder-digest.mjs" assign-fetch-tasks \
+    --tasks "$_result_file" \
+    --out-dir "$_shards_dir" \
+    --max-workers "$_adfw_slots" \
+    --assigned-task-ids-file "$_assigned_fetch_task_ids_file" \
+    --active-group-keys-file "$_active_fetch_group_keys_file" > "$_adfw_out"
+  cat "$_adfw_out"
+  _adfw_counts="$(node - "$_adfw_out" <<'NODE'
+const fs = require("fs");
+try {
+  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const assigned = Array.isArray(result.shards) ? result.shards.length : 0;
+  const pending = Number(result.pendingTasks || 0) + Number(result.blockedTasks || 0);
+  console.log(`${assigned} ${pending}`);
+} catch {
+  console.log("0 0");
+}
+NODE
+)"
+  _adfw_assigned="${_adfw_counts%% *}"
+  _adfw_pending="${_adfw_counts#* }"
+  case "$_adfw_assigned" in ''|*[!0-9]*) _adfw_assigned=0 ;; esac
+  case "$_adfw_pending" in ''|*[!0-9]*) _adfw_pending=0 ;; esac
+  if [ "$_adfw_pending" -eq 0 ]; then
+    _dynamic_queue_drained=1
+  else
+    _dynamic_queue_drained=0
+  fi
+}
+
+cloud_refill_limit() {
+  _crl_value="${BUILDER_BLOG_CLOUD_REFILL_LIMIT:-3}"
+  case "$_crl_value" in
+    ''|*[!0-9]*) _crl_value=3 ;;
+  esac
+  if [ "$_crl_value" -lt 0 ]; then _crl_value=0; fi
+  if [ "$_crl_value" -gt 20 ]; then _crl_value=20; fi
+  printf '%s\n' "$_crl_value"
+}
+
+fetch_more_cloud_sources() {
+  [ "$_sync_command" = "sync-cloud-builders" ] || return 0
+  [ "${_cloud_refill_exhausted:-0}" -eq 0 ] || return 0
+  [ "$_cloud_refill_count" -lt "$_cloud_refill_limit" ] || {
+    _cloud_refill_exhausted=1
+    return 0
+  }
+  _fmcs_now="$(date +%s)"
+  if [ "$_fmcs_now" -ge "$_cloud_refill_stop_at" ]; then
+    _cloud_refill_exhausted=1
+    return 0
+  fi
+
+  _cloud_refill_count=$(( _cloud_refill_count + 1 ))
+  _fmcs_file="$JOB_TMP_DIR/cloud-fetch-refill-$_cloud_refill_count.json"
+  _fmcs_stderr="$JOB_TMP_DIR/cloud-fetch-refill-$_cloud_refill_count.err"
+  _fmcs_limit="$(cloud_fetch_source_limit)"
+  job_run_update running "Local fetch queue is low; requesting more cloud sources." "cloud_refill_started" \
+    --stage "fetch_sources" \
+    --cloud-refill "$_cloud_refill_count"
+  set +e
+  node "$AGENT_DIR/builder-digest.mjs" fetch-cloud-library \
+    --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
+    --post-limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
+    --limit "$_fmcs_limit" \
+    ${BUILDER_BLOG_FETCH_FORCE:-} > "$_fmcs_file" 2> "$_fmcs_stderr"
+  _fmcs_code="$?"
+  set -e
+  [ ! -s "$_fmcs_stderr" ] || cat "$_fmcs_stderr" >&2
+  if [ "$_fmcs_code" -ne 0 ]; then
+    echo "Cloud source refill failed; finishing already assigned local work." >&2
+    job_run_update running "Cloud source refill failed; finishing already assigned local work." "cloud_refill_failed" \
+      --stage "fetch_sources" \
+      --exit-code "$_fmcs_code"
+    _cloud_refill_exhausted=1
+    return 0
+  fi
+  cat "$_fmcs_file"
+  _fmcs_task_count="$(library_fetch_task_count "$_fmcs_file")" || _fmcs_task_count=0
+  case "$_fmcs_task_count" in ''|*[!0-9]*) _fmcs_task_count=0 ;; esac
+  if [ "$_fmcs_task_count" -eq 0 ]; then
+    _cloud_refill_exhausted=1
+    return 0
+  fi
+  _fmcs_run_id="$(cloud_run_id_from_result "$_fmcs_file")"
+  append_cloud_run_id "$_fmcs_run_id"
+  cloud_fetch_heartbeat "$_fmcs_run_id"
+  _fmcs_merged="$JOB_TMP_DIR/cloud-fetch-merged-$_cloud_refill_count.json"
+  node "$AGENT_DIR/builder-digest.mjs" merge-fetch-results \
+    --base "$_result_file" \
+    --next "$_fmcs_file" \
+    --out "$_fmcs_merged"
+  mv "$_fmcs_merged" "$_result_file"
+  _dynamic_queue_drained=0
+}
+
+library_worker_was_started() {
+  _lwws_name="${1:-}"
+  case " $_started_shard_names " in
+    *" $_lwws_name "*) return 0 ;;
+  esac
+  return 1
+}
+
+start_library_worker() {
+  _slw_shard_file="${1:-}"
+  [ -n "$_slw_shard_file" ] || return 0
+  [ -e "$_slw_shard_file" ] || return 0
+  _slw_shard_name="$(basename "$_slw_shard_file" .json)"
+  if library_worker_was_started "$_slw_shard_name"; then
+    return 0
+  fi
+  _slw_checkpoint_dir="$_results_dir/$_slw_shard_name-checkpoints"
+  mkdir -p "$_slw_checkpoint_dir"
+  (
+    BUILDER_BLOG_SHARD_FILE="$_slw_shard_file"
+    BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_slw_shard_name-result.json"
+    BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_slw_checkpoint_dir"
+    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR
+    if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+      OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_slw_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
+      export OPENCLAW_SESSION_ID
+    fi
+    PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
+    if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+      PROMPT_FILE="$(openclaw_worker_prompt_file "$_slw_shard_name" "$BUILDER_BLOG_SHARD_FILE" "$BUILDER_BLOG_SHARD_RESULT" "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR")"
+    fi
+    BUILDER_BLOG_LIBRARY_AGENT_STAGE=worker
+    export BUILDER_BLOG_LIBRARY_AGENT_STAGE
+    # Workers must never wait on interactive permission prompts, so they
+    # always use the pinned runtime's unattended invocation — even when the
+    # enclosing job is a one-time run.
+    IS_CRON_JOB=1
+    run_selected_runtime
+  ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
+  _worker_entries="$_worker_entries $!:$(date +%s):$_slw_shard_name"
+  _started_shard_names="$_started_shard_names $_slw_shard_name"
+  _started_worker_count=$(( _started_worker_count + 1 ))
+  echo "Started worker $_slw_shard_name (pid $!)."
+}
+
+start_pending_library_workers() {
+  _started_worker_count=0
+  for _splw_shard_file in "$_shards_dir"/shard-*.json; do
+    [ -e "$_splw_shard_file" ] || continue
+    start_library_worker "$_splw_shard_file"
+  done
+}
+
 run_library_job() {
   _fetch_command="${1:-fetch-personal}"
   _sync_command="${2:-sync-builders}"
@@ -2535,6 +2814,16 @@ run_library_job() {
   _sync_extra_args=""
   _cloud_run_id=""
   _last_cloud_heartbeat=0
+  _assigned_fetch_task_ids_file="$JOB_TMP_DIR/assigned-fetch-task-ids.txt"
+  _active_fetch_group_keys_file="$JOB_TMP_DIR/active-fetch-group-keys.txt"
+  _cloud_run_ids_file="$JOB_TMP_DIR/cloud-run-ids.txt"
+  _dynamic_queue_enabled=0
+  _dynamic_assignment_count=0
+  _dynamic_queue_drained=0
+  _cloud_refill_count=0
+  _cloud_refill_limit="$(cloud_refill_limit)"
+  _cloud_refill_exhausted=0
+  : > "$_cloud_run_ids_file"
 
   echo "FollowBrief $_job_label run: $MAX_PARALLEL_WORKERS worker(s)."
 
@@ -2545,10 +2834,11 @@ run_library_job() {
   _discovery_failed=0
   set +e
   if [ "$_fetch_command" = "fetch-cloud-library" ]; then
+    _cloud_fetch_source_limit="$(cloud_fetch_source_limit)"
     node "$AGENT_DIR/builder-digest.mjs" fetch-cloud-library \
       --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
       --post-limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
-      --limit "${BUILDER_BLOG_CLOUD_FETCH_LIMIT:-10}" \
+      --limit "$_cloud_fetch_source_limit" \
       ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file" 2> "$_fetch_stderr"
   else
     node "$AGENT_DIR/builder-digest.mjs" fetch-personal \
@@ -2567,24 +2857,20 @@ run_library_job() {
   fi
   cat "$_result_file"
   if [ "$_sync_command" = "sync-cloud-builders" ]; then
-    _cloud_run_id="$(node - "$_result_file" <<'NODE'
-const fs = require("fs");
-try {
-  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-  console.log(result.cloudRunId || "");
-} catch {
-  console.log("");
-}
-NODE
-	)"
+    _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
 	    if [ -n "$_cloud_run_id" ]; then
-	      _sync_extra_args="--cloud-run-id $_cloud_run_id"
+	      append_cloud_run_id "$_cloud_run_id"
 	      cloud_fetch_heartbeat "$_cloud_run_id"
 	    fi
 	  fi
   SYNC_BUILDERS_COMMAND="$_sync_command"
   SYNC_BUILDERS_EXTRA_ARGS="$_sync_extra_args"
-  export SYNC_BUILDERS_COMMAND SYNC_BUILDERS_EXTRA_ARGS
+  if [ "$_sync_command" = "sync-cloud-builders" ]; then
+    SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-run"
+  else
+    SYNC_PAYLOAD_SLICE_GRANULARITY="${SYNC_PAYLOAD_SLICE_GRANULARITY:-task}"
+  fi
+  export SYNC_BUILDERS_COMMAND SYNC_BUILDERS_EXTRA_ARGS SYNC_PAYLOAD_SLICE_GRANULARITY
 
   if library_has_discovery_tasks "$_result_file"; then
     echo "Discovery entries present; running the discovery agent pre-pass."
@@ -2663,11 +2949,17 @@ NODE
     return 65
   fi
 
-  job_run_update running "Sharding $_task_count fetch task(s)." "shard_started" --stage "shard_fetch_tasks"
-  node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
-    --tasks "$_result_file" \
-    --out-dir "$_shards_dir" \
-    --max-workers "$MAX_PARALLEL_WORKERS"
+  job_run_update running "Assigning $_task_count fetch task(s)." "shard_started" --stage "shard_fetch_tasks"
+  if [ "$_sync_command" = "sync-cloud-builders" ]; then
+    _dynamic_queue_enabled=1
+    : > "$_assigned_fetch_task_ids_file"
+    assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
+  else
+    node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
+      --tasks "$_result_file" \
+      --out-dir "$_shards_dir" \
+      --max-workers "$MAX_PARALLEL_WORKERS"
+  fi
 
   node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
     --tasks "$_result_file" \
@@ -2678,41 +2970,19 @@ NODE
   # finish before the outer runner timeout kills the whole run.
   _whole_timeout="$(job_timeout_seconds)"
   _shard_timeout="$(shard_timeout_seconds "$_whole_timeout")"
+  _cloud_refill_buffer=300
+  if [ "$_whole_timeout" -le 600 ]; then
+    _cloud_refill_buffer=$(( _whole_timeout / 2 ))
+  fi
+  _cloud_refill_stop_at=$(( $(date +%s) + _whole_timeout - _cloud_refill_buffer ))
   _worker_entries=""
   _skip_wait_pids=""
   _timed_out_worker_pids=""
+  _started_shard_names=""
   _checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
   : > "$_checkpoint_synced_ids_file"
   job_run_update running "Running source fetch workers." "workers_started" --stage "run_fetch_workers"
-  for _shard_file in "$_shards_dir"/shard-*.json; do
-    [ -e "$_shard_file" ] || continue
-    _shard_name="$(basename "$_shard_file" .json)"
-    _shard_checkpoint_dir="$_results_dir/$_shard_name-checkpoints"
-    mkdir -p "$_shard_checkpoint_dir"
-    (
-      BUILDER_BLOG_SHARD_FILE="$_shard_file"
-      BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_shard_name-result.json"
-      BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_shard_checkpoint_dir"
-      export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR
-      if [ "$PINNED_RUNTIME" = "openclaw" ]; then
-        OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
-        export OPENCLAW_SESSION_ID
-      fi
-      PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
-      if [ "$PINNED_RUNTIME" = "openclaw" ]; then
-        PROMPT_FILE="$(openclaw_worker_prompt_file "$_shard_name" "$BUILDER_BLOG_SHARD_FILE" "$BUILDER_BLOG_SHARD_RESULT" "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR")"
-      fi
-      BUILDER_BLOG_LIBRARY_AGENT_STAGE=worker
-      export BUILDER_BLOG_LIBRARY_AGENT_STAGE
-      # Workers must never wait on interactive permission prompts, so they
-      # always use the pinned runtime's unattended invocation — even when the
-      # enclosing job is a one-time run.
-      IS_CRON_JOB=1
-      run_selected_runtime
-    ) > "$_results_dir/$_shard_name-worker.log" 2>&1 &
-    _worker_entries="$_worker_entries $!:$(date +%s):$_shard_name"
-    echo "Started worker $_shard_name (pid $!)."
-  done
+  start_pending_library_workers
 
   while :; do
     _alive=0
@@ -2758,6 +3028,35 @@ NODE
         fi
       fi
 	    done
+	    if [ "$_dynamic_queue_enabled" -eq 1 ]; then
+	      _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
+	      if [ "$_free_slots" -gt 0 ]; then
+	        if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
+	          assign_dynamic_fetch_workers "$_free_slots"
+	          start_pending_library_workers
+	          if [ "${_started_worker_count:-0}" -gt 0 ]; then
+	            node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+	              --tasks "$_result_file" \
+	              --results-dir "$_results_dir" || true
+	            _alive=$(( _alive + _started_worker_count ))
+	          fi
+	        fi
+	        _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
+	        if [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
+	          fetch_more_cloud_sources
+	          if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
+	            assign_dynamic_fetch_workers "$_free_slots"
+	            start_pending_library_workers
+	            if [ "${_started_worker_count:-0}" -gt 0 ]; then
+	              node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+	                --tasks "$_result_file" \
+	                --results-dir "$_results_dir" || true
+	              _alive=$(( _alive + _started_worker_count ))
+	            fi
+	          fi
+	        fi
+	      fi
+	    fi
 	    [ "$_alive" -eq 0 ] && break
 	    if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "$_cloud_run_id" ]; then
 	      _cloud_heartbeat_interval="${BUILDER_BLOG_CLOUD_HEARTBEAT_SECONDS:-60}"
@@ -2765,7 +3064,7 @@ NODE
 	        ''|*[!0-9]*) _cloud_heartbeat_interval=60 ;;
 	      esac
 	      if [ $(( _now - _last_cloud_heartbeat )) -ge "$_cloud_heartbeat_interval" ]; then
-	        cloud_fetch_heartbeat "$_cloud_run_id"
+	        cloud_fetch_heartbeat_all
 	        _last_cloud_heartbeat="$_now"
 	      fi
 	    fi

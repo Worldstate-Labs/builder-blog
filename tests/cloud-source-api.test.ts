@@ -90,8 +90,8 @@ test("cloud source scheduler exposes DB-backed materialize and lease workflows",
   assert.match(scheduler, /export async function leaseCloudFetchTasks/);
   assert.match(scheduler, /planCloudFetchWindow/);
   assert.match(scheduler, /CloudFetchQueueItem_active_task_key/);
-  assert.match(scheduler, /workerSecondsPerHour/);
-  assert.match(scheduler, /maxActiveLeases/);
+  assert.match(scheduler, /tokenBudgetPerHour/);
+  assert.match(scheduler, /requestedLimit/);
   assert.match(scheduler, /leaseExpiresAt/);
 });
 

@@ -447,16 +447,11 @@ model CanonicalPost {
 
 model CloudFetchConfig {
   id                             String   @id @default("global")
-  maxTasksPerHour                Int      @default(20)
-  maxActiveLeases                Int      @default(20)
-  workerSecondsPerHour           Int      @default(3600)
-  defaultBatchSize               Int      @default(10)
+  tokenBudgetPerHour             Int      @default(1000000)
   leaseTtlMinutes                Int      @default(60)
   schedulingLeadMinutes          Int      @default(120)
-  planningHorizonHours           Int      @default(48)
   retryBaseMinutes               Int      @default(30)
   starvationReserveRatio         Float    @default(0.15)
-  retryReserveRatio              Float    @default(0.1)
   failureCircuitBreakerThreshold Int      @default(5)
   canonicalCooldownMinutes       Int      @default(60)
   durationColdStartBufferRatio   Float    @default(0.5)
@@ -514,11 +509,15 @@ model CloudSourceTask {
   consecutiveDeferrals        Int                   @default(0)
   lastDeferredAt              DateTime?
   estimatedDurationSeconds    Int?
+  estimatedTokenCost          Int?
   estimatedSuccessProbability Float?
+  estimatedPostYield          Float?
   durationP50Seconds          Int?
   durationP75Seconds          Int?
   durationP90Seconds          Int?
   durationSampleCount         Int                   @default(0)
+  tokenSampleCount            Int                   @default(0)
+  postYieldSampleCount        Int                   @default(0)
   successSampleCount          Int                   @default(0)
   circuitBreakerUntil         DateTime?
   circuitBreakerReason        String?

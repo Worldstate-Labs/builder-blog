@@ -7,32 +7,22 @@ import {
 export const CLOUD_FETCH_CONFIG_ID = "global";
 
 export const DEFAULT_CLOUD_FETCH_CONFIG = {
-  maxTasksPerHour: 20,
-  maxActiveLeases: 20,
-  workerSecondsPerHour: 3600,
-  defaultBatchSize: 10,
+  tokenBudgetPerHour: 1_000_000,
   leaseTtlMinutes: 60,
   schedulingLeadMinutes: 120,
-  planningHorizonHours: 48,
   retryBaseMinutes: 30,
   starvationReserveRatio: 0.15,
-  retryReserveRatio: 0.1,
   failureCircuitBreakerThreshold: 5,
   canonicalCooldownMinutes: 60,
   durationColdStartBufferRatio: 0.5,
 };
 
 const CloudFetchConfigPatchSchema = z.object({
-  maxTasksPerHour: z.number().int().min(1).max(500).optional(),
-  maxActiveLeases: z.number().int().min(1).max(500).optional(),
-  workerSecondsPerHour: z.number().int().min(60).max(86_400).optional(),
-  defaultBatchSize: z.number().int().min(1).max(100).optional(),
+  tokenBudgetPerHour: z.number().int().min(1_000).max(100_000_000).optional(),
   leaseTtlMinutes: z.number().int().min(5).max(240).optional(),
   schedulingLeadMinutes: z.number().int().min(0).max(1_440).optional(),
-  planningHorizonHours: z.number().int().min(1).max(168).optional(),
   retryBaseMinutes: z.number().int().min(5).max(720).optional(),
   starvationReserveRatio: z.number().min(0).max(0.5).optional(),
-  retryReserveRatio: z.number().min(0).max(0.5).optional(),
   failureCircuitBreakerThreshold: z.number().int().min(1).max(50).optional(),
   canonicalCooldownMinutes: z.number().int().min(0).max(1_440).optional(),
   durationColdStartBufferRatio: z.number().min(0).max(2).optional(),

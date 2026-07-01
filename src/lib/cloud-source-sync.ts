@@ -36,6 +36,10 @@ type CloudSyncTaskRow = {
   durationP75Seconds?: number | null;
   durationP90Seconds?: number | null;
   durationSampleCount: number;
+  estimatedTokenCost?: number | null;
+  tokenSampleCount: number;
+  estimatedPostYield?: number | null;
+  postYieldSampleCount: number;
   successSampleCount: number;
   estimatedSuccessProbability?: number | null;
 };
@@ -95,6 +99,10 @@ export async function applyCloudFetchTaskSyncResult(params: {
       durationP75Seconds: true,
       durationP90Seconds: true,
       durationSampleCount: true,
+      estimatedTokenCost: true,
+      tokenSampleCount: true,
+      estimatedPostYield: true,
+      postYieldSampleCount: true,
       successSampleCount: true,
       estimatedSuccessProbability: true,
     },
@@ -161,6 +169,8 @@ export async function applyCloudFetchTaskSyncResult(params: {
       ...nextCloudTaskRuntimeStats({
         task,
         actualDurationSeconds: params.result.actualDurationSeconds,
+        usageTokens: params.result.usageTokens,
+        syncedPosts: params.result.syncedPosts,
         succeeded,
       }),
     },
@@ -180,19 +190,46 @@ export async function applyCloudFetchTaskSyncResult(params: {
 function nextCloudTaskRuntimeStats(params: {
   task: CloudSyncTaskRow;
   actualDurationSeconds?: number | null;
+  usageTokens?: number | null;
+  syncedPosts?: number | null;
   succeeded: boolean;
 }) {
   const actualDurationSeconds = positiveIntegerOrNull(params.actualDurationSeconds);
+  const usageTokens = positiveIntegerOrNull(params.usageTokens);
+  const syncedPosts = nonNegativeIntegerOrNull(params.syncedPosts);
   const durationSampleCount =
     params.task.durationSampleCount + (actualDurationSeconds == null ? 0 : 1);
+  const tokenSampleCount = params.task.tokenSampleCount + (usageTokens == null ? 0 : 1);
+  const postYieldSampleCount =
+    params.task.postYieldSampleCount + (syncedPosts == null ? 0 : 1);
   const successSampleCount = params.task.successSampleCount + 1;
   const estimatedSuccessProbability = movingAverageRatio({
     previousAverage: params.task.estimatedSuccessProbability,
     previousSamples: params.task.successSampleCount,
     nextValue: params.succeeded ? 1 : 0,
   });
+  const tokenStats = usageTokens == null
+    ? {}
+    : {
+        tokenSampleCount,
+        estimatedTokenCost: movingAverage({
+          previousAverage: params.task.estimatedTokenCost,
+          previousSamples: params.task.tokenSampleCount,
+          nextValue: usageTokens,
+        }),
+      };
+  const postYieldStats = syncedPosts == null
+    ? {}
+    : {
+        postYieldSampleCount,
+        estimatedPostYield: movingAverageFloat({
+          previousAverage: params.task.estimatedPostYield,
+          previousSamples: params.task.postYieldSampleCount,
+          nextValue: syncedPosts,
+        }),
+      };
   if (actualDurationSeconds == null) {
-    return { successSampleCount, estimatedSuccessProbability };
+    return { successSampleCount, estimatedSuccessProbability, ...tokenStats, ...postYieldStats };
   }
 
   const durationP50Seconds = movingAverage({
@@ -224,7 +261,15 @@ function nextCloudTaskRuntimeStats(params: {
     estimatedDurationSeconds: durationP75Seconds,
     successSampleCount,
     estimatedSuccessProbability,
+    ...tokenStats,
+    ...postYieldStats,
   };
+}
+
+function nonNegativeIntegerOrNull(value: unknown) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return Math.floor(numeric);
 }
 
 async function recomputeCloudFetchRun(
@@ -281,6 +326,19 @@ function movingAverage(params: {
   const previousAverage = positiveIntegerOrNull(params.previousAverage) ?? params.nextValue;
   const previousSamples = Math.max(0, params.previousSamples);
   return Math.round((previousAverage * previousSamples + params.nextValue) / (previousSamples + 1));
+}
+
+function movingAverageFloat(params: {
+  previousAverage?: number | null;
+  previousSamples: number;
+  nextValue: number;
+}) {
+  const previousAverage =
+    typeof params.previousAverage === "number" && Number.isFinite(params.previousAverage)
+      ? params.previousAverage
+      : params.nextValue;
+  const previousSamples = Math.max(0, params.previousSamples);
+  return (previousAverage * previousSamples + params.nextValue) / (previousSamples + 1);
 }
 
 function movingAverageRatio(params: {

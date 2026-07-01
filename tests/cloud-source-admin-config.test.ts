@@ -8,32 +8,22 @@ import {
 
 test("cloud fetch config patch accepts bounded scheduler controls", () => {
   const normalized = normalizeCloudFetchConfigPatchInput({
-    maxTasksPerHour: 50,
-    maxActiveLeases: 20,
-    workerSecondsPerHour: 7200,
-    defaultBatchSize: 10,
+    tokenBudgetPerHour: 2_000_000,
     leaseTtlMinutes: 90,
     schedulingLeadMinutes: 120,
-    planningHorizonHours: 72,
     retryBaseMinutes: 30,
     starvationReserveRatio: 0.15,
-    retryReserveRatio: 0.1,
     failureCircuitBreakerThreshold: 5,
     canonicalCooldownMinutes: 60,
     durationColdStartBufferRatio: 0.5,
   });
 
   assert.deepEqual(normalized, {
-    maxTasksPerHour: 50,
-    maxActiveLeases: 20,
-    workerSecondsPerHour: 7200,
-    defaultBatchSize: 10,
+    tokenBudgetPerHour: 2_000_000,
     leaseTtlMinutes: 90,
     schedulingLeadMinutes: 120,
-    planningHorizonHours: 72,
     retryBaseMinutes: 30,
     starvationReserveRatio: 0.15,
-    retryReserveRatio: 0.1,
     failureCircuitBreakerThreshold: 5,
     canonicalCooldownMinutes: 60,
     durationColdStartBufferRatio: 0.5,
@@ -42,17 +32,29 @@ test("cloud fetch config patch accepts bounded scheduler controls", () => {
 
 test("cloud fetch config patch rejects unsafe scheduler budgets", () => {
   assert.throws(
-    () => normalizeCloudFetchConfigPatchInput({ maxTasksPerHour: 0 }),
-    /maxTasksPerHour/,
-  );
-  assert.throws(
-    () => normalizeCloudFetchConfigPatchInput({ workerSecondsPerHour: 59 }),
-    /workerSecondsPerHour/,
+    () => normalizeCloudFetchConfigPatchInput({ tokenBudgetPerHour: 999 }),
+    /tokenBudgetPerHour/,
   );
   assert.throws(
     () => normalizeCloudFetchConfigPatchInput({ durationColdStartBufferRatio: 2.01 }),
     /durationColdStartBufferRatio/,
   );
+});
+
+test("cloud fetch config patch rejects removed server-side concurrency knobs", () => {
+  for (const key of [
+    "maxTasksPerHour",
+    "workerSecondsPerHour",
+    "maxActiveLeases",
+    "defaultBatchSize",
+    "planningHorizonHours",
+    "retryReserveRatio",
+  ]) {
+    assert.throws(
+      () => normalizeCloudFetchConfigPatchInput({ [key]: 1 }),
+      new RegExp(key),
+    );
+  }
 });
 
 test("cloud language library patch resolves fixed language and owner lookup", () => {

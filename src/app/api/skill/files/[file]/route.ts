@@ -67,14 +67,15 @@ export async function GET(_request: Request, { params }: Params) {
   // Expand {{INCLUDE:...}} directives so the library job prompts share one
   // copy of the fetch-task contract. No-op for files without directives.
   let content = await expandSkillIncludes(raw);
-  // {{AGENT_RUNTIME}}, {{FETCH_FLAG}}, and {{FETCH_DAYS}} are per-copy settings,
-  // normally substituted by the jobs route from query params. The raw file is
-  // also served here (the runner refreshes its local copy from this route), so
-  // neutralize them to the normal auto-runtime, non-override 30-day path.
+  // These placeholders are per-copy settings, normally substituted by the jobs
+  // route from query params. The raw file is also served here (the runner
+  // refreshes its local copy from this route), so neutralize them to the normal
+  // auto-runtime, non-override path.
   content = content.replaceAll("{{AGENT_RUNTIME}}", "");
   content = content.replaceAll("{{FETCH_FLAG}}", "");
   content = content.replaceAll("{{FETCH_DAYS}}", "30");
   content = content.replaceAll("{{PARALLEL_WORKERS}}", "1");
+  content = content.replaceAll("{{FETCH_LIMIT}}", "3");
   return new Response(content, {
     headers: {
       "content-type": asset.contentType,

@@ -41,12 +41,8 @@ test("cloud fetch config and tasks include duration-aware scheduling safeguards"
   const schema = source("prisma/schema.prisma");
 
   for (const field of [
-    "maxTasksPerHour",
-    "maxActiveLeases",
-    "workerSecondsPerHour",
-    "planningHorizonHours",
+    "tokenBudgetPerHour",
     "starvationReserveRatio",
-    "retryReserveRatio",
     "failureCircuitBreakerThreshold",
     "canonicalCooldownMinutes",
     "durationColdStartBufferRatio",
@@ -58,11 +54,15 @@ test("cloud fetch config and tasks include duration-aware scheduling safeguards"
     "consecutiveDeferrals",
     "lastDeferredAt",
     "estimatedDurationSeconds",
+    "estimatedTokenCost",
     "estimatedSuccessProbability",
+    "estimatedPostYield",
     "durationP50Seconds",
     "durationP75Seconds",
     "durationP90Seconds",
     "durationSampleCount",
+    "tokenSampleCount",
+    "postYieldSampleCount",
     "successSampleCount",
     "circuitBreakerUntil",
     "circuitBreakerReason",
@@ -74,9 +74,32 @@ test("cloud fetch config and tasks include duration-aware scheduling safeguards"
     "estimatedDurationSeconds",
     "actualDurationSeconds",
     "successProbabilitySnapshot",
+    "usageTokens",
   ]) {
     assert.match(schema, new RegExp(`\\n\\s*${field}\\s+`), `CloudFetchRunTask is missing ${field}`);
   }
+
+  for (const removedField of [
+    "maxTasksPerHour",
+    "maxActiveLeases",
+    "workerSecondsPerHour",
+    "defaultBatchSize",
+    "planningHorizonHours",
+    "retryReserveRatio",
+  ]) {
+    assert.doesNotMatch(
+      schema,
+      new RegExp(`model CloudFetchConfig \\{[\\s\\S]*\\n\\s*${removedField}\\s+`),
+      `CloudFetchConfig still exposes removed field ${removedField}`,
+    );
+  }
+});
+
+test("cloud fetch post yield migration adds scheduler value stats", () => {
+  const migration = source("prisma/migrations/000082_cloud_fetch_post_yield/migration.sql");
+
+  assert.match(migration, /ADD COLUMN "estimatedPostYield"/);
+  assert.match(migration, /ADD COLUMN "postYieldSampleCount"/);
 });
 
 test("cloud source fetch migration creates queue uniqueness and foreign keys", () => {
@@ -98,4 +121,22 @@ test("cloud source fetch migration creates queue uniqueness and foreign keys", (
   assert.match(migration, /WHERE "status" IN \('QUEUED', 'LEASED'\)/);
   assert.match(migration, /REFERENCES "Builder"\("id"\) ON DELETE CASCADE/);
   assert.match(migration, /REFERENCES "LibraryHubEntry"\("id"\) ON DELETE SET NULL/);
+});
+
+test("cloud fetch token budget migration replaces server concurrency knobs", () => {
+  const migration = source("prisma/migrations/000081_cloud_fetch_token_budget/migration.sql");
+
+  assert.match(migration, /ADD COLUMN "tokenBudgetPerHour"/);
+  assert.match(migration, /ADD COLUMN "estimatedTokenCost"/);
+  assert.match(migration, /ADD COLUMN "tokenSampleCount"/);
+  for (const removedField of [
+    "maxTasksPerHour",
+    "maxActiveLeases",
+    "workerSecondsPerHour",
+    "defaultBatchSize",
+    "planningHorizonHours",
+    "retryReserveRatio",
+  ]) {
+    assert.match(migration, new RegExp(`DROP COLUMN "${removedField}"`));
+  }
 });

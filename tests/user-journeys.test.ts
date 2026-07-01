@@ -654,11 +654,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Every week/);
   assert.doesNotMatch(skillPromptActions, /08:00|Mon 08:00/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
-  assert.match(skillJobRoute, /searchParams\.get\("days"\)/);
+  assert.match(skillJobRoute, /boundedIntegerParam\(url\.searchParams, "days", 30, 1, 90\)/);
   assert.match(skillJobRoute, /searchParams\.get\("parallel"\)/);
   assert.match(skillJobRoute, /Number\.isInteger\(parallelRaw\)/);
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
+  assert.doesNotMatch(skillJobRoute, /\{\{CLOUD_FETCH_LIMIT\}\}/);
+  assert.match(skillJobRoute, /\{\{FETCH_LIMIT\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
@@ -1353,7 +1355,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /Gateway tool calls may not inherit the/);
   assert.match(runner, /do not search for the shard assignment or result path/);
   assert.match(runner, /export BUILDER_BLOG_SHARD_FILE=\$\(shell_quote "\$_ocp_shard_file"\)/);
-  assert.match(runner, /PROMPT_FILE="\$\(openclaw_worker_prompt_file "\$_shard_name"/);
+  assert.match(runner, /PROMPT_FILE="\$\(openclaw_worker_prompt_file "\$_slw_shard_name"/);
   assert.match(runner, /PROMPT_FILE="\$\(openclaw_discovery_prompt_file "\$_result_file"/);
   assert.match(
     runner,

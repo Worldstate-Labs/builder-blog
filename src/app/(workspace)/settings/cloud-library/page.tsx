@@ -6,9 +6,10 @@ import { AdminCloudFetchRunActions } from "@/components/AdminCloudFetchRunAction
 import { AdminCloudLibraryExplorer } from "@/components/AdminCloudLibraryExplorer";
 import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
+import { getAgentJobRuns } from "@/lib/agent-job-runs";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
-import { serializeCloudFetchRun } from "@/lib/cloud-fetch-run-log";
+import { serializeCloudFetchRun, serializeCloudWorkerHost } from "@/lib/cloud-fetch-run-log";
 import { CLOUD_FETCH_CONFIG_ID, serializeCloudFetchConfig } from "@/lib/cloud-source-config";
 import {
   serializeCloudLibrary,
@@ -24,7 +25,7 @@ export default async function CloudLibraryManagementPage() {
   if (!isAdminEmail(session.user.email)) redirect("/settings");
   const userId = session.user.id;
 
-  const [tokens, runRows, libraryRows, cloudConfig] = await Promise.all([
+  const [tokens, runRows, jobRuns, libraryRows, cloudConfig] = await Promise.all([
     prisma.agentToken.findMany({
       where: { userId, revokedAt: null },
       orderBy: { createdAt: "desc" },
@@ -40,6 +41,7 @@ export default async function CloudLibraryManagementPage() {
         },
       },
     }),
+    getAgentJobRuns(userId, "cloud-library-fetch", 5),
     prisma.cloudLanguageLibrary.findMany({
       orderBy: { summaryLanguage: "asc" },
       include: {
@@ -67,7 +69,12 @@ export default async function CloudLibraryManagementPage() {
   ]);
 
   const hasMore = runRows.length > PAGE_SIZE;
-  const runs = runRows.slice(0, PAGE_SIZE).map(serializeCloudFetchRun);
+  const leaseBatches = runRows.slice(0, PAGE_SIZE).map(serializeCloudFetchRun);
+  const workerHost = serializeCloudWorkerHost(
+    jobRuns.find((job) => job.status === "running" || job.status === "starting") ??
+      jobRuns[0] ??
+      null,
+  );
 
   // Counts per cloud-owner builder, batched with groupBy to avoid N+1.
   const builderIds = libraryRows.flatMap((library) =>
@@ -107,7 +114,7 @@ export default async function CloudLibraryManagementPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Cloud library management"
-        description="Trigger the cloud source fetch from your local agent, review each polling round, and inspect every cloud library's sources."
+        description="Monitor the admin worker host, its local post queue, and the cloud source batches feeding it."
       />
 
       <div className="workspace-content-stack settings-workspace">
@@ -133,10 +140,10 @@ export default async function CloudLibraryManagementPage() {
           <details className="settings-rules-panel fb-panel" open>
             <summary className="settings-rules-summary">
               <div className="settings-rules-summary-copy">
-                <h3 className="fb-section-heading">Cloud fetch log</h3>
+                <h3 className="fb-section-heading">Worker host activity</h3>
                 <p className="settings-rules-summary-desc">
-                  Each entry is one polling round — a leased batch of cloud source tasks. Expand an
-                  entry to see per-source outcomes.
+                  The host is the long-running local agent. Lease batches below are cloud source
+                  deliveries; post task status comes from the local queue and sync results.
                 </p>
               </div>
               <span className="settings-rules-toggle-icon" aria-hidden="true">
@@ -144,7 +151,11 @@ export default async function CloudLibraryManagementPage() {
               </span>
             </summary>
             <div className="settings-rules-body">
-              <AdminCloudFetchLog initialRuns={runs} initialHasMore={hasMore} />
+              <AdminCloudFetchLog
+                initialWorkerHost={workerHost}
+                initialLeaseBatches={leaseBatches}
+                initialHasMore={hasMore}
+              />
             </div>
           </details>
 

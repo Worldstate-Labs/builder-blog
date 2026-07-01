@@ -48,6 +48,18 @@ function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+function boundedIntegerParam(
+  searchParams: URLSearchParams,
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+): string {
+  const raw = Number(searchParams.get(name) ?? String(fallback));
+  if (!Number.isFinite(raw)) return String(fallback);
+  return String(Math.min(max, Math.max(min, Math.floor(raw))));
+}
+
 function withOpenClawSetupChildParams(rawUrl: string, email: string): string {
   const nextUrl = new URL(rawUrl);
   nextUrl.searchParams.delete("ec");
@@ -357,22 +369,26 @@ export async function GET(request: Request, { params }: Params) {
 
   // Library fetch lookback window. Closed numeric range so a copied prompt can
   // only bake a bounded day count into shell commands and cron pins.
-  const daysRaw = Number(url.searchParams.get("days") ?? "30");
-  const fetchDays =
-    Number.isFinite(daysRaw) && daysRaw >= 1
-      ? String(Math.min(90, Math.floor(daysRaw)))
-      : "30";
+  const fetchDays = boundedIntegerParam(url.searchParams, "days", 30, 1, 90);
 
   // Library worker fan-out. Closed numeric range; absent/invalid uses the
   // current UI default.
-  const parallelRaw = Number(url.searchParams.get("parallel") ?? "5");
+  const isCloudLibraryJob = job.startsWith("cloud-library");
+  const isLibraryJob = job.startsWith("library") || isCloudLibraryJob;
+  const parallelDefault = isCloudLibraryJob ? 1 : 5;
+  const parallelRaw = Number(url.searchParams.get("parallel") ?? String(parallelDefault));
   const parallelWorkers =
-    job.startsWith("library") &&
+    isLibraryJob &&
     Number.isFinite(parallelRaw) &&
     Number.isInteger(parallelRaw) &&
     parallelRaw >= 1
       ? String(Math.min(8, Math.floor(parallelRaw)))
-      : "5";
+      : String(parallelDefault);
+
+  // Cloud source fetch run knobs. These affect only the local admin runner:
+  // how many posts it plans per leased source and how much local fan-out it permits.
+  // Source lease request sizes are runner-owned.
+  const fetchLimit = boundedIntegerParam(url.searchParams, "postLimit", 3, 1, 20);
 
   let content = await readFile(join(process.cwd(), path), "utf8");
   // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before
@@ -397,6 +413,7 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
     .replaceAll("{{FETCH_DAYS}}", fetchDays)
     .replaceAll("{{PARALLEL_WORKERS}}", parallelWorkers)
+    .replaceAll("{{FETCH_LIMIT}}", fetchLimit)
     // Digest analogue of the fetch force flag. The digest job never fetches —
     // here `force=1` means "re-generate today's digest" (re-cover the full
     // window + replace today's existing digest). Two placeholders mirror the

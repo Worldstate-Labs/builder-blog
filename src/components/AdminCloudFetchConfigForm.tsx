@@ -11,16 +11,11 @@ import {
 } from "@/components/settings/SettingsFields";
 
 export type AdminCloudFetchConfig = {
-  maxTasksPerHour: number;
-  maxActiveLeases: number;
-  workerSecondsPerHour: number;
-  defaultBatchSize: number;
+  tokenBudgetPerHour: number;
   leaseTtlMinutes: number;
   schedulingLeadMinutes: number;
-  planningHorizonHours: number;
   retryBaseMinutes: number;
   starvationReserveRatio: number;
-  retryReserveRatio: number;
   failureCircuitBreakerThreshold: number;
   canonicalCooldownMinutes: number;
   durationColdStartBufferRatio: number;
@@ -37,29 +32,36 @@ export type AdminCloudLanguageLibrary = {
 };
 
 type Status = SaveStatusState;
-type ConfigDraft = Record<keyof Omit<AdminCloudFetchConfig, "updatedAt">, string>;
+type EditableConfigKey =
+  | "tokenBudgetPerHour"
+  | "retryBaseMinutes"
+  | "failureCircuitBreakerThreshold"
+  | "canonicalCooldownMinutes";
+type ConfigDraft = Record<EditableConfigKey, string>;
 
-const CONFIG_FIELDS: Array<{
-  key: keyof ConfigDraft;
+const BUDGET_CONFIG_FIELDS: Array<{
+  key: EditableConfigKey;
   label: string;
   min: number;
   max: number;
   step?: number;
 }> = [
-  { key: "maxTasksPerHour", label: "Max tasks per hour", min: 1, max: 500 },
-  { key: "maxActiveLeases", label: "Max active leases", min: 1, max: 500 },
-  { key: "workerSecondsPerHour", label: "Worker seconds per hour", min: 60, max: 86_400 },
-  { key: "defaultBatchSize", label: "Default batch size", min: 1, max: 100 },
-  { key: "leaseTtlMinutes", label: "Lease TTL minutes", min: 5, max: 240 },
-  { key: "schedulingLeadMinutes", label: "Scheduling lead minutes", min: 0, max: 1_440 },
-  { key: "planningHorizonHours", label: "Planning horizon hours", min: 1, max: 168 },
+  { key: "tokenBudgetPerHour", label: "Token budget per hour", min: 1_000, max: 100_000_000 },
+];
+
+const ADVANCED_CONFIG_FIELDS: Array<{
+  key: EditableConfigKey;
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+}> = [
   { key: "retryBaseMinutes", label: "Retry base minutes", min: 5, max: 720 },
-  { key: "starvationReserveRatio", label: "Starvation reserve ratio", min: 0, max: 0.5, step: 0.01 },
-  { key: "retryReserveRatio", label: "Retry reserve ratio", min: 0, max: 0.5, step: 0.01 },
   { key: "failureCircuitBreakerThreshold", label: "Failure breaker threshold", min: 1, max: 50 },
   { key: "canonicalCooldownMinutes", label: "Canonical cooldown minutes", min: 0, max: 1_440 },
-  { key: "durationColdStartBufferRatio", label: "Cold-start duration buffer", min: 0, max: 2, step: 0.01 },
 ];
+
+const CONFIG_FIELDS = [...BUDGET_CONFIG_FIELDS, ...ADVANCED_CONFIG_FIELDS];
 
 export function AdminCloudFetchConfigForm({
   initialConfig,
@@ -164,10 +166,10 @@ export function AdminCloudFetchConfigForm({
     <div className="settings-config-form cloud-fetch-config-form">
       <Section
         step="01"
-        title="Scheduler"
-        description="Controls cloud source queueing, leases, retries, and fairness reserves."
+        title="Cloud budget"
+        description="Caps the total tokens the cloud source fetcher can spend each hour."
       >
-        {CONFIG_FIELDS.map((field) => (
+        {BUDGET_CONFIG_FIELDS.map((field) => (
           <FieldNumber
             key={field.key}
             label={field.label}
@@ -250,6 +252,33 @@ export function AdminCloudFetchConfigForm({
             </span>
           ) : null}
         </div>
+      </Section>
+
+      <Section
+        step="03"
+        title="Advanced cloud safety"
+        description="Controls retry backoff and cooldowns for failing or recently claimed sources."
+      >
+        {ADVANCED_CONFIG_FIELDS.map((field) => (
+          <FieldNumber
+            key={field.key}
+            label={field.label}
+            value={draft[field.key]}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            onChange={(value) => updateConfig(field.key, value)}
+          />
+        ))}
+        <FooterBar
+          dirty={dirty}
+          isPending={isConfigPending}
+          status={configStatus}
+          updatedAt={config.updatedAt}
+          onSave={saveConfig}
+          onReset={resetConfig}
+          onStatusAutoDismiss={() => setConfigStatus({ kind: "idle" })}
+        />
       </Section>
     </div>
   );

@@ -6,7 +6,7 @@ import test from "node:test";
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
 
-test("admin cloud fetch runs route is admin-gated and serializes cloud runs", () => {
+test("admin cloud fetch runs route is admin-gated and serializes worker host plus lease batches", () => {
   const route = source("src/app/api/admin/cloud-fetch/runs/route.ts");
 
   assert.match(route, /export async function GET/);
@@ -14,6 +14,9 @@ test("admin cloud fetch runs route is admin-gated and serializes cloud runs", ()
   assert.match(route, /NextResponse\.json\(\{ error: auth\.error \}/);
   assert.match(route, /cloudFetchRun\.findMany/);
   assert.match(route, /serializeCloudFetchRun/);
+  assert.match(route, /serializeCloudWorkerHost/);
+  assert.match(route, /leaseBatches/);
+  assert.match(route, /workerHost/);
   assert.match(route, /builder: \{ select: \{ name: true, sourceType: true \} \}/);
 });
 
@@ -49,6 +52,14 @@ test("cloud run actions component copies prompts for both cloud jobs via exchang
   assert.match(actions, /cloud-library-cron-setup/);
   assert.match(actions, /exchange-code/);
   assert.match(actions, /\/api\/skill\/jobs\//);
+  assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
+  assert.match(actions, /cloud-run-post-limit/);
+  assert.match(actions, /cloud-run-fetch-days/);
+  assert.match(actions, /cloud-run-parallel-workers/);
+  assert.doesNotMatch(actions, /params\.set\("cloudLimit"/);
+  assert.match(actions, /params\.set\("postLimit"/);
+  assert.match(actions, /params\.set\("days"/);
+  assert.match(actions, /params\.set\("parallel"/);
 });
 
 test("cloud run actions fold run-once into the frequency select instead of a second button", () => {
@@ -64,6 +75,12 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   const log = source("src/components/AdminCloudFetchLog.tsx");
 
   assert.match(log, /\/api\/admin\/cloud-fetch\/runs/);
+  assert.match(log, /initialWorkerHost/);
+  assert.match(log, /initialLeaseBatches/);
+  assert.match(log, /workerHost/);
+  assert.match(log, /leaseBatches/);
+  assert.match(log, /Post task queue/);
+  assert.match(log, /Lease batches/);
   assert.match(log, /tasksClaimed/);
 });
 
@@ -84,12 +101,17 @@ test("cloud fetch log reuses the personal fetch log's per-post staged renderer",
   assert.match(panel, /export type FetchTaskProgress/);
 });
 
-test("cloud runs use a distinct jobType so they never leak into a personal fetch log", () => {
+test("cloud worker host uses a distinct jobType so it never leaks into a personal fetch log", () => {
   // Server accepts the cloud jobType.
   const jobRunsRoute = source("src/app/api/skill/job-runs/route.ts");
   assert.match(jobRunsRoute, /jobType: z\.enum\(\["library-fetch", "cloud-library-fetch", "digest-build"\]\)/);
 
-  // The cloud management page reads cloud-library-fetch live progress...
+  // The cloud management page and admin log endpoint read cloud-library-fetch
+  // worker host progress...
+  const cloudPage = source("src/app/(workspace)/settings/cloud-library/page.tsx");
+  assert.match(cloudPage, /getAgentJobRuns\(userId, "cloud-library-fetch", 5\)/);
+  assert.match(cloudPage, /serializeCloudWorkerHost/);
+  assert.match(cloudPage, /initialWorkerHost/);
   const cloudRunsRoute = source("src/app/api/admin/cloud-fetch/runs/route.ts");
   assert.match(cloudRunsRoute, /getAgentJobRuns\(auth\.user\.id, "cloud-library-fetch", 5\)/);
 

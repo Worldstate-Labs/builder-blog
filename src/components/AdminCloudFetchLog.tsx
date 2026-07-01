@@ -1,31 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
 import type {
   CloudFetchPostOutcome,
   CloudFetchRunLogItem,
   CloudFetchRunLogTask,
+  CloudWorkerHostStatus,
+  CloudWorkerHostTask,
 } from "@/lib/cloud-fetch-run-log";
 
-type LiveProgress = {
-  stage: string | null;
-  updatedAt: string | null;
-  runtime: string | null;
-  sourcesTotal: number | null;
-  sourcesChecked: number | null;
-  tasksPlanned: number | null;
-  tasksDone: number | null;
-  synced: number | null;
-  failed: number | null;
-  skipped: number | null;
-  currentSource: string | null;
+type CloudFetchRunsResponse = {
+  leaseBatches?: CloudFetchRunLogItem[];
+  runs?: CloudFetchRunLogItem[];
+  hasMore?: boolean;
+  workerHost?: CloudWorkerHostStatus | null;
+  error?: string;
 };
 
-function mergeRuns(current: CloudFetchRunLogItem[], incoming: CloudFetchRunLogItem[]) {
-  const byId = new Map(current.map((run) => [run.id, run]));
-  for (const run of incoming) byId.set(run.id, run);
+function mergeLeaseBatches(
+  current: CloudFetchRunLogItem[],
+  incoming: CloudFetchRunLogItem[],
+) {
+  const byId = new Map(current.map((batch) => [batch.id, batch]));
+  for (const batch of incoming) byId.set(batch.id, batch);
   return Array.from(byId.values()).sort(
     (a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt),
   );
@@ -46,25 +45,67 @@ function formatTime(iso: string): string {
   }
 }
 
+function formatNullableTime(iso: string | null): string {
+  return iso ? formatTime(iso) : "Never";
+}
+
 function formatDuration(ms: number | null): string {
-  if (ms == null) return "—";
+  if (ms == null) return "-";
   const seconds = Math.round(ms / 1000);
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ${seconds - minutes * 60}s`;
 }
 
-function statusClass(status: string): string {
-  if (status === "SUCCEEDED" || status === "synced") return "is-ok";
-  if (status === "PARTIAL" || status === "RUNNING" || status === "skipped") return "is-partial";
+function formatStage(value: string | null): string {
+  return value ? value.replace(/_/g, " ") : "idle";
+}
+
+function formatMetric(value: number | null): string {
+  return value == null ? "-" : value.toLocaleString();
+}
+
+function statusClass(status: string | null): string {
+  const normalized = String(status ?? "").toLowerCase();
+  if (!normalized || normalized === "offline" || normalized === "no worker host seen") {
+    return "is-muted";
+  }
+  if (normalized === "succeeded" || normalized === "synced" || normalized === "online" || normalized === "ok") {
+    return "is-ok";
+  }
+  if (
+    normalized === "partial" ||
+    normalized === "running" ||
+    normalized === "starting" ||
+    normalized === "skipped" ||
+    normalized === "planned" ||
+    normalized === "queued" ||
+    normalized === "fetched" ||
+    normalized === "summarized" ||
+    normalized === "stale"
+  ) {
+    return "is-partial";
+  }
   return "is-failed";
 }
 
+function taskLabel(task: CloudWorkerHostTask): string {
+  return task.title ?? task.url ?? task.id;
+}
+
+function sortedWorkerTasks(tasks: CloudWorkerHostTask[]): CloudWorkerHostTask[] {
+  return [...tasks].sort((a, b) => {
+    const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+    const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+    return bTime - aTime;
+  });
+}
+
 // Reuse the personal fetch log's per-post staged renderer (TaskRow) so each
-// cloud source's posts show the same read → summarize → sync lifecycle and
-// per-stage debug facts. The sync CLI records each cloud source's per-post
-// outcomes in the same shape, so we map CloudFetchPostOutcome back into the
-// FetchTaskLog TaskRow expects. Finished rounds have no live overlay.
+// cloud source's posts show the same read/summarize/sync lifecycle and per-stage
+// debug facts. The sync CLI records each cloud source's per-post outcomes in the
+// same shape, so we map CloudFetchPostOutcome back into the FetchTaskLog TaskRow
+// expects. Finished lease batches have no live overlay.
 const EMPTY_LIVE_TASKS = new Map<string, FetchTaskProgress>();
 
 function postToFetchTaskLog(
@@ -88,18 +129,149 @@ function postToFetchTaskLog(
   };
 }
 
+function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
+  return [
+    workerHost.hostname ?? "No host",
+    workerHost.platform,
+    workerHost.runtime,
+    workerHost.localWorkers != null
+      ? `${workerHost.localWorkers} ${workerHost.localWorkers === 1 ? "worker" : "workers"}`
+      : null,
+    `heartbeat ${formatNullableTime(workerHost.heartbeatAt)}`,
+  ].filter(Boolean) as string[];
+}
+
+function WorkerHostPanel({ workerHost }: { workerHost: CloudWorkerHostStatus }) {
+  const progress = workerHost.progress;
+  const tasks = useMemo(() => sortedWorkerTasks(workerHost.tasks).slice(0, 20), [workerHost.tasks]);
+  const events = workerHost.recentEvents.slice(-5).reverse();
+  const sourceProgress =
+    progress?.sourcesTotal != null
+      ? `${formatMetric(progress.sourcesChecked ?? 0)}/${formatMetric(progress.sourcesTotal)}`
+      : "-";
+  const postProgress =
+    progress?.tasksPlanned != null
+      ? `${formatMetric(progress.tasksDone ?? 0)}/${formatMetric(progress.tasksPlanned)}`
+      : "-";
+
+  return (
+    <section className="cloud-worker-host" aria-label="Worker host">
+      <div className="cloud-worker-host-head">
+        <div className="cloud-worker-host-titleblock">
+          <div className="cloud-worker-host-titleline">
+            <span className={`cloud-status-chip ${statusClass(workerHost.status)}`}>
+              {workerHost.statusLabel}
+            </span>
+            <h4 className="cloud-worker-host-title">Worker host</h4>
+          </div>
+          <p className="cloud-worker-host-meta">{workerHostMeta(workerHost).join(" · ")}</p>
+        </div>
+        {workerHost.summary ? <p className="cloud-worker-host-summary">{workerHost.summary}</p> : null}
+      </div>
+
+      <div className="cloud-worker-host-metrics" aria-label="Worker host metrics">
+        <div className="cloud-worker-host-metric">
+          <span>Stage</span>
+          <strong>{formatStage(progress?.stage ?? workerHost.stage)}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Post tasks</span>
+          <strong>{postProgress}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Sources</span>
+          <strong>{sourceProgress}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Synced</span>
+          <strong>{formatMetric(progress?.synced ?? null)}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Failed</span>
+          <strong>{formatMetric(progress?.failed ?? null)}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Skipped</span>
+          <strong>{formatMetric(progress?.skipped ?? null)}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Action needed</span>
+          <strong>{formatMetric(progress?.actionNeeded ?? null)}</strong>
+        </div>
+      </div>
+
+      {progress?.currentSource || progress?.currentTask ? (
+        <p className="cloud-worker-host-current">
+          {progress.currentSource ? <span>{progress.currentSource}</span> : null}
+          {progress.currentTask ? <span>{progress.currentTask}</span> : null}
+        </p>
+      ) : null}
+
+      <div className="cloud-worker-task-section">
+        <div className="cloud-worker-task-section-head">
+          <h5>Post task queue</h5>
+          <span>{tasks.length} recent</span>
+        </div>
+        {tasks.length === 0 ? (
+          <p className="cron-field-hint">No post task activity yet.</p>
+        ) : (
+          <ul className="cloud-worker-task-list">
+            {tasks.map((task) => (
+              <li key={task.id} className="cloud-worker-task-row">
+                <span className={`cloud-status-chip ${statusClass(task.status)}`}>
+                  {task.status ?? "queued"}
+                </span>
+                <span className="cloud-worker-task-main">
+                  <span className="cloud-worker-task-title">{taskLabel(task)}</span>
+                  <span className="cloud-worker-task-meta">
+                    {[task.builder, task.sourceType, task.workerId, task.updatedAt ? formatTime(task.updatedAt) : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  {task.message ? (
+                    <span className="cloud-worker-task-message">{task.message}</span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {events.length > 0 ? (
+        <div className="cloud-worker-events">
+          <div className="cloud-worker-task-section-head">
+            <h5>Recent events</h5>
+          </div>
+          <ul className="cloud-worker-event-list">
+            {events.map((event, index) => (
+              <li key={`${event.at ?? "event"}:${event.taskId ?? index}`}>
+                <span>{event.at ? formatTime(event.at) : "Unknown time"}</span>
+                <strong>{event.status ?? event.type ?? "event"}</strong>
+                {event.message ? <em>{event.message}</em> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function AdminCloudFetchLog({
-  initialRuns,
+  initialWorkerHost,
+  initialLeaseBatches,
   initialHasMore,
 }: {
-  initialRuns: CloudFetchRunLogItem[];
+  initialWorkerHost: CloudWorkerHostStatus;
+  initialLeaseBatches: CloudFetchRunLogItem[];
   initialHasMore: boolean;
 }) {
-  const [runs, setRuns] = useState(initialRuns);
+  const [workerHost, setWorkerHost] = useState(initialWorkerHost);
+  const [leaseBatches, setLeaseBatches] = useState(initialLeaseBatches);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
-  const [live, setLive] = useState<LiveProgress | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,30 +281,31 @@ export function AdminCloudFetchLog({
         headers: { accept: "application/json" },
       });
       if (!res.ok) return;
-      const body = await res.json().catch(() => null);
-      if (Array.isArray(body?.runs)) {
-        setRuns((current) => mergeRuns(current, body.runs));
-        setHasMore(Boolean(body.hasMore));
+      const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;
+      const batches = body?.leaseBatches ?? body?.runs;
+      if (Array.isArray(batches)) {
+        setLeaseBatches((current) => mergeLeaseBatches(current, batches));
+        setHasMore(Boolean(body?.hasMore));
       }
-      setLive(body?.liveProgress ?? null);
+      if (body?.workerHost) setWorkerHost(body.workerHost);
     } catch {
       // keep showing what we have; transient errors self-heal on the next tick
     }
   }, []);
 
-  // Poll only while a run is still RUNNING, and only when the tab is visible.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!runs.some((run) => run.status === "RUNNING")) return;
+    const hasRunningBatch = leaseBatches.some((batch) => batch.status === "RUNNING");
+    const pollMs = workerHost.status === "offline" && !hasRunningBatch ? 15_000 : 5_000;
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") refresh();
-    }, 5000);
+    }, pollMs);
     return () => window.clearInterval(id);
-  }, [runs, refresh]);
+  }, [leaseBatches, refresh, workerHost.status]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
-    const cursor = runs[runs.length - 1]?.startedAt;
+    const cursor = leaseBatches[leaseBatches.length - 1]?.startedAt;
     if (!cursor) {
       setHasMore(false);
       return;
@@ -144,161 +317,143 @@ export function AdminCloudFetchLog({
         `/api/admin/cloud-fetch/runs?before=${encodeURIComponent(cursor)}`,
         { headers: { accept: "application/json" } },
       );
-      const body = await res.json().catch(() => null);
+      const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;
       if (!res.ok) {
-        setError(body?.error ?? "Could not load older runs.");
+        setError(body?.error ?? "Could not load older lease batches.");
         return;
       }
-      if (Array.isArray(body?.runs)) {
-        setRuns((current) => mergeRuns(current, body.runs));
-        setHasMore(Boolean(body.hasMore));
+      const batches = body?.leaseBatches ?? body?.runs;
+      if (Array.isArray(batches)) {
+        setLeaseBatches((current) => mergeLeaseBatches(current, batches));
+        setHasMore(Boolean(body?.hasMore));
       }
     } catch {
-      setError("Could not load older runs.");
+      setError("Could not load older lease batches.");
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, runs]);
-
-  if (runs.length === 0) {
-    return (
-      <p className="cron-field-hint">
-        No cloud fetch runs yet. Copy a prompt above and run it on your local agent.
-      </p>
-    );
-  }
-
-  // Attach the live-progress line to the newest RUNNING round only.
-  const liveRunId = live ? (runs.find((run) => run.status === "RUNNING")?.id ?? null) : null;
+  }, [hasMore, loadingMore, leaseBatches]);
 
   return (
     <div className="cloud-fetch-log">
-      <ul className="cloud-fetch-log-list">
-        {runs.map((run) => {
-          const isOpen = expanded === run.id;
-          const showLive = live && run.id === liveRunId;
-          return (
-            <li key={run.id} className="cloud-fetch-log-row">
-              <button
-                type="button"
-                className="cloud-fetch-log-head"
-                aria-expanded={isOpen}
-                onClick={() => setExpanded(isOpen ? null : run.id)}
-              >
-                <span aria-hidden="true">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
-                <span className={`cloud-status-chip ${statusClass(run.status)}`}>{run.status}</span>
-                <span className="cloud-fetch-log-time">{formatTime(run.startedAt)}</span>
-                <span className="cloud-fetch-log-counts">
-                  {run.tasksClaimed} {run.tasksClaimed === 1 ? "source" : "sources"} · {run.tasksSucceeded} ok ·{" "}
-                  {run.tasksFailed} failed
-                </span>
-                <span className="cloud-fetch-log-meta">
-                  {run.syncedPosts}/{run.plannedPosts} posts
-                  {run.failedPosts > 0 ? ` · ${run.failedPosts} failed` : ""}
-                  {" · "}
-                  {formatDuration(run.durationMs)}
-                  {run.usageTokens != null ? ` · ${run.usageTokens.toLocaleString()} tok` : ""}
-                  {run.usageCostUsd != null ? ` · $${run.usageCostUsd.toFixed(2)}` : ""}
-                </span>
-              </button>
+      <WorkerHostPanel workerHost={workerHost} />
 
-              {showLive ? (
-                <div className="cloud-fetch-log-live" role="status">
-                  <span className="cloud-fetch-log-live-dot" aria-hidden="true" />
-                  {live!.stage ? (
-                    <span className="cloud-fetch-log-live-stage">{live!.stage.replace(/_/g, " ")}</span>
-                  ) : (
-                    <span className="cloud-fetch-log-live-stage">running</span>
-                  )}
-                  {live!.sourcesTotal != null ? (
-                    <span>
-                      {live!.sourcesChecked ?? 0}/{live!.sourcesTotal} sources
-                    </span>
-                  ) : null}
-                  {live!.tasksPlanned != null ? (
-                    <span>
-                      {live!.tasksDone ?? 0}/{live!.tasksPlanned} posts
-                    </span>
-                  ) : null}
-                  {live!.synced != null ? <span>{live!.synced} synced</span> : null}
-                  {live!.failed ? <span>{live!.failed} failed</span> : null}
-                  {live!.currentSource ? (
-                    <span className="cloud-fetch-log-live-current">· {live!.currentSource}</span>
-                  ) : null}
-                </div>
-              ) : null}
+      <div className="cloud-lease-batches-head">
+        <h4>Lease batches</h4>
+        <p>
+          Cloud source deliveries claimed by the worker host. Expand a batch for source and post
+          outcomes.
+        </p>
+      </div>
 
-              {isOpen ? (
-                <div className="cloud-fetch-log-detail">
-                  {run.summary ? <p className="cron-field-hint">{run.summary}</p> : null}
-                  {run.tasks.length === 0 ? (
-                    <p className="cron-field-hint">
-                      No per-source outcomes yet — they appear as the runner syncs each source.
-                    </p>
-                  ) : (
-                    <ul className="cloud-fetch-log-tasks">
-                      {run.tasks.map((task) => {
-                        const taskOpen = expandedTask === task.id;
-                        const hasPosts = task.posts.length > 0;
-                        const mappedPosts = task.posts.map((post, index) =>
-                          postToFetchTaskLog(post, task, index),
-                        );
-                        return (
-                          <li key={task.id} className="cloud-fetch-log-task">
-                            <button
-                              type="button"
-                              className="cloud-fetch-log-task-head"
-                              aria-expanded={taskOpen}
-                              disabled={!hasPosts}
-                              onClick={() => hasPosts && setExpandedTask(taskOpen ? null : task.id)}
-                            >
-                              <span className={`cloud-status-chip ${statusClass(task.status)}`}>
-                                {task.status}
-                              </span>
-                              <span className="cloud-fetch-log-task-name">
-                                {task.sourceName ?? task.builderId}
-                                {task.sourceType ? ` · ${task.sourceType}` : ""} · {task.summaryLanguage}
-                              </span>
-                              <span className="cloud-fetch-log-task-counts">
-                                {task.syncedPosts}/{task.plannedPosts} synced
-                                {task.failedPosts > 0 ? ` · ${task.failedPosts} failed` : ""}
-                                {task.durationMs != null ? ` · ${formatDuration(task.durationMs)}` : ""}
-                                {task.usageTokens != null ? ` · ${task.usageTokens.toLocaleString()} tok` : ""}
-                                {task.usageCostUsd != null ? ` · $${task.usageCostUsd.toFixed(2)}` : ""}
-                              </span>
-                            </button>
-                            {task.failureReason ? (
-                              <p className="cloud-fetch-log-task-error">{task.failureReason}</p>
-                            ) : null}
-                            {taskOpen && hasPosts ? (
-                              <ul className="sync-panel-run-card-candidate-list">
-                                {mappedPosts.map((mapped, index) => (
-                                  <TaskRow
-                                    key={mapped.id ?? index}
-                                    groupTasks={mappedPosts}
-                                    liveTask={null}
-                                    liveTasks={EMPTY_LIVE_TASKS}
-                                    task={mapped}
-                                  />
-                                ))}
-                              </ul>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      {leaseBatches.length === 0 ? (
+        <p className="cron-field-hint">
+          No lease batches yet. Copy a prompt above and start the worker host.
+        </p>
+      ) : (
+        <ul className="cloud-fetch-log-list">
+          {leaseBatches.map((batch) => {
+            const isOpen = expanded === batch.id;
+            return (
+              <li key={batch.id} className="cloud-fetch-log-row">
+                <button
+                  type="button"
+                  className="cloud-fetch-log-head"
+                  aria-expanded={isOpen}
+                  onClick={() => setExpanded(isOpen ? null : batch.id)}
+                >
+                  <span aria-hidden="true">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
+                  <span className={`cloud-status-chip ${statusClass(batch.status)}`}>
+                    {batch.status}
+                  </span>
+                  <span className="cloud-fetch-log-time">{formatTime(batch.startedAt)}</span>
+                  <span className="cloud-fetch-log-counts">
+                    {batch.tasksClaimed} {batch.tasksClaimed === 1 ? "source" : "sources"} claimed
+                    {" · "}
+                    {batch.tasksSucceeded} ok · {batch.tasksFailed} failed
+                  </span>
+                  <span className="cloud-fetch-log-meta">
+                    {batch.syncedPosts}/{batch.plannedPosts} posts
+                    {batch.failedPosts > 0 ? ` · ${batch.failedPosts} failed` : ""}
+                    {" · "}
+                    {formatDuration(batch.durationMs)}
+                    {batch.usageTokens != null ? ` · ${batch.usageTokens.toLocaleString()} tok` : ""}
+                    {batch.usageCostUsd != null ? ` · $${batch.usageCostUsd.toFixed(2)}` : ""}
+                  </span>
+                </button>
+
+                {isOpen ? (
+                  <div className="cloud-fetch-log-detail">
+                    {batch.summary ? <p className="cron-field-hint">{batch.summary}</p> : null}
+                    {batch.tasks.length === 0 ? (
+                      <p className="cron-field-hint">
+                        No per-source outcomes yet. They appear as the worker syncs source results.
+                      </p>
+                    ) : (
+                      <ul className="cloud-fetch-log-tasks">
+                        {batch.tasks.map((task) => {
+                          const taskOpen = expandedTask === task.id;
+                          const hasPosts = task.posts.length > 0;
+                          const mappedPosts = task.posts.map((post, index) =>
+                            postToFetchTaskLog(post, task, index),
+                          );
+                          return (
+                            <li key={task.id} className="cloud-fetch-log-task">
+                              <button
+                                type="button"
+                                className="cloud-fetch-log-task-head"
+                                aria-expanded={taskOpen}
+                                disabled={!hasPosts}
+                                onClick={() => hasPosts && setExpandedTask(taskOpen ? null : task.id)}
+                              >
+                                <span className={`cloud-status-chip ${statusClass(task.status)}`}>
+                                  {task.status}
+                                </span>
+                                <span className="cloud-fetch-log-task-name">
+                                  {task.sourceName ?? task.builderId}
+                                  {task.sourceType ? ` · ${task.sourceType}` : ""} · {task.summaryLanguage}
+                                </span>
+                                <span className="cloud-fetch-log-task-counts">
+                                  {task.syncedPosts}/{task.plannedPosts} synced
+                                  {task.failedPosts > 0 ? ` · ${task.failedPosts} failed` : ""}
+                                  {task.durationMs != null ? ` · ${formatDuration(task.durationMs)}` : ""}
+                                  {task.usageTokens != null ? ` · ${task.usageTokens.toLocaleString()} tok` : ""}
+                                  {task.usageCostUsd != null ? ` · $${task.usageCostUsd.toFixed(2)}` : ""}
+                                </span>
+                              </button>
+                              {task.failureReason ? (
+                                <p className="cloud-fetch-log-task-error">{task.failureReason}</p>
+                              ) : null}
+                              {taskOpen && hasPosts ? (
+                                <ul className="sync-panel-run-card-candidate-list">
+                                  {mappedPosts.map((mapped, index) => (
+                                    <TaskRow
+                                      key={mapped.id ?? index}
+                                      groupTasks={mappedPosts}
+                                      liveTask={null}
+                                      liveTasks={EMPTY_LIVE_TASKS}
+                                      task={mapped}
+                                    />
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {error ? <p className="cron-field-error">{error}</p> : null}
       {hasMore ? (
         <button type="button" className="fb-btn light compact" disabled={loadingMore} onClick={loadMore}>
-          {loadingMore ? "Loading" : "Load older runs"}
+          {loadingMore ? "Loading" : "Load older batches"}
         </button>
       ) : null}
     </div>
