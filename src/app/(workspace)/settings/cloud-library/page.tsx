@@ -47,6 +47,8 @@ export default async function CloudLibraryManagementPage() {
           include: {
             builder: {
               select: {
+                entityId: true,
+                kind: true,
                 name: true,
                 sourceType: true,
                 sourceUrl: true,

@@ -1,12 +1,14 @@
 // Serialization for the admin cloud library explorer: each cloud language
-// library, its sources (one CloudSourceTask per cloud-owner Builder) with fetch
-// status and counts, and the per-source submitters and recent posts. Pure
-// mapping so it stays unit-testable without a database.
-
-const SUMMARY_EXCERPT_MAX = 160;
+// library and its sources (one CloudSourceTask per cloud-owner Builder) with
+// fetch status and counts, plus per-source submitters. Recent posts are shown
+// with the shared BuilderFeedItems component (which reads /api/builders/[id]/
+// feed-items), so they are not serialized here. Pure mapping so it stays
+// unit-testable without a database.
 
 export type CloudLibrarySource = {
   builderId: string;
+  entityId: string | null;
+  kind: string | null;
   sourceName: string | null;
   sourceType: string | null;
   sourceUrl: string | null;
@@ -42,14 +44,6 @@ export type CloudSourceSubmitter = {
   active: boolean;
 };
 
-export type CloudSourcePost = {
-  id: string;
-  title: string | null;
-  url: string;
-  publishedAt: string | null;
-  summaryExcerpt: string | null;
-};
-
 type CloudSourceTaskRow = {
   builderId: string;
   status: string;
@@ -61,6 +55,8 @@ type CloudSourceTaskRow = {
   consecutiveFailures: number;
   circuitBreakerUntil: Date | null;
   builder?: {
+    entityId: string | null;
+    kind: string | null;
     name: string | null;
     sourceType: string | null;
     sourceUrl: string | null;
@@ -76,6 +72,8 @@ export function serializeCloudLibrarySource(
 ): CloudLibrarySource {
   return {
     builderId: task.builderId,
+    entityId: task.builder?.entityId ?? null,
+    kind: task.builder?.kind ?? null,
     sourceName: task.builder?.name ?? null,
     sourceType: task.builder?.sourceType ?? null,
     sourceUrl: task.builder?.sourceUrl ?? null,
@@ -122,27 +120,4 @@ export function serializeCloudSourceSubmitter(submission: {
     submittedAt: submission.submittedAt.toISOString(),
     active: submission.active,
   };
-}
-
-export function serializeCloudSourcePost(item: {
-  id: string;
-  title: string | null;
-  url: string;
-  publishedAt: Date | null;
-  summary: string | null;
-}): CloudSourcePost {
-  return {
-    id: item.id,
-    title: item.title ?? null,
-    url: item.url,
-    publishedAt: item.publishedAt ? item.publishedAt.toISOString() : null,
-    summaryExcerpt: excerpt(item.summary),
-  };
-}
-
-function excerpt(summary: string | null): string | null {
-  if (!summary) return null;
-  const trimmed = summary.trim();
-  if (trimmed.length <= SUMMARY_EXCERPT_MAX) return trimmed;
-  return `${trimmed.slice(0, SUMMARY_EXCERPT_MAX)}…`;
 }

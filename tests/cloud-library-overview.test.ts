@@ -4,7 +4,6 @@ import test from "node:test";
 import {
   serializeCloudLibrary,
   serializeCloudLibrarySource,
-  serializeCloudSourcePost,
   serializeCloudSourceSubmitter,
 } from "../src/lib/cloud-library-overview";
 
@@ -21,6 +20,8 @@ test("serializeCloudLibrarySource flattens task status, builder identity, and co
       consecutiveFailures: 2,
       circuitBreakerUntil: null,
       builder: {
+        entityId: "ent_1",
+        kind: "BLOG",
         name: "Example Feed",
         sourceType: "blog",
         sourceUrl: "https://example.com/feed",
@@ -34,6 +35,8 @@ test("serializeCloudLibrarySource flattens task status, builder identity, and co
 
   assert.deepEqual(result, {
     builderId: "cb_1",
+    entityId: "ent_1",
+    kind: "BLOG",
     sourceName: "Example Feed",
     sourceType: "blog",
     sourceUrl: "https://example.com/feed",
@@ -109,36 +112,4 @@ test("serializeCloudSourceSubmitter exposes the submitting user and their freque
     submittedAt: "2026-06-25T09:00:00.000Z",
     active: true,
   });
-});
-
-test("serializeCloudSourcePost truncates the summary into an excerpt", () => {
-  const longSummary = "x".repeat(400);
-  const result = serializeCloudSourcePost({
-    id: "fi_1",
-    title: "A Post",
-    url: "https://example.com/post",
-    publishedAt: new Date("2026-06-24T00:00:00.000Z"),
-    summary: longSummary,
-  });
-
-  assert.equal(result.id, "fi_1");
-  assert.equal(result.title, "A Post");
-  assert.equal(result.url, "https://example.com/post");
-  assert.equal(result.publishedAt, "2026-06-24T00:00:00.000Z");
-  assert.ok(result.summaryExcerpt!.length <= 161);
-  assert.ok(result.summaryExcerpt!.endsWith("…"));
-});
-
-test("serializeCloudSourcePost keeps a short summary and null publishedAt", () => {
-  const result = serializeCloudSourcePost({
-    id: "fi_2",
-    title: null,
-    url: "https://example.com/p2",
-    publishedAt: null,
-    summary: "short",
-  });
-
-  assert.equal(result.title, null);
-  assert.equal(result.publishedAt, null);
-  assert.equal(result.summaryExcerpt, "short");
 });

@@ -2,15 +2,35 @@
 
 import { useCallback, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import type {
   CloudLibraryOverview,
   CloudLibrarySource,
-  CloudSourcePost,
   CloudSourceSubmitter,
 } from "@/lib/cloud-library-overview";
 
-type Drill = { submitters: CloudSourceSubmitter[]; posts: CloudSourcePost[] };
+type Drill = { submitters: CloudSourceSubmitter[] };
+
+type BuilderKind = "X" | "BLOG" | "PODCAST" | "WEBSITE";
+
+function toBuilderKind(kind: string | null): BuilderKind {
+  if (kind === "X" || kind === "BLOG" || kind === "PODCAST" || kind === "WEBSITE") return kind;
+  return "BLOG";
+}
+
+// Shape BuilderFeedItems (the shared per-source recent-posts component) expects.
+function builderSummary(source: CloudLibrarySource) {
+  return {
+    id: source.builderId,
+    entityId: source.entityId,
+    name: source.sourceName ?? source.builderId,
+    kind: toBuilderKind(source.kind),
+    sourceType: source.sourceType ?? "website",
+    sourceUrl: source.sourceUrl,
+    fetchUrl: source.fetchUrl,
+  };
+}
 
 function statusTone(status: string): string {
   if (status === "ACTIVE") return "active";
@@ -83,7 +103,6 @@ export function AdminCloudLibraryExplorer({
           ...current,
           [builderId]: {
             submitters: Array.isArray(body?.submitters) ? body.submitters : [],
-            posts: Array.isArray(body?.posts) ? body.posts : [],
           },
         }));
       } catch {
@@ -202,35 +221,14 @@ export function AdminCloudLibraryExplorer({
                               </ul>
                             )}
 
-                            <p className="cloud-source-detail-label">
-                              Recent posts ({detail.posts.length})
-                            </p>
-                            {detail.posts.length === 0 ? (
-                              <p className="cron-field-hint">No posts fetched yet.</p>
-                            ) : (
-                              <ul className="cloud-source-posts">
-                                {detail.posts.map((post) => (
-                                  <li key={post.id} className="cloud-source-post">
-                                    <a
-                                      className="cloud-source-post-title"
-                                      href={post.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      {post.title ?? post.url}
-                                    </a>
-                                    <span className="cloud-source-post-date">
-                                      {formatDate(post.publishedAt)}
-                                    </span>
-                                    {post.summaryExcerpt ? (
-                                      <p className="cloud-source-post-excerpt">
-                                        {post.summaryExcerpt}
-                                      </p>
-                                    ) : null}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                            <p className="cloud-source-detail-label">Recent posts</p>
+                            <BuilderFeedItems
+                              builder={builderSummary(source)}
+                              builderId={source.builderId}
+                              isOpen
+                              listId={`cloud-posts-${source.builderId}`}
+                              totalCount={source.postCount}
+                            />
                           </>
                         ) : null}
                       </div>

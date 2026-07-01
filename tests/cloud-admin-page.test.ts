@@ -64,23 +64,23 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /tasksClaimed/);
 });
 
-test("admin cloud source drill-down route is admin-gated and returns submitters and posts", () => {
+test("admin cloud source drill-down route is admin-gated and returns submitters", () => {
   const route = source("src/app/api/admin/cloud-fetch/sources/[builderId]/route.ts");
 
   assert.match(route, /export async function GET/);
   assert.match(route, /requireCloudFetchAdmin\(request\)/);
   assert.match(route, /cloudSourceSubmission\.findMany/);
-  assert.match(route, /feedItem\.findMany/);
   assert.match(route, /serializeCloudSourceSubmitter/);
-  assert.match(route, /serializeCloudSourcePost/);
 });
 
-test("cloud library explorer lists libraries and lazy-loads source drill-downs", () => {
+test("cloud library explorer lists libraries and renders recent posts via BuilderFeedItems", () => {
   const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
 
   assert.match(explorer, /submitterCount/);
   assert.match(explorer, /postCount/);
   assert.match(explorer, /\/api\/admin\/cloud-fetch\/sources\//);
+  // Recent posts reuse the shared per-source post component.
+  assert.match(explorer, /BuilderFeedItems/);
 });
 
 test("cloud-library page mounts the library explorer with serialized libraries", () => {

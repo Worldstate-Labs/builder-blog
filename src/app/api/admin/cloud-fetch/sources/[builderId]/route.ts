@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
-import {
-  serializeCloudSourcePost,
-  serializeCloudSourceSubmitter,
-} from "@/lib/cloud-library-overview";
+import { serializeCloudSourceSubmitter } from "@/lib/cloud-library-overview";
 import { prisma } from "@/lib/prisma";
 
-const POSTS_LIMIT = 20;
-
+// Per-source drill-down: the active submitters for one cloud source. Recent
+// posts are rendered client-side with BuilderFeedItems (/api/builders/[id]/
+// feed-items), the same component the per-user source library uses.
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ builderId: string }> },
@@ -18,22 +16,13 @@ export async function GET(
   }
   const { builderId } = await params;
 
-  const [submissions, posts] = await Promise.all([
-    prisma.cloudSourceSubmission.findMany({
-      where: { cloudBuilderId: builderId, active: true },
-      orderBy: { submittedAt: "desc" },
-      include: { user: { select: { email: true, name: true } } },
-    }),
-    prisma.feedItem.findMany({
-      where: { builderId },
-      orderBy: { publishedAt: "desc" },
-      take: POSTS_LIMIT,
-      select: { id: true, title: true, url: true, publishedAt: true, summary: true },
-    }),
-  ]);
+  const submissions = await prisma.cloudSourceSubmission.findMany({
+    where: { cloudBuilderId: builderId, active: true },
+    orderBy: { submittedAt: "desc" },
+    include: { user: { select: { email: true, name: true } } },
+  });
 
   return NextResponse.json({
     submitters: submissions.map(serializeCloudSourceSubmitter),
-    posts: posts.map(serializeCloudSourcePost),
   });
 }
