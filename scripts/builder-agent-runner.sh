@@ -3015,7 +3015,7 @@ NODE
     IS_CRON_JOB=1
     run_selected_runtime
   ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
-  _worker_entries="$_worker_entries $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
+  _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
   _started_shard_names="$_started_shard_names $_slw_shard_name"
   _started_worker_count=$(( _started_worker_count + 1 ))
   echo "Started worker $_slw_lane_id for $_slw_shard_name (pid $!)."
@@ -3247,7 +3247,7 @@ run_library_job() {
   while :; do
     _alive=0
     _now="$(date +%s)"
-    for _entry in $_worker_entries; do
+    for _entry in ${_worker_entries:-}; do
       _pid="${_entry%%:*}"
       _rest="${_entry#*:}"
       _started="${_rest%%:*}"
@@ -3329,7 +3329,7 @@ run_library_job() {
           job_run_update running "Worker host could not sync every idle result; it will keep running and retry with later progress." "worker_host_idle_flush_failed" \
             --stage "waiting_after_sync_issue"
         fi
-        for _entry in $_worker_entries; do
+        for _entry in ${_worker_entries:-}; do
           _pid="${_entry%%:*}"
           case " $_skip_wait_pids " in
             *" $_pid "*) continue ;;
@@ -3379,7 +3379,7 @@ run_library_job() {
     sleep 5
   done
   sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
-  for _entry in $_worker_entries; do
+  for _entry in ${_worker_entries:-}; do
     _pid="${_entry%%:*}"
     case " $_skip_wait_pids " in
       *" $_pid "*) continue ;;
