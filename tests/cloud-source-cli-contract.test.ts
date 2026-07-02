@@ -103,6 +103,17 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.doesNotMatch(runner, /BUILDER_BLOG_CLOUD_HOST_CHILD/);
 });
 
+test("cloud worker host keeps its job heartbeat fresh while fetch workers run", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(runner, /_last_job_run_heartbeat=0/);
+  assert.match(
+    runner,
+    /job_run_update running "Running source fetch workers\." "heartbeat"[\s\S]*--stage "run_fetch_workers"/,
+  );
+  assert.match(runner, /_last_job_run_heartbeat="\$_now"/);
+});
+
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
   const actions = await readFile("src/components/AdminCloudFetchRunActions.tsx", "utf8");
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");

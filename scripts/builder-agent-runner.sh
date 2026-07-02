@@ -3057,6 +3057,7 @@ run_library_job() {
   _sync_extra_args=""
   _cloud_run_id=""
   _last_cloud_heartbeat=0
+  _last_job_run_heartbeat=0
   _assigned_fetch_task_ids_file="$JOB_TMP_DIR/assigned-fetch-task-ids.txt"
   _active_fetch_group_keys_file="$JOB_TMP_DIR/active-fetch-group-keys.txt"
   _cloud_run_ids_file="$JOB_TMP_DIR/cloud-run-ids.txt"
@@ -3370,6 +3371,15 @@ run_library_job() {
         cloud_fetch_heartbeat_all
         _last_cloud_heartbeat="$_now"
       fi
+    fi
+    _job_heartbeat_interval="${HEARTBEAT_INTERVAL_SECONDS:-60}"
+    case "$_job_heartbeat_interval" in
+      ''|*[!0-9]*) _job_heartbeat_interval=60 ;;
+    esac
+    if [ $(( _now - _last_job_run_heartbeat )) -ge "$_job_heartbeat_interval" ]; then
+      job_run_update running "Running source fetch workers." "heartbeat" \
+        --stage "run_fetch_workers"
+      _last_job_run_heartbeat="$_now"
     fi
     node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
       --tasks "$_result_file" \
