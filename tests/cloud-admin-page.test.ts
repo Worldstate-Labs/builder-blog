@@ -43,6 +43,7 @@ test("copy-prompt job for cloud worker host setup is whitelisted", () => {
   const jobs = source("src/lib/skill-job-files.ts");
 
   assert.match(jobs, /"cloud-library-cron-setup":/);
+  assert.match(jobs, /"cloud-library-host":/);
   assert.doesNotMatch(jobs, /"cloud-library-once":/);
 });
 

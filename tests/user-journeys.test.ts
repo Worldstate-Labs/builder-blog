@@ -1477,6 +1477,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /builder-blog-library-cron-setup\.md/);
   assert.match(skillFileRoute, /builder-blog-digest-cron-setup\.md/);
   assert.doesNotMatch(skillFileRoute, /builder-blog-library-cron\.md/);
+  assert.match(skillFileRoute, /builder-blog-cloud-library-host\.md/);
   assert.match(skillFileRoute, /builder-blog-digest-cron\.md/);
   assert.match(skillFileRoute, /builder-blog-library-worker\.md/);
   assert.match(skillFileRoute, /builder-blog-library-discovery\.md/);
@@ -1485,6 +1486,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /local-agent-timeouts\.json/);
   assert.match(skillJobFiles, /library-once/);
   assert.match(skillJobFiles, /digest-once/);
+  assert.match(skillJobFiles, /cloud-library-host/);
   assert.match(skillJobRoute, /jobSkillFiles/);
   assert.match(skillJobRoute, /text\/markdown/);
   assert.match(skillJobAliasRoute, /jobSkillFiles/);
@@ -1492,6 +1494,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
+  assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-cloud-library-host\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);
   assert.match(bootstrapRoute, /command -v node/);
   assert.match(bootstrapRoute, /FollowBrief requires Node\.js 20 or newer/);

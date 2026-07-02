@@ -113,6 +113,7 @@ refresh_skill_files() {
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" "$AGENT_DIR/jobs/digest-cron-setup.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-cloud-library-cron.md" "$AGENT_DIR/jobs/cloud-library-cron.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-cloud-library-host.md" "$AGENT_DIR/jobs/cloud-library-host.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
   download_skill_file "$APP_URL/api/skill/files/local-agent-timeouts.json" "$AGENT_DIR/local-agent-timeouts.json"
