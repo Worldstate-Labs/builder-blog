@@ -159,7 +159,19 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(setupPrompt, /WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/);
   assert.match(
     setupPrompt,
-    /BUILDER_BLOG_FETCH_LIMIT="\$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="\$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="\$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="\$IDLE_SECONDS" "\$AGENT_DIR\/builder-agent-runner\.sh" cloud-library-host/,
+    /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" BUILDER_BLOG_AGENT_RUNTIME="\$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_LIMIT="\$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="\$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="\$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="\$IDLE_SECONDS" "\$AGENT_DIR\/builder-agent-runner\.sh" cloud-library-host/,
+  );
+  assert.match(setupPrompt, /launchctl bootstrap "gui\/\$\(id -u\)" "\$PLIST" \|\| \{/);
+  assert.match(setupPrompt, /sleep 2/);
+  assert.match(setupPrompt, /launchctl bootstrap "gui\/\$\(id -u\)" "\$PLIST" \|\| exit "\$BOOTSTRAP_CODE"/);
+  assert.match(setupPrompt, /launchctl kickstart -k "gui\/\$\(id -u\)\/\$LABEL" \|\| exit "\$\?"/);
+  assert.match(setupPrompt, /systemctl --user daemon-reload \|\| exit "\$\?"/);
+  assert.match(setupPrompt, /systemctl --user enable --now followbrief-cloud-library-host\.service \|\| exit "\$\?"/);
+  assert.match(setupPrompt, /systemctl --user restart followbrief-cloud-library-host\.service \|\| exit "\$\?"/);
+  assert.match(setupPrompt, /Environment="BUILDER_BLOG_AGENT_DIR=\$AGENT_DIR"/);
+  assert.match(
+    setupPrompt,
+    /ExecStart=\/bin\/sh -c 'exec "\$BUILDER_BLOG_AGENT_DIR\/builder-agent-runner\.sh" cloud-library-host >> "\$BUILDER_BLOG_AGENT_DIR\/logs\/cloud-library-host\.out\.log" 2>> "\$BUILDER_BLOG_AGENT_DIR\/logs\/cloud-library-host\.err\.log"'/,
   );
   assert.match(setupPrompt, /<key>KeepAlive<\/key><true\/>/);
   assert.match(setupPrompt, /<key>RunAtLoad<\/key><true\/>/);

@@ -128,7 +128,7 @@ cat > "$PLIST" <<PLISTEOF
   <array>
     <string>/bin/sh</string>
     <string>-c</string>
-    <string>BUILDER_BLOG_ACCOUNT="$ACCT" BUILDER_BLOG_AGENT_RUNTIME="$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_LIMIT="$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="$IDLE_SECONDS" "$AGENT_DIR/builder-agent-runner.sh" cloud-library-host</string>
+    <string>BUILDER_BLOG_ACCOUNT="$ACCT" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" BUILDER_BLOG_AGENT_RUNTIME="$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_LIMIT="$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="$IDLE_SECONDS" "$AGENT_DIR/builder-agent-runner.sh" cloud-library-host</string>
   </array>
   <key>KeepAlive</key><true/>
   <key>RunAtLoad</key><true/>
@@ -138,8 +138,12 @@ cat > "$PLIST" <<PLISTEOF
 </plist>
 PLISTEOF
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
-launchctl kickstart -k "gui/$(id -u)/$LABEL"
+launchctl bootstrap "gui/$(id -u)" "$PLIST" || {
+  BOOTSTRAP_CODE="$?"
+  sleep 2
+  launchctl bootstrap "gui/$(id -u)" "$PLIST" || exit "$BOOTSTRAP_CODE"
+}
+launchctl kickstart -k "gui/$(id -u)/$LABEL" || exit "$?"
 echo "Installed launchd worker host $LABEL."
 ```
 
@@ -165,20 +169,21 @@ Type=simple
 Restart=always
 RestartSec=10
 Environment=BUILDER_BLOG_ACCOUNT=$ACCT
+Environment="BUILDER_BLOG_AGENT_DIR=$AGENT_DIR"
 Environment=BUILDER_BLOG_AGENT_RUNTIME=$RUNTIME
 Environment=BUILDER_BLOG_RUN_SOURCE=cloud
 Environment=BUILDER_BLOG_FETCH_LIMIT=$POST_LIMIT
 Environment=BUILDER_BLOG_FETCH_DAYS=$FETCH_DAYS
 Environment=BUILDER_BLOG_PARALLEL_WORKERS=$WORKERS
 Environment=BUILDER_BLOG_CLOUD_IDLE_SECONDS=$IDLE_SECONDS
-ExecStart=$AGENT_DIR/builder-agent-runner.sh cloud-library-host
+ExecStart=/bin/sh -c 'exec "$BUILDER_BLOG_AGENT_DIR/builder-agent-runner.sh" cloud-library-host >> "$BUILDER_BLOG_AGENT_DIR/logs/cloud-library-host.out.log" 2>> "$BUILDER_BLOG_AGENT_DIR/logs/cloud-library-host.err.log"'
 
 [Install]
 WantedBy=default.target
 UNITEOF
-systemctl --user daemon-reload
-systemctl --user enable --now followbrief-cloud-library-host.service
-systemctl --user restart followbrief-cloud-library-host.service
+systemctl --user daemon-reload || exit "$?"
+systemctl --user enable --now followbrief-cloud-library-host.service || exit "$?"
+systemctl --user restart followbrief-cloud-library-host.service || exit "$?"
 echo "Installed systemd worker host followbrief-cloud-library-host.service."
 ```
 
