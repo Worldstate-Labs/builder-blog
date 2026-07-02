@@ -61,6 +61,9 @@ test("fetch run details merge long planned task ids with outcomes", () => {
           summaryChars: 80,
           agentRuntime: "codex",
           agentModel: "gpt-test",
+          readMethod: "Copied body from a Hub-shared post with the same URL",
+          summaryMethod: "Copied matching-language summary from a Hub-shared post",
+          hubSharedReuse: { bodyReused: true, summaryReused: true },
         },
       ],
     },
@@ -77,6 +80,9 @@ test("fetch run details merge long planned task ids with outcomes", () => {
       summaryChars: 80,
       agentRuntime: "codex",
       agentModel: "gpt-test",
+      readMethod: "Copied body from a Hub-shared post with the same URL",
+      summaryMethod: "Copied matching-language summary from a Hub-shared post",
+      hubSharedReuse: { bodyReused: true, summaryReused: true },
     },
   ]);
   assert.equal(result.details.agentRuntime, "codex");

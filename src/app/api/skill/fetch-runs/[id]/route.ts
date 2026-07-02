@@ -29,6 +29,12 @@ const TaskOutcomeSchema = z.object({
   summaryWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
   agentRuntime: z.string().max(120).nullable().optional(),
   agentModel: z.string().max(120).nullable().optional(),
+  contentStatus: z.string().max(80).nullable().optional(),
+  agentWorkType: z.string().max(120).nullable().optional(),
+  fetchTool: z.string().max(240).nullable().optional(),
+  readMethod: z.string().max(300).nullable().optional(),
+  summaryMethod: z.string().max(300).nullable().optional(),
+  hubSharedReuse: z.record(z.string(), z.unknown()).nullable().optional(),
   workerId: z.string().max(120).nullable().optional(),
   status: z
     .enum(["fetched", "pending", "synced", "skipped", "failed", "action_needed"])

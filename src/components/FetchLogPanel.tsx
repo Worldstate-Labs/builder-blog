@@ -1053,6 +1053,7 @@ export function FetchLogPanel({
     startTransition(async () => {
       try {
         const response = await fetch("/api/skill/fetch-runs", {
+          cache: "no-store",
           headers: { accept: "application/json" },
         });
         const body = (await response.json().catch(() => null)) as
@@ -1115,6 +1116,7 @@ export function FetchLogPanel({
     setError(null);
     try {
       const response = await fetch(`/api/skill/fetch-runs?before=${encodeURIComponent(cursor)}`, {
+        cache: "no-store",
         headers: { accept: "application/json" },
       });
       const body = (await response.json().catch(() => null)) as

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type {
   CloudFetchPostOutcome,
   CloudFetchRunLogItem,
@@ -329,13 +330,33 @@ function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
 function WorkerHostPanel({
   workerHost,
   runningSourceDeliveries,
+  leaseBatches,
 }: {
   workerHost: CloudWorkerHostStatus;
   runningSourceDeliveries: number;
+  leaseBatches: CloudFetchRunLogItem[];
 }) {
   const progress = workerHost.progress;
   const tasks = useMemo(() => sortedWorkerTasks(workerHost.tasks).slice(0, 20), [workerHost.tasks]);
   const events = workerHost.recentEvents.slice(-5).reverse();
+  const fallbackMetrics = useMemo(() => {
+    const plannedPosts = leaseBatches.reduce((sum, batch) => sum + batch.plannedPosts, 0);
+    const syncedPosts = leaseBatches.reduce((sum, batch) => sum + batch.syncedPosts, 0);
+    const failedPosts = leaseBatches.reduce((sum, batch) => sum + batch.failedPosts, 0);
+    const sourcesTotal = leaseBatches.reduce((sum, batch) => sum + batch.tasksClaimed, 0);
+    const sourcesChecked = leaseBatches.reduce(
+      (sum, batch) => sum + batch.tasksSucceeded + batch.tasksFailed,
+      0,
+    );
+    return {
+      plannedPosts,
+      donePosts: syncedPosts + failedPosts,
+      syncedPosts,
+      failedPosts,
+      sourcesTotal,
+      sourcesChecked,
+    };
+  }, [leaseBatches]);
   const runningWithoutHeartbeat = workerHost.startedAt == null && runningSourceDeliveries > 0;
   const statusLabel = runningWithoutHeartbeat ? "No host heartbeat" : workerHost.statusLabel;
   const stage = progress?.stage ?? workerHost.stage ?? (runningWithoutHeartbeat ? "waiting_for_heartbeat" : null);
@@ -345,11 +366,15 @@ function WorkerHostPanel({
   const sourceProgress =
     progress?.sourcesTotal != null
       ? `${formatMetric(progress.sourcesChecked ?? 0)}/${formatMetric(progress.sourcesTotal)}`
-      : "-";
+      : fallbackMetrics.sourcesTotal > 0
+        ? `${formatMetric(fallbackMetrics.sourcesChecked)}/${formatMetric(fallbackMetrics.sourcesTotal)}`
+        : "-";
   const postProgress =
     progress?.tasksPlanned != null
       ? `${formatMetric(progress.tasksDone ?? 0)}/${formatMetric(progress.tasksPlanned)}`
-      : "-";
+      : fallbackMetrics.plannedPosts > 0
+        ? `${formatMetric(fallbackMetrics.donePosts)}/${formatMetric(fallbackMetrics.plannedPosts)}`
+        : "-";
   const localWorkers = workerHost.localWorkers != null ? workerHost.localWorkers : null;
 
   return (
@@ -386,11 +411,19 @@ function WorkerHostPanel({
         </div>
         <div className="cloud-worker-host-metric">
           <span>Synced</span>
-          <strong>{formatMetric(progress?.synced ?? null)}</strong>
+          <strong>
+            {formatMetric(
+              progress?.synced ?? (fallbackMetrics.plannedPosts > 0 ? fallbackMetrics.syncedPosts : null),
+            )}
+          </strong>
         </div>
         <div className="cloud-worker-host-metric">
           <span>Failed</span>
-          <strong>{formatMetric(progress?.failed ?? null)}</strong>
+          <strong>
+            {formatMetric(
+              progress?.failed ?? (fallbackMetrics.plannedPosts > 0 ? fallbackMetrics.failedPosts : null),
+            )}
+          </strong>
         </div>
         <div className="cloud-worker-host-metric">
           <span>Skipped</span>
@@ -520,6 +553,21 @@ export function AdminCloudFetchLog({
     return () => window.clearInterval(id);
   }, [leaseBatches, refresh, workerHost.status]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener(contentSyncStateChanged, refreshWhenVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener(contentSyncStateChanged, refreshWhenVisible);
+    };
+  }, [refresh]);
+
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     const cursor = leaseBatches[leaseBatches.length - 1]?.startedAt;
@@ -553,7 +601,11 @@ export function AdminCloudFetchLog({
 
   return (
     <div className="cloud-fetch-log">
-      <WorkerHostPanel workerHost={workerHost} runningSourceDeliveries={runningSourceDeliveries} />
+      <WorkerHostPanel
+        workerHost={workerHost}
+        runningSourceDeliveries={runningSourceDeliveries}
+        leaseBatches={leaseBatches}
+      />
 
       <div className="cloud-source-deliveries-head">
         <h4>Worker shards</h4>

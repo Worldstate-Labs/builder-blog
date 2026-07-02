@@ -114,6 +114,9 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(patchRoute, /errorCount: nextStatus\.errorCount/);
   assert.match(patchRoute, /status: nextStatus\.status/);
   assert.match(patchRoute, /workerId: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /readMethod: z\.string\(\)\.max\(300\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /summaryMethod: z\.string\(\)\.max\(300\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /hubSharedReuse: z\.record\(z\.string\(\), z\.unknown\(\)\)\.nullable\(\)\.optional\(\)/);
   assert.match(mergeHelper, /plannedBuilderIds/);
   assert.match(mergeHelper, /details\.perBuilder/);
   // Server orders by startedAt desc and pages older history in 10-row batches.
@@ -123,6 +126,8 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /const beforeParam = url\.searchParams\.get\("before"\)/);
   assert.match(route, /startedAt: \{ lt: before \}/);
   assert.match(route, /take: FETCH_RUN_QUERY_SIZE/);
+  assert.match(route, /export const dynamic = "force-dynamic"/);
+  assert.match(route, /"Cache-Control": "no-store, max-age=0"/);
   assert.match(route, /rows\.slice\(0, FETCH_RUN_PAGE_SIZE\)\.map\(serializeRun\)/);
   assert.doesNotMatch(route, /RUN_HISTORY_LIMIT = 25/);
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
@@ -437,6 +442,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   // Background refresh still calls the GET endpoint, but the panel no longer
   // renders its own manual Refresh button.
   assert.match(panel, /fetch\("\/api\/skill\/fetch-runs"/);
+  assert.match(panel, /cache: "no-store"/);
   assert.match(panel, /if \(response\.status === 401\) \{[\s\S]*setError\(null\);[\s\S]*return;[\s\S]*\}/);
   assert.doesNotMatch(panel, /RefreshCw/);
   assert.doesNotMatch(panel, />Refresh</);

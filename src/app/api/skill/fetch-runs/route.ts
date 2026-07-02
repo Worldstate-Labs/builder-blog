@@ -16,6 +16,8 @@ const MAX_SUMMARY_CHARS = 280;
 const FETCH_RUN_PAGE_SIZE = 10;
 const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE + 1;
 
+export const dynamic = "force-dynamic";
+
 const FetchRunInputSchema = z.object({
   startedAt: z.string().datetime(),
   finishedAt: z.string().datetime(),
@@ -275,5 +277,9 @@ export async function GET(request: Request) {
     jobRuns: visibleJobRuns,
     scheduledJobRuns: visibleScheduledJobRuns,
     hasMore,
+  }, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
   });
 }
