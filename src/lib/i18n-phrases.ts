@@ -127,19 +127,19 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "클라우드 가져오기 설정을 저장할 수 없습니다.",
     es: "No se pudo guardar la configuración de obtención en la nube.",
   },
-  "Language and owner email are required.": {
-    "zh-CN": "语言和 owner 邮箱必填。",
-    "zh-TW": "語言和 owner 電子郵件為必填。",
-    ja: "言語と所有者メールは必須です。",
-    ko: "언어와 소유자 이메일이 필요합니다.",
-    es: "El idioma y el correo del propietario son obligatorios.",
+  "Summary language is required.": {
+    "zh-CN": "摘要语言必填。",
+    "zh-TW": "摘要語言為必填。",
+    ja: "要約言語は必須です。",
+    ko: "요약 언어가 필요합니다.",
+    es: "El idioma del resumen es obligatorio.",
   },
-  "Could not save cloud library owner.": {
-    "zh-CN": "无法保存云端库 owner。",
-    "zh-TW": "無法儲存雲端庫 owner。",
-    ja: "クラウドライブラリ所有者を保存できませんでした。",
-    ko: "클라우드 라이브러리 소유자를 저장할 수 없습니다.",
-    es: "No se pudo guardar el propietario de la biblioteca en la nube.",
+  "Could not save cloud language library.": {
+    "zh-CN": "无法保存云端语言库。",
+    "zh-TW": "無法儲存雲端語言庫。",
+    ja: "クラウド言語ライブラリを保存できませんでした。",
+    ko: "클라우드 언어 라이브러리를 저장할 수 없습니다.",
+    es: "No se pudo guardar la biblioteca de idioma en la nube.",
   },
   "Controls cloud source queueing, leases, retries, and fairness reserves.": {
     "zh-CN": "控制云端信息源排队、lease、重试和公平性预留。",
@@ -155,12 +155,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "언어 라이브러리",
     es: "Bibliotecas de idioma",
   },
-  "Maps each summary language to the cloud owner whose normal source library is shared to Hub.": {
-    "zh-CN": "把每种摘要语言映射到对应 cloud owner；该 owner 的普通信息源库会分享到 Hub。",
-    "zh-TW": "把每種摘要語言映射到對應 cloud owner；該 owner 的普通資訊源庫會分享到 Hub。",
-    ja: "各要約言語を、通常のソースライブラリを Hub に共有するクラウド所有者へ対応付けます。",
-    ko: "각 요약 언어를 일반 소스 라이브러리를 Hub에 공유하는 클라우드 소유자에 매핑합니다.",
-    es: "Asocia cada idioma de resumen al propietario en la nube cuya biblioteca de fuentes normal se comparte en Hub.",
+  "Each summary language gets its own cloud system owner, source library, fetched posts, and summaries.": {
+    "zh-CN": "每种摘要语言都有自己的 cloud system owner、信息源库、已抓取帖子和摘要。",
+    "zh-TW": "每種摘要語言都有自己的 cloud system owner、資訊源庫、已抓取文章和摘要。",
+    ja: "各要約言語には専用のクラウドシステム所有者、ソースライブラリ、取得済み投稿、要約があります。",
+    ko: "각 요약 언어는 자체 클라우드 시스템 소유자, 소스 라이브러리, 가져온 글, 요약을 가집니다.",
+    es: "Cada idioma de resumen tiene su propio propietario de sistema, biblioteca de fuentes, publicaciones obtenidas y resúmenes.",
   },
   "No cloud language libraries configured.": {
     "zh-CN": "尚未配置云端语言库。",
@@ -168,6 +168,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ja: "クラウド言語ライブラリは未設定です。",
     ko: "설정된 클라우드 언어 라이브러리가 없습니다.",
     es: "No hay bibliotecas de idioma en la nube configuradas.",
+  },
+  "System owner:": {
+    "zh-CN": "系统 owner:",
+    "zh-TW": "系統 owner:",
+    ja: "システム所有者:",
+    ko: "시스템 소유자:",
+    es: "Propietario del sistema:",
   },
 
   // Cloud library management page + its admin run/log/explorer components.

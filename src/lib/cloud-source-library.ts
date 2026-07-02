@@ -1,9 +1,14 @@
 import { BuilderPoolOrigin, type BuilderKind, type PrismaClient } from "@prisma/client";
+import { builderLibraryKey } from "@/lib/builder-keys";
 import type { CloudFetchFrequency } from "@/lib/cloud-source-contracts";
 import { cancelQueuedCloudFetchForTasks } from "@/lib/cloud-source-scheduler";
-import { displayLanguagePreference } from "@/lib/language-preference";
+import {
+  displayLanguagePreference,
+  normalizeSummaryLanguagePreference,
+} from "@/lib/language-preference";
 
 const CLOUD_SOURCE_CANDIDATE_SEED = "cloud_source_library";
+const CLOUD_SYSTEM_USER_EMAIL_DOMAIN = "followbrief.system";
 
 export type CloudCopyableBuilder = {
   kind: BuilderKind | string;
@@ -170,6 +175,120 @@ export async function getUserCloudSubmissionSummary(params: {
 
 export function cloudLanguageLibraryHubName(summaryLanguage: string) {
   return `Community source library - ${displayLanguagePreference(summaryLanguage)}`;
+}
+
+function cloudLanguageSystemSlug(summaryLanguage: string) {
+  const normalized = normalizeSummaryLanguagePreference(summaryLanguage).toLowerCase();
+  const slug = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return slug || "default";
+}
+
+export function cloudLanguageSystemUserEmail(summaryLanguage: string) {
+  return `cloud-source-${cloudLanguageSystemSlug(summaryLanguage)}@${CLOUD_SYSTEM_USER_EMAIL_DOMAIN}`;
+}
+
+export function cloudLanguageSystemUserName(summaryLanguage: string) {
+  return `FollowBrief Cloud - ${displayLanguagePreference(summaryLanguage)}`;
+}
+
+export async function ensureCloudLanguageSystemUser(params: {
+  summaryLanguage: string;
+  prisma?: PrismaClient;
+}) {
+  const prisma = params.prisma ?? (await getPrismaClient());
+  const email = cloudLanguageSystemUserEmail(params.summaryLanguage);
+  const name = cloudLanguageSystemUserName(params.summaryLanguage);
+  return prisma.user.upsert({
+    where: { email },
+    update: { name },
+    create: { email, name },
+    select: { id: true, email: true, name: true },
+  });
+}
+
+export async function reassignCloudLanguageTaskBuildersToOwner(params: {
+  prisma: PrismaClient;
+  cloudLanguageLibraryId: string;
+  ownerUserId: string;
+}) {
+  const tasks = await params.prisma.cloudSourceTask.findMany({
+    where: { cloudLanguageLibraryId: params.cloudLanguageLibraryId },
+    select: {
+      builder: {
+        select: {
+          id: true,
+          canonicalKey: true,
+          ownerUserId: true,
+        },
+      },
+    },
+  });
+  const buildersById = new Map<string, { id: string; canonicalKey: string; ownerUserId: string }>();
+  for (const task of tasks) {
+    if (!task.builder) continue;
+    buildersById.set(task.builder.id, task.builder);
+  }
+
+  let updatedBuilders = 0;
+  for (const builder of buildersById.values()) {
+    if (builder.ownerUserId === params.ownerUserId) continue;
+    await params.prisma.builder.update({
+      where: { id: builder.id },
+      data: {
+        ownerUserId: params.ownerUserId,
+        libraryKey: builderLibraryKey({
+          ownerUserId: params.ownerUserId,
+          canonicalKey: builder.canonicalKey,
+        }),
+      },
+    });
+    updatedBuilders += 1;
+  }
+  return { updatedBuilders };
+}
+
+export async function upsertCloudLanguageLibraryWithSystemOwner(params: {
+  summaryLanguage: string;
+  enabled: boolean;
+  prisma?: PrismaClient;
+}) {
+  const prisma = params.prisma ?? (await getPrismaClient());
+  const owner = await ensureCloudLanguageSystemUser({
+    summaryLanguage: params.summaryLanguage,
+    prisma,
+  });
+  const library = await prisma.cloudLanguageLibrary.upsert({
+    where: { summaryLanguage: params.summaryLanguage },
+    update: {
+      ownerUserId: owner.id,
+      enabled: params.enabled,
+    },
+    create: {
+      summaryLanguage: params.summaryLanguage,
+      ownerUserId: owner.id,
+      enabled: params.enabled,
+    },
+    include: {
+      owner: { select: { id: true, email: true, name: true } },
+      hubEntry: { select: { id: true, slug: true, name: true } },
+    },
+  });
+  await reassignCloudLanguageTaskBuildersToOwner({
+    prisma,
+    cloudLanguageLibraryId: library.id,
+    ownerUserId: owner.id,
+  });
+  if (!params.enabled) return library;
+
+  await syncCloudLanguageLibraryHub(params.summaryLanguage, prisma);
+  const refreshed = await prisma.cloudLanguageLibrary.findUnique({
+    where: { id: library.id },
+    include: {
+      owner: { select: { id: true, email: true, name: true } },
+      hubEntry: { select: { id: true, slug: true, name: true } },
+    },
+  });
+  return refreshed ?? library;
 }
 
 export async function resolveCloudLanguageLibrary(params: {

@@ -59,6 +59,9 @@ test("cloud fetch command is exposed and keeps worker-facing task shape", async 
   assert.match(cliSource, /else if \(command === "heartbeat-cloud-fetch"\) await heartbeatCloudFetch\(args\)/);
   assert.match(cliSource, /buildFetchTasksForBuilders/);
   assert.match(cliSource, /applySharedPostReuseToFetchTasks/);
+  assert.match(cliSource, /leasedCloudTaskFetchedItems/);
+  assert.match(cliSource, /const cloudFetchedItems = \[\]/);
+  assert.match(cliSource, /personalFetchedItems: force \? \[\] : cloudFetchedItems/);
   assert.doesNotMatch(cliSource, /user private-library builders are selected by cloud command/);
 });
 

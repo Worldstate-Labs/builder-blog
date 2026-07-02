@@ -19,6 +19,8 @@ test("canonicalPostUrl normalizes tracking params, hash, host case, and trailing
 test("shared post reuse resolver is scoped to Hub-shared feed items", () => {
   const route = readFileSync("src/app/api/skill/shared-post-reuse/route.ts", "utf8");
   assert.match(route, /builder:\s*\{\s*is:\s*\{\s*hubItems:\s*\{\s*some:\s*\{\s*\}/);
+  assert.doesNotMatch(route, /ownerUserId:\s*user\.id/);
+  assert.doesNotMatch(route, /ownerUserId:\s*\{\s*in:/);
   assert.match(route, /checkBodyContentQuality/);
   assert.match(route, /summaryLanguageMatches/);
 });
@@ -227,6 +229,24 @@ test("same-language Hub summary can sync without copying a reusable body", async
   const validation = cli.validateAgentSyncPayload(fetchResult, merged.payload);
   assert.equal(validation.status, "ok");
   assert.equal(validation.validatedFetchTasks, 1);
+});
+
+test("missing Hub summary or body leaves the post on the normal fetch path", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = baseFetchTask();
+  const reused = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body: null,
+    bodyReused: false,
+    summary: null,
+    summaryLanguage: null,
+    summaryMatchesTarget: false,
+    source: null,
+  }, { summaryLanguage: "zh" });
+
+  assert.equal(reused, task);
+  assert.equal(reused.contentStatus, "requires_agent");
+  assert.equal(reused.agentWorkType, "fetch_post");
 });
 
 test("different-language Hub summary becomes a ready fetch_post subtask that only translates summary", async () => {

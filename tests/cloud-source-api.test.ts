@@ -61,8 +61,9 @@ test("admin cloud fetch config routes validate patches behind admin auth", () =>
   assert.match(configRoute, /normalizeCloudFetchConfigPatchInput/);
   assert.match(configRoute, /cloudFetchConfig\.upsert/);
   assert.match(languageRoute, /normalizeCloudLanguageLibraryPatchInput/);
-  assert.match(languageRoute, /cloudLanguageLibrary\.upsert/);
-  assert.match(languageRoute, /ownerEmail/);
+  assert.match(languageRoute, /upsertCloudLanguageLibraryWithSystemOwner/);
+  assert.doesNotMatch(languageRoute, /ownerEmail/);
+  assert.doesNotMatch(languageRoute, /findCloudLibraryOwner/);
 });
 
 test("admin cloud fetch sync route uses admin auth and cloud sync status helper", () => {

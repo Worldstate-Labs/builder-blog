@@ -73,6 +73,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 const MIN_ESTIMATED_TOKENS = 1_000;
 const DEFAULT_MATERIALIZE_LIMIT = 100;
+const CLOUD_FETCHED_ITEM_LIMIT_PER_LEASE = 5_000;
 
 const SOURCE_TYPE_PRIORS: Record<string, {
   durationP75Seconds: number;
@@ -342,6 +343,10 @@ export async function leaseCloudFetchTasks(params: {
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
 
+  const fetchedItemsByBuilderId = await loadFetchedItemsForCloudBuilders(
+    prisma,
+    selected.map(({ item }) => item.cloudSourceTask.builderId),
+  );
   const maxEstimatedDuration = Math.max(...selected.map((entry) => entry.estimate));
   const leaseExpiresAt = new Date(
     now.getTime() +
@@ -395,9 +400,42 @@ export async function leaseCloudFetchTasks(params: {
       summaryLanguage: item.cloudSourceTask.summaryLanguage,
       estimatedDurationSeconds: estimate,
       source: item.cloudSourceTask.builder,
+      fetchedItems: fetchedItemsByBuilderId.get(item.cloudSourceTask.builderId) ?? [],
     })),
     budget,
   };
+}
+
+async function loadFetchedItemsForCloudBuilders(prisma: PrismaClient, builderIds: string[]) {
+  const uniqueBuilderIds = [...new Set(builderIds.filter(Boolean))];
+  if (uniqueBuilderIds.length === 0) return new Map<string, {
+    builderId: string;
+    kind: string;
+    externalId: string;
+    publishedAt: Date | null;
+    createdAt: Date;
+  }[]>();
+
+  const rows = await prisma.feedItem.findMany({
+    where: { builderId: { in: uniqueBuilderIds } },
+    select: {
+      builderId: true,
+      kind: true,
+      externalId: true,
+      publishedAt: true,
+      createdAt: true,
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: CLOUD_FETCHED_ITEM_LIMIT_PER_LEASE,
+  });
+  const byBuilderId = new Map<string, typeof rows>();
+  for (const row of rows) {
+    if (!row.builderId) continue;
+    const bucket = byBuilderId.get(row.builderId) ?? [];
+    bucket.push(row);
+    byBuilderId.set(row.builderId, bucket);
+  }
+  return byBuilderId;
 }
 
 export async function heartbeatCloudFetchRun(params: {

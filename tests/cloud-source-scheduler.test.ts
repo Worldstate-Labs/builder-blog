@@ -322,6 +322,118 @@ test("leaseCloudFetchTasks skips lease batch history when nothing is due", async
   assert.equal(createdRuns.length, 0);
 });
 
+test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders", async () => {
+  const feedFindCalls: unknown[] = [];
+  const queueUpdates: unknown[] = [];
+  const runTaskCreates: unknown[] = [];
+  const sourceTaskUpdates: unknown[] = [];
+  const queuedItem = {
+    id: "queue_1",
+    cloudSourceTaskId: "cloud_task_zh",
+    mustSucceedBy: minutesFromNow(60),
+    cloudSourceTask: {
+      id: "cloud_task_zh",
+      builderId: "cloud_builder_zh",
+      summaryLanguage: "zh",
+      estimatedDurationSeconds: 300,
+      estimatedTokenCost: 50_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_zh",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Cloud Source",
+        handle: null,
+        sourceUrl: "https://example.com/feed.xml",
+        fetchUrl: "https://example.com/feed.xml",
+        canonicalKey: "BLOG:https://example.com/feed.xml",
+      },
+    },
+  };
+  const prisma = {
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudFetchQueueItem: {
+      updateMany: async () => ({ count: 0 }),
+      findMany: async (args: { include?: unknown }) => {
+        if (args.include) return [queuedItem];
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+      update: async (args: unknown) => {
+        queueUpdates.push(args);
+        return {};
+      },
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async (args: unknown) => {
+        sourceTaskUpdates.push(args);
+        return {};
+      },
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      create: async (args: unknown) => {
+        runTaskCreates.push(args);
+        return {};
+      },
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async (args: unknown) => {
+        feedFindCalls.push(args);
+        return [
+          {
+            builderId: "cloud_builder_zh",
+            kind: "BLOG_POST",
+            externalId: "https://example.com/post-1",
+            publishedAt: new Date("2026-06-27T11:00:00.000Z"),
+            createdAt: new Date("2026-06-27T11:05:00.000Z"),
+          },
+        ];
+      },
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.runId, "run_cloud_1");
+  assert.equal(result.tasks.length, 1);
+  assert.deepEqual(result.tasks[0].fetchedItems, [
+    {
+      builderId: "cloud_builder_zh",
+      kind: "BLOG_POST",
+      externalId: "https://example.com/post-1",
+      publishedAt: new Date("2026-06-27T11:00:00.000Z"),
+      createdAt: new Date("2026-06-27T11:05:00.000Z"),
+    },
+  ]);
+  assert.deepEqual((feedFindCalls[0] as { where: unknown }).where, {
+    builderId: { in: ["cloud_builder_zh"] },
+  });
+  assert.equal(queueUpdates.length, 1);
+  assert.equal(runTaskCreates.length, 1);
+  assert.equal(sourceTaskUpdates.length, 1);
+});
+
 const generousConfig = {
   tokenBudgetPerHour: 1_000_000,
   starvationReserveRatio: 0,

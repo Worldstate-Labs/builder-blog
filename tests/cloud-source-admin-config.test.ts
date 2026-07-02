@@ -57,24 +57,38 @@ test("cloud fetch config patch rejects removed server-side concurrency knobs", (
   }
 });
 
-test("cloud language library patch resolves fixed language and owner lookup", () => {
+test("cloud language library patch resolves fixed language without user-configured owner", () => {
   const normalized = normalizeCloudLanguageLibraryPatchInput({
     summaryLanguage: " Chinese ",
-    ownerEmail: "cloud-zh@example.com ",
     enabled: false,
   });
 
   assert.deepEqual(normalized, {
     summaryLanguage: "Chinese",
-    ownerEmail: "cloud-zh@example.com",
-    ownerUserId: null,
     enabled: false,
   });
 });
 
+test("cloud language library patch rejects user-configured owner fields", () => {
+  assert.throws(
+    () => normalizeCloudLanguageLibraryPatchInput({
+      summaryLanguage: "zh",
+      ownerEmail: "cloud-zh@example.com",
+    }),
+    /ownerEmail/,
+  );
+  assert.throws(
+    () => normalizeCloudLanguageLibraryPatchInput({
+      summaryLanguage: "zh",
+      ownerUserId: "user_1",
+    }),
+    /ownerUserId/,
+  );
+});
+
 test("cloud language library patch rejects original/source language preference", () => {
   assert.throws(
-    () => normalizeCloudLanguageLibraryPatchInput({ summaryLanguage: "source", ownerUserId: "user_1" }),
+    () => normalizeCloudLanguageLibraryPatchInput({ summaryLanguage: "source" }),
     /fixed summary language/,
   );
 });

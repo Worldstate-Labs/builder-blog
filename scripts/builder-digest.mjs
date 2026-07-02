@@ -8340,6 +8340,20 @@ function leasedCloudTaskBuilder(task) {
   };
 }
 
+function leasedCloudTaskFetchedItems(task, builderId) {
+  return Array.isArray(task?.fetchedItems)
+    ? task.fetchedItems
+      .filter((item) => item?.kind && item?.externalId)
+      .map((item) => ({
+        builderId: item.builderId ?? task?.builderId ?? builderId,
+        kind: item.kind,
+        externalId: item.externalId,
+        publishedAt: item.publishedAt ?? null,
+        createdAt: item.createdAt ?? null,
+      }))
+    : [];
+}
+
 async function fetchCloudLibrary(args) {
   const startedAt = new Date();
   const rawDays = Number(argValue(args, "--days", String(DEFAULT_PERSONAL_FETCH_DAYS)));
@@ -8406,8 +8420,10 @@ async function fetchCloudLibrary(args) {
     { label: "cloud library context" },
   );
   const cloudTaskMetadataByBuilderId = new Map();
+  const cloudFetchedItems = [];
   const builders = lease.tasks.map((task) => {
     const builder = leasedCloudTaskBuilder(task);
+    cloudFetchedItems.push(...leasedCloudTaskFetchedItems(task, builder.id));
     cloudTaskMetadataByBuilderId.set(builder.id, {
       cloudRunId: lease.runId,
       cloudSourceTaskId: task.cloudSourceTaskId,
@@ -8421,7 +8437,7 @@ async function fetchCloudLibrary(args) {
     context: {
       ...context,
       subscriptions: [],
-      personalFetchedItems: [],
+      personalFetchedItems: force ? [] : cloudFetchedItems,
       latestPersonalFetchedItems: [],
     },
     force,

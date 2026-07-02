@@ -4,10 +4,14 @@ import test from "node:test";
 
 import {
   cloudLanguageLibraryHubName,
+  cloudLanguageSystemUserEmail,
+  cloudLanguageSystemUserName,
   copyBuilderToCloudOwner,
   effectiveCloudFetchFrequency,
+  ensureCloudLanguageSystemUser,
   getUserCloudSubmissionSummary,
   planSubmissionReconciliation,
+  reassignCloudLanguageTaskBuildersToOwner,
   summarizeActiveCloudSubmissions,
   upsertSourceCandidateFromCloudBuilder,
 } from "../src/lib/cloud-source-library";
@@ -60,6 +64,95 @@ test("effectiveCloudFetchFrequency chooses daily when any active submission is d
 test("cloud language library names are language-specific hub source libraries", () => {
   assert.equal(cloudLanguageLibraryHubName("zh"), "Community source library - Chinese");
   assert.equal(cloudLanguageLibraryHubName("en"), "Community source library - English");
+});
+
+test("cloud language system owners are deterministic per summary language", async () => {
+  assert.equal(cloudLanguageSystemUserEmail("zh"), "cloud-source-zh@followbrief.system");
+  assert.equal(cloudLanguageSystemUserEmail("Chinese"), "cloud-source-chinese@followbrief.system");
+  assert.equal(cloudLanguageSystemUserName("zh"), "FollowBrief Cloud - Chinese");
+
+  const calls: unknown[] = [];
+  const prisma = {
+    user: {
+      async upsert(args: unknown) {
+        calls.push(args);
+        return {
+          id: "cloud_user_zh",
+          email: "cloud-source-zh@followbrief.system",
+          name: "FollowBrief Cloud - Chinese",
+        };
+      },
+    },
+  };
+
+  const user = await ensureCloudLanguageSystemUser({ summaryLanguage: "zh", prisma: prisma as never });
+
+  assert.equal(user.id, "cloud_user_zh");
+  assert.deepEqual(calls[0], {
+    where: { email: "cloud-source-zh@followbrief.system" },
+    update: { name: "FollowBrief Cloud - Chinese" },
+    create: {
+      email: "cloud-source-zh@followbrief.system",
+      name: "FollowBrief Cloud - Chinese",
+    },
+    select: { id: true, email: true, name: true },
+  });
+});
+
+test("cloud language owner migration rehomes existing task builders without changing builder ids", async () => {
+  const updates: unknown[] = [];
+  const prisma = {
+    cloudSourceTask: {
+      async findMany() {
+        return [
+          {
+            builder: {
+              id: "builder_old_owner",
+              canonicalKey: "BLOG:https://example.com/feed.xml",
+              ownerUserId: "admin_user",
+            },
+          },
+          {
+            builder: {
+              id: "builder_already_system",
+              canonicalKey: "BLOG:https://example.com/other.xml",
+              ownerUserId: "cloud_user_zh",
+            },
+          },
+        ];
+      },
+    },
+    builder: {
+      async update(args: unknown) {
+        updates.push(args);
+        return args;
+      },
+    },
+  };
+
+  const result = await reassignCloudLanguageTaskBuildersToOwner({
+    prisma: prisma as never,
+    cloudLanguageLibraryId: "cloud_lib_zh",
+    ownerUserId: "cloud_user_zh",
+  });
+
+  assert.equal(result.updatedBuilders, 1);
+  assert.deepEqual(updates[0], {
+    where: { id: "builder_old_owner" },
+    data: {
+      ownerUserId: "cloud_user_zh",
+      libraryKey: "user:cloud_user_zh:BLOG:https://example.com/feed.xml",
+    },
+  });
+});
+
+test("cloud language system-owner save refreshes the Hub share when enabled", () => {
+  const library = readFileSync("src/lib/cloud-source-library.ts", "utf8");
+
+  assert.match(library, /upsertCloudLanguageLibraryWithSystemOwner/);
+  assert.match(library, /if \(!params\.enabled\) return library/);
+  assert.match(library, /syncCloudLanguageLibraryHub\(params\.summaryLanguage, prisma\)/);
+  assert.match(library, /hubEntry:\s*\{\s*select:\s*\{\s*id:\s*true,\s*slug:\s*true,\s*name:\s*true\s*\}/);
 });
 
 test("cloud source candidate upsert dedupes by canonical source key", async () => {

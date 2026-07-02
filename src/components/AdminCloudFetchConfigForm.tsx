@@ -75,7 +75,6 @@ export function AdminCloudFetchConfigForm({
   const [libraries, setLibraries] = useState(initialLibraries);
   const [libraryDraft, setLibraryDraft] = useState({
     summaryLanguage: "zh",
-    ownerEmail: "",
     enabled: true,
   });
   const [configStatus, setConfigStatus] = useState<Status>({ kind: "idle" });
@@ -133,8 +132,8 @@ export function AdminCloudFetchConfigForm({
   }
 
   function saveLanguageLibrary() {
-    if (!libraryDraft.summaryLanguage.trim() || !libraryDraft.ownerEmail.trim()) {
-      setLibraryStatus({ kind: "error", message: "Language and owner email are required." });
+    if (!libraryDraft.summaryLanguage.trim()) {
+      setLibraryStatus({ kind: "error", message: "Summary language is required." });
       return;
     }
     setLibraryStatus({ kind: "saving" });
@@ -147,7 +146,7 @@ export function AdminCloudFetchConfigForm({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          setLibraryStatus({ kind: "error", message: body?.error ?? "Could not save cloud library owner." });
+          setLibraryStatus({ kind: "error", message: body?.error ?? "Could not save cloud language library." });
           return;
         }
         const next = serializeLanguageLibrary(body.library);
@@ -157,7 +156,7 @@ export function AdminCloudFetchConfigForm({
         ].sort((a, b) => a.summaryLanguage.localeCompare(b.summaryLanguage)));
         setLibraryStatus({ kind: "saved", message: "Saved" });
       } catch {
-        setLibraryStatus({ kind: "error", message: "Could not save cloud library owner." });
+        setLibraryStatus({ kind: "error", message: "Could not save cloud language library." });
       }
     });
   }
@@ -194,7 +193,7 @@ export function AdminCloudFetchConfigForm({
       <Section
         step="02"
         title="Language libraries"
-        description="Maps each summary language to the cloud owner whose normal source library is shared to Hub."
+        description="Each summary language gets its own cloud system owner, source library, fetched posts, and summaries."
       >
         <div className="settings-choice-list">
           {libraries.length === 0 ? (
@@ -203,7 +202,8 @@ export function AdminCloudFetchConfigForm({
             libraries.map((library) => (
               <span className="settings-token" key={library.id}>
                 <span>
-                  {library.summaryLanguage} · {library.ownerEmail ?? library.ownerUserId}
+                  {library.summaryLanguage} · <span>System owner:</span>{" "}
+                  {library.ownerEmail ?? library.ownerUserId}
                   {library.enabled ? "" : " · disabled"}
                 </span>
               </span>
@@ -216,14 +216,6 @@ export function AdminCloudFetchConfigForm({
           placeholder="zh"
           onChange={(value) =>
             setLibraryDraft((current) => ({ ...current, summaryLanguage: value }))
-          }
-        />
-        <FieldText
-          label="Owner email"
-          value={libraryDraft.ownerEmail}
-          placeholder="cloud-zh@example.com"
-          onChange={(value) =>
-            setLibraryDraft((current) => ({ ...current, ownerEmail: value }))
           }
         />
         <Toggle

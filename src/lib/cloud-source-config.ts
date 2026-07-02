@@ -30,31 +30,11 @@ const CloudFetchConfigPatchSchema = z.object({
 
 const CloudLanguageLibraryPatchSchema = z.object({
   summaryLanguage: z.string().min(1).max(40),
-  ownerUserId: z.preprocess(
-    trimOptionalString,
-    z.string().min(1).max(64).nullable().optional(),
-  ),
-  ownerEmail: z.preprocess(
-    trimOptionalString,
-    z.string().email().max(320).nullable().optional(),
-  ),
   enabled: z.boolean().optional(),
-}).strict().superRefine((input, ctx) => {
-  if (!input.ownerUserId?.trim() && !input.ownerEmail?.trim()) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["ownerUserId"],
-      message: "Cloud language library patch requires ownerUserId or ownerEmail.",
-    });
-  }
-});
+}).strict();
 
 export function normalizeCloudFetchConfigPatchInput(input: unknown) {
   return CloudFetchConfigPatchSchema.parse(input);
-}
-
-function trimOptionalString(value: unknown) {
-  return typeof value === "string" ? value.trim() : value;
 }
 
 export function normalizeCloudLanguageLibraryPatchInput(input: unknown) {
@@ -65,8 +45,6 @@ export function normalizeCloudLanguageLibraryPatchInput(input: unknown) {
   }
   return {
     summaryLanguage,
-    ownerEmail: parsed.ownerEmail?.trim() || null,
-    ownerUserId: parsed.ownerUserId?.trim() || null,
     enabled: parsed.enabled ?? true,
   };
 }

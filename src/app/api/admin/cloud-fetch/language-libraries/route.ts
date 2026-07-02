@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
 import { normalizeCloudLanguageLibraryPatchInput } from "@/lib/cloud-source-config";
+import { upsertCloudLanguageLibraryWithSystemOwner } from "@/lib/cloud-source-library";
 import { prisma } from "@/lib/prisma";
 import { formatZodError } from "@/lib/zod-error";
 
@@ -37,50 +38,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const owner = await findCloudLibraryOwner({
-    ownerUserId: parsed.data.ownerUserId,
-    ownerEmail: parsed.data.ownerEmail,
-  });
-  if (!owner) {
-    return NextResponse.json({ error: "Cloud owner user was not found." }, { status: 404 });
-  }
-
-  const library = await prisma.cloudLanguageLibrary.upsert({
-    where: { summaryLanguage: parsed.data.summaryLanguage },
-    update: {
-      ownerUserId: owner.id,
-      enabled: parsed.data.enabled,
-    },
-    create: {
-      summaryLanguage: parsed.data.summaryLanguage,
-      ownerUserId: owner.id,
-      enabled: parsed.data.enabled,
-    },
-    include: {
-      owner: { select: { id: true, email: true, name: true } },
-      hubEntry: { select: { id: true, slug: true, name: true } },
-    },
+  const library = await upsertCloudLanguageLibraryWithSystemOwner({
+    summaryLanguage: parsed.data.summaryLanguage,
+    enabled: parsed.data.enabled,
+    prisma,
   });
   return NextResponse.json({
     status: "ok",
     library,
-  });
-}
-
-async function findCloudLibraryOwner(input: {
-  ownerUserId: string | null;
-  ownerEmail: string | null;
-}) {
-  if (input.ownerUserId) {
-    return prisma.user.findUnique({
-      where: { id: input.ownerUserId },
-      select: { id: true },
-    });
-  }
-  if (!input.ownerEmail) return null;
-  return prisma.user.findUnique({
-    where: { email: input.ownerEmail },
-    select: { id: true },
   });
 }
 
