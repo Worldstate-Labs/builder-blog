@@ -87,6 +87,8 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /cloud_fetch_heartbeat_all\(\)/);
   assert.match(runner, /_assigned_fetch_task_ids_file="\$JOB_TMP_DIR\/assigned-fetch-task-ids\.txt"/);
   assert.match(runner, /_active_fetch_group_keys_file="\$JOB_TMP_DIR\/active-fetch-group-keys\.txt"/);
+  assert.match(runner, /for _wafg_entry in \$\{_worker_entries:-\}/);
+  assert.match(runner, /case " \$\{_timed_out_worker_pids:-\} " in/);
   assert.match(runner, /start_pending_library_workers/);
   assert.match(runner, /cloud_fetch_heartbeat/);
   assert.match(runner, /heartbeat-cloud-fetch --cloud-run-id/);

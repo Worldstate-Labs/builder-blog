@@ -2792,11 +2792,11 @@ write_active_fetch_group_keys() {
   _wafg_out="${1:-}"
   [ -n "$_wafg_out" ] || return 0
   : > "$_wafg_out"
-  for _wafg_entry in $_worker_entries; do
+  for _wafg_entry in ${_worker_entries:-}; do
     _wafg_pid="${_wafg_entry%%:*}"
     _wafg_rest="${_wafg_entry#*:}"
     _wafg_name="${_wafg_rest#*:}"
-    case " $_timed_out_worker_pids " in
+    case " ${_timed_out_worker_pids:-} " in
       *" $_wafg_pid "*) continue ;;
     esac
     kill -0 "$_wafg_pid" 2>/dev/null || continue
