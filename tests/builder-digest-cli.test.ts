@@ -4393,6 +4393,101 @@ test("merge-task-results can exclude checkpoint-synced task ids from final sync 
   );
 });
 
+test("merge-task-results keeps zero-post cloud sources in final remaining tasks", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-zero-source-"));
+  const resultsDir = join(tmp, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "remaining-payload.json");
+  const tasksOutFile = join(tmp, "remaining-tasks.json");
+  const excludeFile = join(tmp, "synced-ids.txt");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "already",
+          agentWorkType: "fetch_post",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_with_posts",
+          builderSync: { builderId: "b1", cloudSourceTaskId: "source_with_posts" },
+        },
+        {
+          id: "candidate_discovery:b2:product_hunt_top_products",
+          type: "candidate_discovery",
+          agentWorkType: "candidate_discovery_fallback",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_without_posts",
+          builderSync: { builderId: "b2", cloudSourceTaskId: "source_without_posts" },
+        },
+      ],
+      cloudSourceTasks: [
+        {
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_with_posts",
+          builderId: "b1",
+          name: "Source With Posts",
+          sourceType: "blog",
+        },
+        {
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_without_posts",
+          builderId: "b2",
+          name: "Source Without Posts",
+          sourceType: "product_hunt_top_products",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(excludeFile, "run_1\talready\n", "utf8");
+  await mkdir(resultsDir);
+  await writeFile(
+    join(resultsDir, "shard-0-result.json"),
+    `${JSON.stringify({
+      builders: [
+        {
+          builderId: "b1",
+          items: [{ externalId: "already-item", rawJson: { fetchTaskId: "already" } }],
+        },
+      ],
+      taskOutcomes: [],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--exclude-task-ids-file",
+      excludeFile,
+      "--tasks-out",
+      tasksOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const remainingTasks = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  assert.deepEqual(payload.builders, []);
+  assert.deepEqual(
+    remainingTasks.fetchTasks.map((task: { id: string }) => task.id),
+    [],
+  );
+  assert.deepEqual(
+    remainingTasks.cloudSourceTasks.map((task: { cloudSourceTaskId: string }) => task.cloudSourceTaskId),
+    ["source_without_posts"],
+  );
+});
+
 test("merge-task-results checkpoint exclusions keep repeated cloud task ids run-scoped", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-cloud-exclude-"));
   const resultsDir = join(tmp, "results");

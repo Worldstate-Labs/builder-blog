@@ -6782,7 +6782,7 @@ async function mergeTaskResults(args) {
     ? filterSyncPayloadToTaskIds(merged.payload, selectedIds)
     : merged.payload;
   const tasksOut = shouldFilterOutput
-    ? filterFetchResultToTasks(fetchResult, selectedTasks)
+    ? filterFetchResultToTasks(fetchResult, selectedTasks, { includeZeroPostCloudSourceTasks: !completedOnly })
     : null;
   await writeFile(outFile, `${JSON.stringify(payloadOut, null, 2)}\n`, "utf8");
   if (tasksOutFile) {
@@ -6866,12 +6866,33 @@ function syncPayloadTaskIds(payload) {
   return ids;
 }
 
-function filterFetchResultToTasks(fetchResult, tasks) {
+function cloudSourceTaskIdForSync(task) {
+  return String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+}
+
+function zeroPostCloudSourceTasksForSync(fetchResult) {
+  const sourceTaskIdsWithPosts = new Set();
+  for (const task of extractFetchTasks(fetchResult)) {
+    if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
+    const sourceTaskId = cloudSourceTaskIdForSync(task);
+    if (sourceTaskId) sourceTaskIdsWithPosts.add(sourceTaskId);
+  }
+  return extractCloudSourceTasks(fetchResult).filter((task) => {
+    const sourceTaskId = String(task?.cloudSourceTaskId || "").trim();
+    return sourceTaskId && !sourceTaskIdsWithPosts.has(sourceTaskId);
+  });
+}
+
+function filterFetchResultToTasks(fetchResult, tasks, options = {}) {
   const wanted = new Set(tasks.map(taskIdForSync));
+  const cloudSourceTasks = options.includeZeroPostCloudSourceTasks
+    ? zeroPostCloudSourceTasksForSync(fetchResult)
+    : [];
   return {
     ...copyPayloadMetadata(fetchResult),
     status: fetchResult?.status ?? "ok",
     fetchTasks: tasks,
+    ...(cloudSourceTasks.length > 0 ? { cloudSourceTasks } : {}),
     taskOutcomes: Array.isArray(fetchResult?.taskOutcomes)
       ? fetchResult.taskOutcomes.filter((outcome) =>
           outcome?.fetchTaskId && wanted.has(String(outcome.fetchTaskId)),
