@@ -5840,7 +5840,7 @@ export function planFetchQueueAssignments(fetchResult, {
   const excludedIds = new Set(Array.from(excludeTaskIds, (id) => String(id)));
   const groups = new Map();
   for (const task of workTasks) {
-    if (excludedIds.has(taskIdForSync(task))) continue;
+    if (excludedTaskIdsContains(excludedIds, task)) continue;
     const key = shardGroupKey(task);
     const group = groups.get(key) ?? { key, weight: 0, tasks: [] };
     group.weight += shardTaskWeight(task);
@@ -6038,6 +6038,7 @@ async function assignFetchTasks(args) {
       workerId: task?.workerId ?? workerId,
     }));
     const taskIds = shardTasks.map((task) => taskIdForSync(task));
+    const assignedKeys = shardTasks.map((task) => taskKeyForSync(task));
     assignedIds.push(...taskIds);
     await writeFile(
       file,
@@ -6063,12 +6064,14 @@ async function assignFetchTasks(args) {
       workerId,
       tasks: shardTasks.length,
       taskIds,
+      taskKeys: assignedKeys,
       weight: assignment.weight,
       groupKeys: assignment.groupKeys,
     });
   }
   if (assignedTaskIdsFile && assignedIds.length > 0) {
-    await appendFile(assignedTaskIdsFile, `${assignedIds.join("\n")}\n`, "utf8");
+    const assignedKeys = shardFiles.flatMap((shard) => shard.taskKeys ?? []);
+    await appendFile(assignedTaskIdsFile, `${assignedKeys.join("\n")}\n`, "utf8");
   }
 
   console.log(JSON.stringify(
@@ -6767,15 +6770,19 @@ async function mergeTaskResults(args) {
   });
   const excluded = await readIdSetFile(excludeTaskIdsFile);
   const availableIds = syncPayloadTaskIds(merged.payload);
+  const selectedTasks = extractFetchTasks(fetchResult).filter((task) => {
+    const id = taskIdForSync(task);
+    return availableIds.has(id) && !excludedTaskIdsContains(excluded, task);
+  });
   const selectedIds = new Set(
-    [...availableIds].filter((id) => !excluded.has(id)),
+    selectedTasks.map((task) => taskIdForSync(task)),
   );
   const shouldFilterOutput = completedOnly || excluded.size > 0;
   const payloadOut = shouldFilterOutput
     ? filterSyncPayloadToTaskIds(merged.payload, selectedIds)
     : merged.payload;
   const tasksOut = shouldFilterOutput
-    ? filterFetchResultToTaskIds(fetchResult, selectedIds)
+    ? filterFetchResultToTasks(fetchResult, selectedTasks)
     : null;
   await writeFile(outFile, `${JSON.stringify(payloadOut, null, 2)}\n`, "utf8");
   if (tasksOutFile) {
@@ -6786,7 +6793,8 @@ async function mergeTaskResults(args) {
     );
   }
   if (idsOutFile) {
-    await writeFile(idsOutFile, `${[...selectedIds].sort().join("\n")}${selectedIds.size ? "\n" : ""}`, "utf8");
+    const selectedKeys = selectedTasks.map((task) => taskKeyForSync(task));
+    await writeFile(idsOutFile, `${selectedKeys.sort().join("\n")}${selectedKeys.length ? "\n" : ""}`, "utf8");
   }
   console.log(
     JSON.stringify(
@@ -6816,6 +6824,22 @@ function taskIdForSync(task) {
   return String(task?.id || fetchTaskId(task));
 }
 
+function taskCloudRunIdForSync(task) {
+  return String(task?.cloudRunId || task?.builderSync?.cloudRunId || "").trim();
+}
+
+function taskKeyForSync(task) {
+  const id = taskIdForSync(task);
+  const cloudRunId = taskCloudRunIdForSync(task);
+  return cloudRunId ? `${cloudRunId}\t${id}` : id;
+}
+
+function excludedTaskIdsContains(excludedIds, task) {
+  const cloudRunId = taskCloudRunIdForSync(task);
+  if (cloudRunId) return excludedIds.has(taskKeyForSync(task));
+  return excludedIds.has(taskIdForSync(task));
+}
+
 async function readIdSetFile(file) {
   if (!file) return new Set();
   try {
@@ -6842,14 +6866,12 @@ function syncPayloadTaskIds(payload) {
   return ids;
 }
 
-function filterFetchResultToTaskIds(fetchResult, taskIds) {
-  const wanted = new Set([...taskIds].map(String));
+function filterFetchResultToTasks(fetchResult, tasks) {
+  const wanted = new Set(tasks.map(taskIdForSync));
   return {
     ...copyPayloadMetadata(fetchResult),
     status: fetchResult?.status ?? "ok",
-    fetchTasks: extractFetchTasks(fetchResult).filter((task) =>
-      wanted.has(taskIdForSync(task)),
-    ),
+    fetchTasks: tasks,
     taskOutcomes: Array.isArray(fetchResult?.taskOutcomes)
       ? fetchResult.taskOutcomes.filter((outcome) =>
           outcome?.fetchTaskId && wanted.has(String(outcome.fetchTaskId)),
@@ -7171,12 +7193,10 @@ async function failSyncSlice(args) {
 
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const excluded = await readIdSetFile(excludeTaskIdsFile);
-  const selectedIds = new Set(
-    extractFetchTasks(fetchResult)
-      .map(taskIdForSync)
-      .filter((id) => !excluded.has(id)),
+  const selectedTasks = extractFetchTasks(fetchResult).filter((task) =>
+    !excludedTaskIdsContains(excluded, task),
   );
-  const tasksOut = filterFetchResultToTaskIds(fetchResult, selectedIds);
+  const tasksOut = filterFetchResultToTasks(fetchResult, selectedTasks);
   const payload = failedSyncPayloadForTasks(tasksOut, { reason, message });
   await writeFile(outFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   if (tasksOutFile) {

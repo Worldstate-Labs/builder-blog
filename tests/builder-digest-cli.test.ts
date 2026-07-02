@@ -3327,6 +3327,45 @@ test("fetch queue assignments can leave runnable work pending for later workers"
   assert.deepEqual(plan.pendingTasks.map((task: { id: string }) => task.id).sort(), ["other", "third"]);
 });
 
+test("fetch queue assignment exclusions are scoped by cloud run id", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "shared-post",
+        cloudRunId: "run_1",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/shared" },
+      },
+      {
+        id: "shared-post",
+        cloudRunId: "run_2",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/shared" },
+      },
+    ],
+  };
+
+  const plan = cli.planFetchQueueAssignments(fetchResult, {
+    maxWorkers: 1,
+    excludeTaskIds: new Set(["run_1\tshared-post"]),
+  });
+
+  assert.deepEqual(
+    plan.assignments.flatMap((assignment: { tasks: { cloudRunId: string }[] }) =>
+      assignment.tasks.map((task) => task.cloudRunId),
+    ),
+    ["run_2"],
+  );
+});
+
 test("assign-fetch-tasks writes dynamic shards and skips already assigned task ids", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-assign-fetch-tasks-"));
   const tasksFile = join(tmp, "fetch-result.json");
@@ -4235,6 +4274,90 @@ test("merge-task-results can exclude checkpoint-synced task ids from final sync 
     remainingTasks.fetchTasks.map((task: { id: string }) => task.id),
     ["remaining"],
   );
+});
+
+test("merge-task-results checkpoint exclusions keep repeated cloud task ids run-scoped", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-cloud-exclude-"));
+  const resultsDir = join(tmp, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "remaining-payload.json");
+  const tasksOutFile = join(tmp, "remaining-tasks.json");
+  const idsOutFile = join(tmp, "remaining-ids.txt");
+  const excludeFile = join(tmp, "synced-ids.txt");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "shared-post",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_task_1",
+          agentWorkType: "fetch_post",
+          builderSync: { builderId: "b1" },
+        },
+        {
+          id: "shared-post",
+          cloudRunId: "run_2",
+          cloudSourceTaskId: "source_task_2",
+          agentWorkType: "fetch_post",
+          builderSync: { builderId: "b1" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(excludeFile, "run_1\tshared-post\n", "utf8");
+  await mkdir(resultsDir);
+  await writeFile(
+    join(resultsDir, "shard-0-result.json"),
+    `${JSON.stringify({
+      builders: [
+        {
+          builderId: "b1",
+          items: [{ externalId: "shared-item", rawJson: { fetchTaskId: "shared-post" } }],
+        },
+      ],
+      taskOutcomes: [],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--exclude-task-ids-file",
+      excludeFile,
+      "--tasks-out",
+      tasksOutFile,
+      "--ids-out",
+      idsOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const remainingTasks = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  const remainingIds = (await readFile(idsOutFile, "utf8")).trim().split(/\r?\n/);
+  assert.deepEqual(
+    payload.builders.flatMap((builder: { items: { externalId: string }[] }) =>
+      builder.items.map((item) => item.externalId),
+    ),
+    ["shared-item"],
+  );
+  assert.deepEqual(
+    remainingTasks.fetchTasks.map((task: { cloudRunId: string }) => task.cloudRunId),
+    ["run_2"],
+  );
+  assert.deepEqual(remainingIds, ["run_2\tshared-post"]);
 });
 
 test("merge-task-results classifies missing OpenClaw auth-failed shards", async () => {

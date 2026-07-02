@@ -4,6 +4,8 @@
   "minSeconds": 1200,
   "defaultMaxSeconds": 2700,
   "jobMaxSeconds": {
+    "cloud-library-cron": 7200,
+    "cloud-library-host": 7200,
     "library-cron": 7200,
     "digest-cron": 2700
   },

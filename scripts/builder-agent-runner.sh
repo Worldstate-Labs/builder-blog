@@ -2657,7 +2657,9 @@ try {
 }
 for (const task of Array.isArray(payload.fetchTasks) ? payload.fetchTasks : []) {
   const id = task && (task.id || task.fetchTaskId);
-  if (id) console.log(String(id));
+  if (!id) continue;
+  const runId = String(task.cloudRunId || (task.builderSync && task.builderSync.cloudRunId) || "").trim();
+  console.log(runId ? `${runId}\t${String(id)}` : String(id));
 }
 NODE
   sort -u "$_atifr_out_file" > "$_atifr_out_file.tmp"
