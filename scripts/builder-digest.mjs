@@ -6915,6 +6915,7 @@ function ensureSyncSlice(slices, key) {
     slice = {
       key: normalizedKey,
       fetchTasks: [],
+      cloudSourceTasks: [],
       plannedTaskOutcomes: [],
       discoveryExpansions: [],
       builders: [],
@@ -6958,20 +6959,37 @@ function splitKeyForSourceGranularity(task) {
   return sourceGroupKey(task);
 }
 
+function extractCloudSourceTasks(fetchResult) {
+  return Array.isArray(fetchResult?.cloudSourceTasks) ? fetchResult.cloudSourceTasks : [];
+}
+
+function splitKeyForCloudSourceGranularity(task) {
+  const sourceTaskId = String(task?.cloudSourceTaskId || "").trim();
+  return sourceTaskId ? `cloudSource:${sourceTaskId}` : sourceGroupKey(task);
+}
+
 function splitSyncPayload(fetchResult, payload = {}, options = {}) {
   const granularity = options.granularity === "task" ? "task" : "source";
   const keyForTask = typeof options.keyForTask === "function"
     ? options.keyForTask
     : granularity === "task" ? splitKeyForTaskGranularity : splitKeyForSourceGranularity;
+  const keyForCloudSource = typeof options.keyForCloudSource === "function"
+    ? options.keyForCloudSource
+    : splitKeyForCloudSourceGranularity;
   const slices = new Map();
   const taskKeyById = new Map();
   const fetchTasks = extractFetchTasks(fetchResult);
+  const cloudSourceTasks = extractCloudSourceTasks(fetchResult);
 
   for (const task of fetchTasks) {
     const key = keyForTask(task);
     const id = taskIdForSync(task);
     taskKeyById.set(id, key);
     ensureSyncSlice(slices, key).fetchTasks.push(task);
+  }
+
+  for (const task of cloudSourceTasks) {
+    ensureSyncSlice(slices, keyForCloudSource(task)).cloudSourceTasks.push(task);
   }
 
   for (const outcome of fetchResult?.taskOutcomes ?? []) {
@@ -7010,6 +7028,7 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
       status: "ok",
       localErrors: [],
       fetchTasks: slice.fetchTasks,
+      cloudSourceTasks: slice.cloudSourceTasks,
       taskOutcomes: slice.plannedTaskOutcomes,
       discoveryExpansions: slice.discoveryExpansions,
     },
@@ -7034,8 +7053,16 @@ function splitKeyForCloudRun(task) {
   return runId ? `cloudRun:${runId}` : "cloudRun:missing";
 }
 
+function splitKeyForCloudSourceRun(task) {
+  const runId = String(task?.cloudRunId || "").trim();
+  return runId ? `cloudRun:${runId}` : "cloudRun:missing";
+}
+
 export function splitCloudSyncPayloadByRunId(fetchResult, payload = {}) {
-  return splitSyncPayload(fetchResult, payload, { keyForTask: splitKeyForCloudRun })
+  return splitSyncPayload(fetchResult, payload, {
+    keyForTask: splitKeyForCloudRun,
+    keyForCloudSource: splitKeyForCloudSourceRun,
+  })
     .map((slice) => ({
       ...slice,
       payload: {
@@ -7052,6 +7079,27 @@ function uniqueNonEmptyStrings(values) {
       .map((value) => String(value || "").trim())
       .filter(Boolean),
   )];
+}
+
+function cloudSourceTaskMergeKey(task) {
+  const cloudRunId = String(task?.cloudRunId || "").trim();
+  const cloudSourceTaskId = String(task?.cloudSourceTaskId || "").trim();
+  if (cloudRunId || cloudSourceTaskId) return `${cloudRunId}\u0000${cloudSourceTaskId}`;
+  return JSON.stringify(task ?? {});
+}
+
+function mergeCloudSourceTasks(...taskLists) {
+  const merged = [];
+  const seen = new Set();
+  for (const list of taskLists) {
+    for (const task of Array.isArray(list) ? list : []) {
+      const key = cloudSourceTaskMergeKey(task);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(task);
+    }
+  }
+  return merged;
 }
 
 export function mergeFetchResultsForQueue(baseResult = {}, nextResult = {}) {
@@ -7079,6 +7127,7 @@ export function mergeFetchResultsForQueue(baseResult = {}, nextResult = {}) {
     ...(Array.isArray(baseResult?.discoveryExpansions) ? baseResult.discoveryExpansions : []),
     ...(Array.isArray(nextResult?.discoveryExpansions) ? nextResult.discoveryExpansions : []),
   ];
+  const cloudSourceTasks = mergeCloudSourceTasks(baseResult?.cloudSourceTasks, nextResult?.cloudSourceTasks);
   return {
     ...baseResult,
     status: baseResult?.status === "error" && nextResult?.status === "error" ? "error" : "ok",
@@ -7088,6 +7137,7 @@ export function mergeFetchResultsForQueue(baseResult = {}, nextResult = {}) {
     localErrors,
     summaryLanguage: baseResult?.summaryLanguage ?? nextResult?.summaryLanguage ?? null,
     fetchTasks,
+    ...(cloudSourceTasks.length > 0 ? { cloudSourceTasks } : {}),
     ...(taskOutcomes.length > 0 ? { taskOutcomes } : {}),
     ...(discoveryExpansions.length > 0 ? { discoveryExpansions } : {}),
   };
@@ -8274,7 +8324,7 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
   };
 }
 
-function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
+function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceTasks = []) {
   const syncItems = extractSyncItems(payload);
   const syncItemByTaskId = new Map(
     syncItems
@@ -8297,6 +8347,26 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
   );
   const workerUsages = Array.isArray(payload?.workerUsages) ? payload.workerUsages : [];
   const grouped = new Map();
+  for (const sourceTask of Array.isArray(cloudSourceTasks) ? cloudSourceTasks : []) {
+    const cloudSourceTaskId = String(sourceTask?.cloudSourceTaskId || "").trim();
+    if (!cloudSourceTaskId || grouped.has(cloudSourceTaskId)) continue;
+    grouped.set(cloudSourceTaskId, {
+      cloudSourceTaskId,
+      status: "succeeded",
+      plannedPosts: 0,
+      syncedPosts: 0,
+      failedPosts: 0,
+      failureReason: null,
+      details: {
+        fetchTaskIds: [],
+        posts: [],
+        noGeneratedFetchTasks: true,
+        ...(sourceTask?.builderId ? { builderId: sourceTask.builderId } : {}),
+        ...(sourceTask?.name ? { name: sourceTask.name } : {}),
+        ...(sourceTask?.sourceType ? { sourceType: sourceTask.sourceType } : {}),
+      },
+    });
+  }
   for (const task of plannedTasks) {
     if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
     const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
@@ -8311,6 +8381,7 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
       failureReason: null,
       details: { fetchTaskIds: [], posts: [] },
     };
+    if (group.details?.noGeneratedFetchTasks) delete group.details.noGeneratedFetchTasks;
     group.plannedPosts += 1;
     group.details.fetchTaskIds.push(plannedFetchTaskId);
     const outcome = outcomeByTaskId.get(plannedFetchTaskId);
@@ -8397,15 +8468,21 @@ export function buildCloudSyncTaskResultsForTest(plannedTasks, payload) {
   return buildCloudSyncTaskResults(plannedTasks, payload);
 }
 
-export function prepareCloudSyncPayloadForUpload(payload, cloudRunId, plannedTasks = []) {
+export function prepareCloudSyncPayloadForUpload(payload, cloudRunId, plannedTasks = [], cloudSourceTasks = []) {
   const prepared = prepareSyncPayloadForUpload(payload);
   if (!prepared || typeof prepared !== "object") return prepared;
+  const normalizedCloudRunId = String(cloudRunId || prepared.cloudRunId || "").trim();
+  const scopedCloudSourceTasks = (Array.isArray(cloudSourceTasks) ? cloudSourceTasks : [])
+    .filter((task) => {
+      const taskRunId = String(task?.cloudRunId || "").trim();
+      return !normalizedCloudRunId || !taskRunId || taskRunId === normalizedCloudRunId;
+    });
   const taskResults = Array.isArray(prepared.taskResults) && prepared.taskResults.length > 0
     ? prepared.taskResults
-    : buildCloudSyncTaskResults(plannedTasks, prepared);
+    : buildCloudSyncTaskResults(plannedTasks, prepared, scopedCloudSourceTasks);
   return {
     ...prepared,
-    cloudRunId: String(cloudRunId || prepared.cloudRunId || "").trim(),
+    cloudRunId: normalizedCloudRunId,
     taskResults,
   };
 }
@@ -8422,7 +8499,11 @@ async function syncCloudBuilders(args) {
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
-  const { plannedTasks: rawPlannedTasks, summaryLanguage } = await readPlannedFetchResult(tasksFile);
+  const {
+    plannedTasks: rawPlannedTasks,
+    cloudSourceTasks: rawCloudSourceTasks,
+    summaryLanguage,
+  } = await readPlannedFetchResult(tasksFile);
   const resultsDir = argValue(args, "--results-dir", null);
   const shardWorkerIds = resultsDir
     ? shardWorkerIdByTaskId(await readShardPlans(resultsDir))
@@ -8441,7 +8522,7 @@ async function syncCloudBuilders(args) {
   if (!String(cloudRunId).trim()) {
     throw new Error("Missing --cloud-run-id <id> for sync-cloud-builders.");
   }
-  const uploadPayload = prepareCloudSyncPayloadForUpload(rawPayload, cloudRunId, plannedTasks);
+  const uploadPayload = prepareCloudSyncPayloadForUpload(rawPayload, cloudRunId, plannedTasks, rawCloudSourceTasks);
   if (webSyncDisabled()) {
     console.log(JSON.stringify(
       {
@@ -8528,6 +8609,7 @@ async function fetchCloudLibrary(args) {
         cloudRunId: null,
         leasedTasks: 0,
         localErrors: [],
+        cloudSourceTasks: [],
         fetchTasks: [],
         message: "Web sync disabled for smoke check; no cloud fetch tasks were leased.",
       },
@@ -8551,6 +8633,7 @@ async function fetchCloudLibrary(args) {
         leasedTasks: 0,
         localErrors: [],
         summaryLanguage: null,
+        cloudSourceTasks: [],
         fetchTasks: [],
       },
       null,
@@ -8601,6 +8684,14 @@ async function fetchCloudLibrary(args) {
       leasedTasks: builders.length,
       localErrors: [],
       summaryLanguage: null,
+      cloudSourceTasks: builders.map((builder) => ({
+        ...cloudTaskMetadataByBuilderId.get(builder.id),
+        builderId: builder.id,
+        name: builder.name,
+        sourceType: builder.sourceType,
+        sourceUrl: builder.sourceUrl,
+        fetchUrl: builder.fetchUrl,
+      })),
       fetchTasks: planned.fetchTasks,
     },
     null,
@@ -8903,6 +8994,7 @@ async function readPlannedFetchResult(tasksFile) {
     const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
     return {
       plannedTasks: Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [],
+      cloudSourceTasks: extractCloudSourceTasks(fetchResult),
       plannedTaskOutcomes: Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [],
       discoveryExpansions: Array.isArray(fetchResult?.discoveryExpansions)
         ? fetchResult.discoveryExpansions
@@ -8911,7 +9003,13 @@ async function readPlannedFetchResult(tasksFile) {
     };
   } catch {
     // No planned-tasks file (e.g. ad-hoc sync) → reconcile against payload only.
-    return { plannedTasks: [], plannedTaskOutcomes: [], discoveryExpansions: [], summaryLanguage: null };
+    return {
+      plannedTasks: [],
+      cloudSourceTasks: [],
+      plannedTaskOutcomes: [],
+      discoveryExpansions: [],
+      summaryLanguage: null,
+    };
   }
 }
 

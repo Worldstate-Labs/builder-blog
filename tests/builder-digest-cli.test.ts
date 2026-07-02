@@ -2509,6 +2509,81 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
   assert.equal(payload.taskResults[1].details.posts[0].url, "https://openai.com/news/2");
 });
 
+test("cloud sync task results include leased sources that generated no post tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [
+        {
+          builderId: "cloud_builder_1",
+          kind: "BLOG",
+          sourceType: "blog",
+          name: "OpenAI News",
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: "post_1",
+              title: "Post 1",
+              body: "Long enough source body for a normal synced article item.",
+              summary: "This is a synced summary with enough text to pass the shape test.",
+              url: "https://openai.com/news/1",
+              rawJson: { fetchTaskId: "task_synced" },
+            },
+          ],
+        },
+      ],
+    },
+    "cloud_run_1",
+    [
+      {
+        id: "task_synced",
+        type: "fetch_post",
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_1",
+        builder: "OpenAI News",
+        builderId: "cloud_builder_1",
+        sourceType: "blog",
+        item: { kind: "BLOG_POST", externalId: "post_1", url: "https://openai.com/news/1" },
+      },
+    ],
+    [
+      {
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_1",
+        builderId: "cloud_builder_1",
+        name: "OpenAI News",
+        sourceType: "blog",
+        summaryLanguage: "zh",
+      },
+      {
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_2",
+        builderId: "cloud_builder_2",
+        name: "No New Posts",
+        sourceType: "blog",
+        summaryLanguage: "zh",
+      },
+    ],
+  );
+
+  assert.deepEqual(
+    payload.taskResults.map((result: { cloudSourceTaskId: string; status: string; plannedPosts: number; syncedPosts: number; failedPosts: number }) => ({
+      cloudSourceTaskId: result.cloudSourceTaskId,
+      status: result.status,
+      plannedPosts: result.plannedPosts,
+      syncedPosts: result.syncedPosts,
+      failedPosts: result.failedPosts,
+    })),
+    [
+      { cloudSourceTaskId: "cloud_task_1", status: "succeeded", plannedPosts: 1, syncedPosts: 1, failedPosts: 0 },
+      { cloudSourceTaskId: "cloud_task_2", status: "succeeded", plannedPosts: 0, syncedPosts: 0, failedPosts: 0 },
+    ],
+  );
+  assert.deepEqual(payload.taskResults[1].details.fetchTaskIds, []);
+  assert.deepEqual(payload.taskResults[1].details.posts, []);
+  assert.equal(payload.taskResults[1].details.noGeneratedFetchTasks, true);
+});
+
 test("cloud sync keeps shared worker usage for lane aggregation without source double counting", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const plannedTasks = [
@@ -2627,6 +2702,38 @@ test("cloud sync payload can split by cloud run id", async () => {
   assert.deepEqual(slices[1].payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId), ["task_run_2"]);
 });
 
+test("cloud sync payload keeps zero-post source metadata in cloud-run slices", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const slices = cli.splitCloudSyncPayloadByRunId(
+    {
+      status: "ok",
+      fetchTasks: [],
+      cloudSourceTasks: [
+        {
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "cloud_task_1",
+          builderId: "builder_1",
+          name: "No New Posts",
+          sourceType: "blog",
+        },
+      ],
+    },
+    { builders: [], taskOutcomes: [] },
+  );
+
+  assert.equal(slices.length, 1);
+  assert.equal(slices[0].cloudRunId, "run_1");
+  assert.deepEqual(slices[0].tasks.cloudSourceTasks, [
+    {
+      cloudRunId: "run_1",
+      cloudSourceTaskId: "cloud_task_1",
+      builderId: "builder_1",
+      name: "No New Posts",
+      sourceType: "blog",
+    },
+  ]);
+});
+
 test("split-sync-slices can write cloud-run slices with per-slice run ids", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-cloud-run-slices-"));
   const tasksFile = join(tmp, "fetch-result.json");
@@ -2715,6 +2822,7 @@ test("merge-fetch-results appends repeated cloud leases into one local queue", a
       leasedTasks: 1,
       localErrors: [{ message: "first warning" }],
       fetchTasks: [{ id: "task_1" }],
+      cloudSourceTasks: [{ cloudRunId: "run_1", cloudSourceTaskId: "cloud_task_1" }],
     },
     {
       status: "ok",
@@ -2722,6 +2830,10 @@ test("merge-fetch-results appends repeated cloud leases into one local queue", a
       leasedTasks: 2,
       localErrors: [],
       fetchTasks: [{ id: "task_2" }, { id: "task_3" }],
+      cloudSourceTasks: [
+        { cloudRunId: "run_2", cloudSourceTaskId: "cloud_task_2" },
+        { cloudRunId: "run_2", cloudSourceTaskId: "cloud_task_3" },
+      ],
     },
   );
 
@@ -2729,6 +2841,11 @@ test("merge-fetch-results appends repeated cloud leases into one local queue", a
   assert.equal(merged.cloudRunId, "run_1");
   assert.equal(merged.leasedTasks, 3);
   assert.deepEqual(merged.fetchTasks.map((task: { id: string }) => task.id), ["task_1", "task_2", "task_3"]);
+  assert.deepEqual(merged.cloudSourceTasks.map((task: { cloudSourceTaskId: string }) => task.cloudSourceTaskId), [
+    "cloud_task_1",
+    "cloud_task_2",
+    "cloud_task_3",
+  ]);
   assert.deepEqual(merged.localErrors, [{ message: "first warning" }]);
 });
 
