@@ -85,11 +85,13 @@ function formatPostOutcomeSummary({
   synced,
   planned,
   failed,
+  skipped,
   pending,
 }: {
   synced: number;
   planned: number;
   failed: number;
+  skipped: number;
   pending: number;
 }): string {
   const parts =
@@ -97,6 +99,7 @@ function formatPostOutcomeSummary({
       ? [`${synced.toLocaleString()}/${planned.toLocaleString()} synced`]
       : ["No posts planned"];
   if (pending > 0) parts.push(`${pending.toLocaleString()} pending`);
+  if (skipped > 0) parts.push(`${skipped.toLocaleString()} skipped`);
   if (failed > 0) parts.push(`${failed.toLocaleString()} failed`);
   return parts.join(" · ");
 }
@@ -286,6 +289,7 @@ type WorkerShardGroup = {
   tasks: WorkerShardTask[];
   synced: number;
   failed: number;
+  skipped: number;
   pending: number;
   updatedAt: string | null;
   usage: UsageSummary | null;
@@ -358,13 +362,14 @@ function buildWorkerShardGroups(
     .map(([workerId, tasks]) => {
       const synced = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "synced").length;
       const failed = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "failed").length;
-      const pending = Math.max(0, tasks.length - synced - failed);
+      const skipped = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "skipped").length;
+      const pending = Math.max(0, tasks.length - synced - failed - skipped);
       const updatedAt = tasks
         .map((entry) => entry.liveTask?.updatedAt)
         .filter((value): value is string => Boolean(value))
         .sort()
         .at(-1) ?? null;
-      return { workerId, tasks, synced, failed, pending, updatedAt, usage: usages.get(workerId) ?? null };
+      return { workerId, tasks, synced, failed, skipped, pending, updatedAt, usage: usages.get(workerId) ?? null };
     })
     .sort((a, b) => {
       const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
@@ -412,6 +417,7 @@ function WorkerHostPanel({
     const plannedPosts = leaseBatches.reduce((sum, batch) => sum + batch.plannedPosts, 0);
     const syncedPosts = leaseBatches.reduce((sum, batch) => sum + batch.syncedPosts, 0);
     const failedPosts = leaseBatches.reduce((sum, batch) => sum + batch.failedPosts, 0);
+    const skippedPosts = leaseBatches.reduce((sum, batch) => sum + batch.skippedPosts, 0);
     const sourcesTotal = leaseBatches.reduce((sum, batch) => sum + batch.tasksClaimed, 0);
     const sourcesChecked = leaseBatches.reduce(
       (sum, batch) => sum + batch.tasksSucceeded + batch.tasksFailed,
@@ -419,9 +425,10 @@ function WorkerHostPanel({
     );
     return {
       plannedPosts,
-      donePosts: syncedPosts + failedPosts,
+      donePosts: syncedPosts + failedPosts + skippedPosts,
       syncedPosts,
       failedPosts,
+      skippedPosts,
       sourcesTotal,
       sourcesChecked,
     };
@@ -499,7 +506,11 @@ function WorkerHostPanel({
         </div>
         <div className="cloud-worker-host-metric">
           <span>Skipped</span>
-          <strong>{formatMetric(progress?.skipped ?? null)}</strong>
+          <strong>
+            {formatMetric(
+              progress?.skipped ?? (fallbackMetrics.plannedPosts > 0 ? fallbackMetrics.skippedPosts : null),
+            )}
+          </strong>
         </div>
         <div className="cloud-worker-host-metric">
           <span>Action needed</span>
@@ -732,6 +743,7 @@ export function AdminCloudFetchLog({
                           synced: group.synced,
                           planned: group.tasks.length,
                           failed: group.failed,
+                          skipped: group.skipped,
                           pending: group.pending,
                         }),
                         groupUsage,
@@ -805,6 +817,7 @@ export function AdminCloudFetchLog({
                       synced: batch.syncedPosts,
                       planned: batch.plannedPosts,
                       failed: batch.failedPosts,
+                      skipped: batch.skippedPosts,
                       pending: batch.pendingPosts,
                     })}
                     {" · "}
@@ -866,6 +879,7 @@ export function AdminCloudFetchLog({
                                     synced: task.syncedPosts,
                                     planned: task.plannedPosts,
                                     failed: task.failedPosts,
+                                    skipped: task.skippedPosts,
                                     pending: task.pendingPosts,
                                   })}
                                   {task.durationMs != null ? ` · ${formatDuration(task.durationMs)}` : ""}

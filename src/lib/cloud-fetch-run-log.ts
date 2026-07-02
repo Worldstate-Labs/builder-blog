@@ -101,6 +101,7 @@ export type CloudFetchRunLogTask = {
   plannedPosts: number;
   syncedPosts: number;
   failedPosts: number;
+  skippedPosts: number;
   pendingPosts: number;
   durationMs: number | null;
   estimatedDurationSeconds: number | null;
@@ -128,6 +129,7 @@ export type CloudFetchRunLogItem = {
   plannedPosts: number;
   syncedPosts: number;
   failedPosts: number;
+  skippedPosts: number;
   pendingPosts: number;
   usageTokens: number | null;
   usageCostUsd: number | null;
@@ -281,6 +283,7 @@ export function serializeCloudFetchRun(run: CloudFetchRunRow): CloudFetchRunLogI
     plannedPosts: sumBy(tasks, (t) => t.plannedPosts),
     syncedPosts: sumBy(tasks, (t) => t.syncedPosts),
     failedPosts: sumBy(tasks, (t) => t.failedPosts),
+    skippedPosts: sumBy(tasks, (t) => t.skippedPosts),
     pendingPosts: sumBy(tasks, (t) => t.pendingPosts),
     usageTokens: run.usageTokens ?? null,
     usageCostUsd: run.usageCostUsd == null ? null : Number(run.usageCostUsd),
@@ -296,6 +299,8 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
       : task.startedAt && task.finishedAt
         ? Math.max(0, task.finishedAt.getTime() - task.startedAt.getTime())
         : null;
+  const posts = parseCloudTaskPosts(task.details);
+  const skippedPosts = posts.filter((post) => String(post.status ?? "").toLowerCase() === "skipped").length;
   return {
     id: task.id,
     builderId: task.builderId,
@@ -308,14 +313,15 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
     plannedPosts: task.plannedPosts,
     syncedPosts: task.syncedPosts,
     failedPosts: task.failedPosts,
-    pendingPosts: Math.max(0, task.plannedPosts - task.syncedPosts - task.failedPosts),
+    skippedPosts,
+    pendingPosts: Math.max(0, task.plannedPosts - task.syncedPosts - task.failedPosts - skippedPosts),
     durationMs,
     estimatedDurationSeconds: task.estimatedDurationSeconds ?? null,
     successProbability: task.successProbabilitySnapshot ?? null,
     usageTokens: task.usageTokens ?? null,
     usageCostUsd: task.usageCostUsd == null ? null : Number(task.usageCostUsd),
     failureReason: task.failureReason ?? null,
-    posts: parseCloudTaskPosts(task.details),
+    posts,
     workerUsages: parseCloudWorkerUsages(task.details),
   };
 }

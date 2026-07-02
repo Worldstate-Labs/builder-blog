@@ -81,6 +81,7 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
   assert.equal(task.startedAt, "2026-06-28T10:00:10.000Z");
   assert.equal(task.finishedAt, "2026-06-28T10:02:10.000Z");
   assert.equal(task.pendingPosts, 0);
+  assert.equal(task.skippedPosts, 0);
   assert.equal(task.durationMs, 120_000);
   assert.equal(task.usageTokens, 5000);
   assert.equal(task.usageCostUsd, 0.12);
@@ -117,19 +118,38 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
   assert.equal(task.posts[1].failureReason, "summary_missing");
 });
 
-test("serializeCloudFetchRun aggregates planned/synced/failed posts across sources", () => {
+test("serializeCloudFetchRun aggregates planned/synced/failed/skipped posts across sources", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,
     tasks: [
       { id: "a", builderId: "a", summaryLanguage: "zh", status: "SUCCEEDED", plannedPosts: 3, syncedPosts: 3, failedPosts: 0, actualDurationSeconds: 10, failureReason: null, builder: null },
-      { id: "b", builderId: "b", summaryLanguage: "zh", status: "FAILED", plannedPosts: 3, syncedPosts: 0, failedPosts: 2, actualDurationSeconds: 5, failureReason: "x", builder: null },
+      {
+        id: "b",
+        builderId: "b",
+        summaryLanguage: "zh",
+        status: "PARTIAL",
+        plannedPosts: 4,
+        syncedPosts: 0,
+        failedPosts: 2,
+        actualDurationSeconds: 5,
+        failureReason: "x",
+        builder: null,
+        details: {
+          fetchTasks: [
+            { id: "skip_1", status: "skipped", failureReason: "older_than_cutoff" },
+            { id: "pending_1", status: "queued" },
+          ],
+        },
+      },
     ],
   });
 
-  assert.equal(result.plannedPosts, 6);
+  assert.equal(result.plannedPosts, 7);
   assert.equal(result.syncedPosts, 3);
   assert.equal(result.failedPosts, 2);
+  assert.equal(result.skippedPosts, 1);
   assert.equal(result.pendingPosts, 1);
+  assert.equal(result.tasks[1].skippedPosts, 1);
   assert.equal(result.durationMs, 5 * 60_000);
 });
 
