@@ -6219,6 +6219,14 @@ function preserveReadyTaskItem(item, task) {
   };
 }
 
+function syncItemMatchesPlannedTask(builder, item, task, taskId) {
+  const candidate = { builder, item };
+  if (task?.agentWorkType === "fetch_builder_fallback") {
+    return itemMatchesBuilderFallback(candidate, task, taskId);
+  }
+  return itemMatchesAgentTask(candidate, task);
+}
+
 function syncBuilderFromFetchTask(task) {
   const sync = task?.builderSync ?? {};
   return {
@@ -6289,6 +6297,20 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   const builderKey = (builder) =>
     String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
 
+  const plannedTaskForSyncItem = (builder, item) => {
+    const rawTaskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
+    const rawTask = rawTaskId ? plannedTaskById.get(rawTaskId) : null;
+    if (rawTask && syncItemMatchesPlannedTask(builder, item, rawTask, rawTaskId)) {
+      return { id: rawTaskId, task: rawTask };
+    }
+    for (const task of planned) {
+      const id = String(task?.id || fetchTaskId(task));
+      if (syncedTaskIds.has(id) && taskTypeById.get(id) !== "fetch_builder_fallback") continue;
+      if (syncItemMatchesPlannedTask(builder, item, task, id)) return { id, task };
+    }
+    return rawTask ? { id: rawTaskId, task: rawTask } : null;
+  };
+
   const syncBuilderTarget = (builder) => {
     const key = builderKey(builder);
     let target = builderIndex.get(key);
@@ -6325,10 +6347,20 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       const target = syncBuilderTarget(builder);
       for (const item of builder?.items ?? []) {
         const stampedItem = stampItemWorkerId(item, workerId);
-        const taskId = stampedItem?.rawJson?.fetchTaskId ? String(stampedItem.rawJson.fetchTaskId) : null;
-        const mergedItem = taskId
-          ? preserveReadyTaskItem(stampedItem, plannedTaskById.get(taskId))
+        const match = plannedTaskForSyncItem(builder, stampedItem);
+        const taskId = match?.id ?? null;
+        const canonicalItem = taskId
+          ? {
+              ...stampedItem,
+              rawJson: {
+                ...(stampedItem.rawJson ?? {}),
+                fetchTaskId: taskId,
+              },
+            }
           : stampedItem;
+        const mergedItem = taskId
+          ? preserveReadyTaskItem(canonicalItem, match?.task)
+          : canonicalItem;
         if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.

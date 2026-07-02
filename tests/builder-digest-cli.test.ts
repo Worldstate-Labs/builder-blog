@@ -4279,6 +4279,71 @@ test("merge-task-results restores ready task body when worker omits or rewrites 
   assert.equal(validation.validatedFetchTasks, 2);
 });
 
+test("merge-task-results canonicalizes stale ready item fetch task ids", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "current-cloud-task",
+    type: "fetch_post",
+    contentStatus: "ready",
+    builder: "Blog | Claude",
+    builderId: "current_builder",
+    sourceType: "blog",
+    item: {
+      kind: "BLOG_POST",
+      externalId: "https://claude.com/blog/foundation-models",
+      title: "Foundation Models",
+      url: "https://claude.com/blog/foundation-models",
+      publishedAt: "2026-06-26T11:00:00.000Z",
+      sourceName: "Blog | Claude",
+      body: "Original ready body from a hub-shared source that should be preserved for this cloud task.",
+    },
+  };
+  const fetchResult = { status: "ok", fetchTasks: [task] };
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          {
+            builderId: "current_builder",
+            kind: "BLOG",
+            sourceType: "blog",
+            name: "Blog | Claude",
+            items: [
+              {
+                kind: "BLOG_POST",
+                externalId: "https://claude.com/blog/foundation-models",
+                title: "Foundation Models",
+                url: "https://claude.com/blog/foundation-models",
+                summary: "A valid translated summary for the current cloud task.",
+                rawJson: {
+                  fetchTaskId: "stale-hub-task",
+                  hubSharedReuse: { source: "hub_shared_post" },
+                },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ]);
+
+  assert.equal(merged.backfilledOutcomes, 0);
+  assert.deepEqual(merged.payload.taskOutcomes, []);
+  const item = merged.payload.builders[0].items[0] as {
+    body?: string;
+    rawJson?: { fetchTaskId?: string; hubSharedReuse?: { source?: string } };
+  };
+  assert.equal(item.rawJson?.fetchTaskId, "current-cloud-task");
+  assert.equal(item.rawJson?.hubSharedReuse?.source, "hub_shared_post");
+  assert.equal(item.body, task.item.body);
+
+  const validation = cli.validateAgentSyncPayload(fetchResult, merged.payload);
+  assert.equal(validation.status, "ok");
+  assert.equal(validation.validatedFetchTasks, 1);
+});
+
 test("merge-task-results preserves task checkpoints when a shard result is missing", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
