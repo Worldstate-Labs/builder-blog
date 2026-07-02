@@ -248,6 +248,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "worker host prompt 복사",
     es: "Copiar prompt del worker host",
   },
+  "Copy stop cloud fetch prompt": {
+    "zh-CN": "复制停止 cloud fetch prompt",
+    "zh-TW": "複製停止 cloud fetch prompt",
+    ja: "cloud fetch 停止 prompt をコピー",
+    ko: "cloud fetch 중지 prompt 복사",
+    es: "Copiar prompt para detener cloud fetch",
+  },
   "Use whole numbers in range: posts 1-20, days 1-90, workers 1-8.": {
     "zh-CN": "请输入范围内的整数：帖子 1-20、天数 1-90、workers 1-8。",
     "zh-TW": "請輸入範圍內的整數：貼文 1-20、天數 1-90、workers 1-8。",

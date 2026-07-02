@@ -478,6 +478,7 @@ test("web app serves the agent skill and setup command", () => {
   const digestOncePrompt = readFileSync("skills/builder-blog-digest/jobs/digest-once.md", "utf8");
   const libraryCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-setup.md", "utf8");
   const libraryCronStopPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-stop.md", "utf8");
+  const cloudCronStopPrompt = readFileSync("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
   const digestCronStopPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron-stop.md", "utf8");
   const digestCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron-setup.md", "utf8");
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
@@ -1045,6 +1046,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(cloudCronSetupPrompt, /ask the user whether to replace that active/);
   assert.match(cloudCronSetupPrompt, /cloud-library-host\/current\.json/);
   assert.match(cloudCronSetupPrompt, /cloud-library-cron\/current\.json/);
+  assert.match(cloudCronStopPrompt, /Stop the FollowBrief Cloud worker host/);
+  assert.match(cloudCronStopPrompt, /cloud-library-host\/current\.json/);
+  assert.match(cloudCronStopPrompt, /cloud-library-cron\/current\.json/);
+  assert.match(cloudCronStopPrompt, /--job-type cloud-library-fetch/);
+  assert.match(cloudCronStopPrompt, /--status killed/);
+  assert.doesNotMatch(cloudCronStopPrompt, /cron-status/);
   assert.match(digestOncePrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-once/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
@@ -1487,6 +1494,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobFiles, /library-once/);
   assert.match(skillJobFiles, /digest-once/);
   assert.match(skillJobFiles, /cloud-library-host/);
+  assert.match(skillJobFiles, /cloud-library-cron-stop/);
   assert.match(skillJobRoute, /jobSkillFiles/);
   assert.match(skillJobRoute, /text\/markdown/);
   assert.match(skillJobAliasRoute, /jobSkillFiles/);

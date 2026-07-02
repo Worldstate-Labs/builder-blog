@@ -6,6 +6,7 @@ export const jobSkillFiles = {
   "cloud-library-host": "skills/builder-blog-digest/jobs/cloud-library-host.md",
   "cloud-library-cron": "skills/builder-blog-digest/jobs/cloud-library-cron.md",
   "cloud-library-cron-setup": "skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
+  "cloud-library-cron-stop": "skills/builder-blog-digest/jobs/cloud-library-cron-stop.md",
   "digest-cron-setup": "skills/builder-blog-digest/jobs/digest-cron-setup.md",
   "digest-cron-stop": "skills/builder-blog-digest/jobs/digest-cron-stop.md",
   "digest-cron": "skills/builder-blog-digest/jobs/digest-cron.md",

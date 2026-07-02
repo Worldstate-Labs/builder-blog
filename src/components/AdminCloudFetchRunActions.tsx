@@ -5,7 +5,9 @@ import { Copy } from "lucide-react";
 
 type ActiveToken = { id: string; name: string | null };
 const CLOUD_WORKER_HOST_JOB = "cloud-library-cron-setup";
+const CLOUD_WORKER_STOP_JOB = "cloud-library-cron-stop";
 type Runtime = "claude" | "codex" | "hermes" | "openclaw";
+type PromptAction = "host" | "stop";
 
 const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "codex", label: "Codex" },
@@ -80,31 +82,38 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
   const [fetchLimit, setFetchLimit] = useState(String(FETCH_LIMIT_DEFAULT));
   const [fetchDays, setFetchDays] = useState(String(FETCH_DAYS_DEFAULT));
   const [parallelWorkers, setParallelWorkers] = useState(String(PARALLEL_WORKERS_DEFAULT));
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<PromptAction | null>(null);
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [manual, setManual] = useState<string | null>(null);
 
-  async function copyPrompt() {
+  async function copyPrompt(action: PromptAction) {
     if (!tokenId) {
       setStatus({ kind: "error", text: "Create an agent access key first (Access keys in Settings)." });
       return;
     }
-    const postLimitParam = normalizeNumberParam(fetchLimit, FETCH_LIMIT_DEFAULT, 1, FETCH_LIMIT_MAX);
-    const daysParam = normalizeNumberParam(fetchDays, FETCH_DAYS_DEFAULT, 1, FETCH_DAYS_MAX);
-    const parallelParam = normalizeNumberParam(
-      parallelWorkers,
-      PARALLEL_WORKERS_DEFAULT,
-      1,
-      PARALLEL_WORKERS_MAX,
-    );
-    if (!postLimitParam || !daysParam || !parallelParam) {
-      setStatus({
-        kind: "error",
-        text: "Use whole numbers in range: posts 1-20, days 1-90, workers 1-8.",
-      });
-      return;
+    const params = new URLSearchParams({ runtime });
+    const job = action === "host" ? CLOUD_WORKER_HOST_JOB : CLOUD_WORKER_STOP_JOB;
+    if (action === "host") {
+      const postLimitParam = normalizeNumberParam(fetchLimit, FETCH_LIMIT_DEFAULT, 1, FETCH_LIMIT_MAX);
+      const daysParam = normalizeNumberParam(fetchDays, FETCH_DAYS_DEFAULT, 1, FETCH_DAYS_MAX);
+      const parallelParam = normalizeNumberParam(
+        parallelWorkers,
+        PARALLEL_WORKERS_DEFAULT,
+        1,
+        PARALLEL_WORKERS_MAX,
+      );
+      if (!postLimitParam || !daysParam || !parallelParam) {
+        setStatus({
+          kind: "error",
+          text: "Use whole numbers in range: posts 1-20, days 1-90, workers 1-8.",
+        });
+        return;
+      }
+      params.set("postLimit", postLimitParam);
+      params.set("days", daysParam);
+      params.set("parallel", parallelParam);
     }
-    setBusy(true);
+    setBusyAction(action);
     setStatus(null);
     setManual(null);
     try {
@@ -114,11 +123,8 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
         setStatus({ kind: "error", text: "Could not prepare a secure setup code. Try again." });
         return;
       }
-      const params = new URLSearchParams({ ec: body.code, runtime });
-      params.set("postLimit", postLimitParam);
-      params.set("days", daysParam);
-      params.set("parallel", parallelParam);
-      const url = `${window.location.origin}/api/skill/jobs/${CLOUD_WORKER_HOST_JOB}/skill.md?${params.toString()}`;
+      params.set("ec", body.code);
+      const url = `${window.location.origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
       const command = `Read ${url} and follow the instructions.`;
       if (await copyText(command)) {
         setStatus({ kind: "info", text: "Copied. Valid for 10 minutes. Send it to your local agent." });
@@ -129,7 +135,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
     } catch {
       setStatus({ kind: "error", text: "Could not prepare a Local Agent prompt." });
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }
 
@@ -220,11 +226,20 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
             <button
               type="button"
               className="fb-btn dark compact"
-              disabled={busy}
-              onClick={copyPrompt}
+              disabled={busyAction !== null}
+              onClick={() => copyPrompt("host")}
             >
               <Copy aria-hidden="true" />
-              {busy ? "Preparing" : "Copy worker host prompt"}
+              {busyAction === "host" ? "Preparing" : "Copy worker host prompt"}
+            </button>
+            <button
+              type="button"
+              className="fb-btn light compact"
+              disabled={busyAction !== null}
+              onClick={() => copyPrompt("stop")}
+            >
+              <Copy aria-hidden="true" />
+              {busyAction === "stop" ? "Preparing" : "Copy stop cloud fetch prompt"}
             </button>
           </div>
 

@@ -108,6 +108,7 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   const bootstrapRoute = await readFile("src/app/api/skill/bootstrap/route.ts", "utf8");
   const jobFiles = await readFile("src/lib/skill-job-files.ts", "utf8");
   const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
+  const stopPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
   const cronPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron.md", "utf8");
   const hostPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-host.md", "utf8");
 
@@ -115,6 +116,7 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.doesNotMatch(actions, /FREQUENCY_OPTIONS/);
   assert.doesNotMatch(actions, /params\.set\("freq"/);
   assert.match(actions, /Copy worker host prompt/);
+  assert.match(actions, /Copy stop cloud fetch prompt/);
   assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
   assert.match(actions, /cloud-run-post-limit/);
   assert.match(actions, /cloud-run-fetch-days/);
@@ -134,6 +136,8 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(bootstrapRoute, /jobs\/cloud-library-host\.md/);
   assert.match(jobFiles, /"cloud-library-host":/);
   assert.match(jobFiles, /cloud-library-host\.md/);
+  assert.match(jobFiles, /"cloud-library-cron-stop":/);
+  assert.match(jobFiles, /cloud-library-cron-stop\.md/);
 
   for (const prompt of [setupPrompt, cronPrompt, hostPrompt]) {
     assert.doesNotMatch(prompt, /\{\{CLOUD_FETCH_LIMIT\}\}/);
@@ -166,6 +170,19 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(hostPrompt, /Run the persistent cloud source worker host/);
   assert.match(hostPrompt, /builder-agent-runner\.sh" cloud-library-host/);
   assert.match(hostPrompt, /BUILDER_BLOG_CLOUD_IDLE_SECONDS/);
+
+  assert.match(stopPrompt, /Stop the FollowBrief Cloud worker host/);
+  assert.match(stopPrompt, /com\.followbrief\.cloud-library-host/);
+  assert.match(stopPrompt, /followbrief-cloud-library-host\.service/);
+  assert.match(stopPrompt, /cloud-library-host\/current\.json/);
+  assert.match(stopPrompt, /cloud-library-cron\/current\.json/);
+  assert.match(stopPrompt, /runtime-cloud-library-host-\$ACCOUNT_SLUG/);
+  assert.match(stopPrompt, /runtime-cloud-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(stopPrompt, /--job-type cloud-library-fetch/);
+  assert.match(stopPrompt, /--status killed/);
+  assert.match(stopPrompt, /--stage stopped/);
+  assert.doesNotMatch(stopPrompt, /cron-status/);
+  assert.doesNotMatch(stopPrompt, /--schedule-job cloud-library-cron/);
 });
 
 test("cloud source readiness check is read-only and verifies deployment prerequisites", async () => {

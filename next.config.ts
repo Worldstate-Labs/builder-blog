@@ -95,6 +95,7 @@ const nextConfig: NextConfig = {
       "./skills/builder-blog-digest/jobs/library-cron-setup.md",
       "./skills/builder-blog-digest/jobs/cloud-library-cron.md",
       "./skills/builder-blog-digest/jobs/cloud-library-host.md",
+      "./skills/builder-blog-digest/jobs/cloud-library-cron-stop.md",
       "./skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
       "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
       "./skills/builder-blog-digest/jobs/digest-cron.md",

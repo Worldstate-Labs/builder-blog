@@ -67,18 +67,20 @@ test("settings page links to the cloud library management route for admins", () 
   assert.match(page, /\/settings\/cloud-library/);
 });
 
-test("copy-prompt job for cloud worker host setup is whitelisted", () => {
+test("copy-prompt jobs for cloud worker host setup and stop are whitelisted", () => {
   const jobs = source("src/lib/skill-job-files.ts");
 
   assert.match(jobs, /"cloud-library-cron-setup":/);
+  assert.match(jobs, /"cloud-library-cron-stop":/);
   assert.match(jobs, /"cloud-library-host":/);
   assert.doesNotMatch(jobs, /"cloud-library-once":/);
 });
 
-test("cloud run actions component copies one worker host prompt via exchange codes", () => {
+test("cloud run actions component copies worker host and stop prompts via exchange codes", () => {
   const actions = source("src/components/AdminCloudFetchRunActions.tsx");
 
   assert.match(actions, /cloud-library-cron-setup/);
+  assert.match(actions, /cloud-library-cron-stop/);
   assert.doesNotMatch(actions, /cloud-library-once/);
   assert.match(actions, /exchange-code/);
   assert.match(actions, /\/api\/skill\/jobs\//);
@@ -97,7 +99,9 @@ test("cloud run actions expose host settings without a cadence selector", () => 
   const actions = source("src/components/AdminCloudFetchRunActions.tsx");
 
   assert.match(actions, /Copy worker host prompt/);
+  assert.match(actions, /Copy stop cloud fetch prompt/);
   assert.match(actions, /CLOUD_WORKER_HOST_JOB/);
+  assert.match(actions, /CLOUD_WORKER_STOP_JOB/);
   assert.doesNotMatch(actions, /FREQUENCY_OPTIONS/);
   assert.doesNotMatch(actions, /cloud-run-frequency/);
   assert.doesNotMatch(actions, /frequency === "once"/);
