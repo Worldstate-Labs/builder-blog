@@ -7057,6 +7057,8 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
     : splitKeyForCloudSourceGranularity;
   const slices = new Map();
   const taskKeyById = new Map();
+  const taskById = new Map();
+  const emittedItemTaskIds = new Set();
   const fetchTasks = extractFetchTasks(fetchResult);
   const cloudSourceTasks = extractCloudSourceTasks(fetchResult);
 
@@ -7064,6 +7066,7 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
     const key = keyForTask(task);
     const id = taskIdForSync(task);
     taskKeyById.set(id, key);
+    taskById.set(id, task);
     ensureSyncSlice(slices, key).fetchTasks.push(task);
   }
 
@@ -7085,12 +7088,32 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
 
   for (const builder of payload?.builders ?? []) {
     for (const item of builder?.items ?? []) {
-      const taskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
-      const key =
-        (taskId && taskKeyById.get(taskId)) ||
-        keyForTask(builderLikeTask(builder, item));
+      const rawTaskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
+      const rawTask = rawTaskId ? taskById.get(rawTaskId) : null;
+      const matchedTask = rawTask && syncItemMatchesPlannedTask(builder, item, rawTask, rawTaskId)
+        ? { id: rawTaskId, task: rawTask }
+        : fetchTasks
+          .map((task) => ({ id: taskIdForSync(task), task }))
+          .find((candidate) => syncItemMatchesPlannedTask(builder, item, candidate.task, candidate.id));
+      const taskId = matchedTask?.id ?? rawTaskId;
+      const key = (taskId && taskKeyById.get(taskId)) || keyForTask(builderLikeTask(builder, item));
+      const taskForDedupe = matchedTask?.task ?? rawTask;
+      if (taskId && matchedTask && taskForDedupe?.agentWorkType !== "fetch_builder_fallback") {
+        const emittedKey = `${key}\u0000${taskId}`;
+        if (emittedItemTaskIds.has(emittedKey)) continue;
+        emittedItemTaskIds.add(emittedKey);
+      }
+      const itemForSlice = taskId
+        ? {
+            ...item,
+            rawJson: {
+              ...(item.rawJson ?? {}),
+              fetchTaskId: taskId,
+            },
+          }
+        : item;
       const slice = ensureSyncSlice(slices, key);
-      addBuilderItemToSlice(slice, builder, item);
+      addBuilderItemToSlice(slice, builder, itemForSlice);
     }
   }
 
@@ -7506,10 +7529,14 @@ function itemMatchesAgentTask(candidate, task) {
   const item = candidate.item;
   const builder = candidate.builder;
   const taskItem = task.item ?? {};
+  const itemExternalId = typeof item.externalId === "string" && item.externalId ? item.externalId : null;
+  const itemUrl = typeof item.url === "string" && item.url ? item.url : null;
+  const taskExternalId = typeof taskItem.externalId === "string" && taskItem.externalId ? taskItem.externalId : null;
+  const taskUrl = typeof taskItem.url === "string" && taskItem.url ? taskItem.url : null;
   const externalMatches =
-    item.externalId === taskItem.externalId ||
-    item.url === taskItem.url ||
-    (taskItem.url && item.externalId === taskItem.url);
+    (itemExternalId && taskExternalId && itemExternalId === taskExternalId) ||
+    (itemUrl && taskUrl && itemUrl === taskUrl) ||
+    (taskUrl && itemExternalId && itemExternalId === taskUrl);
   if (!externalMatches) return false;
 
   if (task.builderId) {

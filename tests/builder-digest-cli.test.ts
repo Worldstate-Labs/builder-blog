@@ -2902,6 +2902,63 @@ test("cloud sync payload keeps zero-post source metadata in cloud-run slices", a
   ]);
 });
 
+test("cloud sync payload dedupes task-matched checkpoint items without fetch ids", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const slices = cli.splitCloudSyncPayloadByRunId(
+    {
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "fetch_post:builder_1:TWEET:post_1",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_1",
+          agentWorkType: "x_post_fetch",
+          contentStatus: "requires_agent",
+          builder: "Builder One",
+          builderId: "builder_1",
+          builderSync: { builderId: "builder_1", name: "Builder One" },
+          item: {
+            kind: "TWEET",
+            externalId: "post_1",
+            url: "https://x.com/builder/status/post_1",
+          },
+        },
+      ],
+    },
+    {
+      builders: [
+        {
+          builderId: "builder_1",
+          name: "Builder One",
+          items: [
+            {
+              kind: "TWEET",
+              externalId: "post_1",
+              url: "https://x.com/builder/status/post_1",
+              rawJson: { fetchTaskId: "fetch_post:builder_1:TWEET:post_1" },
+            },
+            {
+              kind: "TWEET",
+              externalId: "post_1",
+              url: "https://x.com/builder/status/post_1",
+              rawJson: { workerId: "shard-0" },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [],
+    },
+  );
+
+  assert.deepEqual(slices.map((slice: { cloudRunId: string }) => slice.cloudRunId), ["run_1"]);
+  assert.equal(slices[0].payload.builders.length, 1);
+  assert.equal(slices[0].payload.builders[0].items.length, 1);
+  assert.equal(
+    slices[0].payload.builders[0].items[0].rawJson.fetchTaskId,
+    "fetch_post:builder_1:TWEET:post_1",
+  );
+});
+
 test("split-sync-slices can write cloud-run slices with per-slice run ids", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-cloud-run-slices-"));
   const tasksFile = join(tmp, "fetch-result.json");
