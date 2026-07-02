@@ -5,7 +5,7 @@ import {
   type CloudFetchFrequencyKey,
 } from "@/lib/cloud-source-scheduler";
 
-export type CloudFetchTaskSyncStatus = "succeeded" | "failed";
+export type CloudFetchTaskSyncStatus = "succeeded" | "partial" | "failed";
 
 export type CloudFetchTaskSyncResult = {
   runId: string;
@@ -111,11 +111,16 @@ export async function applyCloudFetchTaskSyncResult(params: {
     throw new Error(`Cloud source task ${params.result.cloudSourceTaskId} was not found.`);
   }
 
-  const succeeded = params.result.status === "succeeded";
-  const runTaskStatus = succeeded ? CloudFetchRunStatus.SUCCEEDED : CloudFetchRunStatus.FAILED;
+  const succeeded = params.result.status === "succeeded" || params.result.status === "partial";
+  const partial = params.result.status === "partial";
+  const runTaskStatus = partial
+    ? CloudFetchRunStatus.PARTIAL
+    : succeeded
+      ? CloudFetchRunStatus.SUCCEEDED
+      : CloudFetchRunStatus.FAILED;
   const queueStatus = succeeded ? CloudFetchQueueStatus.SUCCEEDED : CloudFetchQueueStatus.FAILED;
   const taskFailureReason = params.result.failureReason?.trim() || "cloud_sync_failed";
-  const failureReason = succeeded ? null : taskFailureReason;
+  const failureReason = params.result.status === "succeeded" ? null : taskFailureReason;
 
   await params.prisma.cloudFetchRunTask.update({
     where: {
@@ -281,7 +286,9 @@ async function recomputeCloudFetchRun(
     select: { status: true, usageTokens: true, usageCostUsd: true },
   });
   const tasksSucceeded = tasks.filter((task) => task.status === CloudFetchRunStatus.SUCCEEDED).length;
-  const tasksFailed = tasks.filter((task) => task.status === CloudFetchRunStatus.FAILED).length;
+  const tasksFailed = tasks.filter((task) =>
+    task.status === CloudFetchRunStatus.FAILED || task.status === CloudFetchRunStatus.PARTIAL
+  ).length;
   const tasksRunning = tasks.filter((task) => task.status === CloudFetchRunStatus.RUNNING).length;
   const runStatus = cloudRunStatus({ tasksSucceeded, tasksFailed, tasksRunning });
   const usageTokens = sumNullableNumbers(tasks.map((task) => task.usageTokens));

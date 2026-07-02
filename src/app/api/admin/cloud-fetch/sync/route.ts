@@ -165,7 +165,7 @@ function reconcileTaskResultsWithFeedSync({
 }: {
   taskResults: Array<{
     cloudSourceTaskId: string;
-    status: "succeeded" | "failed";
+    status: "succeeded" | "partial" | "failed";
     plannedPosts: number;
     syncedPosts: number;
     failedPosts: number;
@@ -202,10 +202,14 @@ function reconcileTaskResultsWithFeedSync({
     const status =
       syncedPosts === 0 && failedPosts >= taskResult.plannedPosts
         ? "failed"
-        : taskResult.status;
+        : failedPosts > 0
+          ? "partial"
+          : taskResult.status;
     const failureReason =
       status === "failed"
         ? taskResult.failureReason ?? serverFailed[0]?.reason ?? "cloud_feed_sync_failed"
+        : status === "partial"
+          ? taskResult.failureReason ?? serverFailed[0]?.reason ?? "cloud_task_partial"
         : taskResult.failureReason;
 
     return {

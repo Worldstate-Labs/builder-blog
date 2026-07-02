@@ -6802,8 +6802,11 @@ async function mergeTaskResults(args) {
   });
   const excluded = await readIdSetFile(excludeTaskIdsFile);
   const availableIds = syncPayloadTaskIds(merged.payload);
+  const completedSourceIds = completedOnly ? completedOnlySourceIds(fetchResult, availableIds) : null;
   const selectedTasks = extractFetchTasks(fetchResult).filter((task) => {
     const id = taskIdForSync(task);
+    const sourceTaskId = taskSourceTaskIdForSync(task);
+    if (completedSourceIds && sourceTaskId && !completedSourceIds.has(sourceTaskId)) return false;
     return availableIds.has(id) && !excludedTaskIdsContains(excluded, task);
   });
   const selectedIds = new Set(
@@ -6854,6 +6857,29 @@ async function mergeTaskResults(args) {
 
 function taskIdForSync(task) {
   return String(task?.id || fetchTaskId(task));
+}
+
+function taskSourceTaskIdForSync(task) {
+  return String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+}
+
+function completedOnlySourceIds(fetchResult, availableIds) {
+  const tasksBySourceId = new Map();
+  for (const task of extractFetchTasks(fetchResult)) {
+    if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
+    const sourceTaskId = taskSourceTaskIdForSync(task);
+    if (!sourceTaskId) continue;
+    const tasks = tasksBySourceId.get(sourceTaskId) ?? [];
+    tasks.push(taskIdForSync(task));
+    tasksBySourceId.set(sourceTaskId, tasks);
+  }
+  const complete = new Set();
+  for (const [sourceTaskId, taskIds] of tasksBySourceId) {
+    if (taskIds.length > 0 && taskIds.every((taskId) => availableIds.has(taskId))) {
+      complete.add(sourceTaskId);
+    }
+  }
+  return complete;
 }
 
 function taskCloudRunIdForSync(task) {
@@ -8473,6 +8499,7 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceT
   const workerUsageGroupCounts = countWorkerUsageGroupMatches(groups, workerUsages);
   return groups.map((group) => {
     const failed = group.syncedPosts === 0 && group.failedPosts > 0 && group.failedPosts >= group.plannedPosts;
+    const partial = !failed && group.failedPosts > 0;
     const fetchTaskIds = new Set(group.details.fetchTaskIds);
     const groupWorkerUsages = workerUsages.filter((usage) => {
       return workerUsageMatchesFetchTaskIds(usage, fetchTaskIds);
@@ -8486,13 +8513,13 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceT
     }
     return {
       cloudSourceTaskId: group.cloudSourceTaskId,
-      status: failed ? "failed" : "succeeded",
+      status: failed ? "failed" : partial ? "partial" : "succeeded",
       plannedPosts: group.plannedPosts,
       syncedPosts: group.syncedPosts,
       failedPosts: group.failedPosts,
       ...(groupUsage?.totalTokens != null ? { usageTokens: groupUsage.totalTokens } : {}),
       ...(groupUsage?.costUsd != null ? { usageCostUsd: groupUsage.costUsd } : {}),
-      ...(failed ? { failureReason: group.failureReason || "cloud_task_failed" } : {}),
+      ...(failed || partial ? { failureReason: group.failureReason || "cloud_task_failed" } : {}),
       details: group.details,
     };
   });

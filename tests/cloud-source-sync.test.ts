@@ -163,6 +163,70 @@ test("cloud sync marks failures with backoff and keeps a mixed run partial", asy
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.usageCostUsd, 0.3);
 });
 
+test("cloud sync keeps partial source results visible without failure backoff", async () => {
+  const now = new Date("2026-06-27T10:00:00.000Z");
+  const prisma = fakeCloudSyncPrisma({
+    task: {
+      id: "task_2",
+      builderId: "builder_2",
+      summaryLanguage: "en",
+      effectiveFrequency: "DAILY",
+      consecutiveFailures: 1,
+      durationSampleCount: 0,
+      estimatedTokenCost: null,
+      tokenSampleCount: 0,
+      estimatedPostYield: null,
+      postYieldSampleCount: 0,
+      successSampleCount: 0,
+    },
+    runTasks: [
+      {
+        runId: "run_2",
+        cloudSourceTaskId: "task_1",
+        status: "SUCCEEDED",
+        usageTokens: 1000,
+        usageCostUsd: 0.1,
+      },
+      {
+        runId: "run_2",
+        cloudSourceTaskId: "task_2",
+        status: "RUNNING",
+        usageTokens: null,
+        usageCostUsd: null,
+      },
+    ],
+  });
+
+  const result = await applyCloudFetchTaskSyncResult({
+    prisma,
+    now,
+    config: {
+      schedulingLeadMinutes: 120,
+      retryBaseMinutes: 30,
+      failureCircuitBreakerThreshold: 3,
+    },
+    result: {
+      runId: "run_2",
+      cloudSourceTaskId: "task_2",
+      status: "partial",
+      plannedPosts: 2,
+      syncedPosts: 1,
+      failedPosts: 1,
+      failureReason: "worker_missing_result",
+    },
+  });
+
+  assert.equal(result.runStatus, "PARTIAL");
+  assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.status, "PARTIAL");
+  assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.failureReason, "worker_missing_result");
+  assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "SUCCEEDED");
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.lastSuccessAt, now);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 0);
+  assert.equal(prisma.cloudFetchRun.updateCalls[0].data.status, "PARTIAL");
+  assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksSucceeded, 1);
+  assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksFailed, 1);
+});
+
 function fakeCloudSyncPrisma({
   task,
   runTasks,

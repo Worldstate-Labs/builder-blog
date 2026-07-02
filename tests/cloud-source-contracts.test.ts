@@ -78,3 +78,24 @@ test("cloud fetch sync payload requires a failure reason for failed task results
 
   assert.equal(parsed.success, false);
 });
+
+test("cloud fetch sync payload accepts partial task results with a failure reason", () => {
+  const parsed = parseCloudFetchSyncPayload({
+    cloudRunId: "run_1",
+    builders: [],
+    taskResults: [
+      {
+        cloudSourceTaskId: "task_1",
+        status: "partial",
+        plannedPosts: 3,
+        syncedPosts: 2,
+        failedPosts: 1,
+        failureReason: "worker_missing_result",
+      },
+    ],
+  });
+
+  assert.equal(parsed.success, true);
+  if (!parsed.success) return;
+  assert.equal(parsed.data.taskResults[0].status, "partial");
+});

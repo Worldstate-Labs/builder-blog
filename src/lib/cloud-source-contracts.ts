@@ -34,7 +34,7 @@ export function normalizeCloudSourceSubmissionInput(
 
 const CloudFetchSyncTaskResultSchema = z.object({
   cloudSourceTaskId: z.string().min(1).max(64),
-  status: z.enum(["succeeded", "failed"]),
+  status: z.enum(["succeeded", "partial", "failed"]),
   plannedPosts: z.number().int().min(0).max(10_000),
   syncedPosts: z.number().int().min(0).max(10_000),
   failedPosts: z.number().int().min(0).max(10_000),
@@ -44,7 +44,7 @@ const CloudFetchSyncTaskResultSchema = z.object({
   usageCostUsd: z.number().min(0).max(1_000_000).nullable().optional(),
   details: z.record(z.string(), z.unknown()).default({}),
 }).superRefine((result, ctx) => {
-  if (result.status === "failed" && !result.failureReason?.trim()) {
+  if ((result.status === "failed" || result.status === "partial") && !result.failureReason?.trim()) {
     ctx.addIssue({
       code: "custom",
       path: ["failureReason"],

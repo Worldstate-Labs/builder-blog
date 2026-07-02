@@ -2686,6 +2686,72 @@ test("cloud sync task results include leased sources that generated no post task
   assert.equal(payload.taskResults[1].details.noGeneratedFetchTasks, true);
 });
 
+test("cloud sync task results mark mixed synced and failed posts partial", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const plannedTasks = [
+    {
+      id: "task_synced",
+      type: "fetch_post",
+      cloudRunId: "cloud_run_1",
+      cloudSourceTaskId: "cloud_task_1",
+      builder: "Blog | Claude",
+      builderId: "cloud_builder_1",
+      sourceType: "blog",
+      item: { kind: "BLOG_POST", externalId: "post_1", url: "https://claude.com/blog/1" },
+    },
+    {
+      id: "task_failed",
+      type: "fetch_post",
+      cloudRunId: "cloud_run_1",
+      cloudSourceTaskId: "cloud_task_1",
+      builder: "Blog | Claude",
+      builderId: "cloud_builder_1",
+      sourceType: "blog",
+      item: { kind: "BLOG_POST", externalId: "post_2", url: "https://claude.com/blog/2" },
+    },
+  ];
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [
+        {
+          builderId: "cloud_builder_1",
+          kind: "BLOG",
+          sourceType: "blog",
+          name: "Blog | Claude",
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: "post_1",
+              title: "Post 1",
+              body: "Long enough source body for a normal synced article item.",
+              summary: "This is a synced summary with enough text to pass the shape test.",
+              url: "https://claude.com/blog/1",
+              rawJson: { fetchTaskId: "task_synced" },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [
+        {
+          fetchTaskId: "task_failed",
+          status: "failed",
+          reason: "worker_missing_result",
+          evidence: { failureKind: "worker_omitted_task" },
+        },
+      ],
+    },
+    "cloud_run_1",
+    plannedTasks,
+  );
+
+  assert.equal(payload.taskResults.length, 1);
+  assert.equal(payload.taskResults[0].status, "partial");
+  assert.equal(payload.taskResults[0].plannedPosts, 2);
+  assert.equal(payload.taskResults[0].syncedPosts, 1);
+  assert.equal(payload.taskResults[0].failedPosts, 1);
+  assert.equal(payload.taskResults[0].failureReason, "worker_missing_result");
+});
+
 test("cloud sync keeps shared worker usage for lane aggregation without source double counting", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const plannedTasks = [
@@ -4557,6 +4623,93 @@ test("merge-task-results can exclude checkpoint-synced task ids from final sync 
   assert.deepEqual(
     remainingTasks.fetchTasks.map((task: { id: string }) => task.id),
     ["remaining"],
+  );
+});
+
+test("merge-task-results completed-only waits for full source coverage", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-complete-source-"));
+  const resultsDir = join(tmp, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "checkpoint-payload.json");
+  const tasksOutFile = join(tmp, "checkpoint-tasks.json");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "source_a_done",
+          agentWorkType: "fetch_post",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_a",
+          builderSync: { builderId: "builder_a", cloudSourceTaskId: "source_a" },
+        },
+        {
+          id: "source_a_pending",
+          agentWorkType: "fetch_post",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_a",
+          builderSync: { builderId: "builder_a", cloudSourceTaskId: "source_a" },
+        },
+        {
+          id: "source_b_done",
+          agentWorkType: "fetch_post",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_b",
+          builderSync: { builderId: "builder_b", cloudSourceTaskId: "source_b" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await mkdir(resultsDir);
+  await writeFile(
+    join(resultsDir, "shard-0-result.json"),
+    `${JSON.stringify({
+      builders: [
+        {
+          builderId: "builder_a",
+          items: [{ externalId: "a-done", rawJson: { fetchTaskId: "source_a_done" } }],
+        },
+        {
+          builderId: "builder_b",
+          items: [{ externalId: "b-done", rawJson: { fetchTaskId: "source_b_done" } }],
+        },
+      ],
+      taskOutcomes: [],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--completed-only",
+      "--tasks-out",
+      tasksOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const checkpointTasks = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  assert.deepEqual(
+    payload.builders.flatMap((builder: { items: { externalId: string }[] }) =>
+      builder.items.map((item) => item.externalId),
+    ),
+    ["b-done"],
+  );
+  assert.deepEqual(
+    checkpointTasks.fetchTasks.map((task: { id: string }) => task.id),
+    ["source_b_done"],
   );
 });
 
