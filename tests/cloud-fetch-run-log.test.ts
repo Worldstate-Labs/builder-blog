@@ -5,6 +5,7 @@ import { serializeCloudFetchRun, serializeCloudWorkerHost } from "../src/lib/clo
 
 const baseRun = {
   id: "run_1",
+  leaseOwner: "local-cloud-worker:admin-mac",
   startedAt: new Date("2026-06-28T10:00:00.000Z"),
   finishedAt: new Date("2026-06-28T10:05:00.000Z"),
   status: "PARTIAL",
@@ -57,7 +58,12 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
   });
 
   const task = result.tasks[0];
+  assert.equal(result.leaseOwner, "local-cloud-worker:admin-mac");
+  assert.equal(result.tasksRunning, 0);
   assert.equal(task.sourceName, "Example Feed");
+  assert.equal(task.startedAt, "2026-06-28T10:00:10.000Z");
+  assert.equal(task.finishedAt, "2026-06-28T10:02:10.000Z");
+  assert.equal(task.pendingPosts, 0);
   assert.equal(task.durationMs, 120_000);
   assert.equal(task.usageTokens, 5000);
   assert.equal(task.usageCostUsd, 0.12);
@@ -81,13 +87,14 @@ test("serializeCloudFetchRun aggregates planned/synced/failed posts across sourc
     ...baseRun,
     tasks: [
       { id: "a", builderId: "a", summaryLanguage: "zh", status: "SUCCEEDED", plannedPosts: 3, syncedPosts: 3, failedPosts: 0, actualDurationSeconds: 10, failureReason: null, builder: null },
-      { id: "b", builderId: "b", summaryLanguage: "zh", status: "FAILED", plannedPosts: 2, syncedPosts: 0, failedPosts: 2, actualDurationSeconds: 5, failureReason: "x", builder: null },
+      { id: "b", builderId: "b", summaryLanguage: "zh", status: "FAILED", plannedPosts: 3, syncedPosts: 0, failedPosts: 2, actualDurationSeconds: 5, failureReason: "x", builder: null },
     ],
   });
 
-  assert.equal(result.plannedPosts, 5);
+  assert.equal(result.plannedPosts, 6);
   assert.equal(result.syncedPosts, 3);
   assert.equal(result.failedPosts, 2);
+  assert.equal(result.pendingPosts, 1);
   assert.equal(result.durationMs, 5 * 60_000);
 });
 
@@ -187,6 +194,10 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
               title: "Post One",
               url: "https://example.com/1",
               workerId: "shard-0",
+              bodyChars: 1200,
+              bodyWords: 180,
+              summaryChars: 300,
+              summaryWords: 45,
               updatedAt: "2026-06-28T10:01:20.000Z",
             },
           ],
@@ -214,6 +225,10 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
   assert.equal(result.progress?.tasksPlanned, 2);
   assert.equal(result.tasks.length, 1);
   assert.equal(result.tasks[0].workerId, "shard-0");
+  assert.equal(result.tasks[0].bodyChars, 1200);
+  assert.equal(result.tasks[0].bodyWords, 180);
+  assert.equal(result.tasks[0].summaryChars, 300);
+  assert.equal(result.tasks[0].summaryWords, 45);
   assert.equal(result.recentEvents[0].status, "synced");
 });
 

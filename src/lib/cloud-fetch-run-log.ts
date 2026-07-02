@@ -26,6 +26,10 @@ export type CloudWorkerHostTask = {
   title: string | null;
   url: string | null;
   workerId: string | null;
+  bodyChars: number | null;
+  bodyWords: number | null;
+  summaryChars: number | null;
+  summaryWords: number | null;
   updatedAt: string | null;
 };
 
@@ -75,9 +79,12 @@ export type CloudFetchRunLogTask = {
   sourceType: string | null;
   summaryLanguage: string;
   status: string;
+  startedAt: string | null;
+  finishedAt: string | null;
   plannedPosts: number;
   syncedPosts: number;
   failedPosts: number;
+  pendingPosts: number;
   durationMs: number | null;
   estimatedDurationSeconds: number | null;
   successProbability: number | null;
@@ -89,6 +96,7 @@ export type CloudFetchRunLogTask = {
 
 export type CloudFetchRunLogItem = {
   id: string;
+  leaseOwner: string;
   startedAt: string;
   finishedAt: string | null;
   durationMs: number | null;
@@ -97,10 +105,12 @@ export type CloudFetchRunLogItem = {
   tasksClaimed: number;
   tasksSucceeded: number;
   tasksFailed: number;
+  tasksRunning: number;
   // Aggregate post lifecycle across the run's per-source tasks.
   plannedPosts: number;
   syncedPosts: number;
   failedPosts: number;
+  pendingPosts: number;
   usageTokens: number | null;
   usageCostUsd: number | null;
   summary: string | null;
@@ -133,6 +143,7 @@ type CloudFetchRunTaskRow = {
 
 type CloudFetchRunRow = {
   id: string;
+  leaseOwner: string;
   startedAt: Date;
   finishedAt: Date | null;
   status: string;
@@ -234,8 +245,10 @@ export function serializeCloudWorkerHost(
 
 export function serializeCloudFetchRun(run: CloudFetchRunRow): CloudFetchRunLogItem {
   const tasks = run.tasks.map(serializeCloudFetchRunTask);
+  const tasksRunning = Math.max(0, run.tasksClaimed - run.tasksSucceeded - run.tasksFailed);
   return {
     id: run.id,
+    leaseOwner: run.leaseOwner,
     startedAt: run.startedAt.toISOString(),
     finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
     durationMs: run.finishedAt
@@ -246,9 +259,11 @@ export function serializeCloudFetchRun(run: CloudFetchRunRow): CloudFetchRunLogI
     tasksClaimed: run.tasksClaimed,
     tasksSucceeded: run.tasksSucceeded,
     tasksFailed: run.tasksFailed,
+    tasksRunning,
     plannedPosts: sumBy(tasks, (t) => t.plannedPosts),
     syncedPosts: sumBy(tasks, (t) => t.syncedPosts),
     failedPosts: sumBy(tasks, (t) => t.failedPosts),
+    pendingPosts: sumBy(tasks, (t) => t.pendingPosts),
     usageTokens: run.usageTokens ?? null,
     usageCostUsd: run.usageCostUsd == null ? null : Number(run.usageCostUsd),
     summary: run.summary ?? null,
@@ -270,9 +285,12 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
     sourceType: task.builder?.sourceType ?? null,
     summaryLanguage: task.summaryLanguage,
     status: task.status,
+    startedAt: task.startedAt ? task.startedAt.toISOString() : null,
+    finishedAt: task.finishedAt ? task.finishedAt.toISOString() : null,
     plannedPosts: task.plannedPosts,
     syncedPosts: task.syncedPosts,
     failedPosts: task.failedPosts,
+    pendingPosts: Math.max(0, task.plannedPosts - task.syncedPosts - task.failedPosts),
     durationMs,
     estimatedDurationSeconds: task.estimatedDurationSeconds ?? null,
     successProbability: task.successProbabilitySnapshot ?? null,
@@ -329,6 +347,10 @@ function serializeWorkerHostTask(value: unknown): CloudWorkerHostTask {
     title: str(task?.title),
     url: str(task?.url),
     workerId: str(task?.workerId),
+    bodyChars: num(task?.bodyChars),
+    bodyWords: num(task?.bodyWords),
+    summaryChars: num(task?.summaryChars),
+    summaryWords: num(task?.summaryWords),
     updatedAt: iso(task?.updatedAt),
   };
 }

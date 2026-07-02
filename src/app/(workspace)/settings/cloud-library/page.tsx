@@ -114,7 +114,7 @@ export default async function CloudLibraryManagementPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Cloud library management"
-        description="Monitor the local worker host, its post task queue, and the cloud source deliveries feeding it."
+        description="Monitor the long-running worker host, its live post queue, and the source deliveries feeding it."
       />
 
       <div className="workspace-content-stack settings-workspace">
@@ -140,10 +140,9 @@ export default async function CloudLibraryManagementPage() {
           <details className="settings-rules-panel fb-panel" open>
             <summary className="settings-rules-summary">
               <div className="settings-rules-summary-copy">
-                <h3 className="fb-section-heading">Worker host activity</h3>
+                <h3 className="fb-section-heading">Cloud fetch monitor</h3>
                 <p className="settings-rules-summary-desc">
-                  Shows the local worker host heartbeat, post task queue, and recent source
-                  deliveries from cloud.
+                  Live host heartbeat and queue first, source delivery history below.
                 </p>
               </div>
               <span className="settings-rules-toggle-icon" aria-hidden="true">

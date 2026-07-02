@@ -20,13 +20,14 @@ test("admin cloud fetch runs route is admin-gated and serializes worker host plu
   assert.match(route, /builder: \{ select: \{ name: true, sourceType: true \} \}/);
 });
 
-test("cloud-library management page is admin-gated and mounts both Phase 1 sections", () => {
+test("cloud-library management page is admin-gated and mounts the cloud monitor sections", () => {
   const page = source("src/app/(workspace)/settings/cloud-library/page.tsx");
 
   assert.match(page, /isAdminEmail/);
   assert.match(page, /redirect\(/);
   assert.match(page, /AdminCloudFetchRunActions/);
   assert.match(page, /AdminCloudFetchLog/);
+  assert.match(page, /Cloud fetch monitor/);
   // The scheduler config form was moved here from the main Settings page.
   assert.match(page, /AdminCloudFetchConfigForm/);
   assert.match(page, /CLOUD_FETCH_CONFIG_ID/);
@@ -82,8 +83,14 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /workerHost/);
   assert.match(log, /leaseBatches/);
   assert.match(log, /Post task queue/);
-  assert.match(log, /Cloud source deliveries/);
+  assert.match(log, /Source deliveries/);
+  assert.match(log, /Host id/);
+  assert.match(log, /P\(success\)/);
+  assert.match(log, /Post task outcomes appear after the worker syncs this source\./);
   assert.match(log, /tasksClaimed/);
+  assert.match(log, /pendingPosts/);
+  assert.doesNotMatch(log, /claimed\s*\{/);
+  assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
 });
 
 test("cloud fetch log reuses the personal fetch log's per-post staged renderer", () => {

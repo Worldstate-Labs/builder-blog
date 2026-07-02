@@ -65,6 +65,64 @@ function formatMetric(value: number | null): string {
   return value == null ? "-" : value.toLocaleString();
 }
 
+function formatPercent(value: number | null): string {
+  if (value == null) return "-";
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatSeconds(value: number | null): string {
+  if (value == null) return "-";
+  return formatDuration(value * 1000);
+}
+
+function pluralize(value: number, singular: string, plural = `${singular}s`): string {
+  return `${value.toLocaleString()} ${value === 1 ? singular : plural}`;
+}
+
+function formatPostOutcomeSummary({
+  synced,
+  planned,
+  failed,
+  pending,
+}: {
+  synced: number;
+  planned: number;
+  failed: number;
+  pending: number;
+}): string {
+  const parts =
+    planned > 0
+      ? [`${synced.toLocaleString()}/${planned.toLocaleString()} synced`]
+      : ["No posts planned"];
+  if (pending > 0) parts.push(`${pending.toLocaleString()} pending`);
+  if (failed > 0) parts.push(`${failed.toLocaleString()} failed`);
+  return parts.join(" · ");
+}
+
+function formatUsage(tokens: number | null, costUsd: number | null): string | null {
+  const parts: string[] = [];
+  if (tokens != null) parts.push(`${tokens.toLocaleString()} tok`);
+  if (costUsd != null) parts.push(`$${costUsd.toFixed(2)}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function formatDeliveryCounts(batch: CloudFetchRunLogItem): string {
+  const parts = [pluralize(batch.tasksClaimed, "source", "sources") + " delivered"];
+  if (batch.tasksRunning > 0) parts.push(`${batch.tasksRunning.toLocaleString()} running`);
+  if (batch.tasksSucceeded > 0) parts.push(`${batch.tasksSucceeded.toLocaleString()} finished`);
+  if (batch.tasksFailed > 0) parts.push(`${batch.tasksFailed.toLocaleString()} failed`);
+  return parts.join(" · ");
+}
+
+function formatWorkerTaskStats(task: CloudWorkerHostTask): string | null {
+  const parts: string[] = [];
+  if (task.bodyWords != null) parts.push(`body ${task.bodyWords.toLocaleString()} words`);
+  else if (task.bodyChars != null) parts.push(`body ${task.bodyChars.toLocaleString()} chars`);
+  if (task.summaryWords != null) parts.push(`summary ${task.summaryWords.toLocaleString()} words`);
+  else if (task.summaryChars != null) parts.push(`summary ${task.summaryChars.toLocaleString()} chars`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 function statusClass(status: string | null): string {
   const normalized = String(status ?? "").toLowerCase();
   if (
@@ -175,6 +233,7 @@ function WorkerHostPanel({
     progress?.tasksPlanned != null
       ? `${formatMetric(progress.tasksDone ?? 0)}/${formatMetric(progress.tasksPlanned)}`
       : "-";
+  const localWorkers = workerHost.localWorkers != null ? workerHost.localWorkers : null;
 
   return (
     <section className="cloud-worker-host" aria-label="Worker host">
@@ -197,11 +256,15 @@ function WorkerHostPanel({
           <strong>{formatStage(stage)}</strong>
         </div>
         <div className="cloud-worker-host-metric">
+          <span>Local workers</span>
+          <strong>{formatMetric(localWorkers)}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
           <span>Post tasks</span>
           <strong>{postProgress}</strong>
         </div>
         <div className="cloud-worker-host-metric">
-          <span>Sources</span>
+          <span>Sources checked</span>
           <strong>{sourceProgress}</strong>
         </div>
         <div className="cloud-worker-host-metric">
@@ -248,7 +311,7 @@ function WorkerHostPanel({
                 <span className="cloud-worker-task-main">
                   <span className="cloud-worker-task-title">{taskLabel(task)}</span>
                   <span className="cloud-worker-task-meta">
-                    {[task.builder, task.sourceType, task.workerId, task.updatedAt ? formatTime(task.updatedAt) : null]
+                    {[task.builder, task.sourceType, task.workerId, task.updatedAt ? formatTime(task.updatedAt) : null, formatWorkerTaskStats(task)]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
@@ -298,7 +361,7 @@ export function AdminCloudFetchLog({
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const runningSourceDeliveries = leaseBatches.filter((batch) => batch.status === "RUNNING").length;
+  const runningSourceDeliveries = leaseBatches.filter((batch) => batch.status.toUpperCase() === "RUNNING").length;
 
   const refresh = useCallback(async () => {
     try {
@@ -320,7 +383,7 @@ export function AdminCloudFetchLog({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const hasRunningBatch = leaseBatches.some((batch) => batch.status === "RUNNING");
+    const hasRunningBatch = leaseBatches.some((batch) => batch.status.toUpperCase() === "RUNNING");
     const pollMs = workerHost.status === "offline" && !hasRunningBatch ? 15_000 : 5_000;
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") refresh();
@@ -363,22 +426,23 @@ export function AdminCloudFetchLog({
     <div className="cloud-fetch-log">
       <WorkerHostPanel workerHost={workerHost} runningSourceDeliveries={runningSourceDeliveries} />
 
-      <div className="cloud-lease-batches-head">
-        <h4>Cloud source deliveries</h4>
+      <div className="cloud-source-deliveries-head">
+        <h4>Source deliveries</h4>
         <p>
-          Sources delivered by cloud and claimed by the worker host. Expand a delivery for source
-          and post outcomes.
+          Each row is a set of sources delivered to the local worker host. Expand it to inspect
+          sources and post task outcomes.
         </p>
       </div>
 
       {leaseBatches.length === 0 ? (
         <p className="cron-field-hint">
-          No cloud source deliveries yet. Copy a prompt above to start the worker host.
+          No source deliveries yet. Copy a prompt above to start the worker host.
         </p>
       ) : (
         <ul className="cloud-fetch-log-list">
           {leaseBatches.map((batch) => {
             const isOpen = expanded === batch.id;
+            const batchUsage = formatUsage(batch.usageTokens, batch.usageCostUsd);
             return (
               <li key={batch.id} className="cloud-fetch-log-row">
                 <button
@@ -393,32 +457,48 @@ export function AdminCloudFetchLog({
                   </span>
                   <span className="cloud-fetch-log-time">{formatTime(batch.startedAt)}</span>
                   <span className="cloud-fetch-log-counts">
-                    {batch.tasksClaimed} {batch.tasksClaimed === 1 ? "source" : "sources"} claimed
-                    {" · "}
-                    {batch.tasksSucceeded} ok · {batch.tasksFailed} failed
+                    {formatDeliveryCounts(batch)}
                   </span>
                   <span className="cloud-fetch-log-meta">
-                    {batch.syncedPosts}/{batch.plannedPosts} posts
-                    {batch.failedPosts > 0 ? ` · ${batch.failedPosts} failed` : ""}
+                    {formatPostOutcomeSummary({
+                      synced: batch.syncedPosts,
+                      planned: batch.plannedPosts,
+                      failed: batch.failedPosts,
+                      pending: batch.pendingPosts,
+                    })}
                     {" · "}
                     {formatDuration(batch.durationMs)}
-                    {batch.usageTokens != null ? ` · ${batch.usageTokens.toLocaleString()} tok` : ""}
-                    {batch.usageCostUsd != null ? ` · $${batch.usageCostUsd.toFixed(2)}` : ""}
+                    {batchUsage ? ` · ${batchUsage}` : ""}
                   </span>
                 </button>
 
                 {isOpen ? (
                   <div className="cloud-fetch-log-detail">
                     {batch.summary ? <p className="cron-field-hint">{batch.summary}</p> : null}
+                    <div className="cloud-delivery-facts" aria-label="Source delivery details">
+                      <span>
+                        <strong>Host id</strong>
+                        {batch.leaseOwner}
+                      </span>
+                      <span>
+                        <strong>Requested</strong>
+                        {pluralize(batch.requestedLimit, "source", "sources")}
+                      </span>
+                      <span>
+                        <strong>Finished</strong>
+                        {batch.finishedAt ? formatTime(batch.finishedAt) : "Still running"}
+                      </span>
+                    </div>
                     {batch.tasks.length === 0 ? (
                       <p className="cron-field-hint">
-                        No per-source outcomes yet. They appear as the worker syncs source results.
+                        No source outcomes yet. They appear as the worker syncs source results.
                       </p>
                     ) : (
                       <ul className="cloud-fetch-log-tasks">
                         {batch.tasks.map((task) => {
                           const taskOpen = expandedTask === task.id;
                           const hasPosts = task.posts.length > 0;
+                          const taskUsage = formatUsage(task.usageTokens, task.usageCostUsd);
                           const mappedPosts = task.posts.map((post, index) =>
                             postToFetchTaskLog(post, task, index),
                           );
@@ -428,9 +508,11 @@ export function AdminCloudFetchLog({
                                 type="button"
                                 className="cloud-fetch-log-task-head"
                                 aria-expanded={taskOpen}
-                                disabled={!hasPosts}
-                                onClick={() => hasPosts && setExpandedTask(taskOpen ? null : task.id)}
+                                onClick={() => setExpandedTask(taskOpen ? null : task.id)}
                               >
+                                <span aria-hidden="true" className="cloud-fetch-log-task-caret">
+                                  {taskOpen ? <ChevronDown /> : <ChevronRight />}
+                                </span>
                                 <span className={`cloud-status-chip ${statusClass(task.status)}`}>
                                   {task.status}
                                 </span>
@@ -439,28 +521,57 @@ export function AdminCloudFetchLog({
                                   {task.sourceType ? ` · ${task.sourceType}` : ""} · {task.summaryLanguage}
                                 </span>
                                 <span className="cloud-fetch-log-task-counts">
-                                  {task.syncedPosts}/{task.plannedPosts} synced
-                                  {task.failedPosts > 0 ? ` · ${task.failedPosts} failed` : ""}
+                                  {formatPostOutcomeSummary({
+                                    synced: task.syncedPosts,
+                                    planned: task.plannedPosts,
+                                    failed: task.failedPosts,
+                                    pending: task.pendingPosts,
+                                  })}
                                   {task.durationMs != null ? ` · ${formatDuration(task.durationMs)}` : ""}
-                                  {task.usageTokens != null ? ` · ${task.usageTokens.toLocaleString()} tok` : ""}
-                                  {task.usageCostUsd != null ? ` · $${task.usageCostUsd.toFixed(2)}` : ""}
+                                  {taskUsage ? ` · ${taskUsage}` : ""}
                                 </span>
                               </button>
                               {task.failureReason ? (
                                 <p className="cloud-fetch-log-task-error">{task.failureReason}</p>
                               ) : null}
-                              {taskOpen && hasPosts ? (
-                                <ul className="sync-panel-run-card-candidate-list">
-                                  {mappedPosts.map((mapped, index) => (
-                                    <TaskRow
-                                      key={mapped.id ?? index}
-                                      groupTasks={mappedPosts}
-                                      liveTask={null}
-                                      liveTasks={EMPTY_LIVE_TASKS}
-                                      task={mapped}
-                                    />
-                                  ))}
-                                </ul>
+                              {taskOpen ? (
+                                <div className="cloud-fetch-log-task-detail">
+                                  <div className="cloud-fetch-log-task-facts" aria-label="Source task details">
+                                    <span>
+                                      <strong>Started</strong>
+                                      {task.startedAt ? formatTime(task.startedAt) : "-"}
+                                    </span>
+                                    <span>
+                                      <strong>Finished</strong>
+                                      {task.finishedAt ? formatTime(task.finishedAt) : "Still running"}
+                                    </span>
+                                    <span>
+                                      <strong>Estimated</strong>
+                                      {formatSeconds(task.estimatedDurationSeconds)}
+                                    </span>
+                                    <span>
+                                      <strong>P(success)</strong>
+                                      {formatPercent(task.successProbability)}
+                                    </span>
+                                  </div>
+                                  {hasPosts ? (
+                                    <ul className="sync-panel-run-card-candidate-list">
+                                      {mappedPosts.map((mapped, index) => (
+                                        <TaskRow
+                                          key={mapped.id ?? index}
+                                          groupTasks={mappedPosts}
+                                          liveTask={null}
+                                          liveTasks={EMPTY_LIVE_TASKS}
+                                          task={mapped}
+                                        />
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="cron-field-hint">
+                                      Post task outcomes appear after the worker syncs this source.
+                                    </p>
+                                  )}
+                                </div>
                               ) : null}
                             </li>
                           );
