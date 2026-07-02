@@ -7369,6 +7369,9 @@ export function validateAgentSyncPayload(fetchResult, payload) {
       });
       continue;
     }
+    if (isCandidateDiscoveryFetchTask(task)) {
+      continue;
+    }
     const matches =
       task.agentWorkType === "fetch_builder_fallback"
         ? syncItems.filter((candidate) => itemMatchesBuilderFallback(candidate, task, id))
@@ -7483,8 +7486,19 @@ function itemMatchesAgentTask(candidate, task) {
     (taskItem.url && item.externalId === taskItem.url);
   if (!externalMatches) return false;
 
+  if (task.builderId) {
+    const candidateBuilderIds = [
+      builder.builderId,
+      item.rawJson?.builderId,
+    ].filter(Boolean).map(String);
+    if (candidateBuilderIds.length > 0) {
+      return candidateBuilderIds.includes(String(task.builderId));
+    }
+  }
+
   const builderMatches =
     builder.name === task.builder ||
+    builder.builderId === task.builderId ||
     builder.handle === task.builder ||
     builder.sourceUrl === taskItem.sourceUrl ||
     builder.fetchUrl === taskItem.sourceUrl ||

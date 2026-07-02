@@ -1444,6 +1444,87 @@ test("agent sync validation accepts ready fetch task summaries", async () => {
   assert.equal("validatedFetchTaskItems" in result, false);
 });
 
+test("agent sync validation disambiguates duplicate external ids by builder id", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const englishTask = {
+    type: "fetch_post",
+    agentWorkType: "translate_summary_only",
+    contentStatus: "ready",
+    builder: "Andrej Karpathy",
+    builderId: "builder_english",
+    sourceType: "x",
+    item: {
+      kind: "TWEET",
+      externalId: "2069547676849557725",
+      title: "Claude workflow",
+      url: "https://x.com/karpathy/status/2069547676849557725",
+      body: "",
+    },
+  };
+  const chineseTask = {
+    ...englishTask,
+    builderId: "builder_chinese",
+  };
+  const englishTaskId = cli.fetchTaskId(englishTask);
+  const chineseTaskId = cli.fetchTaskId(chineseTask);
+
+  const result = cli.validateAgentSyncPayload(
+    {
+      fetchTasks: [
+        { ...englishTask, id: englishTaskId },
+        { ...chineseTask, id: chineseTaskId },
+      ],
+    },
+    {
+      builders: [
+        {
+          builderId: "builder_chinese",
+          kind: "X",
+          sourceType: "x",
+          name: "Andrej Karpathy",
+          items: [
+            {
+              kind: "TWEET",
+              externalId: "2069547676849557725",
+              title: "Claude workflow",
+              url: "https://x.com/karpathy/status/2069547676849557725",
+              summary:
+                "Andrej Karpathy 用中文总结 Claude 工作流的关键经验，强调长上下文和可验证输出的重要性。",
+              rawJson: {
+                builderId: "builder_chinese",
+                fetchTaskId: chineseTaskId,
+              },
+            },
+          ],
+        },
+        {
+          builderId: "builder_english",
+          kind: "X",
+          sourceType: "x",
+          name: "Andrej Karpathy",
+          items: [
+            {
+              kind: "TWEET",
+              externalId: "2069547676849557725",
+              title: "Claude workflow",
+              url: "https://x.com/karpathy/status/2069547676849557725",
+              summary:
+                "Andrej Karpathy says Claude workflows benefit from long context, careful verification, and source-linked outputs.",
+              rawJson: {
+                builderId: "builder_english",
+                fetchTaskId: englishTaskId,
+              },
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.validatedFetchTasks, 2);
+});
+
 test("sync upload payload keeps YouTube transcript temporary without storing summary as body", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const payload = cli.prepareSyncPayloadForUpload({
@@ -2261,6 +2342,27 @@ test("a skipped task WITH per-task evidence is accounted for", async () => {
   assert.equal(result.status, "ok");
   assert.equal(result.accountedOutcomes, 1);
   assert.equal(result.validatedFetchTasks, 0);
+});
+
+test("candidate discovery tasks do not require synced post items", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const discoveryTask = {
+    id: "candidate_discovery:builder_product_hunt:product_hunt_top_products",
+    type: "candidate_discovery",
+    agentWorkType: "candidate_discovery_fallback",
+    builder: "Product Hunt Top Products",
+    builderId: "builder_product_hunt",
+    sourceType: "product_hunt_top_products",
+  };
+
+  const result = cli.validateAgentSyncPayload(
+    { fetchTasks: [discoveryTask] },
+    { builders: [], taskOutcomes: [] },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.validatedFetchTasks, 0);
+  assert.equal(result.accountedOutcomes, 0);
 });
 
 test("failed / blocked outcomes require a reason", async () => {
