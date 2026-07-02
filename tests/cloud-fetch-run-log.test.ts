@@ -56,9 +56,16 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
               readMethod: "Copied body from a Hub-shared post with the same URL",
               summaryMethod: "Copied matching-language summary from a Hub-shared post",
               hubSharedReuse: { bodyReused: true, summaryReused: true },
-              workerId: "shard-0",
+              workerId: "worker-0",
             },
             { title: "Post Two", url: "https://example.com/2", status: "failed", failureReason: "summary_missing" },
+          ],
+          workerUsages: [
+            {
+              workerId: "worker-0",
+              usage: { totalTokens: 1200, costUsd: 0.05, currency: "USD" },
+              taskCount: 1,
+            },
           ],
         },
         builder: { name: "Example Feed", sourceType: "x" },
@@ -96,8 +103,15 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
     readMethod: "Copied body from a Hub-shared post with the same URL",
     summaryMethod: "Copied matching-language summary from a Hub-shared post",
     hubSharedReuse: { bodyReused: true, summaryReused: true },
-    workerId: "shard-0",
+    workerId: "worker-0",
   });
+  assert.deepEqual(task.workerUsages, [
+    {
+      workerId: "worker-0",
+      usage: { totalTokens: 1200, costUsd: 0.05, currency: "USD" },
+      taskCount: 1,
+    },
+  ]);
   assert.equal(task.posts[1].failureReason, "summary_missing");
 });
 

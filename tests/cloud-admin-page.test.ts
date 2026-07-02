@@ -112,7 +112,9 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /workerHost/);
   assert.match(log, /leaseBatches/);
   assert.match(log, /Post task queue/);
-  assert.match(log, /Worker shards/);
+  assert.match(log, /Worker lanes/);
+  assert.match(log, /formatInlineUsage\(group\.usage\)/);
+  assert.match(log, /formatInlineUsage\(usage\)/);
   assert.match(log, /Source deliveries/);
   assert.match(log, /Host id/);
   assert.match(log, /P\(success\)/);

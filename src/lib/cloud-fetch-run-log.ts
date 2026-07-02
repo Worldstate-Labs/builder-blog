@@ -25,6 +25,12 @@ export type CloudFetchPostOutcome = {
   workerId: string | null;
 };
 
+export type CloudFetchWorkerUsage = {
+  workerId: string;
+  usage: Record<string, unknown>;
+  taskCount: number | null;
+};
+
 export type CloudWorkerHostTask = {
   id: string;
   status: string | null;
@@ -102,6 +108,7 @@ export type CloudFetchRunLogTask = {
   usageCostUsd: number | null;
   failureReason: string | null;
   posts: CloudFetchPostOutcome[];
+  workerUsages: CloudFetchWorkerUsage[];
 };
 
 export type CloudFetchRunLogItem = {
@@ -308,6 +315,7 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
     usageCostUsd: task.usageCostUsd == null ? null : Number(task.usageCostUsd),
     failureReason: task.failureReason ?? null,
     posts: parseCloudTaskPosts(task.details),
+    workerUsages: parseCloudWorkerUsages(task.details),
   };
 }
 
@@ -353,6 +361,29 @@ function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
     });
   }
   return posts;
+}
+
+function parseCloudWorkerUsages(details: unknown): CloudFetchWorkerUsage[] {
+  const detailsRecord =
+    details && typeof details === "object" && !Array.isArray(details)
+      ? (details as Record<string, unknown>)
+      : null;
+  const raw = detailsRecord && Array.isArray(detailsRecord.workerUsages)
+    ? detailsRecord.workerUsages
+    : [];
+  const usages: CloudFetchWorkerUsage[] = [];
+  for (const item of raw) {
+    const usage = record(item);
+    const workerId = str(usage?.workerId);
+    const usageRecord = record(usage?.usage) ?? usage;
+    if (!workerId || !usageRecord) continue;
+    usages.push({
+      workerId,
+      usage: usageRecord,
+      taskCount: num(usage?.taskCount),
+    });
+  }
+  return usages;
 }
 
 function serializeWorkerHostTask(value: unknown): CloudWorkerHostTask {

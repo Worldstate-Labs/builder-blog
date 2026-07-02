@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import { formatUsageCost, formatUsageTokens, readUsageSummary, type UsageSummary } from "@/lib/usage-summary";
 import type {
   CloudFetchPostOutcome,
   CloudFetchRunLogItem,
@@ -104,6 +105,37 @@ function formatUsage(tokens: number | null, costUsd: number | null): string | nu
   const parts: string[] = [];
   if (tokens != null) parts.push(`${tokens.toLocaleString()} tok`);
   if (costUsd != null) parts.push(`$${costUsd.toFixed(2)}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function mergeUsageSummary(left: UsageSummary | null, right: UsageSummary | null): UsageSummary | null {
+  if (!left) return right;
+  if (!right) return left;
+  const sum = (key: "inputTokens" | "outputTokens" | "cachedInputTokens" | "reasoningTokens" | "totalTokens" | "costUsd") => {
+    const leftValue = left[key];
+    const rightValue = right[key];
+    return leftValue === null && rightValue === null ? null : (leftValue ?? 0) + (rightValue ?? 0);
+  };
+  return {
+    inputTokens: sum("inputTokens"),
+    outputTokens: sum("outputTokens"),
+    cachedInputTokens: sum("cachedInputTokens"),
+    reasoningTokens: sum("reasoningTokens"),
+    totalTokens: sum("totalTokens"),
+    costUsd: sum("costUsd"),
+    costEstimated: Boolean(left.costEstimated || right.costEstimated),
+    currency: left.currency ?? right.currency,
+    provider: left.provider === right.provider ? left.provider : left.provider ?? right.provider,
+    model: left.model === right.model ? left.model : left.model ?? right.model,
+    source: left.source ?? right.source,
+  };
+}
+
+function formatInlineUsage(usage: UsageSummary | null): string | null {
+  if (!usage) return null;
+  const parts: string[] = [];
+  if (usage.totalTokens !== null) parts.push(`${formatUsageTokens(usage.totalTokens)} tokens`);
+  if (usage.costUsd !== null) parts.push(formatUsageCost(usage));
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -256,6 +288,7 @@ type WorkerShardGroup = {
   failed: number;
   pending: number;
   updatedAt: string | null;
+  usage: UsageSummary | null;
 };
 
 function allDeliveryPostTasks(leaseBatches: CloudFetchRunLogItem[]): FetchTaskLog[] {
@@ -266,10 +299,31 @@ function allDeliveryPostTasks(leaseBatches: CloudFetchRunLogItem[]): FetchTaskLo
   );
 }
 
+function cloudWorkerUsageMap(leaseBatches: CloudFetchRunLogItem[]): Map<string, UsageSummary> {
+  const byWorkerId = new Map<string, UsageSummary>();
+  for (const batch of leaseBatches) {
+    for (const task of batch.tasks) {
+      for (const value of task.workerUsages) {
+        const usage = readUsageSummary(value.usage, value);
+        if (!usage) continue;
+        byWorkerId.set(value.workerId, mergeUsageSummary(byWorkerId.get(value.workerId) ?? null, usage) ?? usage);
+      }
+    }
+  }
+  return byWorkerId;
+}
+
+function totalUsage(usageMap: Map<string, UsageSummary>): UsageSummary | null {
+  let total: UsageSummary | null = null;
+  for (const usage of usageMap.values()) total = mergeUsageSummary(total, usage);
+  return total;
+}
+
 function buildWorkerShardGroups(
   leaseBatches: CloudFetchRunLogItem[],
   workerTasks: CloudWorkerHostTask[],
 ): WorkerShardGroup[] {
+  const usages = cloudWorkerUsageMap(leaseBatches);
   const byTaskId = new Map<string, WorkerShardTask>();
   for (const task of allDeliveryPostTasks(leaseBatches)) {
     byTaskId.set(taskIdValue(task), { task, liveTask: null });
@@ -285,7 +339,7 @@ function buildWorkerShardGroups(
 
   const groups = new Map<string, WorkerShardTask[]>();
   for (const entry of byTaskId.values()) {
-    const workerId = entry.task.workerId ?? entry.liveTask?.workerId ?? "Worker assignment pending";
+    const workerId = entry.task.workerId ?? entry.liveTask?.workerId ?? "No local worker assignment";
     const list = groups.get(workerId) ?? [];
     list.push(entry);
     groups.set(workerId, list);
@@ -301,7 +355,7 @@ function buildWorkerShardGroups(
         .filter((value): value is string => Boolean(value))
         .sort()
         .at(-1) ?? null;
-      return { workerId, tasks, synced, failed, pending, updatedAt };
+      return { workerId, tasks, synced, failed, pending, updatedAt, usage: usages.get(workerId) ?? null };
     })
     .sort((a, b) => {
       const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
@@ -331,10 +385,12 @@ function WorkerHostPanel({
   workerHost,
   runningSourceDeliveries,
   leaseBatches,
+  usage,
 }: {
   workerHost: CloudWorkerHostStatus;
   runningSourceDeliveries: number;
   leaseBatches: CloudFetchRunLogItem[];
+  usage: UsageSummary | null;
 }) {
   const progress = workerHost.progress;
   const tasks = useMemo(() => sortedWorkerTasks(workerHost.tasks).slice(0, 20), [workerHost.tasks]);
@@ -376,6 +432,7 @@ function WorkerHostPanel({
         ? `${formatMetric(fallbackMetrics.donePosts)}/${formatMetric(fallbackMetrics.plannedPosts)}`
         : "-";
   const localWorkers = workerHost.localWorkers != null ? workerHost.localWorkers : null;
+  const usageText = formatInlineUsage(usage);
 
   return (
     <section className="cloud-worker-host" aria-label="Worker host">
@@ -432,6 +489,10 @@ function WorkerHostPanel({
         <div className="cloud-worker-host-metric">
           <span>Action needed</span>
           <strong>{formatMetric(progress?.actionNeeded ?? null)}</strong>
+        </div>
+        <div className="cloud-worker-host-metric">
+          <span>Usage</span>
+          <strong>{usageText ?? "-"}</strong>
         </div>
       </div>
 
@@ -516,6 +577,10 @@ export function AdminCloudFetchLog({
   const workerShardGroups = useMemo(
     () => buildWorkerShardGroups(leaseBatches, workerHost.tasks),
     [leaseBatches, workerHost.tasks],
+  );
+  const workerUsageTotal = useMemo(
+    () => totalUsage(cloudWorkerUsageMap(leaseBatches)),
+    [leaseBatches],
   );
 
   const refresh = useCallback(async () => {
@@ -605,23 +670,24 @@ export function AdminCloudFetchLog({
         workerHost={workerHost}
         runningSourceDeliveries={runningSourceDeliveries}
         leaseBatches={leaseBatches}
+        usage={workerUsageTotal}
       />
 
       <div className="cloud-source-deliveries-head">
-        <h4>Worker shards</h4>
+        <h4>Worker lanes</h4>
         <p>
-          Each shard is a local worker assignment. Expand it to inspect the post tasks handled by
-          that worker.
+          Each lane is one local worker slot. Expand it to inspect post tasks handled by that lane.
         </p>
       </div>
 
       {workerShardGroups.length === 0 ? (
-        <p className="cron-field-hint">No worker shard assignments yet.</p>
+        <p className="cron-field-hint">No worker lane assignments yet.</p>
       ) : (
         <ul className="cloud-fetch-log-list">
           {workerShardGroups.map((group) => {
             const isOpen = expandedShard === group.workerId;
             const groupTasks = group.tasks.map((entry) => entry.task);
+            const groupUsage = formatInlineUsage(group.usage);
             return (
               <li key={group.workerId} className="cloud-fetch-log-row">
                 <button
@@ -645,6 +711,7 @@ export function AdminCloudFetchLog({
                       failed: group.failed,
                       pending: group.pending,
                     })}
+                    {groupUsage ? ` · ${groupUsage}` : ""}
                     {group.updatedAt ? ` · updated ${formatTime(group.updatedAt)}` : ""}
                   </span>
                 </button>

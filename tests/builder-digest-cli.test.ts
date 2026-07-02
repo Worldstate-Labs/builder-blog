@@ -2389,7 +2389,6 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       readMethod: "Copied body from a Hub-shared post with the same URL",
       summaryMethod: "Copied matching-language summary from a Hub-shared post",
       item: { kind: "BLOG_POST", externalId: "post_1", url: "https://openai.com/news/1" },
-      workerId: "shard-0",
     },
     {
       id: "task_failed",
@@ -2421,6 +2420,7 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
               url: "https://openai.com/news/1",
               rawJson: {
                 fetchTaskId: "task_synced",
+                workerId: "worker-0",
                 agentRuntime: "codex",
                 agentExecutionProof: "read article",
                 agentCompletedAt: "2026-06-27T10:00:00.000Z",
@@ -2435,6 +2435,14 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
           status: "failed",
           reason: "worker_missing_result",
           evidence: { failureKind: "missing_worker_result_file" },
+        },
+      ],
+      workerUsages: [
+        {
+          workerId: "worker-0",
+          usage: { totalTokens: 1234, costUsd: 0.05, currency: "USD" },
+          taskCount: 1,
+          taskIds: ["task_synced"],
         },
       ],
     },
@@ -2479,10 +2487,19 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       readMethod: "Copied body from a Hub-shared post with the same URL",
       summaryMethod: "Copied matching-language summary from a Hub-shared post",
       hubSharedReuse: null,
-      workerId: "shard-0",
+      workerId: "worker-0",
+    },
+  ]);
+  assert.deepEqual(payload.taskResults[0].details.workerUsages, [
+    {
+      workerId: "worker-0",
+      usage: { totalTokens: 1234, costUsd: 0.05, currency: "USD" },
+      taskCount: 1,
+      taskIds: ["task_synced"],
     },
   ]);
   assert.equal(payload.taskResults[1].details.posts.length, 1);
+  assert.equal(payload.taskResults[1].details.workerUsages, undefined);
   assert.equal(payload.taskResults[1].details.posts[0].status, "failed");
   assert.equal(payload.taskResults[1].details.posts[0].failureReason, "worker_missing_result");
   assert.equal(payload.taskResults[1].details.posts[0].url, "https://openai.com/news/2");
@@ -3320,8 +3337,9 @@ test("assign-fetch-tasks writes dynamic shards and skips already assigned task i
   const shard0 = JSON.parse(await readFile(join(outDir, "shard-0.json"), "utf8"));
   assert.equal(shard0.dynamicAssignment, true);
   assert.equal(shard0.shardCount, null);
+  assert.equal(shard0.workerId, "worker-0");
   assert.deepEqual(shard0.groupKeys, ["domain:example.com"]);
-  assert.equal(shard0.fetchTasks[0].workerId, "shard-0");
+  assert.equal(shard0.fetchTasks[0].workerId, "worker-0");
 
   const assignedAfterFirst = (await readFile(assignedIdsFile, "utf8")).trim().split(/\r?\n/).sort();
   assert.deepEqual(assignedAfterFirst, ["example-a", "example-b", "other"]);
@@ -3348,6 +3366,71 @@ test("assign-fetch-tasks writes dynamic shards and skips already assigned task i
     [["shard-2", ["third"]]],
   );
   assert.deepEqual(secondResult.pendingGroupKeys, []);
+});
+
+test("assign-fetch-tasks binds dynamic assignments to stable worker lanes", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-stable-worker-lanes-"));
+  const tasksFile = join(tmp, "fetch-result.json");
+  const outDir = join(tmp, "shards");
+  const workerIdsFile = join(tmp, "worker-ids.txt");
+  await writeFile(workerIdsFile, "worker-3\nworker-5\n", "utf8");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "example-a",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "blog",
+          builderSync: { builderId: "b1" },
+          item: { url: "https://example.com/a" },
+        },
+        {
+          id: "other-a",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "blog",
+          builderSync: { builderId: "b2" },
+          item: { url: "https://other.example/a" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  const result = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "assign-fetch-tasks",
+      "--tasks",
+      tasksFile,
+      "--out-dir",
+      outDir,
+      "--max-workers",
+      "2",
+      "--worker-ids-file",
+      workerIdsFile,
+    ],
+    { cwd: process.cwd() },
+  );
+  const parsed = JSON.parse(result.stdout);
+  assert.deepEqual(
+    parsed.shards.map((shard: { shard: string; workerId: string }) => [shard.shard, shard.workerId]),
+    [
+      ["shard-0", "worker-3"],
+      ["shard-1", "worker-5"],
+    ],
+  );
+
+  const shard0 = JSON.parse(await readFile(join(outDir, "shard-0.json"), "utf8"));
+  const shard1 = JSON.parse(await readFile(join(outDir, "shard-1.json"), "utf8"));
+  assert.equal(shard0.workerId, "worker-3");
+  assert.equal(shard0.fetchTasks[0].workerId, "worker-3");
+  assert.equal(shard1.workerId, "worker-5");
+  assert.equal(shard1.fetchTasks[0].workerId, "worker-5");
 });
 
 test("shard-tasks writes shard worker ids onto planned post tasks", async () => {

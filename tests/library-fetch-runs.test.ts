@@ -201,6 +201,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /seedFetchProgressPlannedTasks\(fetchProgress, plannedTasks\)/);
   assert.match(cli, /const workerId = compactProgressText\(task\.workerId, 80\) \?\? previous\.workerId \?\? null/);
   assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
+  assert.match(cli, /const resultsDir = argValue\(args, "--results-dir", null\)/);
+  assert.match(cli, /rawPlannedTasks\.map\(\(task\) => taskWithShardWorkerId\(task, shardWorkerIds\)\)/);
   assert.match(cli, /const shardPlans = await readShardPlans\(resultsDir\)/);
   assert.match(cli, /fetchRunPlannedTaskPatches\(fetchResult, \{ shardPlans \}\)/);
   assert.match(cli, /async function emitCheckpointProgress[\s\S]*const workerUsages = await readShardWorkerUsages\(resultsDir, planned\)/);
@@ -283,6 +285,9 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /aggregate_runtime_usage_files/);
   assert.match(runner, /--results-dir "\$_results_dir"/);
   assert.match(runner, /--partial-outcomes --results-dir/);
+  assert.match(runner, /write_available_worker_ids/);
+  assert.match(runner, /--worker-ids-file "\$_adfw_worker_ids_file"/);
+  assert.match(runner, /Started worker \$_slw_lane_id for \$_slw_shard_name/);
   assert.match(runner, /codex-agent-output\.\*/);
   assert.match(runner, /openclaw-agent-output\.\*/);
   assert.match(runner, /unset LAST_AGENT_OUTPUT_FILE/);

@@ -2795,7 +2795,8 @@ write_active_fetch_group_keys() {
   for _wafg_entry in ${_worker_entries:-}; do
     _wafg_pid="${_wafg_entry%%:*}"
     _wafg_rest="${_wafg_entry#*:}"
-    _wafg_name="${_wafg_rest#*:}"
+    _wafg_after_started="${_wafg_rest#*:}"
+    _wafg_name="${_wafg_after_started%%:*}"
     case " ${_timed_out_worker_pids:-} " in
       *" $_wafg_pid "*) continue ;;
     esac
@@ -2821,11 +2822,14 @@ assign_dynamic_fetch_workers() {
   [ "$_adfw_slots" -gt 0 ] || return 0
   _dynamic_assignment_count=$(( _dynamic_assignment_count + 1 ))
   _adfw_out="$JOB_TMP_DIR/assign-fetch-tasks-$_dynamic_assignment_count.json"
+  _adfw_worker_ids_file="$JOB_TMP_DIR/available-worker-ids-$_dynamic_assignment_count.txt"
+  write_available_worker_ids "$_adfw_worker_ids_file"
   write_active_fetch_group_keys "$_active_fetch_group_keys_file"
   node "$AGENT_DIR/builder-digest.mjs" assign-fetch-tasks \
     --tasks "$_result_file" \
     --out-dir "$_shards_dir" \
     --max-workers "$_adfw_slots" \
+    --worker-ids-file "$_adfw_worker_ids_file" \
     --assigned-task-ids-file "$_assigned_fetch_task_ids_file" \
     --active-group-keys-file "$_active_fetch_group_keys_file" > "$_adfw_out"
   cat "$_adfw_out"
@@ -2850,6 +2854,39 @@ NODE
   else
     _dynamic_queue_drained=0
   fi
+}
+
+worker_entry_lane() {
+  _wel_entry="${1:-}"
+  _wel_rest="${_wel_entry#*:}"
+  _wel_after_started="${_wel_rest#*:}"
+  case "$_wel_after_started" in
+    *:*) printf '%s\n' "${_wel_after_started#*:}" ;;
+    *) printf '%s\n' "$_wel_after_started" ;;
+  esac
+}
+
+write_available_worker_ids() {
+  _wawi_file="${1:-}"
+  [ -n "$_wawi_file" ] || return 0
+  : > "$_wawi_file"
+  _wawi_index=0
+  while [ "$_wawi_index" -lt "$MAX_PARALLEL_WORKERS" ]; do
+    _wawi_lane="worker-$_wawi_index"
+    _wawi_active=0
+    for _wawi_entry in ${_worker_entries:-}; do
+      _wawi_pid="${_wawi_entry%%:*}"
+      _wawi_entry_lane="$(worker_entry_lane "$_wawi_entry")"
+      if [ "$_wawi_entry_lane" = "$_wawi_lane" ] && kill -0 "$_wawi_pid" 2>/dev/null; then
+        _wawi_active=1
+        break
+      fi
+    done
+    if [ "$_wawi_active" -eq 0 ]; then
+      printf '%s\n' "$_wawi_lane" >> "$_wawi_file"
+    fi
+    _wawi_index=$(( _wawi_index + 1 ))
+  done
 }
 
 cloud_refill_limit() {
@@ -2933,6 +2970,17 @@ start_library_worker() {
   [ -n "$_slw_shard_file" ] || return 0
   [ -e "$_slw_shard_file" ] || return 0
   _slw_shard_name="$(basename "$_slw_shard_file" .json)"
+  _slw_lane_id="$(node - "$_slw_shard_file" "$_slw_shard_name" <<'NODE'
+const fs = require("fs");
+try {
+  const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const first = Array.isArray(payload.fetchTasks) ? payload.fetchTasks.find(Boolean) : null;
+  console.log(String(payload.workerId || first?.workerId || process.argv[3]));
+} catch {
+  console.log(process.argv[3]);
+}
+NODE
+)"
   if library_worker_was_started "$_slw_shard_name"; then
     return 0
   fi
@@ -2959,10 +3007,10 @@ start_library_worker() {
     IS_CRON_JOB=1
     run_selected_runtime
   ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
-  _worker_entries="$_worker_entries $!:$(date +%s):$_slw_shard_name"
+  _worker_entries="$_worker_entries $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
   _started_shard_names="$_started_shard_names $_slw_shard_name"
   _started_worker_count=$(( _started_worker_count + 1 ))
-  echo "Started worker $_slw_shard_name (pid $!)."
+  echo "Started worker $_slw_lane_id for $_slw_shard_name (pid $!)."
 }
 
 start_pending_library_workers() {
@@ -3195,33 +3243,38 @@ run_library_job() {
       _pid="${_entry%%:*}"
       _rest="${_entry#*:}"
       _started="${_rest%%:*}"
-      _name="${_rest#*:}"
+      _after_started="${_rest#*:}"
+      _name="${_after_started%%:*}"
+      _lane="$(worker_entry_lane "$_entry")"
       if kill -0 "$_pid" 2>/dev/null; then
         case " $_timed_out_worker_pids " in
           *" $_pid "*) continue ;;
         esac
         if [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
-          echo "Worker $_name exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
-          job_run_update running "Worker $_name exceeded timeout and will be terminated." "worker_shard_timeout" \
+          echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
+          job_run_update running "Worker $_lane exceeded timeout and will be terminated." "worker_shard_timeout" \
             --timeout-seconds "$_shard_timeout" \
             --timeout-stage "worker_shard" \
             --timed-out-worker "$_name" \
+            --timed-out-worker-lane "$_lane" \
             --timed-out-worker-pid "$_pid" \
             --termination "terminating"
           if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
-            job_run_update running "Worker $_name timed out and was terminated." "worker_shard_timeout" \
+            job_run_update running "Worker $_lane timed out and was terminated." "worker_shard_timeout" \
               --timeout-seconds "$_shard_timeout" \
               --timeout-stage "worker_shard" \
               --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
               --timed-out-worker-pid "$_pid" \
               --termination "terminated"
           else
-            echo "Worker $_name pid $_pid was still alive after forced termination; continuing without waiting." >&2
+            echo "Worker $_lane ($_name) pid $_pid was still alive after forced termination; continuing without waiting." >&2
             _skip_wait_pids="$_skip_wait_pids $_pid"
-            job_run_update running "Worker $_name timed out and did not exit after forced termination." "worker_shard_timeout" \
+            job_run_update running "Worker $_lane timed out and did not exit after forced termination." "worker_shard_timeout" \
               --timeout-seconds "$_shard_timeout" \
               --timeout-stage "worker_shard" \
               --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
               --timed-out-worker-pid "$_pid" \
               --termination "still_alive_after_kill" \
               --skipped-wait-pids "$_skip_wait_pids"

@@ -5980,6 +5980,19 @@ async function nextShardAssignmentIndex(outDir) {
   }
 }
 
+async function readOrderedIdFile(file) {
+  if (!file) return [];
+  try {
+    const text = await readFile(file, "utf8");
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function assignFetchTasks(args) {
   const tasksFile = argValue(args, "--tasks");
   const outDir = argValue(args, "--out-dir");
@@ -5989,6 +6002,7 @@ async function assignFetchTasks(args) {
     : 1;
   const assignedTaskIdsFile = argValue(args, "--assigned-task-ids-file", null);
   const activeGroupKeysFile = argValue(args, "--active-group-keys-file", null);
+  const workerIdsFile = argValue(args, "--worker-ids-file", null);
   const startIndexValue = argValue(args, "--start-index", null);
   const startIndexRaw = startIndexValue === null ? null : Number(startIndexValue);
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
@@ -5997,8 +6011,12 @@ async function assignFetchTasks(args) {
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const excludeTaskIds = await readIdSetFile(assignedTaskIdsFile);
   const activeGroupKeys = await readIdSetFile(activeGroupKeysFile);
+  const workerIds = await readOrderedIdFile(workerIdsFile);
+  const assignmentWorkerIds = workerIds.length > 0
+    ? workerIds.slice(0, maxWorkers)
+    : Array.from({ length: maxWorkers }, (_, index) => `worker-${index}`);
   const plan = planFetchQueueAssignments(fetchResult, {
-    maxWorkers,
+    maxWorkers: assignmentWorkerIds.length,
     activeGroupKeys,
     excludeTaskIds,
     maxGroupsPerAssignment: 1,
@@ -6010,13 +6028,14 @@ async function assignFetchTasks(args) {
     : await nextShardAssignmentIndex(outDir);
   const shardFiles = [];
   const assignedIds = [];
-  for (const assignment of plan.assignments) {
+  for (const [assignmentIndex, assignment] of plan.assignments.entries()) {
     const shardName = `shard-${nextIndex}`;
+    const workerId = assignmentWorkerIds[assignmentIndex] ?? shardName;
     nextIndex += 1;
     const file = join(outDir, `${shardName}.json`);
     const shardTasks = assignment.tasks.map((task) => ({
       ...task,
-      workerId: task?.workerId ?? shardName,
+      workerId: task?.workerId ?? workerId,
     }));
     const taskIds = shardTasks.map((task) => taskIdForSync(task));
     assignedIds.push(...taskIds);
@@ -6028,6 +6047,8 @@ async function assignFetchTasks(args) {
           shardIndex: nextIndex - 1,
           shardCount: null,
           dynamicAssignment: true,
+          workerId,
+          assignmentId: shardName,
           groupKeys: assignment.groupKeys,
           fetchTasks: shardTasks,
         },
@@ -6039,6 +6060,7 @@ async function assignFetchTasks(args) {
     shardFiles.push({
       file,
       shard: shardName,
+      workerId,
       tasks: shardTasks.length,
       taskIds,
       weight: assignment.weight,
@@ -6073,11 +6095,14 @@ function normalizeShardPlan(plan) {
   if (!plan || typeof plan !== "object") return null;
   const shard = String(plan.shard || plan.name || "").trim();
   if (!shard) return null;
+  const firstTask = Array.isArray(plan.tasks) ? plan.tasks.find(Boolean) : null;
+  const workerId = String(plan.workerId || firstTask?.workerId || shard).trim();
   const resultFile = String(plan.resultFile || `${shard}-result.json`);
   const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
   const usage = normalizeRuntimeUsage(plan.usage, "runtime_shard");
   return {
     shard,
+    workerId,
     resultFile,
     workerLogFile: String(plan.workerLogFile || `${shard}-worker.log`),
     workerLogTail: typeof plan.workerLogTail === "string" ? plan.workerLogTail : null,
@@ -6241,8 +6266,10 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     .map(normalizeShardPlan)
     .filter(Boolean);
   const shardPlanByTaskId = new Map();
+  const shardPlanByResultFile = new Map();
   for (const plan of shardPlans) {
     for (const taskId of plan.taskIds) shardPlanByTaskId.set(taskId, plan);
+    shardPlanByResultFile.set(plan.resultFile, plan);
   }
 
   const builders = [];
@@ -6281,7 +6308,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   }
 
   for (const shard of shardResults) {
-    const workerId = shard.workerId ?? workerIdFromShardResultName(shard.name);
+    const workerId = shard.workerId ?? shardPlanByResultFile.get(shard.name)?.workerId ?? workerIdFromShardResultName(shard.name);
     if (!shard.payload) {
       shardSummaries.push({
         shard: shard.name,
@@ -6368,7 +6395,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           shardSummaries,
           { ...options, failureKind: failure.failureKind },
         ),
-        ...(shardPlan?.shard ? { workerId: shardPlan.shard } : {}),
+        ...(shardPlan?.workerId ? { workerId: shardPlan.workerId } : {}),
       });
       backfilled += 1;
     }
@@ -6421,8 +6448,10 @@ async function readShardPlans(resultsDir) {
     const workerLogText = await readOptionalText(join(resultsDir, workerLogFile));
     const usage = runtimeUsageFromFile(join(resultsDir, usageFile), "runtime_sidecar") ??
       (workerLogText ? runtimeUsageFromText(workerLogText) : null);
+    const firstTask = Array.isArray(payload.fetchTasks) ? payload.fetchTasks.find(Boolean) : null;
     plans.push({
       shard,
+      workerId: payload.workerId ?? firstTask?.workerId ?? shard,
       resultFile: `${shard}-result.json`,
       workerLogFile,
       usageFile,
@@ -6449,9 +6478,10 @@ async function readShardWorkerUsages(resultsDir, plannedTasks = []) {
       continue;
     }
     workerUsages.push({
-      workerId: plan.shard,
+      workerId: plan.workerId ?? plan.shard,
       usage: plan.usage,
       taskCount: plan.taskCount,
+      taskIds: plan.taskIds,
     });
   }
   return workerUsages;
@@ -6549,7 +6579,7 @@ function progressFromWorkerProgressEntry(entry, plannedById) {
     sourceType: payload.sourceType ?? planned.sourceType ?? null,
     title: payload.title ?? planned.title ?? null,
     url: payload.url ?? planned.url ?? null,
-    workerId: payload.workerId ?? entry.workerId ?? planned.workerId ?? null,
+    workerId: payload.workerId ?? planned.workerId ?? entry.workerId ?? null,
     bodyChars: payload.bodyChars ?? null,
     bodyWords: payload.bodyWords ?? null,
     summaryChars: payload.summaryChars ?? null,
@@ -6571,7 +6601,7 @@ function progressFromCheckpointItem(item, builder, entry, plannedById) {
     status: "summarized",
     phase: "summarize",
     message: "Summary ready; waiting for server sync.",
-    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? planned.workerId ?? null,
+    workerId: planned.workerId ?? entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
     builder: planned.builder ?? builder?.name ?? null,
     builderId: planned.builderId ?? builder?.builderId ?? null,
     sourceType: planned.sourceType ?? item?.sourceType ?? null,
@@ -6598,7 +6628,7 @@ function progressFromCheckpointOutcome(outcome, entry, plannedById) {
     message: outcome.failureReason
       ? `${String(status).replace(/_/g, " ")}: ${outcome.failureReason}`
       : `${String(status).replace(/_/g, " ")}.`,
-    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? planned.workerId ?? null,
+    workerId: planned.workerId ?? entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
   };
 }
 
@@ -8190,11 +8220,12 @@ export function prepareSyncPayloadForUpload(payload) {
 
 // Trim one planned/fetched cloud task into the per-post outcome the cloud fetch
 // log renders (mirrors CloudFetchPostOutcome / the personal log's fetchTasks).
-function cloudSyncPostOutcome(task, status, outcome) {
+function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
   const text = (value) => (typeof value === "string" && value.trim() ? value : null);
   const count = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
   const item = task?.item && typeof task.item === "object" ? task.item : {};
   const rawJson = objectRecord(item.rawJson);
+  const syncedRawJson = objectRecord(syncItem?.rawJson);
   const readyBody = task?.contentStatus === "ready"
     ? textStats(item.body)
     : { chars: count(task?.bodyChars), words: count(task?.bodyWords) };
@@ -8203,29 +8234,38 @@ function cloudSyncPostOutcome(task, status, outcome) {
     : { chars: count(task?.summaryChars), words: count(task?.summaryWords) };
   return {
     id: text(task?.id || fetchTaskId(task)),
-    title: text(task?.title ?? item.title),
-    url: text(task?.url ?? task?.canonicalUrl ?? item.url),
+    title: text(task?.title ?? item.title ?? syncItem?.title),
+    url: text(task?.url ?? task?.canonicalUrl ?? item.url ?? syncItem?.url),
     contentStatus: text(task?.contentStatus),
     agentWorkType: text(task?.agentWorkType),
     status,
     failureReason: text(task?.failureReason ?? outcome?.reason),
     fetchTool: text(task?.fetchTool ?? task?.readMethod ?? task?.agentWorkType),
-    agentRuntime: text(task?.agentRuntime ?? rawJson.agentRuntime),
-    agentModel: text(task?.agentModel),
+    agentRuntime: text(task?.agentRuntime ?? rawJson.agentRuntime ?? syncedRawJson.agentRuntime),
+    agentModel: text(task?.agentModel ?? syncedRawJson.agentModel),
     bodyChars: count(task?.bodyChars) ?? readyBody.chars,
     bodyWords: count(task?.bodyWords) ?? readyBody.words,
     summaryChars: count(task?.summaryChars) ?? readySummary.chars,
     summaryWords: count(task?.summaryWords) ?? readySummary.words,
-    readMethod: text(task?.readMethod ?? rawJson.readMethod),
-    summaryMethod: text(task?.summaryMethod ?? rawJson.summaryMethod),
-    hubSharedReuse: nonEmptyObjectRecord(rawJson.hubSharedReuse),
-    workerId: text(task?.workerId ?? outcome?.workerId),
+    readMethod: text(task?.readMethod ?? rawJson.readMethod ?? syncedRawJson.readMethod),
+    summaryMethod: text(task?.summaryMethod ?? rawJson.summaryMethod ?? syncedRawJson.summaryMethod),
+    hubSharedReuse: nonEmptyObjectRecord(rawJson.hubSharedReuse) ?? nonEmptyObjectRecord(syncedRawJson.hubSharedReuse),
+    workerId: text(task?.workerId ?? outcome?.workerId ?? syncedRawJson.workerId),
   };
 }
 
 function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
+  const syncItems = extractSyncItems(payload);
+  const syncItemByTaskId = new Map(
+    syncItems
+      .map(({ item }) => {
+        const id = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : "";
+        return id ? [id, item] : null;
+      })
+      .filter(Boolean),
+  );
   const syncItemTaskIds = new Set(
-    extractSyncItems(payload)
+    syncItems
       .map(({ item }) => item?.rawJson?.fetchTaskId)
       .filter(Boolean)
       .map(String),
@@ -8235,6 +8275,7 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
       .filter((outcome) => outcome?.fetchTaskId)
       .map((outcome) => [String(outcome.fetchTaskId), outcome]),
   );
+  const workerUsages = Array.isArray(payload?.workerUsages) ? payload.workerUsages : [];
   const grouped = new Map();
   for (const task of plannedTasks) {
     if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
@@ -8267,11 +8308,19 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
     // Persist each post's outcome so the cloud fetch log can render the same
     // per-post staged (read → summarize → sync) + debug rows the personal log
     // uses. Without this only fetchTaskIds were stored, so posts never rendered.
-    group.details.posts.push(cloudSyncPostOutcome(task, postStatus, outcome));
+    group.details.posts.push(cloudSyncPostOutcome(task, postStatus, outcome, syncItemByTaskId.get(plannedFetchTaskId)));
     grouped.set(cloudSourceTaskId, group);
   }
   return [...grouped.values()].map((group) => {
     const failed = group.syncedPosts === 0 && group.failedPosts > 0 && group.failedPosts >= group.plannedPosts;
+    const fetchTaskIds = new Set(group.details.fetchTaskIds);
+    const groupWorkerUsages = workerUsages.filter((usage) => {
+      const ids = Array.isArray(usage?.taskIds) ? usage.taskIds.map((id) => String(id)) : [];
+      return ids.some((id) => fetchTaskIds.has(id));
+    });
+    if (groupWorkerUsages.length > 0) {
+      group.details.workerUsages = groupWorkerUsages;
+    }
     return {
       cloudSourceTaskId: group.cloudSourceTaskId,
       status: failed ? "failed" : "succeeded",
@@ -8313,7 +8362,14 @@ async function syncCloudBuilders(args) {
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
-  const { plannedTasks, summaryLanguage } = await readPlannedFetchResult(tasksFile);
+  const { plannedTasks: rawPlannedTasks, summaryLanguage } = await readPlannedFetchResult(tasksFile);
+  const resultsDir = argValue(args, "--results-dir", null);
+  const shardWorkerIds = resultsDir
+    ? shardWorkerIdByTaskId(await readShardPlans(resultsDir))
+    : new Map();
+  const plannedTasks = rawPlannedTasks.map((task) => taskWithShardWorkerId(task, shardWorkerIds));
+  const workerUsages = await readShardWorkerUsages(resultsDir, plannedTasks);
+  if (workerUsages.length > 0) rawPayload.workerUsages = workerUsages;
   rawPayload.summaryLanguage ??= summaryLanguage ?? null;
   rawPayload = filterStaleSyncItemsByFetchCutoff(rawPayload, plannedTasks);
   validateAgentSyncPayload({ fetchTasks: plannedTasks }, rawPayload);
@@ -9113,7 +9169,7 @@ function plannedFetchTaskStatus(task) {
 function shardWorkerIdByTaskId(shardPlans = []) {
   const byTaskId = new Map();
   for (const plan of shardPlans.map(normalizeShardPlan).filter(Boolean)) {
-    for (const taskId of plan.taskIds) byTaskId.set(taskId, plan.shard);
+    for (const taskId of plan.taskIds) byTaskId.set(taskId, plan.workerId ?? plan.shard);
   }
   return byTaskId;
 }
