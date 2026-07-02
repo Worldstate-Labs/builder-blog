@@ -25,10 +25,13 @@ test("cloud source submission normalizes fixed summary language", () => {
   });
 });
 
-test("cloud source submission rejects original/source language preference", () => {
-  assert.throws(
-    () => normalizeCloudSourceSubmissionInput({ frequency: "week", summaryLanguage: "source" }),
-    /Cloud library submissions require a fixed summary language/,
+test("cloud source submission accepts original as its own language", () => {
+  assert.deepEqual(
+    normalizeCloudSourceSubmissionInput({ frequency: "week", summaryLanguage: "original" }),
+    {
+      frequency: "WEEKLY",
+      summaryLanguage: "source",
+    },
   );
 });
 

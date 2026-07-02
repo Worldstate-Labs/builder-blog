@@ -86,9 +86,9 @@ test("cloud language library patch rejects user-configured owner fields", () => 
   );
 });
 
-test("cloud language library patch rejects original/source language preference", () => {
-  assert.throws(
-    () => normalizeCloudLanguageLibraryPatchInput({ summaryLanguage: "source" }),
-    /fixed summary language/,
-  );
+test("cloud language library patch accepts original as a language", () => {
+  assert.deepEqual(normalizeCloudLanguageLibraryPatchInput({ summaryLanguage: "original" }), {
+    summaryLanguage: "source",
+    enabled: true,
+  });
 });

@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  isOriginalContentLanguagePreference,
-  normalizeSummaryLanguagePreference,
-} from "@/lib/language-preference";
+import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 
 export const CLOUD_FETCH_CONFIG_ID = "global";
 
@@ -40,9 +37,6 @@ export function normalizeCloudFetchConfigPatchInput(input: unknown) {
 export function normalizeCloudLanguageLibraryPatchInput(input: unknown) {
   const parsed = CloudLanguageLibraryPatchSchema.parse(input);
   const summaryLanguage = normalizeSummaryLanguagePreference(parsed.summaryLanguage);
-  if (isOriginalContentLanguagePreference(summaryLanguage)) {
-    throw new Error("Cloud language libraries require a fixed summary language.");
-  }
   return {
     summaryLanguage,
     enabled: parsed.enabled ?? true,

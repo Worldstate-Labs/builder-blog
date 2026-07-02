@@ -64,12 +64,15 @@ test("effectiveCloudFetchFrequency chooses daily when any active submission is d
 test("cloud language library names are language-specific hub source libraries", () => {
   assert.equal(cloudLanguageLibraryHubName("zh"), "Community source library - Chinese");
   assert.equal(cloudLanguageLibraryHubName("en"), "Community source library - English");
+  assert.equal(cloudLanguageLibraryHubName("source"), "Community source library - original");
 });
 
 test("cloud language system owners are deterministic per summary language", async () => {
   assert.equal(cloudLanguageSystemUserEmail("zh"), "cloud-source-zh@followbrief.system");
   assert.equal(cloudLanguageSystemUserEmail("Chinese"), "cloud-source-chinese@followbrief.system");
+  assert.equal(cloudLanguageSystemUserEmail("original"), "cloud-source-source@followbrief.system");
   assert.equal(cloudLanguageSystemUserName("zh"), "FollowBrief Cloud - Chinese");
+  assert.equal(cloudLanguageSystemUserName("source"), "FollowBrief Cloud - original");
 
   const calls: unknown[] = [];
   const prisma = {
@@ -153,6 +156,14 @@ test("cloud language system-owner save refreshes the Hub share when enabled", ()
   assert.match(library, /if \(!params\.enabled\) return library/);
   assert.match(library, /syncCloudLanguageLibraryHub\(params\.summaryLanguage, prisma\)/);
   assert.match(library, /hubEntry:\s*\{\s*select:\s*\{\s*id:\s*true,\s*slug:\s*true,\s*name:\s*true\s*\}/);
+});
+
+test("cloud submissions auto-create the target language library", () => {
+  const library = readFileSync("src/lib/cloud-source-library.ts", "utf8");
+
+  assert.match(library, /ensureCloudLanguageLibraryForSubmission/);
+  assert.match(library, /upsertCloudLanguageLibraryWithSystemOwner\(\{[\s\S]*enabled: true/);
+  assert.doesNotMatch(library, /const cloudLibrary = await resolveCloudLanguageLibrary\(\{[\s\S]*submitUserPrivateLibraryToCloud/);
 });
 
 test("cloud source candidate upsert dedupes by canonical source key", async () => {

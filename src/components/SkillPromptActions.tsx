@@ -1206,11 +1206,6 @@ function CronConfigDialog({
         }
       }
       if (isCloudMode) {
-        if (pickedLanguage === ORIGINAL_CONTENT_LANGUAGE_VALUE) {
-          setError("Choose a fixed summary language for cloud source fetching.");
-          setSubmitting(false);
-          return;
-        }
         const response = await fetch("/api/cloud-library/source-submissions", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -1313,13 +1308,6 @@ function CronConfigDialog({
                 onChange={(e) => {
                   const next = e.target.value as RuntimeType;
                   setRuntimeType(next);
-                  if (next === "cloud" && pickedLanguage === ORIGINAL_CONTENT_LANGUAGE_VALUE) {
-                    setPickedLanguage(
-                      savedLanguage && savedLanguage !== ORIGINAL_CONTENT_LANGUAGE_VALUE
-                        ? savedLanguage
-                        : "zh",
-                    );
-                  }
                 }}
               >
                 <option value="cloud">Cloud</option>

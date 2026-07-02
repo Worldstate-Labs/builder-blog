@@ -2388,10 +2388,22 @@ function languageKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function isOriginalContentLanguageAlias(value) {
+  const normalized = languageKey(value);
+  return (
+    normalized === ORIGINAL_CONTENT_LANGUAGE_VALUE ||
+    normalized === "original" ||
+    normalized === "original content language"
+  );
+}
+
 function sharedPostSummaryMatchesTarget(match, targetLanguage) {
   if (typeof match?.summaryMatchesTarget === "boolean") return match.summaryMatchesTarget;
   const stored = languageKey(match?.summaryLanguage);
   const target = languageKey(targetLanguage);
+  if (isOriginalContentLanguageAlias(stored) || isOriginalContentLanguageAlias(target)) {
+    return isOriginalContentLanguageAlias(stored) && isOriginalContentLanguageAlias(target);
+  }
   return Boolean(stored && target && stored === target);
 }
 
@@ -2882,7 +2894,7 @@ export function singlePostSummaryInstructions(sourceId, sources = {}, commonSumm
 }
 
 function isOriginalContentLanguage(value) {
-  return String(value || "").trim().toLowerCase() === ORIGINAL_CONTENT_LANGUAGE_VALUE;
+  return isOriginalContentLanguageAlias(value);
 }
 
 function singlePostSummaryPrompt(source) {

@@ -19,6 +19,21 @@ export function normalizeSummaryLanguagePreference(value: string | null | undefi
   return trimmed;
 }
 
+export function summaryLanguagesMatch(
+  value: string | null | undefined,
+  target: string | null | undefined,
+) {
+  const rawValue = String(value ?? "").trim();
+  const rawTarget = String(target ?? "").trim();
+  if (!rawValue || !rawTarget) return false;
+  const normalizedValue = normalizeSummaryLanguagePreference(rawValue);
+  const normalizedTarget = normalizeSummaryLanguagePreference(rawTarget);
+  const valueIsOriginal = isOriginalContentLanguagePreference(normalizedValue);
+  const targetIsOriginal = isOriginalContentLanguagePreference(normalizedTarget);
+  if (valueIsOriginal || targetIsOriginal) return valueIsOriginal && targetIsOriginal;
+  return normalizedValue.toLowerCase() === normalizedTarget.toLowerCase();
+}
+
 export function displayLanguagePreference(value: string | null | undefined) {
   const normalized = normalizeSummaryLanguagePreference(value);
   if (isOriginalContentLanguagePreference(normalized)) return ORIGINAL_CONTENT_LANGUAGE_LABEL;

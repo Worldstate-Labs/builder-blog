@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { canonicalPostUrl, postUrlLookupVariants } from "../src/lib/canonical-url";
+import { summaryLanguagesMatch } from "../src/lib/language-preference";
 
 test("canonicalPostUrl normalizes tracking params, hash, host case, and trailing slash", () => {
   assert.equal(
@@ -72,6 +73,14 @@ test("builder sync records summaryLanguage for future same-language reuse", () =
   assert.match(feedSync, /rawJsonWithSummaryLanguage/);
   assert.match(route, /normalizeSummaryLanguagePreference/);
   assert.match(feedSync, /summaryLanguage/);
+});
+
+test("summary language matching treats original as its own language", () => {
+  assert.equal(summaryLanguagesMatch("original", "source"), true);
+  assert.equal(summaryLanguagesMatch("source", "original"), true);
+  assert.equal(summaryLanguagesMatch("original", "English"), false);
+  assert.equal(summaryLanguagesMatch("source", "zh"), false);
+  assert.equal(summaryLanguagesMatch("English", "english"), true);
 });
 
 test("fetch log treats summary translation as summarize work without claiming a source read", () => {
@@ -190,6 +199,46 @@ function baseFetchTask() {
     },
   };
 }
+
+test("CLI shared-summary fallback keeps original distinct from fixed languages", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = baseFetchTask();
+  const fixedLanguageReuse = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body: null,
+    bodyReused: false,
+    summary: "A source-language summary that should not count as English.",
+    summaryLanguage: "source",
+    source: {
+      feedItemId: "feed_shared",
+      builderId: "builder_shared",
+      builderName: "Shared Source",
+      url: "https://example.com/posts/launch",
+    },
+  }, { summaryLanguage: "English" });
+
+  assert.equal(fixedLanguageReuse.agentWorkType, "translate_summary_only");
+  assert.equal(fixedLanguageReuse.deterministicSync, false);
+  assert.equal(fixedLanguageReuse.summaryTranslation.sourceLanguage, "source");
+
+  const originalLanguageReuse = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body: null,
+    bodyReused: false,
+    summary: "A source-language summary that can be reused for original mode.",
+    summaryLanguage: "source",
+    source: {
+      feedItemId: "feed_shared",
+      builderId: "builder_shared",
+      builderName: "Shared Source",
+      url: "https://example.com/posts/launch",
+    },
+  }, { summaryLanguage: "original" });
+
+  assert.equal(originalLanguageReuse.contentStatus, "ready");
+  assert.equal(originalLanguageReuse.deterministicSync, true);
+  assert.equal(originalLanguageReuse.item.rawJson.hubSharedReuse.summaryReused, true);
+});
 
 test("same-language Hub summary can sync without copying a reusable body", async () => {
   const cli = await import("../scripts/builder-digest.mjs");

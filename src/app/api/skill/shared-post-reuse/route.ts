@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canonicalPostUrl, postUrlLookupVariants } from "@/lib/canonical-url";
 import { checkBodyContentQuality } from "@/lib/content-quality";
-import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
+import {
+  normalizeSummaryLanguagePreference,
+  summaryLanguagesMatch,
+} from "@/lib/language-preference";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getAllSourceConfigs } from "@/lib/source-config-store";
@@ -46,7 +49,7 @@ function rawString(value: unknown) {
 function summaryLanguageMatches(value: unknown, targetLanguage: string) {
   const stored = rawString(value);
   if (!stored) return false;
-  return normalizeSummaryLanguagePreference(stored).toLowerCase() === targetLanguage.toLowerCase();
+  return summaryLanguagesMatch(stored, targetLanguage);
 }
 
 function sourceTypeKey(value: unknown) {

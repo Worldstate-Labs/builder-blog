@@ -1,7 +1,4 @@
-import {
-  isOriginalContentLanguagePreference,
-  normalizeSummaryLanguagePreference,
-} from "@/lib/language-preference";
+import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { z } from "zod";
 import { SkillBuilderSchema, SkillTaskOutcomeSchema } from "@/lib/skill-contracts";
 
@@ -29,9 +26,6 @@ export function normalizeCloudSourceSubmissionInput(
   input: CloudSourceSubmissionInput,
 ): NormalizedCloudSourceSubmission {
   const summaryLanguage = normalizeSummaryLanguagePreference(input.summaryLanguage);
-  if (isOriginalContentLanguagePreference(summaryLanguage)) {
-    throw new Error("Cloud library submissions require a fixed summary language.");
-  }
   return {
     frequency: normalizeCloudFetchFrequencyInput(input.frequency),
     summaryLanguage,

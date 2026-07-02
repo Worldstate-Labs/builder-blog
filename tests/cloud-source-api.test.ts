@@ -22,7 +22,8 @@ test("cloud source submission route authenticates, normalizes input, and rate li
 test("cloud source library submission copies only private sources to language owner", () => {
   const library = source("src/lib/cloud-source-library.ts");
 
-  assert.match(library, /resolveCloudLanguageLibrary/);
+  assert.match(library, /ensureCloudLanguageLibraryForSubmission/);
+  assert.match(library, /upsertCloudLanguageLibraryWithSystemOwner/);
   assert.match(library, /BuilderPoolOrigin\.PERSONAL_SYNC/);
   assert.match(library, /builder:\s*\{\s*ownerUserId: params\.userId\s*\}/);
   assert.match(library, /copyBuilderToCloudOwner/);

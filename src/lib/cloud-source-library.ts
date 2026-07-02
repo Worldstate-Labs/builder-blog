@@ -309,6 +309,17 @@ export async function resolveCloudLanguageLibrary(params: {
   return cloudLibrary;
 }
 
+async function ensureCloudLanguageLibraryForSubmission(params: {
+  summaryLanguage: string;
+  prisma: PrismaClient;
+}) {
+  return upsertCloudLanguageLibraryWithSystemOwner({
+    summaryLanguage: params.summaryLanguage,
+    enabled: true,
+    prisma: params.prisma,
+  });
+}
+
 export async function submitUserPrivateLibraryToCloud(params: {
   userId: string;
   frequency: CloudFetchFrequency;
@@ -319,10 +330,6 @@ export async function submitUserPrivateLibraryToCloud(params: {
 }) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
-  const cloudLibrary = await resolveCloudLanguageLibrary({
-    summaryLanguage: params.summaryLanguage,
-    prisma,
-  });
   const privateSources = await prisma.builderPoolEntry.findMany({
     where: {
       userId: params.userId,
@@ -336,6 +343,10 @@ export async function submitUserPrivateLibraryToCloud(params: {
   if (privateSources.length === 0) {
     throw new CloudSourceSubmissionError("Add at least one private source before submitting to Cloud.");
   }
+  const cloudLibrary = await ensureCloudLanguageLibraryForSubmission({
+    summaryLanguage: params.summaryLanguage,
+    prisma,
+  });
 
   // Snapshot the user's prior active submissions before activating the new set,
   // so we can cancel whatever the new submission does not include.
