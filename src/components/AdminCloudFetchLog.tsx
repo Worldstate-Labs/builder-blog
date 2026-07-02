@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
+import { RelativeTime } from "@/components/RelativeTime";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { formatUsageCost, formatUsageTokens, readUsageSummary, type UsageSummary } from "@/lib/usage-summary";
 import type {
@@ -32,23 +33,22 @@ function mergeLeaseBatches(
   );
 }
 
-function formatTime(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "UTC",
-      timeZoneName: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
+type InlinePart = ReactNode | null | undefined | false;
 
-function formatNullableTime(iso: string | null): string {
-  return iso ? formatTime(iso) : "Never";
+function InlineParts({ parts }: { parts: InlinePart[] }) {
+  const visible = parts.filter(
+    (part): part is ReactNode => part !== null && part !== undefined && part !== false && part !== "",
+  );
+  return (
+    <>
+      {visible.map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 ? " · " : null}
+          {part}
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 function formatDuration(ms: number | null): string {
@@ -373,7 +373,7 @@ function buildWorkerShardGroups(
     });
 }
 
-function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
+function workerHostMeta(workerHost: CloudWorkerHostStatus): InlinePart[] {
   const parts = [
     workerHost.hostname,
     workerHost.platform,
@@ -381,9 +381,13 @@ function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
     workerHost.localWorkers != null
       ? `${workerHost.localWorkers} ${workerHost.localWorkers === 1 ? "worker" : "workers"}`
       : null,
-  ].filter(Boolean) as string[];
+  ].filter(Boolean) as InlinePart[];
   if (workerHost.heartbeatAt) {
-    parts.push(`heartbeat ${formatNullableTime(workerHost.heartbeatAt)}`);
+    parts.push(
+      <>
+        heartbeat <RelativeTime value={workerHost.heartbeatAt} fallback="Never" />
+      </>,
+    );
   } else if (parts.length > 0) {
     parts.push("heartbeat missing");
   }
@@ -453,7 +457,9 @@ function WorkerHostPanel({
             </span>
             <h4 className="cloud-worker-host-title">Worker host</h4>
           </div>
-          <p className="cloud-worker-host-meta">{workerHostMeta(workerHost).join(" · ")}</p>
+          <p className="cloud-worker-host-meta">
+            <InlineParts parts={workerHostMeta(workerHost)} />
+          </p>
         </div>
         {summary ? <p className="cloud-worker-host-summary">{summary}</p> : null}
       </div>
@@ -531,9 +537,15 @@ function WorkerHostPanel({
                 <span className="cloud-worker-task-main">
                   <span className="cloud-worker-task-title">{taskLabel(task)}</span>
                   <span className="cloud-worker-task-meta">
-                    {[task.builder, task.sourceType, task.workerId, task.updatedAt ? formatTime(task.updatedAt) : null, formatWorkerTaskStats(task)]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    <InlineParts
+                      parts={[
+                        task.builder,
+                        task.sourceType,
+                        task.workerId,
+                        task.updatedAt ? <RelativeTime value={task.updatedAt} /> : null,
+                        formatWorkerTaskStats(task),
+                      ]}
+                    />
                   </span>
                   {task.message ? (
                     <span className="cloud-worker-task-message">{task.message}</span>
@@ -553,7 +565,7 @@ function WorkerHostPanel({
           <ul className="cloud-worker-event-list">
             {events.map((event, index) => (
               <li key={`${event.at ?? "event"}:${event.taskId ?? index}`}>
-                <span>{event.at ? formatTime(event.at) : "Unknown time"}</span>
+                <RelativeTime value={event.at} fallback="Unknown time" />
                 <strong>{event.status ?? event.type ?? "event"}</strong>
                 {event.message ? <em>{event.message}</em> : null}
               </li>
@@ -714,14 +726,22 @@ export function AdminCloudFetchLog({
                     {pluralize(group.tasks.length, "post task")}
                   </span>
                   <span className="cloud-fetch-log-meta">
-                    {formatPostOutcomeSummary({
-                      synced: group.synced,
-                      planned: group.tasks.length,
-                      failed: group.failed,
-                      pending: group.pending,
-                    })}
-                    {groupUsage ? ` · ${groupUsage}` : ""}
-                    {group.updatedAt ? ` · updated ${formatTime(group.updatedAt)}` : ""}
+                    <InlineParts
+                      parts={[
+                        formatPostOutcomeSummary({
+                          synced: group.synced,
+                          planned: group.tasks.length,
+                          failed: group.failed,
+                          pending: group.pending,
+                        }),
+                        groupUsage,
+                        group.updatedAt ? (
+                          <>
+                            updated <RelativeTime value={group.updatedAt} />
+                          </>
+                        ) : null,
+                      ]}
+                    />
                   </span>
                 </button>
                 {isOpen ? (
@@ -774,7 +794,9 @@ export function AdminCloudFetchLog({
                   <span className={`cloud-status-chip ${statusClass(batch.status)}`}>
                     {batch.status}
                   </span>
-                  <span className="cloud-fetch-log-time">{formatTime(batch.startedAt)}</span>
+                  <span className="cloud-fetch-log-time">
+                    <RelativeTime value={batch.startedAt} />
+                  </span>
                   <span className="cloud-fetch-log-counts">
                     {formatDeliveryCounts(batch)}
                   </span>
@@ -805,7 +827,7 @@ export function AdminCloudFetchLog({
                       </span>
                       <span>
                         <strong>Finished</strong>
-                        {batch.finishedAt ? formatTime(batch.finishedAt) : "Still running"}
+                        <RelativeTime value={batch.finishedAt} fallback="Still running" />
                       </span>
                     </div>
                     {batch.tasks.length === 0 ? (
@@ -858,11 +880,11 @@ export function AdminCloudFetchLog({
                                   <div className="cloud-fetch-log-task-facts" aria-label="Source task details">
                                     <span>
                                       <strong>Started</strong>
-                                      {task.startedAt ? formatTime(task.startedAt) : "-"}
+                                      <RelativeTime value={task.startedAt} fallback="-" />
                                     </span>
                                     <span>
                                       <strong>Finished</strong>
-                                      {task.finishedAt ? formatTime(task.finishedAt) : "Still running"}
+                                      <RelativeTime value={task.finishedAt} fallback="Still running" />
                                     </span>
                                     <span>
                                       <strong>Estimated</strong>

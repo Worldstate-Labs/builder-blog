@@ -134,6 +134,19 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
 });
 
+test("cloud management timestamps use the shared relative time renderer", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+  const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
+
+  for (const component of [log, explorer]) {
+    assert.match(component, /@\/components\/RelativeTime/);
+    assert.match(component, /<RelativeTime/);
+    assert.doesNotMatch(component, /function format(?:Time|Date)\(/);
+    assert.doesNotMatch(component, /Intl\.DateTimeFormat/);
+    assert.doesNotMatch(component, /timeZone:\s*"UTC"/);
+  }
+});
+
 test("cloud fetch log reuses the personal fetch log's per-post staged renderer", () => {
   const log = source("src/components/AdminCloudFetchLog.tsx");
 

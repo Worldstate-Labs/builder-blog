@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
+import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import type {
   CloudLibraryOverview,
@@ -42,20 +43,6 @@ function frequencyLabel(frequency: string): string {
   if (frequency === "DAILY") return "Daily";
   if (frequency === "WEEKLY") return "Weekly";
   return frequency;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }
 
 function avatarSource(source: CloudLibrarySource) {
@@ -188,13 +175,16 @@ export function AdminCloudLibraryExplorer({
                     {isOpen ? (
                       <div className="cloud-source-detail">
                         <p className="cloud-source-status-line">
-                          Last success {formatDate(source.lastSuccessAt)} · Last failure{" "}
-                          {formatDate(source.lastFailureAt)}
+                          Last success <RelativeTime value={source.lastSuccessAt} fallback="—" /> · Last failure{" "}
+                          <RelativeTime value={source.lastFailureAt} fallback="—" />
                           {source.lastFailureReason ? ` (${source.lastFailureReason})` : ""} · Next
-                          attempt {formatDate(source.nextAttemptAt)}
-                          {source.circuitBreakerUntil
-                            ? ` · circuit-broken until ${formatDate(source.circuitBreakerUntil)}`
-                            : ""}
+                          attempt <RelativeTime value={source.nextAttemptAt} fallback="—" />
+                          {source.circuitBreakerUntil ? (
+                            <>
+                              {" · "}circuit-broken until{" "}
+                              <RelativeTime value={source.circuitBreakerUntil} fallback="—" />
+                            </>
+                          ) : null}
                         </p>
 
                         {loading === source.builderId ? (
