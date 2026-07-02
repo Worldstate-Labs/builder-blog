@@ -65,6 +65,7 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
               workerId: "worker-0",
               usage: { totalTokens: 1200, costUsd: 0.05, currency: "USD" },
               taskCount: 1,
+              taskIds: ["task_1"],
             },
           ],
         },
@@ -110,6 +111,7 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
       workerId: "worker-0",
       usage: { totalTokens: 1200, costUsd: 0.05, currency: "USD" },
       taskCount: 1,
+      taskIds: ["task_1"],
     },
   ]);
   assert.equal(task.posts[1].failureReason, "summary_missing");

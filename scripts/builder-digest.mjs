@@ -8311,13 +8311,18 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
     group.details.posts.push(cloudSyncPostOutcome(task, postStatus, outcome, syncItemByTaskId.get(plannedFetchTaskId)));
     grouped.set(cloudSourceTaskId, group);
   }
-  return [...grouped.values()].map((group) => {
+  const groups = [...grouped.values()];
+  const workerUsageGroupCounts = countWorkerUsageGroupMatches(groups, workerUsages);
+  return groups.map((group) => {
     const failed = group.syncedPosts === 0 && group.failedPosts > 0 && group.failedPosts >= group.plannedPosts;
     const fetchTaskIds = new Set(group.details.fetchTaskIds);
     const groupWorkerUsages = workerUsages.filter((usage) => {
-      const ids = Array.isArray(usage?.taskIds) ? usage.taskIds.map((id) => String(id)) : [];
-      return ids.some((id) => fetchTaskIds.has(id));
+      return workerUsageMatchesFetchTaskIds(usage, fetchTaskIds);
     });
+    const sourceScopedUsages = groupWorkerUsages.filter((usage) => (
+      workerUsageGroupCounts.get(workerUsageKey(usage)) === 1
+    ));
+    const groupUsage = aggregateWorkerUsageSummaries(sourceScopedUsages);
     if (groupWorkerUsages.length > 0) {
       group.details.workerUsages = groupWorkerUsages;
     }
@@ -8327,10 +8332,45 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}) {
       plannedPosts: group.plannedPosts,
       syncedPosts: group.syncedPosts,
       failedPosts: group.failedPosts,
+      ...(groupUsage?.totalTokens != null ? { usageTokens: groupUsage.totalTokens } : {}),
+      ...(groupUsage?.costUsd != null ? { usageCostUsd: groupUsage.costUsd } : {}),
       ...(failed ? { failureReason: group.failureReason || "cloud_task_failed" } : {}),
       details: group.details,
     };
   });
+}
+
+function aggregateWorkerUsageSummaries(workerUsages = []) {
+  let total = null;
+  for (const value of workerUsages) {
+    const usage = normalizeRuntimeUsage(value?.usage ?? value, "runtime_shard");
+    if (!usage) continue;
+    total = addUsageSummaries(total, usage);
+  }
+  return total;
+}
+
+function countWorkerUsageGroupMatches(groups = [], workerUsages = []) {
+  const counts = new Map();
+  for (const usage of workerUsages) {
+    const key = workerUsageKey(usage);
+    for (const group of groups) {
+      if (!workerUsageMatchesFetchTaskIds(usage, new Set(group.details.fetchTaskIds))) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function workerUsageMatchesFetchTaskIds(usage, fetchTaskIds) {
+  const ids = Array.isArray(usage?.taskIds) ? usage.taskIds.map((id) => String(id)) : [];
+  return ids.some((id) => fetchTaskIds.has(id));
+}
+
+function workerUsageKey(usage) {
+  const workerId = String(usage?.workerId ?? "");
+  const ids = Array.isArray(usage?.taskIds) ? usage.taskIds.map((id) => String(id)).sort() : [];
+  return `${workerId}\u0000${ids.join("\u0000")}`;
 }
 
 export function buildCloudSyncTaskResultsForTest(plannedTasks, payload) {

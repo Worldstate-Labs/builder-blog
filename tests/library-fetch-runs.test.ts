@@ -143,6 +143,7 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
 
 test("CLI emits a fetch-run record on both success and failure paths", () => {
   const cli = source("scripts/builder-digest.mjs");
+  const runner = source("scripts/builder-agent-runner.sh");
   // CLI_VERSION is bumped for this change.
   assert.match(cli, /const CLI_VERSION = "0\.6\.0";/);
   // The CLI POSTs to the new endpoint with the bearer token.
@@ -212,6 +213,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /const usageFile = `\$\{shard\}-usage\.jsonl`/);
   assert.match(cli, /runtimeUsageFromFile\(join\(resultsDir, usageFile\), "runtime_sidecar"\)/);
   assert.match(cli, /fetchRun: buildFetchRunSyncPatch/);
+  assert.match(runner, /Refreshing cloud worker usage after final runtime usage aggregation\./);
+  assert.match(runner, /_frlr_label-usage-refresh/);
   assert.doesNotMatch(cli, /discoveryExpanded: true/);
 });
 

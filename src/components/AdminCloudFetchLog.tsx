@@ -301,9 +301,13 @@ function allDeliveryPostTasks(leaseBatches: CloudFetchRunLogItem[]): FetchTaskLo
 
 function cloudWorkerUsageMap(leaseBatches: CloudFetchRunLogItem[]): Map<string, UsageSummary> {
   const byWorkerId = new Map<string, UsageSummary>();
+  const seen = new Set<string>();
   for (const batch of leaseBatches) {
     for (const task of batch.tasks) {
       for (const value of task.workerUsages) {
+        const key = workerUsageIdentity(value);
+        if (seen.has(key)) continue;
+        seen.add(key);
         const usage = readUsageSummary(value.usage, value);
         if (!usage) continue;
         byWorkerId.set(value.workerId, mergeUsageSummary(byWorkerId.get(value.workerId) ?? null, usage) ?? usage);
@@ -311,6 +315,11 @@ function cloudWorkerUsageMap(leaseBatches: CloudFetchRunLogItem[]): Map<string, 
     }
   }
   return byWorkerId;
+}
+
+function workerUsageIdentity(value: { workerId: string; usage: Record<string, unknown>; taskIds?: string[] }) {
+  const taskIds = Array.isArray(value.taskIds) ? [...value.taskIds].sort().join("\u0000") : "";
+  return `${value.workerId}\u0000${taskIds}\u0000${JSON.stringify(value.usage)}`;
 }
 
 function totalUsage(usageMap: Map<string, UsageSummary>): UsageSummary | null {

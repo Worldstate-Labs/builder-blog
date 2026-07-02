@@ -29,6 +29,7 @@ export type CloudFetchWorkerUsage = {
   workerId: string;
   usage: Record<string, unknown>;
   taskCount: number | null;
+  taskIds: string[];
 };
 
 export type CloudWorkerHostTask = {
@@ -381,6 +382,9 @@ function parseCloudWorkerUsages(details: unknown): CloudFetchWorkerUsage[] {
       workerId,
       usage: usageRecord,
       taskCount: num(usage?.taskCount),
+      taskIds: Array.isArray(usage?.taskIds)
+        ? usage.taskIds.map((id) => str(id)).filter((id): id is string => Boolean(id))
+        : [],
     });
   }
   return usages;

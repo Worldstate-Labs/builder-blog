@@ -2755,6 +2755,12 @@ NODE
   fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE=""
 
+  if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_frlr_sync_failures" -eq 0 ]; then
+    _frlr_usage_refresh_slices_dir="$JOB_TMP_DIR/usage-refresh-sync-slices"
+    echo "Refreshing cloud worker usage after final runtime usage aggregation."
+    sync_payload_slices "$_frlr_result_file" "$JOB_TMP_DIR/library-agent-sync.json" "$_frlr_usage_refresh_slices_dir" "$_frlr_label-usage-refresh" --results-dir "$_frlr_results_dir" || true
+  fi
+
   if [ "$_frlr_sync_failures" -gt 0 ]; then
     echo "$_frlr_sync_failures library result slice(s) failed to sync." >&2
     return 65

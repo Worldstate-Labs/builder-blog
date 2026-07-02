@@ -2440,7 +2440,7 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       workerUsages: [
         {
           workerId: "worker-0",
-          usage: { totalTokens: 1234, costUsd: 0.05, currency: "USD" },
+          usage: { totalTokens: 1234, inputTokens: 1000, outputTokens: 234, costUsd: 0.05, currency: "USD" },
           taskCount: 1,
           taskIds: ["task_synced"],
         },
@@ -2465,6 +2465,10 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
     ],
   );
   assert.equal(payload.taskResults[1].failureReason, "worker_missing_result");
+  assert.equal(payload.taskResults[0].usageTokens, 1234);
+  assert.equal(payload.taskResults[0].usageCostUsd, 0.05);
+  assert.equal(payload.taskResults[1].usageTokens, undefined);
+  assert.equal(payload.taskResults[1].usageCostUsd, undefined);
 
   // Each cloud task carries per-post outcomes so the cloud fetch log can render
   // the same staged (read → summarize → sync) + debug rows as the personal log.
@@ -2493,7 +2497,7 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
   assert.deepEqual(payload.taskResults[0].details.workerUsages, [
     {
       workerId: "worker-0",
-      usage: { totalTokens: 1234, costUsd: 0.05, currency: "USD" },
+      usage: { totalTokens: 1234, inputTokens: 1000, outputTokens: 234, costUsd: 0.05, currency: "USD" },
       taskCount: 1,
       taskIds: ["task_synced"],
     },
@@ -2503,6 +2507,68 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
   assert.equal(payload.taskResults[1].details.posts[0].status, "failed");
   assert.equal(payload.taskResults[1].details.posts[0].failureReason, "worker_missing_result");
   assert.equal(payload.taskResults[1].details.posts[0].url, "https://openai.com/news/2");
+});
+
+test("cloud sync keeps shared worker usage for lane aggregation without source double counting", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const plannedTasks = [
+    {
+      id: "task_a",
+      type: "fetch_post",
+      cloudRunId: "cloud_run_1",
+      cloudSourceTaskId: "cloud_task_a",
+      builder: "Source A",
+      builderId: "cloud_builder_a",
+      sourceType: "blog",
+      item: { kind: "BLOG_POST", externalId: "a", url: "https://example.com/a" },
+    },
+    {
+      id: "task_b",
+      type: "fetch_post",
+      cloudRunId: "cloud_run_1",
+      cloudSourceTaskId: "cloud_task_b",
+      builder: "Source B",
+      builderId: "cloud_builder_b",
+      sourceType: "blog",
+      item: { kind: "BLOG_POST", externalId: "b", url: "https://example.com/b" },
+    },
+  ];
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [
+        {
+          builderId: "cloud_builder_a",
+          kind: "BLOG",
+          sourceType: "blog",
+          name: "Source A",
+          items: [{ kind: "BLOG_POST", externalId: "a", body: "A body", summary: "A summary with enough words.", url: "https://example.com/a", rawJson: { fetchTaskId: "task_a", workerId: "worker-0" } }],
+        },
+        {
+          builderId: "cloud_builder_b",
+          kind: "BLOG",
+          sourceType: "blog",
+          name: "Source B",
+          items: [{ kind: "BLOG_POST", externalId: "b", body: "B body", summary: "B summary with enough words.", url: "https://example.com/b", rawJson: { fetchTaskId: "task_b", workerId: "worker-0" } }],
+        },
+      ],
+      workerUsages: [
+        {
+          workerId: "worker-0",
+          usage: { totalTokens: 2000, costUsd: 0.2, currency: "USD" },
+          taskCount: 2,
+          taskIds: ["task_a", "task_b"],
+        },
+      ],
+    },
+    "cloud_run_1",
+    plannedTasks,
+  );
+
+  assert.equal(payload.taskResults.length, 2);
+  assert.equal(payload.taskResults[0].usageTokens, undefined);
+  assert.equal(payload.taskResults[1].usageTokens, undefined);
+  assert.equal(payload.taskResults[0].details.workerUsages.length, 1);
+  assert.equal(payload.taskResults[1].details.workerUsages.length, 1);
 });
 
 test("cloud sync payload can split by cloud run id", async () => {
