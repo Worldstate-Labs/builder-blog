@@ -123,6 +123,10 @@ function formatWorkerTaskStats(task: CloudWorkerHostTask): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+function taskIdValue(task: FetchTaskLog): string {
+  return String(task.id ?? task.url ?? task.title ?? "task");
+}
+
 function statusClass(status: string | null): string {
   const normalized = String(status ?? "").toLowerCase();
   if (
@@ -177,19 +181,132 @@ function postToFetchTaskLog(
   index: number,
 ): FetchTaskLog {
   return {
-    id: `${task.id}:${index}`,
+    id: post.id ?? `${task.id}:${index}`,
     builder: task.sourceName,
     builderId: task.builderId,
     sourceType: task.sourceType,
+    contentStatus: post.contentStatus,
+    agentWorkType: post.agentWorkType,
     title: post.title,
     url: post.url,
     status: post.status,
     failureReason: post.failureReason,
     fetchTool: post.fetchTool,
+    agentRuntime: post.agentRuntime,
     agentModel: post.model,
     bodyChars: post.bodyChars,
+    bodyWords: post.bodyWords,
     summaryChars: post.summaryChars,
+    summaryWords: post.summaryWords,
+    readMethod: post.readMethod,
+    summaryMethod: post.summaryMethod,
+    hubSharedReuse: post.hubSharedReuse,
+    workerId: post.workerId,
   };
+}
+
+function workerTaskToFetchTaskLog(task: CloudWorkerHostTask): FetchTaskLog {
+  return {
+    id: task.id,
+    builder: task.builder,
+    builderId: task.builderId,
+    sourceType: task.sourceType,
+    title: task.title,
+    url: task.url,
+    status: task.status,
+    bodyChars: task.bodyChars,
+    bodyWords: task.bodyWords,
+    summaryChars: task.summaryChars,
+    summaryWords: task.summaryWords,
+    workerId: task.workerId,
+  };
+}
+
+function workerTaskToProgress(task: CloudWorkerHostTask): FetchTaskProgress {
+  return {
+    id: task.id,
+    taskId: task.id,
+    status: task.status,
+    phase: task.phase,
+    message: task.message,
+    builder: task.builder,
+    builderId: task.builderId,
+    sourceType: task.sourceType,
+    title: task.title,
+    url: task.url,
+    workerId: task.workerId,
+    bodyChars: task.bodyChars,
+    bodyWords: task.bodyWords,
+    summaryChars: task.summaryChars,
+    summaryWords: task.summaryWords,
+    updatedAt: task.updatedAt,
+  };
+}
+
+type WorkerShardTask = {
+  task: FetchTaskLog;
+  liveTask: FetchTaskProgress | null;
+};
+
+type WorkerShardGroup = {
+  workerId: string;
+  tasks: WorkerShardTask[];
+  synced: number;
+  failed: number;
+  pending: number;
+  updatedAt: string | null;
+};
+
+function allDeliveryPostTasks(leaseBatches: CloudFetchRunLogItem[]): FetchTaskLog[] {
+  return leaseBatches.flatMap((batch) =>
+    batch.tasks.flatMap((task) =>
+      task.posts.map((post, index) => postToFetchTaskLog(post, task, index)),
+    ),
+  );
+}
+
+function buildWorkerShardGroups(
+  leaseBatches: CloudFetchRunLogItem[],
+  workerTasks: CloudWorkerHostTask[],
+): WorkerShardGroup[] {
+  const byTaskId = new Map<string, WorkerShardTask>();
+  for (const task of allDeliveryPostTasks(leaseBatches)) {
+    byTaskId.set(taskIdValue(task), { task, liveTask: null });
+  }
+  for (const live of workerTasks) {
+    const id = taskIdValue({ id: live.id });
+    const existing = byTaskId.get(id);
+    byTaskId.set(id, {
+      task: { ...(existing?.task ?? workerTaskToFetchTaskLog(live)), workerId: existing?.task.workerId ?? live.workerId },
+      liveTask: workerTaskToProgress(live),
+    });
+  }
+
+  const groups = new Map<string, WorkerShardTask[]>();
+  for (const entry of byTaskId.values()) {
+    const workerId = entry.task.workerId ?? entry.liveTask?.workerId ?? "Worker assignment pending";
+    const list = groups.get(workerId) ?? [];
+    list.push(entry);
+    groups.set(workerId, list);
+  }
+
+  return [...groups.entries()]
+    .map(([workerId, tasks]) => {
+      const synced = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "synced").length;
+      const failed = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "failed").length;
+      const pending = Math.max(0, tasks.length - synced - failed);
+      const updatedAt = tasks
+        .map((entry) => entry.liveTask?.updatedAt)
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) ?? null;
+      return { workerId, tasks, synced, failed, pending, updatedAt };
+    })
+    .sort((a, b) => {
+      const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+      const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+      return bTime - aTime || a.workerId.localeCompare(b.workerId);
+    });
 }
 
 function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
@@ -359,13 +476,19 @@ export function AdminCloudFetchLog({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [expandedShard, setExpandedShard] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runningSourceDeliveries = leaseBatches.filter((batch) => batch.status.toUpperCase() === "RUNNING").length;
+  const workerShardGroups = useMemo(
+    () => buildWorkerShardGroups(leaseBatches, workerHost.tasks),
+    [leaseBatches, workerHost.tasks],
+  );
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/cloud-fetch/runs", {
+        cache: "no-store",
         headers: { accept: "application/json" },
       });
       if (!res.ok) return;
@@ -380,6 +503,12 @@ export function AdminCloudFetchLog({
       // keep showing what we have; transient errors self-heal on the next tick
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = window.setTimeout(refresh, 0);
+    return () => window.clearTimeout(id);
+  }, [refresh]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -403,7 +532,7 @@ export function AdminCloudFetchLog({
     try {
       const res = await fetch(
         `/api/admin/cloud-fetch/runs?before=${encodeURIComponent(cursor)}`,
-        { headers: { accept: "application/json" } },
+        { cache: "no-store", headers: { accept: "application/json" } },
       );
       const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;
       if (!res.ok) {
@@ -427,10 +556,72 @@ export function AdminCloudFetchLog({
       <WorkerHostPanel workerHost={workerHost} runningSourceDeliveries={runningSourceDeliveries} />
 
       <div className="cloud-source-deliveries-head">
+        <h4>Worker shards</h4>
+        <p>
+          Each shard is a local worker assignment. Expand it to inspect the post tasks handled by
+          that worker.
+        </p>
+      </div>
+
+      {workerShardGroups.length === 0 ? (
+        <p className="cron-field-hint">No worker shard assignments yet.</p>
+      ) : (
+        <ul className="cloud-fetch-log-list">
+          {workerShardGroups.map((group) => {
+            const isOpen = expandedShard === group.workerId;
+            const groupTasks = group.tasks.map((entry) => entry.task);
+            return (
+              <li key={group.workerId} className="cloud-fetch-log-row">
+                <button
+                  type="button"
+                  className="cloud-fetch-log-head"
+                  aria-expanded={isOpen}
+                  onClick={() => setExpandedShard(isOpen ? null : group.workerId)}
+                >
+                  <span aria-hidden="true">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
+                  <span className={`cloud-status-chip ${statusClass(group.failed > 0 ? "partial" : group.pending > 0 ? "running" : "synced")}`}>
+                    {group.pending > 0 ? "RUNNING" : group.failed > 0 ? "PARTIAL" : "SYNCED"}
+                  </span>
+                  <span className="cloud-fetch-log-time">{group.workerId}</span>
+                  <span className="cloud-fetch-log-counts">
+                    {pluralize(group.tasks.length, "post task")}
+                  </span>
+                  <span className="cloud-fetch-log-meta">
+                    {formatPostOutcomeSummary({
+                      synced: group.synced,
+                      planned: group.tasks.length,
+                      failed: group.failed,
+                      pending: group.pending,
+                    })}
+                    {group.updatedAt ? ` · updated ${formatTime(group.updatedAt)}` : ""}
+                  </span>
+                </button>
+                {isOpen ? (
+                  <div className="cloud-fetch-log-detail">
+                    <ul className="sync-panel-run-card-candidate-list">
+                      {group.tasks.map((entry, index) => (
+                        <TaskRow
+                          key={entry.task.id ?? index}
+                          groupTasks={groupTasks}
+                          liveTask={entry.liveTask}
+                          liveTasks={EMPTY_LIVE_TASKS}
+                          task={entry.task}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="cloud-source-deliveries-head">
         <h4>Source deliveries</h4>
         <p>
-          Each row is a set of sources delivered to the local worker host. Expand it to inspect
-          sources and post task outcomes.
+          Each row is a refill batch of sources delivered to the local worker host. Expand it to
+          inspect source outcomes and post task results.
         </p>
       </div>
 
@@ -568,7 +759,8 @@ export function AdminCloudFetchLog({
                                     </ul>
                                   ) : (
                                     <p className="cron-field-hint">
-                                      Post task outcomes appear after the worker syncs this source.
+                                      This source is still running. Post task outcomes appear after
+                                      its worker shard sends the first synced result.
                                     </p>
                                   )}
                                 </div>

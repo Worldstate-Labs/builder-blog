@@ -2381,9 +2381,15 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       url: "https://openai.com/news/1",
       fetchTool: "fetch_builder_fallback",
       agentModel: "codex",
+      agentRuntime: "codex",
       bodyChars: 1200,
+      bodyWords: 180,
       summaryChars: 300,
+      summaryWords: 45,
+      readMethod: "Copied body from a Hub-shared post with the same URL",
+      summaryMethod: "Copied matching-language summary from a Hub-shared post",
       item: { kind: "BLOG_POST", externalId: "post_1", url: "https://openai.com/news/1" },
+      workerId: "shard-0",
     },
     {
       id: "task_failed",
@@ -2456,14 +2462,24 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
   // the same staged (read → summarize → sync) + debug rows as the personal log.
   assert.deepEqual(payload.taskResults[0].details.posts, [
     {
+      id: "task_synced",
       title: "Post 1",
       url: "https://openai.com/news/1",
+      contentStatus: null,
+      agentWorkType: null,
       status: "synced",
       failureReason: null,
       fetchTool: "fetch_builder_fallback",
+      agentRuntime: "codex",
       agentModel: "codex",
       bodyChars: 1200,
+      bodyWords: 180,
       summaryChars: 300,
+      summaryWords: 45,
+      readMethod: "Copied body from a Hub-shared post with the same URL",
+      summaryMethod: "Copied matching-language summary from a Hub-shared post",
+      hubSharedReuse: null,
+      workerId: "shard-0",
     },
   ]);
   assert.equal(payload.taskResults[1].details.posts.length, 1);

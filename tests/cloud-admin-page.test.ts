@@ -15,6 +15,8 @@ test("admin cloud fetch runs route is admin-gated and serializes worker host plu
   assert.match(route, /cloudFetchRun\.findMany/);
   assert.match(route, /serializeCloudFetchRun/);
   assert.match(route, /serializeCloudWorkerHost/);
+  assert.match(route, /export const dynamic = "force-dynamic"/);
+  assert.match(route, /"Cache-Control": "no-store, max-age=0"/);
   assert.match(route, /leaseBatches/);
   assert.match(route, /workerHost/);
   assert.match(route, /builder: \{ select: \{ name: true, sourceType: true \} \}/);
@@ -28,9 +30,35 @@ test("cloud-library management page is admin-gated and mounts the cloud monitor 
   assert.match(page, /AdminCloudFetchRunActions/);
   assert.match(page, /AdminCloudFetchLog/);
   assert.match(page, /Cloud fetch monitor/);
+  assert.match(page, /AdminCloudLibraryMaintenancePanel/);
   // The scheduler config form was moved here from the main Settings page.
   assert.match(page, /AdminCloudFetchConfigForm/);
   assert.match(page, /CLOUD_FETCH_CONFIG_ID/);
+});
+
+test("cloud library maintenance reset is admin-gated and scoped to cloud generated state", () => {
+  const page = source("src/app/(workspace)/settings/cloud-library/page.tsx");
+  const panel = source("src/components/AdminCloudLibraryMaintenancePanel.tsx");
+  const route = source("src/app/api/admin/cloud-fetch/reset/route.ts");
+  const helper = source("src/lib/cloud-library-reset.ts");
+
+  assert.match(page, /Cloud library maintenance/);
+  assert.match(panel, /Reset Cloud library posts and fetch records/);
+  assert.match(panel, /\/api\/admin\/cloud-fetch\/reset/);
+  assert.match(panel, /RESET/);
+  assert.match(route, /requireCloudFetchAdmin/);
+  assert.match(route, /resetCloudLibraryGeneratedState/);
+  assert.match(route, /confirmation[\s\S]*RESET/);
+  assert.match(helper, /cloudLanguageLibrary\.findMany/);
+  assert.match(helper, /feedItem\.deleteMany\(\{[\s\S]*builderId: \{ in: builderIds \}/);
+  assert.match(helper, /cloudFetchQueueItem\.deleteMany\(\{[\s\S]*cloudSourceTaskId: \{ in: sourceTaskIds \}/);
+  assert.match(helper, /cloudFetchRunTask\.deleteMany\(\{[\s\S]*cloudSourceTaskId: \{ in: sourceTaskIds \}/);
+  assert.match(helper, /cloudFetchRun\.deleteMany\(\)/);
+  assert.match(helper, /agentJobRun\.deleteMany\(\{[\s\S]*jobType: "cloud-library-fetch"/);
+  assert.match(helper, /cloudSourceTask\.updateMany/);
+  assert.match(helper, /builder\.updateMany\(\{[\s\S]*ownerUserId: \{ in: ownerIds \}/);
+  assert.doesNotMatch(helper, /cloudSourceSubmission\.deleteMany/);
+  assert.doesNotMatch(helper, /cloudLanguageLibrary\.deleteMany/);
 });
 
 test("settings page links to the cloud library management route for admins", () => {
@@ -84,10 +112,13 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /workerHost/);
   assert.match(log, /leaseBatches/);
   assert.match(log, /Post task queue/);
+  assert.match(log, /Worker shards/);
   assert.match(log, /Source deliveries/);
   assert.match(log, /Host id/);
   assert.match(log, /P\(success\)/);
-  assert.match(log, /Post task outcomes appear after the worker syncs this source\./);
+  assert.match(log, /cache: "no-store"/);
+  assert.match(log, /buildWorkerShardGroups/);
+  assert.match(log, /This source is still running\. Post task outcomes appear after/);
   assert.match(log, /tasksClaimed/);
   assert.match(log, /pendingPosts/);
   assert.doesNotMatch(log, /claimed\s*\{/);

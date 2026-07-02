@@ -5,14 +5,24 @@
 // Pure mapping so it stays unit-testable without a database.
 
 export type CloudFetchPostOutcome = {
+  id: string | null;
   title: string | null;
   url: string | null;
+  contentStatus: string | null;
+  agentWorkType: string | null;
   status: string | null;
   failureReason: string | null;
   fetchTool: string | null;
+  agentRuntime: string | null;
   model: string | null;
   bodyChars: number | null;
+  bodyWords: number | null;
   summaryChars: number | null;
+  summaryWords: number | null;
+  readMethod: string | null;
+  summaryMethod: string | null;
+  hubSharedReuse: Record<string, unknown> | null;
+  workerId: string | null;
 };
 
 export type CloudWorkerHostTask = {
@@ -202,7 +212,7 @@ export function serializeCloudWorkerHost(
   const heartbeatAt = iso(job.heartbeatAt) ?? iso(job.updatedAt) ?? iso(job.startedAt);
   const heartbeatMs = heartbeatAt ? Date.parse(heartbeatAt) : NaN;
   const active = job.status === "running" || job.status === "starting";
-  const stale = active && (!Number.isFinite(heartbeatMs) || now.getTime() - heartbeatMs > 2 * 60_000);
+  const stale = active && (!Number.isFinite(heartbeatMs) || now.getTime() - heartbeatMs > 5 * 60_000);
   const status = active ? (stale ? "stale" : "online") : "offline";
   const counters = record(progress?.counters);
   const current = record(progress?.current);
@@ -305,30 +315,41 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
 // (same shape the per-user fetch log uses). Read defensively so a missing or
 // differently-shaped details blob just yields no per-post rows.
 function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
-  const record =
+  const detailsRecord =
     details && typeof details === "object" && !Array.isArray(details)
       ? (details as Record<string, unknown>)
       : null;
-  const raw = record
-    ? Array.isArray(record.fetchTasks)
-      ? record.fetchTasks
-      : Array.isArray(record.posts)
-        ? record.posts
+  const raw = detailsRecord
+    ? Array.isArray(detailsRecord.fetchTasks)
+      ? detailsRecord.fetchTasks
+      : Array.isArray(detailsRecord.posts)
+        ? detailsRecord.posts
         : []
     : [];
   const posts: CloudFetchPostOutcome[] = [];
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const p = item as Record<string, unknown>;
+    const rawJson = record(p.rawJson ?? p.raw_json);
     posts.push({
+      id: str(p.id ?? p.fetchTaskId ?? p.fetch_task_id ?? rawJson?.fetchTaskId),
       title: str(p.title),
       url: str(p.url),
+      contentStatus: str(p.contentStatus ?? p.content_status),
+      agentWorkType: str(p.agentWorkType ?? p.agent_work_type),
       status: str(p.status),
       failureReason: str(p.failureReason ?? p.failure_reason),
       fetchTool: str(p.fetchTool ?? p.fetch_tool),
+      agentRuntime: str(p.agentRuntime ?? p.agent_runtime),
       model: str(p.agentModel ?? p.model),
       bodyChars: num(p.bodyChars ?? p.body_chars),
+      bodyWords: num(p.bodyWords ?? p.body_words),
       summaryChars: num(p.summaryChars ?? p.summary_chars),
+      summaryWords: num(p.summaryWords ?? p.summary_words),
+      readMethod: str(p.readMethod ?? p.read_method),
+      summaryMethod: str(p.summaryMethod ?? p.summary_method),
+      hubSharedReuse: record(p.hubSharedReuse ?? p.hub_shared_reuse ?? rawJson?.hubSharedReuse),
+      workerId: str(p.workerId ?? p.worker_id),
     });
   }
   return posts;

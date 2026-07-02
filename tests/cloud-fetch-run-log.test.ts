@@ -41,13 +41,22 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
         details: {
           fetchTasks: [
             {
+              id: "task_1",
               title: "Post One",
               url: "https://example.com/1",
+              contentStatus: "ready",
               status: "synced",
               fetchTool: "x-api",
+              agentRuntime: "codex",
               agentModel: "claude",
               bodyChars: 1200,
+              bodyWords: 180,
               summaryChars: 300,
+              summaryWords: 45,
+              readMethod: "Copied body from a Hub-shared post with the same URL",
+              summaryMethod: "Copied matching-language summary from a Hub-shared post",
+              hubSharedReuse: { bodyReused: true, summaryReused: true },
+              workerId: "shard-0",
             },
             { title: "Post Two", url: "https://example.com/2", status: "failed", failureReason: "summary_missing" },
           ],
@@ -70,14 +79,24 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
   assert.equal(task.successProbability, 0.9);
   assert.equal(task.posts.length, 2);
   assert.deepEqual(task.posts[0], {
+    id: "task_1",
     title: "Post One",
     url: "https://example.com/1",
+    contentStatus: "ready",
+    agentWorkType: null,
     status: "synced",
     failureReason: null,
     fetchTool: "x-api",
+    agentRuntime: "codex",
     model: "claude",
     bodyChars: 1200,
+    bodyWords: 180,
     summaryChars: 300,
+    summaryWords: 45,
+    readMethod: "Copied body from a Hub-shared post with the same URL",
+    summaryMethod: "Copied matching-language summary from a Hub-shared post",
+    hubSharedReuse: { bodyReused: true, summaryReused: true },
+    workerId: "shard-0",
   });
   assert.equal(task.posts[1].failureReason, "summary_missing");
 });
@@ -240,7 +259,7 @@ test("serializeCloudWorkerHost marks stale and missing hosts clearly", () => {
       heartbeatAt: "2026-06-28T10:00:00.000Z",
       details: {},
     },
-    new Date("2026-06-28T10:03:01.000Z"),
+    new Date("2026-06-28T10:06:01.000Z"),
   );
   assert.equal(stale.status, "stale");
   assert.equal(stale.statusLabel, "Stale");

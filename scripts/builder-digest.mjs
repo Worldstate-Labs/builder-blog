@@ -8194,15 +8194,32 @@ function cloudSyncPostOutcome(task, status, outcome) {
   const text = (value) => (typeof value === "string" && value.trim() ? value : null);
   const count = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
   const item = task?.item && typeof task.item === "object" ? task.item : {};
+  const rawJson = objectRecord(item.rawJson);
+  const readyBody = task?.contentStatus === "ready"
+    ? textStats(item.body)
+    : { chars: count(task?.bodyChars), words: count(task?.bodyWords) };
+  const readySummary = task?.contentStatus === "ready"
+    ? textStats(item.summary)
+    : { chars: count(task?.summaryChars), words: count(task?.summaryWords) };
   return {
+    id: text(task?.id || fetchTaskId(task)),
     title: text(task?.title ?? item.title),
     url: text(task?.url ?? task?.canonicalUrl ?? item.url),
+    contentStatus: text(task?.contentStatus),
+    agentWorkType: text(task?.agentWorkType),
     status,
     failureReason: text(task?.failureReason ?? outcome?.reason),
     fetchTool: text(task?.fetchTool ?? task?.readMethod ?? task?.agentWorkType),
+    agentRuntime: text(task?.agentRuntime ?? rawJson.agentRuntime),
     agentModel: text(task?.agentModel),
-    bodyChars: count(task?.bodyChars),
-    summaryChars: count(task?.summaryChars),
+    bodyChars: count(task?.bodyChars) ?? readyBody.chars,
+    bodyWords: count(task?.bodyWords) ?? readyBody.words,
+    summaryChars: count(task?.summaryChars) ?? readySummary.chars,
+    summaryWords: count(task?.summaryWords) ?? readySummary.words,
+    readMethod: text(task?.readMethod ?? rawJson.readMethod),
+    summaryMethod: text(task?.summaryMethod ?? rawJson.summaryMethod),
+    hubSharedReuse: nonEmptyObjectRecord(rawJson.hubSharedReuse),
+    workerId: text(task?.workerId ?? outcome?.workerId),
   };
 }
 

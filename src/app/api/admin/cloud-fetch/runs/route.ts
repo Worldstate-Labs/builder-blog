@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 20;
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const auth = await requireCloudFetchAdmin(request);
   if (!auth.ok) {
@@ -61,5 +63,9 @@ export async function GET(request: Request) {
     hasMore,
     workerHost,
     liveProgress: workerHost?.progress ?? null,
+  }, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
   });
 }

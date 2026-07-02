@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
 import { AdminCloudFetchLog } from "@/components/AdminCloudFetchLog";
 import { AdminCloudFetchRunActions } from "@/components/AdminCloudFetchRunActions";
+import { AdminCloudLibraryMaintenancePanel } from "@/components/AdminCloudLibraryMaintenancePanel";
 import { AdminCloudLibraryExplorer } from "@/components/AdminCloudLibraryExplorer";
 import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
@@ -180,6 +181,24 @@ export default async function CloudLibraryManagementPage() {
             </summary>
             <div className="settings-rules-body">
               <AdminCloudLibraryExplorer libraries={libraries} />
+            </div>
+          </details>
+
+          <details className="settings-rules-panel fb-panel">
+            <summary className="settings-rules-summary">
+              <div className="settings-rules-summary-copy">
+                <h3 className="fb-section-heading">Cloud library maintenance</h3>
+                <p className="settings-rules-summary-desc">
+                  Clear generated Cloud library posts and source delivery logs without removing
+                  submitted sources or language libraries.
+                </p>
+              </div>
+              <span className="settings-rules-toggle-icon" aria-hidden="true">
+                <ChevronDown className="settings-rules-toggle-svg" />
+              </span>
+            </summary>
+            <div className="settings-rules-body">
+              <AdminCloudLibraryMaintenancePanel />
             </div>
           </details>
 
