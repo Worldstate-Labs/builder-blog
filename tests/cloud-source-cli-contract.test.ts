@@ -114,6 +114,20 @@ test("cloud worker host keeps its job heartbeat fresh while fetch workers run", 
   assert.match(runner, /_last_job_run_heartbeat="\$_now"/);
 });
 
+test("cloud worker usage refresh never patches validation-failed task outcomes", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(runner, /_sps_failure_mode="\$\{SYNC_PAYLOAD_FAILURE_MODE:-patch\}"/);
+  assert.match(
+    runner,
+    /if \[ "\$_sps_failure_mode" = "skip" \]; then[\s\S]*Skipping non-destructive sync/,
+  );
+  assert.match(
+    runner,
+    /SYNC_PAYLOAD_FAILURE_MODE=skip[\s\S]*"\$_frlr_label-usage-refresh"/,
+  );
+});
+
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
   const actions = await readFile("src/components/AdminCloudFetchRunActions.tsx", "utf8");
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");

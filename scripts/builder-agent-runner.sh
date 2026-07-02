@@ -2518,6 +2518,7 @@ sync_payload_slices() {
   _sps_synced_ids_file="${SYNC_PAYLOAD_SYNCED_IDS_FILE:-}"
   _sps_sync_command="${SYNC_BUILDERS_COMMAND:-sync-builders}"
   _sps_extra_args="${SYNC_BUILDERS_EXTRA_ARGS:-}"
+  _sps_failure_mode="${SYNC_PAYLOAD_FAILURE_MODE:-patch}"
   shift 4 || true
 
   node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
@@ -2571,6 +2572,10 @@ NODE
     cat "$_slice_validate"
     if [ "$_slice_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_slice_validate"; then
       _sps_failures=$(( _sps_failures + 1 ))
+      if [ "$_sps_failure_mode" = "skip" ]; then
+        echo "Skipping non-destructive sync for $_sps_label $_slice_name after validate-agent-sync failed (exit $_slice_validate_code)." >&2
+        continue
+      fi
       echo "validate-agent-sync failed for $_sps_label $_slice_name (exit $_slice_validate_code); marking only this slice failed." >&2
       _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-payload.json"
       node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
@@ -2614,6 +2619,10 @@ NODE
     fi
 
     _sps_failures=$(( _sps_failures + 1 ))
+    if [ "$_sps_failure_mode" = "skip" ]; then
+      echo "Skipping non-destructive sync for $_sps_label $_slice_name after $_sps_sync_command failed (exit $_slice_code)." >&2
+      continue
+    fi
     echo "$_sps_sync_command failed for $_sps_label $_slice_name (exit $_slice_code); marking only this slice failed." >&2
     _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-payload.json"
     node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
@@ -2760,7 +2769,16 @@ NODE
   if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_frlr_sync_failures" -eq 0 ]; then
     _frlr_usage_refresh_slices_dir="$JOB_TMP_DIR/usage-refresh-sync-slices"
     echo "Refreshing cloud worker usage after final runtime usage aggregation."
-    sync_payload_slices "$_frlr_result_file" "$JOB_TMP_DIR/library-agent-sync.json" "$_frlr_usage_refresh_slices_dir" "$_frlr_label-usage-refresh" --results-dir "$_frlr_results_dir" || true
+    _frlr_previous_failure_mode="${SYNC_PAYLOAD_FAILURE_MODE:-}"
+    SYNC_PAYLOAD_FAILURE_MODE=skip
+    if ! sync_payload_slices "$_frlr_result_file" "$JOB_TMP_DIR/library-agent-sync.json" "$_frlr_usage_refresh_slices_dir" "$_frlr_label-usage-refresh" --results-dir "$_frlr_results_dir"; then
+      echo "Usage refresh sync was skipped for one or more non-destructive slice failures." >&2
+    fi
+    if [ -n "$_frlr_previous_failure_mode" ]; then
+      SYNC_PAYLOAD_FAILURE_MODE="$_frlr_previous_failure_mode"
+    else
+      unset SYNC_PAYLOAD_FAILURE_MODE
+    fi
   fi
 
   if [ "$_frlr_sync_failures" -gt 0 ]; then
