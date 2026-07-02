@@ -1,8 +1,10 @@
 # FollowBrief Cloud Source Fetch
 
-Run one cloud worker session through the local runner. The runner owns source
-leasing, local post-task queueing, task sharding, checkpoint sync, final sync,
-and source lease batch status updates. Worker agents should only execute the
+Run the internal cloud source fetch command through the local runner. The
+admin-facing path should use `cloud-library-host`; this command remains for
+diagnostics and backward-compatible copied prompts. The runner owns source
+leasing, local post-task queueing, task sharding, checkpoint sync, result sync,
+and source delivery status updates. Worker agents should only execute the
 shard tasks assigned by `library-worker.md`.
 
 Use this command:
@@ -15,7 +17,7 @@ BUILDER_BLOG_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKER
 "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-agent-runner.sh" cloud-library-cron
 ```
 
-Before the first real worker session against a database, run the read-only readiness check:
+Before the first real worker host run against a database, run the read-only readiness check:
 
 ```bash
 npx tsx scripts/check-cloud-source-fetch-readiness.mts --language zh

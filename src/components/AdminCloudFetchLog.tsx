@@ -110,7 +110,7 @@ function sortedWorkerTasks(tasks: CloudWorkerHostTask[]): CloudWorkerHostTask[] 
 // cloud source's posts show the same read/summarize/sync lifecycle and per-stage
 // debug facts. The sync CLI records each cloud source's per-post outcomes in the
 // same shape, so we map CloudFetchPostOutcome back into the FetchTaskLog TaskRow
-// expects. Finished lease batches have no live overlay.
+// expects. Finished source deliveries have no live overlay.
 const EMPTY_LIVE_TASKS = new Map<string, FetchTaskProgress>();
 
 function postToFetchTaskLog(
@@ -153,19 +153,19 @@ function workerHostMeta(workerHost: CloudWorkerHostStatus): string[] {
 
 function WorkerHostPanel({
   workerHost,
-  runningLeaseBatches,
+  runningSourceDeliveries,
 }: {
   workerHost: CloudWorkerHostStatus;
-  runningLeaseBatches: number;
+  runningSourceDeliveries: number;
 }) {
   const progress = workerHost.progress;
   const tasks = useMemo(() => sortedWorkerTasks(workerHost.tasks).slice(0, 20), [workerHost.tasks]);
   const events = workerHost.recentEvents.slice(-5).reverse();
-  const runningWithoutHeartbeat = workerHost.startedAt == null && runningLeaseBatches > 0;
+  const runningWithoutHeartbeat = workerHost.startedAt == null && runningSourceDeliveries > 0;
   const statusLabel = runningWithoutHeartbeat ? "No host heartbeat" : workerHost.statusLabel;
   const stage = progress?.stage ?? workerHost.stage ?? (runningWithoutHeartbeat ? "waiting_for_heartbeat" : null);
   const summary = runningWithoutHeartbeat
-    ? `${runningLeaseBatches} source lease ${runningLeaseBatches === 1 ? "batch is" : "batches are"} still running without a worker heartbeat.`
+    ? `${runningSourceDeliveries} source ${runningSourceDeliveries === 1 ? "delivery is" : "deliveries are"} still running without a worker heartbeat.`
     : workerHost.summary;
   const sourceProgress =
     progress?.sourcesTotal != null
@@ -298,7 +298,7 @@ export function AdminCloudFetchLog({
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const runningLeaseBatches = leaseBatches.filter((batch) => batch.status === "RUNNING").length;
+  const runningSourceDeliveries = leaseBatches.filter((batch) => batch.status === "RUNNING").length;
 
   const refresh = useCallback(async () => {
     try {
@@ -344,7 +344,7 @@ export function AdminCloudFetchLog({
       );
       const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;
       if (!res.ok) {
-        setError(body?.error ?? "Could not load older lease batches.");
+        setError(body?.error ?? "Could not load older source deliveries.");
         return;
       }
       const batches = body?.leaseBatches ?? body?.runs;
@@ -353,7 +353,7 @@ export function AdminCloudFetchLog({
         setHasMore(Boolean(body?.hasMore));
       }
     } catch {
-      setError("Could not load older lease batches.");
+      setError("Could not load older source deliveries.");
     } finally {
       setLoadingMore(false);
     }
@@ -361,19 +361,19 @@ export function AdminCloudFetchLog({
 
   return (
     <div className="cloud-fetch-log">
-      <WorkerHostPanel workerHost={workerHost} runningLeaseBatches={runningLeaseBatches} />
+      <WorkerHostPanel workerHost={workerHost} runningSourceDeliveries={runningSourceDeliveries} />
 
       <div className="cloud-lease-batches-head">
-        <h4>Source lease batches</h4>
+        <h4>Cloud source deliveries</h4>
         <p>
-          Cloud source deliveries claimed by local worker sessions. Expand a batch for source and
-          post outcomes.
+          Sources delivered by cloud and claimed by the worker host. Expand a delivery for source
+          and post outcomes.
         </p>
       </div>
 
       {leaseBatches.length === 0 ? (
         <p className="cron-field-hint">
-          No source lease batches yet. Copy a prompt above to start a worker session.
+          No cloud source deliveries yet. Copy a prompt above to start the worker host.
         </p>
       ) : (
         <ul className="cloud-fetch-log-list">
@@ -478,7 +478,7 @@ export function AdminCloudFetchLog({
       {error ? <p className="cron-field-error">{error}</p> : null}
       {hasMore ? (
         <button type="button" className="fb-btn light compact" disabled={loadingMore} onClick={loadMore}>
-          {loadingMore ? "Loading" : "Load older batches"}
+          {loadingMore ? "Loading" : "Load older deliveries"}
         </button>
       ) : null}
     </div>

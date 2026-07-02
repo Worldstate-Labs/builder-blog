@@ -228,7 +228,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /DEADLINE_EXCEEDED/);
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
   assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
-  assert.match(runner, /merge-task-results[\s\S]*tee "\$_merge_result_file"/);
+  assert.match(runner, /flush_remaining_library_results\(\)/);
+  assert.match(runner, /merge-task-results[\s\S]*tee "\$_frlr_merge_result_file"/);
   assert.match(runner, /checkpoint-progress[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(runner, /sync_completed_checkpoints/);
   assert.match(runner, /completed-checkpoint-synced-task-ids\.txt/);

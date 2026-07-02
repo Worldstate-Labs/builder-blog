@@ -324,7 +324,7 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /--granularity "\$_sps_granularity"/);
   assert.match(runner, /validate-agent-sync[\s\S]*--tasks "\$_slice_tasks"/);
   assert.match(runner, /validation-failed-payload\.json/);
-  assert.match(runner, /--exclude-task-ids-file "\$_checkpoint_synced_ids_file"/);
+  assert.match(runner, /--exclude-task-ids-file "\$_frlr_synced_ids_file"/);
   assert.match(runner, /--reason "task_validation_failed"/);
   assert.match(runner, /--reason "task_sync_failed"/);
   assert.doesNotMatch(runner, /library-repair-prompt\.md/);

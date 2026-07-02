@@ -4,7 +4,6 @@ export const jobSkillFiles = {
   "library-cron-setup": "skills/builder-blog-digest/jobs/library-cron-setup.md",
   "library-cron-stop": "skills/builder-blog-digest/jobs/library-cron-stop.md",
   "cloud-library-cron": "skills/builder-blog-digest/jobs/cloud-library-cron.md",
-  "cloud-library-once": "skills/builder-blog-digest/jobs/cloud-library-once.md",
   "cloud-library-cron-setup": "skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
   "digest-cron-setup": "skills/builder-blog-digest/jobs/digest-cron-setup.md",
   "digest-cron-stop": "skills/builder-blog-digest/jobs/digest-cron-stop.md",

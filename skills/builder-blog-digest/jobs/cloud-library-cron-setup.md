@@ -1,15 +1,16 @@
-Set up scheduled FollowBrief Cloud worker sessions (admin).
+Set up the FollowBrief Cloud worker host (admin).
 
-This installs a recurring local schedule that starts a cloud worker session every
-{{CRON_FREQUENCY_LABEL}}. Each session leases cloud sources, keeps the local
-post-task queue fed until the queue is empty, a safety cap is reached, or the
-runner time buffer is reached, then syncs results back. This account must have
-admin Cloud Fetch access.
+This installs or restarts one long-running local worker host. The host keeps
+running on this admin machine, keeps a local post-task queue full when cloud has
+eligible work, sleeps when cloud has no work, and tries again later. Completed
+post tasks are synced back continuously, so cloud source deliveries are finalized
+as their source tasks finish. This account must have admin Cloud Fetch access.
 
 Execution contract:
 - Run only the numbered shell blocks below, in order.
 - If a command fails, stop and report the command, exit code, and stderr.
-- Do NOT install the schedule until the initial validation run in step 5 exits 0.
+- Do NOT install or restart the host if step 4 reports an active cloud worker
+  and the user has not explicitly confirmed replacement.
 - Keep command paths, environment variables, flags, and output locations unchanged.
 
 1. Install or refresh the skill:
@@ -18,24 +19,7 @@ Execution contract:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-2. Pin the agent runtime so the scheduled run is unattended:
-
-```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-mkdir -p "$AGENT_DIR"
-printf '%s\n' "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" > "$AGENT_DIR/cloud-runtime"
-```
-
-3. Verify the selected runtime CLI is on PATH (schedulers use a minimal PATH):
-
-```bash
-command -v "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" || echo "(runtime not found on PATH)"
-```
-
-If the path printed is empty, stop before installing the schedule: reinstall the
-runtime where launchd/cron can find it, then re-copy this prompt.
-
-4. Check whether a local cloud worker is already running for this account:
+2. Pin the agent runtime for the unattended host:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
@@ -49,42 +33,68 @@ const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
 console.log(`${base}_${hash}`);
 NODE
 }
-CURRENT_FILE="$AGENT_DIR/tmp/accounts/$(account_slug "$ACCT")/cloud-library-cron/current.json"
-node - "$CURRENT_FILE" <<'NODE'
+ACCOUNT_SLUG="$(account_slug "$ACCT")"
+mkdir -p "$AGENT_DIR"
+printf '%s\n' "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" > "$AGENT_DIR/runtime-cloud-library-host-$ACCOUNT_SLUG"
+printf '%s\n' "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" > "$AGENT_DIR/runtime-cloud-library-cron-$ACCOUNT_SLUG"
+```
+
+3. Verify the selected runtime CLI is on PATH (launchd/systemd use a minimal PATH):
+
+```bash
+command -v "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" || echo "(runtime not found on PATH)"
+```
+
+If it prints `(runtime not found on PATH)`, stop before installing the worker
+host: reinstall the runtime where launchd/systemd can find it, then re-copy this
+prompt.
+
+4. Check whether a local cloud worker host or active cloud worker is already running for this account:
+
+```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+account_slug() {
+  node - "${1:-default}" <<'NODE'
+const { createHash } = require("node:crypto");
+const account = String(process.argv[2] || "default");
+const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+console.log(`${base}_${hash}`);
+NODE
+}
+BASE_DIR="$AGENT_DIR/tmp/accounts/$(account_slug "$ACCT")"
+node - "$BASE_DIR/cloud-library-host/current.json" "$BASE_DIR/cloud-library-cron/current.json" <<'NODE'
 const fs = require("node:fs");
 const { spawnSync } = require("node:child_process");
-const file = process.argv[2];
-function inactive() {
-  console.log("NO_ACTIVE_CLOUD_WORKER");
+const files = process.argv.slice(2);
+function activeFromFile(file) {
+  if (!file || !fs.existsSync(file)) return null;
+  let current;
+  try {
+    current = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+  const pid = Number(current.workerPid || current.pid || 0);
+  if (!Number.isFinite(pid) || pid <= 0) return null;
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return null;
+  }
+  const command = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" }).stdout || "";
+  if (!/cloud-library-host|BUILDER_BLOG_WORKER_MODE=1|builder-agent-runner\.sh|codex exec|claude -p|hermes chat|openclaw/.test(command)) return null;
+  return `pid=${pid} instance=${current.instanceId || ""} startedAt=${current.startedAt || ""}`;
 }
-if (!file || !fs.existsSync(file)) {
-  inactive();
-  process.exit(0);
+for (const file of files) {
+  const active = activeFromFile(file);
+  if (active) {
+    console.log(`ACTIVE_CLOUD_WORKER ${active}`);
+    process.exit(0);
+  }
 }
-let current;
-try {
-  current = JSON.parse(fs.readFileSync(file, "utf8"));
-} catch {
-  inactive();
-  process.exit(0);
-}
-const pid = Number(current.workerPid || current.pid || 0);
-if (!Number.isFinite(pid) || pid <= 0) {
-  inactive();
-  process.exit(0);
-}
-try {
-  process.kill(pid, 0);
-} catch {
-  inactive();
-  process.exit(0);
-}
-const command = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" }).stdout || "";
-if (!/BUILDER_BLOG_WORKER_MODE=1|builder-agent-runner\.sh|codex exec|claude -p|hermes chat|openclaw/.test(command)) {
-  inactive();
-  process.exit(0);
-}
-console.log(`ACTIVE_CLOUD_WORKER pid=${pid} instance=${current.instanceId || ""} startedAt=${current.startedAt || ""}`);
+console.log("NO_ACTIVE_CLOUD_WORKER");
 NODE
 ```
 
@@ -93,23 +103,7 @@ If the check prints `NO_ACTIVE_CLOUD_WORKER`, continue. If it prints
 cloud worker. Continue only if the user explicitly confirms; otherwise stop and
 change nothing.
 
-5. Run one real cloud worker session now to validate before scheduling:
-
-```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-BUILDER_BLOG_AGENT_RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" \
-BUILDER_BLOG_RUN_SOURCE=cloud \
-BUILDER_BLOG_FETCH_LIMIT="${BUILDER_BLOG_FETCH_LIMIT-{{FETCH_LIMIT}}}" \
-BUILDER_BLOG_FETCH_DAYS="${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}}" \
-BUILDER_BLOG_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKERS}}}" \
-"$AGENT_DIR/builder-agent-runner.sh" cloud-library-cron
-```
-
-If this exits non-zero, report the command, exit code, and stderr, and stop. Do
-not install the schedule.
-
-6. Install the recurring worker session schedule (every {{CRON_INTERVAL_MINUTES}} minutes).
+5. Install or restart the long-running worker host.
 
 macOS (launchd):
 
@@ -119,8 +113,9 @@ RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}"
 POST_LIMIT="${BUILDER_BLOG_FETCH_LIMIT-{{FETCH_LIMIT}}}"
 FETCH_DAYS="${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}}"
 WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKERS}}}"
+IDLE_SECONDS="${BUILDER_BLOG_CLOUD_IDLE_SECONDS:-300}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-LABEL="com.followbrief.cloud-library-cron"
+LABEL="com.followbrief.cloud-library-host"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 mkdir -p "$HOME/Library/LaunchAgents" "$AGENT_DIR/logs"
 cat > "$PLIST" <<PLISTEOF
@@ -133,24 +128,61 @@ cat > "$PLIST" <<PLISTEOF
   <array>
     <string>/bin/sh</string>
     <string>-c</string>
-    <string>BUILDER_BLOG_ACCOUNT="$ACCT" BUILDER_BLOG_AGENT_RUNTIME="$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_LIMIT="$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="$WORKERS" "$AGENT_DIR/builder-agent-runner.sh" cloud-library-cron</string>
+    <string>BUILDER_BLOG_ACCOUNT="$ACCT" BUILDER_BLOG_AGENT_RUNTIME="$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_LIMIT="$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="$IDLE_SECONDS" "$AGENT_DIR/builder-agent-runner.sh" cloud-library-host</string>
   </array>
-  <key>StartInterval</key><integer>{{CRON_INTERVAL_SECONDS}}</integer>
-  <key>RunAtLoad</key><false/>
-  <key>StandardOutPath</key><string>$AGENT_DIR/logs/cloud-library-cron.out.log</string>
-  <key>StandardErrorPath</key><string>$AGENT_DIR/logs/cloud-library-cron.err.log</string>
+  <key>KeepAlive</key><true/>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>$AGENT_DIR/logs/cloud-library-host.out.log</string>
+  <key>StandardErrorPath</key><string>$AGENT_DIR/logs/cloud-library-host.err.log</string>
 </dict>
 </plist>
 PLISTEOF
-launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load "$PLIST"
-echo "Installed launchd schedule $LABEL (every {{CRON_INTERVAL_MINUTES}} min)."
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$PLIST"
+launchctl kickstart -k "gui/$(id -u)/$LABEL"
+echo "Installed launchd worker host $LABEL."
 ```
 
-On Linux (no launchd), instead add an equivalent recurring job — a crontab entry
-or systemd timer — that runs the SAME command from step 4 every
-{{CRON_INTERVAL_MINUTES}} minutes, writing output to
-`$AGENT_DIR/logs/cloud-library-cron.*.log`. Report the schedule you installed.
+On Linux (systemd user service):
 
-7. Report the installed schedule label/interval and the initial worker session result
-   (cloud source tasks leased, succeeded, and failed).
+```bash
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}"
+POST_LIMIT="${BUILDER_BLOG_FETCH_LIMIT-{{FETCH_LIMIT}}}"
+FETCH_DAYS="${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}}"
+WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKERS}}}"
+IDLE_SECONDS="${BUILDER_BLOG_CLOUD_IDLE_SECONDS:-300}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+UNIT_DIR="$HOME/.config/systemd/user"
+UNIT="$UNIT_DIR/followbrief-cloud-library-host.service"
+mkdir -p "$UNIT_DIR" "$AGENT_DIR/logs"
+cat > "$UNIT" <<UNITEOF
+[Unit]
+Description=FollowBrief Cloud worker host
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+Environment=BUILDER_BLOG_ACCOUNT=$ACCT
+Environment=BUILDER_BLOG_AGENT_RUNTIME=$RUNTIME
+Environment=BUILDER_BLOG_RUN_SOURCE=cloud
+Environment=BUILDER_BLOG_FETCH_LIMIT=$POST_LIMIT
+Environment=BUILDER_BLOG_FETCH_DAYS=$FETCH_DAYS
+Environment=BUILDER_BLOG_PARALLEL_WORKERS=$WORKERS
+Environment=BUILDER_BLOG_CLOUD_IDLE_SECONDS=$IDLE_SECONDS
+ExecStart=$AGENT_DIR/builder-agent-runner.sh cloud-library-host
+
+[Install]
+WantedBy=default.target
+UNITEOF
+systemctl --user daemon-reload
+systemctl --user enable --now followbrief-cloud-library-host.service
+systemctl --user restart followbrief-cloud-library-host.service
+echo "Installed systemd worker host followbrief-cloud-library-host.service."
+```
+
+6. Report the host install result and where logs are written:
+   `$AGENT_DIR/logs/cloud-library-host.out.log` and
+   `$AGENT_DIR/logs/cloud-library-host.err.log`. The host will appear in the
+   Cloud library management page after its first heartbeat.

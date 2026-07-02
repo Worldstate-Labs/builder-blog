@@ -66,8 +66,8 @@ function AdminCloudFetchConfigSection() {
         <div className="settings-rules-body">
           <h3 className="fb-section-heading">Cloud library management</h3>
           <p className="settings-rules-summary-desc">
-            Start or schedule cloud worker sessions, configure cloud queueing, and inspect every
-            cloud library&apos;s sources, submitters, and posts on the cloud library management page.
+            Start the local cloud worker host, configure cloud queueing, and inspect every cloud
+            library&apos;s sources, submitters, and posts on the cloud library management page.
           </p>
           <Link href="/settings/cloud-library" className="fb-btn dark compact">
             Open cloud library management

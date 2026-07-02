@@ -6,7 +6,7 @@ import test from "node:test";
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
 
-test("admin cloud fetch runs route is admin-gated and serializes worker host plus lease batches", () => {
+test("admin cloud fetch runs route is admin-gated and serializes worker host plus source deliveries", () => {
   const route = source("src/app/api/admin/cloud-fetch/runs/route.ts");
 
   assert.match(route, /export async function GET/);
@@ -38,18 +38,18 @@ test("settings page links to the cloud library management route for admins", () 
   assert.match(page, /\/settings\/cloud-library/);
 });
 
-test("copy-prompt jobs for cloud run-once and recurring setup are whitelisted", () => {
+test("copy-prompt job for cloud worker host setup is whitelisted", () => {
   const jobs = source("src/lib/skill-job-files.ts");
 
-  assert.match(jobs, /"cloud-library-once":/);
   assert.match(jobs, /"cloud-library-cron-setup":/);
+  assert.doesNotMatch(jobs, /"cloud-library-once":/);
 });
 
-test("cloud run actions component copies prompts for both cloud jobs via exchange codes", () => {
+test("cloud run actions component copies one worker host prompt via exchange codes", () => {
   const actions = source("src/components/AdminCloudFetchRunActions.tsx");
 
-  assert.match(actions, /cloud-library-once/);
   assert.match(actions, /cloud-library-cron-setup/);
+  assert.doesNotMatch(actions, /cloud-library-once/);
   assert.match(actions, /exchange-code/);
   assert.match(actions, /\/api\/skill\/jobs\//);
   assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
@@ -60,15 +60,17 @@ test("cloud run actions component copies prompts for both cloud jobs via exchang
   assert.match(actions, /params\.set\("postLimit"/);
   assert.match(actions, /params\.set\("days"/);
   assert.match(actions, /params\.set\("parallel"/);
+  assert.doesNotMatch(actions, /params\.set\("freq"/);
 });
 
-test("cloud run actions fold run-once into the frequency select instead of a second button", () => {
+test("cloud run actions expose host settings without a cadence selector", () => {
   const actions = source("src/components/AdminCloudFetchRunActions.tsx");
 
-  // A "One time" frequency option drives the single copy button to the
-  // run-once job; any other cadence installs the recurring schedule.
-  assert.match(actions, /label: "One time"/);
-  assert.match(actions, /frequency === "once" \? "cloud-library-once" : "cloud-library-cron-setup"/);
+  assert.match(actions, /Copy worker host prompt/);
+  assert.match(actions, /CLOUD_WORKER_HOST_JOB/);
+  assert.doesNotMatch(actions, /FREQUENCY_OPTIONS/);
+  assert.doesNotMatch(actions, /cloud-run-frequency/);
+  assert.doesNotMatch(actions, /frequency === "once"/);
 });
 
 test("cloud fetch log component reads the admin runs endpoint", () => {
@@ -80,7 +82,7 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /workerHost/);
   assert.match(log, /leaseBatches/);
   assert.match(log, /Post task queue/);
-  assert.match(log, /Source lease batches/);
+  assert.match(log, /Cloud source deliveries/);
   assert.match(log, /tasksClaimed/);
 });
 

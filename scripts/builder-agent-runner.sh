@@ -55,7 +55,7 @@ export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" BUIL
 export BUILDER_BLOG_ACCOUNT_SLUG="$ACCOUNT_SLUG" BUILDER_BLOG_JOB_STATE_DIR="$JOB_STATE_DIR" BUILDER_BLOG_JOB_TMP_DIR="$JOB_TMP_DIR"
 
 if [ -z "$JOB_NAME" ]; then
-  echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron|cloud-library-cron>" >&2
+  echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron|cloud-library-cron|cloud-library-host>" >&2
   exit 64
 fi
 
@@ -1764,7 +1764,7 @@ run_cron_supervisor() {
   EXPECTED_AT="$STARTED_AT"
   CURRENT_FILE="$JOB_STATE_DIR/current.json"
   export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
-  export BUILDER_BLOG_JOB_TRIGGER="scheduled"
+  export BUILDER_BLOG_JOB_TRIGGER="${BUILDER_BLOG_JOB_TRIGGER:-scheduled}"
   export BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
   export BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
   export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
@@ -1944,6 +1944,113 @@ run_one_time_with_lock() {
   _code="$?"
   set -e
   clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
+  return "$_code"
+}
+
+cloud_host_idle_seconds() {
+  _value="${BUILDER_BLOG_CLOUD_IDLE_SECONDS:-300}"
+  case "$_value" in
+    ''|*[!0-9]*) _value=300 ;;
+  esac
+  if [ "$_value" -lt 30 ]; then _value=30; fi
+  if [ "$_value" -gt 3600 ]; then _value=3600; fi
+  printf '%s\n' "$_value"
+}
+
+cloud_host_signal_cleanup() {
+  _signal="${1:-TERM}"
+  job_run_update killed "Worker host interrupted before normal shutdown." "worker_host_interrupted" \
+    --stage "interrupted" \
+    --signal "$_signal" || true
+  if [ -n "${CLOUD_HOST_CURRENT_FILE:-}" ]; then
+    clear_current_file "$CLOUD_HOST_CURRENT_FILE" "${BUILDER_BLOG_JOB_RUN_ID:-}" || true
+  fi
+  exit 130
+}
+
+cloud_host_sleep_with_heartbeat() {
+  _remaining="${1:-$(cloud_host_idle_seconds)}"
+  case "$_remaining" in
+    ''|*[!0-9]*) _remaining="$(cloud_host_idle_seconds)" ;;
+  esac
+  while [ "$_remaining" -gt 0 ]; do
+    _chunk="$HEARTBEAT_INTERVAL_SECONDS"
+    if [ "$_chunk" -gt "$_remaining" ]; then _chunk="$_remaining"; fi
+    sleep "$_chunk"
+    _remaining=$(( _remaining - _chunk ))
+    job_run_update running "Worker host idle; waiting before asking cloud for more sources." "worker_host_idle" \
+      --stage "waiting_for_cloud_sources"
+  done
+}
+
+run_cloud_worker_host() {
+  INSTANCE_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-host-$$}"
+  STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
+  EXPECTED_AT="${BUILDER_BLOG_EXPECTED_AT:-$STARTED_AT}"
+  CURRENT_FILE="$JOB_STATE_DIR/current.json"
+  CLOUD_HOST_CURRENT_FILE="$CURRENT_FILE"
+  export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
+  export BUILDER_BLOG_JOB_TRIGGER="manual_cli"
+  export BUILDER_BLOG_SCHEDULE_JOB=""
+  export BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
+  export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
+  export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
+  export BUILDER_BLOG_WORKER_PID="$$"
+  BUILDER_BLOG_RUN_SOURCE=cloud
+  export BUILDER_BLOG_RUN_SOURCE
+
+  if [ -r "$CURRENT_FILE" ]; then
+    OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
+    OLD_INSTANCE="$(json_get_string instanceId "$CURRENT_FILE")"
+    OLD_STARTED="$(json_get_string startedAt "$CURRENT_FILE")"
+    OLD_EXPECTED="$(json_get_string expectedAt "$CURRENT_FILE")"
+    if [ -n "$OLD_PID" ] && [ "$OLD_PID" != "$$" ] && verify_followbrief_pid "$OLD_PID"; then
+      if [ "${BUILDER_BLOG_REPLACE_ACTIVE_CLOUD_HOST:-0}" != "1" ]; then
+        echo "A FollowBrief cloud worker host is already active for ${BUILDER_BLOG_ACCOUNT:-default}." >&2
+        echo "Active pid: $OLD_PID${OLD_INSTANCE:+ · instance: $OLD_INSTANCE}" >&2
+        echo "Stop it first, or re-run with BUILDER_BLOG_REPLACE_ACTIVE_CLOUD_HOST=1 after explicit admin confirmation." >&2
+        return 75
+      fi
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        replaced "Replaced by a newer worker host." "status replaced worker_host_replace_requested"
+      terminate_process_tree "$OLD_PID" TERM 30 || terminate_process_tree "$OLD_PID" KILL 3 || true
+      if verify_followbrief_pid "$OLD_PID"; then
+        job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+          killed "Previous worker host could not be stopped before replacement." "status killed worker_host_replace_failed"
+        echo "Previous FollowBrief cloud worker host is still active after forced termination; not starting a second host." >&2
+        return 75
+      fi
+      clear_current_file "$CURRENT_FILE" "$OLD_INSTANCE"
+    elif [ -n "$OLD_INSTANCE" ]; then
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        stale "Previous worker host pid was no longer alive." "stale_pid_worker_host"
+      clear_current_file "$CURRENT_FILE" "$OLD_INSTANCE"
+    fi
+  fi
+
+  write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$BUILDER_BLOG_WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
+  prepare_run_tmp_dir
+  _usage_key="$(job_file_component "$BUILDER_BLOG_JOB_RUN_ID")"
+  export BUILDER_BLOG_USAGE_FILE="$JOB_TMP_DIR/runtime-usage-$_usage_key.jsonl"
+  trap 'cloud_host_signal_cleanup TERM' TERM
+  trap 'cloud_host_signal_cleanup INT' INT
+  job_run_update starting "Worker host accepted by local runner." "worker_host_started" \
+    --stage "worker_host_starting"
+
+  BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1
+  export BUILDER_BLOG_CLOUD_PERSISTENT_HOST
+  set +e
+  run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host"
+  _code="$?"
+  set -e
+  clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
+  if [ "$_code" -eq 0 ]; then
+    job_run_update succeeded "Worker host stopped." "worker_host_stopped" --stage "stopped"
+  else
+    job_run_update failed "Worker host exited with code $_code." "worker_host_failed" \
+      --stage "failed" \
+      --exit-code "$_code"
+  fi
   return "$_code"
 }
 
@@ -2596,6 +2703,68 @@ sync_completed_checkpoints() {
   return 0
 }
 
+flush_remaining_library_results() {
+  _frlr_result_file="$1"
+  _frlr_results_dir="$2"
+  _frlr_synced_ids_file="$3"
+  _frlr_shard_timeout="$4"
+  _frlr_label="${5:-library-result}"
+
+  aggregate_runtime_usage_files
+
+  _frlr_merge_result_file="$JOB_TMP_DIR/merge-task-results.json"
+  job_run_update running "Merging source fetch worker results." "merge_started" --stage "merge_results"
+  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
+    --tasks "$_frlr_result_file" \
+    --results-dir "$_frlr_results_dir" \
+    --shard-timeout-seconds "$_frlr_shard_timeout" \
+    --out "$JOB_TMP_DIR/library-agent-sync.json" | tee "$_frlr_merge_result_file"
+  _frlr_merge_issue_count="$(node - "$_frlr_merge_result_file" <<'NODE'
+const fs = require("fs");
+try {
+  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const backfilled = Number(result.backfilledOutcomes || 0);
+  const missing = Array.isArray(result.shards)
+    ? result.shards.filter((shard) => shard && shard.status !== "ok").length
+    : 0;
+  console.log(backfilled + missing);
+} catch {
+  console.log(0);
+}
+NODE
+)"
+
+  _frlr_remaining_payload="$JOB_TMP_DIR/library-agent-sync-remaining.json"
+  _frlr_remaining_tasks="$JOB_TMP_DIR/library-fetch-remaining.json"
+  _frlr_remaining_merge="$JOB_TMP_DIR/merge-task-results-remaining.json"
+  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
+    --tasks "$_frlr_result_file" \
+    --results-dir "$_frlr_results_dir" \
+    --shard-timeout-seconds "$_frlr_shard_timeout" \
+    --exclude-task-ids-file "$_frlr_synced_ids_file" \
+    --tasks-out "$_frlr_remaining_tasks" \
+    --out "$_frlr_remaining_payload" | tee "$_frlr_remaining_merge"
+
+  _frlr_sync_slices_dir="$JOB_TMP_DIR/sync-slices"
+  job_run_update running "Saving fetched posts to FollowBrief." "sync_started" --stage "sync_to_followbrief"
+  _frlr_sync_failures=0
+  SYNC_PAYLOAD_SYNCED_IDS_FILE="$_frlr_synced_ids_file"
+  if ! sync_payload_slices "$_frlr_remaining_tasks" "$_frlr_remaining_payload" "$_frlr_sync_slices_dir" "$_frlr_label" --results-dir "$_frlr_results_dir"; then
+    _frlr_sync_failures=1
+  fi
+  SYNC_PAYLOAD_SYNCED_IDS_FILE=""
+
+  if [ "$_frlr_sync_failures" -gt 0 ]; then
+    echo "$_frlr_sync_failures library result slice(s) failed to sync." >&2
+    return 65
+  fi
+  if [ "${_frlr_merge_issue_count:-0}" -gt 0 ]; then
+    echo "Parallel library run completed with $_frlr_merge_issue_count worker/result issue(s); synced terminal outcomes, but marking the flush failed." >&2
+    return 65
+  fi
+  return 0
+}
+
 cloud_fetch_heartbeat() {
   _cfh_run_id="${1:-}"
   [ -n "$_cfh_run_id" ] || return 0
@@ -2683,7 +2852,7 @@ NODE
 }
 
 cloud_refill_limit() {
-  # Safety cap for a cloud worker session. Normal stopping conditions are an
+  # Safety cap for one active host refill cycle. Normal stopping conditions are an
   # empty cloud lease response or the runner's timeout buffer.
   _crl_value="${BUILDER_BLOG_CLOUD_REFILL_LIMIT:-100}"
   case "$_crl_value" in
@@ -2803,6 +2972,21 @@ start_pending_library_workers() {
   done
 }
 
+reset_cloud_refill_window() {
+  # Per-shard timeout: 3/4 of the whole-job timeout. A hung shard is
+  # terminated early enough for merge, failure reporting, and sync to finish
+  # before the outer runner timeout kills non-host runs. Persistent cloud hosts
+  # reuse the same worker-shard timeout while refreshing the refill window after
+  # each idle wait.
+  _whole_timeout="$(job_timeout_seconds)"
+  _shard_timeout="$(shard_timeout_seconds "$_whole_timeout")"
+  _cloud_refill_buffer=300
+  if [ "$_whole_timeout" -le 600 ]; then
+    _cloud_refill_buffer=$(( _whole_timeout / 2 ))
+  fi
+  _cloud_refill_stop_at=$(( $(date +%s) + _whole_timeout - _cloud_refill_buffer ))
+}
+
 run_library_job() {
   _fetch_command="${1:-fetch-personal}"
   _sync_command="${2:-sync-builders}"
@@ -2825,6 +3009,10 @@ run_library_job() {
   _cloud_refill_count=0
   _cloud_refill_limit="$(cloud_refill_limit)"
   _cloud_refill_exhausted=0
+  _cloud_persistent_host=0
+  if [ "$_sync_command" = "sync-cloud-builders" ] && [ "${BUILDER_BLOG_CLOUD_PERSISTENT_HOST:-0}" = "1" ]; then
+    _cloud_persistent_host=1
+  fi
   : > "$_cloud_run_ids_file"
 
   echo "FollowBrief $_job_label run: $MAX_PARALLEL_WORKERS worker(s)."
@@ -2860,11 +3048,11 @@ run_library_job() {
   cat "$_result_file"
   if [ "$_sync_command" = "sync-cloud-builders" ]; then
     _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
-	    if [ -n "$_cloud_run_id" ]; then
-	      append_cloud_run_id "$_cloud_run_id"
-	      cloud_fetch_heartbeat "$_cloud_run_id"
-	    fi
-	  fi
+    if [ -n "$_cloud_run_id" ]; then
+      append_cloud_run_id "$_cloud_run_id"
+      cloud_fetch_heartbeat "$_cloud_run_id"
+    fi
+  fi
   SYNC_BUILDERS_COMMAND="$_sync_command"
   SYNC_BUILDERS_EXTRA_ARGS="$_sync_extra_args"
   if [ "$_sync_command" = "sync-cloud-builders" ]; then
@@ -2935,13 +3123,35 @@ run_library_job() {
         --stage "expand_discovery"
       return 65
     fi
-    echo "No source updates to sync. Planned 0 post tasks."
-    node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-      --tasks "$_result_file" \
-      --results-dir "$_results_dir" || true
-    job_run_update succeeded "No update. Planned 0 post tasks." "no_update" \
-      --stage "no_update"
-    return 0
+    if [ "$_cloud_persistent_host" -eq 1 ]; then
+      echo "No cloud source work available yet. Worker host will wait and ask again."
+      node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+        --tasks "$_result_file" \
+        --results-dir "$_results_dir" || true
+      reset_cloud_refill_window
+      while [ "$_task_count" -eq 0 ]; do
+        job_run_update running "Worker host idle; waiting before asking cloud for more sources." "worker_host_idle" \
+          --stage "waiting_for_cloud_sources"
+        cloud_host_sleep_with_heartbeat "$(cloud_host_idle_seconds)"
+        _cloud_refill_count=0
+        _cloud_refill_exhausted=0
+        reset_cloud_refill_window
+        job_run_update running "Worker host requesting cloud sources." "worker_host_polling" \
+          --stage "requesting_cloud_sources"
+        fetch_more_cloud_sources
+        _task_count="$(library_fetch_task_count "$_result_file")" || _task_count=0
+        case "$_task_count" in ''|*[!0-9]*) _task_count=0 ;; esac
+      done
+      _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
+    else
+      echo "No source updates to sync. Planned 0 post tasks."
+      node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+        --tasks "$_result_file" \
+        --results-dir "$_results_dir" || true
+      job_run_update succeeded "No update. Planned 0 post tasks." "no_update" \
+        --stage "no_update"
+      return 0
+    fi
   fi
 
   if [ "$_sync_command" = "sync-cloud-builders" ] && [ -z "$_cloud_run_id" ]; then
@@ -2967,16 +3177,7 @@ run_library_job() {
     --tasks "$_result_file" \
     --results-dir "$_results_dir" || true
 
-  # Per-shard timeout: 3/4 of the whole-job timeout. A hung shard is
-  # terminated early enough for merge, failure reporting, and final sync to
-  # finish before the outer runner timeout kills the whole run.
-  _whole_timeout="$(job_timeout_seconds)"
-  _shard_timeout="$(shard_timeout_seconds "$_whole_timeout")"
-  _cloud_refill_buffer=300
-  if [ "$_whole_timeout" -le 600 ]; then
-    _cloud_refill_buffer=$(( _whole_timeout / 2 ))
-  fi
-  _cloud_refill_stop_at=$(( $(date +%s) + _whole_timeout - _cloud_refill_buffer ))
+  reset_cloud_refill_window
   _worker_entries=""
   _skip_wait_pids=""
   _timed_out_worker_pids=""
@@ -3029,48 +3230,86 @@ run_library_job() {
           _alive=$(( _alive + 1 ))
         fi
       fi
-	    done
-	    if [ "$_dynamic_queue_enabled" -eq 1 ]; then
-	      _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
-	      if [ "$_free_slots" -gt 0 ]; then
-	        if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
-	          assign_dynamic_fetch_workers "$_free_slots"
-	          start_pending_library_workers
-	          if [ "${_started_worker_count:-0}" -gt 0 ]; then
-	            node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-	              --tasks "$_result_file" \
-	              --results-dir "$_results_dir" || true
-	            _alive=$(( _alive + _started_worker_count ))
-	          fi
-	        fi
-	        _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
-	        if [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
-	          fetch_more_cloud_sources
-	          if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
-	            assign_dynamic_fetch_workers "$_free_slots"
-	            start_pending_library_workers
-	            if [ "${_started_worker_count:-0}" -gt 0 ]; then
-	              node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-	                --tasks "$_result_file" \
-	                --results-dir "$_results_dir" || true
-	              _alive=$(( _alive + _started_worker_count ))
-	            fi
-	          fi
-	        fi
-	      fi
-	    fi
-	    [ "$_alive" -eq 0 ] && break
-	    if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "$_cloud_run_id" ]; then
-	      _cloud_heartbeat_interval="${BUILDER_BLOG_CLOUD_HEARTBEAT_SECONDS:-60}"
-	      case "$_cloud_heartbeat_interval" in
-	        ''|*[!0-9]*) _cloud_heartbeat_interval=60 ;;
-	      esac
-	      if [ $(( _now - _last_cloud_heartbeat )) -ge "$_cloud_heartbeat_interval" ]; then
-	        cloud_fetch_heartbeat_all
-	        _last_cloud_heartbeat="$_now"
-	      fi
-	    fi
-	    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
+    done
+    if [ "$_dynamic_queue_enabled" -eq 1 ]; then
+      _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
+      if [ "$_free_slots" -gt 0 ]; then
+        if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
+          assign_dynamic_fetch_workers "$_free_slots"
+          start_pending_library_workers
+          if [ "${_started_worker_count:-0}" -gt 0 ]; then
+            node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+              --tasks "$_result_file" \
+              --results-dir "$_results_dir" || true
+            _alive=$(( _alive + _started_worker_count ))
+          fi
+        fi
+        _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
+        if [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
+          fetch_more_cloud_sources
+          if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
+            assign_dynamic_fetch_workers "$_free_slots"
+            start_pending_library_workers
+            if [ "${_started_worker_count:-0}" -gt 0 ]; then
+              node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+                --tasks "$_result_file" \
+                --results-dir "$_results_dir" || true
+              _alive=$(( _alive + _started_worker_count ))
+            fi
+          fi
+        fi
+      fi
+    fi
+    if [ "$_alive" -eq 0 ]; then
+      if [ "$_cloud_persistent_host" -eq 1 ] && [ "$_dynamic_queue_enabled" -eq 1 ]; then
+        sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
+        if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "cloud-host-idle"; then
+          job_run_update running "Worker host could not sync every idle result; it will keep running and retry with later progress." "worker_host_idle_flush_failed" \
+            --stage "waiting_after_sync_issue"
+        fi
+        for _entry in $_worker_entries; do
+          _pid="${_entry%%:*}"
+          case " $_skip_wait_pids " in
+            *" $_pid "*) continue ;;
+          esac
+          wait "$_pid" 2>/dev/null || true
+        done
+        _worker_entries=""
+        _skip_wait_pids=""
+        _timed_out_worker_pids=""
+        _cloud_refill_count=0
+        _cloud_refill_exhausted=0
+        job_run_update running "Worker host idle; waiting before asking cloud for more sources." "worker_host_idle" \
+          --stage "waiting_for_cloud_sources"
+        cloud_host_sleep_with_heartbeat "$(cloud_host_idle_seconds)"
+        reset_cloud_refill_window
+        job_run_update running "Worker host requesting cloud sources." "worker_host_polling" \
+          --stage "requesting_cloud_sources"
+        fetch_more_cloud_sources
+        if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
+          assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
+          start_pending_library_workers
+          if [ "${_started_worker_count:-0}" -gt 0 ]; then
+            node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+              --tasks "$_result_file" \
+              --results-dir "$_results_dir" || true
+          fi
+        fi
+        continue
+      fi
+      break
+    fi
+    if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "$_cloud_run_id" ]; then
+      _cloud_heartbeat_interval="${BUILDER_BLOG_CLOUD_HEARTBEAT_SECONDS:-60}"
+      case "$_cloud_heartbeat_interval" in
+        ''|*[!0-9]*) _cloud_heartbeat_interval=60 ;;
+      esac
+      if [ $(( _now - _last_cloud_heartbeat )) -ge "$_cloud_heartbeat_interval" ]; then
+        cloud_fetch_heartbeat_all
+        _last_cloud_heartbeat="$_now"
+      fi
+    fi
+    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
       --tasks "$_result_file" \
       --results-dir "$_results_dir" \
       --stage "workers_running" >/dev/null 2>&1 || true
@@ -3091,56 +3330,8 @@ run_library_job() {
     echo "--- $(basename "$_worker_log") ---"
     cat "$_worker_log"
   done
-  aggregate_runtime_usage_files
 
-  _merge_result_file="$JOB_TMP_DIR/merge-task-results.json"
-  job_run_update running "Merging source fetch worker results." "merge_started" --stage "merge_results"
-  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
-    --tasks "$_result_file" \
-    --results-dir "$_results_dir" \
-    --shard-timeout-seconds "$_shard_timeout" \
-    --out "$JOB_TMP_DIR/library-agent-sync.json" | tee "$_merge_result_file"
-  _merge_issue_count="$(node - "$_merge_result_file" <<'NODE'
-const fs = require("fs");
-try {
-  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-  const backfilled = Number(result.backfilledOutcomes || 0);
-  const missing = Array.isArray(result.shards)
-    ? result.shards.filter((shard) => shard && shard.status !== "ok").length
-    : 0;
-  console.log(backfilled + missing);
-} catch {
-  console.log(0);
-}
-NODE
-)"
-
-  _remaining_payload="$JOB_TMP_DIR/library-agent-sync-remaining.json"
-  _remaining_tasks="$JOB_TMP_DIR/library-fetch-remaining.json"
-  _remaining_merge="$JOB_TMP_DIR/merge-task-results-remaining.json"
-  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
-    --tasks "$_result_file" \
-    --results-dir "$_results_dir" \
-    --shard-timeout-seconds "$_shard_timeout" \
-    --exclude-task-ids-file "$_checkpoint_synced_ids_file" \
-    --tasks-out "$_remaining_tasks" \
-    --out "$_remaining_payload" | tee "$_remaining_merge"
-
-  _sync_slices_dir="$JOB_TMP_DIR/sync-slices"
-  job_run_update running "Saving fetched posts to FollowBrief." "sync_started" --stage "sync_to_followbrief"
-  _sync_failures=0
-  SYNC_PAYLOAD_SYNCED_IDS_FILE="$_checkpoint_synced_ids_file"
-  if ! sync_payload_slices "$_remaining_tasks" "$_remaining_payload" "$_sync_slices_dir" "library-result" --results-dir "$_results_dir"; then
-    _sync_failures=1
-  fi
-  SYNC_PAYLOAD_SYNCED_IDS_FILE=""
-
-  if [ "$_sync_failures" -gt 0 ]; then
-    echo "$_sync_failures library result slice(s) failed to sync." >&2
-    return 65
-  fi
-  if [ "${_merge_issue_count:-0}" -gt 0 ]; then
-    echo "Parallel library run completed with $_merge_issue_count worker/result issue(s); synced terminal outcomes, but marking the runtime failed." >&2
+  if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "library-result"; then
     return 65
   fi
   if [ "$_discovery_failed" -ne 0 ]; then
@@ -3151,6 +3342,11 @@ NODE
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then
   run_runtime_smoke_check
+  exit "$?"
+fi
+
+if [ "$JOB_NAME" = "cloud-library-host" ]; then
+  run_cloud_worker_host
   exit "$?"
 fi
 

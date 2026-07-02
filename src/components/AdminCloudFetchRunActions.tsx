@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Copy } from "lucide-react";
 
 type ActiveToken = { id: string; name: string | null };
-type CloudJob = "cloud-library-once" | "cloud-library-cron-setup";
+const CLOUD_WORKER_HOST_JOB = "cloud-library-cron-setup";
 type Runtime = "claude" | "codex" | "hermes" | "openclaw";
 
 const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
@@ -12,17 +12,6 @@ const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "claude", label: "Claude Code" },
   { id: "hermes", label: "Hermes" },
   { id: "openclaw", label: "OpenClaw" },
-];
-
-// "once" runs one local cloud worker session; every other value installs a
-// schedule that starts worker sessions on that cadence.
-const FREQUENCY_OPTIONS: { id: string; label: string }[] = [
-  { id: "once", label: "One time" },
-  { id: "30m", label: "Every 30 minutes" },
-  { id: "1h", label: "Every hour" },
-  { id: "12h", label: "Every 12 hours" },
-  { id: "daily", label: "Every day" },
-  { id: "weekly", label: "Every week" },
 ];
 
 const FETCH_LIMIT_DEFAULT = 3;
@@ -88,15 +77,14 @@ function NumberField({
 export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: ActiveToken[] }) {
   const [tokenId, setTokenId] = useState(activeTokens[0]?.id ?? "");
   const [runtime, setRuntime] = useState<Runtime>("codex");
-  const [frequency, setFrequency] = useState("12h");
   const [fetchLimit, setFetchLimit] = useState(String(FETCH_LIMIT_DEFAULT));
   const [fetchDays, setFetchDays] = useState(String(FETCH_DAYS_DEFAULT));
   const [parallelWorkers, setParallelWorkers] = useState(String(PARALLEL_WORKERS_DEFAULT));
-  const [busy, setBusy] = useState<CloudJob | null>(null);
+  const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [manual, setManual] = useState<string | null>(null);
 
-  async function copyPrompt(job: CloudJob) {
+  async function copyPrompt() {
     if (!tokenId) {
       setStatus({ kind: "error", text: "Create an agent access key first (Access keys in Settings)." });
       return;
@@ -116,7 +104,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
       });
       return;
     }
-    setBusy(job);
+    setBusy(true);
     setStatus(null);
     setManual(null);
     try {
@@ -127,11 +115,10 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
         return;
       }
       const params = new URLSearchParams({ ec: body.code, runtime });
-      if (job === "cloud-library-cron-setup") params.set("freq", frequency);
       params.set("postLimit", postLimitParam);
       params.set("days", daysParam);
       params.set("parallel", parallelParam);
-      const url = `${window.location.origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
+      const url = `${window.location.origin}/api/skill/jobs/${CLOUD_WORKER_HOST_JOB}/skill.md?${params.toString()}`;
       const command = `Read ${url} and follow the instructions.`;
       if (await copyText(command)) {
         setStatus({ kind: "info", text: "Copied. Valid for 10 minutes. Send it to your local agent." });
@@ -142,7 +129,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
     } catch {
       setStatus({ kind: "error", text: "Could not prepare a Local Agent prompt." });
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -192,24 +179,6 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
             </select>
           </div>
 
-          <div className="cron-field">
-            <label htmlFor="cloud-run-frequency" className="cron-field-label">
-              Start cadence
-            </label>
-            <select
-              id="cloud-run-frequency"
-              className="cron-field-select"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-            >
-              {FREQUENCY_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <NumberField
             id="cloud-run-post-limit"
             label="Posts per source"
@@ -244,32 +213,24 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
             </select>
           </div>
           <p className="cron-field-hint">
-            Local workers control this admin machine during each worker session. Same-domain tasks stay on one worker.
+            Local workers control this admin machine while the worker host is running. Same-domain tasks stay on one worker.
           </p>
 
           <div className="settings-footer-bar">
             <button
               type="button"
               className="fb-btn dark compact"
-              disabled={busy !== null}
-              onClick={() =>
-                copyPrompt(
-                  frequency === "once" ? "cloud-library-once" : "cloud-library-cron-setup",
-                )
-              }
+              disabled={busy}
+              onClick={copyPrompt}
             >
               <Copy aria-hidden="true" />
-              {busy !== null
-                ? "Preparing"
-                : frequency === "once"
-                  ? "Copy one-time worker prompt"
-                  : "Copy scheduled worker prompt"}
+              {busy ? "Preparing" : "Copy worker host prompt"}
             </button>
           </div>
 
           <p className="cron-field-hint">
             First-time setup: confirm the cloud library is ready for your summary language
-            (<code>check-cloud-source-fetch-readiness</code>) before the first worker session.
+            (<code>check-cloud-source-fetch-readiness</code>) before the worker host starts.
           </p>
 
           {status ? (

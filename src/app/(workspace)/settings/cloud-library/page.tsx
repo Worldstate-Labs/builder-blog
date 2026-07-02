@@ -114,7 +114,7 @@ export default async function CloudLibraryManagementPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Cloud library management"
-        description="Monitor scheduled cloud worker sessions, their local post queue, and the source lease batches feeding them."
+        description="Monitor the local worker host, its post task queue, and the cloud source deliveries feeding it."
       />
 
       <div className="workspace-content-stack settings-workspace">
@@ -124,8 +124,8 @@ export default async function CloudLibraryManagementPage() {
               <div className="settings-rules-summary-copy">
                 <h3 className="fb-section-heading">Start cloud worker</h3>
                 <p className="settings-rules-summary-desc">
-                  Copy a prompt to run one cloud worker session now, or install a local schedule
-                  that starts sessions periodically.
+                  Copy one prompt to install or restart the local worker host. It stays running,
+                  waits when cloud has no work, and refills when workers are free.
                 </p>
               </div>
               <span className="settings-rules-toggle-icon" aria-hidden="true">
@@ -140,10 +140,10 @@ export default async function CloudLibraryManagementPage() {
           <details className="settings-rules-panel fb-panel" open>
             <summary className="settings-rules-summary">
               <div className="settings-rules-summary-copy">
-                <h3 className="fb-section-heading">Worker session activity</h3>
+                <h3 className="fb-section-heading">Worker host activity</h3>
                 <p className="settings-rules-summary-desc">
-                  Shows the latest local worker session. Source lease batches below are cloud
-                  deliveries; post task status comes from the local queue and sync results.
+                  Shows the local worker host heartbeat, post task queue, and recent source
+                  deliveries from cloud.
                 </p>
               </div>
               <span className="settings-rules-toggle-icon" aria-hidden="true">

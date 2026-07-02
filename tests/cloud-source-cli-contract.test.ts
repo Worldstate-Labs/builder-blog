@@ -87,15 +87,24 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /start_pending_library_workers/);
   assert.match(runner, /cloud_fetch_heartbeat/);
   assert.match(runner, /heartbeat-cloud-fetch --cloud-run-id/);
+  assert.match(runner, /cloud-library-host/);
+  assert.match(runner, /run_cloud_worker_host\(\)/);
+  assert.match(runner, /cloud_host_sleep_with_heartbeat/);
+  assert.match(runner, /BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1/);
+  assert.match(runner, /run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result\.json "cloud library host"/);
+  assert.doesNotMatch(runner, /BUILDER_BLOG_CLOUD_HOST_CHILD/);
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
   const actions = await readFile("src/components/AdminCloudFetchRunActions.tsx", "utf8");
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
-  const oncePrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-once.md", "utf8");
   const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
   const cronPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron.md", "utf8");
 
+  assert.doesNotMatch(actions, /cloud-library-once/);
+  assert.doesNotMatch(actions, /FREQUENCY_OPTIONS/);
+  assert.doesNotMatch(actions, /params\.set\("freq"/);
+  assert.match(actions, /Copy worker host prompt/);
   assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
   assert.match(actions, /cloud-run-post-limit/);
   assert.match(actions, /cloud-run-fetch-days/);
@@ -110,41 +119,34 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.doesNotMatch(route, /\{\{CLOUD_FETCH_LIMIT\}\}/);
   assert.match(route, /\{\{FETCH_LIMIT\}\}/);
 
-  for (const prompt of [oncePrompt, setupPrompt, cronPrompt]) {
+  for (const prompt of [setupPrompt, cronPrompt]) {
     assert.doesNotMatch(prompt, /\{\{CLOUD_FETCH_LIMIT\}\}/);
     assert.match(prompt, /\{\{FETCH_LIMIT\}\}/);
     assert.match(prompt, /\{\{FETCH_DAYS\}\}/);
     assert.match(prompt, /\{\{PARALLEL_WORKERS\}\}/);
   }
 
-  for (const prompt of [oncePrompt, setupPrompt]) {
-    assert.doesNotMatch(prompt, /BUILDER_BLOG_CLOUD_FETCH_LIMIT/);
-    assert.match(prompt, /Check whether a local cloud worker is already running/);
-    assert.match(prompt, /ACTIVE_CLOUD_WORKER/);
-    assert.match(prompt, /NO_ACTIVE_CLOUD_WORKER/);
-    assert.match(prompt, /ask the user whether to replace that active/);
-    assert.match(
-      prompt,
-      /BUILDER_BLOG_FETCH_LIMIT="\$\{BUILDER_BLOG_FETCH_LIMIT-\{\{FETCH_LIMIT\}\}\}"/,
-    );
-    assert.match(
-      prompt,
-      /BUILDER_BLOG_FETCH_DAYS="\$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\}"/,
-    );
-    assert.match(
-      prompt,
-      /BUILDER_BLOG_PARALLEL_WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/,
-    );
-  }
-
+  assert.doesNotMatch(setupPrompt, /BUILDER_BLOG_CLOUD_FETCH_LIMIT/);
+  assert.match(setupPrompt, /Check whether a local cloud worker host or active cloud worker is already running/);
+  assert.match(setupPrompt, /ACTIVE_CLOUD_WORKER/);
+  assert.match(setupPrompt, /NO_ACTIVE_CLOUD_WORKER/);
+  assert.match(setupPrompt, /ask the user whether to replace that active/);
+  assert.match(setupPrompt, /cloud-library-host\/current\.json/);
+  assert.match(setupPrompt, /cloud-library-cron\/current\.json/);
   assert.doesNotMatch(setupPrompt, /CLOUD_LIMIT=/);
   assert.match(setupPrompt, /POST_LIMIT="\$\{BUILDER_BLOG_FETCH_LIMIT-\{\{FETCH_LIMIT\}\}\}"/);
   assert.match(setupPrompt, /FETCH_DAYS="\$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\}"/);
   assert.match(setupPrompt, /WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/);
   assert.match(
     setupPrompt,
-    /BUILDER_BLOG_FETCH_LIMIT="\$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="\$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="\$WORKERS"/,
+    /BUILDER_BLOG_FETCH_LIMIT="\$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="\$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="\$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="\$IDLE_SECONDS" "\$AGENT_DIR\/builder-agent-runner\.sh" cloud-library-host/,
   );
+  assert.match(setupPrompt, /<key>KeepAlive<\/key><true\/>/);
+  assert.match(setupPrompt, /<key>RunAtLoad<\/key><true\/>/);
+  assert.doesNotMatch(setupPrompt, /<key>StartInterval<\/key>/);
+  assert.match(setupPrompt, /followbrief-cloud-library-host\.service/);
+  assert.match(cronPrompt, /Run the internal cloud source fetch command/);
+  assert.match(cronPrompt, /cloud-library-host/);
 });
 
 test("cloud source readiness check is read-only and verifies deployment prerequisites", async () => {
