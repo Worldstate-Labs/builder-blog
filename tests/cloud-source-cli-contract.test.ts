@@ -128,6 +128,18 @@ test("cloud worker usage refresh never patches validation-failed task outcomes",
   );
 });
 
+test("cloud worker host does not wait for a runtime after its shard result is written", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(runner, /valid_worker_result_file\(\)/);
+  assert.match(runner, /_result_path="\$_results_dir\/\$_name-result\.json"/);
+  assert.match(
+    runner,
+    /if valid_worker_result_file "\$_result_path"; then[\s\S]*result file is complete; terminating lingering runtime/,
+  );
+  assert.match(runner, /_completed_worker_pids=".*\$_pid/);
+});
+
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
   const actions = await readFile("src/components/AdminCloudFetchRunActions.tsx", "utf8");
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");

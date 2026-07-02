@@ -2991,6 +2991,15 @@ library_worker_was_started() {
   return 1
 }
 
+valid_worker_result_file() {
+  _vwrf_file="${1:-}"
+  [ -s "$_vwrf_file" ] || return 1
+  node - "$_vwrf_file" <<'NODE' >/dev/null 2>&1
+const fs = require("fs");
+JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+NODE
+}
+
 start_library_worker() {
   _slw_shard_file="${1:-}"
   [ -n "$_slw_shard_file" ] || return 0
@@ -3277,6 +3286,16 @@ run_library_job() {
         case " $_timed_out_worker_pids " in
           *" $_pid "*) continue ;;
         esac
+        _result_path="$_results_dir/$_name-result.json"
+        if valid_worker_result_file "$_result_path"; then
+          echo "Worker $_lane ($_name) result file is complete; terminating lingering runtime and continuing." >&2
+          if ! terminate_process_tree "$_pid" TERM 5; then
+            terminate_process_tree "$_pid" KILL 3 || true
+          fi
+          _skip_wait_pids="$_skip_wait_pids $_pid"
+          _completed_worker_pids="${_completed_worker_pids:-} $_pid"
+          continue
+        fi
         if [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
           echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
           job_run_update running "Worker $_lane exceeded timeout and will be terminated." "worker_shard_timeout" \
