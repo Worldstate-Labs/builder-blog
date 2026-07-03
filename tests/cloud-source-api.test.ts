@@ -76,6 +76,8 @@ test("admin cloud fetch sync route uses admin auth and cloud sync status helper"
   assert.match(syncRoute, /cloudSourceTask\.findMany/);
   assert.match(syncRoute, /allowedBuilderIds/);
   assert.match(syncRoute, /reconcileTaskResultsWithFeedSync/);
+  assert.match(syncRoute, /taskOutcomes:\s*parsed\.data\.taskOutcomes/);
+  assert.match(syncRoute, /serverTaskOutcomes/);
   assert.match(syncRoute, /applyCloudFetchTaskSyncResult/);
   assert.match(syncRoute, /sourceTaskResult/);
   assert.match(syncRoute, /runSummary/);

@@ -79,6 +79,7 @@ export async function POST(request: Request) {
   const authoritativeTaskResults = reconcileTaskResultsWithFeedSync({
     taskResults: parsed.data.taskResults,
     itemResults: feedSync.itemResults,
+    taskOutcomes: parsed.data.taskOutcomes,
   });
   for (const taskResult of authoritativeTaskResults) {
     const syncedTask = await applyCloudFetchTaskSyncResult({
@@ -176,6 +177,7 @@ function groupBuildersBySummaryLanguage({
 function reconcileTaskResultsWithFeedSync({
   taskResults,
   itemResults,
+  taskOutcomes,
 }: {
   taskResults: Array<{
     cloudSourceTaskId: string;
@@ -190,9 +192,17 @@ function reconcileTaskResultsWithFeedSync({
     details: Record<string, unknown>;
   }>;
   itemResults: BuilderFeedSyncItemResult[];
+  taskOutcomes: Array<{
+    fetchTaskId: string;
+    status: "skipped" | "failed" | "blocked";
+    reason: string;
+  }>;
 }) {
   const itemResultByFetchTaskId = new Map(
     itemResults.map((itemResult) => [itemResult.fetchTaskId, itemResult]),
+  );
+  const taskOutcomeByFetchTaskId = new Map(
+    taskOutcomes.map((taskOutcome) => [taskOutcome.fetchTaskId, taskOutcome]),
   );
   return taskResults.map((taskResult) => {
     const fetchTaskIds = Array.isArray(taskResult.details.fetchTaskIds)
@@ -203,15 +213,26 @@ function reconcileTaskResultsWithFeedSync({
     const serverResults = fetchTaskIds
       .map((fetchTaskId) => itemResultByFetchTaskId.get(fetchTaskId))
       .filter((itemResult): itemResult is BuilderFeedSyncItemResult => Boolean(itemResult));
-    if (serverResults.length === 0) return taskResult;
+    const sourceTaskOutcomes = fetchTaskIds
+      .map((fetchTaskId) => taskOutcomeByFetchTaskId.get(fetchTaskId))
+      .filter((taskOutcome): taskOutcome is {
+        fetchTaskId: string;
+        status: "skipped" | "failed" | "blocked";
+        reason: string;
+      } => Boolean(taskOutcome));
+    if (serverResults.length === 0 && sourceTaskOutcomes.length === 0) return taskResult;
 
     const serverSynced = serverResults.filter((itemResult) => itemResult.status === "synced").length;
     const serverFailed = serverResults.filter((itemResult) => itemResult.status === "failed");
-    const clientSyncedRejectedByServer = Math.max(0, taskResult.syncedPosts - serverSynced);
-    const syncedPosts = Math.min(taskResult.syncedPosts, serverSynced);
+    const syncedPosts = serverResults.length > 0
+      ? Math.min(taskResult.syncedPosts, serverSynced)
+      : taskResult.syncedPosts;
+    const clientSyncedRejectedByServer = serverResults.length > 0
+      ? Math.max(0, taskResult.syncedPosts - serverSynced)
+      : 0;
     const failedPosts = Math.max(
       taskResult.failedPosts,
-      serverFailed.length + clientSyncedRejectedByServer,
+      serverFailed.length + clientSyncedRejectedByServer + sourceTaskOutcomes.length,
     );
     const status =
       syncedPosts === 0 && failedPosts >= taskResult.plannedPosts
@@ -219,11 +240,12 @@ function reconcileTaskResultsWithFeedSync({
         : failedPosts > 0
           ? "partial"
           : taskResult.status;
+    const firstOutcomeReason = sourceTaskOutcomes[0]?.reason;
     const failureReason =
       status === "failed"
-        ? taskResult.failureReason ?? serverFailed[0]?.reason ?? "cloud_feed_sync_failed"
+        ? taskResult.failureReason ?? serverFailed[0]?.reason ?? firstOutcomeReason ?? "cloud_feed_sync_failed"
         : status === "partial"
-          ? taskResult.failureReason ?? serverFailed[0]?.reason ?? "cloud_task_partial"
+          ? taskResult.failureReason ?? serverFailed[0]?.reason ?? firstOutcomeReason ?? "cloud_task_partial"
         : taskResult.failureReason;
 
     return {
@@ -243,6 +265,11 @@ function reconcileTaskResultsWithFeedSync({
             ...(itemResult.reason ? { reason: itemResult.reason } : {}),
           })),
         },
+        serverTaskOutcomes: sourceTaskOutcomes.map((taskOutcome) => ({
+          fetchTaskId: taskOutcome.fetchTaskId,
+          status: taskOutcome.status,
+          reason: taskOutcome.reason,
+        })),
       },
     };
   });
