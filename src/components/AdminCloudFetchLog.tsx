@@ -472,7 +472,7 @@ function WorkerHostPanel({
       </div>
 
       <div className="cloud-worker-host-metrics" aria-label="Worker host metrics">
-        <div className="cloud-worker-host-metric">
+        <div className="cloud-worker-host-metric is-stage">
           <span>Stage</span>
           <strong>{formatStage(stage)}</strong>
         </div>
@@ -516,7 +516,7 @@ function WorkerHostPanel({
           <span>Action needed</span>
           <strong>{formatMetric(progress?.actionNeeded ?? null)}</strong>
         </div>
-        <div className="cloud-worker-host-metric">
+        <div className="cloud-worker-host-metric is-usage">
           <span>Usage</span>
           <strong>{usageText ?? "-"}</strong>
         </div>

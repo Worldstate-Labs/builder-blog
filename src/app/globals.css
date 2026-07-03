@@ -14051,18 +14051,25 @@ body {
 }
 .cloud-worker-host-metrics {
   border-block: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-block: 0.5rem;
 }
 .cloud-worker-host-metric {
+  background: color-mix(in oklch, var(--surface) 82%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border-radius: 0.375rem;
   display: flex;
+  flex: 1 1 7.25rem;
   flex-direction: column;
   gap: 0.16rem;
-  min-width: 0;
-  padding: 0.55rem 0.7rem;
+  min-width: min(100%, 7.25rem);
+  padding: 0.5rem 0.6rem;
 }
-.cloud-worker-host-metric + .cloud-worker-host-metric {
-  border-left: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+.cloud-worker-host-metric.is-stage,
+.cloud-worker-host-metric.is-usage {
+  flex: 1.6 1 14rem;
 }
 .cloud-worker-host-metric span {
   color: var(--muted-strong);
@@ -14073,9 +14080,10 @@ body {
   font-family: var(--font-geist-mono);
   font-size: 0.75rem;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .cloud-worker-host-current {
   display: flex;
@@ -14313,13 +14321,14 @@ body {
     text-align: left;
   }
   .cloud-worker-host-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
   }
-  .cloud-worker-host-metric:nth-child(2n + 1) {
-    border-left: 0;
+  .cloud-worker-host-metric {
+    flex-basis: 8.5rem;
   }
-  .cloud-worker-host-metric:nth-child(n + 3) {
-    border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  .cloud-worker-host-metric.is-stage,
+  .cloud-worker-host-metric.is-usage {
+    flex: 1 1 100%;
   }
   .cloud-fetch-log-meta {
     margin-left: 0;

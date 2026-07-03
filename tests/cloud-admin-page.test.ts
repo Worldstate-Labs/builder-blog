@@ -134,6 +134,18 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
 });
 
+test("cloud worker host metrics wrap long stage and usage values", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+  const styles = source("src/app/globals.css");
+
+  assert.match(log, /cloud-worker-host-metric is-stage/);
+  assert.match(log, /cloud-worker-host-metric is-usage/);
+  assert.match(styles, /\.cloud-worker-host-metrics \{[\s\S]*display: flex;[\s\S]*flex-wrap: wrap;/);
+  assert.match(styles, /\.cloud-worker-host-metric strong \{[^}]*overflow-wrap: anywhere;/);
+  assert.match(styles, /\.cloud-worker-host-metric strong \{[^}]*white-space: normal;/);
+  assert.doesNotMatch(styles, /\.cloud-worker-host-metric strong \{[^}]*text-overflow: ellipsis;/);
+});
+
 test("cloud management timestamps use the shared relative time renderer", () => {
   const log = source("src/components/AdminCloudFetchLog.tsx");
   const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
