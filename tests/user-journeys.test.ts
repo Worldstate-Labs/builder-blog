@@ -1373,6 +1373,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /Gateway tool calls may not inherit the/);
   assert.match(runner, /do not search for the shard assignment or result path/);
   assert.match(runner, /export BUILDER_BLOG_SHARD_FILE=\$\(shell_quote "\$_ocp_shard_file"\)/);
+  assert.match(runner, /export BUILDER_BLOG_SHARD_TIMEOUT_SECONDS=\$\(shell_quote "\$_ocp_timeout_seconds"\)/);
   assert.match(runner, /PROMPT_FILE="\$\(openclaw_worker_prompt_file "\$_slw_shard_name"/);
   assert.match(runner, /PROMPT_FILE="\$\(openclaw_discovery_prompt_file "\$_result_file"/);
   assert.match(

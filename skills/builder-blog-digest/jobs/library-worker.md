@@ -31,6 +31,7 @@ variables):
 printf 'shard file: %s\n' "$BUILDER_BLOG_SHARD_FILE"
 printf 'result file: %s\n' "$BUILDER_BLOG_SHARD_RESULT"
 printf 'checkpoint dir: %s\n' "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR"
+printf 'shard timeout seconds: %s\n' "${BUILDER_BLOG_SHARD_TIMEOUT_SECONDS:-unknown}"
 cat "$BUILDER_BLOG_SHARD_FILE"
 ```
 
@@ -66,6 +67,23 @@ result file survives):
   everything into one final write: if you are terminated mid-task, every
   previously finished task must already be on disk so the runner's merge can
   keep it.
+- Before starting a long foreground operation (media download, audio/video
+  transcription, browser automation, or other extraction that can run for many
+  minutes), compare the expected remaining work with
+  `$BUILDER_BLOG_SHARD_TIMEOUT_SECONDS` when it is set. Use concrete evidence:
+  media duration, failed download attempts, sampled transcription speed, and
+  elapsed time. If the task cannot reasonably finish inside the shard budget
+  with time left to write checkpoints and the result file, do not keep trying.
+  Write a terminal `taskOutcomes` entry for that fetchTaskId instead, with
+  status `failed`, reason `extraction_exceeds_shard_timeout`, and evidence that
+  includes the duration/speed estimate and attempted methods.
+- If several fetch tasks point at the same unavailable or too-expensive source
+  item, write one terminal outcome per fetchTaskId. Do not leave duplicate
+  tasks uncovered just because they share the same URL or video ID.
+- If a long foreground tool times out or fails and no remaining method can
+  finish within the shard budget, immediately write the per-task checkpoint and
+  full shard result with that terminal outcome. Do not leave only a progress
+  checkpoint while deciding what to do next.
 
 Task checkpoint shape:
 

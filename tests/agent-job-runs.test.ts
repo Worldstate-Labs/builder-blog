@@ -112,7 +112,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /summaryChars: outcome\.summaryChars/);
   assert.match(cli, /upsertFetchProgressTask/);
   assert.match(cli, /--completed-only/);
-  assert.match(cli, /filterFetchResultToTaskIds/);
+  assert.match(cli, /filterFetchResultToTasks/);
   assert.match(cli, /filterSyncPayloadToTaskIds/);
   assert.match(cli, /backfillMissing: !completedOnly/);
   assert.match(cli, /completedTaskIds/);
@@ -245,6 +245,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(workerPrompt, /Live progress checkpoints/);
   assert.match(workerPrompt, /\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/progress\/<hash>\.json/);
   assert.match(workerPrompt, /under the `progress\/`[\s\S]*subdirectory/);
+  assert.match(workerPrompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
+  assert.match(workerPrompt, /extraction_exceeds_shard_timeout/);
 });
 
 test("web status uses scheduled job instances while history can show one-time runs", () => {

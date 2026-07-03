@@ -169,6 +169,7 @@ openclaw_worker_prompt_file() {
   _ocp_shard_file="$2"
   _ocp_result_file="$3"
   _ocp_checkpoint_dir="$4"
+  _ocp_timeout_seconds="$5"
   _ocp_out="$(openclaw_prompt_dir)/$_ocp_shard_name-worker.md"
   cat > "$_ocp_out" <<EOF
 OpenClaw Gateway runner context:
@@ -180,6 +181,7 @@ authoritative, and do not search for the shard assignment or result path.
 - Shard file: $_ocp_shard_file
 - Shard result file: $_ocp_result_file
 - Shard checkpoint directory: $_ocp_checkpoint_dir
+- Shard timeout seconds: $_ocp_timeout_seconds
 - Agent directory: $AGENT_DIR
 - Account: ${BUILDER_BLOG_ACCOUNT:-default}
 
@@ -201,6 +203,7 @@ export BUILDER_BLOG_ACCOUNT=$(shell_quote "${BUILDER_BLOG_ACCOUNT:-default}")
 export BUILDER_BLOG_SHARD_FILE=$(shell_quote "$_ocp_shard_file")
 export BUILDER_BLOG_SHARD_RESULT=$(shell_quote "$_ocp_result_file")
 export BUILDER_BLOG_SHARD_CHECKPOINT_DIR=$(shell_quote "$_ocp_checkpoint_dir")
+export BUILDER_BLOG_SHARD_TIMEOUT_SECONDS=$(shell_quote "$_ocp_timeout_seconds")
 \`\`\`
 
 Original task instructions:
@@ -3090,15 +3093,16 @@ NODE
     BUILDER_BLOG_SHARD_FILE="$_slw_shard_file"
     BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_slw_shard_name-result.json"
     BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_slw_checkpoint_dir"
+    BUILDER_BLOG_SHARD_TIMEOUT_SECONDS="$_shard_timeout"
     BUILDER_BLOG_AGENT_OUTPUT_FILE="$_slw_agent_output_file"
-    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR BUILDER_BLOG_AGENT_OUTPUT_FILE
+    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR BUILDER_BLOG_SHARD_TIMEOUT_SECONDS BUILDER_BLOG_AGENT_OUTPUT_FILE
     if [ "$PINNED_RUNTIME" = "openclaw" ]; then
       OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_slw_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
       export OPENCLAW_SESSION_ID
     fi
     PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
     if [ "$PINNED_RUNTIME" = "openclaw" ]; then
-      PROMPT_FILE="$(openclaw_worker_prompt_file "$_slw_shard_name" "$BUILDER_BLOG_SHARD_FILE" "$BUILDER_BLOG_SHARD_RESULT" "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR")"
+      PROMPT_FILE="$(openclaw_worker_prompt_file "$_slw_shard_name" "$BUILDER_BLOG_SHARD_FILE" "$BUILDER_BLOG_SHARD_RESULT" "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR" "$BUILDER_BLOG_SHARD_TIMEOUT_SECONDS")"
     fi
     BUILDER_BLOG_LIBRARY_AGENT_STAGE=worker
     export BUILDER_BLOG_LIBRARY_AGENT_STAGE
