@@ -200,6 +200,15 @@ test("cloud fetch log reuses the personal fetch log's per-post staged renderer",
   assert.match(panel, /export type FetchTaskProgress/);
 });
 
+test("cloud source lifecycle does not treat a running zero-count task as no-posts complete", () => {
+  const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
+
+  assert.match(sourceLogItem, /const stillAwaitingPostResults = running && task\.plannedPosts === 0 && !task\.noGeneratedFetchTasks/);
+  assert.match(sourceLogItem, /const noPosts = task\.noGeneratedFetchTasks \|\| \(!running && task\.plannedPosts === 0\)/);
+  assert.match(sourceLogItem, /stillAwaitingPostResults \? "Waiting for results"/);
+  assert.match(sourceLogItem, /function postOutcomeSummary\(task: CloudFetchRunLogTask\) \{[\s\S]*return "Waiting for results"/);
+});
+
 test("cloud worker host uses a distinct jobType so it never leaks into a personal fetch log", () => {
   // Server accepts the cloud jobType.
   const jobRunsRoute = source("src/app/api/skill/job-runs/route.ts");

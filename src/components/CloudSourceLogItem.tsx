@@ -224,9 +224,18 @@ function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
   const status = task.status.toLowerCase();
   const failed = status === "failed";
   const running = status === "running";
-  const noPosts = task.noGeneratedFetchTasks || task.plannedPosts === 0;
+  const stillAwaitingPostResults = running && task.plannedPosts === 0 && !task.noGeneratedFetchTasks;
+  const noPosts = task.noGeneratedFetchTasks || (!running && task.plannedPosts === 0);
   const fetchTone: Tone = failed ? "fail" : running ? "warn" : "ok";
-  const summarizeTone: Tone = noPosts ? "idle" : failed ? "fail" : task.pendingPosts > 0 ? "warn" : "ok";
+  const summarizeTone: Tone = noPosts
+    ? "idle"
+    : failed
+      ? "fail"
+      : running
+        ? "warn"
+        : task.pendingPosts > 0
+          ? "warn"
+          : "ok";
   const syncTone: Tone = failed ? "fail" : running ? "warn" : "ok";
   const steps: Array<{
     children?: ReactNode;
@@ -263,7 +272,15 @@ function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
     {
       key: "summarize",
       label: "Summarize",
-      outcome: noPosts ? "Not reached" : failed ? "Failed" : task.pendingPosts > 0 ? "Pending" : "Completed",
+      outcome: noPosts
+        ? "Not reached"
+        : failed
+          ? "Failed"
+          : running
+            ? "Pending"
+            : task.pendingPosts > 0
+              ? "Pending"
+              : "Completed",
       tone: summarizeTone,
       children: noPosts ? (
         <p className="sync-panel-task-note">
@@ -276,7 +293,7 @@ function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
       label: "Sync",
       outcome: failed ? "Failed" : running ? "Running" : "Synced",
       tone: syncTone,
-      meta: postOutcomeSummary(task),
+      meta: stillAwaitingPostResults ? "Waiting for results" : postOutcomeSummary(task),
     },
   ];
 
@@ -356,6 +373,9 @@ function frequencyLabel(frequency: string | null): string {
 }
 
 function postOutcomeSummary(task: CloudFetchRunLogTask) {
+  if (task.status.toLowerCase() === "running" && task.plannedPosts === 0 && !task.noGeneratedFetchTasks) {
+    return "Waiting for results";
+  }
   const parts = [`${task.syncedPosts}/${task.plannedPosts} synced`];
   if (task.pendingPosts > 0) parts.push(`${task.pendingPosts} pending`);
   if (task.skippedPosts > 0) parts.push(`${task.skippedPosts} skipped`);
