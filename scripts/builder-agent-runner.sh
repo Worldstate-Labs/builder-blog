@@ -2596,7 +2596,8 @@ NODE
         --tasks "$_slice_tasks" \
         --out "$_failed_payload" \
         --reason "task_validation_failed" \
-        --message "validate-agent-sync failed for $_sps_label $_slice_name with exit $_slice_validate_code"
+        --message "validate-agent-sync failed for $_sps_label $_slice_name with exit $_slice_validate_code" \
+        --validation-file "$_slice_validate"
 
       _failed_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-sync.out"
       _failed_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-sync.err"

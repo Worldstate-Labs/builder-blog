@@ -7360,12 +7360,41 @@ async function mergeFetchResultsCommand(args) {
   ));
 }
 
-function failedSyncPayloadForTasks(fetchResult, { reason, message } = {}) {
+function validationErrorsByTaskFromText(text = "") {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return new Map();
+  const start = trimmed.indexOf("[");
+  const end = trimmed.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) return new Map();
+  try {
+    const parsed = JSON.parse(trimmed.slice(start, end + 1));
+    if (!Array.isArray(parsed)) return new Map();
+    const byTask = new Map();
+    for (const entry of parsed) {
+      const fetchTaskId = String(entry?.fetchTaskId || "").trim();
+      if (!fetchTaskId) continue;
+      const errors = Array.isArray(entry?.errors)
+        ? entry.errors.map((error) => String(error)).filter(Boolean)
+        : [];
+      byTask.set(fetchTaskId, {
+        ...(entry?.builder ? { builder: String(entry.builder) } : {}),
+        ...(entry?.item ? { item: String(entry.item) } : {}),
+        ...(errors.length > 0 ? { errors } : {}),
+      });
+    }
+    return byTask;
+  } catch {
+    return new Map();
+  }
+}
+
+function failedSyncPayloadForTasks(fetchResult, { reason, message, validationErrorsByTask = new Map() } = {}) {
   const taskOutcomes = [];
   const failureReason = reason || "slice_sync_failed";
   for (const task of extractFetchTasks(fetchResult)) {
     if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
     const id = taskIdForSync(task);
+    const validation = validationErrorsByTask.get(id);
     taskOutcomes.push({
       fetchTaskId: id,
       status: "failed",
@@ -7374,6 +7403,7 @@ function failedSyncPayloadForTasks(fetchResult, { reason, message } = {}) {
         failureKind: failureReason,
         failedBy: "sync-builders-slice",
         ...(message ? { message } : {}),
+        ...(validation ? { validation } : {}),
       },
     });
   }
@@ -7431,6 +7461,7 @@ async function failSyncSlice(args) {
   const excludeTaskIdsFile = argValue(args, "--exclude-task-ids-file", null);
   const reason = argValue(args, "--reason", "slice_sync_failed");
   const message = argValue(args, "--message", "");
+  const validationFile = argValue(args, "--validation-file", null);
   if (!tasksFile) throw new Error("Missing --tasks slice-tasks.json");
   if (!outFile) throw new Error("Missing --out failed-payload.json");
 
@@ -7440,7 +7471,10 @@ async function failSyncSlice(args) {
     !excludedTaskIdsContains(excluded, task),
   );
   const tasksOut = filterFetchResultToTasks(fetchResult, selectedTasks);
-  const payload = failedSyncPayloadForTasks(tasksOut, { reason, message });
+  const validationErrorsByTask = validationFile
+    ? validationErrorsByTaskFromText(await readFile(validationFile, "utf8").catch(() => ""))
+    : new Map();
+  const payload = failedSyncPayloadForTasks(tasksOut, { reason, message, validationErrorsByTask });
   await writeFile(outFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   if (tasksOutFile) {
     await writeFile(tasksOutFile, `${JSON.stringify(tasksOut, null, 2)}\n`, "utf8");

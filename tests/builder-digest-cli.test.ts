@@ -2401,6 +2401,55 @@ test("failed / blocked outcomes require a reason", async () => {
   assert.equal(result.accountedOutcomes, 1);
 });
 
+test("fail-sync-slice preserves per-task validation errors in evidence", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "builder-digest-fail-slice-"));
+  const task = youtubePlannedTask(cli, "vid_summary_short");
+  const tasksFile = join(dir, "tasks.json");
+  const validationFile = join(dir, "validation.out");
+  const outFile = join(dir, "failed-payload.json");
+
+  await writeFile(tasksFile, JSON.stringify({ fetchTasks: [task] }), "utf8");
+  await writeFile(
+    validationFile,
+    `Agent sync validation failed for 1 task(s).\n${JSON.stringify(
+      [
+        {
+          fetchTaskId: task.id,
+          builder: "Anthropic YouTube",
+          item: "vid_summary_short",
+          errors: ["summary:summary_too_short"],
+        },
+      ],
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(process.execPath, [
+    "scripts/builder-digest.mjs",
+    "fail-sync-slice",
+    "--tasks",
+    tasksFile,
+    "--out",
+    outFile,
+    "--reason",
+    "task_validation_failed",
+    "--message",
+    "validate-agent-sync failed",
+    "--validation-file",
+    validationFile,
+  ]);
+
+  const payload = JSON.parse(await readFile(outFile, "utf8"));
+  assert.deepEqual(payload.taskOutcomes[0].evidence.validation, {
+    builder: "Anthropic YouTube",
+    item: "vid_summary_short",
+    errors: ["summary:summary_too_short"],
+  });
+});
+
 test("sync-builders treats explicit empty builders payload as a successful no-op", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-empty-builder-sync-"));
   const payloadFile = join(tmp, "library-agent-sync.json");

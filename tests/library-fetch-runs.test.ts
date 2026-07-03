@@ -339,6 +339,7 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /validation-failed-payload\.json/);
   assert.match(runner, /--exclude-task-ids-file "\$_frlr_synced_ids_file"/);
   assert.match(runner, /--reason "task_validation_failed"/);
+  assert.match(runner, /--validation-file "\$_slice_validate"/);
   assert.match(runner, /--reason "task_sync_failed"/);
   assert.doesNotMatch(runner, /library-repair-prompt\.md/);
   assert.doesNotMatch(runner, /--reason "validation_failed"/);
