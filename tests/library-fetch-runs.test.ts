@@ -1154,6 +1154,9 @@ test("source sync log tabs keep local fetch log and cloud fetch log separate", (
   assert.match(tabs, /TaskRow/);
   assert.match(tabs, /Latest cloud fetch log/);
   assert.match(tabs, /Recent posts/);
+  assert.match(tabs, /CloudSourceLifecycle/);
+  assert.match(tabs, /No posts planned/);
+  assert.match(tabs, /No summary exists because there were no fetched posts to summarize or save\./);
   assert.match(tabs, /deadlineStatusLabel/);
   assert.match(tabs, /RelativeTime/);
 });

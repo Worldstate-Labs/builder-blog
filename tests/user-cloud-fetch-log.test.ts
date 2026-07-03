@@ -116,3 +116,38 @@ test("serializeUserCloudFetchLog marks a source missed after its deadline passes
   assert.equal(result.sources[0]?.deadlineStatus, "MISSED");
   assert.equal(result.sources[0]?.latestRunTask, null);
 });
+
+test("serializeUserCloudFetchLog preserves source runs with no generated post tasks", () => {
+  const result = serializeUserCloudFetchLog(
+    [
+      submission({
+        runTasks: [
+          {
+            id: "run_task_empty",
+            builderId: "cloud_builder_1",
+            summaryLanguage: "zh",
+            status: "succeeded",
+            plannedPosts: 0,
+            syncedPosts: 0,
+            failedPosts: 0,
+            startedAt: new Date("2026-07-03T09:58:00.000Z"),
+            finishedAt: new Date("2026-07-03T10:00:00.000Z"),
+            actualDurationSeconds: 120,
+            estimatedDurationSeconds: 180,
+            successProbabilitySnapshot: 0.95,
+            usageTokens: 1200,
+            usageCostUsd: null,
+            failureReason: null,
+            details: { posts: [], noGeneratedFetchTasks: true },
+            builder: { name: "Example Source", sourceType: "blog" },
+          },
+        ],
+      }),
+    ],
+    new Date("2026-07-03T12:00:00.000Z"),
+  );
+
+  assert.equal(result.sources[0]?.latestRunTask?.plannedPosts, 0);
+  assert.equal(result.sources[0]?.latestRunTask?.posts.length, 0);
+  assert.equal(result.sources[0]?.latestRunTask?.noGeneratedFetchTasks, true);
+});

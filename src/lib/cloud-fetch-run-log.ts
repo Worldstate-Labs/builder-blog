@@ -113,6 +113,7 @@ export type CloudFetchRunLogTask = {
   failureReason: string | null;
   posts: CloudFetchPostOutcome[];
   workerUsages: CloudFetchWorkerUsage[];
+  noGeneratedFetchTasks: boolean;
 };
 
 export type CloudFetchRunLogItem = {
@@ -319,6 +320,7 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
       : task.startedAt && task.finishedAt
         ? Math.max(0, task.finishedAt.getTime() - task.startedAt.getTime())
         : null;
+  const details = record(task.details);
   const posts = parseCloudTaskPosts(task.details);
   const skippedPosts = posts.filter((post) => String(post.status ?? "").toLowerCase() === "skipped").length;
   return {
@@ -343,6 +345,7 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
     failureReason: task.failureReason ?? null,
     posts,
     workerUsages: parseCloudWorkerUsages(task.details),
+    noGeneratedFetchTasks: details?.noGeneratedFetchTasks === true,
   };
 }
 

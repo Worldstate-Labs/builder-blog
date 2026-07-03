@@ -15,7 +15,7 @@ import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
-import type { CloudFetchPostOutcome } from "@/lib/cloud-fetch-run-log";
+import type { CloudFetchPostOutcome, CloudFetchRunLogTask } from "@/lib/cloud-fetch-run-log";
 import type {
   UserCloudFetchLogData,
   UserCloudFetchSourceLog,
@@ -24,6 +24,7 @@ import type {
 
 type SyncLogTab = "local" | "cloud";
 type BuilderKind = "X" | "BLOG" | "PODCAST" | "WEBSITE";
+type Tone = "ok" | "warn" | "fail" | "idle";
 
 const EMPTY_LIVE_TASKS = new Map<string, FetchTaskProgress>();
 
@@ -271,9 +272,7 @@ function CloudSourceDetail({ source }: { source: UserCloudFetchSourceLog }) {
               ))}
             </ul>
           ) : (
-            <p className="cron-field-hint">
-              No per-post outcomes were recorded for the latest cloud fetch.
-            </p>
+            <CloudSourceLifecycle task={source.latestRunTask} />
           )}
         </div>
       ) : (
@@ -288,6 +287,107 @@ function CloudSourceDetail({ source }: { source: UserCloudFetchSourceLog }) {
         listId={`cloud-user-posts-${source.submissionId}`}
         totalCount={source.postCount}
       />
+    </div>
+  );
+}
+
+function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
+  const status = task.status.toLowerCase();
+  const failed = status === "failed";
+  const running = status === "running";
+  const noPosts = task.noGeneratedFetchTasks || task.plannedPosts === 0;
+  const fetchTone: Tone = failed ? "fail" : running ? "warn" : "ok";
+  const summarizeTone: Tone = noPosts ? "idle" : failed ? "fail" : task.pendingPosts > 0 ? "warn" : "ok";
+  const syncTone: Tone = failed ? "fail" : running ? "warn" : "ok";
+  const steps: Array<{
+    children?: ReactNode;
+    key: string;
+    label: string;
+    meta?: string;
+    outcome: string;
+    tone: Tone;
+  }> = [
+    {
+      key: "planned",
+      label: "Planned",
+      outcome: "Source task",
+      tone: "ok",
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Source type" value={task.sourceType ?? "-"} />
+          <FactRow label="Language" value={displayLanguagePreference(task.summaryLanguage)} />
+        </dl>
+      ),
+    },
+    {
+      key: "fetch",
+      label: "Fetch",
+      outcome: noPosts ? "No posts planned" : failed ? "Failed" : running ? "Running" : "Fetched",
+      tone: fetchTone,
+      meta: task.durationMs != null ? formatDuration(task.durationMs) : undefined,
+      children: noPosts ? (
+        <p className="sync-panel-task-note">
+          Cloud worker fetched this source but generated 0 post tasks.
+        </p>
+      ) : undefined,
+    },
+    {
+      key: "summarize",
+      label: "Summarize",
+      outcome: noPosts ? "Not reached" : failed ? "Failed" : task.pendingPosts > 0 ? "Pending" : "Completed",
+      tone: summarizeTone,
+      children: noPosts ? (
+        <p className="sync-panel-task-note">
+          No summary exists because there were no fetched posts to summarize or save.
+        </p>
+      ) : undefined,
+    },
+    {
+      key: "sync",
+      label: "Sync",
+      outcome: failed ? "Failed" : running ? "Running" : "Synced",
+      tone: syncTone,
+      meta: postOutcomeSummary(task),
+    },
+  ];
+
+  return (
+    <ol aria-label="Cloud source fetch lifecycle" className="sync-panel-lifecycle user-cloud-source-lifecycle">
+      {steps.map((step, index) => (
+        <li key={step.key} className="sync-panel-lifecycle-item">
+          <details className={`sync-panel-lifecycle-step is-${step.tone}`} open={Boolean(step.children)}>
+            <summary className="sync-panel-lifecycle-summary">
+              <span aria-hidden="true" className="sync-panel-lifecycle-dot" />
+              <span className="sync-panel-lifecycle-copy">
+                <span className="sync-panel-lifecycle-label">{step.label}</span>
+                <span className="mono sync-panel-lifecycle-outcome">{step.outcome}</span>
+              </span>
+              {step.meta ? (
+                <span className="mono sync-panel-lifecycle-meta">{step.meta}</span>
+              ) : null}
+            </summary>
+            {step.children ? (
+              <div className="sync-panel-lifecycle-detail">{step.children}</div>
+            ) : null}
+          </details>
+          {index < steps.length - 1 ? <span aria-hidden="true" className="sync-panel-lifecycle-rail" /> : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function FactRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="sync-panel-task-fact-row">
+      <dt className="sync-panel-task-fact-label">{label}</dt>
+      <dd className="sync-panel-task-fact-value">{value}</dd>
     </div>
   );
 }
@@ -361,6 +461,13 @@ function postOutcomeSummary(task: NonNullable<UserCloudFetchSourceLog["latestRun
   if (task.skippedPosts > 0) parts.push(`${task.skippedPosts} skipped`);
   if (task.failedPosts > 0) parts.push(`${task.failedPosts} failed`);
   return parts.join(" · ");
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds - minutes * 60}s`;
 }
 
 function postToFetchTaskLog(

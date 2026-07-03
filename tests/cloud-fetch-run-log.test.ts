@@ -86,6 +86,7 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
   assert.equal(task.usageTokens, 5000);
   assert.equal(task.usageCostUsd, 0.12);
   assert.equal(task.successProbability, 0.9);
+  assert.equal(task.noGeneratedFetchTasks, false);
   assert.equal(task.posts.length, 2);
   assert.deepEqual(task.posts[0], {
     id: "task_1",
@@ -195,6 +196,39 @@ test("serializeCloudFetchRun handles a still-running run with no tasks or usage"
   assert.equal(result.plannedPosts, 0);
   assert.equal(result.usageCostUsd, null);
   assert.deepEqual(result.tasks, []);
+});
+
+test("serializeCloudFetchRun exposes source tasks that generated no post tasks", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    tasksSucceeded: 1,
+    tasksFailed: 0,
+    tasks: [
+      {
+        id: "rt_empty",
+        builderId: "cb_empty",
+        summaryLanguage: "zh",
+        status: "SUCCEEDED",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        startedAt: new Date("2026-06-28T10:00:10.000Z"),
+        finishedAt: new Date("2026-06-28T10:02:10.000Z"),
+        actualDurationSeconds: 120,
+        estimatedDurationSeconds: 100,
+        successProbabilitySnapshot: null,
+        usageTokens: null,
+        usageCostUsd: null,
+        failureReason: null,
+        details: { posts: [], noGeneratedFetchTasks: true },
+        builder: { name: "Empty Feed", sourceType: "blog" },
+      },
+    ],
+  });
+
+  assert.equal(result.tasks[0]?.plannedPosts, 0);
+  assert.equal(result.tasks[0]?.posts.length, 0);
+  assert.equal(result.tasks[0]?.noGeneratedFetchTasks, true);
 });
 
 test("serializeCloudFetchRun converts a Prisma Decimal cost via Number()", () => {
