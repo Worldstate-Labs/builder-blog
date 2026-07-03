@@ -78,6 +78,7 @@ export function SourceSyncLogTabs({
           </button>
         </div>
       </div>
+      {actions ? <div className="source-sync-log-actions">{actions}</div> : null}
 
       {selected === "local" ? (
         <section
@@ -86,8 +87,6 @@ export function SourceSyncLogTabs({
           role="tabpanel"
         >
           <FetchLogPanel
-            actionsPlacement="start"
-            actions={actions}
             initialCronJob={initialCronJob}
             initialCronRuns={initialCronRuns}
             initialJobRuns={initialJobRuns}

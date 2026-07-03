@@ -1000,7 +1000,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Setup code expires in 10 minutes/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Stop fetching/);
-  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \{scheduleName\} in your Local Agent/);
+  assert.match(skillPromptActions, /Choose which Fetch sources runtime to stop/);
+  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \$\{scheduleName\} in your Local Agent/);
   assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
   assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
@@ -4156,7 +4157,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
   assert.match(buildersPage, /Source syncing/);
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
-  assert.match(buildersPage, /actionsPlacement="start"/);
+  assert.match(buildersPage, /<SourceSyncLogTabs/);
+  assert.doesNotMatch(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
   assert.match(buildersPage, /emptyTitle="No sources yet"/);
   assert.doesNotMatch(buildersPage, /No personal sources yet|No sources in your library yet/);

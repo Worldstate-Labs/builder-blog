@@ -56,3 +56,22 @@ test("cloud submit reminds the user before overwriting a prior submission and re
   assert.match(skillPromptActions, /already submitted/i);
   assert.match(skillPromptActions, /Overwrite & submit/);
 });
+
+test("Stop fetching dialog lets users choose local or cloud fetch without stopping the admin worker host", () => {
+  const skillPromptActions = source("src/components/SkillPromptActions.tsx");
+  const stopDialog = skillPromptActions.slice(
+    skillPromptActions.indexOf("function StopScheduleDialog"),
+  );
+
+  assert.match(skillPromptActions, /cloudFetchActive/);
+  assert.match(skillPromptActions, /localFetchActive/);
+  assert.match(skillPromptActions, /type StopFetchTarget = "cloud" \| "local"/);
+  assert.match(skillPromptActions, /method: "DELETE"/);
+  assert.match(skillPromptActions, /\/api\/cloud-library\/source-submissions/);
+  assert.doesNotMatch(skillPromptActions, /cloud-library-cron-stop/);
+  assert.match(stopDialog, /name="stop-fetch-target"/);
+  assert.match(stopDialog, /Your Local Agent/);
+  assert.match(stopDialog, /Cloud/);
+  assert.match(stopDialog, /disabled=\{!canStopLocal \|\| submitting\}/);
+  assert.match(stopDialog, /disabled=\{!canStopCloud \|\| submitting\}/);
+});

@@ -12,6 +12,7 @@ import {
   getUserCloudSubmissionSummary,
   planSubmissionReconciliation,
   reassignCloudLanguageTaskBuildersToOwner,
+  stopUserCloudSourceSubmissions,
   summarizeActiveCloudSubmissions,
   upsertSourceCandidateFromCloudBuilder,
 } from "../src/lib/cloud-source-library";
@@ -326,4 +327,86 @@ test("getUserCloudSubmissionSummary reads only the user's active submissions", a
   assert.equal(summary.hasActiveSubmission, true);
   assert.equal(summary.summaryLanguage, "en");
   assert.equal(summary.frequency, "WEEKLY");
+});
+
+test("stopUserCloudSourceSubmissions deactivates the user's cloud submissions and cancels paused queued tasks", async () => {
+  const calls: unknown[] = [];
+  const prisma = {
+    cloudSourceSubmission: {
+      async findMany(args: unknown) {
+        calls.push(["cloudSourceSubmission.findMany", args]);
+        const where = (args as { where?: { userId?: string; cloudBuilderId?: string } }).where;
+        if (where?.userId) {
+          return [
+            { id: "sub_a", cloudBuilderId: "cloud_builder_a" },
+            { id: "sub_b", cloudBuilderId: "cloud_builder_b" },
+          ];
+        }
+        return [];
+      },
+      async updateMany(args: unknown) {
+        calls.push(["cloudSourceSubmission.updateMany", args]);
+        return { count: 2 };
+      },
+    },
+    cloudSourceTask: {
+      async findMany(args: unknown) {
+        calls.push(["cloudSourceTask.findMany", args]);
+        const where = (args as { where?: { builderId?: unknown; id?: unknown } }).where;
+        if (where?.builderId) {
+          return [
+            {
+              id: "task_a",
+              builderId: "cloud_builder_a",
+              cloudLanguageLibraryId: "cloud_library_zh",
+              summaryLanguage: "zh",
+            },
+          ];
+        }
+        if (where?.id) return [{ id: "task_a" }];
+        return [];
+      },
+      async updateMany(args: unknown) {
+        calls.push(["cloudSourceTask.updateMany", args]);
+        return { count: 1 };
+      },
+    },
+    cloudFetchQueueItem: {
+      async updateMany(args: unknown) {
+        calls.push(["cloudFetchQueueItem.updateMany", args]);
+        return { count: 1 };
+      },
+    },
+  };
+
+  const result = await stopUserCloudSourceSubmissions({
+    userId: "user_1",
+    prisma: prisma as never,
+    now: new Date("2026-07-03T00:00:00.000Z"),
+  });
+
+  assert.deepEqual(result, { stoppedSources: 2, cancelledQueuedTasks: 1 });
+  assert.deepEqual(calls[1], [
+    "cloudSourceSubmission.updateMany",
+    {
+      where: { id: { in: ["sub_a", "sub_b"] } },
+      data: { active: false },
+    },
+  ]);
+  assert.ok(
+    calls.some(
+      (call) =>
+        Array.isArray(call) &&
+        call[0] === "cloudSourceTask.updateMany" &&
+        JSON.stringify(call[1]).includes('"status":"PAUSED"'),
+    ),
+  );
+  assert.ok(
+    calls.some(
+      (call) =>
+        Array.isArray(call) &&
+        call[0] === "cloudFetchQueueItem.updateMany" &&
+        JSON.stringify(call[1]).includes('"cloudSourceTaskId"'),
+    ),
+  );
 });

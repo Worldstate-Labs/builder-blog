@@ -4,6 +4,7 @@ import { normalizeCloudSourceSubmissionInput } from "@/lib/cloud-source-contract
 import {
   CloudSourceSubmissionError,
   getUserCloudSubmissionSummary,
+  stopUserCloudSourceSubmissions,
   submitUserPrivateLibraryToCloud,
 } from "@/lib/cloud-source-library";
 
@@ -71,4 +72,19 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Cloud source submission failed.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+
+export async function DELETE() {
+  const session = await getCurrentSession();
+  const userId = session?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const result = await stopUserCloudSourceSubmissions({ userId });
+  return NextResponse.json({
+    status: "ok",
+    stoppedSources: result.stoppedSources,
+    cancelledQueuedTasks: result.cancelledQueuedTasks,
+  });
 }

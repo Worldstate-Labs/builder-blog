@@ -120,6 +120,16 @@ test("cloud submission route exposes a GET summary of the user's active submissi
   assert.match(route, /hasActiveSubmission/);
 });
 
+test("cloud submission route lets the user stop their active cloud fetch submissions", () => {
+  const route = source("src/app/api/cloud-library/source-submissions/route.ts");
+
+  assert.match(route, /export async function DELETE/);
+  assert.match(route, /getCurrentSession\(\)/);
+  assert.match(route, /stopUserCloudSourceSubmissions\(\{ userId \}\)/);
+  assert.match(route, /stoppedSources/);
+  assert.match(route, /cancelledQueuedTasks/);
+});
+
 test("cloud scheduler is work-conserving: releases by nextAttemptAt, no latest-bucket deferral", () => {
   const scheduler = source("src/lib/cloud-source-scheduler.ts");
 

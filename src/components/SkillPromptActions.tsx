@@ -22,6 +22,7 @@ type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
 type AgentRuntime = "claude" | "codex" | "hermes" | "openclaw";
 type RuntimeType = "cloud" | "local";
+type StopFetchTarget = "cloud" | "local";
 
 const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
@@ -333,7 +334,9 @@ const PROMPT_CONFIG = {
 
 export function SkillPromptActions({
   activeSchedule = null,
+  cloudFetchActive = false,
   context,
+  localFetchActive,
   tokens = [],
   summaryLanguage = null,
   digestMaxPostAgeDays = null,
@@ -341,7 +344,9 @@ export function SkillPromptActions({
   showStop = true,
 }: {
   activeSchedule?: ActiveScheduleInfo | null;
+  cloudFetchActive?: boolean;
   context: SkillPromptContext;
+  localFetchActive?: boolean;
   tokens?: AgentTokenListItem[];
   // Current account-wide summary language (null = default zh). Set in the
   // one-time/cron dialogs; persisted via /api/settings/summary-language.
@@ -361,6 +366,11 @@ export function SkillPromptActions({
   // shapes if a future context omits stop support.
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
   const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop fetching";
+  const [cloudStopDismissed, setCloudStopDismissed] = useState(false);
+  const localStopActive = localFetchActive ?? showStop;
+  const canStopLocal = Boolean(stopJob && localStopActive);
+  const canStopCloud = context === "library" && cloudFetchActive && !cloudStopDismissed;
+  const showStopButton = showStop && (canStopLocal || canStopCloud);
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
@@ -565,9 +575,9 @@ export function SkillPromptActions({
   }
 
   function openStopDialog() {
-    if (!stopJob) return;
+    if (!canStopLocal && !canStopCloud) return;
     setStatus(null);
-    if (activeTokens.length === 0) {
+    if (canStopLocal && !canStopCloud && activeTokens.length === 0) {
       setStatus({ kind: "info", text: missingAccessMessage });
       return;
     }
@@ -577,7 +587,34 @@ export function SkillPromptActions({
   // Stop flows report "stopped" back to the server after local removal, so they
   // need a token-backed prompt just like setup. Use the most-recent active key
   // to keep the stop confirmation dialog to Cancel + Copy.
-  async function copyStopCommand() {
+  async function copyStopCommand(target: StopFetchTarget) {
+    if (target === "cloud") {
+      try {
+        const response = await fetch("/api/cloud-library/source-submissions", {
+          method: "DELETE",
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          setStatus({
+            kind: "error",
+            text: body?.error ?? "Could not stop cloud fetching.",
+          });
+          return false;
+        }
+        setCloudStopDismissed(true);
+        setStatus({
+          kind: "info",
+          text: `Cloud fetching stopped for ${body?.stoppedSources ?? 0} source${
+            body?.stoppedSources === 1 ? "" : "s"
+          }.`,
+        });
+        setStopDialogOpen(false);
+        return true;
+      } catch {
+        setStatus({ kind: "error", text: "Could not stop cloud fetching." });
+        return false;
+      }
+    }
     if (!stopJob) return false;
     const token = activeTokens[0];
     if (!token) {
@@ -615,7 +652,7 @@ export function SkillPromptActions({
         )}
         {copiedTarget === "cron" || copiedTarget === "once" ? "Copied" : config.cronLabel}
       </button>
-      {stopJob && showStop ? (
+      {showStopButton ? (
         <button
           className="fb-btn light compact"
           onClick={openStopDialog}
@@ -693,6 +730,8 @@ export function SkillPromptActions({
       <StopScheduleDialog
         open={stopDialogOpen}
         context={context}
+        canStopCloud={canStopCloud}
+        canStopLocal={canStopLocal}
         schedule={activeSchedule}
         title={stopLabel}
         onCancel={() => setStopDialogOpen(false)}
@@ -712,6 +751,8 @@ export function SkillPromptActions({
 
 function StopScheduleDialog({
   open,
+  canStopCloud,
+  canStopLocal,
   context,
   schedule,
   title,
@@ -719,16 +760,28 @@ function StopScheduleDialog({
   onConfirm,
 }: {
   open: boolean;
+  canStopCloud: boolean;
+  canStopLocal: boolean;
   context: SkillPromptContext;
   schedule: ActiveScheduleInfo | null;
   title: string;
   onCancel: () => void;
-  onConfirm: () => boolean | void | Promise<boolean | void>;
+  onConfirm: (target: StopFetchTarget) => boolean | void | Promise<boolean | void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedTarget, setSelectedTarget] = useState<StopFetchTarget>("local");
   const scheduleName = context === "digest" ? "AI Digest" : "Fetch sources";
   const machineLabel = formatScheduleMachine(schedule);
+  const showFetchTargetPicker = context === "library";
+  const effectiveSelectedTarget =
+    selectedTarget === "cloud" && canStopCloud
+      ? "cloud"
+      : selectedTarget === "local" && canStopLocal
+        ? "local"
+        : canStopLocal
+          ? "local"
+          : "cloud";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -757,9 +810,11 @@ function StopScheduleDialog({
 
   async function confirm() {
     if (submitting) return;
+    if (effectiveSelectedTarget === "local" && !canStopLocal) return;
+    if (effectiveSelectedTarget === "cloud" && !canStopCloud) return;
     setSubmitting(true);
     try {
-      await onConfirm();
+      await onConfirm(effectiveSelectedTarget);
     } finally {
       setSubmitting(false);
     }
@@ -786,36 +841,96 @@ function StopScheduleDialog({
             {title}
           </h2>
           <p className="token-picker-sub">
-            Copy this prompt to stop the active schedule for {scheduleName} in your Local Agent.
+            {showFetchTargetPicker
+              ? "Choose which Fetch sources runtime to stop."
+              : `Copy this prompt to stop the active schedule for ${scheduleName} in your Local Agent.`}
           </p>
         </header>
 
         <div className="stop-schedule-body">
+          {showFetchTargetPicker ? (
+            <fieldset className="stop-schedule-targets">
+              <legend className="cron-field-label">Fetching runtime</legend>
+              <label className="cron-check">
+                <input
+                  type="radio"
+                  name="stop-fetch-target"
+                  value="local"
+                  checked={effectiveSelectedTarget === "local"}
+                  disabled={!canStopLocal || submitting}
+                  onChange={() => setSelectedTarget("local")}
+                  className="cron-check-input"
+                />
+                <span className="cron-check-body">
+                  <span className="cron-check-name">Your Local Agent</span>
+                  <span className="cron-field-hint">
+                    {canStopLocal
+                      ? "Copy a prompt to stop the local recurring schedule."
+                      : "No local run is active."}
+                  </span>
+                </span>
+              </label>
+              <label className="cron-check">
+                <input
+                  type="radio"
+                  name="stop-fetch-target"
+                  value="cloud"
+                  checked={effectiveSelectedTarget === "cloud"}
+                  disabled={!canStopCloud || submitting}
+                  onChange={() => setSelectedTarget("cloud")}
+                  className="cron-check-input"
+                />
+                <span className="cron-check-body">
+                  <span className="cron-check-name">Cloud</span>
+                  <span className="cron-field-hint">
+                    {canStopCloud
+                      ? "Stop cloud fetching for your submitted sources."
+                      : "No cloud Fetch sources submission is active."}
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+          ) : null}
           <dl className="stop-schedule-details">
             <div className="stop-schedule-detail">
               <dt>Schedule</dt>
-              <dd>{scheduleName}</dd>
-            </div>
-            <div className="stop-schedule-detail">
-              <dt>Frequency</dt>
-              <dd>{schedule?.frequencyLabel ?? "Active schedule"}</dd>
-            </div>
-            <div className="stop-schedule-detail">
-              <dt>Runtime</dt>
-              <dd>{formatScheduleRuntime(schedule?.runtime ?? null)}</dd>
-            </div>
-            <div className="stop-schedule-detail">
-              <dt>Started</dt>
               <dd>
-                <RelativeTime value={schedule?.startedAt} fallback="Unknown" />
+                {showFetchTargetPicker
+                  ? effectiveSelectedTarget === "cloud"
+                    ? "Cloud Fetch sources"
+                    : "Local Agent Fetch sources"
+                  : scheduleName}
               </dd>
             </div>
-            {machineLabel ? (
+            {effectiveSelectedTarget === "local" ? (
+              <>
+                <div className="stop-schedule-detail">
+                  <dt>Frequency</dt>
+                  <dd>{schedule?.frequencyLabel ?? "Active schedule"}</dd>
+                </div>
+                <div className="stop-schedule-detail">
+                  <dt>Runtime</dt>
+                  <dd>{formatScheduleRuntime(schedule?.runtime ?? null)}</dd>
+                </div>
+                <div className="stop-schedule-detail">
+                  <dt>Started</dt>
+                  <dd>
+                    <RelativeTime value={schedule?.startedAt} fallback="Unknown" />
+                  </dd>
+                </div>
+                {machineLabel ? (
+                  <div className="stop-schedule-detail">
+                    <dt>Device</dt>
+                    <dd>{machineLabel}</dd>
+                  </div>
+                ) : null}
+              </>
+            ) : (
               <div className="stop-schedule-detail">
-                <dt>Device</dt>
-                <dd>{machineLabel}</dd>
+                <dt>Effect</dt>
+                <dd>Deactivate your cloud source submissions and cancel queued cloud fetches.</dd>
               </div>
-            ) : null}
+            )}
           </dl>
         </div>
 
@@ -831,10 +946,20 @@ function StopScheduleDialog({
           <button
             type="submit"
             className="fb-btn dark compact"
-            disabled={submitting}
+            disabled={
+              submitting ||
+              (effectiveSelectedTarget === "local" && !canStopLocal) ||
+              (effectiveSelectedTarget === "cloud" && !canStopCloud)
+            }
           >
-            <Copy aria-hidden="true" />
-            {submitting ? "Copying" : "Copy"}
+            {effectiveSelectedTarget === "local" ? <Copy aria-hidden="true" /> : <CircleStop aria-hidden="true" />}
+            {submitting
+              ? effectiveSelectedTarget === "local"
+                ? "Copying"
+                : "Stopping"
+              : effectiveSelectedTarget === "local"
+                ? "Copy"
+                : "Stop"}
           </button>
         </footer>
       </form>

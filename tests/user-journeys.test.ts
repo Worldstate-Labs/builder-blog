@@ -502,7 +502,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /compactOnly/);
-  assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
+  assert.match(buildersPage, /cloudFetchActive=\{showStopCloudFetch\}/);
+  assert.match(buildersPage, /localFetchActive=\{showStopLibraryCron\}/);
+  assert.match(buildersPage, /showStop=\{showStopFetching\}/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="digest"/);
   assert.match(buildersPage, /activeSchedule=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
@@ -522,7 +524,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Build digest/);
   assert.match(skillPromptActions, /Stop fetching/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
-  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \{scheduleName\} in your Local Agent/);
+  assert.match(skillPromptActions, /Choose which Fetch sources runtime to stop/);
+  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \$\{scheduleName\} in your Local Agent/);
   assert.match(skillPromptActions, /Schedule/);
   assert.match(skillPromptActions, /Frequency/);
   assert.match(skillPromptActions, /Runtime/);

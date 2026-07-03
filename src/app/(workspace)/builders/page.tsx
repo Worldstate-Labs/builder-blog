@@ -862,6 +862,8 @@ async function FetchSyncSection({
 }) {
   const data = await dataPromise;
   const showStopLibraryCron = data.libraryCronJob?.status === "active";
+  const showStopCloudFetch = data.cloudFetchLog.submittedSourceCount > 0;
+  const showStopFetching = showStopLibraryCron || showStopCloudFetch;
 
   return (
     <section
@@ -884,9 +886,11 @@ async function FetchSyncSection({
           actions={
             <SkillPromptActions
               activeSchedule={data.libraryCronJob}
+              cloudFetchActive={showStopCloudFetch}
               compactOnly
               context="library"
-              showStop={showStopLibraryCron}
+              localFetchActive={showStopLibraryCron}
+              showStop={showStopFetching}
               tokens={data.activeTokens}
               summaryLanguage={data.summaryLanguage}
               digestMaxPostAgeDays={data.digestMaxPostAgeDays}

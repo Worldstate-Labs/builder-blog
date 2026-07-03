@@ -115,6 +115,8 @@ type CloudSubmissionSummaryPrisma = {
   };
 };
 
+type StopCloudSubmissionsPrisma = PrismaClient;
+
 // Decide which prior active submissions a new submission supersedes. A user has
 // one logical cloud submission, so anything not in the new set is deactivated —
 // including every old-language submission when the user switches language.
@@ -171,6 +173,62 @@ export async function getUserCloudSubmissionSummary(params: {
     select: { summaryLanguage: true, frequency: true, submittedAt: true },
   });
   return summarizeActiveCloudSubmissions(rows);
+}
+
+export async function stopUserCloudSourceSubmissions(params: {
+  userId: string;
+  prisma?: StopCloudSubmissionsPrisma;
+  now?: Date;
+}): Promise<{ stoppedSources: number; cancelledQueuedTasks: number }> {
+  const prisma = params.prisma ?? (await getPrismaClient());
+  const now = params.now ?? new Date();
+  const activeSubmissions = await prisma.cloudSourceSubmission.findMany({
+    where: { userId: params.userId, active: true },
+    select: { id: true, cloudBuilderId: true },
+  });
+  if (activeSubmissions.length === 0) {
+    return { stoppedSources: 0, cancelledQueuedTasks: 0 };
+  }
+
+  const submissionIds = activeSubmissions.map((submission) => submission.id);
+  const builderIds = [...new Set(activeSubmissions.map((submission) => submission.cloudBuilderId))];
+  const stopped = await prisma.cloudSourceSubmission.updateMany({
+    where: { id: { in: submissionIds } },
+    data: { active: false },
+  });
+
+  const tasks = await prisma.cloudSourceTask.findMany({
+    where: { builderId: { in: builderIds } },
+    select: {
+      id: true,
+      builderId: true,
+      cloudLanguageLibraryId: true,
+      summaryLanguage: true,
+    },
+  });
+  for (const task of tasks) {
+    await recomputeCloudSourceTask({
+      prisma,
+      cloudLanguageLibraryId: task.cloudLanguageLibraryId,
+      builderId: task.builderId,
+      summaryLanguage: task.summaryLanguage,
+      now,
+    });
+  }
+
+  const pausedTasks = await prisma.cloudSourceTask.findMany({
+    where: { id: { in: tasks.map((task) => task.id) }, status: "PAUSED" },
+    select: { id: true },
+  });
+  const cancelled = await cancelQueuedCloudFetchForTasks({
+    prisma,
+    taskIds: pausedTasks.map((task) => task.id),
+  });
+
+  return {
+    stoppedSources: stopped.count,
+    cancelledQueuedTasks: cancelled.cancelled,
+  };
 }
 
 export function cloudLanguageLibraryHubName(summaryLanguage: string) {

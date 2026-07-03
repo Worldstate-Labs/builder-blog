@@ -6463,6 +6463,11 @@ summary.library-section-summary::after {
   justify-content: flex-start;
 }
 
+.source-sync-log-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .source-sync-log-tablist .fb-btn {
   white-space: nowrap;
 }
@@ -13505,7 +13510,8 @@ body {
   }
 
   .source-sync-log-tabs-head,
-  .source-sync-log-tablist {
+  .source-sync-log-tablist,
+  .source-sync-log-actions {
     width: 100%;
   }
 
