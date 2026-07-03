@@ -89,6 +89,30 @@ test("admin cloud fetch sync route uses admin auth and cloud sync status helper"
   assert.match(syncRoute, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
 });
 
+test("admin cloud fetch sync route keeps skipped post outcomes out of source failure counts", () => {
+  const syncRoute = source("src/app/api/admin/cloud-fetch/sync/route.ts");
+
+  assert.match(syncRoute, /const failedTaskOutcomes = sourceTaskOutcomes\.filter/);
+  assert.match(syncRoute, /taskOutcome\.status !== "skipped"/);
+  assert.match(syncRoute, /failedTaskOutcomes\.length/);
+  assert.doesNotMatch(syncRoute, /sourceTaskOutcomes\.length,\s*\)/);
+  assert.doesNotMatch(syncRoute, /firstOutcomeReason = sourceTaskOutcomes/);
+});
+
+test("cloud fetch log surfaces do not render raw source-level failure reasons as red text", () => {
+  const adminLog = source("src/components/AdminCloudFetchLog.tsx");
+  const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
+  const panel = source("src/components/FetchLogPanel.tsx");
+  const styles = source("src/app/globals.css");
+
+  for (const component of [adminLog, sourceLogItem]) {
+    assert.doesNotMatch(component, /cloud-fetch-log-task-error/);
+    assert.doesNotMatch(component, /<p[^>]*>\{[^}]*failureReason[^}]*\}<\/p>/);
+  }
+  assert.doesNotMatch(styles, /cloud-fetch-log-task-error/);
+  assert.match(panel, /no_primary_content:\s*"No primary content"/);
+});
+
 test("cloud source scheduler exposes DB-backed materialize and lease workflows", () => {
   const scheduler = source("src/lib/cloud-source-scheduler.ts");
 

@@ -151,3 +151,58 @@ test("serializeUserCloudFetchLog preserves source runs with no generated post ta
   assert.equal(result.sources[0]?.latestRunTask?.posts.length, 0);
   assert.equal(result.sources[0]?.latestRunTask?.noGeneratedFetchTasks, true);
 });
+
+test("serializeUserCloudFetchLog treats skipped-only legacy failures as on-time skips", () => {
+  const result = serializeUserCloudFetchLog(
+    [
+      submission({
+        lastSuccessAt: null,
+        lastFailureAt: new Date("2026-07-03T10:00:00.000Z"),
+        lastFailureReason: "no_primary_content",
+        consecutiveFailures: 1,
+        mustSucceedBy: new Date("2026-07-04T10:00:00.000Z"),
+        runTasks: [
+          {
+            id: "run_task_skipped",
+            builderId: "cloud_builder_1",
+            summaryLanguage: "zh",
+            status: "failed",
+            plannedPosts: 1,
+            syncedPosts: 0,
+            failedPosts: 1,
+            startedAt: new Date("2026-07-03T09:58:00.000Z"),
+            finishedAt: new Date("2026-07-03T10:00:00.000Z"),
+            actualDurationSeconds: 120,
+            estimatedDurationSeconds: 180,
+            successProbabilitySnapshot: null,
+            usageTokens: null,
+            usageCostUsd: null,
+            failureReason: "no_primary_content",
+            details: {
+              posts: [
+                {
+                  id: "post_task_skipped",
+                  url: "https://x.com/example/status/1",
+                  status: "skipped",
+                  failureReason: "no_primary_content",
+                },
+              ],
+            },
+            builder: { name: "Example Source", sourceType: "x" },
+          },
+        ],
+      }),
+    ],
+    new Date("2026-07-03T12:00:00.000Z"),
+  );
+
+  const source = result.sources[0];
+  assert.equal(source?.deadlineStatus, "ON_TIME");
+  assert.equal(source?.lastSuccessAt, "2026-07-03T10:00:00.000Z");
+  assert.equal(source?.lastFailureAt, null);
+  assert.equal(source?.lastFailureReason, null);
+  assert.equal(source?.latestRunTask?.status, "SUCCEEDED");
+  assert.equal(source?.latestRunTask?.failedPosts, 0);
+  assert.equal(source?.latestRunTask?.skippedPosts, 1);
+  assert.equal(source?.latestRunTask?.failureReason, null);
+});

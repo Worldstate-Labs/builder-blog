@@ -139,6 +139,17 @@ function serializeUserCloudFetchSource(
   const source = submission.userBuilder ?? submission.cloudBuilder;
   const task = submission.cloudBuilder.cloudSourceTask ?? null;
   const latestRunTask = task?.runTasks[0] ?? null;
+  const latestRunTaskLog = latestRunTask ? serializeCloudFetchRunTask(latestRunTask) : null;
+  const latestLegacyFailureIsSkipped =
+    latestRunTask &&
+    latestRunTaskLog?.status.toLowerCase() === "succeeded" &&
+    latestRunTask.status.toLowerCase() === "failed" &&
+    latestRunTaskLog.failedPosts === 0 &&
+    latestRunTaskLog.skippedPosts > 0;
+  const effectiveLastSuccessAt =
+    task?.lastSuccessAt ?? (latestLegacyFailureIsSkipped ? latestRunTask.finishedAt : null);
+  const lastFailureAt = latestLegacyFailureIsSkipped ? null : task?.lastFailureAt ?? null;
+  const lastFailureReason = latestLegacyFailureIsSkipped ? null : task?.lastFailureReason ?? null;
   return {
     submissionId: submission.id,
     userBuilderId: submission.userBuilderId,
@@ -156,20 +167,20 @@ function serializeUserCloudFetchSource(
     submittedAt: submission.submittedAt.toISOString(),
     sourceStatus: task?.status ?? null,
     effectiveFrequency: task?.effectiveFrequency ?? null,
-    lastSuccessAt: task?.lastSuccessAt ? task.lastSuccessAt.toISOString() : null,
-    lastFailureAt: task?.lastFailureAt ? task.lastFailureAt.toISOString() : null,
-    lastFailureReason: task?.lastFailureReason ?? null,
+    lastSuccessAt: effectiveLastSuccessAt ? effectiveLastSuccessAt.toISOString() : null,
+    lastFailureAt: lastFailureAt ? lastFailureAt.toISOString() : null,
+    lastFailureReason,
     nextAttemptAt: task?.nextAttemptAt ? task.nextAttemptAt.toISOString() : null,
     mustSucceedBy: task?.mustSucceedBy ? task.mustSucceedBy.toISOString() : null,
-    consecutiveFailures: task?.consecutiveFailures ?? null,
+    consecutiveFailures: latestLegacyFailureIsSkipped ? 0 : task?.consecutiveFailures ?? null,
     deadlineStatus: deadlineStatus({
       frequency: task?.effectiveFrequency ?? submission.frequency,
-      lastSuccessAt: task?.lastSuccessAt ?? null,
-      latestRunTask,
+      lastSuccessAt: effectiveLastSuccessAt,
+      latestRunTask: latestRunTaskLog,
       mustSucceedBy: task?.mustSucceedBy ?? null,
       now,
     }),
-    latestRunTask: latestRunTask ? serializeCloudFetchRunTask(latestRunTask) : null,
+    latestRunTask: latestRunTaskLog,
     postCount: submission.cloudBuilder._count?.feedItems ?? 0,
   };
 }
@@ -189,7 +200,7 @@ function deadlineStatus({
 }: {
   frequency: CloudFetchFrequency;
   lastSuccessAt: Date | null;
-  latestRunTask: CloudFetchRunTaskRow | null;
+  latestRunTask: CloudFetchRunLogTask | null;
   mustSucceedBy: Date | null;
   now: Date;
 }): UserCloudFetchDeadlineStatus {

@@ -159,9 +159,6 @@ function CloudSourceLogDetail({
               {postOutcomeSummary(source.latestRunTask)}
             </span>
           </div>
-          {source.latestRunTask.failureReason ? (
-            <p className="cloud-fetch-log-task-error">{source.latestRunTask.failureReason}</p>
-          ) : null}
           {mappedPosts.length > 0 ? (
             <ul className="sync-panel-run-card-candidate-list">
               {mappedPosts.map((task, index) => (

@@ -14375,13 +14375,6 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 0.2rem;
 }
-.cloud-fetch-log-task-error {
-  color: var(--danger);
-  font-size: 0.75rem;
-  margin: 0 0 0.2rem;
-  padding-left: 0.2rem;
-}
-
 @media (max-width: 760px) {
   .cloud-worker-host-head {
     flex-direction: column;

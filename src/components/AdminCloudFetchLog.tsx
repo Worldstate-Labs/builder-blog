@@ -964,9 +964,6 @@ export function AdminCloudFetchLog({
                                   {taskUsage ? ` · ${taskUsage}` : ""}
                                 </span>
                               </button>
-                              {task.failureReason ? (
-                                <p className="cloud-fetch-log-task-error">{task.failureReason}</p>
-                              ) : null}
                               {taskOpen ? (
                                 <div className="cloud-fetch-log-task-detail">
                                   <div className="cloud-fetch-log-task-facts" aria-label="Source task details">

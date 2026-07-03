@@ -224,36 +224,45 @@ function reconcileTaskResultsWithFeedSync({
 
     const serverSynced = serverResults.filter((itemResult) => itemResult.status === "synced").length;
     const serverFailed = serverResults.filter((itemResult) => itemResult.status === "failed");
+    const skippedTaskOutcomes = sourceTaskOutcomes.filter(
+      (taskOutcome) => taskOutcome.status === "skipped",
+    );
+    const failedTaskOutcomes = sourceTaskOutcomes.filter(
+      (taskOutcome) => taskOutcome.status !== "skipped",
+    );
     const syncedPosts = serverResults.length > 0
       ? Math.min(taskResult.syncedPosts, serverSynced)
       : taskResult.syncedPosts;
     const clientSyncedRejectedByServer = serverResults.length > 0
       ? Math.max(0, taskResult.syncedPosts - serverSynced)
       : 0;
+    const clientFailedPosts = Math.max(0, taskResult.failedPosts - skippedTaskOutcomes.length);
     const failedPosts = Math.max(
-      taskResult.failedPosts,
-      serverFailed.length + clientSyncedRejectedByServer + sourceTaskOutcomes.length,
+      clientFailedPosts,
+      serverFailed.length + clientSyncedRejectedByServer + failedTaskOutcomes.length,
     );
     const status =
       syncedPosts === 0 && failedPosts >= taskResult.plannedPosts
         ? "failed"
         : failedPosts > 0
           ? "partial"
-          : taskResult.status;
-    const firstOutcomeReason = sourceTaskOutcomes[0]?.reason;
+          : taskResult.status !== "succeeded" && syncedPosts + skippedTaskOutcomes.length >= taskResult.plannedPosts
+            ? "succeeded"
+            : taskResult.status;
+    const firstFailureReason = serverFailed[0]?.reason ?? failedTaskOutcomes[0]?.reason;
     const failureReason =
       status === "failed"
-        ? taskResult.failureReason ?? serverFailed[0]?.reason ?? firstOutcomeReason ?? "cloud_feed_sync_failed"
+        ? firstFailureReason ?? taskResult.failureReason ?? "cloud_feed_sync_failed"
         : status === "partial"
-          ? taskResult.failureReason ?? serverFailed[0]?.reason ?? firstOutcomeReason ?? "cloud_task_partial"
-        : taskResult.failureReason;
+          ? firstFailureReason ?? taskResult.failureReason ?? "cloud_task_partial"
+        : undefined;
 
     return {
       ...taskResult,
       status,
       syncedPosts,
       failedPosts,
-      ...(failureReason ? { failureReason } : {}),
+      failureReason: failureReason ?? null,
       details: {
         ...taskResult.details,
         serverFeedSync: {

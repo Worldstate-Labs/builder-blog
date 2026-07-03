@@ -2846,6 +2846,7 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   not_summarized: "Read but no summary was created",
   not_synced: "Not synced",
   content_missing: "No readable content was found",
+  no_primary_content: "No primary content",
   content_too_short: "The readable content was too short",
   content_validation_failed: "Fetched content failed validation",
   runtime_auth_failed: "OpenClaw auth failed before this post could be fetched",

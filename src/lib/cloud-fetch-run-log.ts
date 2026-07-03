@@ -323,30 +323,44 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
   const details = record(task.details);
   const posts = parseCloudTaskPosts(task.details);
   const skippedPosts = posts.filter((post) => String(post.status ?? "").toLowerCase() === "skipped").length;
+  const skippedOnlyLegacyFailure =
+    task.failedPosts > 0 &&
+    skippedPosts > 0 &&
+    task.failedPosts <= skippedPosts &&
+    task.syncedPosts + skippedPosts >= task.plannedPosts &&
+    isFailureStatus(task.status);
+  const failedPosts = skippedOnlyLegacyFailure ? 0 : task.failedPosts;
+  const status = skippedOnlyLegacyFailure ? "SUCCEEDED" : task.status;
+  const failureReason = skippedOnlyLegacyFailure ? null : task.failureReason ?? null;
   return {
     id: task.id,
     builderId: task.builderId,
     sourceName: task.builder?.name ?? null,
     sourceType: task.builder?.sourceType ?? null,
     summaryLanguage: task.summaryLanguage,
-    status: task.status,
+    status,
     startedAt: task.startedAt ? task.startedAt.toISOString() : null,
     finishedAt: task.finishedAt ? task.finishedAt.toISOString() : null,
     plannedPosts: task.plannedPosts,
     syncedPosts: task.syncedPosts,
-    failedPosts: task.failedPosts,
+    failedPosts,
     skippedPosts,
-    pendingPosts: Math.max(0, task.plannedPosts - task.syncedPosts - task.failedPosts - skippedPosts),
+    pendingPosts: Math.max(0, task.plannedPosts - task.syncedPosts - failedPosts - skippedPosts),
     durationMs,
     estimatedDurationSeconds: task.estimatedDurationSeconds ?? null,
     successProbability: task.successProbabilitySnapshot ?? null,
     usageTokens: task.usageTokens ?? null,
     usageCostUsd: task.usageCostUsd == null ? null : Number(task.usageCostUsd),
-    failureReason: task.failureReason ?? null,
+    failureReason,
     posts,
     workerUsages: parseCloudWorkerUsages(task.details),
     noGeneratedFetchTasks: details?.noGeneratedFetchTasks === true,
   };
+}
+
+function isFailureStatus(status: string | null | undefined): boolean {
+  const normalized = String(status ?? "").toLowerCase();
+  return normalized === "failed" || normalized === "partial";
 }
 
 // The sync CLI stores each source's per-post outcomes under the task details

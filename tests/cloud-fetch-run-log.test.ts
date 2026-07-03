@@ -154,6 +154,62 @@ test("serializeCloudFetchRun aggregates planned/synced/failed/skipped posts acro
   assert.equal(result.durationMs, 5 * 60_000);
 });
 
+test("serializeCloudFetchRun does not double-count skipped-only source tasks as failed", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "FAILED",
+    tasksSucceeded: 0,
+    tasksFailed: 1,
+    tasks: [
+      {
+        id: "rt_skipped",
+        builderId: "cb_skipped",
+        summaryLanguage: "zh",
+        status: "FAILED",
+        plannedPosts: 1,
+        syncedPosts: 0,
+        failedPosts: 1,
+        startedAt: new Date("2026-07-03T15:01:42.181Z"),
+        finishedAt: new Date("2026-07-03T15:07:23.665Z"),
+        actualDurationSeconds: 341,
+        estimatedDurationSeconds: 180,
+        successProbabilitySnapshot: null,
+        usageTokens: null,
+        usageCostUsd: null,
+        failureReason: "no_primary_content",
+        details: {
+          posts: [
+            {
+              id: "post_skip",
+              url: "https://x.com/example/status/1",
+              status: "skipped",
+              contentStatus: "ready",
+              failureReason: "no_primary_content",
+            },
+          ],
+          serverTaskOutcomes: [
+            {
+              fetchTaskId: "post_skip",
+              status: "skipped",
+              reason: "no_primary_content",
+            },
+          ],
+        },
+        builder: { name: "Skipped Source", sourceType: "x" },
+      },
+    ],
+  });
+
+  assert.equal(result.failedPosts, 0);
+  assert.equal(result.skippedPosts, 1);
+  assert.equal(result.pendingPosts, 0);
+  assert.equal(result.tasks[0]?.status, "SUCCEEDED");
+  assert.equal(result.tasks[0]?.failedPosts, 0);
+  assert.equal(result.tasks[0]?.skippedPosts, 1);
+  assert.equal(result.tasks[0]?.pendingPosts, 0);
+  assert.equal(result.tasks[0]?.failureReason, null);
+});
+
 test("task duration falls back to finished-started when actualDurationSeconds is null", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,
