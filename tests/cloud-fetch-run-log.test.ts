@@ -147,9 +147,9 @@ test("serializeCloudFetchRun aggregates planned/synced/failed/skipped posts acro
 
   assert.equal(result.plannedPosts, 7);
   assert.equal(result.syncedPosts, 3);
-  assert.equal(result.failedPosts, 2);
+  assert.equal(result.failedPosts, 1);
   assert.equal(result.skippedPosts, 1);
-  assert.equal(result.pendingPosts, 1);
+  assert.equal(result.pendingPosts, 2);
   assert.equal(result.tasks[1].skippedPosts, 1);
   assert.equal(result.durationMs, 5 * 60_000);
 });

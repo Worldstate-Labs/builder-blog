@@ -8657,8 +8657,7 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceT
   const groups = [...grouped.values()];
   const workerUsageGroupCounts = countWorkerUsageGroupMatches(groups, workerUsages);
   return groups.map((group) => {
-    const failed = group.syncedPosts === 0 && group.failedPosts > 0 && group.failedPosts >= group.plannedPosts;
-    const partial = !failed && group.failedPosts > 0;
+    const outcomeSummary = summarizeCloudSyncSourceGroup(group);
     const fetchTaskIds = new Set(group.details.fetchTaskIds);
     const groupWorkerUsages = workerUsages.filter((usage) => {
       return workerUsageMatchesFetchTaskIds(usage, fetchTaskIds);
@@ -8672,16 +8671,66 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceT
     }
     return {
       cloudSourceTaskId: group.cloudSourceTaskId,
-      status: failed ? "failed" : partial ? "partial" : "succeeded",
-      plannedPosts: group.plannedPosts,
-      syncedPosts: group.syncedPosts,
-      failedPosts: group.failedPosts,
+      status: outcomeSummary.status,
+      plannedPosts: outcomeSummary.plannedPosts,
+      syncedPosts: outcomeSummary.syncedPosts,
+      failedPosts: outcomeSummary.failedPosts,
       ...(groupUsage?.totalTokens != null ? { usageTokens: groupUsage.totalTokens } : {}),
       ...(groupUsage?.costUsd != null ? { usageCostUsd: groupUsage.costUsd } : {}),
-      ...(failed || partial ? { failureReason: group.failureReason || "cloud_task_failed" } : {}),
+      ...(outcomeSummary.failureReason ? { failureReason: outcomeSummary.failureReason } : {}),
       details: group.details,
     };
   });
+}
+
+function summarizeCloudSyncSourceGroup(group) {
+  const posts = Array.isArray(group?.details?.posts) ? group.details.posts : [];
+  const plannedPosts = nonNegativeInteger(group?.plannedPosts);
+  const syncedPosts = Math.min(
+    plannedPosts,
+    Math.max(nonNegativeInteger(group?.syncedPosts), posts.filter((post) => postStatus(post) === "synced").length),
+  );
+  const skippedPosts = posts.filter((post) => postStatus(post) === "skipped").length;
+  const failedPostReasons = posts
+    .filter((post) => {
+      const status = postStatus(post);
+      return status === "failed" || status === "blocked" || status === "action_needed";
+    })
+    .map((post) => String(post?.failureReason || post?.reason || "").trim())
+    .filter(Boolean);
+  const failedFromPosts = failedPostReasons.length;
+  const rawFailedPosts = nonNegativeInteger(group?.failedPosts);
+  const failedPosts = Math.min(
+    plannedPosts,
+    failedFromPosts + Math.max(0, rawFailedPosts - failedFromPosts - skippedPosts),
+  );
+  const pendingPosts = Math.max(0, plannedPosts - syncedPosts - skippedPosts - failedPosts);
+  const status = failedPosts > 0
+    ? syncedPosts === 0 && skippedPosts === 0 && failedPosts >= plannedPosts
+      ? "failed"
+      : "partial"
+    : pendingPosts > 0
+      ? "partial"
+      : "succeeded";
+  return {
+    status,
+    plannedPosts,
+    syncedPosts,
+    failedPosts,
+    pendingPosts,
+    failureReason: failedPosts > 0
+      ? failedPostReasons[0] || String(group?.failureReason || "cloud_task_failed").trim()
+      : null,
+  };
+}
+
+function postStatus(post) {
+  const status = String(post?.status ?? "").trim().toLowerCase();
+  return status || null;
+}
+
+function nonNegativeInteger(value) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
 }
 
 function aggregateWorkerUsageSummaries(workerUsages = []) {

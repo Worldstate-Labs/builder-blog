@@ -4,6 +4,8 @@
 // secondary history rows, and CloudFetchRunTask rows are per-source outcomes.
 // Pure mapping so it stays unit-testable without a database.
 
+import { deriveCloudFetchOutcomeSummary } from "@/lib/cloud-fetch-outcome-summary";
+
 export type CloudFetchPostOutcome = {
   id: string | null;
   title: string | null;
@@ -322,45 +324,38 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
         : null;
   const details = record(task.details);
   const posts = parseCloudTaskPosts(task.details);
-  const skippedPosts = posts.filter((post) => String(post.status ?? "").toLowerCase() === "skipped").length;
-  const skippedOnlyLegacyFailure =
-    task.failedPosts > 0 &&
-    skippedPosts > 0 &&
-    task.failedPosts <= skippedPosts &&
-    task.syncedPosts + skippedPosts >= task.plannedPosts &&
-    isFailureStatus(task.status);
-  const failedPosts = skippedOnlyLegacyFailure ? 0 : task.failedPosts;
-  const status = skippedOnlyLegacyFailure ? "SUCCEEDED" : task.status;
-  const failureReason = skippedOnlyLegacyFailure ? null : task.failureReason ?? null;
+  const outcomeSummary = deriveCloudFetchOutcomeSummary({
+    status: task.status,
+    plannedPosts: task.plannedPosts,
+    syncedPosts: task.syncedPosts,
+    failedPosts: task.failedPosts,
+    failureReason: task.failureReason,
+    posts,
+  });
   return {
     id: task.id,
     builderId: task.builderId,
     sourceName: task.builder?.name ?? null,
     sourceType: task.builder?.sourceType ?? null,
     summaryLanguage: task.summaryLanguage,
-    status,
+    status: outcomeSummary.status,
     startedAt: task.startedAt ? task.startedAt.toISOString() : null,
     finishedAt: task.finishedAt ? task.finishedAt.toISOString() : null,
-    plannedPosts: task.plannedPosts,
-    syncedPosts: task.syncedPosts,
-    failedPosts,
-    skippedPosts,
-    pendingPosts: Math.max(0, task.plannedPosts - task.syncedPosts - failedPosts - skippedPosts),
+    plannedPosts: outcomeSummary.plannedPosts,
+    syncedPosts: outcomeSummary.syncedPosts,
+    failedPosts: outcomeSummary.failedPosts,
+    skippedPosts: outcomeSummary.skippedPosts,
+    pendingPosts: outcomeSummary.pendingPosts,
     durationMs,
     estimatedDurationSeconds: task.estimatedDurationSeconds ?? null,
     successProbability: task.successProbabilitySnapshot ?? null,
     usageTokens: task.usageTokens ?? null,
     usageCostUsd: task.usageCostUsd == null ? null : Number(task.usageCostUsd),
-    failureReason,
+    failureReason: outcomeSummary.failureReason,
     posts,
     workerUsages: parseCloudWorkerUsages(task.details),
     noGeneratedFetchTasks: details?.noGeneratedFetchTasks === true,
   };
-}
-
-function isFailureStatus(status: string | null | undefined): boolean {
-  const normalized = String(status ?? "").toLowerCase();
-  return normalized === "failed" || normalized === "partial";
 }
 
 // The sync CLI stores each source's per-post outcomes under the task details

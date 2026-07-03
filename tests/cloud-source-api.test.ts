@@ -92,9 +92,9 @@ test("admin cloud fetch sync route uses admin auth and cloud sync status helper"
 test("admin cloud fetch sync route keeps skipped post outcomes out of source failure counts", () => {
   const syncRoute = source("src/app/api/admin/cloud-fetch/sync/route.ts");
 
-  assert.match(syncRoute, /const failedTaskOutcomes = sourceTaskOutcomes\.filter/);
-  assert.match(syncRoute, /taskOutcome\.status !== "skipped"/);
-  assert.match(syncRoute, /failedTaskOutcomes\.length/);
+  assert.match(syncRoute, /deriveCloudFetchOutcomeSummary/);
+  assert.match(syncRoute, /observedPosts/);
+  assert.match(syncRoute, /sourceTaskOutcomes/);
   assert.doesNotMatch(syncRoute, /sourceTaskOutcomes\.length,\s*\)/);
   assert.doesNotMatch(syncRoute, /firstOutcomeReason = sourceTaskOutcomes/);
 });

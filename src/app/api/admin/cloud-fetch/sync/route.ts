@@ -11,6 +11,7 @@ import {
   applyCloudFetchTaskSyncResult,
   loadCloudFetchSyncConfig,
 } from "@/lib/cloud-source-sync";
+import { deriveCloudFetchOutcomeSummary } from "@/lib/cloud-fetch-outcome-summary";
 import {
   syncCloudLanguageLibraryHub,
   upsertSourceCandidateFromCloudBuilder,
@@ -223,51 +224,44 @@ function reconcileTaskResultsWithFeedSync({
     if (serverResults.length === 0 && sourceTaskOutcomes.length === 0) return taskResult;
 
     const serverSynced = serverResults.filter((itemResult) => itemResult.status === "synced").length;
-    const serverFailed = serverResults.filter((itemResult) => itemResult.status === "failed");
-    const skippedTaskOutcomes = sourceTaskOutcomes.filter(
-      (taskOutcome) => taskOutcome.status === "skipped",
-    );
-    const failedTaskOutcomes = sourceTaskOutcomes.filter(
-      (taskOutcome) => taskOutcome.status !== "skipped",
-    );
     const syncedPosts = serverResults.length > 0
       ? Math.min(taskResult.syncedPosts, serverSynced)
       : taskResult.syncedPosts;
     const clientSyncedRejectedByServer = serverResults.length > 0
       ? Math.max(0, taskResult.syncedPosts - serverSynced)
       : 0;
-    const clientFailedPosts = Math.max(0, taskResult.failedPosts - skippedTaskOutcomes.length);
-    const failedPosts = Math.max(
-      clientFailedPosts,
-      serverFailed.length + clientSyncedRejectedByServer + failedTaskOutcomes.length,
-    );
-    const status =
-      syncedPosts === 0 && failedPosts >= taskResult.plannedPosts
-        ? "failed"
-        : failedPosts > 0
-          ? "partial"
-          : taskResult.status !== "succeeded" && syncedPosts + skippedTaskOutcomes.length >= taskResult.plannedPosts
-            ? "succeeded"
-            : taskResult.status;
-    const firstFailureReason = serverFailed[0]?.reason ?? failedTaskOutcomes[0]?.reason;
-    const failureReason =
-      status === "failed"
-        ? firstFailureReason ?? taskResult.failureReason ?? "cloud_feed_sync_failed"
-        : status === "partial"
-          ? firstFailureReason ?? taskResult.failureReason ?? "cloud_task_partial"
-        : undefined;
+    const observedPosts = [
+      ...serverResults.map((itemResult) => ({
+        status: itemResult.status === "synced" ? "synced" : "failed",
+        reason: itemResult.reason,
+      })),
+      ...sourceTaskOutcomes,
+      ...Array.from({ length: clientSyncedRejectedByServer }, () => ({
+        status: "failed",
+        reason: "cloud_feed_sync_rejected",
+      })),
+    ];
+    const summary = deriveCloudFetchOutcomeSummary({
+      status: taskResult.status,
+      plannedPosts: taskResult.plannedPosts,
+      syncedPosts,
+      failedPosts: taskResult.failedPosts,
+      failureReason: taskResult.failureReason,
+      posts: observedPosts,
+    });
+    const status = summary.status.toLowerCase() as "succeeded" | "partial" | "failed";
 
     return {
       ...taskResult,
       status,
       syncedPosts,
-      failedPosts,
-      failureReason: failureReason ?? null,
+      failedPosts: summary.failedPosts,
+      failureReason: summary.failureReason,
       details: {
         ...taskResult.details,
         serverFeedSync: {
           syncedPosts,
-          failedPosts,
+          failedPosts: summary.failedPosts,
           itemResults: serverResults.map((itemResult) => ({
             fetchTaskId: itemResult.fetchTaskId,
             status: itemResult.status,

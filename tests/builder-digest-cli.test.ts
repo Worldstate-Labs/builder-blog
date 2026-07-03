@@ -2813,6 +2813,46 @@ test("cloud sync task results mark mixed synced and failed posts partial", async
   assert.equal(payload.taskResults[0].failureReason, "worker_missing_result");
 });
 
+test("cloud sync task results treat skipped post outcomes as terminal non-failures", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: "task_skipped",
+          status: "skipped",
+          reason: "no_primary_content",
+          evidence: { bodyWords: 30 },
+        },
+      ],
+    },
+    "cloud_run_1",
+    [
+      {
+        id: "task_skipped",
+        type: "fetch_post",
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_1",
+        builder: "X | Peter",
+        builderId: "cloud_builder_1",
+        sourceType: "x",
+        url: "https://x.com/example/status/1",
+        item: { kind: "TWEET", externalId: "1", url: "https://x.com/example/status/1" },
+      },
+    ],
+  );
+
+  assert.equal(payload.taskResults.length, 1);
+  assert.equal(payload.taskResults[0].status, "succeeded");
+  assert.equal(payload.taskResults[0].plannedPosts, 1);
+  assert.equal(payload.taskResults[0].syncedPosts, 0);
+  assert.equal(payload.taskResults[0].failedPosts, 0);
+  assert.equal(payload.taskResults[0].failureReason, undefined);
+  assert.equal(payload.taskResults[0].details.posts[0].status, "skipped");
+  assert.equal(payload.taskResults[0].details.posts[0].failureReason, "no_primary_content");
+});
+
 test("cloud sync keeps shared worker usage for lane aggregation without source double counting", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const plannedTasks = [
