@@ -265,6 +265,15 @@ function taskLabel(task: CloudWorkerHostTask): string {
   return task.title ?? task.url ?? task.id;
 }
 
+function emptySourceTaskMessage(task: CloudFetchRunLogTask): string {
+  if (task.plannedPosts === 0) return "No post tasks were generated for this source.";
+  const status = String(task.status ?? "").toLowerCase();
+  if (task.finishedAt || status === "succeeded" || status === "failed" || status === "partial") {
+    return "No per-post outcomes were recorded for this source.";
+  }
+  return "This source is still running. Post task outcomes appear after its worker shard sends the first synced result.";
+}
+
 function sortedWorkerTasks(tasks: CloudWorkerHostTask[]): CloudWorkerHostTask[] {
   return [...tasks].sort((a, b) => {
     const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
@@ -992,8 +1001,7 @@ export function AdminCloudFetchLog({
                                     </ul>
                                   ) : (
                                     <p className="cron-field-hint">
-                                      This source is still running. Post task outcomes appear after
-                                      its worker shard sends the first synced result.
+                                      {emptySourceTaskMessage(task)}
                                     </p>
                                   )}
                                 </div>
