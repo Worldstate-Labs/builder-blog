@@ -1964,6 +1964,14 @@ test("singlePostFetchInstructions prepends common fetching rules", async () => {
   assert.doesNotMatch(blog.prompt, /Source-specific fetching rules/);
 });
 
+test("default fetch guidance forbids secondary-source replacement content", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  assert.match(cli.DEFAULT_FETCH_GUIDANCE, /Primary content means content from `task\.item\.url`/);
+  assert.match(cli.DEFAULT_FETCH_GUIDANCE, /Do not use web search\s+snippets or related reporting/);
+  assert.match(cli.DEFAULT_FETCH_GUIDANCE, /primary_content_unavailable/);
+});
+
 test("agent sync validation rejects legacy task result shapes", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
 
@@ -4706,6 +4714,84 @@ test("merge-task-results classifies partial shard payloads as incomplete results
     })),
     [{ shard: "shard-0-result.json", status: "incomplete", missingTasks: 1 }],
   );
+});
+
+test("merge-task-results normalizes overlong worker summaries before sync", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const longSummary = `${"A useful summary sentence. ".repeat(70)}Source: https://example.com/post`;
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "ready-post",
+        agentWorkType: "fetch_post",
+        contentStatus: "ready",
+        builder: "Podcast",
+        builderSync: { builderId: "podcast-builder" },
+        item: {
+          kind: "PODCAST_EPISODE",
+          externalId: "episode-1",
+          title: "Episode one",
+          url: "https://example.com/episode-1",
+          body: "The supplied ready body is already valid source material for this episode.",
+        },
+      },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          {
+            builderId: "podcast-builder",
+            items: [
+              {
+                kind: "PODCAST_EPISODE",
+                externalId: "episode-1",
+                title: "Episode one",
+                url: "https://example.com/episode-1",
+                summary: longSummary,
+                rawJson: { fetchTaskId: "ready-post" },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const item = merged.payload.builders[0].items[0];
+  assert.ok(item.summary.length <= 1200);
+  assert.match(item.summary, /\[truncated\]$/);
+  assert.equal(item.body, fetchResult.fetchTasks[0].item.body);
+  assert.equal(item.rawJson.summaryNormalizedReason, "summary_too_long");
+  assert.equal(item.rawJson.summaryOriginalChars, longSummary.length);
+  assert.deepEqual(
+    merged.shards.map((shard: { shard: string; status: string; normalizedSummaries?: number }) => ({
+      shard: shard.shard,
+      status: shard.status,
+      normalizedSummaries: shard.normalizedSummaries,
+    })),
+    [{ shard: "shard-0-result.json", status: "ok", normalizedSummaries: 1 }],
+  );
+  assert.deepEqual(cli.validateAgentSyncPayload(fetchResult, merged.payload), {
+    status: "ok",
+    fetchTasks: 1,
+    validatedFetchTasks: 1,
+    accountedOutcomes: 0,
+    userActions: [],
+  });
 });
 
 test("merge-task-results classifies empty shard payloads as incomplete results", async () => {

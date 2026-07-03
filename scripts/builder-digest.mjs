@@ -2824,6 +2824,12 @@ export const DEFAULT_FETCH_GUIDANCE = [
   "ffmpeg, headless browser, etc.), transcription APIs - anything you have.",
   "Keep trying available methods until real primary content that meets",
   "`task.minimumContentQuality` is obtained, or no method remains.",
+  "Primary content means content from `task.item.url`, the same origin, or a",
+  "canonical/redirect URL reached from `task.item.url`. Do not use web search",
+  "snippets or related reporting from another publisher/domain as replacement",
+  "content for a blocked primary source. If primary content cannot be obtained,",
+  "write a structured failed taskOutcome with reason `primary_content_unavailable`",
+  "and evidence describing the blocked URL and attempted methods.",
 ].join("\n");
 
 // Build the per-source extraction instructions the agent literally
@@ -6249,6 +6255,33 @@ function preserveReadyTaskItem(item, task) {
   };
 }
 
+function normalizeSyncItemSummary(item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    return { item, normalized: false };
+  }
+  if (typeof item.summary !== "string") return { item, normalized: false };
+  const summary = normalizeContentText(item.summary);
+  if (summary.length <= MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
+    return { item, normalized: false };
+  }
+  const rawJson = item.rawJson && typeof item.rawJson === "object" && !Array.isArray(item.rawJson)
+    ? item.rawJson
+    : {};
+  return {
+    item: {
+      ...item,
+      summary: syncExcerpt(summary, MAX_DIGEST_HEADLINE_SUMMARY_CHARS),
+      rawJson: {
+        ...rawJson,
+        summaryNormalizedReason: rawJson.summaryNormalizedReason ?? "summary_too_long",
+        summaryOriginalChars: rawJson.summaryOriginalChars ?? summary.length,
+        summaryMaxChars: rawJson.summaryMaxChars ?? MAX_DIGEST_HEADLINE_SUMMARY_CHARS,
+      },
+    },
+    normalized: true,
+  };
+}
+
 function syncItemMatchesPlannedTask(builder, item, task, taskId) {
   const candidate = { builder, item };
   if (task?.agentWorkType === "fetch_builder_fallback") {
@@ -6378,6 +6411,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       continue;
     }
     let itemCount = 0;
+    let normalizedSummaryCount = 0;
     for (const builder of shard.payload?.builders ?? []) {
       const target = syncBuilderTarget(builder);
       for (const item of builder?.items ?? []) {
@@ -6396,10 +6430,11 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
         const mergedItem = taskId
           ? preserveReadyTaskItem(canonicalItem, match?.task)
           : canonicalItem;
+        const normalized = normalizeSyncItemSummary(mergedItem);
         if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.
-          const itemKey = `${taskId}\u0000${mergedItem?.externalId || mergedItem?.url || ""}`;
+          const itemKey = `${taskId}\u0000${normalized.item?.externalId || normalized.item?.url || ""}`;
           if (seenFallbackItems.has(itemKey)) continue;
           seenFallbackItems.add(itemKey);
         } else if (taskId) {
@@ -6407,8 +6442,9 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           syncedTaskIds.add(taskId);
         }
         if (taskId) accounted.add(taskId);
-        target.items.push(mergedItem);
+        target.items.push(normalized.item);
         itemCount += 1;
+        if (normalized.normalized) normalizedSummaryCount += 1;
       }
     }
     let outcomeCount = 0;
@@ -6430,6 +6466,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       taskOutcomes: outcomeCount,
       ...(sourceShard ? { sourceShard } : {}),
       ...(plan ? { taskCount: plan.taskCount } : {}),
+      ...(normalizedSummaryCount > 0 ? { normalizedSummaries: normalizedSummaryCount } : {}),
     });
   }
   for (const summary of shardSummaries) {
