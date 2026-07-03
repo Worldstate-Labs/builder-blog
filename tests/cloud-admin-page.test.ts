@@ -246,11 +246,14 @@ test("cloud library explorer lists libraries and renders recent posts via Builde
   const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
 
   assert.match(explorer, /postCount/);
+  assert.match(explorer, /submitterCount/);
   assert.match(explorer, /statusChipLabel/);
   assert.match(explorer, /CloudSourceLogItem/);
-  assert.match(explorer, /showSubmitters=\{false\}/);
+  assert.match(explorer, /showSubmitters=\{true\}/);
+  assert.match(explorer, /\/api\/admin\/cloud-fetch\/sources\/\$\{builderId\}/);
+  assert.match(explorer, /submitters: detail\?\.submitters/);
   assert.doesNotMatch(explorer, /BuilderFeedItems/);
-  assert.doesNotMatch(explorer, /\/api\/admin\/cloud-fetch\/sources\//);
+  assert.doesNotMatch(explorer, /showSubmitters=\{false\}/);
   assert.doesNotMatch(explorer, /className="cloud-source-head"/);
 });
 
@@ -265,7 +268,9 @@ test("cloud source log item is shared by admin and user cloud source lists", () 
   assert.match(shared, /Recent posts/);
   assert.match(shared, /BuilderFeedItems/);
   assert.match(explorer, /<CloudSourceLogItem/);
+  assert.match(explorer, /showSubmitters=\{true\}/);
   assert.match(userTabs, /<CloudSourceLogItem/);
+  assert.match(userTabs, /showSubmitters=\{false\}/);
 });
 
 test("cloud-library page mounts the library explorer with serialized libraries", () => {

@@ -46,6 +46,7 @@ export type CloudSourceLogSource = {
   nextAttemptAt: string | null;
   circuitBreakerUntil?: string | null;
   latestRunTask: CloudFetchRunLogTask | null;
+  submitterCount?: number;
   submitters?: CloudSourceLogSubmitter[];
 };
 
@@ -194,11 +195,12 @@ function CloudSourceLogDetail({
 }
 
 function Submitters({ source }: { source: CloudSourceLogSource }) {
-  const submitters = source.submitters ?? [];
+  const submitters = source.submitters;
+  const count = submitters?.length ?? source.submitterCount ?? 0;
   return (
     <>
-      <p className="cloud-source-detail-label">Submitters ({submitters.length})</p>
-      {submitters.length === 0 ? (
+      <p className="cloud-source-detail-label">Submitters ({count})</p>
+      {submitters == null ? null : submitters.length === 0 ? (
         <p className="cron-field-hint">No active submitters.</p>
       ) : (
         <ul className="cloud-source-submitters">

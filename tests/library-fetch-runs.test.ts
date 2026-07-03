@@ -1151,6 +1151,7 @@ test("source sync log tabs keep local fetch log and cloud fetch log separate", (
   assert.match(tabs, /<FetchLogPanel/);
   assert.match(tabs, /<UserCloudFetchLogPanel/);
   assert.match(tabs, /CloudSourceLogItem/);
+  assert.match(tabs, /showSubmitters=\{false\}/);
   assert.doesNotMatch(tabs, /BuilderFeedItems/);
   assert.doesNotMatch(tabs, /TaskRow/);
   assert.doesNotMatch(tabs, /function CloudSourceDetail/);
