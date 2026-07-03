@@ -146,6 +146,18 @@ test("cloud sync marks failures with backoff and keeps a mixed run partial", asy
   });
 
   assert.equal(result.runStatus, "PARTIAL");
+  assert.deepEqual(result.sourceTaskResult, {
+    cloudSourceTaskId: "task_2",
+    status: "failed",
+    plannedPosts: 3,
+    syncedPosts: 1,
+    failedPosts: 2,
+    actualDurationSeconds: 900,
+    failureReason: "summary_missing",
+    usageTokens: 2000,
+    usageCostUsd: 0.2,
+    details: {},
+  });
   assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.status, "FAILED");
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "FAILED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 2);
@@ -217,6 +229,18 @@ test("cloud sync keeps partial source results visible without failure backoff", 
   });
 
   assert.equal(result.runStatus, "PARTIAL");
+  assert.deepEqual(result.sourceTaskResult, {
+    cloudSourceTaskId: "task_2",
+    status: "partial",
+    plannedPosts: 2,
+    syncedPosts: 1,
+    failedPosts: 1,
+    actualDurationSeconds: null,
+    failureReason: "worker_missing_result",
+    usageTokens: null,
+    usageCostUsd: null,
+    details: {},
+  });
   assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.status, "PARTIAL");
   assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.failureReason, "worker_missing_result");
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "SUCCEEDED");

@@ -187,6 +187,18 @@ export async function applyCloudFetchTaskSyncResult(params: {
   });
   return {
     ...run,
+    sourceTaskResult: {
+      cloudSourceTaskId: params.result.cloudSourceTaskId,
+      status: params.result.status,
+      plannedPosts: params.result.plannedPosts,
+      syncedPosts: params.result.syncedPosts,
+      failedPosts: params.result.failedPosts,
+      actualDurationSeconds: params.result.actualDurationSeconds ?? null,
+      failureReason,
+      usageTokens: params.result.usageTokens ?? null,
+      usageCostUsd: params.result.usageCostUsd ?? null,
+      details: params.result.details ?? {},
+    },
     builderId: task.builderId,
     summaryLanguage: task.summaryLanguage,
   };

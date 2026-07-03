@@ -73,6 +73,7 @@ export async function POST(request: Request) {
   }
 
   const taskResults = [];
+  let runSummary = null;
   const successfulLanguages = new Set<string>();
   const projectionErrors = [];
   const authoritativeTaskResults = reconcileTaskResultsWithFeedSync({
@@ -97,7 +98,19 @@ export async function POST(request: Request) {
         details: taskResult.details,
       },
     });
-    taskResults.push(syncedTask);
+    taskResults.push({
+      ...syncedTask.sourceTaskResult,
+      builderId: syncedTask.builderId,
+      summaryLanguage: syncedTask.summaryLanguage,
+    });
+    runSummary = {
+      runStatus: syncedTask.runStatus,
+      tasksSucceeded: syncedTask.tasksSucceeded,
+      tasksFailed: syncedTask.tasksFailed,
+      tasksRunning: syncedTask.tasksRunning,
+      usageTokens: syncedTask.usageTokens,
+      usageCostUsd: syncedTask.usageCostUsd,
+    };
     if (taskResult.status === "succeeded") {
       try {
         await upsertSourceCandidateFromCloudBuilder(syncedTask.builderId, prisma);
@@ -121,6 +134,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     status: "ok",
     cloudRunId: parsed.data.cloudRunId,
+    runSummary,
     taskResults,
     projections: {
       hubLanguages,
