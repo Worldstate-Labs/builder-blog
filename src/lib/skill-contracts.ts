@@ -51,11 +51,16 @@ export const SkillBuilderSchema = z.object({
 // silent drops, no blanket bulk-skip). `evidence` is per-task proof for a skip
 // (e.g. { meanVolumeDb: -91, hasCaptions: false }); the validator requires it
 // for status="skipped" so an agent can't skip many tasks on one assumption.
+const SkillTaskOutcomeEvidenceSchema = z.union([
+  z.record(z.string(), z.unknown()),
+  z.string().trim().min(1).max(4_000).transform((message) => ({ message })),
+]);
+
 export const SkillTaskOutcomeSchema = z.object({
   fetchTaskId: z.string().min(1).max(MAX_FETCH_TASK_ID),
   status: z.enum(["skipped", "failed", "blocked"]),
   reason: z.string().min(1).max(400),
-  evidence: z.record(z.string(), z.unknown()).optional(),
+  evidence: SkillTaskOutcomeEvidenceSchema.optional(),
   builderId: z.string().min(1).max(64).nullable().optional(),
   externalId: z.string().max(MAX_EXTERNAL_ID).nullable().optional(),
 });

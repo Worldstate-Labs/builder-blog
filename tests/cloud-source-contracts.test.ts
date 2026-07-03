@@ -99,3 +99,34 @@ test("cloud fetch sync payload accepts partial task results with a failure reaso
   if (!parsed.success) return;
   assert.equal(parsed.data.taskResults[0].status, "partial");
 });
+
+test("cloud fetch sync payload normalizes string task outcome evidence", () => {
+  const parsed = parseCloudFetchSyncPayload({
+    cloudRunId: "run_1",
+    builders: [],
+    taskOutcomes: [
+      {
+        fetchTaskId: "fetch_post:nyt",
+        status: "failed",
+        reason: "fetch_error",
+        evidence: "NYT paywall and Cloudflare blocked all extraction methods.",
+      },
+    ],
+    taskResults: [
+      {
+        cloudSourceTaskId: "task_1",
+        status: "failed",
+        plannedPosts: 1,
+        syncedPosts: 0,
+        failedPosts: 1,
+        failureReason: "fetch_error",
+      },
+    ],
+  });
+
+  assert.equal(parsed.success, true);
+  if (!parsed.success) return;
+  assert.deepEqual(parsed.data.taskOutcomes[0].evidence, {
+    message: "NYT paywall and Cloudflare blocked all extraction methods.",
+  });
+});
