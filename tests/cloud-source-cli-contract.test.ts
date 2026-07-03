@@ -278,7 +278,7 @@ test("cloud worker result coverage rejects partial shard results", async () => {
   }
 });
 
-test("cloud worker merge issue count ignores missing final result when checkpoints cover shard", async () => {
+test("cloud worker merge issue count ignores diagnostics when payloads cover shard", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const coverageStart = runner.indexOf("worker_result_covers_shard_tasks() {");
   const coverageEnd = runner.indexOf("\nmerge_result_issue_count() {", coverageStart);
@@ -294,11 +294,19 @@ test("cloud worker merge issue count ignores missing final result when checkpoin
     const shardsDir = join(dir, "shards");
     const resultsDir = join(shardsDir, "results");
     const checkpointDir = join(resultsDir, "shard-1-checkpoints");
+    const finalCoveredCheckpointDir = join(resultsDir, "shard-5-checkpoints");
     await mkdir(checkpointDir, { recursive: true });
+    await mkdir(finalCoveredCheckpointDir, { recursive: true });
     await writeFile(
       join(shardsDir, "shard-1.json"),
       JSON.stringify({
         fetchTasks: [{ id: "nyt-a" }, { id: "nyt-b" }, { id: "nyt-c" }],
+      }),
+    );
+    await writeFile(
+      join(shardsDir, "shard-5.json"),
+      JSON.stringify({
+        fetchTasks: [{ id: "meta-a" }, { id: "meta-b" }, { id: "meta-c" }],
       }),
     );
     for (const id of ["nyt-a", "nyt-b", "nyt-c"]) {
@@ -310,6 +318,21 @@ test("cloud worker merge issue count ignores missing final result when checkpoin
         }),
       );
     }
+    await writeFile(
+      join(resultsDir, "shard-5-result.json"),
+      JSON.stringify({
+        builders: [
+          {
+            items: [
+              { rawJson: { fetchTaskId: "meta-a" } },
+              { rawJson: { fetchTaskId: "meta-b" } },
+              { rawJson: { fetchTaskId: "meta-c" } },
+            ],
+          },
+        ],
+      }),
+    );
+    await writeFile(join(finalCoveredCheckpointDir, "broken.json"), '{"builders":[{"items":[{"summary":"bad "quote""}]}]}');
     const mergePath = join(dir, "merge-task-results.json");
     await writeFile(
       mergePath,
@@ -318,6 +341,11 @@ test("cloud worker merge issue count ignores missing final result when checkpoin
         shards: [
           { shard: "shard-0-result.json", status: "ok" },
           { shard: "shard-1-result.json", status: "missing", error: "no result file", sourceShard: "shard-1" },
+          {
+            shard: "shard-5-checkpoints/broken.json",
+            status: "missing",
+            error: "Expected ',' or '}' after property value",
+          },
         ],
       }),
     );

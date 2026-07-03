@@ -3110,11 +3110,18 @@ merge_result_issue_count() {
   node - "$_mric_merge_file" > "$_mric_issue_file" <<'NODE' 2>/dev/null || {
 const fs = require("fs");
 const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+function sourceShardFromDiagnostic(value) {
+  const text = String(value || "");
+  const match = text.match(/^(shard-[0-9]+)(?:-result\.json|-checkpoints\/.*)?$/);
+  return match ? match[1] : "";
+}
 const backfilled = Number(result.backfilledOutcomes || 0);
 console.log(`BACKFILLED\t${Number.isFinite(backfilled) && backfilled > 0 ? backfilled : 0}`);
 for (const shard of Array.isArray(result.shards) ? result.shards : []) {
   if (!shard || shard.status === "ok") continue;
-  console.log(`ISSUE\t${String(shard.sourceShard || "")}\t${String(shard.shard || "")}`);
+  const diagnosticShard = String(shard.shard || "");
+  const sourceShard = String(shard.sourceShard || "") || sourceShardFromDiagnostic(diagnosticShard);
+  console.log(`ISSUE\t${sourceShard}\t${diagnosticShard}`);
 }
 NODE
     rm -f "$_mric_issue_file"
