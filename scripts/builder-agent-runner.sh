@@ -2718,12 +2718,28 @@ sync_completed_checkpoints() {
   echo "Best-effort syncing $_scc_count completed library task(s) before the full run finishes."
   cat "$_scc_merge"
 
+  _scc_had_granularity=0
+  _scc_previous_granularity=""
+  if [ "${SYNC_PAYLOAD_SLICE_GRANULARITY+x}" = "x" ]; then
+    _scc_had_granularity=1
+    _scc_previous_granularity="$SYNC_PAYLOAD_SLICE_GRANULARITY"
+  fi
+  _scc_sync_ok=0
   SYNC_PAYLOAD_SYNCED_IDS_FILE="$_scc_synced_ids_file"
+  SYNC_PAYLOAD_SLICE_GRANULARITY="task"
   if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint" --partial-outcomes --results-dir "$_scc_results_dir"; then
-    SYNC_PAYLOAD_SYNCED_IDS_FILE=""
-    return 0
+    _scc_sync_ok=1
   fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE=""
+  if [ "$_scc_had_granularity" -eq 1 ]; then
+    SYNC_PAYLOAD_SLICE_GRANULARITY="$_scc_previous_granularity"
+  else
+    unset SYNC_PAYLOAD_SLICE_GRANULARITY
+  fi
+
+  if [ "$_scc_sync_ok" -eq 1 ]; then
+    return 0
+  fi
 
   echo "One or more completed checkpoint task syncs failed; terminal outcomes were patched where possible." >&2
   return 0

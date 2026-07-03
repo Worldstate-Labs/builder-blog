@@ -90,6 +90,14 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /_crl_value" -gt 1000/);
   assert.match(runner, /merge-fetch-results/);
   assert.match(runner, /SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-run"/);
+  assert.match(
+    runner,
+    /sync_completed_checkpoints\(\) \{[\s\S]*SYNC_PAYLOAD_SLICE_GRANULARITY="task"[\s\S]*sync_payload_slices "\$_scc_tasks" "\$_scc_payload"/,
+  );
+  assert.match(
+    runner,
+    /sync_completed_checkpoints\(\) \{[\s\S]*if \[ "\$_scc_had_granularity" -eq 1 \]; then[\s\S]*SYNC_PAYLOAD_SLICE_GRANULARITY="\$_scc_previous_granularity"[\s\S]*else[\s\S]*unset SYNC_PAYLOAD_SLICE_GRANULARITY/,
+  );
   assert.match(runner, /cloud_fetch_heartbeat_all\(\)/);
   assert.match(runner, /_assigned_fetch_task_ids_file="\$JOB_TMP_DIR\/assigned-fetch-task-ids\.txt"/);
   assert.match(runner, /_active_fetch_group_keys_file="\$JOB_TMP_DIR\/active-fetch-group-keys\.txt"/);
