@@ -36,6 +36,21 @@ test("cloud-library management page is admin-gated and mounts the cloud monitor 
   assert.match(page, /CLOUD_FETCH_CONFIG_ID/);
 });
 
+test("cloud output pools are automatic and only expose pause controls", () => {
+  const form = source("src/components/AdminCloudFetchConfigForm.tsx");
+
+  assert.match(form, /Cloud output pools/);
+  assert.match(form, /created automatically from Cloud submissions/);
+  assert.match(form, /function setLanguageLibraryEnabled/);
+  assert.match(form, /summaryLanguage: library\.summaryLanguage/);
+  assert.match(form, /library\.enabled \? "Pause" : "Activate"/);
+  assert.doesNotMatch(form, /System owner:/);
+  assert.doesNotMatch(form, /FieldSelect/);
+  assert.doesNotMatch(form, /label="Summary language"/);
+  assert.doesNotMatch(form, /label="Output language"/);
+  assert.doesNotMatch(form, /Save output library/);
+});
+
 test("cloud library maintenance reset is admin-gated and scoped to cloud generated state", () => {
   const page = source("src/app/(workspace)/settings/cloud-library/page.tsx");
   const panel = source("src/components/AdminCloudLibraryMaintenancePanel.tsx");

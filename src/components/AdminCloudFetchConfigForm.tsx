@@ -3,10 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import {
   FieldNumber,
-  FieldText,
   FooterBar,
   Section,
-  Toggle,
+  SUMMARY_LANGUAGE_OPTIONS,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
 
@@ -73,10 +72,6 @@ export function AdminCloudFetchConfigForm({
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState(() => configDraft(initialConfig));
   const [libraries, setLibraries] = useState(initialLibraries);
-  const [libraryDraft, setLibraryDraft] = useState({
-    summaryLanguage: "zh",
-    enabled: true,
-  });
   const [configStatus, setConfigStatus] = useState<Status>({ kind: "idle" });
   const [libraryStatus, setLibraryStatus] = useState<Status>({ kind: "idle" });
   const [isConfigPending, startConfigTransition] = useTransition();
@@ -131,18 +126,17 @@ export function AdminCloudFetchConfigForm({
     });
   }
 
-  function saveLanguageLibrary() {
-    if (!libraryDraft.summaryLanguage.trim()) {
-      setLibraryStatus({ kind: "error", message: "Summary language is required." });
-      return;
-    }
+  function setLanguageLibraryEnabled(library: AdminCloudLanguageLibrary, enabled: boolean) {
     setLibraryStatus({ kind: "saving" });
     startLibraryTransition(async () => {
       try {
         const response = await fetch("/api/admin/cloud-fetch/language-libraries", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(libraryDraft),
+          body: JSON.stringify({
+            summaryLanguage: library.summaryLanguage,
+            enabled,
+          }),
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
@@ -192,48 +186,36 @@ export function AdminCloudFetchConfigForm({
 
       <Section
         step="02"
-        title="Language libraries"
-        description="Each summary language gets its own cloud system owner, source library, fetched posts, and summaries."
+        title="Cloud output pools"
+        description="Output pools are created automatically from Cloud submissions. Active pools are eligible for scheduled fetches; paused pools are skipped."
       >
         <div className="settings-choice-list">
           {libraries.length === 0 ? (
-            <span className="settings-choice-empty">No cloud language libraries configured.</span>
+            <span className="settings-choice-empty">No Cloud output pools yet.</span>
           ) : (
             libraries.map((library) => (
               <span className="settings-token" key={library.id}>
-                <span>
-                  {library.summaryLanguage} · <span>System owner:</span>{" "}
-                  {library.ownerEmail ?? library.ownerUserId}
-                  {library.enabled ? "" : " · disabled"}
-                </span>
+                <span>{languageLabel(library.summaryLanguage)}</span>
+                <span aria-hidden="true">·</span>
+                <span>{library.enabled ? "Active" : "Paused"}</span>
+                <button
+                  className="post-inline-action"
+                  disabled={isLibraryPending}
+                  type="button"
+                  onClick={() => setLanguageLibraryEnabled(library, !library.enabled)}
+                >
+                  {library.enabled ? "Pause" : "Activate"}
+                </button>
               </span>
             ))
           )}
         </div>
-        <FieldText
-          label="Summary language"
-          value={libraryDraft.summaryLanguage}
-          placeholder="zh"
-          onChange={(value) =>
-            setLibraryDraft((current) => ({ ...current, summaryLanguage: value }))
-          }
-        />
-        <Toggle
-          label="Enabled"
-          checked={libraryDraft.enabled}
-          onChange={(value) =>
-            setLibraryDraft((current) => ({ ...current, enabled: value }))
-          }
-        />
         <div className="settings-footer-bar">
-          <button
-            className="fb-btn dark compact"
-            disabled={isLibraryPending}
-            type="button"
-            onClick={saveLanguageLibrary}
-          >
-            {isLibraryPending ? "Saving" : "Save language library"}
-          </button>
+          {isLibraryPending ? (
+            <span className="settings-save-status is-saving" aria-live="polite">
+              Saving
+            </span>
+          ) : null}
           {libraryStatus.kind === "error" ? (
             <span className="settings-save-status is-error" role="alert">
               {libraryStatus.message}
@@ -274,6 +256,10 @@ export function AdminCloudFetchConfigForm({
       </Section>
     </div>
   );
+}
+
+function languageLabel(value: string) {
+  return SUMMARY_LANGUAGE_OPTIONS.find((option) => option.value === value)?.label ?? value;
 }
 
 function configDraft(config: AdminCloudFetchConfig): ConfigDraft {
