@@ -1436,6 +1436,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /BUILDER_BLOG_AGENT_RUNTIME/);
   assert.match(runner, /read_runtime_pin/);
   assert.match(runner, /Do not fall back from one-time jobs to cron runtime pins/);
+  assert.match(runner, /cloud-library-host\|cloud-library-cron\)[\s\S]*return 0/);
   // Forced re-fetch: runner reads the fetch-force pin and exports
   // BUILDER_BLOG_FETCH_FORCE=--force when it's 1, then threads it into the
   // deterministic fetch-personal command.

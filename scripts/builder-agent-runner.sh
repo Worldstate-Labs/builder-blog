@@ -979,6 +979,11 @@ read_runtime_pin() {
     tr -d ' \t\r\n' < "$AGENT_DIR/runtime-$JOB_NAME"
     return 0
   fi
+  case "$JOB_NAME" in
+    cloud-library-host|cloud-library-cron)
+      return 0
+      ;;
+  esac
   if [ -r "$AGENT_DIR/runtime" ]; then
     tr -d ' \t\r\n' < "$AGENT_DIR/runtime"
   fi

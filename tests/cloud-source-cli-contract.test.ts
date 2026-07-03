@@ -561,6 +561,7 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(cronPrompt, /cloud-library-host/);
   assert.match(hostPrompt, /Run the persistent cloud source worker host/);
   assert.match(hostPrompt, /builder-agent-runner\.sh" cloud-library-host/);
+  assert.match(hostPrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
   assert.match(hostPrompt, /BUILDER_BLOG_CLOUD_IDLE_SECONDS/);
 
   assert.match(stopPrompt, /Stop the FollowBrief Cloud worker host/);
