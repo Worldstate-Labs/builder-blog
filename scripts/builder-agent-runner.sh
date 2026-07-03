@@ -3031,10 +3031,10 @@ library_worker_was_started() {
 worker_result_covers_shard_tasks() {
   _wrcst_result="${1:-}"
   _wrcst_shard="${2:-}"
-  [ -s "$_wrcst_result" ] || return 1
   [ -r "$_wrcst_shard" ] || return 1
   node - "$_wrcst_result" "$_wrcst_shard" <<'NODE' >/dev/null 2>&1
 const fs = require("fs");
+const path = require("path");
 function readJson(path) {
   return JSON.parse(fs.readFileSync(path, "utf8"));
 }
@@ -3046,7 +3046,40 @@ function resultItems(result) {
     ...builders.flatMap((builder) => (Array.isArray(builder?.items) ? builder.items : [])),
   ];
 }
-const result = readJson(process.argv[2]);
+function addCoveredFromPayload(payload, covered) {
+  for (const item of resultItems(payload)) {
+    const id = item?.rawJson?.fetchTaskId ?? item?.fetchTaskId;
+    if (id) covered.add(String(id));
+  }
+  for (const outcome of Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []) {
+    const id = outcome?.fetchTaskId ?? outcome?.taskId;
+    if (id) covered.add(String(id));
+  }
+}
+function readCheckpointPayloads(resultPath) {
+  const base = path.basename(resultPath || "");
+  const match = base.match(/^(shard-.*)-result\.json$/);
+  if (!match) return [];
+  const dir = path.join(path.dirname(resultPath), `${match[1]}-checkpoints`);
+  let files = [];
+  try {
+    files = fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const payloads = [];
+  for (const file of files) {
+    if (!file.endsWith(".json")) continue;
+    try {
+      payloads.push(readJson(path.join(dir, file)));
+    } catch {}
+  }
+  return payloads;
+}
+let result = {};
+try {
+  result = readJson(process.argv[2]);
+} catch {}
 const shard = readJson(process.argv[3]);
 const tasks = Array.isArray(shard.fetchTasks)
   ? shard.fetchTasks
@@ -3055,13 +3088,9 @@ const tasks = Array.isArray(shard.fetchTasks)
     : [];
 const plannedIds = tasks.map((task) => task?.id).filter(Boolean).map(String);
 const covered = new Set();
-for (const item of resultItems(result)) {
-  const id = item?.rawJson?.fetchTaskId ?? item?.fetchTaskId;
-  if (id) covered.add(String(id));
-}
-for (const outcome of Array.isArray(result.taskOutcomes) ? result.taskOutcomes : []) {
-  const id = outcome?.fetchTaskId ?? outcome?.taskId;
-  if (id) covered.add(String(id));
+addCoveredFromPayload(result, covered);
+for (const payload of readCheckpointPayloads(process.argv[2])) {
+  addCoveredFromPayload(payload, covered);
 }
 process.exit(plannedIds.every((id) => covered.has(id)) ? 0 : 1);
 NODE

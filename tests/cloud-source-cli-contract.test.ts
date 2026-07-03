@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -211,6 +211,8 @@ test("cloud worker result coverage rejects partial shard results", async () => {
     const shardPath = join(dir, "shard.json");
     const partialResultPath = join(dir, "partial-result.json");
     const completeResultPath = join(dir, "complete-result.json");
+    const checkpointCoveredResultPath = join(dir, "shard-9-result.json");
+    const checkpointDir = join(dir, "shard-9-checkpoints");
     const checkPath = join(dir, "check.sh");
 
     await writeFile(
@@ -236,13 +238,33 @@ test("cloud worker result coverage rejects partial shard results", async () => {
         ],
       }),
     );
+    await mkdir(join(checkpointDir, "progress"), { recursive: true });
+    await writeFile(
+      checkpointCoveredResultPath,
+      JSON.stringify({
+        builders: [{ items: [{ rawJson: { fetchTaskId: "ready-a" } }] }],
+        taskOutcomes: [{ fetchTaskId: "ready-b", status: "failed" }],
+      }),
+    );
+    await writeFile(
+      join(checkpointDir, "requires-agent-c.json"),
+      JSON.stringify({
+        builders: [{ items: [{ rawJson: { fetchTaskId: "requires-agent-c" } }] }],
+      }),
+    );
+    await writeFile(
+      join(checkpointDir, "progress", "ready-b.json"),
+      JSON.stringify({ fetchTaskId: "ready-b", status: "summarizing" }),
+    );
     await writeFile(
       checkPath,
       `${runner.slice(start, end)}\nworker_result_covers_shard_tasks "$1" "$2"\n`,
     );
 
     await assert.rejects(execFileAsync("sh", [checkPath, partialResultPath, shardPath]));
+    await assert.rejects(execFileAsync("sh", [checkPath, join(dir, "missing-result.json"), shardPath]));
     await execFileAsync("sh", [checkPath, completeResultPath, shardPath]);
+    await execFileAsync("sh", [checkPath, checkpointCoveredResultPath, shardPath]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
