@@ -434,6 +434,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
         summaryLanguage: params.summaryLanguage,
         frequency: params.frequency,
         active: true,
+        submittedAt: now,
       },
       create: {
         userId: params.userId,
@@ -442,6 +443,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
         summaryLanguage: params.summaryLanguage,
         frequency: params.frequency,
         active: true,
+        submittedAt: now,
       },
     });
     const task = await recomputeCloudSourceTask({
@@ -546,6 +548,8 @@ export async function recomputeCloudSourceTask(params: {
       summaryLanguage: params.summaryLanguage,
       effectiveFrequency,
       status: "ACTIVE",
+      nextAttemptAt: params.now,
+      mustSucceedBy,
     },
     create: {
       cloudLanguageLibraryId: params.cloudLanguageLibraryId,

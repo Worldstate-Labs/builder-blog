@@ -12,6 +12,7 @@ import {
   getUserCloudSubmissionSummary,
   planSubmissionReconciliation,
   reassignCloudLanguageTaskBuildersToOwner,
+  recomputeCloudSourceTask,
   stopUserCloudSourceSubmissions,
   summarizeActiveCloudSubmissions,
   upsertSourceCandidateFromCloudBuilder,
@@ -268,6 +269,43 @@ test("planSubmissionReconciliation keeps everything when the new set covers all 
 
   assert.deepEqual(result.deactivateSubmissionIds, []);
   assert.deepEqual(result.staleCloudBuilderIds, []);
+});
+
+test("cloud submission upsert refreshes submittedAt when a user resubmits an existing cloud source", () => {
+  const library = readFileSync("src/lib/cloud-source-library.ts", "utf8");
+
+  assert.match(library, /cloudSourceSubmission\.upsert\(\{[\s\S]*update: \{[\s\S]*submittedAt: now/);
+  assert.match(library, /cloudSourceSubmission\.upsert\(\{[\s\S]*create: \{[\s\S]*submittedAt: now/);
+});
+
+test("recomputeCloudSourceTask refreshes schedule fields when reactivating an existing source task", async () => {
+  const now = new Date("2026-07-03T15:00:00.000Z");
+  const upserts: unknown[] = [];
+  const prisma = {
+    cloudSourceSubmission: {
+      async findMany() {
+        return [{ frequency: "DAILY" as const, submittedAt: now }];
+      },
+    },
+    cloudSourceTask: {
+      async upsert(args: unknown) {
+        upserts.push(args);
+        return { id: "task_1" };
+      },
+    },
+  };
+
+  await recomputeCloudSourceTask({
+    prisma: prisma as never,
+    cloudLanguageLibraryId: "cloud_library_zh",
+    builderId: "cloud_builder_1",
+    summaryLanguage: "zh",
+    now,
+  });
+
+  const update = (upserts[0] as { update: Record<string, unknown> }).update;
+  assert.equal(update.nextAttemptAt, now);
+  assert.equal((update.mustSucceedBy as Date).toISOString(), "2026-07-04T15:00:00.000Z");
 });
 
 test("summarizeActiveCloudSubmissions reports effective frequency and most recent language", () => {
