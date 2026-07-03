@@ -1150,13 +1150,24 @@ test("source sync log tabs keep local fetch log and cloud fetch log separate", (
   assert.match(tabs, /Cloud fetch log/);
   assert.match(tabs, /<FetchLogPanel/);
   assert.match(tabs, /<UserCloudFetchLogPanel/);
-  assert.match(tabs, /BuilderFeedItems/);
-  assert.match(tabs, /TaskRow/);
-  assert.match(tabs, /Latest cloud fetch log/);
-  assert.match(tabs, /Recent posts/);
-  assert.match(tabs, /CloudSourceLifecycle/);
-  assert.match(tabs, /No posts planned/);
-  assert.match(tabs, /No summary exists because there were no fetched posts to summarize or save\./);
+  assert.match(tabs, /CloudSourceLogItem/);
+  assert.doesNotMatch(tabs, /BuilderFeedItems/);
+  assert.doesNotMatch(tabs, /TaskRow/);
+  assert.doesNotMatch(tabs, /function CloudSourceDetail/);
   assert.match(tabs, /deadlineStatusLabel/);
   assert.match(tabs, /RelativeTime/);
+});
+
+test("builder feed recent posts show two posts before scrolling", () => {
+  const feedItems = source("src/components/BuilderFeedItems.tsx");
+  const recentPostsList = source("src/components/RecentPostsList.tsx");
+  const globals = source("src/app/globals.css");
+
+  assert.match(feedItems, /builder-post-list--scroll/);
+  assert.match(recentPostsList, /recent-post-list--scroll/);
+  assert.match(globals, /--builder-post-visible-count:\s*2/);
+  assert.match(globals, /--recent-post-visible-count:\s*2/);
+  assert.match(globals, /max-height:\s*calc\(\s*var\(--builder-post-row-block-size\)\s*\*\s*var\(--builder-post-visible-count\)\s*\)/);
+  assert.match(globals, /max-height:\s*calc\(\s*var\(--recent-post-card-block-size\)\s*\*\s*var\(--recent-post-visible-count\)\s*\)/);
+  assert.match(globals, /overflow-y:\s*auto/);
 });

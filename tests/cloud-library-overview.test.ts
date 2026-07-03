@@ -53,6 +53,7 @@ test("serializeCloudLibrarySource flattens task status, builder identity, and co
     circuitBreakerUntil: null,
     submitterCount: 3,
     postCount: 42,
+    latestRunTask: null,
   });
 });
 
@@ -78,6 +79,7 @@ test("serializeCloudLibrarySource tolerates a missing builder and null timestamp
   assert.equal(result.sourceUrl, null);
   assert.equal(result.lastSuccessAt, null);
   assert.equal(result.nextAttemptAt, null);
+  assert.equal(result.latestRunTask, null);
 });
 
 test("serializeCloudLibrary carries owner email, enabled flag, and a source count", () => {

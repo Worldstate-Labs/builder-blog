@@ -2004,7 +2004,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-identity\s*{[\s\S]*--source-identity-avatar-size:\s*3\.625rem/);
   assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*1fr/);
-  assert.match(source("src/components/RecentPostsList.tsx"), /className="recent-post-list"/);
+  assert.match(source("src/components/RecentPostsList.tsx"), /className="recent-post-list recent-post-list--scroll"/);
   assert.doesNotMatch(globals, /\.fb-rail/);
 });
 
@@ -4323,7 +4323,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /latestPostCreatedAt|latestDateLabel|latest at|builder-posts-latest|formatPostDate/);
   assert.doesNotMatch(builderFeedItems, /<button[\s\S]*className="builder-posts-summary"/);
   assert.doesNotMatch(builderFeedItems, /actions\?: ReactNode/);
-  assert.match(builderFeedItems, /className="builder-post-list" hidden=\{!isOpen\}/);
+  assert.match(builderFeedItems, /className="builder-post-list builder-post-list--scroll" hidden=\{!isOpen\}/);
   assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
   assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);

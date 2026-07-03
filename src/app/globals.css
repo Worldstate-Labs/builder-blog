@@ -3426,6 +3426,15 @@ summary.library-section-summary::after {
   margin-top: 0.55rem;
   width: 100%;
 }
+.builder-post-list--scroll {
+  --builder-post-row-block-size: 12.5rem;
+  --builder-post-visible-count: 2;
+  max-height: calc(var(--builder-post-row-block-size) * var(--builder-post-visible-count));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+  scrollbar-gutter: stable;
+}
 
 .builder-post-row {
   align-items: start;
@@ -11022,6 +11031,15 @@ a.builder-library-name:hover {
 .recent-post-list {
   display: grid;
   gap: 1rem;
+}
+.recent-post-list--scroll {
+  --recent-post-card-block-size: 18rem;
+  --recent-post-visible-count: 2;
+  max-height: calc(var(--recent-post-card-block-size) * var(--recent-post-visible-count));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+  scrollbar-gutter: stable;
 }
 
 .recent-post-skeleton-card {

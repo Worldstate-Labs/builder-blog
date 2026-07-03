@@ -913,6 +913,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "· 다음 시도",
     es: "· Próximo intento",
   },
+  "circuit-broken until": {
+    "zh-CN": "熔断至",
+    "zh-TW": "熔斷至",
+    ja: "ブレーカー解除予定",
+    ko: "차단 해제 예정",
+    es: "interruptor activo hasta",
+  },
   "Loading…": {
     "zh-CN": "加载中…",
     "zh-TW": "載入中…",

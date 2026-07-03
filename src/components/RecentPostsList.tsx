@@ -25,7 +25,7 @@ export function RecentPostsList({
   const readKeySet = new Set(readKeys);
 
   return (
-    <ul className="recent-post-list">
+    <ul className="recent-post-list recent-post-list--scroll">
       {items.map((item) => (
         <li key={item.id}>
           <PostCard

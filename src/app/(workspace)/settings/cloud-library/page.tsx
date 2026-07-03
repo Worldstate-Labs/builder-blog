@@ -50,6 +50,11 @@ export default async function CloudLibraryManagementPage() {
         sourceTasks: {
           orderBy: { id: "asc" },
           include: {
+            runTasks: {
+              orderBy: { startedAt: "desc" },
+              take: 1,
+              include: { builder: { select: { name: true, sourceType: true } } },
+            },
             builder: {
               select: {
                 entityId: true,

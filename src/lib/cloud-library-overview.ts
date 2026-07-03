@@ -1,9 +1,14 @@
 // Serialization for the admin cloud library explorer: each cloud language
 // library and its sources (one CloudSourceTask per cloud-owner Builder) with
-// fetch status and counts, plus per-source submitters. Recent posts are shown
-// with the shared BuilderFeedItems component (which reads /api/builders/[id]/
-// feed-items), so they are not serialized here. Pure mapping so it stays
-// unit-testable without a database.
+// fetch status and counts. Recent posts are shown with the shared
+// BuilderFeedItems component (which reads /api/builders/[id]/feed-items), so
+// they are not serialized here. Pure mapping so it stays unit-testable without
+// a database.
+
+import {
+  serializeCloudFetchRunTask,
+  type CloudFetchRunLogTask,
+} from "@/lib/cloud-fetch-run-log";
 
 export type CloudLibrarySource = {
   builderId: string;
@@ -25,6 +30,7 @@ export type CloudLibrarySource = {
   circuitBreakerUntil: string | null;
   submitterCount: number;
   postCount: number;
+  latestRunTask: CloudFetchRunLogTask | null;
 };
 
 export type CloudLibraryOverview = {
@@ -54,6 +60,7 @@ type CloudSourceTaskRow = {
   nextAttemptAt: Date | null;
   consecutiveFailures: number;
   circuitBreakerUntil: Date | null;
+  runTasks?: CloudFetchRunTaskRow[];
   builder?: {
     entityId: string | null;
     kind: string | null;
@@ -64,6 +71,28 @@ type CloudSourceTaskRow = {
     avatarUrl: string | null;
     avatarDataUrl: string | null;
   } | null;
+};
+
+type DecimalLike = { toString(): string } | number;
+
+type CloudFetchRunTaskRow = {
+  id: string;
+  builderId: string;
+  summaryLanguage: string;
+  status: string;
+  plannedPosts: number;
+  syncedPosts: number;
+  failedPosts: number;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  actualDurationSeconds: number | null;
+  estimatedDurationSeconds: number | null;
+  successProbabilitySnapshot: number | null;
+  usageTokens: number | null;
+  usageCostUsd: DecimalLike | null;
+  failureReason: string | null;
+  details: unknown;
+  builder?: { name: string | null; sourceType: string | null } | null;
 };
 
 export function serializeCloudLibrarySource(
@@ -90,6 +119,7 @@ export function serializeCloudLibrarySource(
     circuitBreakerUntil: task.circuitBreakerUntil ? task.circuitBreakerUntil.toISOString() : null,
     submitterCount: counts.submitterCount,
     postCount: counts.postCount,
+    latestRunTask: task.runTasks?.[0] ? serializeCloudFetchRunTask(task.runTasks[0]) : null,
   };
 }
 

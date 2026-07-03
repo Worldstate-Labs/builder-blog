@@ -93,7 +93,7 @@ export function BuilderFeedItems({
 
   return (
     <div className="builder-posts">
-      <div className="builder-post-list" hidden={!isOpen} id={listId}>
+      <div className="builder-post-list builder-post-list--scroll" hidden={!isOpen} id={listId}>
         {isLoading ? (
           <div className="builder-post-loading" role="status">
             <div className="builder-post-loading-line" />

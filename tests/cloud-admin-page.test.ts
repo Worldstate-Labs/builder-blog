@@ -172,9 +172,9 @@ test("cloud worker host metrics wrap long stage and usage values", () => {
 
 test("cloud management timestamps use the shared relative time renderer", () => {
   const log = source("src/components/AdminCloudFetchLog.tsx");
-  const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
+  const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
 
-  for (const component of [log, explorer]) {
+  for (const component of [log, sourceLogItem]) {
     assert.match(component, /@\/components\/RelativeTime/);
     assert.match(component, /<RelativeTime/);
     assert.doesNotMatch(component, /function format(?:Time|Date)\(/);
@@ -245,11 +245,27 @@ test("admin cloud source drill-down route is admin-gated and returns submitters"
 test("cloud library explorer lists libraries and renders recent posts via BuilderFeedItems", () => {
   const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
 
-  assert.match(explorer, /submitterCount/);
   assert.match(explorer, /postCount/);
-  assert.match(explorer, /\/api\/admin\/cloud-fetch\/sources\//);
-  // Recent posts reuse the shared per-source post component.
-  assert.match(explorer, /BuilderFeedItems/);
+  assert.match(explorer, /statusChipLabel/);
+  assert.match(explorer, /CloudSourceLogItem/);
+  assert.match(explorer, /showSubmitters=\{false\}/);
+  assert.doesNotMatch(explorer, /BuilderFeedItems/);
+  assert.doesNotMatch(explorer, /\/api\/admin\/cloud-fetch\/sources\//);
+  assert.doesNotMatch(explorer, /className="cloud-source-head"/);
+});
+
+test("cloud source log item is shared by admin and user cloud source lists", () => {
+  const shared = source("src/components/CloudSourceLogItem.tsx");
+  const explorer = source("src/components/AdminCloudLibraryExplorer.tsx");
+  const userTabs = source("src/components/SourceSyncLogTabs.tsx");
+
+  assert.match(shared, /export function CloudSourceLogItem/);
+  assert.match(shared, /showSubmitters/);
+  assert.match(shared, /Latest cloud fetch log/);
+  assert.match(shared, /Recent posts/);
+  assert.match(shared, /BuilderFeedItems/);
+  assert.match(explorer, /<CloudSourceLogItem/);
+  assert.match(userTabs, /<CloudSourceLogItem/);
 });
 
 test("cloud-library page mounts the library explorer with serialized libraries", () => {
