@@ -222,6 +222,7 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
       stage: "workers_running",
       summary: "workers running · 1/2 tasks",
       details: {
+        agentModel: "gpt-5.4-mini",
         localWorkers: 4,
         progress: {
           stage: "workers_running",
@@ -274,6 +275,7 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
   assert.equal(result.status, "online");
   assert.equal(result.statusLabel, "Online");
   assert.equal(result.hostname, "admin-mac");
+  assert.equal(result.model, "gpt-5.4-mini");
   assert.equal(result.localWorkers, 4);
   assert.equal(result.progress?.stage, "workers_running");
   assert.equal(result.progress?.currentTask, "Post One");
@@ -285,6 +287,43 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
   assert.equal(result.tasks[0].summaryChars, 300);
   assert.equal(result.tasks[0].summaryWords, 45);
   assert.equal(result.recentEvents[0].status, "synced");
+});
+
+test("serializeCloudWorkerHost normalizes completed post task counts and skipped reasons", () => {
+  const result = serializeCloudWorkerHost(
+    {
+      status: "running",
+      startedAt: "2026-06-28T10:00:00.000Z",
+      heartbeatAt: "2026-06-28T10:01:30.000Z",
+      runtime: "codex",
+      details: {
+        progress: {
+          stage: "workers_running",
+          counters: {
+            tasksPlanned: 46,
+            tasksDone: 50,
+            synced: 39,
+            failed: 7,
+            skipped: 4,
+            actionNeeded: 0,
+          },
+          tasks: [
+            {
+              id: "skip_1",
+              status: "skipped",
+              message: "skipped: no_content",
+              reason: "no_content",
+            },
+          ],
+        },
+      },
+    },
+    new Date("2026-06-28T10:02:00.000Z"),
+  );
+
+  assert.equal(result.progress?.tasksDone, 50);
+  assert.equal(result.progress?.tasksPlanned, 50);
+  assert.equal(result.tasks[0].reason, "no_content");
 });
 
 test("serializeCloudWorkerHost marks stale and missing hosts clearly", () => {

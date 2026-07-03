@@ -118,7 +118,10 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /completedTaskIds/);
   assert.match(cli, /includeInternal/);
   assert.match(cli, /progress: fetchProgressSnapshotValue/);
+  assert.match(cli, /agentModel: DEFAULT_AGENT_MODEL \|\| null/);
   assert.match(cli, /tasks: Array\.isArray\(progress\.tasks\)/);
+  assert.match(cli, /reason: compactProgressText\(task\.reason \?\? task\.failureReason/);
+  assert.match(cli, /reason: outcome\.failureReason/);
   assert.match(cli, /checkpoint-progress/);
   assert.match(cli, /stage: "scanning_sources"/);
   assert.match(cli, /stage: "tasks_planned"/);

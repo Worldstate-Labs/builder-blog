@@ -14085,6 +14085,13 @@ body {
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.cloud-worker-host-metric em {
+  color: var(--muted-strong);
+  font-size: 0.6875rem;
+  font-style: normal;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
 .cloud-worker-host-current {
   display: flex;
   flex-wrap: wrap;

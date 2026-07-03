@@ -1176,7 +1176,10 @@ async function emitAgentJobRunRecord(config, record) {
     platform: RUN_PLATFORM,
     stage: record.stage ?? null,
     summary: record.summary ?? null,
-    details: record.details ?? {},
+    details: {
+      agentModel: DEFAULT_AGENT_MODEL || null,
+      ...(record.details ?? {}),
+    },
   };
   if (!body.instanceId) return null;
   return postJson(`${config.appUrl}/api/skill/job-runs`, body, config.token, {
@@ -1374,6 +1377,7 @@ function upsertFetchProgressTask(progress, task) {
     status: compactProgressText(task.status, 80),
     phase: compactProgressText(task.phase, 80),
     message: compactProgressText(task.message, 260),
+    reason: compactProgressText(task.reason ?? task.failureReason, 160),
     builder: compactProgressText(task.builder, 160),
     builderId: compactProgressText(task.builderId, 120),
     sourceType: compactProgressText(task.sourceType, 80),
@@ -1391,6 +1395,7 @@ function upsertFetchProgressTask(progress, task) {
     previous.status !== value.status ||
     previous.phase !== value.phase ||
     previous.message !== value.message ||
+    previous.reason !== value.reason ||
     previous.workerId !== value.workerId ||
     previous.bodyChars !== value.bodyChars ||
     previous.summaryChars !== value.summaryChars;
@@ -1550,6 +1555,7 @@ export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds =
       status: outcome.status,
       phase: "synced",
       message: `${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
+      reason: outcome.failureReason,
       workerId: outcome.workerId,
       bodyChars: outcome.bodyChars,
       bodyWords: outcome.bodyWords,
@@ -6754,6 +6760,7 @@ function progressFromCheckpointOutcome(outcome, entry, plannedById) {
     message: outcome.failureReason
       ? `${String(status).replace(/_/g, " ")}: ${outcome.failureReason}`
       : `${String(status).replace(/_/g, " ")}.`,
+    reason: outcome.failureReason,
     workerId: planned.workerId ?? entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
   };
 }

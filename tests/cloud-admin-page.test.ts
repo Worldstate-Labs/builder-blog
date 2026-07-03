@@ -145,6 +145,13 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /This source is still running\. Post task outcomes appear after/);
   assert.match(log, /tasksClaimed/);
   assert.match(log, /pendingPosts/);
+  assert.match(log, /function runtimeLabel/);
+  assert.match(log, /workerHost\.runtime && workerHost\.model/);
+  assert.match(log, /function skippedReasonSummary/);
+  assert.match(log, /skippedReasonLabel/);
+  assert.match(log, /Completed \/ planned/);
+  assert.match(log, /workerHost\.hostname,\s*runtimeLabel\(workerHost\),/);
+  assert.doesNotMatch(log, /workerHost\.platform,/);
   assert.doesNotMatch(log, /claimed\s*\{/);
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
 });

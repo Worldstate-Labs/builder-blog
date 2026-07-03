@@ -60,7 +60,28 @@ function formatDuration(ms: number | null): string {
 }
 
 function formatStage(value: string | null, fallback = "idle"): string {
-  return value ? value.replace(/_/g, " ") : fallback;
+  if (!value) return fallback;
+  const labels: Record<string, string> = {
+    checkpoint_syncing: "Syncing checkpoints",
+    expand_discovery: "Expanding discovery",
+    failed: "Failed",
+    fetch_sources: "Fetching sources",
+    interrupted: "Interrupted",
+    no_update: "No update",
+    reconciled: "Reconciled",
+    requesting_cloud_sources: "Requesting cloud sources",
+    run_fetch_workers: "Running workers",
+    shard_fetch_tasks: "Assigning workers",
+    stopped: "Stopped",
+    syncing: "Syncing posts",
+    tasks_planned: "Tasks planned",
+    waiting_after_sync_issue: "Waiting after sync issue",
+    waiting_for_cloud_sources: "Waiting for cloud sources",
+    waiting_for_heartbeat: "Waiting for heartbeat",
+    worker_host_starting: "Starting host",
+    workers_running: "Running workers",
+  };
+  return labels[value] ?? value.replace(/_/g, " ");
 }
 
 function formatMetric(value: number | null): string {
@@ -140,6 +161,54 @@ function formatInlineUsage(usage: UsageSummary | null): string | null {
   if (usage.totalTokens !== null) parts.push(`${formatUsageTokens(usage.totalTokens)} tokens`);
   if (usage.costUsd !== null) parts.push(formatUsageCost(usage));
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function runtimeLabel(workerHost: CloudWorkerHostStatus): string | null {
+  if (workerHost.runtime && workerHost.model) return `${workerHost.runtime} · ${workerHost.model}`;
+  return workerHost.runtime ?? workerHost.model;
+}
+
+function skippedReasonSummary(
+  tasks: CloudWorkerHostTask[],
+  events: CloudWorkerHostStatus["recentEvents"],
+  skippedTotal: number | null,
+): string | null {
+  const total = skippedTotal ?? 0;
+  if (total <= 0) return null;
+  const reasons = new Map<string, number>();
+  const seenTaskIds = new Set<string>();
+  for (const task of tasks) {
+    if (task.status !== "skipped") continue;
+    if (task.id) seenTaskIds.add(task.id);
+    const reason = skippedReasonLabel(task.reason ?? task.message);
+    reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+  }
+  for (const event of events) {
+    if (event.status !== "skipped") continue;
+    if (event.taskId && seenTaskIds.has(event.taskId)) continue;
+    const reason = skippedReasonLabel(event.reason ?? event.message);
+    reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+  }
+  const entries = [...reasons.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 2);
+  const counted = entries.reduce((sum, [, count]) => sum + count, 0);
+  if (counted < total) entries.push(["other", total - counted]);
+  return entries.length > 0
+    ? entries.map(([reason, count]) => `${reason} ${count.toLocaleString()}`).join(" · ")
+    : "reason unavailable";
+}
+
+function skippedReasonLabel(value: string | null): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "reason unavailable";
+  if (/^skipped\.?$/i.test(raw)) return "reason unavailable";
+  const afterColon = raw.match(/^skipped:\s*(.+)$/i)?.[1] ?? raw;
+  return afterColon
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 32);
 }
 
 function formatDeliveryCounts(batch: CloudFetchRunLogItem): string {
@@ -381,8 +450,7 @@ function buildWorkerShardGroups(
 function workerHostMeta(workerHost: CloudWorkerHostStatus): InlinePart[] {
   const parts = [
     workerHost.hostname,
-    workerHost.platform,
-    workerHost.runtime,
+    runtimeLabel(workerHost),
     workerHost.localWorkers != null
       ? `${workerHost.localWorkers} ${workerHost.localWorkers === 1 ? "worker" : "workers"}`
       : null,
@@ -453,6 +521,8 @@ function WorkerHostPanel({
         : "-";
   const localWorkers = workerHost.localWorkers != null ? workerHost.localWorkers : null;
   const usageText = formatInlineUsage(usage);
+  const skippedCount = progress?.skipped ?? (fallbackMetrics.plannedPosts > 0 ? fallbackMetrics.skippedPosts : null);
+  const skippedSummary = skippedReasonSummary(tasks, workerHost.recentEvents, skippedCount);
 
   return (
     <section className="cloud-worker-host" aria-label="Worker host">
@@ -481,7 +551,7 @@ function WorkerHostPanel({
           <strong>{formatMetric(localWorkers)}</strong>
         </div>
         <div className="cloud-worker-host-metric">
-          <span>Post tasks</span>
+          <span>Completed / planned</span>
           <strong>{postProgress}</strong>
         </div>
         <div className="cloud-worker-host-metric">
@@ -504,13 +574,12 @@ function WorkerHostPanel({
             )}
           </strong>
         </div>
-        <div className="cloud-worker-host-metric">
+        <div className="cloud-worker-host-metric is-skipped">
           <span>Skipped</span>
           <strong>
-            {formatMetric(
-              progress?.skipped ?? (fallbackMetrics.plannedPosts > 0 ? fallbackMetrics.skippedPosts : null),
-            )}
+            {formatMetric(skippedCount)}
           </strong>
+          {skippedSummary ? <em>{skippedSummary}</em> : null}
         </div>
         <div className="cloud-worker-host-metric">
           <span>Action needed</span>

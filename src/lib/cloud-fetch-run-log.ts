@@ -37,6 +37,7 @@ export type CloudWorkerHostTask = {
   status: string | null;
   phase: string | null;
   message: string | null;
+  reason: string | null;
   builder: string | null;
   builderId: string | null;
   sourceType: string | null;
@@ -56,6 +57,7 @@ export type CloudWorkerHostStatus = {
   hostname: string | null;
   platform: string | null;
   runtime: string | null;
+  model: string | null;
   stage: string | null;
   summary: string | null;
   startedAt: string | null;
@@ -203,6 +205,7 @@ export function serializeCloudWorkerHost(
       hostname: null,
       platform: null,
       runtime: null,
+      model: null,
       stage: null,
       summary: null,
       startedAt: null,
@@ -226,12 +229,29 @@ export function serializeCloudWorkerHost(
   const status = active ? (stale ? "stale" : "online") : "offline";
   const counters = record(progress?.counters);
   const current = record(progress?.current);
+  const synced = num(counters?.synced);
+  const failed = num(counters?.failed);
+  const skipped = num(counters?.skipped);
+  const actionNeeded = num(counters?.actionNeeded);
+  const terminalCount =
+    synced != null || failed != null || skipped != null || actionNeeded != null
+      ? (synced ?? 0) + (failed ?? 0) + (skipped ?? 0) + (actionNeeded ?? 0)
+      : null;
+  const rawTasksDone = num(counters?.tasksDone);
+  const tasksDone = terminalCount != null
+    ? Math.max(rawTasksDone ?? 0, terminalCount)
+    : rawTasksDone;
+  const rawTasksPlanned = num(counters?.tasksPlanned);
+  const tasksPlanned = tasksDone != null
+    ? Math.max(rawTasksPlanned ?? 0, tasksDone)
+    : rawTasksPlanned;
   return {
     status,
     statusLabel: status === "online" ? "Online" : status === "stale" ? "Stale" : "Offline",
     hostname: str(job.hostname),
     platform: str(job.platform),
     runtime: str(job.runtime),
+    model: str(details?.agentModel ?? details?.model),
     stage: str(progress?.stage) ?? str(job.stage),
     summary: str(job.summary),
     startedAt: iso(job.startedAt),
@@ -246,12 +266,12 @@ export function serializeCloudWorkerHost(
           updatedAt: iso(progress.updatedAt),
           sourcesTotal: num(counters?.sourcesTotal),
           sourcesChecked: num(counters?.sourcesChecked),
-          tasksPlanned: num(counters?.tasksPlanned),
-          tasksDone: num(counters?.tasksDone),
-          synced: num(counters?.synced),
-          failed: num(counters?.failed),
-          skipped: num(counters?.skipped),
-          actionNeeded: num(counters?.actionNeeded),
+          tasksPlanned,
+          tasksDone,
+          synced,
+          failed,
+          skipped,
+          actionNeeded,
           currentSource: str(current?.source),
           currentTask: str(current?.task),
         }
@@ -403,6 +423,7 @@ function serializeWorkerHostTask(value: unknown): CloudWorkerHostTask {
     status: str(task?.status),
     phase: str(task?.phase),
     message: str(task?.message),
+    reason: str(task?.reason ?? task?.failureReason),
     builder: str(task?.builder),
     builderId: str(task?.builderId),
     sourceType: str(task?.sourceType),
