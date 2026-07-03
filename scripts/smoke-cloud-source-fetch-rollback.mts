@@ -267,11 +267,22 @@ async function main() {
         throw new Error(`Expected one submitted source/task, got ${JSON.stringify(submitted)}.`);
       }
 
+      const activeCloudLibrary = await tx.cloudLanguageLibrary.findUniqueOrThrow({
+        where: { summaryLanguage },
+        select: { id: true, ownerUserId: true },
+      });
+      const activeSubmission = await tx.cloudSourceSubmission.findFirstOrThrow({
+        where: { userId: sourceUser.id, active: true, summaryLanguage },
+        select: { cloudBuilderId: true },
+      });
       const task = await tx.cloudSourceTask.findFirstOrThrow({
-        where: { cloudLanguageLibraryId: cloudLibrary.id },
+        where: {
+          cloudLanguageLibraryId: activeCloudLibrary.id,
+          builderId: activeSubmission.cloudBuilderId,
+        },
         include: { builder: true },
       });
-      if (task.builder.ownerUserId !== cloudOwner.id) {
+      if (task.builder.ownerUserId !== activeCloudLibrary.ownerUserId) {
         throw new Error("Cloud task builder is not owned by the cloud language owner.");
       }
       if (task.builder.canonicalKey !== userBuilder.canonicalKey) {
