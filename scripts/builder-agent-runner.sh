@@ -2991,12 +2991,42 @@ library_worker_was_started() {
   return 1
 }
 
-valid_worker_result_file() {
-  _vwrf_file="${1:-}"
-  [ -s "$_vwrf_file" ] || return 1
-  node - "$_vwrf_file" <<'NODE' >/dev/null 2>&1
+worker_result_covers_shard_tasks() {
+  _wrcst_result="${1:-}"
+  _wrcst_shard="${2:-}"
+  [ -s "$_wrcst_result" ] || return 1
+  [ -r "$_wrcst_shard" ] || return 1
+  node - "$_wrcst_result" "$_wrcst_shard" <<'NODE' >/dev/null 2>&1
 const fs = require("fs");
-JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+function readJson(path) {
+  return JSON.parse(fs.readFileSync(path, "utf8"));
+}
+function resultItems(result) {
+  const builders = Array.isArray(result.builders) ? result.builders : [];
+  return [
+    ...(Array.isArray(result.items) ? result.items : []),
+    ...(Array.isArray(result.feedItems) ? result.feedItems : []),
+    ...builders.flatMap((builder) => (Array.isArray(builder?.items) ? builder.items : [])),
+  ];
+}
+const result = readJson(process.argv[2]);
+const shard = readJson(process.argv[3]);
+const tasks = Array.isArray(shard.fetchTasks)
+  ? shard.fetchTasks
+  : Array.isArray(shard.tasks)
+    ? shard.tasks
+    : [];
+const plannedIds = tasks.map((task) => task?.id).filter(Boolean).map(String);
+const covered = new Set();
+for (const item of resultItems(result)) {
+  const id = item?.rawJson?.fetchTaskId ?? item?.fetchTaskId;
+  if (id) covered.add(String(id));
+}
+for (const outcome of Array.isArray(result.taskOutcomes) ? result.taskOutcomes : []) {
+  const id = outcome?.fetchTaskId ?? outcome?.taskId;
+  if (id) covered.add(String(id));
+}
+process.exit(plannedIds.every((id) => covered.has(id)) ? 0 : 1);
 NODE
 }
 
@@ -3287,7 +3317,8 @@ run_library_job() {
           *" $_pid "*) continue ;;
         esac
         _result_path="$_results_dir/$_name-result.json"
-        if valid_worker_result_file "$_result_path"; then
+        _shard_path="$_shards_dir/$_name.json"
+        if worker_result_covers_shard_tasks "$_result_path" "$_shard_path"; then
           echo "Worker $_lane ($_name) result file is complete; terminating lingering runtime and continuing." >&2
           if ! terminate_process_tree "$_pid" TERM 5; then
             terminate_process_tree "$_pid" KILL 3 || true

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 test("cloud fetch planning stamps leased task metadata onto normal fetch tasks", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
@@ -128,16 +134,66 @@ test("cloud worker usage refresh never patches validation-failed task outcomes",
   );
 });
 
-test("cloud worker host does not wait for a runtime after its shard result is written", async () => {
+test("cloud worker host only stops a runtime after its shard result covers every task", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
 
-  assert.match(runner, /valid_worker_result_file\(\)/);
+  assert.match(runner, /worker_result_covers_shard_tasks\(\)/);
   assert.match(runner, /_result_path="\$_results_dir\/\$_name-result\.json"/);
+  assert.match(runner, /_shard_path="\$_shards_dir\/\$_name\.json"/);
   assert.match(
     runner,
-    /if valid_worker_result_file "\$_result_path"; then[\s\S]*result file is complete; terminating lingering runtime/,
+    /if worker_result_covers_shard_tasks "\$_result_path" "\$_shard_path"; then[\s\S]*result file is complete; terminating lingering runtime/,
   );
   assert.match(runner, /_completed_worker_pids=".*\$_pid/);
+});
+
+test("cloud worker result coverage rejects partial shard results", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("worker_result_covers_shard_tasks() {");
+  const end = runner.indexOf("\nstart_library_worker() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-result-"));
+  try {
+    const shardPath = join(dir, "shard.json");
+    const partialResultPath = join(dir, "partial-result.json");
+    const completeResultPath = join(dir, "complete-result.json");
+    const checkPath = join(dir, "check.sh");
+
+    await writeFile(
+      shardPath,
+      JSON.stringify({
+        fetchTasks: [{ id: "ready-a" }, { id: "ready-b" }, { id: "requires-agent-c" }],
+      }),
+    );
+    await writeFile(
+      partialResultPath,
+      JSON.stringify({
+        builders: [{ items: [{ rawJson: { fetchTaskId: "ready-a" } }] }],
+        taskOutcomes: [{ fetchTaskId: "ready-b", status: "failed" }],
+      }),
+    );
+    await writeFile(
+      completeResultPath,
+      JSON.stringify({
+        builders: [{ items: [{ rawJson: { fetchTaskId: "ready-a" } }] }],
+        taskOutcomes: [
+          { fetchTaskId: "ready-b", status: "failed" },
+          { fetchTaskId: "requires-agent-c", status: "failed" },
+        ],
+      }),
+    );
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}\nworker_result_covers_shard_tasks "$1" "$2"\n`,
+    );
+
+    await assert.rejects(execFileAsync("sh", [checkPath, partialResultPath, shardPath]));
+    await execFileAsync("sh", [checkPath, completeResultPath, shardPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
