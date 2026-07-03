@@ -4698,6 +4698,73 @@ test("merge-task-results classifies partial shard payloads as incomplete results
     ["lost", "worker_incomplete_result"],
   ]);
   assert.equal(outcomes[0]?.evidence?.failureKind, "incomplete_worker_result");
+  assert.deepEqual(
+    merged.shards.map((shard: { shard: string; status: string; missingTasks?: number }) => ({
+      shard: shard.shard,
+      status: shard.status,
+      missingTasks: shard.missingTasks,
+    })),
+    [{ shard: "shard-0-result.json", status: "incomplete", missingTasks: 1 }],
+  );
+});
+
+test("merge-task-results classifies empty shard payloads as incomplete results", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "github-a", agentWorkType: "fetch_post", builderSync: { builderId: "github-trending" } },
+      { id: "github-b", agentWorkType: "fetch_post", builderSync: { builderId: "github-trending" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-9-result.json",
+      payload: {
+        builders: [],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-9",
+        resultFile: "shard-9-result.json",
+        workerLogFile: "shard-9-worker.log",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string; missingShard?: { shard?: string } };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["github-a", "worker_incomplete_result"],
+    ["github-b", "worker_incomplete_result"],
+  ]);
+  assert.equal(merged.backfilledOutcomes, 2);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "incomplete_worker_result");
+  assert.equal(outcomes[0]?.evidence?.missingShard?.shard, "shard-9");
+  assert.deepEqual(
+    merged.shards.map((shard: { shard: string; status: string; missingTasks?: number; missingTaskIds?: string[] }) => ({
+      shard: shard.shard,
+      status: shard.status,
+      missingTasks: shard.missingTasks,
+      missingTaskIds: shard.missingTaskIds,
+    })),
+    [
+      {
+        shard: "shard-9-result.json",
+        status: "incomplete",
+        missingTasks: 2,
+        missingTaskIds: ["github-a", "github-b"],
+      },
+    ],
+  );
 });
 
 test("merge-task-results classifies backgrounded worker tools distinctly", async () => {

@@ -363,6 +363,52 @@ test("cloud worker merge issue count ignores diagnostics when payloads cover sha
   }
 });
 
+test("cloud worker merge issue count does not double count backfilled missing shards", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const coverageStart = runner.indexOf("worker_result_covers_shard_tasks() {");
+  const coverageEnd = runner.indexOf("\nmerge_result_issue_count() {", coverageStart);
+  const countStart = runner.indexOf("merge_result_issue_count() {");
+  const countEnd = runner.indexOf("\nstart_library_worker() {", countStart);
+  assert.notEqual(coverageStart, -1);
+  assert.notEqual(coverageEnd, -1);
+  assert.notEqual(countStart, -1);
+  assert.notEqual(countEnd, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-backfill-count-"));
+  try {
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    await mkdir(resultsDir, { recursive: true });
+    await writeFile(
+      join(shardsDir, "shard-1.json"),
+      JSON.stringify({
+        fetchTasks: [{ id: "nyt-a" }, { id: "nyt-b" }, { id: "nyt-c" }],
+      }),
+    );
+    const mergePath = join(dir, "merge-task-results.json");
+    await writeFile(
+      mergePath,
+      JSON.stringify({
+        backfilledOutcomes: 3,
+        shards: [
+          { shard: "shard-1-result.json", status: "missing", error: "no result file", sourceShard: "shard-1" },
+        ],
+      }),
+    );
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `${runner.slice(coverageStart, coverageEnd)}\n${runner.slice(countStart, countEnd)}\nJOB_TMP_DIR="${dir}"\nmerge_result_issue_count "$1" "$2"\n`,
+      "utf8",
+    );
+
+    const { stdout } = await execFileAsync("sh", [checkPath, mergePath, resultsDir]);
+    assert.equal(stdout.trim(), "3");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud worker host detects backgrounded tool calls in worker logs", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("worker_log_has_backgrounded_tool() {");

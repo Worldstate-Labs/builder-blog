@@ -3129,15 +3129,22 @@ NODE
     return 0
   }
   _mric_count=0
+  _mric_backfilled_count=0
   while IFS="$(printf '\t')" read -r _mric_kind _mric_source _mric_shard; do
     case "$_mric_kind" in
       BACKFILLED)
         case "$_mric_source" in
           ''|*[!0-9]*) ;;
-          *) _mric_count=$(( _mric_count + _mric_source )) ;;
+          *)
+            _mric_backfilled_count="$_mric_source"
+            _mric_count=$(( _mric_count + _mric_source ))
+            ;;
         esac
         ;;
       ISSUE)
+        if [ "$_mric_backfilled_count" -gt 0 ] && printf '%s' "$_mric_shard" | grep -q -- '-result\.json$'; then
+          continue
+        fi
         if [ -z "$_mric_source" ] && [ -n "$_mric_shard" ]; then
           _mric_source="$(printf '%s' "$_mric_shard" | sed 's/-result\.json$//')"
         fi

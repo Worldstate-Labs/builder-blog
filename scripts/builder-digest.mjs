@@ -6186,7 +6186,7 @@ function missingShardFailure(shardPlan, shardSummary) {
       failureKind: "worker_shard_timeout",
     };
   }
-  if (shardSummary?.status === "ok") {
+  if (shardSummary?.status === "ok" || shardSummary?.status === "incomplete") {
     return {
       reason: "worker_incomplete_result",
       failureKind: "incomplete_worker_result",
@@ -6323,6 +6323,11 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   const syncedTaskIds = new Set();
   const seenFallbackItems = new Set();
   const shardSummaries = [];
+  const sourceShardFromResultName = (name) => {
+    const text = String(name || "");
+    const match = text.match(/^(shard-[0-9]+)-result\.json$/);
+    return match ? match[1] : "";
+  };
 
   const builderKey = (builder) =>
     String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
@@ -6416,12 +6421,27 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       taskOutcomes.push(stampOutcomeWorkerId(outcome, workerId));
       outcomeCount += 1;
     }
+    const sourceShard = sourceShardFromResultName(shard.name);
+    const plan = shardPlanByResultFile.get(shard.name);
     shardSummaries.push({
       shard: shard.name,
       status: "ok",
       items: itemCount,
       taskOutcomes: outcomeCount,
+      ...(sourceShard ? { sourceShard } : {}),
+      ...(plan ? { taskCount: plan.taskCount } : {}),
     });
+  }
+  for (const summary of shardSummaries) {
+    if (summary.status !== "ok") continue;
+    const plan = shardPlanByResultFile.get(summary.shard);
+    if (!plan) continue;
+    const missingTaskIds = plan.taskIds.filter((id) => !accounted.has(id));
+    if (missingTaskIds.length === 0) continue;
+    summary.status = "incomplete";
+    summary.error = "result file did not account for every shard task";
+    summary.missingTasks = missingTaskIds.length;
+    summary.missingTaskIds = missingTaskIds;
   }
   const knownShardResults = new Set(shardSummaries.map((summary) => summary.shard));
   const shardSummaryByResultFile = new Map(
