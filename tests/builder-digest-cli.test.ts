@@ -1966,10 +1966,14 @@ test("singlePostFetchInstructions prepends common fetching rules", async () => {
 
 test("default fetch guidance forbids secondary-source replacement content", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
+  const seed = await import("../src/lib/source-config-seed");
 
   assert.match(cli.DEFAULT_FETCH_GUIDANCE, /Primary content means content from `task\.item\.url`/);
   assert.match(cli.DEFAULT_FETCH_GUIDANCE, /Do not use web search\s+snippets or related reporting/);
   assert.match(cli.DEFAULT_FETCH_GUIDANCE, /primary_content_unavailable/);
+  assert.match(seed.DEFAULT_COMMON_FETCH_RULES, /Primary content means content from `task\.item\.url`/);
+  assert.match(seed.DEFAULT_COMMON_FETCH_RULES, /Do not use web search\s+snippets or related reporting/);
+  assert.match(seed.DEFAULT_COMMON_FETCH_RULES, /primary_content_unavailable/);
 });
 
 test("agent sync validation rejects legacy task result shapes", async () => {
