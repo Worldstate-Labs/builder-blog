@@ -270,6 +270,63 @@ test("cloud worker result coverage rejects partial shard results", async () => {
   }
 });
 
+test("cloud worker merge issue count ignores missing final result when checkpoints cover shard", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const coverageStart = runner.indexOf("worker_result_covers_shard_tasks() {");
+  const coverageEnd = runner.indexOf("\nmerge_result_issue_count() {", coverageStart);
+  const countStart = runner.indexOf("merge_result_issue_count() {");
+  const countEnd = runner.indexOf("\nstart_library_worker() {", countStart);
+  assert.notEqual(coverageStart, -1);
+  assert.notEqual(coverageEnd, -1);
+  assert.notEqual(countStart, -1);
+  assert.notEqual(countEnd, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-merge-issues-"));
+  try {
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    const checkpointDir = join(resultsDir, "shard-1-checkpoints");
+    await mkdir(checkpointDir, { recursive: true });
+    await writeFile(
+      join(shardsDir, "shard-1.json"),
+      JSON.stringify({
+        fetchTasks: [{ id: "nyt-a" }, { id: "nyt-b" }, { id: "nyt-c" }],
+      }),
+    );
+    for (const id of ["nyt-a", "nyt-b", "nyt-c"]) {
+      await writeFile(
+        join(checkpointDir, `${id}.json`),
+        JSON.stringify({
+          builders: [],
+          taskOutcomes: [{ fetchTaskId: id, status: "blocked", reason: "fetch_blocked_paywall_cloudflare" }],
+        }),
+      );
+    }
+    const mergePath = join(dir, "merge-task-results.json");
+    await writeFile(
+      mergePath,
+      JSON.stringify({
+        backfilledOutcomes: 0,
+        shards: [
+          { shard: "shard-0-result.json", status: "ok" },
+          { shard: "shard-1-result.json", status: "missing", error: "no result file", sourceShard: "shard-1" },
+        ],
+      }),
+    );
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `${runner.slice(coverageStart, coverageEnd)}\n${runner.slice(countStart, countEnd)}\nJOB_TMP_DIR="${dir}"\nmerge_result_issue_count "$1" "$2"\n`,
+      "utf8",
+    );
+
+    const { stdout } = await execFileAsync("sh", [checkPath, mergePath, resultsDir]);
+    assert.equal(stdout.trim(), "0");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud worker host detects backgrounded tool calls in worker logs", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("worker_log_has_backgrounded_tool() {");

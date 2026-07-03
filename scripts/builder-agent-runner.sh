@@ -2745,20 +2745,7 @@ flush_remaining_library_results() {
     --results-dir "$_frlr_results_dir" \
     --shard-timeout-seconds "$_frlr_shard_timeout" \
     --out "$JOB_TMP_DIR/library-agent-sync.json" | tee "$_frlr_merge_result_file"
-  _frlr_merge_issue_count="$(node - "$_frlr_merge_result_file" <<'NODE'
-const fs = require("fs");
-try {
-  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-  const backfilled = Number(result.backfilledOutcomes || 0);
-  const missing = Array.isArray(result.shards)
-    ? result.shards.filter((shard) => shard && shard.status !== "ok").length
-    : 0;
-  console.log(backfilled + missing);
-} catch {
-  console.log(0);
-}
-NODE
-)"
+  _frlr_merge_issue_count="$(merge_result_issue_count "$_frlr_merge_result_file" "$_frlr_results_dir")"
 
   _frlr_remaining_payload="$JOB_TMP_DIR/library-agent-sync-remaining.json"
   _frlr_remaining_tasks="$JOB_TMP_DIR/library-fetch-remaining.json"
@@ -3094,6 +3081,57 @@ for (const payload of readCheckpointPayloads(process.argv[2])) {
 }
 process.exit(plannedIds.every((id) => covered.has(id)) ? 0 : 1);
 NODE
+}
+
+merge_result_issue_count() {
+  _mric_merge_file="${1:-}"
+  _mric_results_dir="${2:-}"
+  [ -r "$_mric_merge_file" ] || {
+    printf '0\n'
+    return 0
+  }
+  _mric_issue_file="${JOB_TMP_DIR:-${TMPDIR:-/tmp}}/merge-result-issues-$$.tsv"
+  node - "$_mric_merge_file" > "$_mric_issue_file" <<'NODE' 2>/dev/null || {
+const fs = require("fs");
+const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const backfilled = Number(result.backfilledOutcomes || 0);
+console.log(`BACKFILLED\t${Number.isFinite(backfilled) && backfilled > 0 ? backfilled : 0}`);
+for (const shard of Array.isArray(result.shards) ? result.shards : []) {
+  if (!shard || shard.status === "ok") continue;
+  console.log(`ISSUE\t${String(shard.sourceShard || "")}\t${String(shard.shard || "")}`);
+}
+NODE
+    rm -f "$_mric_issue_file"
+    printf '0\n'
+    return 0
+  }
+  _mric_count=0
+  while IFS="$(printf '\t')" read -r _mric_kind _mric_source _mric_shard; do
+    case "$_mric_kind" in
+      BACKFILLED)
+        case "$_mric_source" in
+          ''|*[!0-9]*) ;;
+          *) _mric_count=$(( _mric_count + _mric_source )) ;;
+        esac
+        ;;
+      ISSUE)
+        if [ -z "$_mric_source" ] && [ -n "$_mric_shard" ]; then
+          _mric_source="$(printf '%s' "$_mric_shard" | sed 's/-result\.json$//')"
+        fi
+        if [ -n "$_mric_source" ] && [ -n "$_mric_results_dir" ]; then
+          _mric_result_path="$_mric_results_dir/$_mric_source-result.json"
+          _mric_shards_dir="$(dirname "$_mric_results_dir")"
+          _mric_shard_path="$_mric_shards_dir/$_mric_source.json"
+          if worker_result_covers_shard_tasks "$_mric_result_path" "$_mric_shard_path"; then
+            continue
+          fi
+        fi
+        _mric_count=$(( _mric_count + 1 ))
+        ;;
+    esac
+  done < "$_mric_issue_file"
+  rm -f "$_mric_issue_file"
+  printf '%s\n' "$_mric_count"
 }
 
 start_library_worker() {
