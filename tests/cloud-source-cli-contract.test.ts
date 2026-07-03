@@ -248,6 +248,34 @@ test("cloud worker result coverage rejects partial shard results", async () => {
   }
 });
 
+test("cloud worker host detects backgrounded tool calls in worker logs", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("worker_log_has_backgrounded_tool() {");
+  const end = runner.indexOf("\njson_get_number() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-backgrounded-"));
+  try {
+    const logPath = join(dir, "worker.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      logPath,
+      `{"type":"system","subtype":"task_updated","is_backgrounded":true,"tool_use_id":"toolu_123"}\n`,
+      "utf8",
+    );
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}\nworker_log_has_backgrounded_tool "$1"\n`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath, logPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("library worker prompt forbids background task work", async () => {
   const prompt = await readFile("skills/builder-blog-digest/jobs/library-worker.md", "utf8");
 

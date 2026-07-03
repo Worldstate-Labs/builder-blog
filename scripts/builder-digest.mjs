@@ -6161,11 +6161,23 @@ function workerLogLooksLikeShardTimeout(text) {
   );
 }
 
+function workerLogLooksLikeBackgroundedTool(text) {
+  return /worker_backgrounded_tool|"is_backgrounded"\s*:\s*true|run_in_background\s*['":=]?\s*true/i.test(
+    String(text || ""),
+  );
+}
+
 function missingShardFailure(shardPlan, shardSummary) {
   if (workerLogLooksLikeRuntimeAuthFailure(shardPlan?.workerLogTail)) {
     return {
       reason: "runtime_auth_failed",
       failureKind: "runtime_auth_failed",
+    };
+  }
+  if (workerLogLooksLikeBackgroundedTool(shardPlan?.workerLogTail)) {
+    return {
+      reason: "worker_backgrounded_tool",
+      failureKind: "worker_backgrounded_tool",
     };
   }
   if (workerLogLooksLikeShardTimeout(shardPlan?.workerLogTail)) {

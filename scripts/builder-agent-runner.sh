@@ -1625,6 +1625,13 @@ terminate_process_tree() {
   return 1
 }
 
+worker_log_has_backgrounded_tool() {
+  _wlbt_log="${1:-}"
+  [ -n "$_wlbt_log" ] || return 1
+  [ -r "$_wlbt_log" ] || return 1
+  grep -Eq '"is_backgrounded"[[:space:]]*:[[:space:]]*true|run_in_background[[:space:]]*['"'"'":=][[:space:]]*true' "$_wlbt_log"
+}
+
 json_get_number() {
   _key="$1"
   _file="$2"
@@ -3350,7 +3357,36 @@ run_library_job() {
           _completed_worker_pids="${_completed_worker_pids:-} $_pid"
           continue
         fi
-        if [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
+        _worker_log_path="$_results_dir/$_name-worker.log"
+        if worker_log_has_backgrounded_tool "$_worker_log_path"; then
+          echo "Worker $_lane ($_name) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed)." >&2
+          printf 'Worker %s (%s) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed). reason=worker_backgrounded_tool\n' "$_lane" "$_name" >> "$_worker_log_path" 2>/dev/null || true
+          job_run_update running "Worker $_lane started a background tool call and will be terminated." "worker_backgrounded_tool" \
+            --timeout-stage "worker_shard" \
+            --timed-out-worker "$_name" \
+            --timed-out-worker-lane "$_lane" \
+            --timed-out-worker-pid "$_pid" \
+            --termination "terminating"
+          if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
+            job_run_update running "Worker $_lane with backgrounded tool call was terminated." "worker_backgrounded_tool" \
+              --timeout-stage "worker_shard" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "terminated"
+          else
+            echo "Worker $_lane ($_name) pid $_pid was still alive after backgrounded-tool termination; continuing without waiting." >&2
+            _skip_wait_pids="$_skip_wait_pids $_pid"
+            job_run_update running "Worker $_lane with backgrounded tool call did not exit after forced termination." "worker_backgrounded_tool" \
+              --timeout-stage "worker_shard" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "still_alive_after_kill" \
+              --skipped-wait-pids "$_skip_wait_pids"
+          fi
+          _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
+        elif [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
           echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
           printf 'Worker %s (%s) exceeded %ss; terminating it (its tasks will be reported as failed).\n' "$_lane" "$_name" "$_shard_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
           job_run_update running "Worker $_lane exceeded timeout and will be terminated." "worker_shard_timeout" \
