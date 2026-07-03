@@ -4363,7 +4363,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   assert.equal(outcomesById.get("t2")?.workerId, "shard-0");
   assert.equal(outcomesById.get("t3")?.workerId, "shard-1");
   assert.equal(outcomesById.get("t3")?.status, "failed");
-  assert.equal(outcomesById.get("t3")?.reason, "worker_missing_result");
+  assert.equal(outcomesById.get("t3")?.reason, "worker_shard_timeout");
   const t3Evidence = outcomesById.get("t3")?.evidence as {
     runShardSummary?: string[];
     missingShard?: {
@@ -4611,6 +4611,48 @@ test("merge-task-results preserves task checkpoints when a shard result is missi
   assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
     ["lost", "worker_missing_result"],
   ]);
+});
+
+test("merge-task-results classifies partial shard payloads as incomplete results", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "done", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "lost", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["lost", "worker_incomplete_result"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "incomplete_worker_result");
 });
 
 test("merge-task-results can exclude checkpoint-synced task ids from final sync output", async () => {

@@ -2826,6 +2826,8 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (
     task.status === "failed" &&
     (task.failureReason === "worker_missing_result" ||
+      task.failureReason === "worker_shard_timeout" ||
+      task.failureReason === "worker_incomplete_result" ||
       task.failureReason === "runtime_auth_failed") &&
     typeof task.bodyChars !== "number"
   ) {
@@ -2853,6 +2855,8 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   // Parallel-run outcomes backfilled by merge-task-results when a shard
   // worker never reported a task (crash/timeout) or discovery never expanded.
   worker_missing_result: "Local Agent shard did not write a result file for this post",
+  worker_shard_timeout: "Local Agent shard timed out before this post finished",
+  worker_incomplete_result: "Local Agent shard ended without reporting this post",
   discovery_not_expanded: "Candidate discovery did not complete",
 };
 

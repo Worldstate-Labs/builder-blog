@@ -6155,11 +6155,29 @@ function workerLogLooksLikeRuntimeAuthFailure(text) {
   );
 }
 
-function missingShardFailure(shardPlan) {
+function workerLogLooksLikeShardTimeout(text) {
+  return /worker_shard_timeout|exceeded \d+s; terminating|timed out and was terminated|exceeded timeout and will be terminated/i.test(
+    String(text || ""),
+  );
+}
+
+function missingShardFailure(shardPlan, shardSummary) {
   if (workerLogLooksLikeRuntimeAuthFailure(shardPlan?.workerLogTail)) {
     return {
       reason: "runtime_auth_failed",
       failureKind: "runtime_auth_failed",
+    };
+  }
+  if (workerLogLooksLikeShardTimeout(shardPlan?.workerLogTail)) {
+    return {
+      reason: "worker_shard_timeout",
+      failureKind: "worker_shard_timeout",
+    };
+  }
+  if (shardSummary?.status === "ok") {
+    return {
+      reason: "worker_incomplete_result",
+      failureKind: "incomplete_worker_result",
     };
   }
   return {
@@ -6394,6 +6412,9 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     });
   }
   const knownShardResults = new Set(shardSummaries.map((summary) => summary.shard));
+  const shardSummaryByResultFile = new Map(
+    shardSummaries.map((summary) => [summary.shard, summary]),
+  );
   if (options.backfillMissing !== false) {
     for (const plan of shardPlans) {
       if (knownShardResults.has(plan.resultFile)) continue;
@@ -6419,7 +6440,8 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       if (accounted.has(id)) continue;
       accounted.add(id);
       const shardPlan = shardPlanByTaskId.get(id);
-      const failure = missingShardFailure(shardPlan);
+      const shardSummary = shardPlan ? shardSummaryByResultFile.get(shardPlan.resultFile) : null;
+      const failure = missingShardFailure(shardPlan, shardSummary);
       taskOutcomes.push({
         fetchTaskId: id,
         status: "failed",

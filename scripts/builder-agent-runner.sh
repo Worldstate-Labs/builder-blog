@@ -3329,6 +3329,7 @@ run_library_job() {
         fi
         if [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
           echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
+          printf 'Worker %s (%s) exceeded %ss; terminating it (its tasks will be reported as failed).\n' "$_lane" "$_name" "$_shard_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
           job_run_update running "Worker $_lane exceeded timeout and will be terminated." "worker_shard_timeout" \
             --timeout-seconds "$_shard_timeout" \
             --timeout-stage "worker_shard" \

@@ -492,6 +492,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /Worker assignment pending/);
   assert.match(panel, /Worker unknown/);
   assert.match(panel, /worker_missing_result: "Local Agent shard did not write a result file for this post"/);
+  assert.match(panel, /worker_shard_timeout: "Local Agent shard timed out before this post finished"/);
+  assert.match(panel, /worker_incomplete_result: "Local Agent shard ended without reporting this post"/);
   assert.match(panel, /function missingWorkerLogText/);
   assert.match(panel, /No worker log tail was captured for this shard\./);
   assert.match(panel, /function shardTimeoutText/);
