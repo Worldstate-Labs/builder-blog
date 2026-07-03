@@ -15,6 +15,11 @@ combined payload, repairs validation failures if needed, and syncs it with
 - Do NOT complete tasks that are not in your shard file.
 - Write only your shard result file (plus your own scratch files under the
   shard temp directory, if you need any).
+- Do NOT start background commands or tool calls (`run_in_background`, shell
+  `&`, `nohup`, `disown`, detached tmux/screen, etc.) for task work. Long
+  downloads, transcription, browser work, and extraction must run in the
+  foreground and finish before you exit. A task is not complete until you have
+  written its sync item or terminal `taskOutcomes` entry.
 
 Agent discretion boundary: use the exact shard paths and JSON shapes specified
 below.

@@ -2892,6 +2892,30 @@ worker_entry_lane() {
   esac
 }
 
+worker_entry_shard_name() {
+  _wesn_entry="${1:-}"
+  _wesn_rest="${_wesn_entry#*:}"
+  _wesn_after_started="${_wesn_rest#*:}"
+  printf '%s\n' "${_wesn_after_started%%:*}"
+}
+
+worker_entry_reserves_lane() {
+  _werl_entry="${1:-}"
+  _werl_pid="${_werl_entry%%:*}"
+  if kill -0 "$_werl_pid" 2>/dev/null; then
+    return 0
+  fi
+  _werl_name="$(worker_entry_shard_name "$_werl_entry")"
+  [ -n "$_werl_name" ] || return 1
+  _werl_result="$_results_dir/$_werl_name-result.json"
+  _werl_shard="$_shards_dir/$_werl_name.json"
+  if worker_result_covers_shard_tasks "$_werl_result" "$_werl_shard"; then
+    return 1
+  fi
+  [ -e "$_werl_shard" ] || return 1
+  return 0
+}
+
 write_available_worker_ids() {
   _wawi_file="${1:-}"
   [ -n "$_wawi_file" ] || return 0
@@ -2901,9 +2925,8 @@ write_available_worker_ids() {
     _wawi_lane="worker-$_wawi_index"
     _wawi_active=0
     for _wawi_entry in ${_worker_entries:-}; do
-      _wawi_pid="${_wawi_entry%%:*}"
       _wawi_entry_lane="$(worker_entry_lane "$_wawi_entry")"
-      if [ "$_wawi_entry_lane" = "$_wawi_lane" ] && kill -0 "$_wawi_pid" 2>/dev/null; then
+      if [ "$_wawi_entry_lane" = "$_wawi_lane" ] && worker_entry_reserves_lane "$_wawi_entry"; then
         _wawi_active=1
         break
       fi

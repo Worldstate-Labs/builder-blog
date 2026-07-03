@@ -148,6 +148,57 @@ test("cloud worker host only stops a runtime after its shard result covers every
   assert.match(runner, /_completed_worker_pids=".*\$_pid/);
 });
 
+test("cloud worker host does not reuse a lane whose previous shard exited incomplete", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("worker_entry_lane() {");
+  const end = runner.indexOf("\nstart_library_worker() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-lane-reserve-"));
+  try {
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    await execFileAsync("mkdir", ["-p", resultsDir]);
+    await writeFile(
+      join(shardsDir, "shard-2.json"),
+      JSON.stringify({
+        fetchTasks: [{ id: "ready-a" }, { id: "slow-b" }],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(resultsDir, "shard-2-result.json"),
+      JSON.stringify({
+        builders: [{ items: [{ rawJson: { fetchTaskId: "ready-a" } }] }],
+        taskOutcomes: [],
+      }),
+      "utf8",
+    );
+    const availablePath = join(dir, "available.txt");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}
+MAX_PARALLEL_WORKERS=3
+_shards_dir="${shardsDir}"
+_results_dir="${resultsDir}"
+_worker_entries="999999:1700000000:shard-2:worker-2"
+write_available_worker_ids "${availablePath}"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const available = await readFile(availablePath, "utf8");
+    assert.match(available, /worker-0/);
+    assert.match(available, /worker-1/);
+    assert.doesNotMatch(available, /worker-2/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud worker result coverage rejects partial shard results", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("worker_result_covers_shard_tasks() {");
@@ -195,6 +246,14 @@ test("cloud worker result coverage rejects partial shard results", async () => {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("library worker prompt forbids background task work", async () => {
+  const prompt = await readFile("skills/builder-blog-digest/jobs/library-worker.md", "utf8");
+
+  assert.match(prompt, /Do NOT start background commands or tool calls/);
+  assert.match(prompt, /run_in_background/);
+  assert.match(prompt, /Long[\s\S]*transcription[\s\S]*must run in the[\s\S]*foreground/);
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {

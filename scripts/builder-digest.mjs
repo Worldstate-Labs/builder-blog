@@ -5856,13 +5856,13 @@ export function planFetchQueueAssignments(fetchResult, {
   }
 
   const workerLimit = Number.isFinite(Number(maxWorkers))
-    ? Math.max(1, Math.floor(Number(maxWorkers)))
+    ? Math.max(0, Math.floor(Number(maxWorkers)))
     : 1;
   const groupLimit = Number.isFinite(Number(maxGroupsPerAssignment))
     ? Math.max(1, Math.floor(Number(maxGroupsPerAssignment)))
     : Number.POSITIVE_INFINITY;
   const assignmentCount = groupLimit === Number.POSITIVE_INFINITY
-    ? Math.max(1, Math.min(workerLimit, runnableGroups.length))
+    ? Math.max(0, Math.min(workerLimit, runnableGroups.length))
     : 0;
   const assignments = groupLimit === Number.POSITIVE_INFINITY
     ? Array.from(
@@ -6012,7 +6012,7 @@ async function assignFetchTasks(args) {
   const excludeTaskIds = await readIdSetFile(assignedTaskIdsFile);
   const activeGroupKeys = await readIdSetFile(activeGroupKeysFile);
   const workerIds = await readOrderedIdFile(workerIdsFile);
-  const assignmentWorkerIds = workerIds.length > 0
+  const assignmentWorkerIds = workerIdsFile
     ? workerIds.slice(0, maxWorkers)
     : Array.from({ length: maxWorkers }, (_, index) => `worker-${index}`);
   const plan = planFetchQueueAssignments(fetchResult, {

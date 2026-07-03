@@ -3880,6 +3880,51 @@ test("assign-fetch-tasks binds dynamic assignments to stable worker lanes", asyn
   assert.equal(shard1.fetchTasks[0].workerId, "worker-5");
 });
 
+test("assign-fetch-tasks honors an explicitly empty worker id file", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-empty-worker-lanes-"));
+  const tasksFile = join(tmp, "fetch-result.json");
+  const outDir = join(tmp, "shards");
+  const workerIdsFile = join(tmp, "worker-ids.txt");
+  await writeFile(workerIdsFile, "", "utf8");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "example-a",
+          agentWorkType: "fetch_post",
+          contentStatus: "requires_agent",
+          sourceType: "blog",
+          builderSync: { builderId: "b1" },
+          item: { url: "https://example.com/a" },
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  const result = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "assign-fetch-tasks",
+      "--tasks",
+      tasksFile,
+      "--out-dir",
+      outDir,
+      "--max-workers",
+      "2",
+      "--worker-ids-file",
+      workerIdsFile,
+    ],
+    { cwd: process.cwd() },
+  );
+  const parsed = JSON.parse(result.stdout);
+  assert.deepEqual(parsed.shards, []);
+  assert.deepEqual(parsed.pendingGroupKeys, ["domain:example.com"]);
+});
+
 test("shard-tasks writes shard worker ids onto planned post tasks", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-shard-worker-id-"));
   const tasksFile = join(tmp, "fetch-result.json");
