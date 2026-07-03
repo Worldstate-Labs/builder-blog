@@ -276,6 +276,40 @@ test("cloud worker host detects backgrounded tool calls in worker logs", async (
   }
 });
 
+test("cloud worker host monitors fixed per-shard agent output files", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const outputStart = runner.indexOf("agent_output_file() {");
+  const outputEnd = runner.indexOf("\nagent_usage_file() {", outputStart);
+  assert.notEqual(outputStart, -1);
+  assert.notEqual(outputEnd, -1);
+  assert.match(runner, /_slw_agent_output_file="\$_results_dir\/\$_slw_shard_name-agent-output\.log"/);
+  assert.match(runner, /BUILDER_BLOG_AGENT_OUTPUT_FILE="\$_slw_agent_output_file"/);
+  assert.match(
+    runner,
+    /_worker_agent_output_path="\$_results_dir\/\$_name-agent-output\.log"[\s\S]*worker_log_has_backgrounded_tool "\$_worker_agent_output_path"/,
+  );
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-output-file-"));
+  try {
+    const fixedPath = join(dir, "shard-5-agent-output.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `${runner.slice(outputStart, outputEnd)}
+JOB_TMP_DIR="${dir}"
+BUILDER_BLOG_AGENT_OUTPUT_FILE="${fixedPath}"
+agent_output_file claude
+`,
+      "utf8",
+    );
+
+    const { stdout } = await execFileAsync("sh", [checkPath]);
+    assert.equal(stdout.trim(), fixedPath);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("library worker prompt forbids background task work", async () => {
   const prompt = await readFile("skills/builder-blog-digest/jobs/library-worker.md", "utf8");
 

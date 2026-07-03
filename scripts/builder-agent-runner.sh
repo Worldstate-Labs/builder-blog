@@ -403,6 +403,10 @@ run_with_hermes() {
 
 agent_output_file() {
   _runtime="$1"
+  if [ -n "${BUILDER_BLOG_AGENT_OUTPUT_FILE:-}" ]; then
+    printf '%s\n' "$BUILDER_BLOG_AGENT_OUTPUT_FILE"
+    return 0
+  fi
   mkdir -p "$JOB_TMP_DIR"
   mktemp "$JOB_TMP_DIR/$_runtime-agent-output.XXXXXX"
 }
@@ -3080,12 +3084,14 @@ NODE
     return 0
   fi
   _slw_checkpoint_dir="$_results_dir/$_slw_shard_name-checkpoints"
+  _slw_agent_output_file="$_results_dir/$_slw_shard_name-agent-output.log"
   mkdir -p "$_slw_checkpoint_dir"
   (
     BUILDER_BLOG_SHARD_FILE="$_slw_shard_file"
     BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_slw_shard_name-result.json"
     BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_slw_checkpoint_dir"
-    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR
+    BUILDER_BLOG_AGENT_OUTPUT_FILE="$_slw_agent_output_file"
+    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR BUILDER_BLOG_AGENT_OUTPUT_FILE
     if [ "$PINNED_RUNTIME" = "openclaw" ]; then
       OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_slw_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
       export OPENCLAW_SESSION_ID
@@ -3358,7 +3364,8 @@ run_library_job() {
           continue
         fi
         _worker_log_path="$_results_dir/$_name-worker.log"
-        if worker_log_has_backgrounded_tool "$_worker_log_path"; then
+        _worker_agent_output_path="$_results_dir/$_name-agent-output.log"
+        if worker_log_has_backgrounded_tool "$_worker_log_path" || worker_log_has_backgrounded_tool "$_worker_agent_output_path"; then
           echo "Worker $_lane ($_name) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed)." >&2
           printf 'Worker %s (%s) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed). reason=worker_backgrounded_tool\n' "$_lane" "$_name" >> "$_worker_log_path" 2>/dev/null || true
           job_run_update running "Worker $_lane started a background tool call and will be terminated." "worker_backgrounded_tool" \
