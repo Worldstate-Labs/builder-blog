@@ -1107,10 +1107,12 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
 
 test("builders page mounts the fetch log inside the sync header section", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
-  assert.match(buildersPage, /FetchLogPanel/);
+  assert.match(buildersPage, /SourceSyncLogTabs/);
   // Fetch the user's recent runs server-side, ordered by startedAt desc.
   assert.match(buildersPage, /prisma\.libraryFetchRun\.findMany/);
   assert.match(buildersPage, /prisma\.libraryCronJob\.findUnique/);
+  assert.match(buildersPage, /prisma\.cloudSourceSubmission\.findMany/);
+  assert.match(buildersPage, /serializeUserCloudFetchLog/);
   assert.match(buildersPage, /source: "cron"/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(buildersPage, /const FETCH_RUN_PAGE_SIZE = 10/);
@@ -1126,6 +1128,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /libraryCronJob\?\.status === "active"/);
+  assert.match(buildersPage, /cloudLog=\{data\.cloudFetchLog\}/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
@@ -1137,4 +1140,20 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.digestCronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.digestRuns\}/);
+});
+
+test("source sync log tabs keep local fetch log and cloud fetch log separate", () => {
+  const tabs = source("src/components/SourceSyncLogTabs.tsx");
+
+  assert.match(tabs, /role="tablist"/);
+  assert.match(tabs, /Local Agent fetch log/);
+  assert.match(tabs, /Cloud fetch log/);
+  assert.match(tabs, /<FetchLogPanel/);
+  assert.match(tabs, /<UserCloudFetchLogPanel/);
+  assert.match(tabs, /BuilderFeedItems/);
+  assert.match(tabs, /TaskRow/);
+  assert.match(tabs, /Latest cloud fetch log/);
+  assert.match(tabs, /Recent posts/);
+  assert.match(tabs, /deadlineStatusLabel/);
+  assert.match(tabs, /RelativeTime/);
 });

@@ -6444,6 +6444,20 @@ summary.library-section-summary::after {
   padding: 1rem 1.125rem 1.125rem;
 }
 
+.source-sync-log-tabs {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.source-sync-log-tabs-head {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.source-sync-log-tablist .fb-btn {
+  white-space: nowrap;
+}
+
 .source-fetch-overview {
   display: grid;
   gap: 0.9rem;
@@ -6476,6 +6490,25 @@ summary.library-section-summary::after {
 
 .source-fetch-status-item dd {
   overflow: visible;
+}
+
+.user-cloud-fetch-log {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.user-cloud-source-list {
+  border-top: 1px solid var(--line);
+}
+
+.user-cloud-source-detail {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.user-cloud-run-task {
+  display: grid;
+  gap: 0.45rem;
 }
 
 .sources-sync-section .digest-updates-head {
@@ -13451,6 +13484,18 @@ body {
 
   .sources-sync-panel > .library-section-body {
     padding: 0.85rem;
+  }
+
+  .source-sync-log-tabs-head,
+  .source-sync-log-tablist {
+    width: 100%;
+  }
+
+  .source-sync-log-tablist .fb-btn {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    white-space: normal;
   }
 
   .sources-sync-section .digest-updates-head {
