@@ -22,7 +22,6 @@ import type {
 type SyncLogTab = "local" | "cloud";
 
 export function SourceSyncLogTabs({
-  actions,
   cloudLog,
   initialCronJob,
   initialCronRuns,
@@ -32,7 +31,6 @@ export function SourceSyncLogTabs({
   initialScheduledJobRuns,
   summaryLanguage,
 }: {
-  actions?: ReactNode;
   cloudLog: UserCloudFetchLogData;
   initialRuns: LibraryFetchRunListItem[];
   initialCronRuns: LibraryFetchRunListItem[];
@@ -78,7 +76,6 @@ export function SourceSyncLogTabs({
           </button>
         </div>
       </div>
-      {actions ? <div className="source-sync-log-actions">{actions}</div> : null}
 
       {selected === "local" ? (
         <section

@@ -880,22 +880,20 @@ async function FetchSyncSection({
             your own library.
           </p>
         </div>
+        <SkillPromptActions
+          activeSchedule={data.libraryCronJob}
+          cloudFetchActive={showStopCloudFetch}
+          compactOnly
+          context="library"
+          localFetchActive={showStopLibraryCron}
+          showStop={showStopFetching}
+          tokens={data.activeTokens}
+          summaryLanguage={data.summaryLanguage}
+          digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+        />
       </div>
       <div className="library-section-body">
         <SourceSyncLogTabs
-          actions={
-            <SkillPromptActions
-              activeSchedule={data.libraryCronJob}
-              cloudFetchActive={showStopCloudFetch}
-              compactOnly
-              context="library"
-              localFetchActive={showStopLibraryCron}
-              showStop={showStopFetching}
-              tokens={data.activeTokens}
-              summaryLanguage={data.summaryLanguage}
-              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-            />
-          }
           cloudLog={data.cloudFetchLog}
           initialCronJob={data.libraryCronJob}
           initialCronRuns={data.cronRuns}

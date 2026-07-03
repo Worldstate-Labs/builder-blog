@@ -1123,7 +1123,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
   assert.match(buildersPage, /function FetchSourcesFallback/);
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
-  assert.match(buildersPage, /actions=\{/);
+  assert.match(buildersPage, /library-section-summary library-section-summary--static[\s\S]*<SkillPromptActions/);
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /const showStopCloudFetch = data\.cloudFetchLog\.submittedSourceCount > 0/);
@@ -1150,12 +1150,11 @@ test("source sync log tabs keep local fetch log and cloud fetch log separate", (
   const tabs = source("src/components/SourceSyncLogTabs.tsx");
 
   assert.match(tabs, /role="tablist"/);
-  assert.match(tabs, /source-sync-log-actions/);
   assert.match(tabs, /Local Agent fetch log/);
   assert.match(tabs, /Cloud fetch log/);
   assert.match(tabs, /<FetchLogPanel/);
   assert.match(tabs, /<UserCloudFetchLogPanel/);
-  assert.doesNotMatch(tabs, /actions=\{actions\}/);
+  assert.doesNotMatch(tabs, /actions/);
   assert.doesNotMatch(tabs, /actionsPlacement="start"/);
   assert.match(tabs, /CloudSourceLogItem/);
   assert.match(tabs, /showSubmitters=\{false\}/);
