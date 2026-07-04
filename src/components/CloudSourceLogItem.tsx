@@ -123,19 +123,6 @@ function CloudSourceLogDetail({
 
   return (
     <div className="cloud-source-detail user-cloud-source-detail">
-      <p className="cloud-source-status-line">
-        Last success <RelativeTime value={source.lastSuccessAt} fallback="-" /> · Last failure{" "}
-        <RelativeTime value={source.lastFailureAt} fallback="-" />
-        {source.lastFailureReason ? ` (${source.lastFailureReason})` : ""} · Next attempt{" "}
-        <RelativeTime value={source.nextAttemptAt} fallback="-" />
-        {source.circuitBreakerUntil ? (
-          <>
-            {" · "}circuit-broken until{" "}
-            <RelativeTime value={source.circuitBreakerUntil} fallback="-" />
-          </>
-        ) : null}
-      </p>
-
       {showSubmitters ? <Submitters source={source} /> : null}
 
       <p className="cloud-source-detail-label">Latest cloud fetch log</p>
@@ -149,14 +136,6 @@ function CloudSourceLogDetail({
             <span>
               <strong>Started</strong>
               <RelativeTime value={source.latestRunTask.startedAt} fallback="-" />
-            </span>
-            <span>
-              <strong>Finished</strong>
-              <RelativeTime value={source.latestRunTask.finishedAt} fallback="Still running" />
-            </span>
-            <span>
-              <strong>Posts</strong>
-              {postOutcomeSummary(source.latestRunTask)}
             </span>
           </div>
           {mappedPosts.length > 0 ? (
