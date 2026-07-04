@@ -13284,6 +13284,17 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .sources-sync-panel > .library-section-summary--static {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sources-sync-panel > .library-section-summary--static > .skill-prompt-compact {
+    justify-content: flex-start;
+    justify-self: stretch;
+    width: 100%;
+  }
+
   .your-digest-panel > .library-section-summary--static > .hub-share-control,
   .your-digest-panel > .library-section-summary--static > .source-section-skeleton-chip {
     align-items: flex-start;
@@ -13514,6 +13525,17 @@ body {
     justify-content: center;
     min-width: 0;
     white-space: normal;
+  }
+
+  .sources-sync-panel .skill-prompt-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+  }
+
+  .sources-sync-panel .skill-prompt-compact .fb-btn {
+    justify-content: center;
+    min-width: 0;
+    width: 100%;
   }
 
   .sources-sync-section .digest-updates-head {
