@@ -1155,7 +1155,9 @@ test("source sync log tabs keep local fetch log and cloud fetch log separate", (
   assert.doesNotMatch(tabs, /Local Agent fetch log/);
   assert.doesNotMatch(tabs, /Latest submission/);
   assert.match(tabs, /source\.deadlineStatus === "ON_TIME"/);
-  assert.match(tabs, /sources on time/);
+  assert.match(tabs, /On time sources/);
+  assert.match(tabs, /onTimeSourceLabel/);
+  assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*Submitted sources[\s\S]*On time sources/);
   assert.match(tabs, /<FetchLogPanel/);
   assert.match(tabs, /<UserCloudFetchLogPanel/);
   assert.doesNotMatch(tabs, /actions/);

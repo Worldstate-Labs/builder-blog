@@ -318,19 +318,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "제출한 소스",
     es: "Fuentes enviadas",
   },
-  "source on time": {
-    "zh-CN": "个信息源准时",
-    "zh-TW": "個資訊源準時",
-    ja: "件のソースが時間内",
-    ko: "개 소스 정시",
-    es: "fuente a tiempo",
-  },
-  "sources on time": {
-    "zh-CN": "个信息源准时",
-    "zh-TW": "個資訊源準時",
-    ja: "件のソースが時間内",
-    ko: "개 소스 정시",
-    es: "fuentes a tiempo",
+  "On time sources": {
+    "zh-CN": "准时信息源",
+    "zh-TW": "準時資訊源",
+    ja: "時間内のソース",
+    ko: "정시 소스",
+    es: "Fuentes a tiempo",
   },
   "Latest cloud fetch log": {
     "zh-CN": "最近一次云端抓取日志",

@@ -114,16 +114,12 @@ function UserCloudFetchLogPanel({
   const [expanded, setExpanded] = useState<string | null>(null);
   const sourceLabel = cloudLog.submittedSourceCount === 1 ? "source" : "sources";
   const onTimeSourceCount = cloudLog.sources.filter((source) => source.deadlineStatus === "ON_TIME").length;
-  const onTimeLabel = onTimeSourceCount === 1 ? "source on time" : "sources on time";
+  const onTimeSourceLabel = onTimeSourceCount === 1 ? "source" : "sources";
 
   return (
     <section className="fb-panel digest-updates-panel user-cloud-fetch-log">
       <div className="source-fetch-overview">
         <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Cloud fetch details">
-          <SourceFetchMetaItem
-            label="Submitted sources"
-            value={`${cloudLog.submittedSourceCount} ${sourceLabel} · ${onTimeSourceCount} ${onTimeLabel}`}
-          />
           <SourceFetchMetaItem
             label="Fetch frequency"
             value={frequencyLabel(cloudLog.frequency)}
@@ -131,6 +127,14 @@ function UserCloudFetchLogPanel({
           <SourceFetchMetaItem
             label="Language"
             value={cloudLog.summaryLanguage ? displayLanguagePreference(cloudLog.summaryLanguage) : "N/A"}
+          />
+          <SourceFetchMetaItem
+            label="Submitted sources"
+            value={`${cloudLog.submittedSourceCount} ${sourceLabel}`}
+          />
+          <SourceFetchMetaItem
+            label="On time sources"
+            value={`${onTimeSourceCount} ${onTimeSourceLabel}`}
           />
         </dl>
       </div>
