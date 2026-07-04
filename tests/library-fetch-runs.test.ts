@@ -1150,8 +1150,12 @@ test("source sync log tabs keep local fetch log and cloud fetch log separate", (
   const tabs = source("src/components/SourceSyncLogTabs.tsx");
 
   assert.match(tabs, /role="tablist"/);
-  assert.match(tabs, /Local Agent fetch log/);
+  assert.match(tabs, /Agent fetch log/);
   assert.match(tabs, /Cloud fetch log/);
+  assert.doesNotMatch(tabs, /Local Agent fetch log/);
+  assert.doesNotMatch(tabs, /Latest submission/);
+  assert.match(tabs, /source\.deadlineStatus === "ON_TIME"/);
+  assert.match(tabs, /sources on time/);
   assert.match(tabs, /<FetchLogPanel/);
   assert.match(tabs, /<UserCloudFetchLogPanel/);
   assert.doesNotMatch(tabs, /actions/);

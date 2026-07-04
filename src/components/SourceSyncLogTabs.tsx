@@ -60,7 +60,7 @@ export function SourceSyncLogTabs({
             tabIndex={selected === "local" ? 0 : -1}
             type="button"
           >
-            Local Agent fetch log
+            Agent fetch log
           </button>
           <button
             aria-controls="source-sync-cloud-log-panel"
@@ -113,6 +113,8 @@ function UserCloudFetchLogPanel({
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const sourceLabel = cloudLog.submittedSourceCount === 1 ? "source" : "sources";
+  const onTimeSourceCount = cloudLog.sources.filter((source) => source.deadlineStatus === "ON_TIME").length;
+  const onTimeLabel = onTimeSourceCount === 1 ? "source on time" : "sources on time";
 
   return (
     <section className="fb-panel digest-updates-panel user-cloud-fetch-log">
@@ -120,7 +122,7 @@ function UserCloudFetchLogPanel({
         <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Cloud fetch details">
           <SourceFetchMetaItem
             label="Submitted sources"
-            value={`${cloudLog.submittedSourceCount} ${sourceLabel}`}
+            value={`${cloudLog.submittedSourceCount} ${sourceLabel} · ${onTimeSourceCount} ${onTimeLabel}`}
           />
           <SourceFetchMetaItem
             label="Fetch frequency"
@@ -129,10 +131,6 @@ function UserCloudFetchLogPanel({
           <SourceFetchMetaItem
             label="Language"
             value={cloudLog.summaryLanguage ? displayLanguagePreference(cloudLog.summaryLanguage) : "N/A"}
-          />
-          <SourceFetchMetaItem
-            label="Latest submission"
-            value={<RelativeTime value={cloudLog.latestSubmittedAt} fallback="None yet" />}
           />
         </dl>
       </div>

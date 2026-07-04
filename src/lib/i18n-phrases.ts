@@ -297,12 +297,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "클라우드 가져오기 로그",
     es: "Registro de obtención en la nube",
   },
-  "Local Agent fetch log": {
-    "zh-CN": "Local Agent 抓取日志",
-    "zh-TW": "Local Agent 抓取日誌",
-    ja: "Local Agent 取得ログ",
-    ko: "Local Agent 가져오기 로그",
-    es: "Registro de obtención del Local Agent",
+  "Agent fetch log": {
+    "zh-CN": "Agent 抓取日志",
+    "zh-TW": "Agent 抓取日誌",
+    ja: "Agent 取得ログ",
+    ko: "Agent 가져오기 로그",
+    es: "Registro de obtención del Agent",
   },
   "Fetch log type": {
     "zh-CN": "抓取日志类型",
@@ -318,12 +318,19 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "제출한 소스",
     es: "Fuentes enviadas",
   },
-  "Latest submission": {
-    "zh-CN": "最近提交",
-    "zh-TW": "最近提交",
-    ja: "最新の送信",
-    ko: "최근 제출",
-    es: "Último envío",
+  "source on time": {
+    "zh-CN": "个信息源准时",
+    "zh-TW": "個資訊源準時",
+    ja: "件のソースが時間内",
+    ko: "개 소스 정시",
+    es: "fuente a tiempo",
+  },
+  "sources on time": {
+    "zh-CN": "个信息源准时",
+    "zh-TW": "個資訊源準時",
+    ja: "件のソースが時間内",
+    ko: "개 소스 정시",
+    es: "fuentes a tiempo",
   },
   "Latest cloud fetch log": {
     "zh-CN": "最近一次云端抓取日志",
