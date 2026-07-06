@@ -40,3 +40,13 @@ test("source search results expose add and in-library states", () => {
   assert.match(searchPage, /sourceValue=\{result\.sourceValue/);
   assert.match(searchPage, /libraryStatus=\{result\.libraryStatus/);
 });
+
+test("source search result add action exposes clickable source-type suggestions", () => {
+  const sourceAction = source("src/components/SearchSourceLibraryAction.tsx");
+
+  assert.match(sourceAction, /suggestId\?:\s*DetectedSourceId/);
+  assert.match(sourceAction, /add-source-text-action/);
+  assert.match(sourceAction, /Switch source type/);
+  assert.match(sourceAction, /suggestedSourceType/);
+  assert.match(sourceAction, /submitAdd\(\{ sourceTypeOverride: suggestedSourceType \}\)/);
+});

@@ -140,6 +140,40 @@ test("probe accepts direct blog RSS without requiring page-scrape confirmation",
   }
 });
 
+test("probe accepts text RSS with podcast compatibility metadata but no audio", async () => {
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      `<?xml version="1.0"?>
+      <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+        <channel>
+          <title>Ahead of AI</title>
+          <itunes:owner><itunes:name>Sebastian Raschka</itunes:name></itunes:owner>
+          <item>
+            <title>Using Local Coding Agents</title>
+            <enclosure url="https://cdn.example.com/figure.jpg" type="image/jpeg" />
+          </item>
+        </channel>
+      </rss>`,
+      { status: 200, headers: { "content-type": "application/rss+xml" } },
+    );
+  try {
+    const outcome = await probeAndEnrichSource({
+      sourceType: "blog",
+      sourceUrl: "https://magazine.sebastianraschka.com/feed",
+      fetchUrl: "https://magazine.sebastianraschka.com/feed",
+      handle: null,
+    });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.requiresConfirmation, undefined);
+    assert.equal(outcome.discoveredFetchUrl, "https://magazine.sebastianraschka.com/feed");
+    assert.deepEqual(outcome.enrichment, { name: "Ahead of AI" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("probe rejects podcast RSS pasted as Blog / Article Feed with a source-type suggestion", async () => {
   const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
   const originalFetch = globalThis.fetch;

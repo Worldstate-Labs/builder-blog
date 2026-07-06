@@ -728,9 +728,8 @@ function looksLikeXmlFeed(contentType: string, body: string) {
 
 function looksLikePodcastXmlFeed(body: string) {
   return (
-    /xmlns:itunes=|<itunes:/i.test(body) ||
     /<enclosure\b[^>]*\btype=["']audio\//i.test(body) ||
-    /<podcast:/i.test(body)
+    /<podcast:(?:chapters|episode|funding|guid|license|person|season|soundbite|transcript)\b/i.test(body)
   );
 }
 

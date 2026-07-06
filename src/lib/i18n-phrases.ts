@@ -1574,6 +1574,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "소스 추가",
     es: "Agregar fuente",
   },
+  "In library": {
+    "zh-CN": "已在库中",
+    "zh-TW": "已在庫中",
+    ja: "ライブラリ内",
+    ko: "라이브러리에 있음",
+    es: "En la biblioteca",
+  },
   "Add a source": {
     "zh-CN": "添加信息源",
     "zh-TW": "新增資訊源",

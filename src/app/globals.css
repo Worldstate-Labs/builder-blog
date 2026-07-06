@@ -4653,7 +4653,7 @@ summary.library-section-summary::after {
 }
 
 .search-source-library-message.is-warning {
-  color: var(--warm-strong);
+  color: color-mix(in oklch, var(--warm) 74%, var(--ink));
 }
 
 .search-result-refinements {

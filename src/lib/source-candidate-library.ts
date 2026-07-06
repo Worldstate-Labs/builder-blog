@@ -52,14 +52,14 @@ const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "The Gradient", sourceType: "blog", sourceUrl: "https://thegradient.pub/rss/", fetchUrl: "https://thegradient.pub/rss/" },
   { name: "Lil'Log by Lilian Weng", sourceType: "blog", sourceUrl: "https://lilianweng.github.io/lil-log/feed.xml", fetchUrl: "https://lilianweng.github.io/lil-log/feed.xml" },
   { name: "Ahead of AI", sourceType: "blog", sourceUrl: "https://magazine.sebastianraschka.com/feed", fetchUrl: "https://magazine.sebastianraschka.com/feed" },
-  { name: "Latent Space", sourceType: "blog", sourceUrl: "https://www.latent.space/feed", fetchUrl: "https://www.latent.space/feed" },
+  { name: "Latent Space", sourceType: "blog", sourceUrl: "https://www.latent.space/", fetchUrl: "https://www.latent.space/feed" },
   { name: "The Batch by DeepLearning.AI", sourceType: "blog", sourceUrl: "https://www.deeplearning.ai/the-batch/" },
-  { name: "Interconnects", sourceType: "blog", sourceUrl: "https://www.interconnects.ai/feed", fetchUrl: "https://www.interconnects.ai/feed" },
+  { name: "Interconnects", sourceType: "blog", sourceUrl: "https://www.interconnects.ai/", fetchUrl: "https://www.interconnects.ai/feed" },
   { name: "Simon Willison's Weblog", sourceType: "blog", sourceUrl: "https://simonwillison.net/atom/everything/", fetchUrl: "https://simonwillison.net/atom/everything/" },
   { name: "No Priors", sourceType: "podcast", sourceUrl: "https://feeds.megaphone.fm/nopriors", fetchUrl: "https://feeds.megaphone.fm/nopriors", avatarDomain: "nopriorspodcast.com" },
   { name: "Practical AI Podcast", sourceType: "podcast", sourceUrl: "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm", fetchUrl: "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm", avatarDomain: "practicalai.fm" },
   { name: "Latent Space Podcast", sourceType: "podcast", sourceUrl: "https://api.substack.com/feed/podcast/1084089.rss", fetchUrl: "https://api.substack.com/feed/podcast/1084089.rss", avatarDomain: "www.latent.space" },
-  { name: "The Cognitive Revolution", sourceType: "podcast", sourceUrl: "https://www.cognitiverevolution.ai/latest/rss/", fetchUrl: "https://www.cognitiverevolution.ai/latest/rss/" },
+  { name: "The Cognitive Revolution", sourceType: "podcast", sourceUrl: "https://podcasts.apple.com/us/podcast/the-cognitive-revolution-ai-builders-researchers-and/id1669813431", fetchUrl: "https://feeds.megaphone.fm/RINTP3108857801", avatarDomain: "www.cognitiverevolution.ai" },
   { name: "MIT Technology Review AI", sourceType: "blog", sourceUrl: "https://www.technologyreview.com/topic/artificial-intelligence/feed/", fetchUrl: "https://www.technologyreview.com/topic/artificial-intelligence/feed/" },
   { name: "The Verge AI", sourceType: "blog", sourceUrl: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", fetchUrl: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" },
   { name: "TechCrunch AI", sourceType: "blog", sourceUrl: "https://techcrunch.com/category/artificial-intelligence/feed/", fetchUrl: "https://techcrunch.com/category/artificial-intelligence/feed/" },
@@ -67,7 +67,7 @@ const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "Ars Technica AI", sourceType: "blog", sourceUrl: "https://arstechnica.com/ai/feed/", fetchUrl: "https://arstechnica.com/ai/feed/" },
   { name: "The Decoder", sourceType: "blog", sourceUrl: "https://the-decoder.com/feed/", fetchUrl: "https://the-decoder.com/feed/" },
   { name: "MarkTechPost", sourceType: "blog", sourceUrl: "https://www.marktechpost.com/feed/", fetchUrl: "https://www.marktechpost.com/feed/" },
-  { name: "Last Week in AI", sourceType: "blog", sourceUrl: "https://lastweekin.ai/feed/", fetchUrl: "https://lastweekin.ai/feed/" },
+  { name: "Last Week in AI", sourceType: "blog", sourceUrl: "https://lastweekin.ai/", fetchUrl: "https://lastweekin.ai/feed/" },
   { name: "AI Weekly", sourceType: "blog", sourceUrl: "https://aiweekly.co/issues.rss", fetchUrl: "https://aiweekly.co/issues.rss" },
   { name: "Import AI", sourceType: "blog", sourceUrl: "https://importai.substack.com/feed", fetchUrl: "https://importai.substack.com/feed" },
   { name: "BAIR Blog", sourceType: "blog", sourceUrl: "https://bair.berkeley.edu/blog/feed.xml", fetchUrl: "https://bair.berkeley.edu/blog/feed.xml" },
@@ -76,13 +76,13 @@ const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "EleutherAI Blog", sourceType: "blog", sourceUrl: "https://blog.eleuther.ai/index.xml", fetchUrl: "https://blog.eleuther.ai/index.xml" },
   { name: "OpenRouter Blog", sourceType: "blog", sourceUrl: "https://openrouter.ai/blog/feed.xml", fetchUrl: "https://openrouter.ai/blog/feed.xml" },
   { name: "Aider Blog", sourceType: "blog", sourceUrl: "https://aider.chat/feed.xml", fetchUrl: "https://aider.chat/feed.xml" },
-  { name: "DeepLearning.AI Blog", sourceType: "website", sourceUrl: "https://www.deeplearning.ai/blog/" },
+  { name: "DeepLearning.AI Blog", sourceType: "blog", sourceUrl: "https://www.deeplearning.ai/blog/" },
   { name: "Anthropic Research", sourceType: "website", sourceUrl: "https://www.anthropic.com/research" },
-  { name: "Weights & Biases Articles", sourceType: "website", sourceUrl: "https://wandb.ai/site/articles/" },
-  { name: "AssemblyAI Blog", sourceType: "website", sourceUrl: "https://www.assemblyai.com/blog/" },
+  { name: "Weights & Biases Articles", sourceType: "blog", sourceUrl: "https://wandb.ai/site/articles/" },
+  { name: "AssemblyAI Blog", sourceType: "blog", sourceUrl: "https://www.assemblyai.com/blog/" },
   { name: "Pinecone Learn", sourceType: "website", sourceUrl: "https://www.pinecone.io/learn/" },
-  { name: "Qdrant Blog", sourceType: "website", sourceUrl: "https://qdrant.tech/blog/" },
-  { name: "LMSYS Blog", sourceType: "website", sourceUrl: "https://www.lmsys.org/blog/" },
+  { name: "Qdrant Blog", sourceType: "blog", sourceUrl: "https://qdrant.tech/blog/" },
+  { name: "LMSYS Blog", sourceType: "blog", sourceUrl: "https://www.lmsys.org/blog/" },
   { name: "Dwarkesh Podcast", sourceType: "podcast", sourceUrl: "https://www.dwarkesh.com/feed", fetchUrl: "https://www.dwarkesh.com/feed" },
   { name: "AI Engineering Podcast", sourceType: "podcast", sourceUrl: "https://serve.podhome.fm/rss/c9abdd38-a5dc-5eb2-96fd-f833f93208a7", fetchUrl: "https://serve.podhome.fm/rss/c9abdd38-a5dc-5eb2-96fd-f833f93208a7", avatarDomain: "ai.engineer" },
   { name: "OpenAI YouTube", sourceType: "youtube", sourceUrl: "https://www.youtube.com/@OpenAI", avatarUrl: "https://yt3.googleusercontent.com/MopgmVAFV9BqlzOJ-UINtmutvEPcNe5IbKMmP_4vZZo3vnJXcZGtybUBsXaEVxkmxKyGqX9R=s900-c-k-c0x00ffffff-no-rj" },
@@ -261,9 +261,9 @@ async function seedCuratedSourceCandidates(
   candidates: CuratedSourceCandidate[],
   seededFrom: string,
 ) {
+  const seeds = candidates.map((candidate) => seedFromCuratedCandidate(candidate, seededFrom));
   await Promise.all(
-    candidates.map((candidate) => {
-      const seed = seedFromCuratedCandidate(candidate, seededFrom);
+    seeds.map((seed) => {
       return prisma.sourceCandidate.upsert({
         where: { sourceKey: seed.sourceKey },
         update: {
@@ -281,6 +281,12 @@ async function seedCuratedSourceCandidates(
       });
     }),
   );
+  await prisma.sourceCandidate.deleteMany({
+    where: {
+      seededFrom,
+      sourceKey: { notIn: seeds.map((seed) => seed.sourceKey) },
+    },
+  });
 }
 
 function seedFromBuilder(builder: BuilderSeedSource) {
