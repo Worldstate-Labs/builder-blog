@@ -31,6 +31,9 @@ export type SearchDocument = {
   date?: Date | null;
   favoritedAt?: Date | null;
   readAt?: Date | null;
+  libraryStatus?: "in_library" | "not_in_library";
+  sourceCandidateId?: string | null;
+  sourceValue?: string | null;
 };
 
 export type SearchResult = SearchDocument & {
@@ -756,18 +759,10 @@ function compareRankCandidates(a: SearchRankCandidate, b: SearchRankCandidate, s
 }
 
 function stripRankCandidateScores(candidate: SearchRankCandidate): SearchResult {
-  return {
-    id: candidate.id,
-    type: candidate.type,
-    title: candidate.title,
-    body: candidate.body,
-    externalUrl: candidate.externalUrl,
-    url: candidate.url,
-    sourceName: candidate.sourceName,
-    date: candidate.date,
-    score: candidate.score,
-    snippet: candidate.snippet,
-  };
+  const result = { ...candidate };
+  delete (result as Partial<SearchRankCandidate>).exactLaneScore;
+  delete (result as Partial<SearchRankCandidate>).semanticLaneScore;
+  return result;
 }
 
 function hasSearchFilters(parsedQuery: ParsedSearchQuery) {

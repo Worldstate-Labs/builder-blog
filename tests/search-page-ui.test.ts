@@ -29,3 +29,14 @@ test("search suggestions stay query-like instead of repeating result type labels
   assert.doesNotMatch(searchPage, /digest:\s*"AI Digest archives"/);
   assert.doesNotMatch(suggestRoute, /return "AI Digest archive"/);
 });
+
+test("source search results expose add and in-library states", () => {
+  const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const sourceAction = source("src/components/SearchSourceLibraryAction.tsx");
+
+  assert.match(searchPage, /SearchSourceLibraryAction/);
+  assert.match(sourceAction, /Add source/);
+  assert.match(sourceAction, /In library/);
+  assert.match(searchPage, /sourceValue=\{result\.sourceValue/);
+  assert.match(searchPage, /libraryStatus=\{result\.libraryStatus/);
+});

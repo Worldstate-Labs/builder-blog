@@ -5,7 +5,10 @@ import {
   ensureDefaultCommunityDigestImport,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
-import { builderSourceLabel } from "@/lib/source-registry";
+import { ensureSourceCandidateSeeded } from "@/lib/source-candidate-library";
+import { sourceCandidateValue } from "@/lib/source-candidates";
+import { sourceLabelForType } from "@/lib/source-display";
+import { builderKindForSourceType, builderSourceLabel } from "@/lib/source-registry";
 import { cleanStructuredDigestItems, digestItemsSearchText } from "@/lib/structured-digest";
 import {
   candidateSearchTerms,
@@ -23,6 +26,7 @@ import {
 
 const searchLimits = {
   builder: 200,
+  sourceCandidate: 200,
   feed: 800,
   digest: 350,
 };
@@ -66,7 +70,21 @@ export async function searchUserLibrary({
   const terms = candidateSearchTerms(trimmedQuery, normalizedMode);
   const hasCandidateTerms = terms.length > 0;
   const typeFilter = parsedQuery.type;
+  const shouldSearchSources = !typeFilter || typeFilter === "builder";
   const poolBuilderIds = await activePoolBuilderIds(userId);
+  if (shouldSearchSources) {
+    await ensureSourceCandidateSeeded();
+  }
+  const librarySourceKeys = shouldSearchSources
+    ? new Set(
+        (
+          await prisma.builder.findMany({
+            where: { id: { in: poolBuilderIds } },
+            select: { canonicalKey: true },
+          })
+        ).map((builder) => builder.canonicalKey),
+      )
+    : new Set<string>();
   await ensureDefaultCommunityDigestImport(userId);
   const importedDigestPipelines =
     typeFilter && typeFilter !== "digest"
@@ -89,7 +107,7 @@ export async function searchUserLibrary({
   );
   const digestOwnerIds = [userId, ...importedDigestPipelines.map(({ pipeline }) => pipeline.ownerUserId)];
 
-  const [builders, feedItems, digests] = await Promise.all([
+  const [builders, sourceCandidates, feedItems, digests] = await Promise.all([
     typeFilter && typeFilter !== "builder" ? Promise.resolve([]) : prisma.builder.findMany({
       where: {
         id: { in: poolBuilderIds },
@@ -112,6 +130,28 @@ export async function searchUserLibrary({
       },
       orderBy: { updatedAt: "desc" },
       take: searchLimits.builder,
+    }),
+    !shouldSearchSources ? Promise.resolve([]) : prisma.sourceCandidate.findMany({
+      where: {
+        ...(librarySourceKeys.size > 0
+          ? { sourceKey: { notIn: [...librarySourceKeys] } }
+          : {}),
+        ...(hasCandidateTerms ? { OR: sourceCandidateSearchConditions(terms) } : {}),
+      },
+      select: {
+        id: true,
+        sourceKey: true,
+        name: true,
+        sourceType: true,
+        sourceUrl: true,
+        fetchUrl: true,
+        handle: true,
+        avatarUrl: true,
+        avatarDataUrl: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: searchLimits.sourceCandidate,
     }),
     typeFilter && typeFilter !== "feed" ? Promise.resolve([]) : prisma.feedItem.findMany({
       where: {
@@ -182,6 +222,38 @@ export async function searchUserLibrary({
         sourceName: sourceLabel,
         sourceType: builder.sourceType,
         date: builder.updatedAt,
+        libraryStatus: "in_library",
+        sourceValue: sourceValueForSearchSource(builder),
+      };
+    }),
+    ...sourceCandidates.map<SearchDocument>((candidate) => {
+      const sourceLabel = sourceLabelForType(candidate.sourceType);
+      const sourceValue = sourceCandidateValue(candidate);
+      return {
+        id: `source_candidate:${candidate.id}`,
+        type: "builder",
+        title: candidate.name,
+        body: [
+          candidate.handle ? `@${candidate.handle}` : "",
+          sourceLabel,
+          candidate.sourceType,
+          candidate.sourceUrl ?? "",
+          candidate.fetchUrl ?? "",
+          candidate.sourceKey,
+        ].join(" "),
+        externalUrl: candidate.sourceUrl ?? candidate.fetchUrl,
+        avatarUrl: candidate.avatarUrl,
+        avatarDataUrl: candidate.avatarDataUrl,
+        builderKind: builderKindForSourceType(candidate.sourceType),
+        fetchUrl: candidate.fetchUrl,
+        libraryStatus: "not_in_library",
+        sourceCandidateId: candidate.id,
+        sourceName: sourceLabel,
+        sourceType: candidate.sourceType,
+        sourceUrl: candidate.sourceUrl,
+        sourceValue,
+        url: candidate.sourceUrl ?? candidate.fetchUrl,
+        date: candidate.updatedAt,
       };
     }),
     ...feedItems.map<SearchDocument>((item) => {
@@ -369,6 +441,27 @@ function feedSearchConditions(terms: string[]): Prisma.FeedItemWhereInput[] {
     { sourceName: textContains(term) },
     { url: textContains(term) },
   ]);
+}
+
+function sourceCandidateSearchConditions(terms: string[]): Prisma.SourceCandidateWhereInput[] {
+  return terms.flatMap((term) => [
+    { name: textContains(term) },
+    { sourceType: textContains(term) },
+    { sourceUrl: textContains(term) },
+    { fetchUrl: textContains(term) },
+    { handle: textContains(term) },
+    { sourceKey: textContains(term) },
+  ]);
+}
+
+function sourceValueForSearchSource(source: {
+  sourceType: string | null;
+  sourceUrl: string | null;
+  fetchUrl: string | null;
+  handle: string | null;
+}) {
+  if (source.sourceType === "x" && source.handle) return `@${source.handle}`;
+  return source.sourceUrl ?? source.fetchUrl ?? source.handle ?? null;
 }
 
 function textContains(term: string) {

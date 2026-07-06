@@ -167,7 +167,7 @@ export async function ensureSourceCandidateLibraryFromAdminSources() {
   return listSourceCandidates();
 }
 
-async function ensureSourceCandidateSeeded() {
+export async function ensureSourceCandidateSeeded() {
   const now = Date.now();
   if (
     sourceCandidateSeedPromise &&

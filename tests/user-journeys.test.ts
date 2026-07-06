@@ -2411,6 +2411,17 @@ test("source search results keep detail links while matching external URLs", () 
   assert.equal(results[0].externalUrl, "https://claude.com/blog");
 });
 
+test("search user path includes source candidates and marks library state", () => {
+  const userSearch = readFileSync("src/lib/user-search.ts", "utf8");
+
+  assert.match(userSearch, /sourceCandidate\.findMany/);
+  assert.match(userSearch, /sourceCandidateSearchConditions\(terms\)/);
+  assert.match(userSearch, /libraryStatus:\s*"not_in_library"/);
+  assert.match(userSearch, /libraryStatus:\s*"in_library"/);
+  assert.match(userSearch, /sourceValue:/);
+  assert.match(userSearch, /sourceCandidateId:/);
+});
+
 test("search tool clearing removes whole all-in operator groups", () => {
   assert.equal(
     stripSearchQueryOperators("allintitle:agent memory site:example.com", [

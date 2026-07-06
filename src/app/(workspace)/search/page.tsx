@@ -18,6 +18,7 @@ import { PostCard } from "@/components/PostCard";
 import { PostFavoriteControl } from "@/components/PostFavoriteControl";
 import { OriginalSourceAction } from "@/components/OriginalSourceAction";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
+import { SearchSourceLibraryAction } from "@/components/SearchSourceLibraryAction";
 import {
   SearchTypeTabs as SearchTypeTabsControl,
   type SearchTypeTabItem,
@@ -772,6 +773,14 @@ function ResultCard({
       <div className="search-result-meta">
         <span>{resultTypeItemLabels[result.type]}</span>
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
+        {result.type === "builder" && result.libraryStatus ? (
+          <SearchSourceLibraryAction
+            libraryStatus={result.libraryStatus}
+            sourceName={result.title}
+            sourceType={result.sourceType}
+            sourceValue={result.sourceValue}
+          />
+        ) : null}
         {originalUrl ? (
           <OriginalSourceAction
             ariaLabel={`Original: ${result.title}`}

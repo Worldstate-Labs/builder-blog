@@ -4622,6 +4622,40 @@ summary.library-section-summary::after {
   margin-top: 0.65rem;
 }
 
+.search-source-library-action-wrap {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.search-source-library-status {
+  align-items: center;
+  background: color-mix(in oklch, var(--success) 10%, var(--surface));
+  border: 1px solid color-mix(in oklch, var(--success) 24%, var(--line));
+  border-radius: 999px;
+  color: var(--success);
+  display: inline-flex;
+  gap: 0.3rem;
+  min-height: 1.875rem;
+  padding: 0 0.65rem;
+}
+
+.search-source-library-status svg,
+.search-source-library-action svg {
+  height: 0.82rem;
+  width: 0.82rem;
+}
+
+.search-source-library-message {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.search-source-library-message.is-warning {
+  color: var(--warm-strong);
+}
+
 .search-result-refinements {
   margin-top: 0.7rem;
 }
