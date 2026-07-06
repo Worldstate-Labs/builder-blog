@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildFetchTimeline,
   fetchCronFrequencyLabel,
+  fetchRunLifecycleSyncProgress,
   fetchRunDisplayState,
   fetchRunStats,
   getFetchActivityStatus,
@@ -725,6 +726,24 @@ test("running fetch job with partial failures stays syncing in the timeline", ()
   assert.equal(entries[0]?.status, "running");
   assert.equal(status.key, "syncing");
   assert.equal(status.label, "Running");
+});
+
+test("sync lifecycle progress separates saved posts from accounted terminal outcomes", () => {
+  assert.deepEqual(
+    fetchRunLifecycleSyncProgress({
+      planned: 40,
+      synced: 27,
+      skipped: 0,
+      failed: 5,
+      actionNeeded: 5,
+    }),
+    {
+      synced: 27,
+      accounted: 37,
+      outcome: "27 / 40 posts",
+      accountedText: "37 / 40 posts accounted",
+    },
+  );
 });
 
 test("failed post outcomes override an ok fetch run status", () => {

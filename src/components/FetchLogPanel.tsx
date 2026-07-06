@@ -1802,6 +1802,18 @@ function ratioText(done: number, total: number, unit: string): string {
   return `${formatCount(done)} / ${formatCount(total)} ${unit}${total === 1 ? "" : "s"}`;
 }
 
+export function fetchRunLifecycleSyncProgress(
+  stats: Pick<FetchRunStats, "planned" | "synced" | "skipped" | "failed" | "actionNeeded">,
+) {
+  const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  return {
+    synced: stats.synced,
+    accounted,
+    outcome: ratioText(stats.synced, stats.planned, "post"),
+    accountedText: `${ratioText(accounted, stats.planned, "post")} accounted`,
+  };
+}
+
 function countNoun(count: number, singular: string, plural = `${singular}s`): string {
   return `${formatCount(count)} ${count === 1 ? singular : plural}`;
 }
@@ -2003,7 +2015,7 @@ function JobLifecycle({
     ? progress?.recentEvents.at(-1)
     : null;
   const stage = progress?.stage ? progress.stage.replace(/_/g, " ") : null;
-  const doneOrAccounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  const syncProgress = fetchRunLifecycleSyncProgress(stats);
   const steps: LifecycleStep[] = [
     {
       key: "sources",
@@ -2059,12 +2071,13 @@ function JobLifecycle({
     {
       key: "sync",
       label: "Sync",
-      outcome: ratioText(doneOrAccounted, stats.planned, "post"),
-      tone: lifecycleTone(doneOrAccounted, stats.planned, { failed: stats.failed }),
+      outcome: syncProgress.outcome,
+      tone: lifecycleTone(syncProgress.synced, stats.planned, { failed: stats.failed }),
       open: Boolean(recentEvent?.message || stats.failed || stats.skipped || stats.actionNeeded),
       children: (
         <dl className="sync-panel-task-fact-list">
           <FactRow label="Synced" value={<span>{formatCount(stats.synced)}</span>} />
+          {syncProgress.accounted !== syncProgress.synced ? <FactRow label="Accounted" value={<span>{syncProgress.accountedText}</span>} /> : null}
           {stats.skipped > 0 ? <FactRow label="Skipped" value={<span>{formatCount(stats.skipped)}</span>} /> : null}
           {stats.failed > 0 ? <FactRow label="Failed" value={<span className="sync-panel-task-danger">{formatCount(stats.failed)}</span>} /> : null}
           {stats.actionNeeded > 0 ? <FactRow label="Action needed" value={<span>{formatCount(stats.actionNeeded)}</span>} /> : null}
