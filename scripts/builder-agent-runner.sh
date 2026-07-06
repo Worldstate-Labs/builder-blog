@@ -624,20 +624,90 @@ run_with_openclaw_unattended() {
   return "$_openclaw_code"
 }
 
-agent_output_has_openclaw_auth_failure() {
+agent_output_has_runtime_pattern() {
   _file="${1:-}"
+  _pattern="${2:-}"
   [ -n "$_file" ] && [ -r "$_file" ] || return 1
-  grep -E -i -q \
-    "OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth" \
-    "$_file"
+  [ -n "$_pattern" ] || return 1
+  node - "$_file" "$_pattern" <<'NODE'
+const fs = require("fs");
+const [file, pattern] = process.argv.slice(2);
+const regex = new RegExp(pattern, "i");
+const contentEventTypes = new Set(["agent_message", "command_execution"]);
+const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+
+for (const line of lines) {
+  if (!line.trim()) continue;
+  let event = null;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    continue;
+  }
+
+  const itemType = typeof event?.item?.type === "string" ? event.item.type : null;
+  const eventType = typeof event?.type === "string" ? event.type : null;
+  if (contentEventTypes.has(itemType || "") || contentEventTypes.has(eventType || "")) {
+    continue;
+  }
+  if (regex.test(JSON.stringify(event))) process.exit(0);
+}
+process.exit(1);
+NODE
+}
+
+agent_output_runtime_summary_for_pattern() {
+  _file="${1:-}"
+  _pattern="${2:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 0
+  [ -n "$_pattern" ] || return 0
+  node - "$_file" "$_pattern" <<'NODE'
+const fs = require("fs");
+const [file, pattern] = process.argv.slice(2);
+const regex = new RegExp(pattern, "i");
+const contentEventTypes = new Set(["agent_message", "command_execution"]);
+const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+
+const compact = (value) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 500);
+
+for (const line of lines) {
+  if (!line.trim()) continue;
+  let event = null;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    continue;
+  }
+  const itemType = typeof event?.item?.type === "string" ? event.item.type : null;
+  const eventType = typeof event?.type === "string" ? event.type : null;
+  if (contentEventTypes.has(itemType || "") || contentEventTypes.has(eventType || "")) {
+    continue;
+  }
+  const serialized = JSON.stringify(event);
+  if (!regex.test(serialized)) continue;
+  const message =
+    event?.message ||
+    event?.error?.message ||
+    event?.error ||
+    event?.item?.message ||
+    event?.item?.error?.message ||
+    event?.item?.error ||
+    serialized;
+  console.log(compact(message));
+  process.exit(0);
+}
+NODE
+}
+
+agent_output_has_openclaw_auth_failure() {
+  agent_output_has_runtime_pattern "${1:-}" \
+    "OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth"
 }
 
 openclaw_auth_failure_summary() {
-  _file="${1:-}"
-  [ -n "$_file" ] && [ -r "$_file" ] || return 0
-  grep -E -i -m 1 \
+  agent_output_runtime_summary_for_pattern "${1:-}" \
     "OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth|FailoverError:" \
-    "$_file" | sed 's/^[[:space:]]*//' | cut -c 1-500 || true
+    || true
 }
 
 agent_output_has_openclaw_preflight_marker() {
@@ -702,27 +772,19 @@ sync_openclaw_timeout_config() {
 }
 
 agent_output_has_timeout() {
-  _file="${1:-}"
-  [ -n "$_file" ] && [ -r "$_file" ] || return 1
-  grep -E -i -q \
-    "Request timed out before a response was generated|codex app-server turn idle timed out|codex app-server client retired after timed-out turn|embedded run failover decision:.*reason=timeout|LLM timed out|Profile .* timed out|DEADLINE_EXCEEDED|deadline exceeded" \
-    "$_file"
+  agent_output_has_runtime_pattern "${1:-}" \
+    "Request timed out before a response was generated|codex app-server turn idle timed out|codex app-server client retired after timed-out turn|embedded run failover decision:.*reason=timeout|LLM timed out|Profile .* timed out|DEADLINE_EXCEEDED|deadline exceeded"
 }
 
 agent_output_has_openclaw_capacity_failure() {
-  _file="${1:-}"
-  [ -n "$_file" ] && [ -r "$_file" ] || return 1
-  grep -E -i -q \
-    "Selected model is at capacity|model is at capacity|provider overloaded|overloaded|rate.?limit|too many requests|FailoverError:.*capacity|FailoverError:.*overload|FailoverError:.*rate" \
-    "$_file"
+  agent_output_has_runtime_pattern "${1:-}" \
+    "Selected model is at capacity|model is at capacity|provider overloaded|overloaded|rate.?limit|too many requests|FailoverError:.*capacity|FailoverError:.*overload|FailoverError:.*rate"
 }
 
 agent_runtime_failure_summary() {
-  _file="${1:-}"
-  [ -n "$_file" ] && [ -r "$_file" ] || return 0
-  grep -E -i -m 1 \
+  agent_output_runtime_summary_for_pattern "${1:-}" \
     "GatewayClientRequestError:|FailoverError:|Provider authentication failed|OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth|Request timed out before a response was generated|DEADLINE_EXCEEDED|deadline exceeded|No candidate items were present|did not write a digest JSON|did not write digest JSON|Digest agent did not produce builder-blog-digest-agent-output\\.json" \
-    "$_file" | sed 's/^[[:space:]]*//' | cut -c 1-500 || true
+    || true
 }
 
 openclaw_capacity_attempts() {
@@ -1637,11 +1699,55 @@ terminate_process_tree() {
   return 1
 }
 
+write_worker_control_event() {
+  _wwce_path="${1:-}"
+  _wwce_reason="${2:-}"
+  _wwce_worker="${3:-}"
+  _wwce_shard="${4:-}"
+  _wwce_message="${5:-}"
+  [ -n "$_wwce_path" ] || return 0
+  [ -n "$_wwce_reason" ] || return 0
+  node - "$_wwce_path" "$_wwce_reason" "$_wwce_worker" "$_wwce_shard" "$_wwce_message" <<'NODE' 2>/dev/null || true
+const fs = require("fs");
+const [file, reason, worker, shard, message] = process.argv.slice(2);
+fs.appendFileSync(file, `${JSON.stringify({
+  type: "followbrief_worker_event",
+  reason,
+  worker,
+  shard,
+  message,
+  at: new Date().toISOString(),
+})}\n`);
+NODE
+}
+
 worker_log_has_backgrounded_tool() {
   _wlbt_log="${1:-}"
   [ -n "$_wlbt_log" ] || return 1
   [ -r "$_wlbt_log" ] || return 1
-  grep -Eq '"is_backgrounded"[[:space:]]*:[[:space:]]*true|run_in_background[[:space:]]*['"'"'":=][[:space:]]*true' "$_wlbt_log"
+  node - "$_wlbt_log" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+for (const line of lines) {
+  if (!line.trim()) continue;
+  let event;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    continue;
+  }
+  if (
+    event &&
+    event.type === "system" &&
+    event.subtype === "task_updated" &&
+    event.is_backgrounded === true
+  ) {
+    process.exit(0);
+  }
+}
+process.exit(1);
+NODE
 }
 
 json_get_number() {
@@ -3474,7 +3580,8 @@ run_library_job() {
         _worker_agent_output_path="$_results_dir/$_name-agent-output.log"
         if worker_log_has_backgrounded_tool "$_worker_log_path" || worker_log_has_backgrounded_tool "$_worker_agent_output_path"; then
           echo "Worker $_lane ($_name) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed)." >&2
-          printf 'Worker %s (%s) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed). reason=worker_backgrounded_tool\n' "$_lane" "$_name" >> "$_worker_log_path" 2>/dev/null || true
+          write_worker_control_event "$_worker_log_path" "worker_backgrounded_tool" "$_lane" "$_name" "Worker started a background tool call before completing every task."
+          printf 'Worker %s (%s) started a background tool call before completing every task; terminating it (unfinished tasks will be reported as failed).\n' "$_lane" "$_name" >> "$_worker_log_path" 2>/dev/null || true
           job_run_update running "Worker $_lane started a background tool call and will be terminated." "worker_backgrounded_tool" \
             --timeout-stage "worker_shard" \
             --timed-out-worker "$_name" \
@@ -3502,6 +3609,7 @@ run_library_job() {
           _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
         elif [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
           echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
+          write_worker_control_event "$_results_dir/$_name-worker.log" "worker_shard_timeout" "$_lane" "$_name" "Worker exceeded ${_shard_timeout}s before completing every task."
           printf 'Worker %s (%s) exceeded %ss; terminating it (its tasks will be reported as failed).\n' "$_lane" "$_name" "$_shard_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
           job_run_update running "Worker $_lane exceeded timeout and will be terminated." "worker_shard_timeout" \
             --timeout-seconds "$_shard_timeout" \

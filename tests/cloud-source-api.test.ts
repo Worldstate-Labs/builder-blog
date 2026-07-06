@@ -110,7 +110,8 @@ test("cloud fetch log surfaces do not render raw source-level failure reasons as
     assert.doesNotMatch(component, /<p[^>]*>\{[^}]*failureReason[^}]*\}<\/p>/);
   }
   assert.doesNotMatch(styles, /cloud-fetch-log-task-error/);
-  assert.match(panel, /no_primary_content:\s*"No primary content"/);
+  assert.match(panel, /from "@\/lib\/fetch-failure-taxonomy"/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /no_primary_content:[\s\S]*No primary content/);
 });
 
 test("cloud source scheduler exposes DB-backed materialize and lease workflows", () => {

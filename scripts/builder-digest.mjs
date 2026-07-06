@@ -6161,22 +6161,49 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
   return evidence;
 }
 
+function parsedWorkerLogEvents(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter((event) => event && typeof event === "object");
+}
+
+function workerEventReason(event) {
+  if (!event || typeof event !== "object") return null;
+  const directReason = typeof event.reason === "string" ? event.reason : null;
+  const itemReason = typeof event.item?.reason === "string" ? event.item.reason : null;
+  return directReason || itemReason;
+}
+
+function workerLogHasFailureReason(text, reason) {
+  return parsedWorkerLogEvents(text).some((event) => workerEventReason(event) === reason);
+}
+
 function workerLogLooksLikeRuntimeAuthFailure(text) {
-  return /OAuth token refresh failed|OpenAI Codex.*token.*refresh|Please try again or re-authenticate|unsupported_country_region_territory|embedded run failover decision:.*reason=auth/i.test(
-    String(text || ""),
-  );
+  return workerLogHasFailureReason(text, "runtime_auth_failed");
 }
 
 function workerLogLooksLikeShardTimeout(text) {
-  return /worker_shard_timeout|exceeded \d+s; terminating|timed out and was terminated|exceeded timeout and will be terminated/i.test(
-    String(text || ""),
-  );
+  return workerLogHasFailureReason(text, "worker_shard_timeout");
 }
 
 function workerLogLooksLikeBackgroundedTool(text) {
-  return /worker_backgrounded_tool|"is_backgrounded"\s*:\s*true|run_in_background\s*['":=]?\s*true/i.test(
-    String(text || ""),
-  );
+  return parsedWorkerLogEvents(text).some((event) => (
+    workerEventReason(event) === "worker_backgrounded_tool" ||
+    (
+      event.type === "system" &&
+      event.subtype === "task_updated" &&
+      event.is_backgrounded === true
+    )
+  ));
 }
 
 function missingShardFailure(shardPlan, shardSummary) {

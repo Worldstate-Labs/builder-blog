@@ -3167,6 +3167,7 @@ test("merge-fetch-results appends repeated cloud leases into one local queue", a
   assert.equal(merged.cloudRunId, "run_1");
   assert.equal(merged.leasedTasks, 3);
   assert.deepEqual(merged.fetchTasks.map((task: { id: string }) => task.id), ["task_1", "task_2", "task_3"]);
+  assert.ok(Array.isArray(merged.cloudSourceTasks));
   assert.deepEqual(merged.cloudSourceTasks.map((task: { cloudSourceTaskId: string }) => task.cloudSourceTaskId), [
     "cloud_task_1",
     "cloud_task_2",
@@ -4487,7 +4488,13 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
         shard: "shard-1",
         resultFile: "shard-1-result.json",
         workerLogFile: "shard-1-worker.log",
-        workerLogTail: "Worker shard-1 exceeded 1440s; terminating it.",
+        workerLogTail: JSON.stringify({
+          type: "followbrief_worker_event",
+          reason: "worker_shard_timeout",
+          worker: "worker-1",
+          shard: "shard-1",
+          message: "Worker shard-1 exceeded 1440s; terminating it.",
+        }),
         tasks: [fetchResult.fetchTasks[2]],
       },
     ],
@@ -4524,7 +4531,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   assert.equal(t3Evidence.missingShard?.resultFile, "shard-1-result.json");
   assert.deepEqual(t3Evidence.missingShard?.taskIds, ["t3"]);
   assert.deepEqual(t3Evidence.runShardSummary, ["shard-0-result.json:ok", "shard-1-result.json:missing"]);
-  assert.match(t3Evidence.missingShard?.workerLogTail ?? "", /exceeded 1440s/);
+  assert.match(t3Evidence.missingShard?.workerLogTail ?? "", /worker_shard_timeout/);
   assert.equal(t3Evidence.shardTimeoutSeconds, 1440);
   assert.equal(merged.backfilledOutcomes, 1);
   // Duplicate item for an already-synced normal task is dropped on merge.
@@ -4972,8 +4979,13 @@ test("merge-task-results classifies backgrounded worker tools distinctly", async
         shard: "shard-0",
         resultFile: "shard-0-result.json",
         workerLogFile: "shard-0-worker.log",
-        workerLogTail:
-          'Worker worker-3 (shard-0) started a background tool call before completing every task; reason=worker_backgrounded_tool',
+        workerLogTail: JSON.stringify({
+          type: "followbrief_worker_event",
+          reason: "worker_backgrounded_tool",
+          worker: "worker-3",
+          shard: "shard-0",
+          message: "Worker started a background tool call before completing every task.",
+        }),
         tasks: fetchResult.fetchTasks,
       },
     ],
@@ -5343,8 +5355,13 @@ test("merge-task-results classifies missing OpenClaw auth-failed shards", async 
         shard: "shard-0",
         resultFile: "shard-0-result.json",
         workerLogFile: "shard-0-worker.log",
-        workerLogTail:
-          "OAuth token refresh failed for openai-codex. fetch failed. Please try again or re-authenticate.",
+        workerLogTail: JSON.stringify({
+          type: "followbrief_worker_event",
+          reason: "runtime_auth_failed",
+          worker: "worker-0",
+          shard: "shard-0",
+          message: "OAuth token refresh failed for openai-codex.",
+        }),
         tasks: fetchResult.fetchTasks,
       },
     ],
@@ -5364,7 +5381,42 @@ test("merge-task-results classifies missing OpenClaw auth-failed shards", async 
     ["auth-lost", "runtime_auth_failed"],
   ]);
   assert.equal(outcomes[0]?.evidence?.failureKind, "runtime_auth_failed");
-  assert.match(outcomes[0]?.evidence?.missingShard?.workerLogTail ?? "", /OAuth token refresh failed/);
+  assert.match(outcomes[0]?.evidence?.missingShard?.workerLogTail ?? "", /runtime_auth_failed/);
+});
+
+test("merge-task-results does not classify missing shards from raw log text", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "raw-log-lost", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    { name: "shard-0-result.json", error: "no result file" },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        workerLogTail:
+          "Fetched docs mention OAuth token refresh failed, worker_backgrounded_tool, and DEADLINE_EXCEEDED.",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["raw-log-lost", "worker_missing_result"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "missing_worker_result_file");
 });
 
 test("merge-task-results prefers final shard results over stale task checkpoints", async () => {

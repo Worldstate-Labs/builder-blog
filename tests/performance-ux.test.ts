@@ -1182,9 +1182,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminCloudFetchConfig, /\/api\/admin\/cloud-fetch\/config/);
   assert.match(adminCloudFetchConfig, /\/api\/admin\/cloud-fetch\/language-libraries/);
   assert.match(adminCloudFetchConfig, /FieldNumber/);
-  assert.match(adminCloudFetchConfig, /FieldText/);
+  assert.doesNotMatch(adminCloudFetchConfig, /FieldText/);
   assert.match(adminCloudFetchConfig, /FooterBar/);
-  assert.match(adminCloudFetchConfig, /className="fb-btn dark compact"/);
+  assert.doesNotMatch(adminCloudFetchConfig, /className="fb-btn dark compact"/);
   assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
   assert.doesNotMatch(adminDigestConfig, /throw new Error\(body\?\.error/);

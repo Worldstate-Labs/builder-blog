@@ -1733,7 +1733,8 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   const panel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");
   assert.match(panel, /isSummarized/);
   assert.match(panel, /failureReason/);
-  assert.match(panel, /FAILURE_REASON_LABEL/);
+  assert.match(panel, /fetchFailureMessage\(task\.failureReason\)/);
+  assert.match(readFileSync("src/lib/fetch-failure-taxonomy.ts", "utf8"), /summary_missing:[\s\S]*No summary was produced/);
   // Banner must key off a persisted summary, not contentStatus === "ready".
   assert.doesNotMatch(panel, /task\.contentStatus === "ready"\s*\|\|\s*s === "fetched"/);
 

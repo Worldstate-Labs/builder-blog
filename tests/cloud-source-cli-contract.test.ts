@@ -437,6 +437,145 @@ test("cloud worker host detects backgrounded tool calls in worker logs", async (
   }
 });
 
+test("cloud worker host ignores backgrounded-tool text inside fetched content", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("worker_log_has_backgrounded_tool() {");
+  const end = runner.indexOf("\njson_get_number() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-backgrounded-content-"));
+  try {
+    const logPath = join(dir, "worker.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      logPath,
+      `${JSON.stringify({
+        type: "item.completed",
+        item: {
+          type: "command_execution",
+          aggregated_output:
+            "Fetched repository docs include Bash({ run_in_background: true }) as an example.",
+        },
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}
+if worker_log_has_backgrounded_tool "$1"; then
+  exit 7
+fi
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath, logPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runtime timeout detection ignores fetched command output text", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("agent_output_has_runtime_pattern() {");
+  const end = runner.indexOf("\nopenclaw_capacity_attempts() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-timeout-content-"));
+  try {
+    const logPath = join(dir, "agent-output.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      logPath,
+      `${JSON.stringify({
+        type: "item.completed",
+        item: {
+          type: "command_execution",
+          aggregated_output:
+            "Fetched repository docs mention DEADLINE_EXCEEDED as an API example.",
+        },
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}
+if agent_output_has_timeout "$1"; then
+  exit 7
+fi
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath, logPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runtime timeout detection ignores raw stderr text", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("agent_output_has_runtime_pattern() {");
+  const end = runner.indexOf("\nopenclaw_capacity_attempts() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-timeout-stderr-"));
+  try {
+    const logPath = join(dir, "agent-output.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(logPath, "DEADLINE_EXCEEDED: model request timed out\n", "utf8");
+    await writeFile(
+      checkPath,
+`${runner.slice(start, end)}
+if agent_output_has_timeout "$1"; then
+  exit 7
+fi
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath, logPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runtime timeout detection accepts structured runtime events", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("agent_output_has_runtime_pattern() {");
+  const end = runner.indexOf("\nopenclaw_capacity_attempts() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-timeout-jsonl-"));
+  try {
+    const logPath = join(dir, "agent-output.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      logPath,
+      `${JSON.stringify({
+        type: "error",
+        message: "DEADLINE_EXCEEDED: model request timed out",
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      checkPath,
+`${runner.slice(start, end)}
+agent_output_has_timeout "$1"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath, logPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud worker host monitors fixed per-shard agent output files", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const outputStart = runner.indexOf("agent_output_file() {");

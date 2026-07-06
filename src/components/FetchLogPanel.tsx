@@ -21,6 +21,12 @@ import { RunUsageSummary } from "@/components/RunUsageSummary";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import {
+  fetchFailureMessage,
+  isContentFailureReason,
+  isHiddenFailureReason,
+  isNotCompletedFailureReason,
+} from "@/lib/fetch-failure-taxonomy";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
 import {
@@ -1740,7 +1746,7 @@ function runHeaderMeta(...parts: Array<string | null | undefined>): string {
 }
 
 function isInternalJobRunReason(reason: string | null | undefined): boolean {
-  return reason === "heartbeat" || reason === "timeout_seconds_for_job";
+  return isHiddenFailureReason(reason);
 }
 
 type JobRunDiagnosticItem = {
@@ -1759,7 +1765,7 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): JobRunDiagnosticItem[] {
   const details = readJobRunDetails(jobRun.details);
   const timeoutStage = humanizeJobRunCode(details.timeoutStage);
   const providerError = String(details.providerError ?? "").trim();
-  const reason = isInternalJobRunReason(details.reason) ? null : humanizeJobRunCode(details.reason);
+  const reason = isInternalJobRunReason(details.reason) ? null : fetchFailureMessage(details.reason);
   return [
     details.timeoutSeconds
       ? { label: "Timeout", value: `Timed out after ${formatDuration(details.timeoutSeconds * 1000)}` }
@@ -2797,11 +2803,7 @@ function isBlocked(task: FetchTaskLog): boolean {
 }
 
 function isContentFailure(task: FetchTaskLog): boolean {
-  return (
-    task.status === "failed" &&
-    (task.failureReason === "content_missing" ||
-      task.failureReason === "content_too_short")
-  );
+  return task.status === "failed" && isContentFailureReason(task.failureReason);
 }
 
 function isCandidateDiscoveryTask(task: FetchTaskLog): boolean {
@@ -2825,10 +2827,7 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (isContentFailure(task)) return { label: "Failed", tone: "fail" };
   if (
     task.status === "failed" &&
-    (task.failureReason === "worker_missing_result" ||
-      task.failureReason === "worker_shard_timeout" ||
-      task.failureReason === "worker_incomplete_result" ||
-      task.failureReason === "runtime_auth_failed") &&
+    isNotCompletedFailureReason(task.failureReason) &&
     typeof task.bodyChars !== "number"
   ) {
     return { label: "Not completed", tone: "fail" };
@@ -2840,30 +2839,10 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   return { label: "Needs Local Agent", tone: "idle" };
 }
 
-// Human-readable labels for the server/CLI failure reasons.
-const FAILURE_REASON_LABEL: Record<string, string> = {
-  summary_missing: "No summary was produced",
-  not_summarized: "Read but no summary was created",
-  not_synced: "Not synced",
-  content_missing: "No readable content was found",
-  no_primary_content: "No primary content",
-  content_too_short: "The readable content was too short",
-  content_validation_failed: "Fetched content failed validation",
-  runtime_auth_failed: "OpenClaw auth failed before this post could be fetched",
-  task_validation_failed: "Sync payload for this post failed validation",
-  task_sync_failed: "FollowBrief could not save this post",
-  slice_sync_failed: "FollowBrief could not save this post",
-  // Parallel-run outcomes backfilled by merge-task-results when a shard
-  // worker never reported a task (crash/timeout) or discovery never expanded.
-  worker_missing_result: "Local Agent shard did not write a result file for this post",
-  worker_shard_timeout: "Local Agent shard timed out before this post finished",
-  worker_incomplete_result: "Local Agent shard ended without reporting this post",
-  discovery_not_expanded: "Candidate discovery did not complete",
-};
-
 function failureReasonText(task: FetchTaskLog): string | null {
   if (!task.failureReason) return null;
-  return FAILURE_REASON_LABEL[task.failureReason] ?? task.failureReason;
+  if (isHiddenFailureReason(task.failureReason)) return null;
+  return fetchFailureMessage(task.failureReason);
 }
 
 // Compact one-line render of per-task skip evidence, e.g.
