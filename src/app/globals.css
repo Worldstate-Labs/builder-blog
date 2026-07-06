@@ -4178,6 +4178,16 @@ summary.library-section-summary::after {
   width: 2rem;
 }
 
+.search-suggestion-avatar.fb-src-icon {
+  background: color-mix(in oklch, var(--accent) 12%, var(--paper));
+  border: 1px solid color-mix(in oklch, var(--accent) 24%, var(--line));
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  height: 2rem;
+  width: 2rem;
+}
+
 .search-suggestion-remove {
   align-items: center;
   background: transparent;

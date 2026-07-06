@@ -50,3 +50,19 @@ test("source search result add action exposes clickable source-type suggestions"
   assert.match(sourceAction, /suggestedSourceType/);
   assert.match(sourceAction, /submitAdd\(\{ sourceTypeOverride: suggestedSourceType \}\)/);
 });
+
+test("header search suggestions use source avatars instead of letter placeholders", () => {
+  const searchForm = source("src/components/SearchForm.tsx");
+  const suggestRoute = source("src/app/api/search/suggest/route.ts");
+
+  assert.match(searchForm, /import \{ SourceAvatar \} from "@\/components\/SourceAvatar"/);
+  assert.match(searchForm, /avatarUrl\?: string \| null/);
+  assert.match(searchForm, /avatarDataUrl\?: string \| null/);
+  assert.match(searchForm, /sourceType\?: string \| null/);
+  assert.match(searchForm, /<SourceAvatar[\s\S]*className="search-suggestion-avatar"/);
+  assert.doesNotMatch(searchForm, /suggestion\.label\.slice\(0,\s*1\)\.toUpperCase\(\)/);
+  assert.match(suggestRoute, /avatarUrl:\s*result\.avatarUrl/);
+  assert.match(suggestRoute, /avatarDataUrl:\s*result\.avatarDataUrl/);
+  assert.match(suggestRoute, /sourceType:\s*result\.sourceType/);
+  assert.match(suggestRoute, /result\.type !== "builder"/);
+});

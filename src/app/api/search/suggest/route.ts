@@ -15,10 +15,15 @@ const defaultSuggestions = [
 ];
 
 type SearchSuggestionItem = {
+  avatarDataUrl?: string | null;
+  avatarUrl?: string | null;
   query: string;
   label: string;
   detail?: string;
+  fetchUrl?: string | null;
   kind: "query" | "entity" | "result";
+  sourceType?: string | null;
+  sourceUrl?: string | null;
 };
 
 export async function GET(request: Request) {
@@ -68,16 +73,18 @@ export async function GET(request: Request) {
   }
 
   for (const result of results.slice(0, 6)) {
-    if (result.sourceName) {
+    if (result.sourceName && result.type !== "builder") {
       addItem({
+        ...sourceSuggestionFields(result),
         query: result.sourceName,
         label: result.sourceName,
-        detail: result.type === "builder" ? result.snippet : resultTypeDetail(result.type),
+        detail: resultTypeDetail(result.type),
         kind: "entity",
       });
     }
 
     addItem({
+      ...sourceSuggestionFields(result),
       query: result.title,
       label: result.title,
       detail: result.sourceName ?? resultTypeDetail(result.type),
@@ -123,6 +130,22 @@ function resultTypeDetail(type: string) {
   if (type === "feed") return "Post";
   if (type === "digest") return "AI Digest issue";
   return "Result";
+}
+
+function sourceSuggestionFields(result: {
+  avatarDataUrl?: string | null;
+  avatarUrl?: string | null;
+  fetchUrl?: string | null;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
+}) {
+  return {
+    avatarDataUrl: result.avatarDataUrl ?? null,
+    avatarUrl: result.avatarUrl ?? null,
+    fetchUrl: result.fetchUrl ?? null,
+    sourceType: result.sourceType ?? null,
+    sourceUrl: result.sourceUrl ?? null,
+  };
 }
 
 function normalizeSuggestion(value: string) {

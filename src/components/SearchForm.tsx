@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Clock, Search, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import {
   normalizeRecentSearches,
   searchDocumentTypeParamValue,
@@ -17,10 +18,15 @@ import {
 export type SearchTypeFilter = "all" | SearchDocumentType;
 
 type AutocompleteSuggestion = {
+  avatarDataUrl?: string | null;
+  avatarUrl?: string | null;
   query: string;
   label: string;
   detail?: string;
+  fetchUrl?: string | null;
   kind: "recent" | "query" | "entity" | "result";
+  sourceType?: string | null;
+  sourceUrl?: string | null;
 };
 
 const recentSearchesStorageKey = "followbrief-searches";
@@ -293,10 +299,12 @@ export function SearchForm({
                     >
                       {suggestion.kind === "recent" ? (
                         <Clock aria-hidden="true" className="search-suggestion-icon" />
-                      ) : suggestion.kind === "entity" || suggestion.kind === "result" ? (
-                        <span className="search-suggestion-avatar" aria-hidden="true">
-                          {suggestion.label.slice(0, 1).toUpperCase()}
-                        </span>
+                      ) : suggestionAvatarSource(suggestion) ? (
+                        <SourceAvatar
+                          className="search-suggestion-avatar"
+                          imageSize={32}
+                          source={suggestionAvatarSource(suggestion)!}
+                        />
                       ) : (
                         <Search aria-hidden="true" className="search-suggestion-icon" />
                       )}
@@ -480,12 +488,18 @@ function normalizeAutocompleteItems(data: { items?: unknown; suggestions?: unkno
       const query = typeof record.query === "string" ? record.query.trim() : "";
       const label = typeof record.label === "string" ? record.label.trim() : query;
       const detail = typeof record.detail === "string" ? record.detail.trim() : undefined;
+      const avatarDataUrl =
+        typeof record.avatarDataUrl === "string" ? record.avatarDataUrl : null;
+      const avatarUrl = typeof record.avatarUrl === "string" ? record.avatarUrl : null;
+      const fetchUrl = typeof record.fetchUrl === "string" ? record.fetchUrl : null;
+      const sourceType = typeof record.sourceType === "string" ? record.sourceType : null;
+      const sourceUrl = typeof record.sourceUrl === "string" ? record.sourceUrl : null;
       const kind =
         record.kind === "entity" || record.kind === "result" || record.kind === "query"
           ? record.kind
           : "query";
       if (!query || !label) return [];
-      return [{ query, label, detail, kind }];
+      return [{ avatarDataUrl, avatarUrl, query, label, detail, fetchUrl, kind, sourceType, sourceUrl }];
     });
   }
 
@@ -496,4 +510,18 @@ function normalizeAutocompleteItems(data: { items?: unknown; suggestions?: unkno
     if (!query) return [];
     return [{ query, label: query, kind: "query" }];
   });
+}
+
+function suggestionAvatarSource(suggestion: AutocompleteSuggestion) {
+  if (!suggestion.avatarUrl && !suggestion.avatarDataUrl && !suggestion.sourceUrl && !suggestion.fetchUrl) {
+    return null;
+  }
+  return {
+    avatarDataUrl: suggestion.avatarDataUrl ?? null,
+    avatarUrl: suggestion.avatarUrl ?? null,
+    fetchUrl: suggestion.fetchUrl ?? null,
+    name: suggestion.label,
+    sourceType: suggestion.sourceType ?? "website",
+    sourceUrl: suggestion.sourceUrl ?? null,
+  };
 }
