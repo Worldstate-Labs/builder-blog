@@ -57,3 +57,16 @@ test("deriveCloudFetchOutcomeSummary keeps unfinished source tasks pending", () 
   assert.equal(summary.syncedPosts, 1);
   assert.equal(summary.pendingPosts, 2);
 });
+
+test("deriveCloudFetchOutcomeSummary keeps zero-post running source tasks running", () => {
+  const summary = deriveCloudFetchOutcomeSummary({
+    status: "running",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    failedPosts: 0,
+    posts: [],
+  });
+
+  assert.equal(summary.status, "RUNNING");
+  assert.equal(summary.pendingPosts, 0);
+});

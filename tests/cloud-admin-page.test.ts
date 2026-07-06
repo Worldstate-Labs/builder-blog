@@ -143,6 +143,10 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /contentSyncStateChanged/);
   assert.match(log, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(log, /This source is still running\. Post task outcomes appear after/);
+  assert.match(log, /task\.plannedPosts === 0 &&[\s\S]*!task\.noGeneratedFetchTasks[\s\S]*!task\.finishedAt/);
+  assert.match(log, /function formatPostOutcomeSummary\(\{[\s\S]*status/);
+  assert.match(log, /planned > 0[\s\S]*Running without post tasks/);
+  assert.match(log, /function workerShardTaskStatus\([\s\S]*entry\.liveTask\?\.status \?\? entry\.task\.status/);
   assert.match(log, /No post tasks were generated for this source/);
   assert.match(log, /emptySourceTaskMessage/);
   assert.match(log, /tasksClaimed/);

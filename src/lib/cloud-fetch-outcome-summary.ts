@@ -74,7 +74,7 @@ function normalizeSourceStatus({
   syncedPosts: number;
 }): CloudFetchOutcomeSummary["status"] {
   const normalized = String(rawStatus ?? "").toLowerCase();
-  if (normalized === "running" && pendingPosts > 0) return "RUNNING";
+  if (normalized === "running" && (pendingPosts > 0 || plannedPosts === 0)) return "RUNNING";
   if (failedPosts > 0) {
     return syncedPosts === 0 && skippedPosts === 0 && failedPosts >= plannedPosts
       ? "FAILED"

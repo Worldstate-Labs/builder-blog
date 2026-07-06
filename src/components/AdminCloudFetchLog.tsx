@@ -108,17 +108,20 @@ function formatPostOutcomeSummary({
   failed,
   skipped,
   pending,
+  status,
 }: {
   synced: number;
   planned: number;
   failed: number;
   skipped: number;
   pending: number;
+  status?: string | null;
 }): string {
+  const running = String(status ?? "").toLowerCase() === "running";
   const parts =
     planned > 0
       ? [`${synced.toLocaleString()}/${planned.toLocaleString()} synced`]
-      : ["No posts planned"];
+      : [running ? "Running without post tasks" : "No posts planned"];
   if (pending > 0) parts.push(`${pending.toLocaleString()} pending`);
   if (skipped > 0) parts.push(`${skipped.toLocaleString()} skipped`);
   if (failed > 0) parts.push(`${failed.toLocaleString()} failed`);
@@ -266,8 +269,18 @@ function taskLabel(task: CloudWorkerHostTask): string {
 }
 
 function emptySourceTaskMessage(task: CloudFetchRunLogTask): string {
-  if (task.plannedPosts === 0) return "No post tasks were generated for this source.";
   const status = String(task.status ?? "").toLowerCase();
+  if (
+    task.plannedPosts === 0 &&
+    !task.noGeneratedFetchTasks &&
+    !task.finishedAt &&
+    status !== "succeeded" &&
+    status !== "failed" &&
+    status !== "partial"
+  ) {
+    return "This source is still running. Post task outcomes appear after its worker shard sends the first synced result.";
+  }
+  if (task.plannedPosts === 0) return "No post tasks were generated for this source.";
   if (task.finishedAt || status === "succeeded" || status === "failed" || status === "partial") {
     return "No per-post outcomes were recorded for this source.";
   }
@@ -373,6 +386,11 @@ type WorkerShardGroup = {
   usage: UsageSummary | null;
 };
 
+function workerShardTaskStatus(entry: WorkerShardTask): string | null {
+  const status = entry.liveTask?.status ?? entry.task.status;
+  return status ? status.toLowerCase() : null;
+}
+
 function allDeliveryPostTasks(leaseBatches: CloudFetchRunLogItem[]): FetchTaskLog[] {
   return leaseBatches.flatMap((batch) =>
     batch.tasks.flatMap((task) =>
@@ -438,9 +456,9 @@ function buildWorkerShardGroups(
 
   return [...groups.entries()]
     .map(([workerId, tasks]) => {
-      const synced = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "synced").length;
-      const failed = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "failed").length;
-      const skipped = tasks.filter((entry) => (entry.task.status ?? entry.liveTask?.status) === "skipped").length;
+      const synced = tasks.filter((entry) => workerShardTaskStatus(entry) === "synced").length;
+      const failed = tasks.filter((entry) => workerShardTaskStatus(entry) === "failed").length;
+      const skipped = tasks.filter((entry) => workerShardTaskStatus(entry) === "skipped").length;
       const pending = Math.max(0, tasks.length - synced - failed - skipped);
       const updatedAt = tasks
         .map((entry) => entry.liveTask?.updatedAt)
@@ -823,6 +841,7 @@ export function AdminCloudFetchLog({
                           failed: group.failed,
                           skipped: group.skipped,
                           pending: group.pending,
+                          status: group.pending > 0 ? "running" : group.failed > 0 ? "partial" : "synced",
                         }),
                         groupUsage,
                         group.updatedAt ? (
@@ -897,6 +916,7 @@ export function AdminCloudFetchLog({
                       failed: batch.failedPosts,
                       skipped: batch.skippedPosts,
                       pending: batch.pendingPosts,
+                      status: batch.status,
                     })}
                     {" · "}
                     {formatDuration(batch.durationMs)}
@@ -959,6 +979,7 @@ export function AdminCloudFetchLog({
                                     failed: task.failedPosts,
                                     skipped: task.skippedPosts,
                                     pending: task.pendingPosts,
+                                    status: task.status,
                                   })}
                                   {task.durationMs != null ? ` · ${formatDuration(task.durationMs)}` : ""}
                                   {taskUsage ? ` · ${taskUsage}` : ""}

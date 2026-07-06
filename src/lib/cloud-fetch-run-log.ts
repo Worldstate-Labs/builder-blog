@@ -288,21 +288,23 @@ export function serializeCloudWorkerHost(
 
 export function serializeCloudFetchRun(run: CloudFetchRunRow): CloudFetchRunLogItem {
   const tasks = run.tasks.map(serializeCloudFetchRunTask);
-  const tasksRunning = Math.max(0, run.tasksClaimed - run.tasksSucceeded - run.tasksFailed);
+  const taskState = deriveRunTaskState(run, tasks);
+  const finishedAt = run.finishedAt ? run.finishedAt.toISOString() : taskState.finishedAt;
+  const finishedMs = finishedAt ? Date.parse(finishedAt) : NaN;
   return {
     id: run.id,
     leaseOwner: run.leaseOwner,
     startedAt: run.startedAt.toISOString(),
-    finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
-    durationMs: run.finishedAt
-      ? Math.max(0, run.finishedAt.getTime() - run.startedAt.getTime())
+    finishedAt,
+    durationMs: Number.isFinite(finishedMs)
+      ? Math.max(0, finishedMs - run.startedAt.getTime())
       : null,
-    status: run.status,
+    status: taskState.status,
     requestedLimit: run.requestedLimit,
-    tasksClaimed: run.tasksClaimed,
-    tasksSucceeded: run.tasksSucceeded,
-    tasksFailed: run.tasksFailed,
-    tasksRunning,
+    tasksClaimed: taskState.tasksClaimed,
+    tasksSucceeded: taskState.tasksSucceeded,
+    tasksFailed: taskState.tasksFailed,
+    tasksRunning: taskState.tasksRunning,
     plannedPosts: sumBy(tasks, (t) => t.plannedPosts),
     syncedPosts: sumBy(tasks, (t) => t.syncedPosts),
     failedPosts: sumBy(tasks, (t) => t.failedPosts),
@@ -313,6 +315,66 @@ export function serializeCloudFetchRun(run: CloudFetchRunRow): CloudFetchRunLogI
     summary: run.summary ?? null,
     tasks,
   };
+}
+
+function deriveRunTaskState(run: CloudFetchRunRow, tasks: CloudFetchRunLogTask[]) {
+  const claimedFromRun = nonNegativeInteger(run.tasksClaimed);
+  const tasksClaimed = Math.max(claimedFromRun, tasks.length);
+  const hasCompleteTaskRows = tasks.length > 0 && tasks.length >= claimedFromRun;
+  if (!hasCompleteTaskRows) {
+    const tasksSucceeded = nonNegativeInteger(run.tasksSucceeded);
+    const tasksFailed = nonNegativeInteger(run.tasksFailed);
+    return {
+      status: run.status,
+      tasksClaimed,
+      tasksSucceeded,
+      tasksFailed,
+      tasksRunning: Math.max(0, tasksClaimed - tasksSucceeded - tasksFailed),
+      finishedAt: null,
+    };
+  }
+
+  const tasksSucceeded = tasks.filter((task) => task.status === "SUCCEEDED").length;
+  const tasksFailed = tasks.filter((task) => task.status === "FAILED" || task.status === "PARTIAL").length;
+  const tasksRunning = Math.max(0, tasksClaimed - tasksSucceeded - tasksFailed);
+  return {
+    status: runStatusFromTaskCounts({ tasksSucceeded, tasksFailed, tasksRunning }),
+    tasksClaimed,
+    tasksSucceeded,
+    tasksFailed,
+    tasksRunning,
+    finishedAt: tasksRunning === 0 ? latestTaskFinishedAt(tasks) : null,
+  };
+}
+
+function runStatusFromTaskCounts({
+  tasksSucceeded,
+  tasksFailed,
+  tasksRunning,
+}: {
+  tasksSucceeded: number;
+  tasksFailed: number;
+  tasksRunning: number;
+}): string {
+  if (tasksRunning > 0) return "RUNNING";
+  if (tasksSucceeded > 0 && tasksFailed > 0) return "PARTIAL";
+  if (tasksFailed > 0) return "FAILED";
+  return "SUCCEEDED";
+}
+
+function latestTaskFinishedAt(tasks: CloudFetchRunLogTask[]): string | null {
+  let latest: string | null = null;
+  let latestMs = Number.NEGATIVE_INFINITY;
+  for (const task of tasks) {
+    if (!task.finishedAt) return null;
+    const ms = Date.parse(task.finishedAt);
+    if (!Number.isFinite(ms)) return null;
+    if (ms > latestMs) {
+      latestMs = ms;
+      latest = task.finishedAt;
+    }
+  }
+  return latest;
 }
 
 export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFetchRunLogTask {
@@ -468,6 +530,12 @@ function str(value: unknown): string | null {
 
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nonNegativeInteger(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : 0;
 }
 
 function record(value: unknown): Record<string, unknown> | null {

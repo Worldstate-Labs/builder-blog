@@ -287,6 +287,93 @@ test("serializeCloudFetchRun exposes source tasks that generated no post tasks",
   assert.equal(result.tasks[0]?.noGeneratedFetchTasks, true);
 });
 
+test("serializeCloudFetchRun keeps zero-post running source tasks running", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "RUNNING",
+    finishedAt: null,
+    tasksClaimed: 3,
+    tasksSucceeded: 0,
+    tasksFailed: 0,
+    tasks: [
+      { id: "en", builderId: "ph", summaryLanguage: "en", status: "RUNNING", plannedPosts: 0, syncedPosts: 0, failedPosts: 0, actualDurationSeconds: null, failureReason: null, builder: { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products" } },
+      { id: "source", builderId: "ph", summaryLanguage: "source", status: "RUNNING", plannedPosts: 0, syncedPosts: 0, failedPosts: 0, actualDurationSeconds: null, failureReason: null, builder: { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products" } },
+      { id: "zh", builderId: "ph", summaryLanguage: "zh", status: "RUNNING", plannedPosts: 0, syncedPosts: 0, failedPosts: 0, actualDurationSeconds: null, failureReason: null, builder: { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products" } },
+    ],
+  });
+
+  assert.equal(result.status, "RUNNING");
+  assert.equal(result.tasksRunning, 3);
+  assert.deepEqual(result.tasks.map((task) => task.status), ["RUNNING", "RUNNING", "RUNNING"]);
+  assert.deepEqual(result.tasks.map((task) => task.noGeneratedFetchTasks), [false, false, false]);
+});
+
+test("serializeCloudFetchRun derives batch status from complete source task rows", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "RUNNING",
+    finishedAt: null,
+    tasksClaimed: 3,
+    tasksSucceeded: 0,
+    tasksFailed: 0,
+    tasks: [
+      {
+        id: "en",
+        builderId: "ph",
+        summaryLanguage: "en",
+        status: "SUCCEEDED",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        startedAt: new Date("2026-06-28T10:00:00.000Z"),
+        finishedAt: new Date("2026-06-28T10:01:00.000Z"),
+        actualDurationSeconds: null,
+        failureReason: null,
+        details: { noGeneratedFetchTasks: true },
+        builder: { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products" },
+      },
+      {
+        id: "source",
+        builderId: "ph",
+        summaryLanguage: "source",
+        status: "SUCCEEDED",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        startedAt: new Date("2026-06-28T10:00:00.000Z"),
+        finishedAt: new Date("2026-06-28T10:02:00.000Z"),
+        actualDurationSeconds: null,
+        failureReason: null,
+        details: { noGeneratedFetchTasks: true },
+        builder: { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products" },
+      },
+      {
+        id: "zh",
+        builderId: "ph",
+        summaryLanguage: "zh",
+        status: "SUCCEEDED",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        startedAt: new Date("2026-06-28T10:00:00.000Z"),
+        finishedAt: new Date("2026-06-28T10:03:00.000Z"),
+        actualDurationSeconds: null,
+        failureReason: null,
+        details: { noGeneratedFetchTasks: true },
+        builder: { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products" },
+      },
+    ],
+  });
+
+  assert.equal(result.status, "SUCCEEDED");
+  assert.equal(result.tasksClaimed, 3);
+  assert.equal(result.tasksSucceeded, 3);
+  assert.equal(result.tasksFailed, 0);
+  assert.equal(result.tasksRunning, 0);
+  assert.equal(result.finishedAt, "2026-06-28T10:03:00.000Z");
+  assert.equal(result.durationMs, 3 * 60_000);
+});
+
 test("serializeCloudFetchRun converts a Prisma Decimal cost via Number()", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,
