@@ -2915,6 +2915,12 @@ flush_remaining_library_results() {
     return 65
   fi
   if [ "${_frlr_merge_issue_count:-0}" -gt 0 ]; then
+    case "$_frlr_label" in
+      cloud-host-idle*)
+        echo "Parallel library run completed with $_frlr_merge_issue_count worker/result issue(s); terminal outcomes were synced for idle host checkpoint." >&2
+        return 0
+        ;;
+    esac
     echo "Parallel library run completed with $_frlr_merge_issue_count worker/result issue(s); synced terminal outcomes, but marking the flush failed." >&2
     return 65
   fi

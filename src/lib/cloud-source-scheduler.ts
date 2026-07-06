@@ -5,6 +5,7 @@ import {
   type Prisma,
   type PrismaClient,
 } from "@prisma/client";
+import { expireLeasedCloudFetchRuns } from "@/lib/cloud-fetch-run-lifecycle";
 
 export type CloudSchedulerTaskInput = {
   id: string;
@@ -762,16 +763,7 @@ async function loadActiveCanonicalKeys(params: {
 }
 
 async function expireStaleCloudFetchLeases(params: { prisma: PrismaClient; now: Date }) {
-  await params.prisma.cloudFetchQueueItem.updateMany({
-    where: { status: CloudFetchQueueStatus.LEASED, leaseExpiresAt: { lt: params.now } },
-    data: {
-      status: CloudFetchQueueStatus.QUEUED,
-      leasedAt: null,
-      leaseExpiresAt: null,
-      leaseOwner: null,
-      runId: null,
-    },
-  });
+  await expireLeasedCloudFetchRuns(params);
 }
 
 async function computeLeaseBudget(params: {

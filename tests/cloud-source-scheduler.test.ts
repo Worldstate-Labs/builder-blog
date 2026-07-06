@@ -322,6 +322,99 @@ test("leaseCloudFetchTasks skips lease batch history when nothing is due", async
   assert.equal(createdRuns.length, 0);
 });
 
+test("leaseCloudFetchTasks marks expired leased run tasks failed before requeueing", async () => {
+  const queueUpdates: unknown[] = [];
+  const runTaskUpdates: unknown[] = [];
+  const runUpdates: unknown[] = [];
+  const prisma = {
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudFetchQueueItem: {
+      updateMany: async (args: unknown) => {
+        queueUpdates.push(args);
+        return { count: 1 };
+      },
+      findMany: async (args: { where?: Record<string, unknown>; include?: unknown; select?: unknown }) => {
+        if (
+          args.where?.status === "LEASED" &&
+          args.where?.leaseExpiresAt &&
+          args.select &&
+          "runId" in (args.select as Record<string, unknown>)
+        ) {
+          return [{ runId: "run_expired_1", cloudSourceTaskId: "cloud_task_1" }];
+        }
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+      update: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      updateMany: async (args: unknown) => {
+        runTaskUpdates.push(args);
+        return { count: 1 };
+      },
+      findMany: async (args: { where?: Record<string, unknown> }) => {
+        if (args.where?.runId === "run_expired_1") {
+          return [
+            { status: "FAILED", usageTokens: null, usageCostUsd: null },
+          ];
+        }
+        return [];
+      },
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_new_1",
+        ...args.data,
+      }),
+      update: async (args: unknown) => {
+        runUpdates.push(args);
+        return {};
+      },
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "empty");
+  assert.deepEqual(runTaskUpdates[0], {
+    where: {
+      runId: "run_expired_1",
+      cloudSourceTaskId: "cloud_task_1",
+      status: "RUNNING",
+    },
+    data: {
+      status: "FAILED",
+      finishedAt: now,
+      failureReason: "cloud_lease_expired",
+    },
+  });
+  assert.deepEqual(runUpdates[0], {
+    where: { id: "run_expired_1" },
+    data: {
+      status: "FAILED",
+      tasksSucceeded: 0,
+      tasksFailed: 1,
+      usageTokens: null,
+      usageCostUsd: null,
+      finishedAt: now,
+    },
+  });
+  assert.equal(queueUpdates.length, 1);
+});
+
 test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders", async () => {
   const feedFindCalls: unknown[] = [];
   const queueUpdates: unknown[] = [];

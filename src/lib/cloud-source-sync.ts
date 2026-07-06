@@ -1,4 +1,5 @@
 import { CloudFetchQueueStatus, CloudFetchRunStatus } from "@prisma/client";
+import { recomputeCloudFetchRun } from "@/lib/cloud-fetch-run-lifecycle";
 import {
   nextCloudTaskFailureSchedule,
   nextCloudTaskSuccessSchedule,
@@ -44,12 +45,6 @@ type CloudSyncTaskRow = {
   estimatedSuccessProbability?: number | null;
 };
 
-type CloudSyncRunTaskRow = {
-  status: string;
-  usageTokens?: number | null;
-  usageCostUsd?: number | string | { toString(): string } | null;
-};
-
 type CloudSyncPrisma = {
   cloudFetchConfig?: {
     findUnique(args: unknown): Promise<Partial<CloudFetchSyncConfig> | null>;
@@ -60,7 +55,11 @@ type CloudSyncPrisma = {
   };
   cloudFetchRunTask: {
     update(args: unknown): Promise<unknown>;
-    findMany(args: unknown): Promise<CloudSyncRunTaskRow[]>;
+    findMany(args: unknown): Promise<Array<{
+      status: string;
+      usageTokens?: number | null;
+      usageCostUsd?: number | string | { toString(): string } | null;
+    }>>;
   };
   cloudFetchQueueItem: {
     updateMany(args: unknown): Promise<unknown>;
@@ -289,54 +288,6 @@ function nonNegativeIntegerOrNull(value: unknown) {
   return Math.floor(numeric);
 }
 
-async function recomputeCloudFetchRun(
-  prisma: CloudSyncPrisma,
-  params: { runId: string; finishedAt: Date },
-) {
-  const tasks = await prisma.cloudFetchRunTask.findMany({
-    where: { runId: params.runId },
-    select: { status: true, usageTokens: true, usageCostUsd: true },
-  });
-  const tasksSucceeded = tasks.filter((task) => task.status === CloudFetchRunStatus.SUCCEEDED).length;
-  const tasksFailed = tasks.filter((task) =>
-    task.status === CloudFetchRunStatus.FAILED || task.status === CloudFetchRunStatus.PARTIAL
-  ).length;
-  const tasksRunning = tasks.filter((task) => task.status === CloudFetchRunStatus.RUNNING).length;
-  const runStatus = cloudRunStatus({ tasksSucceeded, tasksFailed, tasksRunning });
-  const usageTokens = sumNullableNumbers(tasks.map((task) => task.usageTokens));
-  const usageCostUsd = sumNullableNumbers(tasks.map((task) => numericValue(task.usageCostUsd)));
-  await prisma.cloudFetchRun.update({
-    where: { id: params.runId },
-    data: {
-      status: runStatus,
-      ...(tasksRunning === 0 ? { finishedAt: params.finishedAt } : {}),
-      tasksSucceeded,
-      tasksFailed,
-      usageTokens,
-      usageCostUsd,
-    },
-  });
-  return {
-    runStatus,
-    tasksSucceeded,
-    tasksFailed,
-    tasksRunning,
-    usageTokens,
-    usageCostUsd,
-  };
-}
-
-function cloudRunStatus(params: {
-  tasksSucceeded: number;
-  tasksFailed: number;
-  tasksRunning: number;
-}) {
-  if (params.tasksRunning > 0) return CloudFetchRunStatus.RUNNING;
-  if (params.tasksSucceeded > 0 && params.tasksFailed > 0) return CloudFetchRunStatus.PARTIAL;
-  if (params.tasksFailed > 0) return CloudFetchRunStatus.FAILED;
-  return CloudFetchRunStatus.SUCCEEDED;
-}
-
 function movingAverage(params: {
   previousAverage?: number | null;
   previousSamples: number;
@@ -377,23 +328,4 @@ function movingAverageRatio(params: {
 function positiveIntegerOrNull(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
   return Math.round(value);
-}
-
-function sumNullableNumbers(values: Array<number | null | undefined>) {
-  let found = false;
-  let total = 0;
-  for (const value of values) {
-    if (typeof value !== "number" || !Number.isFinite(value)) continue;
-    found = true;
-    total += value;
-  }
-  if (!found) return null;
-  return Number(total.toFixed(4));
-}
-
-function numericValue(value: CloudSyncRunTaskRow["usageCostUsd"]) {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value);
-  if (value && typeof value.toString === "function") return Number(value.toString());
-  return null;
 }

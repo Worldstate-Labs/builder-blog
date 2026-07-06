@@ -143,6 +143,13 @@ test("cloud worker usage refresh never patches validation-failed task outcomes",
   );
 });
 
+test("cloud worker host treats synced idle checkpoint issues as flushed", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(runner, /case "\$_frlr_label" in[\s\S]*cloud-host-idle\*/);
+  assert.match(runner, /terminal outcomes were synced for idle host checkpoint/);
+});
+
 test("cloud worker host only stops a runtime after its shard result covers every task", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
 
