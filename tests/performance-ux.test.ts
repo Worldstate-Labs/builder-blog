@@ -131,18 +131,18 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(addBuilderForm, /aria-autocomplete="list"/);
   assert.match(addBuilderForm, /autoComplete="off"/);
   assert.match(addBuilderForm, /spellCheck=\{false\}/);
-  assert.match(addBuilderForm, /sourceCandidatesField === "name"\s*\?\s*effectiveName\s*:\s*resolvedSourceValue/);
-  assert.doesNotMatch(addBuilderForm, /sourceCandidatesField === "name" && !resolvedSourceValue\.trim\(\)/);
+  assert.match(addBuilderForm, /const sourceCandidateQuery = resolvedSourceValue/);
+  assert.doesNotMatch(addBuilderForm, /sourceCandidatesField === "name"/);
   assert.doesNotMatch(addBuilderForm, /if \(!resolvedSourceValue\.trim\(\)\) \{\s*setSourceCandidatesOpen\(true\);\s*setSourceCandidatesField\("name"\);/);
-  assert.match(addBuilderForm, /setSourceCandidatesField\("name"\)/);
+  assert.doesNotMatch(addBuilderForm, /setSourceCandidatesField\("name"\)/);
   assert.match(addBuilderForm, /applySourceCandidate\(candidate: SourceCandidate\)/);
   assert.match(addBuilderForm, /setSourceType\(candidate\.sourceType\)/);
   assert.match(addBuilderForm, /setSourceValue\(sourceCandidateValue\(candidate\)\)/);
   assert.match(addBuilderForm, /setName\(candidate\.name\)/);
-  assert.match(addBuilderForm, /source-display-name-control/);
-  assert.match(addBuilderForm, /displayNameAvatarUrl/);
-  assert.match(addBuilderForm, /selectedCandidate\?\.avatarDataUrl \|\| selectedCandidate\?\.avatarUrl/);
-  assert.match(addBuilderForm, /ResolvedSourceAvatar/);
+  assert.doesNotMatch(addBuilderForm, /source-display-name-control/);
+  assert.doesNotMatch(addBuilderForm, /displayNameAvatarUrl/);
+  assert.doesNotMatch(addBuilderForm, /selectedCandidate\?\.avatarDataUrl \|\| selectedCandidate\?\.avatarUrl/);
+  assert.doesNotMatch(addBuilderForm, /ResolvedSourceAvatar/);
   assert.doesNotMatch(addBuilderForm, /displayNameAvatarSource/);
 
   assert.match(editDialog, /sourceCandidates: SourceCandidate\[\]/);
@@ -168,7 +168,7 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(globals, /\.add-source-field-label\s*{/);
   assert.match(globals, /\.source-display-name-control\s*{/);
   assert.match(globals, /\.source-display-name-control\s*{[\s\S]*position:\s*relative/);
-  assert.match(globals, /\.add-source-display-name-control\.without-avatar\s*{/);
+  assert.doesNotMatch(globals, /\.add-source-display-name-control\.without-avatar\s*{/);
 });
 
 test("app shell reuses the page session instead of fetching it again", () => {
@@ -4484,14 +4484,17 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(sourceInputs, /github_trending/);
   assert.match(sourceInputs, /product_hunt_top_products/);
   assert.match(sourceInputs, /export function placeholderForSourceId/);
+  assert.match(sourceInputs, /export function addSourcePlaceholderForSourceId/);
   assert.match(sourceInputs, /Apple Podcasts URL or podcast RSS feed/);
+  assert.match(sourceInputs, /Type source name or Apple Podcasts\/RSS feed/);
   assert.doesNotMatch(sourceInputs, /podcasts\.apple\.com\/\.\.\.|id\.\.\./);
   assert.doesNotMatch(addBuilderForm, /const FIXED_SOURCE_VALUE_BY_ID/);
   assert.doesNotMatch(addBuilderForm, /function placeholderForSourceId/);
+  assert.match(addBuilderForm, /addSourcePlaceholderForSourceId\(sourceType\)/);
   assert.match(addBuilderForm, /focusSourceType\(nextSource\.id\)/);
   assert.match(addBuilderForm, /document\.getElementById\(sourceTypeOptionId\(sourceId\)\)\?\.focus\(\)/);
   assert.match(addBuilderForm, /name="sourceValue"/);
-  assert.match(addBuilderForm, /Handle or URL/);
+  assert.match(addBuilderForm, /Name or URL/);
   assert.match(personalBuilderInput, /Handle or URL is required\./);
   assert.match(personalBuilderInput, /Enter an X handle like @deepmind or a full https:\/\/x\.com\/deepmind URL\./);
   assert.match(personalBuilderInput, /Enter a YouTube URL or an @channel handle\./);
@@ -4502,18 +4505,18 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(personalBuilderInput, /Source URL or handle is required|URL is malformed|X handle must look|Enter a youtube\.com or youtu\.be URL|YouTube source must be|Apple lookup failed|Apple returned no RSS feed|has no record|this podcast with Apple Podcasts|resolve the RSS feed/);
   assert.match(addBuilderForm, /className="add-source-form"/);
   assert.match(addBuilderForm, /className="add-source-url-row"/);
-  assert.match(addBuilderForm, />\s*URL\s*<\/label>/);
+  assert.match(addBuilderForm, />\s*Name\/URL\s*<\/label>/);
   assert.match(addBuilderForm, /className="add-source-type-list"/);
-  assert.match(addBuilderForm, /className="add-source-name-row"/);
-  assert.match(globals, /\.add-source-name-row\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
-  assert.doesNotMatch(globals, /\.add-source-name-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(8rem, auto\)/);
+  assert.doesNotMatch(addBuilderForm, /className="add-source-name-row"/);
+  assert.doesNotMatch(globals, /\.add-source-name-row\s*{/);
   assert.match(addBuilderForm, /className="add-source-action-row"/);
-  assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
-  assert.match(addBuilderForm, />\s*Name\s*<\/label>/);
-  assert.match(addBuilderForm, /Search recommendations or enter a name/);
+  assert.doesNotMatch(addBuilderForm, /className="fb-input add-source-name-input"/);
+  assert.doesNotMatch(addBuilderForm, />\s*Name\s*<\/label>/);
+  assert.doesNotMatch(addBuilderForm, /Search recommendations or enter a name/);
+  assert.doesNotMatch(addBuilderForm, /name="name"/);
   assert.match(addBuilderForm, /disabled=\{sourceValueIsFixed\}/);
-  assert.match(addBuilderForm, /aria-readonly=\{sourceValueIsFixed\}[\s\S]*aria-label="Display name"/);
-  assert.match(addBuilderForm, /aria-label="Display name"[\s\S]*disabled=\{sourceValueIsFixed\}[\s\S]*readOnly=\{sourceValueIsFixed\}/);
+  assert.match(addBuilderForm, /aria-label="Name or URL"[\s\S]*disabled=\{sourceValueIsFixed\}[\s\S]*readOnly=\{sourceValueIsFixed\}/);
+  assert.match(addBuilderForm, /aria-label="Name or URL"[\s\S]*aria-readonly=\{sourceValueIsFixed\}/);
   assert.match(globals, /\.source-url-combobox \.fb-input:disabled,[\s\S]*\.source-display-name-control \.fb-input:disabled\s*{[\s\S]*background:\s*color-mix\(in oklch, var\(--surface-field\) 72%, var\(--surface-muted\)\)/);
   assert.match(globals, /\.source-url-combobox \.fb-input:disabled,[\s\S]*\.source-display-name-control \.fb-input:disabled\s*{[\s\S]*cursor:\s*not-allowed/);
   assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL/);
@@ -4544,13 +4547,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(addBuilderForm, /h-3\.5 w-3\.5|w-full justify-center|sm:w-auto/);
   assert.ok(
     addBuilderForm.indexOf('name="sourceValue"') <
-      addBuilderForm.indexOf('className="add-source-name-row"'),
-    "Add source form should show the URL input before display name.",
-  );
-  assert.ok(
-    addBuilderForm.indexOf('className="add-source-name-row"') <
       addBuilderForm.indexOf('className="add-source-type-list"'),
-    "Add source form should show display name before source type.",
+    "Add source form should show the Name/URL input before source type.",
   );
   assert.ok(
     addBuilderForm.indexOf('className="add-source-type-list"') <
@@ -4625,7 +4623,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(cssRule(globals, ".source-library-items-area .builder-library-list"), /gap:\s*0/);
   assert.match(cssRule(globals, ".source-library-items-area .builder-library-source-list"), /padding:\s*0/);
   assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
-  assert.match(globals, /\.add-source-name-input\s*{[\s\S]*width:\s*100%/);
+  assert.doesNotMatch(globals, /\.add-source-name-input\s*{/);
   assert.match(globals, /\.add-source-action-row\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.add-source-submit\s*{[\s\S]*justify-content:\s*center/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.add-source-submit\s*{[\s\S]*width:\s*100%/);

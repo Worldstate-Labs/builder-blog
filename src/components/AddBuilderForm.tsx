@@ -3,7 +3,6 @@
 import {
   type FormEvent,
   type KeyboardEvent,
-  type SyntheticEvent,
   useEffect,
   useId,
   useMemo,
@@ -47,9 +46,9 @@ import {
   type DetectedSourceId,
 } from "@/lib/source-value-detect";
 import {
+  addSourcePlaceholderForSourceId,
   FIXED_SOURCE_VALUE_BY_ID,
   GITHUB_TRENDING_SOURCE_ID,
-  placeholderForSourceId,
   PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID,
 } from "@/lib/source-inputs";
 
@@ -124,9 +123,7 @@ export function AddBuilderForm({
   sourceOptions: SourceOption[];
 }) {
   const sourceValueInputId = useId();
-  const nameInputId = useId();
   const sourceCandidateListId = useId();
-  const nameCandidateListId = useId();
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   // Pre-add confirmation: when the server returns a warning flagged
@@ -140,15 +137,12 @@ export function AddBuilderForm({
   const [isPending, startTransition] = useTransition();
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
   const [sourceValue, setSourceValue] = useState("");
-  const [selectedCandidate, setSelectedCandidate] = useState<SourceCandidate | null>(null);
-  const [failedDisplayNameAvatarUrl, setFailedDisplayNameAvatarUrl] = useState<string | null>(null);
   const [sourceCandidatesOpen, setSourceCandidatesOpen] = useState(false);
-  const [sourceCandidatesField, setSourceCandidatesField] = useState<"source" | "name" | null>(null);
+  const [sourceCandidatesField, setSourceCandidatesField] = useState<"source" | null>(null);
   const lastAutoSwitchedValueRef = useRef("");
-  // Display name auto-derives from sourceType + sourceValue when the
-  // user hasn't typed in the field themselves. Once they edit (or
-  // even clear the auto-filled value), we stop overwriting it so we
-  // don't fight the user's intent.
+  // Internal display name: selected recommendations provide a candidate name;
+  // otherwise fixed source types or source-specific parsing derive one at
+  // submit time.
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
 
@@ -192,18 +186,15 @@ export function AddBuilderForm({
     [sourceType, debouncedValue],
   );
 
-  // Derived display name (computed at render-time, not via setState in
-  // useEffect — that lint rule fires on cascading-render patterns).
-  // The input shows the derived value until the user types in the
-  // field, at which point `nameTouched` flips and the typed value
-  // wins.
+  // Display name is internal now: selected recommendations provide a
+  // candidate name; otherwise fixed source types or source-specific parsing
+  // derive one at submit time.
   const derivedName = useMemo(
     () => deriveDisplayName(sourceType, debouncedValue),
     [sourceType, debouncedValue],
   );
   const effectiveName = sourceValueIsFixed ? derivedName : nameTouched ? name : derivedName;
-  const sourceCandidateQuery =
-    sourceCandidatesField === "name" ? effectiveName : resolvedSourceValue;
+  const sourceCandidateQuery = resolvedSourceValue;
   const sourceCandidateSuggestions = useMemo(
     () =>
       sourceCandidatesOpen && !sourceValueIsFixed
@@ -213,20 +204,12 @@ export function AddBuilderForm({
         : [],
     [sourceCandidateQuery, sourceCandidates, sourceCandidatesOpen, sourceValueIsFixed],
   );
-  const displayNameAvatarUrl =
-    selectedCandidate?.avatarDataUrl || selectedCandidate?.avatarUrl || null;
-  const shouldShowDisplayNameAvatar = Boolean(
-    displayNameAvatarUrl && displayNameAvatarUrl !== failedDisplayNameAvatarUrl,
-  );
-
   function applySuggestion(target: DetectedSourceId) {
     selectSourceType(target);
     setError("");
   }
 
   function applySourceCandidate(candidate: SourceCandidate) {
-    setFailedDisplayNameAvatarUrl(null);
-    setSelectedCandidate(candidate);
     setSourceType(candidate.sourceType);
     setSourceValue(sourceCandidateValue(candidate));
     setName(candidate.name);
@@ -242,7 +225,8 @@ export function AddBuilderForm({
 
   function selectSourceType(nextSourceType: string) {
     setSourceType(nextSourceType);
-    setSelectedCandidate(null);
+    setName("");
+    setNameTouched(false);
     // The pending confirmation was tied to the previous source type —
     // invalidate so the user isn't asked to confirm a different source
     // than the one shown.
@@ -335,7 +319,6 @@ export function AddBuilderForm({
           }),
         );
         setSourceValue("");
-        setSelectedCandidate(null);
         setSourceCandidatesOpen(false);
         setSourceCandidatesField(null);
         setName("");
@@ -367,7 +350,7 @@ export function AddBuilderForm({
     <form className="add-source-form" onSubmit={addBuilder}>
       <div className="add-source-url-row">
         <label className="add-source-field-label" htmlFor={sourceValueInputId}>
-          URL
+          Name/URL
         </label>
         <div className="source-url-combobox">
           <input
@@ -380,7 +363,7 @@ export function AddBuilderForm({
             aria-expanded={
               sourceCandidatesField === "source" && sourceCandidateSuggestions.length > 0
             }
-            aria-label="Handle or URL"
+            aria-label="Name or URL"
             aria-readonly={sourceValueIsFixed}
             autoComplete="off"
             autoCorrect="off"
@@ -392,7 +375,8 @@ export function AddBuilderForm({
             onChange={(event) => {
               if (sourceValueIsFixed) return;
               setSourceValue(event.target.value);
-              setSelectedCandidate(null);
+              setName("");
+              setNameTouched(false);
               setSourceCandidatesOpen(true);
               setSourceCandidatesField("source");
               // Editing the URL invalidates a stale confirm prompt.
@@ -402,7 +386,7 @@ export function AddBuilderForm({
               setSourceCandidatesOpen(true);
               setSourceCandidatesField("source");
             }}
-            placeholder={placeholderForSourceId(sourceType)}
+            placeholder={addSourcePlaceholderForSourceId(sourceType)}
             readOnly={sourceValueIsFixed}
             required
             role="combobox"
@@ -440,83 +424,27 @@ export function AddBuilderForm({
           ) : null}
         </div>
       ) : null}
-      <div className="add-source-name-row">
-        <label className="add-source-field-label" htmlFor={nameInputId}>
-          Name
-        </label>
-        <div
-          className={`source-display-name-control add-source-display-name-control${
-            shouldShowDisplayNameAvatar ? "" : " without-avatar"
-          }`}
-        >
-          {shouldShowDisplayNameAvatar && displayNameAvatarUrl ? (
-            <ResolvedSourceAvatar
-              src={displayNameAvatarUrl}
-              onError={() => setFailedDisplayNameAvatarUrl(displayNameAvatarUrl)}
-            />
-          ) : null}
-          <input
-            aria-autocomplete="list"
-            aria-controls={
-              sourceCandidatesField === "name" && sourceCandidateSuggestions.length > 0
-                ? nameCandidateListId
-                : undefined
-            }
-            aria-expanded={sourceCandidatesField === "name" && sourceCandidateSuggestions.length > 0}
-            aria-readonly={sourceValueIsFixed}
-            aria-label="Display name"
-            className="fb-input add-source-name-input"
-            disabled={sourceValueIsFixed}
-            id={nameInputId}
-            name="name"
-            onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
-            onChange={(event) => {
-              if (sourceValueIsFixed) return;
-              setName(event.target.value);
-              setNameTouched(true);
-              setSourceCandidatesOpen(true);
-              setSourceCandidatesField("name");
-            }}
-            onFocus={() => {
-              if (sourceValueIsFixed) return;
-              setSourceCandidatesOpen(true);
-              setSourceCandidatesField("name");
-            }}
-            placeholder="Search recommendations or enter a name"
-            readOnly={sourceValueIsFixed}
-            role="combobox"
-            value={effectiveName}
-          />
-          {sourceCandidatesField === "name" ? (
-            <SourceCandidateList
-              candidates={sourceCandidateSuggestions}
-              id={nameCandidateListId}
-              onSelect={applySourceCandidate}
-            />
-          ) : null}
-        </div>
-        <span aria-live="polite" className="add-source-inline-note">
-          {errorMessage ? (
-            <>
-              <span className="add-source-inline-note is-error">{errorMessage}</span>
-              {errorSuggestId ? (
-                <>
-                  {" "}
-                  <button
-                    className="add-source-text-action is-error"
-                    onClick={() => errorSuggestId && applySuggestion(errorSuggestId)}
-                    type="button"
-                  >
-                    Switch source type
-                  </button>
-                </>
-              ) : null}
-            </>
-          ) : status ? (
-            <span className="add-source-inline-note is-success">{status}</span>
-          ) : null}
-        </span>
-      </div>
+      <span aria-live="polite" className="add-source-inline-note">
+        {errorMessage ? (
+          <>
+            <span className="add-source-inline-note is-error">{errorMessage}</span>
+            {errorSuggestId ? (
+              <>
+                {" "}
+                <button
+                  className="add-source-text-action is-error"
+                  onClick={() => errorSuggestId && applySuggestion(errorSuggestId)}
+                  type="button"
+                >
+                  Switch source type
+                </button>
+              </>
+            ) : null}
+          </>
+        ) : status ? (
+          <span className="add-source-inline-note is-success">{status}</span>
+        ) : null}
+      </span>
       <div
         aria-label="Source type"
         className="add-source-type-list"
@@ -613,26 +541,4 @@ function formSourceTypeForValue(
   const detected = detectSourceTypeFromValue(value);
   if (!detected) return null;
   return sourceOptionIds.has(detected) ? detected : null;
-}
-
-function ResolvedSourceAvatar({
-  onError,
-  src,
-}: {
-  onError: (event: SyntheticEvent<HTMLImageElement>) => void;
-  src: string;
-}) {
-  return (
-    <span aria-hidden="true" className="fb-src-icon source-display-name-avatar">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        alt=""
-        height={28}
-        loading="lazy"
-        onError={onError}
-        src={src}
-        width={28}
-      />
-    </span>
-  );
 }

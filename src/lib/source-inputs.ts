@@ -18,6 +18,20 @@ const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
   website: "https://example.com",
 };
 
+const ADD_SOURCE_PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
+  x: "Type source name or X handle / URL",
+  blog: "Type source name or blog/feed URL",
+  github_trending: "GitHub Trending",
+  product_hunt_top_products: "Product Hunt Top Products",
+  youtube: "Type source name or YouTube channel URL",
+  podcast: "Type source name or Apple Podcasts/RSS feed",
+  website: "Type source name or website URL",
+};
+
 export function placeholderForSourceId(sourceId: string): string {
   return PLACEHOLDER_BY_SOURCE_ID[sourceId] ?? "@handle or https://example.com/feed";
+}
+
+export function addSourcePlaceholderForSourceId(sourceId: string): string {
+  return ADD_SOURCE_PLACEHOLDER_BY_SOURCE_ID[sourceId] ?? "Type source name or URL";
 }
