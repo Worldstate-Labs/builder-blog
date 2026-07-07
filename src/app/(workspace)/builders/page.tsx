@@ -55,6 +55,7 @@ import {
   personalSourceLibraryName,
   recordDigestPipelineHubViews,
   sharePersonalLibraryToHub,
+  userImportableLibraryHubEntryWhere,
 } from "@/lib/library-hub";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
@@ -447,7 +448,10 @@ async function loadSourceLibraryData(user: {
       select: { builderId: true },
     }),
     prisma.libraryImport.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        hubEntry: userImportableLibraryHubEntryWhere(),
+      },
       include: {
         hubEntry: {
           include: {

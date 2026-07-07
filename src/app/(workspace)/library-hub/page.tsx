@@ -26,6 +26,7 @@ import {
   ensureDefaultCommunityDigestImport,
   recordDigestPipelineHubViews,
   recordLibraryHubViews,
+  userImportableLibraryHubEntryWhere,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
@@ -121,6 +122,7 @@ async function loadSourceLibraryHubPageData() {
 
   const [libraries, imports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
+      where: userImportableLibraryHubEntryWhere(),
       include: {
         owner: { select: { name: true, email: true } },
         items: {

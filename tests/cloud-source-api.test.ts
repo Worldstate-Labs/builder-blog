@@ -33,6 +33,18 @@ test("cloud source library submission copies only private sources to language ow
   assert.match(library, /syncCloudLanguageLibraryHub/);
 });
 
+test("cloud language hub entries stay internal to cloud reuse", () => {
+  const hub = source("src/lib/library-hub.ts");
+  const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+
+  assert.match(hub, /export function userImportableLibraryHubEntryWhere/);
+  assert.match(hub, /cloudLanguageLibrary:\s*\{\s*is:\s*null\s*\}/);
+  assert.match(hub, /\.\.\.userImportableLibraryHubEntryWhere\(\)/);
+  assert.match(hubPage, /where:\s*userImportableLibraryHubEntryWhere\(\)/);
+  assert.match(buildersPage, /hubEntry:\s*userImportableLibraryHubEntryWhere\(\)/);
+});
+
 test("admin cloud fetch queue and lease routes support session or bearer admin auth", () => {
   const queueRoute = source("src/app/api/admin/cloud-fetch/queue/route.ts");
   const leaseRoute = source("src/app/api/admin/cloud-fetch/lease/route.ts");

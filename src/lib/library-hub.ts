@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin, type PrismaClient } from "@prisma/client";
+import { BuilderPoolOrigin, type Prisma, type PrismaClient } from "@prisma/client";
 import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import {
@@ -60,6 +60,10 @@ export function digestPipelineOwnerLabel(
 
 export function digestPipelineSlug(userId: string) {
   return `digest-${userId}`;
+}
+
+export function userImportableLibraryHubEntryWhere(): Prisma.LibraryHubEntryWhereInput {
+  return { cloudLanguageLibrary: { is: null } };
 }
 
 export async function sharePersonalLibraryToHub(params: {
@@ -178,7 +182,7 @@ export async function importLibrariesFromHub(params: {
   if (libraryIds.length === 0) return { libraries: 0, builders: 0 };
 
   const libraries = await prisma.libraryHubEntry.findMany({
-    where: { id: { in: libraryIds } },
+    where: { id: { in: libraryIds }, ...userImportableLibraryHubEntryWhere() },
     include: {
       owner: { select: { email: true } },
       items: { select: { builderId: true } },
@@ -248,7 +252,10 @@ export async function removeLibraryImportFromHub(params: {
     .findMany({
       where: {
         hubEntryId: { not: params.libraryId },
-        hubEntry: { imports: { some: { userId: params.userId } } },
+        hubEntry: {
+          imports: { some: { userId: params.userId } },
+          ...userImportableLibraryHubEntryWhere(),
+        },
         builderId: { in: reachability.removedBuilderIds },
       },
       select: { builderId: true },
