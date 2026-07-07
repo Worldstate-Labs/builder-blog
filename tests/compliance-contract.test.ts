@@ -17,18 +17,31 @@ function assertFile(path: string) {
 test("public legal pages disclose privacy, terms, AI, third-party, sharing, and rights", () => {
   const privacyPage = assertFile("src/app/privacy/page.tsx");
   const termsPage = assertFile("src/app/terms/page.tsx");
+  const legalPage = assertFile("src/components/LegalPage.tsx");
   const legalCopy = assertFile("src/lib/legal-pages.ts");
+  const globals = source("src/app/globals.css");
   const publicHeader = source("src/components/PublicHeader.tsx");
   const userMenu = source("src/components/UserMenu.tsx");
   const privacyContract = `${privacyPage}\n${legalCopy}`;
   const termsContract = `${termsPage}\n${legalCopy}`;
 
   for (const page of [privacyPage, termsPage]) {
-    assert.match(page, /FollowBrief/);
-    assert.match(page, /Privacy|Terms/);
+    const pageContract = `${page}\n${legalCopy}`;
+    assert.match(pageContract, /FollowBrief/);
+    assert.match(pageContract, /Privacy|Terms/);
     assert.match(page, /getCurrentSession\(\)/);
     assert.match(page, /<PublicHeader current="(?:privacy|terms)" session=\{session\} \/>/);
+    assert.match(page, /<LegalPage/);
   }
+
+  assert.match(legalPage, /className="legal-page-shell"/);
+  assert.match(legalPage, /className="legal-toc"/);
+  assert.match(legalPage, /href=\{`#\$\{block\.id\}`\}/);
+  assert.match(legalPage, /className="legal-section"/);
+  assert.match(globals, /\.legal-page-shell/);
+  assert.match(globals, /\.legal-toc/);
+  assert.match(globals, /\.legal-document/);
+  assert.match(globals, /\.legal-section/);
 
   assert.match(privacyContract, /OAuth profile|email|read history|favorites|access keys|IP address|User-Agent/);
   assert.match(privacyContract, /Local Agent|AI Digest|summar/i);
@@ -37,8 +50,10 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(privacyContract, /access|export|correct|delete/);
   assert.match(privacyContract, /retention|retain|delete/i);
   assert.match(privacyContract, /Hub|shared source libraries|AI Digest collections/);
-  assert.match(privacyContract, /Last updated: July 7, 2026/);
-  assert.match(privacyContract, /Contact:\s*jie@worldstatelabs\.com/);
+  assert.match(privacyContract, /legalUpdatedDate = "July 7, 2026"/);
+  assert.match(privacyContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
+  assert.match(privacyContract, /legal@worldstatelabs\.com/);
+  assert.doesNotMatch(privacyContract, /jie@worldstatelabs\.com/);
   assert.match(privacyContract, /Account and identity data|Content and source data|Usage, device, and diagnostic data/);
   assert.match(privacyContract, /OAuth providers|hosting, database, security, observability, AI, crawler, and agent runtime providers/i);
   assert.match(privacyContract, /We do not sell personal information|cross-context behavioral advertising/i);
@@ -52,8 +67,10 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(termsContract, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
   assert.match(termsContract, /Local Agent|access key|AI Digest/);
   assert.match(termsContract, /Do not|must not/i);
-  assert.match(termsContract, /Last updated: July 7, 2026/);
-  assert.match(termsContract, /Contact:\s*jie@worldstatelabs\.com/);
+  assert.match(termsContract, /legalUpdatedDate = "July 7, 2026"/);
+  assert.match(termsContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
+  assert.match(termsContract, /legal@worldstatelabs\.com/);
+  assert.doesNotMatch(termsContract, /jie@worldstatelabs\.com/);
   assert.match(termsContract, /You must be able to form a binding contract/i);
   assert.match(termsContract, /You are responsible for keeping your account, devices, Local Agent files, and access keys secure/i);
   assert.match(termsContract, /Do not use FollowBrief to scrape private areas|bypass paywalls|violate robots/i);

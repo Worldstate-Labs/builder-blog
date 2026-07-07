@@ -285,12 +285,13 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/page.tsx", /<PublicHeader current="home" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
     ["src/app/login/page.tsx", /<PublicHeader current="login" \/>[\s\S]*className="fb-dark-frame"/],
     ["src/app/not-found.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
-    ["src/app/privacy/page.tsx", /<PublicHeader current="privacy" session=\{session\} \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
-    ["src/app/terms/page.tsx", /<PublicHeader current="terms" session=\{session\} \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
+    ["src/app/privacy/page.tsx", /<PublicHeader current="privacy" session=\{session\} \/>[\s\S]*<LegalPage/],
+    ["src/app/terms/page.tsx", /<PublicHeader current="terms" session=\{session\} \/>[\s\S]*<LegalPage/],
   ] as const;
   for (const [path, pattern] of publicRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered public shell`);
   }
+  assert.match(source("src/components/LegalPage.tsx"), /className="fb-landing-grid min-h-screen"/);
 
   const workspaceRoutes = [
     ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title=\{<I18nText id="workspace\.sources" \/>\}[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<SourcesTabShell[\s\S]*selectedTab=\{selectedTab\}/],
