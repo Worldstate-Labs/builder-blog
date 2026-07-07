@@ -20,10 +20,13 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   const legalPage = assertFile("src/components/LegalPage.tsx");
   const legalCopy = assertFile("src/lib/legal-pages.ts");
   const globals = source("src/app/globals.css");
+  const loginPage = source("src/app/login/page.tsx");
+  const i18n = source("src/lib/i18n.ts");
   const publicHeader = source("src/components/PublicHeader.tsx");
   const userMenu = source("src/components/UserMenu.tsx");
   const privacyContract = `${privacyPage}\n${legalCopy}`;
   const termsContract = `${termsPage}\n${legalCopy}`;
+  const loginContract = `${loginPage}\n${i18n}`;
 
   for (const page of [privacyPage, termsPage]) {
     const pageContract = `${page}\n${legalCopy}`;
@@ -54,14 +57,20 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(privacyContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
   assert.match(privacyContract, /legal@worldstatelabs\.com/);
   assert.doesNotMatch(privacyContract, /jie@worldstatelabs\.com/);
+  assert.match(privacyContract, /operated by Worldstate Labs/);
   assert.match(privacyContract, /Account and identity data|Content and source data|Usage, device, and diagnostic data/);
   assert.match(privacyContract, /OAuth providers|hosting, database, security, observability, AI, crawler, and agent runtime providers/i);
+  assert.match(privacyContract, /provider terms and settings|workflow you configure/i);
+  assert.match(privacyContract, /recent operational run logs/i);
   assert.match(privacyContract, /We do not sell personal information|cross-context behavioral advertising/i);
   assert.match(privacyContract, /We use session cookies|authentication/i);
   assert.match(privacyContract, /not intended for children under 13/i);
   assert.match(privacyContract, /AI summaries and recommendations are assistive|not used to make legal, financial, employment, housing, credit, health, or insurance decisions/i);
   assert.match(privacyContract, /account export|account deletion|correct|object|restrict|portability/i);
   assert.match(privacyContract, /operational backups and security logs/i);
+  assert.match(privacyContract, /schedule status|update status|frequency labels/i);
+  assert.match(privacyContract, /legal@worldstatelabs\.com/);
+  assert.doesNotMatch(privacyContract, /only as long as needed/i);
 
   assert.match(termsContract, /third-party sources|third-party APIs|platform terms/i);
   assert.match(termsContract, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
@@ -71,13 +80,19 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(termsContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
   assert.match(termsContract, /legal@worldstatelabs\.com/);
   assert.doesNotMatch(termsContract, /jie@worldstatelabs\.com/);
+  assert.match(termsContract, /operated by Worldstate Labs/);
   assert.match(termsContract, /You must be able to form a binding contract/i);
   assert.match(termsContract, /You are responsible for keeping your account, devices, Local Agent files, and access keys secure/i);
   assert.match(termsContract, /Do not use FollowBrief to scrape private areas|bypass paywalls|violate robots/i);
+  assert.match(termsContract, /transcription or speech-to-text tools|local or hosted agent runtimes/i);
+  assert.match(termsContract, /schedule status|update status|frequency labels/i);
+  assert.match(termsContract, /recent operational run logs/i);
   assert.match(termsContract, /No professional advice|AS IS|AS AVAILABLE|Limitation of liability/i);
   assert.match(termsContract, /suspend or terminate access/i);
   assert.match(termsContract, /material changes/i);
   assert.match(termsContract, /governed by the laws of California/i);
+  assert.match(loginContract, /login\.agreementPrefix": "By signing in, you agree to and acknowledge the"/);
+  assert.match(loginContract, /href="\/privacy"[\s\S]*href="\/terms"/);
 
   for (const surface of [publicHeader, userMenu]) {
     assert.match(surface, /href="\/privacy"/);

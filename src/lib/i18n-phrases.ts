@@ -22,6 +22,27 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "내 Local Agent",
     es: "Tu Local Agent",
   },
+  "Search recommendations or enter a name": {
+    "zh-CN": "搜索推荐或输入名称",
+    "zh-TW": "搜尋推薦或輸入名稱",
+    ja: "おすすめを検索するか名前を入力",
+    ko: "추천을 검색하거나 이름 입력",
+    es: "Busca recomendaciones o introduce un nombre",
+  },
+  "The latest one-time Fetch sources run completed with some planned posts needing follow-up.": {
+    "zh-CN": "最近一次一次性 Fetch sources 已完成，但部分计划帖子需要跟进。",
+    "zh-TW": "最近一次一次性 Fetch sources 已完成，但部分規劃貼文需要跟進。",
+    ja: "最新の一回限りの Fetch sources 実行は完了しましたが、一部の予定投稿にはフォローアップが必要です。",
+    ko: "최근 일회성 Fetch sources 실행이 완료되었지만 일부 계획된 게시물은 후속 조치가 필요합니다.",
+    es: "La última ejecución única de Fetch sources terminó con algunas publicaciones planificadas que requieren seguimiento.",
+  },
+  "The latest scheduled Fetch sources run completed with some planned posts needing follow-up.": {
+    "zh-CN": "最近一次定时 Fetch sources 已完成，但部分计划帖子需要跟进。",
+    "zh-TW": "最近一次排程 Fetch sources 已完成，但部分規劃貼文需要跟進。",
+    ja: "最新のスケジュール済み Fetch sources 実行は完了しましたが、一部の予定投稿にはフォローアップが必要です。",
+    ko: "최근 예약된 Fetch sources 실행이 완료되었지만 일부 계획된 게시물은 후속 조치가 필요합니다.",
+    es: "La última ejecución programada de Fetch sources terminó con algunas publicaciones planificadas que requieren seguimiento.",
+  },
   "Cloud source fetching": {
     "zh-CN": "云端信息源抓取",
     "zh-TW": "雲端資訊源抓取",

@@ -16,7 +16,7 @@ export const privacyPageMeta = {
 } as const;
 
 export const privacyIntro =
-  `Last updated: ${legalUpdatedDate}. This policy explains what FollowBrief collects, why it is used, how Hub sharing works, and how you can access, export, correct, or delete account data. Contact: ${legalContactEmail}.`;
+  `Last updated: ${legalUpdatedDate}. FollowBrief is operated by Worldstate Labs. This policy explains what FollowBrief collects, why it is used, how Hub sharing works, and how you can access, export, correct, or delete account data. Contact: ${legalContactEmail}.`;
 
 export const privacyBlocks: LegalBlock[] = [
   {
@@ -37,7 +37,7 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "service-providers",
     title: "Service providers",
-    copy: "FollowBrief connects with third-party sources and APIs such as Google, GitHub, Apple, X, YouTube, Product Hunt, RSS feeds, websites, and OpenAI-style model providers when you choose those workflows. We also use OAuth providers and hosting, database, security, observability, AI, crawler, and agent runtime providers to operate the product. These providers process data only as needed for the service, security, support, or your selected integrations.",
+    copy: "FollowBrief connects with third-party sources and APIs such as Google, GitHub, Apple, X, YouTube, Product Hunt, RSS feeds, websites, crawler tools, transcription or speech-to-text tools, and OpenAI-style model providers when you choose those workflows. We also use OAuth providers and hosting, database, security, observability, AI, crawler, and agent runtime providers to operate the product. FollowBrief sends or receives data through these providers only as needed for the service, security, support, or your selected integrations; provider handling is also governed by the provider terms and settings for the workflow you configure.",
   },
   {
     id: "cookies-security",
@@ -47,7 +47,7 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "hub-sharing",
     title: "Hub sharing",
-    copy: "When you share source libraries or AI Digest collections to Hub, other users can see shared source names, source links, collection titles, headline metadata, descriptions, counts, owner display labels, imports, views, and public Hub activity. Private account data, access keys, OAuth tokens, raw crawled content, full transcripts, raw API objects, and private settings are not published to Hub.",
+    copy: "When you share source libraries or AI Digest collections to Hub, other users can see shared source names, source links, collection titles, headline metadata, latest digest timing, source-link metadata, descriptions, counts, owner display labels, imports, views, schedule status, update status, frequency labels, and public Hub activity. Private account data, access keys, OAuth tokens, raw crawled content, full transcripts, raw API objects, and private settings are not published to Hub.",
   },
   {
     id: "selling-advertising",
@@ -57,12 +57,12 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "retention",
     title: "Retention",
-    copy: "We retain account data while your account is active and keep operational logs only as long as needed for security, diagnostics, abuse prevention, and service reliability. Account deletion removes your user record and account-scoped records, including sessions, access keys, source library records, AI Digest records, preferences, reads, favorites, imports, and Hub sharing records. Operational backups and security logs may persist until they expire under normal retention schedules.",
+    copy: "We retain account data while your account is active. Operational logs are kept based on security, diagnostics, abuse prevention, and service reliability needs, and some account export views include only recent operational run logs. Account deletion removes your user record and account-scoped records, including sessions, access keys, source library records, AI Digest records, preferences, reads, favorites, imports, and Hub sharing records. Operational backups and security logs may persist until they expire under their applicable retention processes.",
   },
   {
     id: "your-rights",
     title: "Your rights",
-    copy: "You can access, export, correct, and delete your information in Settings. Depending on where you live, you may also have rights to object, restrict processing, request portability, withdraw consent, appeal a denied request, or lodge a complaint with a privacy authority. You can stop sharing any Hub item before deleting your account, and source owners can contact FollowBrief to request review or removal of source material.",
+    copy: "Settings lets you access core account details, export core account data and recent operational run logs, update editable source and digest settings, revoke access keys, stop sharing Hub items, and delete your account. For information that is not editable in Settings, or to exercise location-specific rights, contact us at legal@worldstatelabs.com. Depending on where you live, you may also have rights to correct information, object, restrict processing, request portability, withdraw consent, appeal a denied request, or lodge a complaint with a privacy authority. Source owners can contact FollowBrief to request review or removal of source material.",
   },
   {
     id: "children-changes",
@@ -80,7 +80,7 @@ export const termsPageMeta = {
 } as const;
 
 export const termsIntro =
-  `Last updated: ${legalUpdatedDate}. These terms cover your use of FollowBrief, Local Agent access, Hub sharing, third-party sources, third-party APIs, and AI Digest output. Contact: ${legalContactEmail}.`;
+  `Last updated: ${legalUpdatedDate}. These terms govern your use of FollowBrief, operated by Worldstate Labs, including Local Agent access, Hub sharing, third-party sources, third-party APIs, and AI Digest output. Contact: ${legalContactEmail}.`;
 
 export const termsBlocks: LegalBlock[] = [
   {
@@ -96,12 +96,12 @@ export const termsBlocks: LegalBlock[] = [
   {
     id: "third-party-content-apis",
     title: "Third-party content and APIs",
-    copy: "Sources and metadata may come from third-party sources and third-party APIs including GitHub, Google, Apple, X, YouTube, Product Hunt, RSS feeds, websites, crawler tools, and model providers. Their platform terms continue to apply to the content, accounts, and API access you connect. FollowBrief does not give you rights to third-party content beyond the rights you already have.",
+    copy: "Sources and metadata may come from third-party sources and third-party APIs including GitHub, Google, Apple, X, YouTube, Product Hunt, RSS feeds, websites, crawler tools, transcription or speech-to-text tools, local or hosted agent runtimes, and model providers. Their platform terms continue to apply to the content, accounts, API access, model access, and runtime tools you connect or configure. FollowBrief does not give you rights to third-party content beyond the rights you already have.",
   },
   {
     id: "source-rights-retention",
     title: "Source rights and retention",
-    copy: "Do not add private, paywalled, access-controlled, or platform-prohibited sources unless you have the right to fetch and summarize them. Do not use FollowBrief to scrape private areas, bypass paywalls, violate robots or rate limits, evade access controls, collect secrets, or infringe copyright, privacy, publicity, or contract rights. Local Agent may temporarily process raw source content, but durable raw retention depends on the source type; Hub sharing must not publish raw crawled content, full transcripts, raw API objects, or full third-party works. Source owners can contact FollowBrief to request review or removal of source material.",
+    copy: "Do not add private, paywalled, access-controlled, or platform-prohibited sources unless you have the right to fetch and summarize them. Do not use FollowBrief to scrape private areas, bypass paywalls, violate robots or rate limits, evade access controls, collect secrets, or infringe copyright, privacy, publicity, or contract rights. Local Agent may temporarily process raw source content, but durable raw retention depends on the source type; Hub sharing must not publish raw crawled content, full transcripts, raw API objects, or full third-party works. Source owners can contact legal@worldstatelabs.com to request review or removal of source material; we may remove or disable access to material while a request is reviewed.",
   },
   {
     id: "ai-digest-output",
@@ -111,7 +111,7 @@ export const termsBlocks: LegalBlock[] = [
   {
     id: "hub-sharing",
     title: "Hub sharing",
-    copy: "If you share a source library or AI Digest collection to Hub, you grant FollowBrief permission to display the shared title, description, source names, source links, headline metadata, owner display label, import counts, view counts, and public collection activity to other users until you remove it. You must not share anything you do not have permission to publish.",
+    copy: "If you share a source library or AI Digest collection to Hub, you grant FollowBrief permission to display the shared title, description, source names, source links, headline metadata, latest digest timing, source-link metadata, owner display label, import counts, view counts, schedule status, update status, frequency labels, and public collection activity to other users until you remove it. You must not share anything you do not have permission to publish.",
   },
   {
     id: "acceptable-use",
@@ -121,7 +121,7 @@ export const termsBlocks: LegalBlock[] = [
   {
     id: "account-controls-termination",
     title: "Account controls and termination",
-    copy: "You may export or delete your account data from Settings. Deleting your account removes active access to FollowBrief and may remove shared Hub entries tied to your account. We may suspend or terminate access if needed to protect the service, comply with law, prevent abuse, or address violations of these terms.",
+    copy: "You may export core account data and recent operational run logs, revoke access keys, stop Hub sharing, or delete your account from Settings. Deleting your account removes active access to FollowBrief and may remove shared Hub entries tied to your account. We may suspend or terminate access if needed to protect the service, comply with law, prevent abuse, or address violations of these terms.",
   },
   {
     id: "disclaimers-liability",
