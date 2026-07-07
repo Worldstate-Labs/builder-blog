@@ -594,7 +594,13 @@ test("web app serves the agent skill and setup command", () => {
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
-  assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Set frequency, runtime, language, and lookback\."/);
+  assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
+  assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
+  assert.match(skillPromptActions, /Submit a fetch request to FollowBrief\./);
+  assert.match(skillPromptActions, /Copy instructions for your agent to build AI Digest\./);
+  assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
+  assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);
+  assert.doesNotMatch(skillPromptActions, /Runs with Claude Code\.|Runs with Codex\.|Runs with Hermes\.|Runs with OpenClaw\./);
   assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt for Fetch sources\.|Copy a Local Agent prompt for AI Digest\.|Copy a Local Agent prompt to fetch, summarize, and sync sources|Copy a Local Agent prompt to build your AI Digest|Copy a Local Agent prompt\./);
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);

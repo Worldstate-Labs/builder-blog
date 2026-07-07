@@ -25,26 +25,22 @@ type AgentRuntime = "claude" | "codex" | "hermes" | "openclaw";
 type RuntimeType = "cloud" | "local";
 type StopFetchTarget = "cloud" | "local";
 
-const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
+const RUNTIME_OPTIONS: { id: AgentRuntime; label: string }[] = [
   {
     id: "claude",
     label: "Claude Code",
-    hint: "Runs with Claude Code.",
   },
   {
     id: "codex",
     label: "Codex",
-    hint: "Runs with Codex.",
   },
   {
     id: "hermes",
     label: "Hermes",
-    hint: "Runs with Hermes.",
   },
   {
     id: "openclaw",
     label: "OpenClaw",
-    hint: "Runs with OpenClaw.",
   },
 ];
 
@@ -90,7 +86,14 @@ export type ActiveScheduleInfo = {
   platform: string | null;
 };
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
-const promptDialogDescription = () => "Set frequency, runtime, language, and lookback.";
+function promptDialogDescription(context: SkillPromptContext, runtimeType: RuntimeType = "local") {
+  if (context === "library") {
+    return runtimeType === "cloud"
+      ? "Submit a fetch request to FollowBrief."
+      : "Copy instructions for your agent to fetch sources in your library.";
+  }
+  return "Copy instructions for your agent to build AI Digest.";
+}
 
 async function copyTextToClipboard(text: string) {
   try {
@@ -659,7 +662,7 @@ export function SkillPromptActions({
       {!compactOnly ? (
         <div className="fb-skill-text">
           <span className="fb-section-label skill-prompt-label">{config.title}</span>
-          {promptDialogDescription()}
+          {promptDialogDescription(context)}
         </div>
       ) : null}
       <button
@@ -1268,7 +1271,6 @@ function CronConfigDialog({
     lastSubmittedAt: string | null;
   } | null>(null);
   const dialogConfig = PROMPT_CONFIG[context];
-  const runtimeHint = RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
   const isCloudMode = context === "library" && runtimeType === "cloud";
   // One submission per user: when a prior submission exists, the submit becomes
   // an explicit overwrite.
@@ -1442,7 +1444,7 @@ function CronConfigDialog({
             {dialogConfig.title}
           </h2>
           <p className="token-picker-sub">
-            {promptDialogDescription()}
+            {promptDialogDescription(context, runtimeType)}
           </p>
         </header>
 
@@ -1518,7 +1520,7 @@ function CronConfigDialog({
             <>
               <div className="cron-field">
                 <label htmlFor="cron-runtime" className="cron-field-label">
-                  Runtime
+                  Agent
                 </label>
                 <select
                   id="cron-runtime"
@@ -1533,7 +1535,6 @@ function CronConfigDialog({
                   ))}
                 </select>
               </div>
-              <p className="cron-field-hint">{runtimeHint}</p>
             </>
           ) : null}
 

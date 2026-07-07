@@ -1069,8 +1069,13 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /<section className="cron-advanced-section"[\s\S]*Advanced[\s\S]*Parallel tasks[\s\S]*Lookback window \(days\)/);
   assert.match(skillPromptActions, /<SummaryLanguageField[\s\S]*<section className="cron-advanced-section"/);
   assert.match(skillPromptActions, /id="cron-override-fetched"[\s\S]*value=\{overrideFetched \? "yes" : "no"\}[\s\S]*<option value="no">No<\/option>[\s\S]*<option value="yes">Yes<\/option>/);
-  assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Set frequency, runtime, language, and lookback\."/);
-  assert.match(skillPromptActions, />\s*Runtime\s*<\/label>/);
+  assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
+  assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
+  assert.match(skillPromptActions, /Submit a fetch request to FollowBrief\./);
+  assert.match(skillPromptActions, /Copy instructions for your agent to build AI Digest\./);
+  assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
+  assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);
+  assert.doesNotMatch(skillPromptActions, /Runs with Claude Code\.|Runs with Codex\.|Runs with Hermes\.|Runs with OpenClaw\./);
   assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt\./);
   assert.doesNotMatch(skillPromptActions, /name="override-fetched"[\s\S]*type="checkbox"/);
   assert.doesNotMatch(skillPromptActions, />\s*Local Agent\s*<\/label>|Choose frequency, Local Agent, language, and lookback\.|Choose frequency, runtime, language, and lookback\./);
