@@ -4507,7 +4507,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-name-row"/);
   assert.match(addBuilderForm, /className="add-source-action-row"/);
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
-  assert.match(addBuilderForm, /Display name \(optional\)/);
+  assert.match(addBuilderForm, />\s*Name\s*<\/label>/);
+  assert.match(addBuilderForm, /Search recommendations or enter a name/);
   assert.match(addBuilderForm, /disabled=\{sourceValueIsFixed\}/);
   assert.match(addBuilderForm, /aria-readonly=\{sourceValueIsFixed\}[\s\S]*aria-label="Display name"/);
   assert.match(addBuilderForm, /aria-label="Display name"[\s\S]*disabled=\{sourceValueIsFixed\}[\s\S]*readOnly=\{sourceValueIsFixed\}/);

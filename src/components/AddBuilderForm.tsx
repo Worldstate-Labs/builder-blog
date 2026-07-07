@@ -124,6 +124,7 @@ export function AddBuilderForm({
   sourceOptions: SourceOption[];
 }) {
   const sourceValueInputId = useId();
+  const nameInputId = useId();
   const sourceCandidateListId = useId();
   const nameCandidateListId = useId();
   const [error, setError] = useState("");
@@ -440,6 +441,9 @@ export function AddBuilderForm({
         </div>
       ) : null}
       <div className="add-source-name-row">
+        <label className="add-source-field-label" htmlFor={nameInputId}>
+          Name
+        </label>
         <div
           className={`source-display-name-control add-source-display-name-control${
             shouldShowDisplayNameAvatar ? "" : " without-avatar"
@@ -463,6 +467,7 @@ export function AddBuilderForm({
             aria-label="Display name"
             className="fb-input add-source-name-input"
             disabled={sourceValueIsFixed}
+            id={nameInputId}
             name="name"
             onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
             onChange={(event) => {
@@ -477,7 +482,7 @@ export function AddBuilderForm({
               setSourceCandidatesOpen(true);
               setSourceCandidatesField("name");
             }}
-            placeholder="Display name (optional)"
+            placeholder="Search recommendations or enter a name"
             readOnly={sourceValueIsFixed}
             role="combobox"
             value={effectiveName}

@@ -2958,7 +2958,7 @@ summary.library-section-summary::after {
   align-items: center;
   display: grid;
   gap: 0.5rem;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   min-width: 0;
 }
 
