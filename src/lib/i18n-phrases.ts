@@ -29,6 +29,20 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "추천을 검색하거나 이름 입력",
     es: "Busca recomendaciones o introduce un nombre",
   },
+  "Name/URL": {
+    "zh-CN": "名称/URL",
+    "zh-TW": "名稱/URL",
+    ja: "名前/URL",
+    ko: "이름/URL",
+    es: "Nombre/URL",
+  },
+  "Name or URL": {
+    "zh-CN": "名称或 URL",
+    "zh-TW": "名稱或 URL",
+    ja: "名前または URL",
+    ko: "이름 또는 URL",
+    es: "Nombre o URL",
+  },
   "The latest one-time Fetch sources run completed with some planned posts needing follow-up.": {
     "zh-CN": "最近一次一次性 Fetch sources 已完成，但部分计划帖子需要跟进。",
     "zh-TW": "最近一次一次性 Fetch sources 已完成，但部分規劃貼文需要跟進。",
@@ -4097,19 +4111,19 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "찾음",
     es: "encontrado",
   },
-  "Copy this prompt to stop the active schedule for": {
-    "zh-CN": "复制这段 prompt，用来停止当前计划：",
-    "zh-TW": "複製這段 prompt，用來停止目前排程：",
-    ja: "このプロンプトをコピーして、次の有効なスケジュールを停止します:",
-    ko: "이 prompt를 복사해 활성 일정을 중지하세요:",
-    es: "Copia este prompt para detener la programación activa de",
+  "Copy instructions for your agent to stop the following schedule.": {
+    "zh-CN": "复制给你的 agent 的指令，用来停止以下计划。",
+    "zh-TW": "複製給你的 agent 的指令，用來停止以下排程。",
+    ja: "次のスケジュールを停止するためのエージェント向け手順をコピーします。",
+    ko: "다음 일정을 중지하도록 에이전트에 전달할 지침을 복사합니다.",
+    es: "Copia instrucciones para que tu agente detenga la siguiente programación.",
   },
-  "in your Local Agent.": {
-    "zh-CN": "在你的 Local Agent 中运行。",
-    "zh-TW": "在你的 Local Agent 中執行。",
-    ja: "Local Agent で実行します。",
-    ko: "Local Agent에서 실행하세요.",
-    es: "en tu Local Agent.",
+  "Copy instructions for your agent to stop the local recurring schedule": {
+    "zh-CN": "复制给你的 agent 的指令，用来停止本地重复计划",
+    "zh-TW": "複製給你的 agent 的指令，用來停止本機重複排程",
+    ja: "ローカルの定期スケジュールを停止するためのエージェント向け手順をコピー",
+    ko: "로컬 반복 일정을 중지하도록 에이전트에 전달할 지침 복사",
+    es: "Copia instrucciones para que tu agente detenga la programación local recurrente",
   },
   "Export account data or delete your FollowBrief account, including reads, favorites, settings, Hub sharing records, AI Digest records, and Local Agent activity.": {
     "zh-CN": "导出账号数据，或删除你的 FollowBrief 账号，包括阅读记录、收藏、设置、Hub 分享记录、AI Digest 记录和 Local Agent 活动。",

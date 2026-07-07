@@ -869,7 +869,7 @@ function StopScheduleDialog({
           <p className="token-picker-sub">
             {showFetchTargetPicker
               ? "Choose which Fetch sources runtime to stop."
-              : `Copy this prompt to stop the active schedule for ${scheduleName} in your Local Agent.`}
+              : "Copy instructions for your agent to stop the following schedule."}
           </p>
         </header>
 
@@ -891,7 +891,7 @@ function StopScheduleDialog({
                   <span className="cron-check-name">Your Local Agent</span>
                   <span className="cron-field-hint">
                     {canStopLocal
-                      ? "Copy a prompt to stop the local recurring schedule."
+                      ? "Copy instructions for your agent to stop the local recurring schedule"
                       : "No local run is active."}
                   </span>
                 </span>

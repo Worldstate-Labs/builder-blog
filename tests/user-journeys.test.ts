@@ -533,7 +533,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /optimisticCloudActive/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Choose which Fetch sources runtime to stop/);
-  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \$\{scheduleName\} in your Local Agent/);
+  assert.match(skillPromptActions, /Copy instructions for your agent to stop the following schedule\./);
+  assert.match(skillPromptActions, /Copy instructions for your agent to stop the local recurring schedule/);
   assert.match(skillPromptActions, /Schedule/);
   assert.match(skillPromptActions, /Frequency/);
   assert.match(skillPromptActions, /Runtime/);

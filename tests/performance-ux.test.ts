@@ -1004,7 +1004,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Stop fetching/);
   assert.match(skillPromptActions, /Choose which Fetch sources runtime to stop/);
-  assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \$\{scheduleName\} in your Local Agent/);
+  assert.match(skillPromptActions, /Copy instructions for your agent to stop the following schedule\./);
+  assert.match(skillPromptActions, /Copy instructions for your agent to stop the local recurring schedule/);
   assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
   assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
