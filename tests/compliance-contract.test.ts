@@ -17,8 +17,11 @@ function assertFile(path: string) {
 test("public legal pages disclose privacy, terms, AI, third-party, sharing, and rights", () => {
   const privacyPage = assertFile("src/app/privacy/page.tsx");
   const termsPage = assertFile("src/app/terms/page.tsx");
+  const legalCopy = assertFile("src/lib/legal-pages.ts");
   const publicHeader = source("src/components/PublicHeader.tsx");
   const userMenu = source("src/components/UserMenu.tsx");
+  const privacyContract = `${privacyPage}\n${legalCopy}`;
+  const termsContract = `${termsPage}\n${legalCopy}`;
 
   for (const page of [privacyPage, termsPage]) {
     assert.match(page, /FollowBrief/);
@@ -27,18 +30,37 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
     assert.match(page, /<PublicHeader current="(?:privacy|terms)" session=\{session\} \/>/);
   }
 
-  assert.match(privacyPage, /OAuth profile|email|read history|favorites|access keys|IP address|User-Agent/);
-  assert.match(privacyPage, /Local Agent|AI Digest|summar/i);
-  assert.match(privacyPage, /temporarily process crawled source content|source type policy/i);
-  assert.match(privacyPage, /Google|GitHub|Apple|X|YouTube|Product Hunt|OpenAI/);
-  assert.match(privacyPage, /access|export|correct|delete/);
-  assert.match(privacyPage, /retention|retain|delete/i);
-  assert.match(privacyPage, /Hub|shared source libraries|AI Digest collections/);
+  assert.match(privacyContract, /OAuth profile|email|read history|favorites|access keys|IP address|User-Agent/);
+  assert.match(privacyContract, /Local Agent|AI Digest|summar/i);
+  assert.match(privacyContract, /temporarily process crawled source content|source type policy/i);
+  assert.match(privacyContract, /Google|GitHub|Apple|X|YouTube|Product Hunt|OpenAI/);
+  assert.match(privacyContract, /access|export|correct|delete/);
+  assert.match(privacyContract, /retention|retain|delete/i);
+  assert.match(privacyContract, /Hub|shared source libraries|AI Digest collections/);
+  assert.match(privacyContract, /Last updated: July 7, 2026/);
+  assert.match(privacyContract, /Contact:\s*jie@worldstatelabs\.com/);
+  assert.match(privacyContract, /Account and identity data|Content and source data|Usage, device, and diagnostic data/);
+  assert.match(privacyContract, /OAuth providers|hosting, database, security, observability, AI, crawler, and agent runtime providers/i);
+  assert.match(privacyContract, /We do not sell personal information|cross-context behavioral advertising/i);
+  assert.match(privacyContract, /We use session cookies|authentication/i);
+  assert.match(privacyContract, /not intended for children under 13/i);
+  assert.match(privacyContract, /AI summaries and recommendations are assistive|not used to make legal, financial, employment, housing, credit, health, or insurance decisions/i);
+  assert.match(privacyContract, /account export|account deletion|correct|object|restrict|portability/i);
+  assert.match(privacyContract, /operational backups and security logs/i);
 
-  assert.match(termsPage, /third-party sources|third-party APIs|platform terms/i);
-  assert.match(termsPage, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
-  assert.match(termsPage, /Local Agent|access key|AI Digest/);
-  assert.match(termsPage, /Do not|must not/i);
+  assert.match(termsContract, /third-party sources|third-party APIs|platform terms/i);
+  assert.match(termsContract, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
+  assert.match(termsContract, /Local Agent|access key|AI Digest/);
+  assert.match(termsContract, /Do not|must not/i);
+  assert.match(termsContract, /Last updated: July 7, 2026/);
+  assert.match(termsContract, /Contact:\s*jie@worldstatelabs\.com/);
+  assert.match(termsContract, /You must be able to form a binding contract/i);
+  assert.match(termsContract, /You are responsible for keeping your account, devices, Local Agent files, and access keys secure/i);
+  assert.match(termsContract, /Do not use FollowBrief to scrape private areas|bypass paywalls|violate robots/i);
+  assert.match(termsContract, /No professional advice|AS IS|AS AVAILABLE|Limitation of liability/i);
+  assert.match(termsContract, /suspend or terminate access/i);
+  assert.match(termsContract, /material changes/i);
+  assert.match(termsContract, /governed by the laws of California/i);
 
   for (const surface of [publicHeader, userMenu]) {
     assert.match(surface, /href="\/privacy"/);
