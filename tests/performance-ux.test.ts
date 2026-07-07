@@ -4658,7 +4658,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /--hierarchy-inset:\s*1rem/);
   assert.match(globals, /--hierarchy-inset-mobile:\s*0\.75rem/);
-  assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*padding:\s*1rem 0 1\.125rem/);
+  assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*padding:\s*1rem 1\.25rem 1\.125rem/);
   assert.match(cssRule(globals, ".library-section-panel-indented"), /margin-inline:\s*var\(--hierarchy-inset\)/);
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.imported-libraries-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);

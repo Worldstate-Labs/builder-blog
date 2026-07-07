@@ -3275,7 +3275,7 @@ summary.library-section-summary::after {
 
 .imported-libraries-panel .imported-library-stack {
   border-top: 1px solid var(--line);
-  padding: 1rem 0 1.125rem;
+  padding: 1rem 1.25rem 1.125rem;
 }
 
 .imported-libraries-head {
