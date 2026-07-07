@@ -131,7 +131,9 @@ test("add and edit source forms use the independent source candidate library", (
   assert.match(addBuilderForm, /aria-autocomplete="list"/);
   assert.match(addBuilderForm, /autoComplete="off"/);
   assert.match(addBuilderForm, /spellCheck=\{false\}/);
-  assert.match(addBuilderForm, /sourceCandidatesField === "name" && !resolvedSourceValue\.trim\(\)/);
+  assert.match(addBuilderForm, /sourceCandidatesField === "name"\s*\?\s*effectiveName\s*:\s*resolvedSourceValue/);
+  assert.doesNotMatch(addBuilderForm, /sourceCandidatesField === "name" && !resolvedSourceValue\.trim\(\)/);
+  assert.doesNotMatch(addBuilderForm, /if \(!resolvedSourceValue\.trim\(\)\) \{\s*setSourceCandidatesOpen\(true\);\s*setSourceCandidatesField\("name"\);/);
   assert.match(addBuilderForm, /setSourceCandidatesField\("name"\)/);
   assert.match(addBuilderForm, /applySourceCandidate\(candidate: SourceCandidate\)/);
   assert.match(addBuilderForm, /setSourceType\(candidate\.sourceType\)/);
@@ -5611,6 +5613,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineRemoveRoute, /removeDigestPipelineImportFromHub/);
   assert.match(digestPipelineImportRoute, /revalidatePath\("\/builders"\)/);
   assert.match(digestPipelineRemoveRoute, /revalidatePath\("\/builders"\)/);
+  // Cloud source submissions must revalidate the Sources page on both submit
+  // (POST) and stop (DELETE) so the Stop button state stays correct across
+  // tabs and navigations.
+  assert.match(
+    source("src/app/api/cloud-library/source-submissions/route.ts"),
+    /revalidatePath\("\/builders"\)[\s\S]*revalidatePath\("\/builders"\)/,
+  );
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
   assert.match(skillRoute, /syncPersonalLibraryHubForUser/);

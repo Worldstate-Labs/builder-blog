@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Check, CircleStop, Copy, KeyRound } from "lucide-react";
 import {
@@ -367,10 +368,20 @@ export function SkillPromptActions({
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
   const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop fetching";
   const [cloudStopDismissed, setCloudStopDismissed] = useState(false);
+  const router = useRouter();
+  // Optimistic flag: a cloud submission POST just succeeded on the client, so
+  // the "Stop fetching" button should appear immediately, without waiting for
+  // the Sources RSC (page.tsx) to re-render with a fresh submittedSourceCount.
+  // A router.refresh() reconciles this with the server-truth prop right after.
+  const [optimisticCloudActive, setOptimisticCloudActive] = useState(false);
+  const cloudActive = cloudFetchActive || optimisticCloudActive;
   const localStopActive = localFetchActive ?? showStop;
   const canStopLocal = Boolean(stopJob && localStopActive);
-  const canStopCloud = context === "library" && cloudFetchActive && !cloudStopDismissed;
-  const showStopButton = showStop && (canStopLocal || canStopCloud);
+  const canStopCloud = context === "library" && cloudActive && !cloudStopDismissed;
+  // showStop is derived server-side from submittedSourceCount; when we've
+  // optimistically activated cloud, force the stop affordance on as well.
+  const effectiveShowStop = showStop || (context === "library" && optimisticCloudActive);
+  const showStopButton = effectiveShowStop && (canStopLocal || canStopCloud);
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
@@ -602,6 +613,7 @@ export function SkillPromptActions({
           return false;
         }
         setCloudStopDismissed(true);
+        setOptimisticCloudActive(false);
         setStatus({
           kind: "info",
           text: `Cloud fetching stopped for ${body?.stoppedSources ?? 0} source${
@@ -609,6 +621,7 @@ export function SkillPromptActions({
           }.`,
         });
         setStopDialogOpen(false);
+        router.refresh();
         return true;
       } catch {
         setStatus({ kind: "error", text: "Could not stop cloud fetching." });
@@ -630,6 +643,15 @@ export function SkillPromptActions({
     });
     setStopDialogOpen(false);
     return copied;
+  }
+
+  // A cloud submission just succeeded: reveal Stop immediately (optimistic),
+  // clear any prior stop-dismissal, then reconcile with server truth via a
+  // refresh so the RSC re-reads submittedSourceCount.
+  function handleCloudSubmitted() {
+    setCloudStopDismissed(false);
+    setOptimisticCloudActive(true);
+    router.refresh();
   }
 
   return (
@@ -698,6 +720,7 @@ export function SkillPromptActions({
         summaryLanguage={summaryLanguage}
         digestMaxPostAgeDays={digestMaxPostAgeDays}
         onCancel={() => setCronConfigOpen(false)}
+        onCloudSubmitted={handleCloudSubmitted}
         onConfirm={async (selection) => {
           const completed = await continueScheduleCopy(selection);
           if (completed) setCronConfigOpen(false);
@@ -1203,6 +1226,7 @@ function CronConfigDialog({
   summaryLanguage,
   digestMaxPostAgeDays,
   onCancel,
+  onCloudSubmitted,
   onConfirm,
 }: {
   open: boolean;
@@ -1210,6 +1234,7 @@ function CronConfigDialog({
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
   onCancel: () => void;
+  onCloudSubmitted?: () => void;
   onConfirm: (selection: SchedulePromptSelection) => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -1351,6 +1376,7 @@ function CronConfigDialog({
             replaced > 0 ? ` Replaced ${replaced} previous source${replaced === 1 ? "" : "s"}.` : ""
           }`,
         );
+        onCloudSubmitted?.();
         window.setTimeout(onCancel, 700);
         return;
       }

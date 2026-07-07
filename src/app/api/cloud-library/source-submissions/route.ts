@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/auth";
 import { normalizeCloudSourceSubmissionInput } from "@/lib/cloud-source-contracts";
 import {
@@ -57,6 +58,10 @@ export async function POST(request: Request) {
       frequency: input.frequency,
       summaryLanguage: input.summaryLanguage,
     });
+    // Invalidate the Sources page RSC so a fresh submittedSourceCount (and thus
+    // the "Stop fetching" button) shows on the next request. The client also
+    // calls router.refresh() for an immediate update on the current page.
+    revalidatePath("/builders");
     return NextResponse.json({
       status: "ok",
       sourcesSubmitted: result.sourcesSubmitted,
@@ -82,6 +87,7 @@ export async function DELETE() {
   }
 
   const result = await stopUserCloudSourceSubmissions({ userId });
+  revalidatePath("/builders");
   return NextResponse.json({
     status: "ok",
     stoppedSources: result.stoppedSources,

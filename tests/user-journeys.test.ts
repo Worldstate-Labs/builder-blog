@@ -523,6 +523,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Build AI Digest/);
   assert.doesNotMatch(skillPromptActions, /Build digest/);
   assert.match(skillPromptActions, /Stop fetching/);
+  // Regression: a cloud submission must surface the Stop button immediately.
+  // submittedSourceCount is server-rendered in page.tsx, so after POSTing a
+  // submission the client optimistically activates cloud + calls router.refresh()
+  // instead of forcing a manual page reload.
+  assert.match(skillPromptActions, /useRouter/);
+  assert.match(skillPromptActions, /router\.refresh\(\)/);
+  assert.match(skillPromptActions, /onCloudSubmitted/);
+  assert.match(skillPromptActions, /optimisticCloudActive/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Choose which Fetch sources runtime to stop/);
   assert.match(skillPromptActions, /Copy this prompt to stop the active schedule for \$\{scheduleName\} in your Local Agent/);
