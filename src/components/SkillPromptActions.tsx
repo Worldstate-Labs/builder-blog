@@ -89,7 +89,7 @@ const missingAccessMessage = "Add an access key to set up Local Agent runs.";
 function promptDialogDescription(context: SkillPromptContext, runtimeType: RuntimeType = "local") {
   if (context === "library") {
     return runtimeType === "cloud"
-      ? "Submit a fetch request to FollowBrief."
+      ? "Submit a request for FollowBrief to fetch sources in your library."
       : "Copy instructions for your agent to fetch sources in your library.";
   }
   return "Copy instructions for your agent to build AI Digest.";

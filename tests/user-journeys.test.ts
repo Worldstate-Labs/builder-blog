@@ -596,7 +596,7 @@ test("web app serves the agent skill and setup command", () => {
   // now shown for digest as well as library.
   assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
-  assert.match(skillPromptActions, /Submit a fetch request to FollowBrief\./);
+  assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to build AI Digest\./);
   assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);

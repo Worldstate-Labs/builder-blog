@@ -1071,7 +1071,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /id="cron-override-fetched"[\s\S]*value=\{overrideFetched \? "yes" : "no"\}[\s\S]*<option value="no">No<\/option>[\s\S]*<option value="yes">Yes<\/option>/);
   assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
-  assert.match(skillPromptActions, /Submit a fetch request to FollowBrief\./);
+  assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to build AI Digest\./);
   assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);
