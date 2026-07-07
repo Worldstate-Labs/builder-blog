@@ -2998,6 +2998,17 @@ summary.library-section-summary::after {
   width: 100%;
 }
 
+.source-url-combobox .fb-input:disabled,
+.source-display-name-control .fb-input:disabled {
+  -webkit-text-fill-color: var(--muted-strong);
+  background: color-mix(in oklch, var(--surface-field) 72%, var(--surface-muted));
+  border-color: color-mix(in oklch, var(--line) 72%, transparent);
+  box-shadow: none;
+  color: var(--muted-strong);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .source-candidate-list {
   background: var(--paper-strong);
   border: 1px solid color-mix(in oklch, var(--line) 92%, transparent);

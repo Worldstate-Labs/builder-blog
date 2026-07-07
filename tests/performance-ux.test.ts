@@ -4507,6 +4507,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-action-row"/);
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
   assert.match(addBuilderForm, /Display name \(optional\)/);
+  assert.match(addBuilderForm, /disabled=\{sourceValueIsFixed\}/);
+  assert.match(addBuilderForm, /aria-readonly=\{sourceValueIsFixed\}[\s\S]*aria-label="Display name"/);
+  assert.match(addBuilderForm, /aria-label="Display name"[\s\S]*disabled=\{sourceValueIsFixed\}[\s\S]*readOnly=\{sourceValueIsFixed\}/);
+  assert.match(globals, /\.source-url-combobox \.fb-input:disabled,[\s\S]*\.source-display-name-control \.fb-input:disabled\s*{[\s\S]*background:\s*color-mix\(in oklch, var\(--surface-field\) 72%, var\(--surface-muted\)\)/);
+  assert.match(globals, /\.source-url-combobox \.fb-input:disabled,[\s\S]*\.source-display-name-control \.fb-input:disabled\s*{[\s\S]*cursor:\s*not-allowed/);
   assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL/);
   assert.match(addBuilderForm, /Review this source before adding it\./);
   assert.match(addBuilderForm, />Note<\/span>/);

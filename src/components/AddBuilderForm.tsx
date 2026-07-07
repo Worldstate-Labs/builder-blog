@@ -200,7 +200,7 @@ export function AddBuilderForm({
     () => deriveDisplayName(sourceType, debouncedValue),
     [sourceType, debouncedValue],
   );
-  const effectiveName = nameTouched ? name : derivedName;
+  const effectiveName = sourceValueIsFixed ? derivedName : nameTouched ? name : derivedName;
   const sourceCandidateQuery =
     sourceCandidatesField === "name" ? effectiveName : resolvedSourceValue;
   const sourceCandidateSuggestions = useMemo(
@@ -384,6 +384,7 @@ export function AddBuilderForm({
             autoComplete="off"
             autoCorrect="off"
             className="fb-input"
+            disabled={sourceValueIsFixed}
             id={sourceValueInputId}
             name="sourceValue"
             onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
@@ -458,21 +459,26 @@ export function AddBuilderForm({
                 : undefined
             }
             aria-expanded={sourceCandidatesField === "name" && sourceCandidateSuggestions.length > 0}
+            aria-readonly={sourceValueIsFixed}
             aria-label="Display name"
             className="fb-input add-source-name-input"
+            disabled={sourceValueIsFixed}
             name="name"
             onBlur={() => window.setTimeout(() => setSourceCandidatesOpen(false), 120)}
             onChange={(event) => {
+              if (sourceValueIsFixed) return;
               setName(event.target.value);
               setNameTouched(true);
               setSourceCandidatesOpen(true);
               setSourceCandidatesField("name");
             }}
             onFocus={() => {
+              if (sourceValueIsFixed) return;
               setSourceCandidatesOpen(true);
               setSourceCandidatesField("name");
             }}
             placeholder="Display name (optional)"
+            readOnly={sourceValueIsFixed}
             role="combobox"
             value={effectiveName}
           />
