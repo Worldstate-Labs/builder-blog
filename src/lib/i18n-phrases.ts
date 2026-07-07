@@ -2108,12 +2108,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "소스 가져오기 상태 로그 숨기기",
     es: "Ocultar registro de estado de obtención de fuentes",
   },
-  "Sources in your library. You control when and how to fetch and summarize them.": {
-    "zh-CN": "你信息源库里的信息源。你可以控制何时以及如何抓取和总结它们。",
-    "zh-TW": "你資訊源庫裡的資訊源。你可以控制何時以及如何抓取和摘要它們。",
-    ja: "あなたのライブラリ内のソースです。いつ、どのように取得して要約するかを管理できます。",
-    ko: "내 라이브러리의 소스입니다. 언제 어떻게 가져오고 요약할지 제어할 수 있습니다.",
-    es: "Fuentes en tu biblioteca. Controlas cuándo y cómo obtenerlas y resumirlas.",
+  "You can customize when and how to fetch and summarize sources in your library": {
+    "zh-CN": "你可以自定义何时以及如何抓取和总结信息源库中的信息源",
+    "zh-TW": "你可以自訂何時以及如何抓取和摘要資訊源庫中的資訊源",
+    ja: "ライブラリ内のソースをいつ、どのように取得して要約するかをカスタマイズできます",
+    ko: "라이브러리의 소스를 언제 어떻게 가져오고 요약할지 사용자 지정할 수 있습니다",
+    es: "Puedes personalizar cuándo y cómo obtener y resumir las fuentes de tu biblioteca",
   },
   "Remove from Hub": {
     "zh-CN": "从 Hub 移除",

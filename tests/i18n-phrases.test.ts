@@ -22,8 +22,8 @@ test("Sources page UI phrases translate while product and source names stay stab
     ["Idle", "空闲"],
     ["Details", "详情"],
     [
-      "Sources in your library. You control when and how to fetch and summarize them.",
-      "你信息源库里的信息源。你可以控制何时以及如何抓取和总结它们。",
+      "You can customize when and how to fetch and summarize sources in your library",
+      "你可以自定义何时以及如何抓取和总结信息源库中的信息源",
     ],
     ["Remove from Hub", "从 Hub 移除"],
     ["Add a source", "添加信息源"],

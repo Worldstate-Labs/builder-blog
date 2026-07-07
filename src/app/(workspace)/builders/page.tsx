@@ -930,7 +930,7 @@ async function SourceLibrarySections({
     <section className="your-library-section" aria-labelledby="sources-library-section-title">
       <PrivateLibraryPanel
         className="your-library-panel library-section-panel"
-        description="Sources in your library. You control when and how to fetch and summarize them."
+        description="You can customize when and how to fetch and summarize sources in your library"
         headingId="sources-library-section-title"
         sourceCandidates={data.sourceCandidates}
         sourceOptions={data.sourceLabelOptions}

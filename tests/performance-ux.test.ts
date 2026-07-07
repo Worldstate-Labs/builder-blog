@@ -1003,7 +1003,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Setup code expires in 10 minutes/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Stop fetching/);
-  assert.match(skillPromptActions, /Choose which Fetch sources runtime to stop/);
+  assert.doesNotMatch(skillPromptActions, /Choose which Fetch sources runtime to stop/);
   assert.match(skillPromptActions, /Copy instructions for your agent to stop the following schedule\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to stop the local recurring schedule/);
   assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
@@ -4591,7 +4591,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
-  assert.match(buildersPage, /description="Sources in your library\. You control when and how to fetch and summarize them\."/);
+  assert.match(buildersPage, /description="You can customize when and how to fetch and summarize sources in your library"/);
+  assert.doesNotMatch(buildersPage, /Sources in your library\. You control when and how to fetch and summarize them\./);
   assert.match(buildersPage, /visibilityToggle=\{[\s\S]*<LibraryVisibilityToggle/);
   assert.doesNotMatch(buildersPage, /className="your-library-panel fb-panel"/);
   assert.ok(

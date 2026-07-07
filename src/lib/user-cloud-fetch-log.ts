@@ -150,6 +150,10 @@ function serializeUserCloudFetchSource(
     task?.lastSuccessAt ?? (latestLegacyFailureIsSkipped ? latestRunTask.finishedAt : null);
   const lastFailureAt = latestLegacyFailureIsSkipped ? null : task?.lastFailureAt ?? null;
   const lastFailureReason = latestLegacyFailureIsSkipped ? null : task?.lastFailureReason ?? null;
+  const userMustSucceedBy = submissionDeadline({
+    submittedAt: submission.submittedAt,
+    frequency: submission.frequency,
+  });
   return {
     submissionId: submission.id,
     userBuilderId: submission.userBuilderId,
@@ -171,13 +175,13 @@ function serializeUserCloudFetchSource(
     lastFailureAt: lastFailureAt ? lastFailureAt.toISOString() : null,
     lastFailureReason,
     nextAttemptAt: task?.nextAttemptAt ? task.nextAttemptAt.toISOString() : null,
-    mustSucceedBy: task?.mustSucceedBy ? task.mustSucceedBy.toISOString() : null,
+    mustSucceedBy: userMustSucceedBy.toISOString(),
     consecutiveFailures: latestLegacyFailureIsSkipped ? 0 : task?.consecutiveFailures ?? null,
     deadlineStatus: deadlineStatus({
-      frequency: task?.effectiveFrequency ?? submission.frequency,
+      frequency: submission.frequency,
       lastSuccessAt: effectiveLastSuccessAt,
       latestRunTask: latestRunTaskLog,
-      mustSucceedBy: task?.mustSucceedBy ?? null,
+      mustSucceedBy: userMustSucceedBy,
       now,
     }),
     latestRunTask: latestRunTaskLog,
@@ -223,4 +227,14 @@ function deadlineStatus({
 
 function intervalMs(frequency: CloudFetchFrequency) {
   return frequency === "DAILY" ? DAY_MS : 7 * DAY_MS;
+}
+
+function submissionDeadline({
+  frequency,
+  submittedAt,
+}: {
+  frequency: CloudFetchFrequency;
+  submittedAt: Date;
+}) {
+  return new Date(submittedAt.getTime() + intervalMs(frequency));
 }

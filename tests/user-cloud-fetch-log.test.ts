@@ -117,6 +117,27 @@ test("serializeUserCloudFetchLog marks a source missed after its deadline passes
   assert.equal(result.sources[0]?.latestRunTask, null);
 });
 
+test("serializeUserCloudFetchLog uses the user's fresh submission window for source deadlines", () => {
+  const submittedAt = new Date("2026-07-07T16:29:00.000Z");
+  const result = serializeUserCloudFetchLog(
+    [
+      {
+        ...submission({
+          lastSuccessAt: new Date("2026-07-07T16:23:00.000Z"),
+          mustSucceedBy: new Date("2026-06-29T00:00:00.000Z"),
+        }),
+        frequency: "WEEKLY",
+        submittedAt,
+      },
+    ],
+    new Date("2026-07-07T16:30:00.000Z"),
+  );
+
+  assert.equal(result.sources[0]?.submittedAt, submittedAt.toISOString());
+  assert.equal(result.sources[0]?.mustSucceedBy, "2026-07-14T16:29:00.000Z");
+  assert.equal(result.sources[0]?.deadlineStatus, "WAITING");
+});
+
 test("serializeUserCloudFetchLog preserves source runs with no generated post tasks", () => {
   const result = serializeUserCloudFetchLog(
     [

@@ -866,11 +866,11 @@ function StopScheduleDialog({
           <h2 id="stop-schedule-title" className="token-picker-title">
             {title}
           </h2>
-          <p className="token-picker-sub">
-            {showFetchTargetPicker
-              ? "Choose which Fetch sources runtime to stop."
-              : "Copy instructions for your agent to stop the following schedule."}
-          </p>
+          {showFetchTargetPicker ? null : (
+            <p className="token-picker-sub">
+              Copy instructions for your agent to stop the following schedule.
+            </p>
+          )}
         </header>
 
         <div className="stop-schedule-body">
