@@ -498,8 +498,10 @@ function fetchRunHasCompletedOutcomes(stats: FetchRunStats): boolean {
 }
 
 function fetchRunOutcomeStatus(runStatus: string, stats: FetchRunStats): string {
-  if (stats.failed <= 0 || stats.planned <= 0) return runStatus;
-  return stats.failed >= stats.planned ? "failed" : "partial";
+  if (stats.planned <= 0) return runStatus;
+  if (stats.failed >= stats.planned) return "failed";
+  if (stats.failed > 0 || stats.actionNeeded > 0) return "partial";
+  return runStatus;
 }
 
 function hasFailedFetchJob(jobRun?: AgentJobRunListItem | null, nowMs = Date.now()): boolean {
@@ -1324,7 +1326,7 @@ export function getFetchUpdateStatus(
         return {
           key: "needs-attention",
           label: "Partial",
-          summary: "The latest one-time Fetch sources run completed with some planned post failures.",
+          summary: "The latest one-time Fetch sources run completed with some planned posts needing follow-up.",
           style: statusStyle("partial"),
         };
       }
@@ -1396,7 +1398,7 @@ export function getFetchUpdateStatus(
     return {
       key: "needs-attention",
       label: "Partial",
-      summary: "The latest scheduled Fetch sources run completed with some planned post failures.",
+      summary: "The latest scheduled Fetch sources run completed with some planned posts needing follow-up.",
       style: statusStyle("partial"),
     };
   }
@@ -1422,7 +1424,7 @@ export function getFetchUpdateStatus(
     return {
       key: "needs-attention",
       label: "Partial",
-      summary: "The latest scheduled Fetch sources run completed with some planned post failures.",
+      summary: "The latest scheduled Fetch sources run completed with some planned posts needing follow-up.",
       style: statusStyle("partial"),
     };
   }
@@ -1964,6 +1966,14 @@ function lifecycleTone(done: number, total: number, {
   return warnWhenPartial && done > 0 ? "warn" : "idle";
 }
 
+function lifecycleSyncTone(stats: Pick<FetchRunStats, "planned" | "synced" | "skipped" | "failed" | "actionNeeded">): Tone {
+  if (stats.failed > 0) return "fail";
+  if (stats.planned <= 0) return "idle";
+  if (stats.synced >= stats.planned) return "ok";
+  if (stats.synced > 0 || stats.skipped > 0 || stats.actionNeeded > 0) return "warn";
+  return "idle";
+}
+
 function LifecyclePipeline({
   ariaLabel,
   steps,
@@ -2072,7 +2082,7 @@ function JobLifecycle({
       key: "sync",
       label: "Sync",
       outcome: syncProgress.outcome,
-      tone: lifecycleTone(syncProgress.synced, stats.planned, { failed: stats.failed }),
+      tone: lifecycleSyncTone(stats),
       open: Boolean(recentEvent?.message || stats.failed || stats.skipped || stats.actionNeeded),
       children: (
         <dl className="sync-panel-task-fact-list">

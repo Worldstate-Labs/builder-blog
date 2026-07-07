@@ -180,9 +180,11 @@ function digestRunSlotStatus(
   nowMs = Date.now(),
 ): CronSlotStatus {
   if (hasTerminalFailedDigestJob(jobRun)) return "failed";
-  if (run.status === "synced") return "ok";
+  if (isNoUpdateDigestRun(run, jobRun)) return "ok";
+  if (run.status === "synced" && run.syncedAt) return "ok";
   const jobStatus = jobRun ? digestJobRunSlotStatus(jobRun, nowMs) : null;
-  if (jobStatus && jobStatus !== "ok") return jobStatus;
+  if (jobStatus === "ok") return "partial";
+  if (jobStatus) return jobStatus;
   return isDigestRunInflight(run) ? "running" : "failed";
 }
 
@@ -234,12 +236,15 @@ export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestU
     latestLogEntry.status === "missed" ||
     latestLogEntry.status === "stalled";
   const running = latestLogEntry.status === "running";
+  const partial = latestLogEntry.status === "partial";
   const runKind = latestLogEntry.label.toLowerCase();
-  const label = latestLogEntry.jobRun
-    ? jobRunStatusLabel(latestLogEntry.jobRun)
-    : scheduledWindowStatusLabel(latestLogEntry.status);
+  const label = latestLogEntry.run
+    ? scheduledWindowStatusLabel(latestLogEntry.status)
+    : latestLogEntry.jobRun
+      ? jobRunStatusLabel(latestLogEntry.jobRun)
+      : scheduledWindowStatusLabel(latestLogEntry.status);
   return {
-    key: failed ? "needs-attention" : running ? "building" : latestLogEntry.status === "ok" ? "healthy" : "waiting",
+    key: failed || partial ? "needs-attention" : running ? "building" : latestLogEntry.status === "ok" ? "healthy" : "waiting",
     label,
     summary: running
       ? `The latest ${runKind} AI Digest job is running.`

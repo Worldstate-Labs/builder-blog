@@ -83,6 +83,7 @@ function digestSlotStatusForRun(
     jobRun && !["starting", "running", "succeeded"].includes(jobRun.status);
   if (terminalFailedJob) return "failed";
   if (run.status === "synced") return "ok";
+  if (jobRun?.status === "succeeded") return "partial";
   return jobRun ? jobRunSlotStatus(jobRun, nowMs) : "failed";
 }
 

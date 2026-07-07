@@ -920,6 +920,119 @@ test("partial post failures stay partial across timeline status and run card", (
   assert.equal(displayState.displayStatus.tone, "partial");
 });
 
+test("action-needed post outcomes make a completed fetch run partial", () => {
+  const succeededJob: AgentJobRunListItem = {
+    id: "job_action_needed_outcomes",
+    jobType: "library-fetch",
+    trigger: "scheduled",
+    scheduleJob: "library-cron",
+    instanceId: "runtime-action-needed-outcomes",
+    expectedAt: "2026-07-06T20:00:00.000Z",
+    startedAt: "2026-07-06T20:01:00.000Z",
+    heartbeatAt: "2026-07-06T20:07:00.000Z",
+    finishedAt: "2026-07-06T20:07:00.000Z",
+    status: "succeeded",
+    exitCode: 0,
+    signal: null,
+    runtime: "codex",
+    runnerPid: 41050,
+    workerPid: 41050,
+    hostname: "cc-agent-sfo2",
+    platform: "darwin",
+    stage: "runtime",
+    summary: "Fetch job completed.",
+    details: {
+      progress: {
+        stage: "checkpoint_syncing",
+        counters: {
+          sourcesChecked: 20,
+          sourcesTotal: 20,
+          tasksPlanned: 8,
+          tasksDone: 8,
+          synced: 3,
+          skipped: 0,
+          failed: 0,
+          actionNeeded: 5,
+        },
+      },
+    },
+    updatedAt: "2026-07-06T20:07:00.000Z",
+  };
+  const run: LibraryFetchRunListItem = {
+    id: "run_action_needed_outcomes",
+    startedAt: "2026-07-06T20:01:10.000Z",
+    finishedAt: "2026-07-06T20:07:00.000Z",
+    durationMs: 350_000,
+    status: "ok",
+    source: "cron",
+    jobRunId: succeededJob.instanceId,
+    cliVersion: null,
+    hostname: "cc-agent-sfo2",
+    platform: "darwin",
+    buildersAttempted: 20,
+    itemsFetched: 3,
+    tasksGenerated: 8,
+    userActionsCount: 5,
+    errorCount: 0,
+    summary: "Read 3 posts from 20 sources · 8 posts planned · 5 actions needed",
+    details: {
+      fetchTasks: [
+        ...Array.from({ length: 3 }, (_, index) => ({
+          id: `fetch_post:synced_${index}`,
+          title: `Synced ${index}`,
+          status: "synced",
+        })),
+        ...Array.from({ length: 5 }, (_, index) => ({
+          id: `fetch_post:action_needed_${index}`,
+          title: `Needs action ${index}`,
+          status: "action_needed",
+        })),
+      ],
+    },
+  };
+
+  const entries = buildFetchTimeline({
+    jobRuns: [succeededJob],
+    runs: [run],
+    slots: [
+      {
+        expectedAt: "2026-07-06T20:00:00.000Z",
+        windowEnd: "2026-07-06T21:00:00.000Z",
+        status: "ok",
+        run,
+        jobRun: succeededJob,
+      },
+    ],
+    nowMs: Date.parse("2026-07-06T21:00:00.000Z"),
+  });
+  const activityStatus = getFetchActivityStatus(entries);
+  const updateStatus = getFetchUpdateStatus(
+    activeCronJob(),
+    entries.map((entry) => ({
+      ...entry.slot!,
+      status: entry.status,
+    })).filter((slot): slot is NonNullable<typeof slot> => Boolean(slot)),
+    [run],
+    [succeededJob],
+  );
+  const stats = fetchRunStats({
+    details: run.details as Parameters<typeof fetchRunStats>[0]["details"],
+    liveProgress: succeededJob.details && typeof succeededJob.details === "object" && !Array.isArray(succeededJob.details)
+      ? (succeededJob.details as { progress?: Parameters<typeof fetchRunStats>[0]["liveProgress"] }).progress ?? null
+      : null,
+    run,
+  });
+
+  assert.equal(stats.synced, 3);
+  assert.equal(stats.actionNeeded, 5);
+  assert.equal(entries[0]?.status, "partial");
+  assert.equal(entries[0]?.syncSummary, "3/8 saved");
+  assert.equal(activityStatus.key, "needs-attention");
+  assert.equal(activityStatus.label, "Partial");
+  assert.equal(updateStatus.key, "needs-attention");
+  assert.equal(updateStatus.label, "Partial");
+});
+
 test("stopped stale fetch job does not turn unfinished planned posts into failed status", () => {
   const staleJob: AgentJobRunListItem = {
     id: "job_stale_stop",

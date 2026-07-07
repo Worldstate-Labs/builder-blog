@@ -116,6 +116,30 @@ function syncedDigestRun(): DigestRunListItem {
   };
 }
 
+function succeededDigestJobRun(): AgentJobRunListItem {
+  return {
+    ...runningDigestJobRun(),
+    heartbeatAt: "2026-06-18T10:08:00.000Z",
+    finishedAt: "2026-06-18T10:08:00.000Z",
+    status: "succeeded",
+    stage: "runtime_finished",
+    summary: "Runtime finished.",
+    updatedAt: "2026-06-18T10:08:00.000Z",
+  };
+}
+
+function unsavedDigestRun(): DigestRunListItem {
+  return {
+    ...syncedDigestRun(),
+    id: "run_unsaved",
+    status: "prepared",
+    syncedAt: null,
+    digestTitle: null,
+    includedCount: null,
+    droppedCount: null,
+  };
+}
+
 test("manual digest runs do not mask active scheduled digest status", () => {
   const status = getDigestUpdateStatus(activeCron(), [missedSlot()], [preparedRun("manual")]);
 
@@ -173,6 +197,44 @@ test("digest timeline consumes job runs linked from a slotted synced run", () =>
   assert.equal(entries[0]?.syncSummary, "20/20 saved");
   assert.deepEqual(entries[0]?.logRef, { kind: "run", runId: "run_1" });
   assert.equal(entries[0]?.jobRun?.instanceId, jobRun.instanceId);
+});
+
+test("scheduled digest status is partial when the runtime succeeded without saving", () => {
+  const run = {
+    id: "cron_unsaved",
+    status: "prepared",
+    source: "cron",
+    preparedAt: "2026-06-18T10:05:00.000Z",
+  };
+  const result = buildDigestCronStatus(
+    activeCron(),
+    [run],
+    [succeededDigestJobRun()],
+    Date.parse("2026-06-18T10:30:00.000Z"),
+  );
+  const slot = result.slots.find((candidate) => candidate.run?.id === run.id);
+  const status = getDigestUpdateStatus(activeCron(), result.slots, [run]);
+
+  assert.equal(slot?.status, "partial");
+  assert.equal(status.key, "needs-attention");
+  assert.equal(status.label, "Partial");
+});
+
+test("digest activity status is partial when an unsaved run has a completed runtime", () => {
+  const run = unsavedDigestRun();
+  const jobRun = succeededDigestJobRun();
+  const entries = buildDigestTimeline({
+    jobRuns: [jobRun],
+    runs: [run],
+    slots: [],
+    nowMs: Date.parse("2026-06-18T11:00:00.000Z"),
+  });
+  const status = getDigestActivityStatus(entries);
+
+  assert.equal(entries[0]?.status, "partial");
+  assert.equal(entries[0]?.syncSummary, "0/20 saved");
+  assert.equal(status.key, "needs-attention");
+  assert.equal(status.label, "Partial");
 });
 
 test("digest status control reports the latest active job instead of the waiting schedule slot", () => {
