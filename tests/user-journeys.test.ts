@@ -574,8 +574,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Re-fetch existing posts/);
   assert.match(skillPromptActions, /Re-fetch existing source posts once/);
+  assert.match(skillPromptActions, /<section className="cron-advanced-section"[\s\S]*Advanced[\s\S]*id="cron-fetch-days"[\s\S]*id="cron-override-fetched"/);
   assert.match(skillPromptActions, /isOneTime && runtimeType === "local" \? \(/);
+  assert.match(skillPromptActions, /id="cron-override-fetched"[\s\S]*<option value="no">No<\/option>[\s\S]*<option value="yes">Yes<\/option>/);
   assert.match(skillPromptActions, /overrideFetched: false/);
+  assert.doesNotMatch(skillPromptActions, /name="override-fetched"[\s\S]*type="checkbox"/);
   assert.doesNotMatch(skillPromptActions, /Includes posts already in your source library|Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
   assert.doesNotMatch(skillPromptActions, /Re-fetch existing source posts each run|Reuse posts from past issues each run/);
   assert.match(skillPromptActions, /Reuse posts from past issues/);

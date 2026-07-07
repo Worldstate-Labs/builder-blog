@@ -9365,6 +9365,18 @@ a.builder-library-name:hover {
   overflow-wrap: anywhere;
 }
 
+.cron-advanced-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+}
+
+.cron-advanced-section .token-picker-grouplabel {
+  padding-top: 0;
+}
+
 .cron-check {
   align-items: flex-start;
   cursor: pointer;

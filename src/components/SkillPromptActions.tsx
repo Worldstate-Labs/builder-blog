@@ -1537,33 +1537,6 @@ function CronConfigDialog({
             </>
           ) : null}
 
-          {context === "library" && runtimeType === "local" ? (
-            <>
-              <div className="cron-field">
-                <label htmlFor="cron-parallel-workers" className="cron-field-label">
-                  Parallel tasks
-                </label>
-                <select
-                  id="cron-parallel-workers"
-                  className="cron-field-select"
-                  value={pickedParallelWorkers}
-                  onChange={(e) => setPickedParallelWorkers(e.target.value)}
-                >
-                  {Array.from({ length: MAX_PARALLEL_WORKERS }, (_, index) => index + 1).map(
-                    (count) => (
-                      <option key={count} value={count}>
-                        {count === 1 ? "1 task" : `${count} tasks`}
-                      </option>
-                    ),
-                  )}
-                </select>
-              </div>
-              <p className="cron-field-hint">
-                Controls how many source fetch tasks run at the same time.
-              </p>
-            </>
-          ) : null}
-
           <SummaryLanguageField
             id="cron-lang"
             label={context === "digest" ? "AI Digest language" : "Summary language"}
@@ -1571,48 +1544,88 @@ function CronConfigDialog({
             onChange={setPickedLanguage}
           />
 
-          {context === "digest" ? (
-            <>
-              <MaxAgeField
-                id="cron-max-age"
-                label="Lookback window (days)"
-                value={pickedMaxAge}
-                onChange={setPickedMaxAge}
-              />
-              <p className="cron-field-hint">
-                Default: 30 days. Range: 1-90.
-              </p>
-            </>
-          ) : runtimeType === "local" ? (
-            <>
-              <MaxAgeField
-                id="cron-fetch-days"
-                label="Lookback window (days)"
-                value={pickedFetchDays}
-                onChange={setPickedFetchDays}
-              />
-              <p className="cron-field-hint">
-                Default: 30 days. Range: 1-90.
-              </p>
-            </>
-          ) : null}
+          {context === "digest" || runtimeType === "local" ? (
+            <section className="cron-advanced-section" aria-labelledby="cron-advanced-title">
+              <h3 id="cron-advanced-title" className="token-picker-grouplabel">
+                Advanced
+              </h3>
 
-          {isOneTime && runtimeType === "local" ? (
-            <label className="cron-check">
-              <input
-                type="checkbox"
-                name="override-fetched"
-                checked={overrideFetched}
-                onChange={(e) => setOverrideFetched(e.target.checked)}
-                className="cron-check-input"
-              />
-              <span className="cron-check-body">
-                <span className="cron-check-name">{override.name}</span>
-                <span className="cron-field-hint">
-                  {override.onceHint}
-                </span>
-              </span>
-            </label>
+              {context === "library" && runtimeType === "local" ? (
+                <>
+                  <div className="cron-field">
+                    <label htmlFor="cron-parallel-workers" className="cron-field-label">
+                      Parallel tasks
+                    </label>
+                    <select
+                      id="cron-parallel-workers"
+                      className="cron-field-select"
+                      value={pickedParallelWorkers}
+                      onChange={(e) => setPickedParallelWorkers(e.target.value)}
+                    >
+                      {Array.from(
+                        { length: MAX_PARALLEL_WORKERS },
+                        (_, index) => index + 1,
+                      ).map((count) => (
+                        <option key={count} value={count}>
+                          {count === 1 ? "1 task" : `${count} tasks`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="cron-field-hint">
+                    Controls how many source fetch tasks run at the same time.
+                  </p>
+                </>
+              ) : null}
+
+              {context === "digest" ? (
+                <>
+                  <MaxAgeField
+                    id="cron-max-age"
+                    label="Lookback window (days)"
+                    value={pickedMaxAge}
+                    onChange={setPickedMaxAge}
+                  />
+                  <p className="cron-field-hint">
+                    Default: 30 days. Range: 1-90.
+                  </p>
+                </>
+              ) : runtimeType === "local" ? (
+                <>
+                  <MaxAgeField
+                    id="cron-fetch-days"
+                    label="Lookback window (days)"
+                    value={pickedFetchDays}
+                    onChange={setPickedFetchDays}
+                  />
+                  <p className="cron-field-hint">
+                    Default: 30 days. Range: 1-90.
+                  </p>
+                </>
+              ) : null}
+
+              {isOneTime && runtimeType === "local" ? (
+                <>
+                  <div className="cron-field">
+                    <label htmlFor="cron-override-fetched" className="cron-field-label">
+                      {override.name}
+                    </label>
+                    <select
+                      id="cron-override-fetched"
+                      className="cron-field-select"
+                      value={overrideFetched ? "yes" : "no"}
+                      onChange={(e) => setOverrideFetched(e.target.value === "yes")}
+                    >
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
+                    </select>
+                  </div>
+                  <p className="cron-field-hint">
+                    {override.onceHint}
+                  </p>
+                </>
+              ) : null}
+            </section>
           ) : null}
 
           {error ? <p className="cron-field-error">{error}</p> : null}

@@ -1066,9 +1066,13 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
   assert.match(skillPromptActions, /Controls how many source fetch tasks run at the same time/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
+  assert.match(skillPromptActions, /<section className="cron-advanced-section"[\s\S]*Advanced[\s\S]*Parallel tasks[\s\S]*Lookback window \(days\)/);
+  assert.match(skillPromptActions, /<SummaryLanguageField[\s\S]*<section className="cron-advanced-section"/);
+  assert.match(skillPromptActions, /id="cron-override-fetched"[\s\S]*value=\{overrideFetched \? "yes" : "no"\}[\s\S]*<option value="no">No<\/option>[\s\S]*<option value="yes">Yes<\/option>/);
   assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Set frequency, runtime, language, and lookback\."/);
   assert.match(skillPromptActions, />\s*Runtime\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt\./);
+  assert.doesNotMatch(skillPromptActions, /name="override-fetched"[\s\S]*type="checkbox"/);
   assert.doesNotMatch(skillPromptActions, />\s*Local Agent\s*<\/label>|Choose frequency, Local Agent, language, and lookback\.|Choose frequency, runtime, language, and lookback\./);
   assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 to reduce rate limits|Use 1 for fewer rate limits|Use 1 for reliability|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|Add one in Settings<\/a>|Choose a Local Agent/);
