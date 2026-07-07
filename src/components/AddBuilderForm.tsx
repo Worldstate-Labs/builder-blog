@@ -202,9 +202,7 @@ export function AddBuilderForm({
   );
   const effectiveName = nameTouched ? name : derivedName;
   const sourceCandidateQuery =
-    sourceCandidatesField === "name" && !resolvedSourceValue.trim()
-      ? effectiveName
-      : resolvedSourceValue;
+    sourceCandidatesField === "name" ? effectiveName : resolvedSourceValue;
   const sourceCandidateSuggestions = useMemo(
     () =>
       sourceCandidatesOpen && !sourceValueIsFixed
@@ -467,16 +465,12 @@ export function AddBuilderForm({
             onChange={(event) => {
               setName(event.target.value);
               setNameTouched(true);
-              if (!resolvedSourceValue.trim()) {
-                setSourceCandidatesOpen(true);
-                setSourceCandidatesField("name");
-              }
+              setSourceCandidatesOpen(true);
+              setSourceCandidatesField("name");
             }}
             onFocus={() => {
-              if (!resolvedSourceValue.trim()) {
-                setSourceCandidatesOpen(true);
-                setSourceCandidatesField("name");
-              }
+              setSourceCandidatesOpen(true);
+              setSourceCandidatesField("name");
             }}
             placeholder="Display name (optional)"
             role="combobox"
