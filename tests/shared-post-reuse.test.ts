@@ -24,6 +24,10 @@ test("shared post reuse resolver is scoped to Hub-shared feed items", () => {
   assert.doesNotMatch(route, /ownerUserId:\s*\{\s*in:/);
   assert.match(route, /checkBodyContentQuality/);
   assert.match(route, /summaryLanguageMatches/);
+  assert.match(route, /title:\s*z\.string\(\)\.max\(500\)\.nullable\(\)\.optional\(\)/);
+  assert.match(route, /function reusableSourceSummaryIsValid/);
+  assert.match(route, /function finalReusableSummaryIsValid/);
+  assert.match(route, /rowSummaryCanBeReused/);
 });
 
 test("shared post reuse skips stored bodies when raw content was not retained", () => {
@@ -278,6 +282,82 @@ test("same-language Hub summary can sync without copying a reusable body", async
   const validation = cli.validateAgentSyncPayload(fetchResult, merged.payload);
   assert.equal(validation.status, "ok");
   assert.equal(validation.validatedFetchTasks, 1);
+});
+
+test("same-language Hub summary must pass reusable and final validation before copy", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = baseFetchTask();
+  const reused = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body: null,
+    bodyReused: false,
+    summary: "Too short.",
+    summaryLanguage: "zh",
+    summaryMatchesTarget: true,
+    source: {
+      feedItemId: "feed_shared",
+      builderId: "builder_shared",
+      builderName: "Shared Source",
+      url: "https://example.com/posts/launch",
+    },
+  }, { summaryLanguage: "zh" });
+
+  assert.equal(reused, task);
+  assert.equal(reused.contentStatus, "requires_agent");
+  assert.equal(reused.agentWorkType, "fetch_post");
+});
+
+test("same-language Hub summary that copies the body prefix reuses only the body", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = baseFetchTask();
+  const summary = "This launch note explains the roadmap update, customer migration timing, pricing impact, and operational risks for teams.";
+  const body = `${summary} It then adds implementation details, customer examples, and migration context that should be summarized freshly.`;
+  const reused = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body,
+    bodyReused: true,
+    summary,
+    summaryLanguage: "en",
+    summaryMatchesTarget: true,
+    source: {
+      feedItemId: "feed_shared",
+      builderId: "builder_shared",
+      builderName: "Shared Source",
+      url: "https://example.com/posts/launch",
+    },
+  }, { summaryLanguage: "en" });
+
+  assert.notEqual(reused, task);
+  assert.equal(reused.contentStatus, "ready");
+  assert.equal(reused.deterministicSync, false);
+  assert.equal(reused.item.body, body);
+  assert.equal(reused.item.summary, undefined);
+  assert.equal(reused.item.rawJson.hubSharedReuse.bodyReused, true);
+  assert.equal(reused.item.rawJson.hubSharedReuse.summaryReused, false);
+  assert.equal(reused.item.rawJson.hubSharedReuse.summaryTranslated, false);
+});
+
+test("different-language Hub summary must pass reusable validation before translation", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = baseFetchTask();
+  const reused = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body: null,
+    bodyReused: false,
+    summary: "Too short.",
+    summaryLanguage: "en",
+    summaryMatchesTarget: false,
+    source: {
+      feedItemId: "feed_shared",
+      builderId: "builder_shared",
+      builderName: "Shared Source",
+      url: "https://example.com/posts/launch",
+    },
+  }, { summaryLanguage: "zh" });
+
+  assert.equal(reused, task);
+  assert.equal(reused.contentStatus, "requires_agent");
+  assert.equal(reused.agentWorkType, "fetch_post");
 });
 
 test("missing Hub summary or body leaves the post on the normal fetch path", async () => {

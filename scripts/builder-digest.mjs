@@ -2362,6 +2362,7 @@ function sharedPostReuseCandidate(task) {
   return {
     id,
     url,
+    title: task?.item?.title ?? null,
     kind: task?.item?.kind ?? null,
     sourceType: task?.sourceType ?? null,
   };
@@ -2468,15 +2469,28 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
     ? match.body
     : "";
   const bodyReused = Boolean(reusableBody && match?.bodyReused !== false);
-  const summary = typeof match?.summary === "string" && match.summary.trim() ? match.summary.trim() : null;
+  const rawSummary = typeof match?.summary === "string" && match.summary.trim() ? match.summary.trim() : null;
+  const title = stringValue(task?.item?.title);
+  const reusableSummary = rawSummary && validateReusableSourceSummary(rawSummary, { title }).length === 0
+    ? rawSummary
+    : null;
+  const summaryCanBeCopied = Boolean(
+    reusableSummary &&
+    sharedPostSummaryMatchesTarget(match, options.summaryLanguage) &&
+    validateFinalSummary(reusableSummary, { title, body: bodyReused ? reusableBody : task?.item?.body || "" }).length === 0,
+  );
+  const summaryCanBeTranslated = Boolean(
+    reusableSummary &&
+    !sharedPostSummaryMatchesTarget(match, options.summaryLanguage),
+  );
+  const summary = summaryCanBeCopied || summaryCanBeTranslated ? reusableSummary : null;
   if (!bodyReused && !summary) return task;
-  const summaryReused = Boolean(summary && sharedPostSummaryMatchesTarget(match, options.summaryLanguage));
   const targetLanguage = options.summaryLanguage ?? task?.summaryInstructions?.language ?? null;
   const baseItem = {
     ...(task.item ?? {}),
     body: bodyReused ? reusableBody : "",
   };
-  if (summaryReused) {
+  if (summaryCanBeCopied) {
     return {
       ...task,
       contentStatus: "ready",
@@ -2493,7 +2507,7 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
       },
     };
   }
-  if (summary) {
+  if (summaryCanBeTranslated && summary) {
     return {
       ...task,
       agentWorkType: "translate_summary_only",
@@ -7852,16 +7866,28 @@ export function filterStaleSyncItemsByFetchCutoff(payload, plannedTasks = []) {
   };
 }
 
-function validateItemSummary(summary, { title = "", body = "" } = {}) {
+function validateSummaryShape(summary, { title = "", body = "", checkBodyPrefix = false } = {}) {
   const errors = [];
   const normalized = normalizeContentText(summary || "");
   if (normalized.length < 40) errors.push("summary_too_short");
   if (normalized.length > 1200) errors.push("summary_too_long");
   if (isNearDuplicate(normalized, title)) errors.push("summary_duplicates_title");
-  if (body && normalized === normalizeContentText(body).slice(0, normalized.length)) {
+  if (checkBodyPrefix && body && normalized === normalizeContentText(body).slice(0, normalized.length)) {
     errors.push("summary_copies_body_prefix");
   }
   return errors;
+}
+
+function validateReusableSourceSummary(summary, { title = "" } = {}) {
+  return validateSummaryShape(summary, { title });
+}
+
+function validateFinalSummary(summary, { title = "", body = "" } = {}) {
+  return validateSummaryShape(summary, { title, body, checkBodyPrefix: true });
+}
+
+function validateItemSummary(summary, { title = "", body = "" } = {}) {
+  return validateFinalSummary(summary, { title, body });
 }
 
 function genericContentQuality(text, { title = "", description = "", standards } = {}) {

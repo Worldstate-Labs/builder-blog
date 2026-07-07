@@ -18,6 +18,7 @@ const MAX_URL = 2_048;
 const CandidateSchema = z.object({
   id: z.string().min(1).max(500),
   url: z.string().url().max(MAX_URL),
+  title: z.string().max(500).nullable().optional(),
   kind: z.string().max(80).nullable().optional(),
   sourceType: z.string().max(80).nullable().optional(),
 });
@@ -44,6 +45,44 @@ function rawJsonRecord(value: unknown): Record<string, unknown> {
 
 function rawString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeContentText(value: unknown) {
+  return rawString(value).replace(/\s+/g, " ").trim();
+}
+
+function isNearDuplicate(text: string, reference: unknown) {
+  const normalizedReference = normalizeContentText(reference);
+  if (!text || !normalizedReference) return false;
+  if (text === normalizedReference) return true;
+  return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
+}
+
+function validateSummaryShape(
+  summary: unknown,
+  { title = "", body = "", checkBodyPrefix = false }: {
+    title?: unknown;
+    body?: unknown;
+    checkBodyPrefix?: boolean;
+  } = {},
+) {
+  const errors: string[] = [];
+  const normalized = normalizeContentText(summary);
+  if (normalized.length < 40) errors.push("summary_too_short");
+  if (normalized.length > 1200) errors.push("summary_too_long");
+  if (isNearDuplicate(normalized, title)) errors.push("summary_duplicates_title");
+  if (checkBodyPrefix && body && normalized === normalizeContentText(body).slice(0, normalized.length)) {
+    errors.push("summary_copies_body_prefix");
+  }
+  return errors;
+}
+
+function reusableSourceSummaryIsValid(summary: unknown, { title = "" }: { title?: unknown } = {}) {
+  return validateSummaryShape(summary, { title }).length === 0;
+}
+
+function finalReusableSummaryIsValid(summary: unknown, { title = "", body = "" }: { title?: unknown; body?: unknown } = {}) {
+  return validateSummaryShape(summary, { title, body, checkBodyPrefix: true }).length === 0;
 }
 
 function summaryLanguageMatches(value: unknown, targetLanguage: string) {
@@ -222,16 +261,27 @@ export async function POST(request: Request) {
     const reusableStoredBody = storedBodyCanBeReused(rawJson);
     const rowSummary = rawString(row.summary);
     const rowSummaryLanguage = rawString(rawJson.summaryLanguage);
-    const summaryMatchesTarget = rowSummary
-      ? summaryLanguageMatches(rowSummaryLanguage, targetLanguage)
-      : false;
-    const summary = rowSummary || null;
 
     for (const candidate of matchingCandidates) {
       const bodyReused =
         reusableStoredBody &&
         row.body.trim().length > 0 &&
         candidateBodyIsUsable(row.body, candidate.sourceType, standardsBySourceId);
+      const candidateTitle = rawString(candidate.title) || row.title || "";
+      const rowSummaryCanBeReused = rowSummary
+        ? reusableSourceSummaryIsValid(rowSummary, { title: candidateTitle })
+        : false;
+      const rowSummaryMatchesTarget = rowSummaryCanBeReused
+        ? summaryLanguageMatches(rowSummaryLanguage, targetLanguage)
+        : false;
+      const summary =
+        rowSummaryCanBeReused && (
+          rowSummaryMatchesTarget
+            ? finalReusableSummaryIsValid(rowSummary, { title: candidateTitle, body: bodyReused ? row.body : "" })
+            : true
+        )
+          ? rowSummary
+          : null;
       if (!bodyReused && !summary) continue;
       const match = {
         candidate,
@@ -243,7 +293,7 @@ export async function POST(request: Request) {
         bodyReused,
         summary,
         summaryLanguage: summary ? rowSummaryLanguage || null : null,
-        summaryMatchesTarget,
+        summaryMatchesTarget: summary ? rowSummaryMatchesTarget : false,
         createdAt: row.createdAt,
       };
       const existing = bestByCandidateId.get(candidate.id);
