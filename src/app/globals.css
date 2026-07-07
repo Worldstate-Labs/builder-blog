@@ -3070,10 +3070,6 @@ summary.library-section-summary::after {
   white-space: nowrap;
 }
 
-.add-source-name-row {
-  grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
-}
-
 .source-display-name-control {
   align-items: center;
   display: grid;

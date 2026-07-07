@@ -4505,6 +4505,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, />\s*URL\s*<\/label>/);
   assert.match(addBuilderForm, /className="add-source-type-list"/);
   assert.match(addBuilderForm, /className="add-source-name-row"/);
+  assert.match(globals, /\.add-source-name-row\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
+  assert.doesNotMatch(globals, /\.add-source-name-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(8rem, auto\)/);
   assert.match(addBuilderForm, /className="add-source-action-row"/);
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
   assert.match(addBuilderForm, />\s*Name\s*<\/label>/);
