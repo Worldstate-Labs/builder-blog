@@ -75,6 +75,11 @@ export type RecommendationSnapshotResult = {
   >;
 };
 
+export type RecommendationPublishedCursor = {
+  publishedAt: Date;
+  itemId: string;
+};
+
 async function attachHubItems(
   candidates: CandidateList,
   prisma: PrismaClient,
@@ -131,13 +136,18 @@ export async function getRecommendationTimeline({
   itemLimit?: number;
   sortMode?: RecommendationSortMode;
 }) {
+  const { prisma } = await import("@/lib/prisma");
+  const afterCursor =
+    sortMode === "recent"
+      ? await loadLatestSnapshotPublishedCursor({ prisma, sortMode, userId })
+      : null;
   const created = await createRecommendationSnapshot({
     userId,
     limit: itemLimit,
     reason: "initial",
     sortMode,
+    afterCursor,
   });
-  const { prisma } = await import("@/lib/prisma");
   const normalizedSnapshotLimit = Math.max(1, Math.floor(snapshotLimit));
   const existingLimit = Math.max(
     0,
@@ -169,20 +179,23 @@ export async function getRecommendationFeed({
   limit = defaultRecommendationLimit,
   reason = "recommendation",
   sortMode = defaultRecommendationSortMode,
-  beforePublishedAt,
+  afterCursor,
+  beforeCursor,
 }: {
   userId: string;
   limit?: number;
   reason?: string;
   sortMode?: RecommendationSortMode;
-  beforePublishedAt?: Date | null;
+  afterCursor?: RecommendationPublishedCursor | null;
+  beforeCursor?: RecommendationPublishedCursor | null;
 }) {
   const created = await createRecommendationSnapshot({
     userId,
     limit,
     reason,
     sortMode,
-    beforePublishedAt,
+    afterCursor,
+    beforeCursor,
   });
   return {
     items: created.snapshot?.items ?? [],
@@ -199,13 +212,15 @@ export async function createRecommendationSnapshot({
   limit = defaultRecommendationLimit,
   reason = "recommendation",
   sortMode = defaultRecommendationSortMode,
-  beforePublishedAt,
+  afterCursor,
+  beforeCursor,
 }: {
   userId: string;
   limit?: number;
   reason?: string;
   sortMode?: RecommendationSortMode;
-  beforePublishedAt?: Date | null;
+  afterCursor?: RecommendationPublishedCursor | null;
+  beforeCursor?: RecommendationPublishedCursor | null;
 }): Promise<{
   snapshot: RecommendationSnapshotResult | null;
   unreadRemaining: number;
@@ -306,13 +321,7 @@ export async function createRecommendationSnapshot({
     where: {
       builderId: { in: subscriptionBuilderIds },
       createdAt: { gte: cutoff },
-      ...(sortMode === "recent"
-        ? {
-            publishedAt: beforePublishedAt
-              ? { not: null, lt: beforePublishedAt }
-              : { not: null },
-          }
-        : {}),
+      ...(sortMode === "recent" ? recentCursorWhere({ afterCursor, beforeCursor }) : {}),
     },
     include: {
       builder: {
@@ -590,6 +599,36 @@ async function loadRecommendationSnapshots({
   return snapshots.map((snapshot) => formatSnapshot(snapshot));
 }
 
+async function loadLatestSnapshotPublishedCursor({
+  prisma,
+  sortMode,
+  userId,
+}: {
+  prisma: PrismaClient;
+  sortMode: RecommendationSortMode;
+  userId: string;
+}): Promise<RecommendationPublishedCursor | null> {
+  const item = await prisma.feedItem.findFirst({
+    where: {
+      publishedAt: { not: null },
+      recommendationSnapshotItems: {
+        some: {
+          snapshot: snapshotWhere(userId, sortMode),
+        },
+      },
+    },
+    select: {
+      id: true,
+      publishedAt: true,
+    },
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+  });
+
+  return item?.publishedAt
+    ? { itemId: item.id, publishedAt: item.publishedAt }
+    : null;
+}
+
 function snapshotWhere(
   userId: string,
   sortMode: RecommendationSortMode,
@@ -618,6 +657,34 @@ function candidateOrderBy(sortMode: RecommendationSortMode): Prisma.FeedItemOrde
   return sortMode === "recent"
     ? [{ publishedAt: "desc" }, { id: "desc" }]
     : [{ publishedAt: "desc" }, { createdAt: "desc" }];
+}
+
+function recentCursorWhere({
+  afterCursor,
+  beforeCursor,
+}: {
+  afterCursor?: RecommendationPublishedCursor | null;
+  beforeCursor?: RecommendationPublishedCursor | null;
+}): Prisma.FeedItemWhereInput {
+  if (afterCursor) {
+    return {
+      OR: [
+        { publishedAt: { gt: afterCursor.publishedAt } },
+        { publishedAt: afterCursor.publishedAt, id: { gt: afterCursor.itemId } },
+      ],
+    };
+  }
+
+  if (beforeCursor) {
+    return {
+      OR: [
+        { publishedAt: { lt: beforeCursor.publishedAt } },
+        { publishedAt: beforeCursor.publishedAt, id: { lt: beforeCursor.itemId } },
+      ],
+    };
+  }
+
+  return { publishedAt: { not: null } };
 }
 
 function snapshotInclude(userId: string) {

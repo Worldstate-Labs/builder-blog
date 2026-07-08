@@ -2121,6 +2121,33 @@ test("recommendation feed sort modes separate relevance from strict publish rece
     ),
     ["newer_less_relevant", "older_relevant"],
   );
+
+  const sameTimeLowerId = {
+    item: recommendationCandidate({
+      id: "same_time_a",
+      builder,
+      body: "Same timestamp lower id.",
+      publishedAt: "2026-05-23T09:00:00.000Z",
+    }),
+    score: 100,
+    reasons: [],
+  };
+  const sameTimeHigherId = {
+    item: recommendationCandidate({
+      id: "same_time_z",
+      builder,
+      body: "Same timestamp higher id.",
+      publishedAt: "2026-05-23T09:00:00.000Z",
+    }),
+    score: 1,
+    reasons: [],
+  };
+  assert.deepEqual(
+    rankRecommendationResults([sameTimeLowerId, sameTimeHigherId], "recent").map(
+      (result) => result.item.id,
+    ),
+    ["same_time_z", "same_time_a"],
+  );
 });
 
 test("digest generation user path exposes source-specific prompt instructions", () => {

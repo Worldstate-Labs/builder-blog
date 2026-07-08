@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
@@ -48,6 +48,14 @@ export type RecommendationSnapshotEntry = {
   items: RecommendationFeedEntry[];
 };
 
+const followingPositionStorageKey = "followbrief.following.last-position.v1";
+const jumpLoadAttemptLimit = 10;
+
+type StoredFollowingPosition = PublishedCursor & {
+  savedAt: string;
+  snapshotId: string;
+};
+
 export function RecommendationFeed({
   initialSnapshots,
   onSortModeChange,
@@ -65,9 +73,14 @@ export function RecommendationFeed({
   const [loadErrorDirection, setLoadErrorDirection] = useState<"append" | "prepend" | null>(null);
   const [favoriteError, setFavoriteError] = useState("");
   const [pendingFavoriteIds, setPendingFavoriteIds] = useState<Set<string>>(() => new Set());
+  const [resumePosition, setResumePosition] = useState<StoredFollowingPosition | null>(null);
+  const [resumeDismissed, setResumeDismissed] = useState(false);
+  const [jumpingToResumePosition, setJumpingToResumePosition] = useState(false);
   const loadingGuard = useRef<"append" | "prepend" | null>(null);
+  const exhaustedRef = useRef(initialSnapshots.length === 0);
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const suppressPositionWritesRef = useRef(false);
   const favoriteStateByItemId = useMemo(() => {
     const stateByItemId = new Map<string, string | null>();
     for (const snapshot of snapshots) {
@@ -83,6 +96,29 @@ export function RecommendationFeed({
   useEffect(() => {
     snapshotsRef.current = snapshots;
   }, [snapshots]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setResumePosition(readStoredFollowingPosition());
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const newestCursor = useMemo(() => newestPublishedCursor(snapshots), [snapshots]);
+  const showResumeJump =
+    sortMode === "recent" &&
+    Boolean(resumePosition) &&
+    !resumeDismissed &&
+    Boolean(newestCursor && resumePosition && comparePublishedCursor(newestCursor, resumePosition) > 0);
+
+  useEffect(() => {
+    suppressPositionWritesRef.current = showResumeJump;
+  }, [showResumeJump]);
+
+  const updateExhausted = useCallback((nextExhausted: boolean) => {
+    exhaustedRef.current = nextExhausted;
+    setExhausted(nextExhausted);
+  }, []);
 
   const markRead = useCallback(async (feedItemId: string) => {
     const fallbackReadAt = new Date().toISOString();
@@ -131,7 +167,7 @@ export function RecommendationFeed({
 
   const requestSnapshot = useCallback(
     async (direction: "append" | "prepend") => {
-      if (loadingGuard.current) return;
+      if (loadingGuard.current) return null;
       loadingGuard.current = direction;
       setLoadingDirection(direction);
       setLoadErrorDirection(null);
@@ -141,37 +177,85 @@ export function RecommendationFeed({
           limit: "6",
           sort: sortMode,
         });
-        if (sortMode === "recent" && direction === "append") {
-          const cursor = lastPublishedAt(snapshotsRef.current);
+        if (sortMode === "recent") {
+          const cursor = direction === "append"
+            ? oldestPublishedCursor(snapshotsRef.current)
+            : newestPublishedCursor(snapshotsRef.current);
           if (!cursor) {
-            setExhausted(true);
-            return;
+            if (direction === "append") updateExhausted(true);
+            return null;
           }
-          params.set("beforePublishedAt", cursor);
+          const prefix = direction === "append" ? "before" : "after";
+          params.set(`${prefix}PublishedAt`, cursor.publishedAt);
+          params.set(`${prefix}ItemId`, cursor.itemId);
         }
         const response = await fetch(`/api/recommendations?${params.toString()}`);
         if (!response.ok) throw new Error("Could not load Following posts.");
         const data = await response.json();
         const snapshot = data.snapshot as RecommendationSnapshotEntry | null | undefined;
         if (!snapshot || snapshot.items.length === 0) {
-          if (direction === "append") setExhausted(true);
-          return;
+          if (direction === "append") updateExhausted(true);
+          return null;
         }
-        setSnapshots((current) =>
-          direction === "prepend"
+        setSnapshots((current) => {
+          const next = direction === "prepend"
             ? mergeSnapshots([snapshot, ...current])
-            : mergeSnapshots([...current, snapshot]),
-        );
-        setExhausted(false);
+            : mergeSnapshots([...current, snapshot]);
+          snapshotsRef.current = next;
+          return next;
+        });
+        updateExhausted(false);
+        return snapshot;
       } catch {
         setLoadErrorDirection(direction);
+        return null;
       } finally {
         loadingGuard.current = null;
         setLoadingDirection(null);
       }
     },
-    [sortMode],
+    [sortMode, updateExhausted],
   );
+
+  const recordVisiblePosition = useCallback((
+    entry: RecommendationFeedEntry,
+    snapshotId: string,
+  ) => {
+    if (sortMode !== "recent" || showResumeJump || suppressPositionWritesRef.current) return;
+    if (!entry.item.publishedAt) return;
+    writeStoredFollowingPosition({
+      itemId: entry.item.id,
+      publishedAt: entry.item.publishedAt,
+      savedAt: new Date().toISOString(),
+      snapshotId,
+    });
+  }, [showResumeJump, sortMode]);
+
+  const jumpToResumePosition = useCallback(async () => {
+    if (!resumePosition || jumpingToResumePosition) return;
+    setJumpingToResumePosition(true);
+    suppressPositionWritesRef.current = false;
+
+    try {
+      for (let attempt = 0; attempt < jumpLoadAttemptLimit; attempt += 1) {
+        if (scrollToFollowingItem(resumePosition.itemId)) {
+          writeStoredFollowingPosition({
+            ...resumePosition,
+            savedAt: new Date().toISOString(),
+          });
+          setResumeDismissed(true);
+          return;
+        }
+        if (exhaustedRef.current || loadingGuard.current) break;
+        const snapshot = await requestSnapshot("append");
+        if (!snapshot) break;
+        await nextFrame();
+      }
+      setResumeDismissed(true);
+    } finally {
+      setJumpingToResumePosition(false);
+    }
+  }, [jumpingToResumePosition, requestSnapshot, resumePosition]);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -189,6 +273,16 @@ export function RecommendationFeed({
   return (
     <section className="feed-content-stack recommendation-feed">
       <div className="recommendation-feed-toolbar">
+        {showResumeJump ? (
+          <button
+            className="fb-btn light compact recommendation-jump-button"
+            disabled={jumpingToResumePosition || loadingDirection !== null}
+            onClick={() => void jumpToResumePosition()}
+            type="button"
+          >
+            {jumpingToResumePosition ? "Jumping" : "Jump to last position"}
+          </button>
+        ) : null}
         <label className="recommendation-sort-control">
           <span>Sort</span>
           <select
@@ -234,14 +328,20 @@ export function RecommendationFeed({
               ) : null}
             </div>
             {snapshot.items.map((entry) => (
-              <RecommendationCard
+              <RecommendationPositionMarker
                 entry={entry}
                 key={`${snapshot.id}:${entry.item.id}`}
-                markRead={markRead}
-                pendingFavorite={pendingFavoriteIds.has(entry.item.id)}
-                showAdminActions={showAdminActions}
-                toggleFavorite={toggleFavorite}
-              />
+                onVisible={recordVisiblePosition}
+                snapshotId={snapshot.id}
+              >
+                <RecommendationCard
+                  entry={entry}
+                  markRead={markRead}
+                  pendingFavorite={pendingFavoriteIds.has(entry.item.id)}
+                  showAdminActions={showAdminActions}
+                  toggleFavorite={toggleFavorite}
+                />
+              </RecommendationPositionMarker>
             ))}
           </section>
         ))}
@@ -314,6 +414,43 @@ function RecommendationCard({
   );
 }
 
+function RecommendationPositionMarker({
+  children,
+  entry,
+  onVisible,
+  snapshotId,
+}: {
+  children: ReactNode;
+  entry: RecommendationFeedEntry;
+  onVisible: (entry: RecommendationFeedEntry, snapshotId: string) => void;
+  snapshotId: string;
+}) {
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node || !entry.item.publishedAt) return;
+    const observer = new IntersectionObserver(
+      ([observed]) => {
+        if (observed?.isIntersecting) onVisible(entry, snapshotId);
+      },
+      { rootMargin: "-18% 0px -42% 0px", threshold: 0.25 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [entry, onVisible, snapshotId]);
+
+  return (
+    <div
+      className="recommendation-position-marker"
+      data-following-feed-item-id={entry.item.id}
+      ref={nodeRef}
+    >
+      {children}
+    </div>
+  );
+}
+
 function recommendationTargetLabel(item: RecommendationFeedEntry["item"]) {
   return item.title?.trim() || item.sourceName?.trim() || "this post";
 }
@@ -353,8 +490,91 @@ function nonEmptySnapshots(snapshots: RecommendationSnapshotEntry[]) {
   return snapshots.filter((snapshot) => snapshot.items.length > 0);
 }
 
-function lastPublishedAt(snapshots: RecommendationSnapshotEntry[]) {
-  const lastSnapshot = snapshots[snapshots.length - 1];
-  const lastItem = lastSnapshot?.items[lastSnapshot.items.length - 1]?.item;
-  return lastItem?.publishedAt ?? null;
+type PublishedCursor = {
+  itemId: string;
+  publishedAt: string;
+};
+
+function newestPublishedCursor(snapshots: RecommendationSnapshotEntry[]) {
+  let cursor: PublishedCursor | null = null;
+  for (const candidate of publishedCursors(snapshots)) {
+    if (!cursor || comparePublishedCursor(candidate, cursor) > 0) {
+      cursor = candidate;
+    }
+  }
+  return cursor;
+}
+
+function oldestPublishedCursor(snapshots: RecommendationSnapshotEntry[]) {
+  let cursor: PublishedCursor | null = null;
+  for (const candidate of publishedCursors(snapshots)) {
+    if (!cursor || comparePublishedCursor(candidate, cursor) < 0) {
+      cursor = candidate;
+    }
+  }
+  return cursor;
+}
+
+function publishedCursors(snapshots: RecommendationSnapshotEntry[]) {
+  return snapshots.flatMap((snapshot) =>
+    snapshot.items.flatMap((entry) =>
+      entry.item.publishedAt
+        ? [{ itemId: entry.item.id, publishedAt: entry.item.publishedAt }]
+        : [],
+    ),
+  );
+}
+
+function comparePublishedCursor(a: PublishedCursor, b: PublishedCursor) {
+  const timeDiff = Date.parse(a.publishedAt) - Date.parse(b.publishedAt);
+  return timeDiff || a.itemId.localeCompare(b.itemId);
+}
+
+function readStoredFollowingPosition(): StoredFollowingPosition | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(followingPositionStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredFollowingPosition>;
+    if (
+      typeof parsed.itemId !== "string" ||
+      typeof parsed.publishedAt !== "string" ||
+      typeof parsed.savedAt !== "string" ||
+      typeof parsed.snapshotId !== "string" ||
+      Number.isNaN(Date.parse(parsed.publishedAt))
+    ) {
+      return null;
+    }
+    return {
+      itemId: parsed.itemId,
+      publishedAt: parsed.publishedAt,
+      savedAt: parsed.savedAt,
+      snapshotId: parsed.snapshotId,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredFollowingPosition(position: StoredFollowingPosition) {
+  try {
+    window.localStorage.setItem(followingPositionStorageKey, JSON.stringify(position));
+  } catch {
+    // Reading position persistence is a progressive enhancement.
+  }
+}
+
+function scrollToFollowingItem(itemId: string) {
+  const target = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-following-feed-item-id]"),
+  ).find((node) => node.dataset.followingFeedItemId === itemId);
+  if (!target) return false;
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  return true;
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
 }

@@ -1974,6 +1974,20 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "최신순",
     es: "Más reciente",
   },
+  "Jump to last position": {
+    "zh-CN": "跳到上次位置",
+    "zh-TW": "跳到上次位置",
+    ja: "前回の位置へ移動",
+    ko: "마지막 위치로 이동",
+    es: "Ir a la última posición",
+  },
+  "Jumping": {
+    "zh-CN": "正在跳转",
+    "zh-TW": "正在跳轉",
+    ja: "移動中",
+    ko: "이동 중",
+    es: "Saltando",
+  },
   "Update": {
     "zh-CN": "更新",
     "zh-TW": "更新",
