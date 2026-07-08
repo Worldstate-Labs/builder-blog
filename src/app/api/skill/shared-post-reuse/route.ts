@@ -14,6 +14,8 @@ import { formatZodError } from "@/lib/zod-error";
 
 const MAX_CANDIDATES = 500;
 const MAX_URL = 2_048;
+const MAX_POST_HEADLINE_CHARS = 180;
+const MAX_POST_HEADLINE_WORDS = 20;
 
 const CandidateSchema = z.object({
   id: z.string().min(1).max(500),
@@ -83,6 +85,16 @@ function reusableSourceSummaryIsValid(summary: unknown, { title = "" }: { title?
 
 function finalReusableSummaryIsValid(summary: unknown, { title = "", body = "" }: { title?: unknown; body?: unknown } = {}) {
   return validateSummaryShape(summary, { title, body, checkBodyPrefix: true }).length === 0;
+}
+
+function reusableHeadlineIsValid(headline: unknown, { title = "", summary = "" }: { title?: unknown; summary?: unknown } = {}) {
+  const normalized = normalizeContentText(headline);
+  if (!normalized) return false;
+  if (normalized.length > MAX_POST_HEADLINE_CHARS) return false;
+  if (normalized.split(/\s+/u).filter(Boolean).length > MAX_POST_HEADLINE_WORDS) return false;
+  if (isNearDuplicate(normalized, title)) return false;
+  if (normalizeContentText(summary) && normalized === normalizeContentText(summary)) return false;
+  return true;
 }
 
 function summaryLanguageMatches(value: unknown, targetLanguage: string) {
@@ -218,6 +230,7 @@ export async function POST(request: Request) {
       url: true,
       body: true,
       summary: true,
+      headline: true,
       publishedAt: true,
       sourceName: true,
       fetchTool: true,
@@ -247,6 +260,7 @@ export async function POST(request: Request) {
     body: string | null;
     bodyReused: boolean;
     summary: string | null;
+    headline: string | null;
     summaryLanguage: string | null;
     summaryMatchesTarget: boolean;
     createdAt: Date;
@@ -260,6 +274,7 @@ export async function POST(request: Request) {
     const rawJson = rawJsonRecord(row.rawJson);
     const reusableStoredBody = storedBodyCanBeReused(rawJson);
     const rowSummary = rawString(row.summary);
+    const rowHeadline = rawString(row.headline);
     const rowSummaryLanguage = rawString(rawJson.summaryLanguage);
 
     for (const candidate of matchingCandidates) {
@@ -282,6 +297,12 @@ export async function POST(request: Request) {
         )
           ? rowSummary
           : null;
+      const headline = summary && rowSummaryMatchesTarget && reusableHeadlineIsValid(rowHeadline, {
+        title: candidateTitle,
+        summary,
+      })
+        ? rowHeadline
+        : null;
       if (!bodyReused && !summary) continue;
       const match = {
         candidate,
@@ -292,6 +313,7 @@ export async function POST(request: Request) {
         body: bodyReused ? row.body : null,
         bodyReused,
         summary,
+        headline,
         summaryLanguage: summary ? rowSummaryLanguage || null : null,
         summaryMatchesTarget: summary ? rowSummaryMatchesTarget : false,
         createdAt: row.createdAt,
@@ -308,6 +330,7 @@ export async function POST(request: Request) {
     body: match.body,
     bodyReused: match.bodyReused,
     summary: match.summary,
+    headline: match.headline,
     source: {
       feedItemId: match.feedItemId,
       builderId: match.builderId,

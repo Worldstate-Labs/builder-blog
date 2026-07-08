@@ -147,7 +147,7 @@ test("cloud worker host treats synced idle checkpoint issues as flushed", async 
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
 
   assert.match(runner, /case "\$_frlr_label" in[\s\S]*cloud-host-idle\*/);
-  assert.match(runner, /terminal outcomes were synced for idle host checkpoint/);
+  assert.match(runner, /terminal outcomes were synced for \$_frlr_label/);
 });
 
 test("cloud worker host only stops a runtime after its shard result covers every task", async () => {

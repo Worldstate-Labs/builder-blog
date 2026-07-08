@@ -1201,9 +1201,9 @@ test("fetch run stats keep the highest planned post count across details and liv
     summary: "Read 4 posts from 6 sources",
     details: {
       fetchTasks: [
-        { id: "fetch_post:1", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80 },
-        { id: "fetch_post:2", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80 },
-        { id: "fetch_post:3", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80 },
+        { id: "fetch_post:1", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80, headlineChars: 38 },
+        { id: "fetch_post:2", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80, headlineChars: 38 },
+        { id: "fetch_post:3", contentStatus: "ready", status: "synced", bodyChars: 100, summaryChars: 80, headlineChars: 38 },
       ],
     },
   };
@@ -1223,6 +1223,8 @@ test("fetch run stats keep the highest planned post count across details and liv
 
   assert.equal(stats.planned, 4);
   assert.equal(stats.read, 3);
+  assert.equal(stats.summaries, 3);
+  assert.equal(stats.headlines, 3);
   assert.equal(stats.summarized, 3);
   assert.equal(stats.synced, 3);
 });
@@ -1265,6 +1267,8 @@ test("fetch run stats do not count summary translation as source read", () => {
           bodyWords: 0,
           summaryChars: 86,
           summaryWords: 18,
+          headlineChars: 42,
+          headlineWords: 6,
           summaryMethod: "Translated summary from a Hub-shared post",
           hubSharedReuse: {
             source: "hub_shared_post",
@@ -1280,6 +1284,8 @@ test("fetch run stats do not count summary translation as source read", () => {
 
   assert.equal(stats.planned, 1);
   assert.equal(stats.read, 0);
+  assert.equal(stats.summaries, 1);
+  assert.equal(stats.headlines, 1);
   assert.equal(stats.summarized, 1);
   assert.equal(stats.synced, 1);
 });

@@ -32,6 +32,7 @@ export type RecommendationCandidate = {
   id: string;
   kind: FeedItemKind;
   title: string | null;
+  headline: string | null;
   body: string;
   summary: string | null;
   url: string;
@@ -231,6 +232,7 @@ export async function createRecommendationSnapshot({
             id: true,
             kind: true,
             title: true,
+            headline: true,
             body: true,
             summary: true,
             url: true,
@@ -452,6 +454,7 @@ async function buildAndSaveSnapshot({
       id: string;
       kind: FeedItemKind;
       title: string | null;
+      headline: string | null;
       body: string;
       summary: string | null;
       url: string;
@@ -698,7 +701,7 @@ export function scoreRecommendation({
 }): RecommendationResult {
   const reasons: string[] = [];
   let score = 0;
-  const itemTerms = tokenize(`${item.title ?? ""} ${item.body} ${item.sourceName ?? ""}`);
+  const itemTerms = tokenize(`${item.title ?? ""} ${item.headline ?? ""} ${item.body} ${item.sourceName ?? ""}`);
   let termScore = 0;
   for (const term of itemTerms) {
     termScore += Math.min(4, signals.terms.get(term) ?? 0);
@@ -796,7 +799,7 @@ function builderText(builder: RecommendationBuilder) {
 }
 
 function itemText(item: RecommendationCandidate) {
-  return [item.title, item.body, item.sourceName, item.url].filter(Boolean).join(" ");
+  return [item.title, item.headline, item.body, item.sourceName, item.url].filter(Boolean).join(" ");
 }
 
 function compareDates(a: RecommendationCandidate, b: RecommendationCandidate) {

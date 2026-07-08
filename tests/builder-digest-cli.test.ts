@@ -1368,6 +1368,7 @@ test("agent sync validation accepts fetch task YouTube transcript with execution
                 "In this video the speaker introduces Claude Opus 4.6, explains the model improvements, describes practical coding workflows, and compares how the system behaves on realistic agent tasks.",
               summary:
                 "这条视频介绍 Claude Opus 4.6 的模型改进和实际 coding agent 工作流，重点是更贴近真实任务的表现。来源：https://www.youtube.com/watch?v=dPn3GBI8lII",
+              headline: "Claude Opus 4.6 improves coding workflows",
               url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
               rawJson: {
                 builderId: "builder_anthropic_youtube",
@@ -1427,6 +1428,7 @@ test("agent sync validation accepts ready fetch task summaries", async () => {
               body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every fetched item.",
               summary:
                 "这篇文章讲 durable agents 的实现：显式 state、可重放事件日志，以及为每个 fetched item 生成带来源的 summary。来源：https://example.com/post",
+              headline: "Durable agents rely on explicit state",
               url: "https://example.com/post",
               rawJson: {
                 builderId: "builder_blog",
@@ -1490,6 +1492,7 @@ test("agent sync validation disambiguates duplicate external ids by builder id",
               url: "https://x.com/karpathy/status/2069547676849557725",
               summary:
                 "Andrej Karpathy 用中文总结 Claude 工作流的关键经验，强调长上下文和可验证输出的重要性。",
+              headline: "Claude 工作流强调验证和长上下文",
               rawJson: {
                 builderId: "builder_chinese",
                 fetchTaskId: chineseTaskId,
@@ -1510,6 +1513,7 @@ test("agent sync validation disambiguates duplicate external ids by builder id",
               url: "https://x.com/karpathy/status/2069547676849557725",
               summary:
                 "Andrej Karpathy says Claude workflows benefit from long context, careful verification, and source-linked outputs.",
+              headline: "Claude workflows benefit from verification",
               rawJson: {
                 builderId: "builder_english",
                 fetchTaskId: englishTaskId,
@@ -1541,6 +1545,7 @@ test("sync upload payload keeps YouTube transcript temporary without storing sum
             title: "Video",
             body: "Transcript body. ".repeat(200),
             summary: "YouTube summary with the important details.",
+            headline: "Video highlights the key launch details",
             url: "https://www.youtube.com/watch?v=video1",
             rawJson: {
               fetchTaskId: "task-yt",
@@ -1577,6 +1582,7 @@ test("sync upload payload strips raw tweet API objects", async () => {
             title: null,
             body: "A short tweet.",
             summary: "Tweet summary with context.",
+            headline: "Tweet adds useful context",
             url: "https://x.com/example/status/tweet1",
             rawJson: {
               fetchTaskId: "task-x",
@@ -1611,6 +1617,7 @@ test("sync upload payload keeps Product Hunt durable facts body instead of summa
             title: "Product",
             body: "Product: Acme Launch\nTagline: Helps teams review launches.\nRank: #3\nMaker note: Built for workflow-heavy teams.",
             summary: "Structured product facts and summary.",
+            headline: "Acme Launch ranks among top products",
             url: "https://www.producthunt.com/posts/product1",
             rawJson: {
               fetchTaskId: "task-ph",
@@ -1647,6 +1654,7 @@ test("sync upload payload never stores summary as durable body when item body is
             title: "Video",
             body: "",
             summary: "YouTube summary with the important details.",
+            headline: "Video summary keeps durable body empty",
             url: "https://www.youtube.com/watch?v=video1",
             rawJson: {
               fetchTaskId: "task-yt-empty",
@@ -1678,6 +1686,7 @@ test("sync payload converts items older than the planned fetch cutoff to skipped
               title: 'The "think" tool',
               body: "Fetched body",
               summary: "A valid summary for this fetched body that is long enough.",
+              headline: "Think tool article is stale",
               url: "https://www.anthropic.com/engineering/claude-think-tool",
               publishedAt: "2025-03-20T00:00:00.000Z",
               rawJson: { fetchTaskId: "fetch_post:blog:think" },
@@ -1722,6 +1731,7 @@ test("sync payload keeps items newer than the planned fetch cutoff when dates ar
               title: "New post",
               body: "Fetched body",
               summary: "A valid summary for this fetched body that is long enough.",
+              headline: "New post remains within cutoff",
               url: "https://example.com/new-post",
               publishedAt: "2026-06-23T22:42:38.000Z",
               rawJson: { fetchTaskId: "fetch_post:blog:new-post" },
@@ -1875,7 +1885,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
   );
   assert.equal(tasks[2].fetchCutoff, "2026-03-25T00:00:00.000Z");
   for (const task of tasks) {
-    assert.match(task.summaryInstructions.prompt, /Write one concise FollowBrief single-post summary in zh\./);
+    assert.match(task.summaryInstructions.prompt, /Write one concise FollowBrief single-post summary and one one-sentence post headline in zh\./);
     assert.match(task.summaryInstructions.prompt, /do not read external prompt files/i);
     assert.match(task.summaryInstructions.prompt, /Summarize exactly one supplied task item/);
     assert.match(task.summaryInstructions.prompt, /Use task\.item\.body as the primary content/);
@@ -1884,9 +1894,12 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
     assert.match(task.summaryInstructions.prompt, /omit `item\.body` from your shard result/);
     assert.match(task.summaryInstructions.prompt, /runner restores the original body before sync/);
     assert.match(task.summaryInstructions.prompt, /Keep `summary` between 40 and 1200 characters/);
+    assert.match(task.summaryInstructions.prompt, /Include a non-empty one-sentence `headline` with 20 words or fewer/);
     assert.match(task.summaryInstructions.prompt, /summary_too_long/);
     assert.match(task.summaryInstructions.prompt, /summary_duplicates_title/);
     assert.match(task.summaryInstructions.prompt, /summary_copies_body_prefix/);
+    assert.match(task.summaryInstructions.prompt, /headline_too_long/);
+    assert.match(task.summaryInstructions.prompt, /headline_duplicates_title/);
     assert.match(task.summaryInstructions.prompt, /Source-specific rules \(/);
   }
   assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X\/Twitter\):/);
@@ -1928,7 +1941,7 @@ test("singlePostSummaryInstructions supports original content language mode", as
   });
   assert.match(
     instructions.prompt,
-    /summary in the same language as the task's final raw body/,
+    /summary and one one-sentence post headline in the same language as the task's final raw body/,
   );
   assert.match(instructions.prompt, /For ready tasks, use task\.item\.body's language/);
   assert.doesNotMatch(instructions.prompt, /summary in source\./);
@@ -2503,6 +2516,7 @@ test("cloud sync upload payload reuses builder sync sanitization and carries clo
               title: "Video",
               body: "transcript should not be durably stored",
               summary: "Summary",
+              headline: "Video source sync succeeds",
               url: "https://www.youtube.com/watch?v=video_1",
               rawJson: { fetchTaskId: "task_post_1", transcriptText: "raw transcript" },
             },
@@ -2549,6 +2563,8 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       bodyWords: 180,
       summaryChars: 300,
       summaryWords: 45,
+      headlineChars: 33,
+      headlineWords: 6,
       readMethod: "Copied body from a Hub-shared post with the same URL",
       summaryMethod: "Copied matching-language summary from a Hub-shared post",
       item: { kind: "BLOG_POST", externalId: "post_1", url: "https://openai.com/news/1" },
@@ -2580,6 +2596,7 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
               title: "Post 1",
               body: "Long enough source body for a normal synced article item.",
               summary: "This is a synced summary with enough text to pass the shape test.",
+              headline: "OpenAI News post is ready to sync",
               url: "https://openai.com/news/1",
               rawJson: {
                 fetchTaskId: "task_synced",
@@ -2651,6 +2668,8 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       bodyWords: 180,
       summaryChars: 300,
       summaryWords: 45,
+      headlineChars: 33,
+      headlineWords: 6,
       readMethod: "Copied body from a Hub-shared post with the same URL",
       summaryMethod: "Copied matching-language summary from a Hub-shared post",
       hubSharedReuse: null,
@@ -2689,6 +2708,7 @@ test("cloud sync task results include leased sources that generated no post task
               title: "Post 1",
               body: "Long enough source body for a normal synced article item.",
               summary: "This is a synced summary with enough text to pass the shape test.",
+              headline: "OpenAI News post is ready to sync",
               url: "https://openai.com/news/1",
               rawJson: { fetchTaskId: "task_synced" },
             },
@@ -2786,6 +2806,7 @@ test("cloud sync task results mark mixed synced and failed posts partial", async
               title: "Post 1",
               body: "Long enough source body for a normal synced article item.",
               summary: "This is a synced summary with enough text to pass the shape test.",
+              headline: "Claude blog post syncs successfully",
               url: "https://claude.com/blog/1",
               rawJson: { fetchTaskId: "task_synced" },
             },
@@ -2885,14 +2906,14 @@ test("cloud sync keeps shared worker usage for lane aggregation without source d
           kind: "BLOG",
           sourceType: "blog",
           name: "Source A",
-          items: [{ kind: "BLOG_POST", externalId: "a", body: "A body", summary: "A summary with enough words.", url: "https://example.com/a", rawJson: { fetchTaskId: "task_a", workerId: "worker-0" } }],
+          items: [{ kind: "BLOG_POST", externalId: "a", body: "A body", summary: "A summary with enough words.", headline: "Source A post syncs successfully", url: "https://example.com/a", rawJson: { fetchTaskId: "task_a", workerId: "worker-0" } }],
         },
         {
           builderId: "cloud_builder_b",
           kind: "BLOG",
           sourceType: "blog",
           name: "Source B",
-          items: [{ kind: "BLOG_POST", externalId: "b", body: "B body", summary: "B summary with enough words.", url: "https://example.com/b", rawJson: { fetchTaskId: "task_b", workerId: "worker-0" } }],
+          items: [{ kind: "BLOG_POST", externalId: "b", body: "B body", summary: "B summary with enough words.", headline: "Source B post syncs successfully", url: "https://example.com/b", rawJson: { fetchTaskId: "task_b", workerId: "worker-0" } }],
         },
       ],
       workerUsages: [
@@ -4597,6 +4618,7 @@ test("merge-task-results adds missing agent execution metadata for agent tasks",
                   url: "https://www.producthunt.com/products/example",
                   body: "Product Hunt investigation body with enough concrete product evidence.",
                   summary: "Example is a Product Hunt top product with concrete launch evidence.",
+                  headline: "Example leads Product Hunt with evidence",
                   rawJson: { fetchTaskId: "agent-task" },
                 },
               ],
@@ -4682,6 +4704,7 @@ test("merge-task-results restores ready task body when worker omits or rewrites 
                 url: "https://traffic.example/episode-1.mp3",
                 summary:
                   "这期播客总结 test-time compute 如何改变 AI benchmark 的解读，并强调评估设计对 agentic systems 的重要性。来源：https://traffic.example/episode-1.mp3",
+                headline: "Test-time compute changes benchmark design",
                 rawJson: { fetchTaskId: "ready-podcast-task" },
               },
             ],
@@ -4700,6 +4723,7 @@ test("merge-task-results restores ready task body when worker omits or rewrites 
                 body: "Agent rewrote this into a short pseudo-body.",
                 summary:
                   "这篇文章总结 durable agent logs 如何帮助回放任务状态、保留来源证据，并让 sync payload 更可靠。来源：https://example.com/post",
+                headline: "Durable agent logs improve sync reliability",
                 rawJson: { fetchTaskId: "ready-blog-task" },
               },
             ],
@@ -4767,6 +4791,7 @@ test("merge-task-results canonicalizes stale ready item fetch task ids", async (
                 title: "Foundation Models",
                 url: "https://claude.com/blog/foundation-models",
                 summary: "A valid translated summary for the current cloud task.",
+                headline: "Foundation models get a translated headline",
                 rawJson: {
                   fetchTaskId: "stale-hub-task",
                   hubSharedReuse: { source: "hub_shared_post" },
@@ -4926,6 +4951,7 @@ test("merge-task-results normalizes overlong worker summaries before sync", asyn
                 title: "Episode one",
                 url: "https://example.com/episode-1",
                 summary: longSummary,
+                headline: "Episode one summary stays valid",
                 rawJson: { fetchTaskId: "ready-post" },
               },
             ],
@@ -5129,6 +5155,7 @@ test("merge-task-results can classify unassigned timeout backfills distinctly", 
           title: "Ready item",
           url: "https://example.com/ready",
           summary: "Already summarized.",
+          headline: "Ready item can sync deterministically",
         },
         builderSync: { builderId: "b1" },
       },

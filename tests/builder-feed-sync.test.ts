@@ -25,6 +25,7 @@ test("cloud feed sync writes items to an existing cloud-owned builder without pe
             externalId: "post-1",
             title: "Translated existing summary",
             body: "",
+            headline: "既有英文摘要已翻译成中文",
             summary: "这是一条从已有英文摘要翻译来的中文摘要。",
             url: "https://example.com/posts/post-1",
             publishedAt: "2026-06-26T10:00:00.000Z",
@@ -69,6 +70,7 @@ test("cloud feed sync writes items to an existing cloud-owned builder without pe
   assert.equal(prisma.feedItem.upsertCalls.length, 1);
   assert.equal(prisma.feedItem.upsertCalls[0].create.builderId, "cloud_builder_zh");
   assert.equal(prisma.feedItem.upsertCalls[0].create.body, "");
+  assert.equal(prisma.feedItem.upsertCalls[0].create.headline, "既有英文摘要已翻译成中文");
   assert.equal(prisma.feedItem.upsertCalls[0].create.summary, "这是一条从已有英文摘要翻译来的中文摘要。");
   assert.equal(prisma.feedItem.upsertCalls[0].create.fetchTool, "claude (model claude-sonnet)");
   assert.equal(

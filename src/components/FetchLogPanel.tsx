@@ -116,6 +116,8 @@ export type FetchTaskLog = {
   fetchTool?: string | null;
   bodyChars?: number | null;
   bodyWords?: number | null;
+  headlineChars?: number | null;
+  headlineWords?: number | null;
   summaryChars?: number | null;
   summaryWords?: number | null;
   agentRuntime?: string | null;
@@ -157,6 +159,8 @@ type FetchRunStats = {
   sourcesTotal: number;
   planned: number;
   read: number;
+  summaries: number;
+  headlines: number;
   summarized: number;
   synced: number;
   skipped: number;
@@ -269,6 +273,8 @@ export type FetchTaskProgress = {
   workerId?: string | null;
   bodyChars?: number | null;
   bodyWords?: number | null;
+  headlineChars?: number | null;
+  headlineWords?: number | null;
   summaryChars?: number | null;
   summaryWords?: number | null;
   updatedAt?: string | null;
@@ -418,7 +424,7 @@ function liveTaskWasRead(task: FetchTaskProgress): boolean {
 
 function liveTaskWasSummarized(task: FetchTaskProgress): boolean {
   const status = String(task.status ?? "").toLowerCase();
-  return (typeof task.summaryChars === "number" && task.summaryChars > 0) || status === "summarized" || status === "synced";
+  return (liveTaskHasSummary(task) && liveTaskHasHeadline(task)) || status === "synced";
 }
 
 function isLivePostTask(task: FetchTaskProgress): boolean {
@@ -454,6 +460,16 @@ export function fetchRunStats({
     : hasLivePostTasks
     ? livePostTasks.filter(liveTaskWasRead).length
     : Math.max(liveTasks.filter(liveTaskWasRead).length, run?.itemsFetched ?? 0);
+  const summaries = hasDetailedPostTasks
+    ? plannedTasks.filter(isSummaryReadyForStats).length
+    : hasLivePostTasks
+    ? livePostTasks.filter(liveTaskHasSummary).length
+    : liveTasks.filter(liveTaskHasSummary).length;
+  const headlines = hasDetailedPostTasks
+    ? plannedTasks.filter(isHeadlineReadyForStats).length
+    : hasLivePostTasks
+    ? livePostTasks.filter(liveTaskHasHeadline).length
+    : liveTasks.filter(liveTaskHasHeadline).length;
   const summarized = hasDetailedPostTasks
     ? plannedTasks.filter(isSummarizedForStats).length
     : hasLivePostTasks
@@ -489,6 +505,8 @@ export function fetchRunStats({
       (run?.buildersAttempted ?? perBuilder.length),
     planned,
     read,
+    summaries,
+    headlines,
     summarized,
     synced,
     skipped,
@@ -2079,7 +2097,9 @@ function JobLifecycle({
       open: progress?.stage === "summarizing",
       children: (
         <dl className="sync-panel-task-fact-list">
-          <FactRow label="Summarized posts" value={<span>{formatCount(stats.summarized)}</span>} />
+          <FactRow label="Summaries ready" value={<span>{formatCount(stats.summaries)}</span>} />
+          <FactRow label="Headlines ready" value={<span>{formatCount(stats.headlines)}</span>} />
+          <FactRow label="Complete posts" value={<span>{formatCount(stats.summarized)}</span>} />
           {stats.failed > 0 ? <FactRow label="Failed" value={<span className="sync-panel-task-danger">{formatCount(stats.failed)}</span>} /> : null}
         </dl>
       ),
@@ -2399,6 +2419,14 @@ function isReadForStats(task: FetchTaskLog): boolean {
 
 function isSummarizedForStats(task: FetchTaskLog): boolean {
   return isPlannedPostTask(task) && !isBlocked(task) && (isSummarized(task) || task.status === "synced");
+}
+
+function isSummaryReadyForStats(task: FetchTaskLog): boolean {
+  return isPlannedPostTask(task) && !isBlocked(task) && (hasSummary(task) || task.status === "synced");
+}
+
+function isHeadlineReadyForStats(task: FetchTaskLog): boolean {
+  return isPlannedPostTask(task) && !isBlocked(task) && (hasHeadline(task) || task.status === "synced");
 }
 
 function taskSourceGroups(fetchTasks: FetchTaskLog[]): FetchTaskSourceGroup[] {
@@ -2886,11 +2914,27 @@ function formatEvidence(evidence: Record<string, unknown> | null | undefined): s
 }
 
 function isSummarized(task: FetchTaskLog): boolean {
-  return typeof task.summaryChars === "number" && task.summaryChars > 0;
+  return hasSummary(task) && hasHeadline(task);
 }
 
 function liveTaskHasBody(liveTask: FetchTaskProgress | null | undefined): boolean {
   return typeof liveTask?.bodyChars === "number" && liveTask.bodyChars > 0;
+}
+
+function liveTaskHasSummary(liveTask: FetchTaskProgress | null | undefined): boolean {
+  return typeof liveTask?.summaryChars === "number" && liveTask.summaryChars > 0;
+}
+
+function liveTaskHasHeadline(liveTask: FetchTaskProgress | null | undefined): boolean {
+  return typeof liveTask?.headlineChars === "number" && liveTask.headlineChars > 0;
+}
+
+function hasSummary(task: FetchTaskLog): boolean {
+  return typeof task.summaryChars === "number" && task.summaryChars > 0;
+}
+
+function hasHeadline(task: FetchTaskLog): boolean {
+  return typeof task.headlineChars === "number" && task.headlineChars > 0;
 }
 
 function hasReadSignal(
@@ -3237,8 +3281,10 @@ export function TaskRow({
 
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
+  const headlineSize = sizeText(task.headlineChars, task.headlineWords);
   const summarySize = sizeText(task.summaryChars, task.summaryWords);
   const liveBodySize = sizeText(liveTask?.bodyChars, liveTask?.bodyWords);
+  const liveHeadlineSize = sizeText(liveTask?.headlineChars, liveTask?.headlineWords);
   const liveSummarySize = sizeText(liveTask?.summaryChars, liveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
   const summaryMethod = displayText(task.summaryMethod) || null;
@@ -3276,7 +3322,9 @@ export function TaskRow({
     summaryMethod ||
     discoveryExpansion ||
     summarySize ||
+    headlineSize ||
     liveSummarySize ||
+    liveHeadlineSize ||
     compression ||
     failureReasonText(task) ||
     missingShard ||
@@ -3380,6 +3428,8 @@ export function TaskRow({
           ) : null}
           {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
           {!summarySize && liveSummarySize ? <FactRow label="Live summary size" value={liveSummarySize} /> : null}
+          {headlineSize ? <FactRow label="Headline size" value={headlineSize} /> : null}
+          {!headlineSize && liveHeadlineSize ? <FactRow label="Live headline size" value={liveHeadlineSize} /> : null}
           {compression ? <FactRow label="Compression" value={compression} /> : null}
           {!isSummarized(task) && !isContentFailure(task) && failureReasonText(task) ? (
             <FactRow

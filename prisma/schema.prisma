@@ -418,6 +418,7 @@ model FeedItem {
   title                       String?
   body                        String
   summary                     String?
+  headline                    String?
   url                         String
   publishedAt                 DateTime?
   sourceName                  String?

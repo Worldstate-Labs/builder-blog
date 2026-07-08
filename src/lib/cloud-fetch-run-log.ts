@@ -19,6 +19,8 @@ export type CloudFetchPostOutcome = {
   model: string | null;
   bodyChars: number | null;
   bodyWords: number | null;
+  headlineChars: number | null;
+  headlineWords: number | null;
   summaryChars: number | null;
   summaryWords: number | null;
   readMethod: string | null;
@@ -48,6 +50,8 @@ export type CloudWorkerHostTask = {
   workerId: string | null;
   bodyChars: number | null;
   bodyWords: number | null;
+  headlineChars: number | null;
+  headlineWords: number | null;
   summaryChars: number | null;
   summaryWords: number | null;
   updatedAt: string | null;
@@ -453,6 +457,8 @@ function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
       model: str(p.agentModel ?? p.model),
       bodyChars: num(p.bodyChars ?? p.body_chars),
       bodyWords: num(p.bodyWords ?? p.body_words),
+      headlineChars: num(p.headlineChars ?? p.headline_chars),
+      headlineWords: num(p.headlineWords ?? p.headline_words),
       summaryChars: num(p.summaryChars ?? p.summary_chars),
       summaryWords: num(p.summaryWords ?? p.summary_words),
       readMethod: str(p.readMethod ?? p.read_method),
@@ -506,6 +512,8 @@ function serializeWorkerHostTask(value: unknown): CloudWorkerHostTask {
     workerId: str(task?.workerId),
     bodyChars: num(task?.bodyChars),
     bodyWords: num(task?.bodyWords),
+    headlineChars: num(task?.headlineChars),
+    headlineWords: num(task?.headlineWords),
     summaryChars: num(task?.summaryChars),
     summaryWords: num(task?.summaryWords),
     updatedAt: iso(task?.updatedAt),

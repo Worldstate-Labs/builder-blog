@@ -161,6 +161,8 @@ function compactTask(task: FetchRunTask, level: number): FetchRunTask {
       "workerId",
       "bodyChars",
       "bodyWords",
+      "headlineChars",
+      "headlineWords",
       "summaryChars",
       "summaryWords",
       "agentRuntime",

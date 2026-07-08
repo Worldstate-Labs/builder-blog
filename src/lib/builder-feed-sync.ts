@@ -191,6 +191,7 @@ export async function syncBuilderFeedItems({
       }
       payloadItemKeys.add(key);
       const fetchTaskId = readFetchTaskId(item.rawJson);
+      const headline = typeof item.headline === "string" ? item.headline.trim() : "";
       const summary = typeof item.summary === "string" ? item.summary.trim() : "";
       if (!summary) {
         result.skippedFeedItems += 1;
@@ -201,6 +202,23 @@ export async function syncBuilderFeedItems({
             externalId: item.externalId,
             status: "failed",
             reason: "summary_missing",
+          });
+        }
+        continue;
+      }
+      const headlineError = validatePostHeadlineForSync(headline, {
+        title: item.title,
+        summary,
+      });
+      if (headlineError) {
+        result.skippedFeedItems += 1;
+        if (fetchTaskId) {
+          result.itemResults.push({
+            fetchTaskId,
+            kind: item.kind,
+            externalId: item.externalId,
+            status: "failed",
+            reason: headlineError,
           });
         }
         continue;
@@ -251,6 +269,7 @@ export async function syncBuilderFeedItems({
       const canonicalPostId = await ensureCanonicalPostId(prisma, item.url);
       if (!force && existingItemKeys.has(key)) {
         const updateData = {
+          headline,
           summary,
           body: storage.body,
           rawJson: JSON.stringify(storage.rawJson),
@@ -294,6 +313,7 @@ export async function syncBuilderFeedItems({
         },
         update: {
           title: item.title,
+          headline,
           body: storage.body,
           summary,
           url: item.url,
@@ -308,6 +328,7 @@ export async function syncBuilderFeedItems({
           kind: item.kind,
           externalId: item.externalId,
           title: item.title,
+          headline,
           body: storage.body,
           summary,
           url: item.url,
@@ -535,6 +556,35 @@ export function syncTextStats(value: unknown) {
     chars: text.length,
     words: text ? text.split(/\s+/u).length : 0,
   };
+}
+
+function normalizeSyncText(value: unknown) {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+}
+
+function isNearDuplicateSyncText(text: string, reference: unknown) {
+  const normalizedReference = normalizeSyncText(reference);
+  if (!text || !normalizedReference) return false;
+  if (text === normalizedReference) return true;
+  return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
+}
+
+function validatePostHeadlineForSync(headline: string, {
+  title,
+  summary,
+}: {
+  title?: string | null;
+  summary?: string | null;
+}) {
+  const normalized = normalizeSyncText(headline);
+  if (!normalized) return "headline_missing";
+  if (normalized.length > 180) return "headline_too_long";
+  if (syncTextStats(normalized).words > 20) return "headline_too_long";
+  if (isNearDuplicateSyncText(normalized, title)) return "headline_duplicates_title";
+  if (normalizeSyncText(summary) && normalized === normalizeSyncText(summary)) {
+    return "headline_duplicates_summary";
+  }
+  return null;
 }
 
 async function ensureCanonicalPostId(prisma: BuilderFeedSyncPrisma, url: string) {

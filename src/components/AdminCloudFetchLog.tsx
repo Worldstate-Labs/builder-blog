@@ -228,6 +228,8 @@ function formatWorkerTaskStats(task: CloudWorkerHostTask): string | null {
   else if (task.bodyChars != null) parts.push(`body ${task.bodyChars.toLocaleString()} chars`);
   if (task.summaryWords != null) parts.push(`summary ${task.summaryWords.toLocaleString()} words`);
   else if (task.summaryChars != null) parts.push(`summary ${task.summaryChars.toLocaleString()} chars`);
+  if (task.headlineWords != null) parts.push(`headline ${task.headlineWords.toLocaleString()} words`);
+  else if (task.headlineChars != null) parts.push(`headline ${task.headlineChars.toLocaleString()} chars`);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -323,6 +325,8 @@ function postToFetchTaskLog(
     agentModel: post.model,
     bodyChars: post.bodyChars,
     bodyWords: post.bodyWords,
+    headlineChars: post.headlineChars,
+    headlineWords: post.headlineWords,
     summaryChars: post.summaryChars,
     summaryWords: post.summaryWords,
     readMethod: post.readMethod,
@@ -343,6 +347,8 @@ function workerTaskToFetchTaskLog(task: CloudWorkerHostTask): FetchTaskLog {
     status: task.status,
     bodyChars: task.bodyChars,
     bodyWords: task.bodyWords,
+    headlineChars: task.headlineChars,
+    headlineWords: task.headlineWords,
     summaryChars: task.summaryChars,
     summaryWords: task.summaryWords,
     workerId: task.workerId,
@@ -364,6 +370,8 @@ function workerTaskToProgress(task: CloudWorkerHostTask): FetchTaskProgress {
     workerId: task.workerId,
     bodyChars: task.bodyChars,
     bodyWords: task.bodyWords,
+    headlineChars: task.headlineChars,
+    headlineWords: task.headlineWords,
     summaryChars: task.summaryChars,
     summaryWords: task.summaryWords,
     updatedAt: task.updatedAt,

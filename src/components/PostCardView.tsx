@@ -50,6 +50,7 @@ export type PostCardPost = {
   id: string;
   title: string | null;
   body: string;
+  headline?: string | null;
   summary?: string | null;
   originalSummary?: string | null;
   detailUrl?: string | null;

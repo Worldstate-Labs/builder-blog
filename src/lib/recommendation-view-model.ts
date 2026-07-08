@@ -46,6 +46,7 @@ function serializeRecommendation(
     item: {
       id: result.item.id,
       title: result.item.title,
+      headline: result.item.headline,
       body: result.item.body,
       summary: result.item.summary,
       url: result.item.url,

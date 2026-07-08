@@ -4,6 +4,7 @@ import { z } from "zod";
 // Size limits guard the skill ingest endpoints against accidental or
 // malicious payloads that could exhaust DB storage or serverless memory.
 const MAX_TITLE = 500;
+const MAX_HEADLINE = 180;
 const MAX_BODY = 100_000; // ~100 KB per post
 const MAX_SUMMARY = 4_000;
 const MAX_BIO = 4_000;
@@ -24,6 +25,7 @@ export const SkillFeedItemSchema = z.object({
   kind: z.enum(FeedItemKind),
   externalId: z.string().min(1).max(MAX_EXTERNAL_ID),
   title: z.string().max(MAX_TITLE).nullable().optional(),
+  headline: z.string().max(MAX_HEADLINE).nullable().optional(),
   body: z.string().max(MAX_BODY).optional().default(""),
   summary: z.string().min(1).max(MAX_SUMMARY).nullable().optional(),
   url: z.string().url().max(MAX_URL),

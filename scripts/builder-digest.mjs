@@ -146,6 +146,8 @@ const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 const MAX_DIGEST_CONTENT_CHARS = 200_000;
 const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 1200;
 const MAX_DIGEST_ITEMS = 5_000;
+const MAX_POST_HEADLINE_CHARS = 180;
+const MAX_POST_HEADLINE_WORDS = 20;
 const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
 const DEFAULT_SOURCE_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS = 120_000;
@@ -1362,6 +1364,8 @@ function fetchProgressSnapshot(progress, options = {}) {
                 workerId: compactProgressText(task.workerId, 80),
                 bodyChars: task.bodyChars,
                 bodyWords: task.bodyWords,
+                headlineChars: task.headlineChars,
+                headlineWords: task.headlineWords,
                 summaryChars: task.summaryChars,
                 summaryWords: task.summaryWords,
                 updatedAt: compactProgressText(task.updatedAt, 80),
@@ -1446,6 +1450,8 @@ function upsertFetchProgressTask(progress, task) {
     workerId,
     bodyChars: Number.isFinite(Number(task.bodyChars)) ? Number(task.bodyChars) : previous.bodyChars ?? null,
     bodyWords: Number.isFinite(Number(task.bodyWords)) ? Number(task.bodyWords) : previous.bodyWords ?? null,
+    headlineChars: Number.isFinite(Number(task.headlineChars)) ? Number(task.headlineChars) : previous.headlineChars ?? null,
+    headlineWords: Number.isFinite(Number(task.headlineWords)) ? Number(task.headlineWords) : previous.headlineWords ?? null,
     summaryChars: Number.isFinite(Number(task.summaryChars)) ? Number(task.summaryChars) : previous.summaryChars ?? null,
     summaryWords: Number.isFinite(Number(task.summaryWords)) ? Number(task.summaryWords) : previous.summaryWords ?? null,
     updatedAt: compactProgressText(task.updatedAt, 80) ?? new Date().toISOString(),
@@ -1458,6 +1464,7 @@ function upsertFetchProgressTask(progress, task) {
     previous.reason !== value.reason ||
     previous.workerId !== value.workerId ||
     previous.bodyChars !== value.bodyChars ||
+    previous.headlineChars !== value.headlineChars ||
     previous.summaryChars !== value.summaryChars;
   if (index >= 0) tasks[index] = value;
   else tasks.push(value);
@@ -1497,6 +1504,8 @@ function seedFetchProgressPlannedTasks(progress, plannedTasks) {
       workerId: task.workerId,
       bodyChars: task.bodyChars,
       bodyWords: task.bodyWords,
+      headlineChars: task.headlineChars,
+      headlineWords: task.headlineWords,
       summaryChars: task.summaryChars,
       summaryWords: task.summaryWords,
       updatedAt: existing?.updatedAt ?? new Date().toISOString(),
@@ -1630,6 +1639,8 @@ export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds =
       workerId: outcome.workerId,
       bodyChars: outcome.bodyChars,
       bodyWords: outcome.bodyWords,
+      headlineChars: outcome.headlineChars,
+      headlineWords: outcome.headlineWords,
       summaryChars: outcome.summaryChars,
       summaryWords: outcome.summaryWords,
     });
@@ -2219,6 +2230,7 @@ export function summarizeFetchTasksForLog(fetchTasks) {
     // it already fetched. The agent-stage fields (summary size, model, final
     // status) stay null until sync-builders PATCHes them by matching `id`.
     const readyBody = ready ? textStats(task?.item?.body) : { chars: null, words: null };
+    const readyHeadline = ready ? textStats(task?.item?.headline) : { chars: null, words: null };
     const readySummary = ready ? textStats(task?.item?.summary) : { chars: null, words: null };
     const rawJson = objectRecord(task?.item?.rawJson);
     return {
@@ -2233,6 +2245,8 @@ export function summarizeFetchTasksForLog(fetchTasks) {
       fetchTool: task?.fetchTool ?? null,
       bodyChars: readyBody.chars,
       bodyWords: readyBody.words,
+      headlineChars: readyHeadline.chars || null,
+      headlineWords: readyHeadline.words || null,
       summaryChars: readySummary.chars || null,
       summaryWords: readySummary.words || null,
       agentRuntime: null,
@@ -2501,18 +2515,23 @@ function translateSummaryOnlyInstructions(task, match, targetLanguage) {
       "Use only task.summaryTranslation.sourceSummary as the source text.",
       sourceLanguage ? `The source summary language is ${sourceLanguage}.` : "",
       "",
-      "Output one FollowBrief single-post summary in the normal shard result item.",
+      "Output one FollowBrief single-post summary and one post headline in the normal shard result item.",
       "Leave item.body empty or omit it; the runner will preserve the planned empty body.",
       "",
       "Hard validation rules for the output `summary` string:",
       "- Keep `summary` between 40 and 1200 characters.",
       "- Do not duplicate the title.",
       "- Do not copy the beginning of any body as the whole summary.",
+      "",
+      "Hard validation rules for the output `headline` string:",
+      `- Include a non-empty one-sentence \`headline\` with ${MAX_POST_HEADLINE_WORDS} words or fewer and ${MAX_POST_HEADLINE_CHARS} characters or fewer.`,
+      "- Write `headline` in the same language as `summary`.",
+      "- Do not duplicate the title or the full summary.",
     ].filter(Boolean).join("\n"),
   };
 }
 
-function sharedPostReuseRawJson(task, match, { summaryReused, bodyReused, summaryTranslated = false }) {
+function sharedPostReuseRawJson(task, match, { summaryReused, headlineReused = false, bodyReused, summaryTranslated = false }) {
   const rawJson = objectRecord(task?.item?.rawJson);
   return {
     ...rawJson,
@@ -2525,6 +2544,7 @@ function sharedPostReuseRawJson(task, match, { summaryReused, bodyReused, summar
       source: "hub_shared_post",
       bodyReused,
       summaryReused,
+      headlineReused,
       summaryTranslated,
       feedItemId: match?.source?.feedItemId ?? null,
       builderId: match?.source?.builderId ?? null,
@@ -2541,12 +2561,20 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
     : "";
   const bodyReused = Boolean(reusableBody && match?.bodyReused !== false);
   const rawSummary = typeof match?.summary === "string" && match.summary.trim() ? match.summary.trim() : null;
+  const rawHeadline = typeof match?.headline === "string" && match.headline.trim() ? match.headline.trim() : null;
   const title = stringValue(task?.item?.title);
   const reusableSummary = rawSummary && validateReusableSourceSummary(rawSummary, { title }).length === 0
     ? rawSummary
     : null;
+  const reusableHeadline = rawHeadline && validateItemHeadline(rawHeadline, {
+    title,
+    summary: reusableSummary ?? "",
+  }).length === 0
+    ? rawHeadline
+    : null;
   const summaryCanBeCopied = Boolean(
     reusableSummary &&
+    reusableHeadline &&
     sharedPostSummaryMatchesTarget(match, options.summaryLanguage) &&
     validateFinalSummary(reusableSummary, { title, body: bodyReused ? reusableBody : task?.item?.body || "" }).length === 0,
   );
@@ -2571,8 +2599,10 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
       item: {
         ...baseItem,
         summary,
+        headline: reusableHeadline,
         rawJson: sharedPostReuseRawJson(task, match, {
           summaryReused: true,
+          headlineReused: true,
           bodyReused,
         }),
       },
@@ -2996,8 +3026,8 @@ function isOriginalContentLanguage(value) {
 
 function singlePostSummaryPrompt(source) {
   const languageInstruction = isOriginalContentLanguage(source.language)
-    ? "Write one concise FollowBrief single-post summary in the same language as the task's final raw body. For ready tasks, use task.item.body's language. For requires_agent tasks, first fetch the primary content, then use the final body language."
-    : `Write one concise FollowBrief single-post summary in ${source.language}.`;
+    ? "Write one concise FollowBrief single-post summary and one one-sentence post headline in the same language as the task's final raw body. For ready tasks, use task.item.body's language. For requires_agent tasks, first fetch the primary content, then use the final body language."
+    : `Write one concise FollowBrief single-post summary and one one-sentence post headline in ${source.language}.`;
   return [
     languageInstruction,
     "",
@@ -3005,12 +3035,19 @@ function singlePostSummaryPrompt(source) {
     "",
     "Ready-task output rule:",
     "- If task.agentWorkType is `translate_summary_only`, do not fetch task.item.url, download media, transcribe audio/video, or use task.item.body as source content. Translate only task.summaryTranslation.sourceSummary into the requested language, and leave item.body empty or omit it.",
-    "- If task.contentStatus is `ready`, do not fetch task.item.url, download media, transcribe audio/video, or rewrite task.item.body. The supplied task.item.body is already the fetched source body. To save tokens, omit `item.body` from your shard result for ready tasks; the runner restores the original body before sync. Write only the `summary` from task.item.body.",
+    "- If task.contentStatus is `ready`, do not fetch task.item.url, download media, transcribe audio/video, or rewrite task.item.body. The supplied task.item.body is already the fetched source body. To save tokens, omit `item.body` from your shard result for ready tasks; the runner restores the original body before sync. Write only the `summary` and `headline` from task.item.body.",
     "",
     "Hard validation rules for the output `summary` string:",
     "- Keep `summary` between 40 and 1200 characters. If it is over 1200 characters, shorten it before writing JSON; otherwise validation fails with `summary_too_long`.",
     "- Do not duplicate the title; otherwise validation fails with `summary_duplicates_title`.",
     "- Do not copy the beginning of the source body as the whole summary; otherwise validation fails with `summary_copies_body_prefix`.",
+    "",
+    "Hard validation rules for the output `headline` string:",
+    `- Include a non-empty one-sentence \`headline\` with ${MAX_POST_HEADLINE_WORDS} words or fewer. If it has more than ${MAX_POST_HEADLINE_WORDS} words, shorten it before writing JSON; otherwise validation fails with \`headline_too_long\`.`,
+    `- Keep \`headline\` at ${MAX_POST_HEADLINE_CHARS} characters or fewer; otherwise validation fails with \`headline_too_long\`.`,
+    "- Write `headline` in the same language as `summary`.",
+    "- Do not duplicate the title; otherwise validation fails with `headline_duplicates_title`.",
+    "- Do not copy the full summary; otherwise validation fails with `headline_duplicates_summary`.",
     "",
     `Source-specific rules (${source.label}):`,
     source.body,
@@ -5864,7 +5901,9 @@ function isDeterministicSyncFetchTask(task) {
     task?.deterministicSync === true &&
     task?.contentStatus === "ready" &&
     typeof task?.item?.summary === "string" &&
-    task.item.summary.trim().length > 0
+    task.item.summary.trim().length > 0 &&
+    typeof task?.item?.headline === "string" &&
+    task.item.headline.trim().length > 0
   );
 }
 
@@ -6421,6 +6460,7 @@ function preserveReadyTaskItem(item, task) {
     sourceName: original.sourceName ?? item?.sourceName,
     description: original.description ?? item?.description,
     body: original.body ?? item?.body,
+    headline: item?.headline ?? original.headline,
   };
 }
 
@@ -6486,6 +6526,7 @@ function deterministicSyncItemFromFetchTask(task) {
     publishedAt: item.publishedAt ?? null,
     sourceName: item.sourceName ?? task?.builder ?? null,
     body: item.body,
+    headline: item.headline,
     summary: item.summary,
     rawJson: {
       ...rawJson,
@@ -6882,6 +6923,8 @@ function progressFromWorkerProgressEntry(entry, plannedById) {
     workerId: payload.workerId ?? planned.workerId ?? entry.workerId ?? null,
     bodyChars: payload.bodyChars ?? null,
     bodyWords: payload.bodyWords ?? null,
+    headlineChars: payload.headlineChars ?? null,
+    headlineWords: payload.headlineWords ?? null,
     summaryChars: payload.summaryChars ?? null,
     summaryWords: payload.summaryWords ?? null,
     updatedAt: payload.updatedAt ?? null,
@@ -6894,6 +6937,7 @@ function progressFromCheckpointItem(item, builder, entry, plannedById) {
   if (isCandidateDiscoveryTaskId(id)) return null;
   const planned = plannedById.get(id) ?? {};
   const bodyStats = textStats(item?.body);
+  const headlineStats = textStats(item?.headline);
   const summaryStats = textStats(item?.summary);
   return {
     ...planned,
@@ -6909,6 +6953,8 @@ function progressFromCheckpointItem(item, builder, entry, plannedById) {
     url: planned.url ?? item?.url ?? null,
     bodyChars: bodyStats.chars,
     bodyWords: bodyStats.words,
+    headlineChars: headlineStats.chars,
+    headlineWords: headlineStats.words,
     summaryChars: summaryStats.chars,
     summaryWords: summaryStats.words,
   };
@@ -7169,6 +7215,11 @@ function excludedTaskIdsContains(excludedIds, task) {
 
 const TERMINAL_FETCH_RUN_TASK_STATUSES = new Set(["synced", "skipped", "failed", "action_needed"]);
 
+/**
+ * @param {unknown} detailsValue
+ * @param {unknown} fetchResultOrTasks
+ * @returns {string[]}
+ */
 export function terminalFetchRunTaskKeysFromDetails(detailsValue, fetchResultOrTasks = []) {
   const plannedTasks = Array.isArray(fetchResultOrTasks?.fetchTasks)
     ? extractFetchTasks(fetchResultOrTasks)
@@ -7953,6 +8004,11 @@ function validateFetchTaskItem(task, candidate) {
     body: candidate.item.body || task.item?.body || "",
   });
   errors.push(...summaryErrors.map((error) => `summary:${error}`));
+  const headlineErrors = validateItemHeadline(candidate.item.headline, {
+    title: task.item?.title || "",
+    summary: candidate.item.summary || "",
+  });
+  errors.push(...headlineErrors.map((error) => `headline:${error}`));
 
   if (task.contentStatus !== "requires_agent") {
     if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
@@ -8090,6 +8146,26 @@ function validateFinalSummary(summary, { title = "", body = "" } = {}) {
 
 function validateItemSummary(summary, { title = "", body = "" } = {}) {
   return validateFinalSummary(summary, { title, body });
+}
+
+function validateHeadlineShape(headline, { title = "", summary = "" } = {}) {
+  const errors = [];
+  const normalized = normalizeContentText(headline || "");
+  if (!normalized) {
+    errors.push("headline_missing");
+    return errors;
+  }
+  if (normalized.length > MAX_POST_HEADLINE_CHARS) errors.push("headline_too_long");
+  if (textStats(normalized).words > MAX_POST_HEADLINE_WORDS) errors.push("headline_too_long");
+  if (isNearDuplicate(normalized, title)) errors.push("headline_duplicates_title");
+  if (normalizeContentText(summary) && normalized === normalizeContentText(summary)) {
+    errors.push("headline_duplicates_summary");
+  }
+  return errors;
+}
+
+function validateItemHeadline(headline, { title = "", summary = "" } = {}) {
+  return validateHeadlineShape(headline, { title, summary });
 }
 
 function genericContentQuality(text, { title = "", description = "", standards } = {}) {
@@ -8806,6 +8882,9 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
   const readyBody = task?.contentStatus === "ready"
     ? textStats(item.body)
     : { chars: count(task?.bodyChars), words: count(task?.bodyWords) };
+  const readyHeadline = task?.contentStatus === "ready"
+    ? textStats(item.headline)
+    : { chars: count(task?.headlineChars), words: count(task?.headlineWords) };
   const readySummary = task?.contentStatus === "ready"
     ? textStats(item.summary)
     : { chars: count(task?.summaryChars), words: count(task?.summaryWords) };
@@ -8822,6 +8901,8 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
     agentModel: text(task?.agentModel ?? syncedRawJson.agentModel),
     bodyChars: count(task?.bodyChars) ?? readyBody.chars,
     bodyWords: count(task?.bodyWords) ?? readyBody.words,
+    headlineChars: count(task?.headlineChars) ?? readyHeadline.chars,
+    headlineWords: count(task?.headlineWords) ?? readyHeadline.words,
     summaryChars: count(task?.summaryChars) ?? readySummary.chars,
     summaryWords: count(task?.summaryWords) ?? readySummary.words,
     readMethod: text(task?.readMethod ?? rawJson.readMethod ?? syncedRawJson.readMethod),
@@ -9603,10 +9684,13 @@ async function patchFetchRunOutcomes(
     const id = item?.rawJson?.fetchTaskId;
     if (!id) continue;
     const body = textStats(item?.body);
+    const headline = textStats(item?.headline);
     const summary = textStats(item?.summary);
     sizesByTaskId.set(String(id), {
       bodyChars: body.chars,
       bodyWords: body.words,
+      headlineChars: headline.chars,
+      headlineWords: headline.words,
       summaryChars: summary.chars,
       summaryWords: summary.words,
       agentRuntime: item?.rawJson?.agentRuntime ?? null,
@@ -9711,8 +9795,8 @@ async function patchFetchRunOutcomes(
     } else if (sizesByTaskId.has(id)) {
       // In the payload but unclassified by the server (older server) → trust the
       // presence of a non-empty summary.
-      status = sizes.summaryChars > 0 ? "synced" : "failed";
-      if (status === "failed") failureReason = "summary_missing";
+      status = sizes.summaryChars > 0 && sizes.headlineChars > 0 ? "synced" : "failed";
+      if (status === "failed") failureReason = sizes.summaryChars > 0 ? "headline_missing" : "summary_missing";
     } else if (agentOutcome) {
       // Agent reported a non-synced terminal outcome: skipped (no content, with
       // evidence) / failed / blocked. Maps onto the fetch-log status vocabulary.
@@ -9847,6 +9931,9 @@ function fetchTaskLogPatch(task, id) {
   const readyBody = task?.contentStatus === "ready"
     ? textStats(task?.item?.body)
     : { chars: null, words: null };
+  const readyHeadline = task?.contentStatus === "ready"
+    ? textStats(task?.item?.headline)
+    : { chars: null, words: null };
   const readySummary = task?.contentStatus === "ready"
     ? textStats(task?.item?.summary)
     : { chars: null, words: null };
@@ -9863,6 +9950,8 @@ function fetchTaskLogPatch(task, id) {
     fetchTool: task?.fetchTool ?? null,
     bodyChars: readyBody.chars,
     bodyWords: readyBody.words,
+    headlineChars: readyHeadline.chars || null,
+    headlineWords: readyHeadline.words || null,
     summaryChars: readySummary.chars || null,
     summaryWords: readySummary.words || null,
     agentRuntime: null,

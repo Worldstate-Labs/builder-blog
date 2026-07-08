@@ -237,12 +237,16 @@ test("fetch run storage compaction preserves terminal accounting under the detai
   assert.ok(Buffer.byteLength(JSON.stringify(details), "utf8") > 100_000);
 
   const compacted = compactFetchRunDetailsForStorage(details, 100_000);
+  const compactedFetchTasks = compacted.details.fetchTasks as Array<{
+    status?: string;
+    evidence?: unknown;
+  }>;
 
   assert.equal(compacted.compacted, true);
   assert.ok(compacted.bytes <= 100_000);
-  assert.equal(compacted.details.fetchTasks.length, 98);
-  assert.equal(compacted.details.fetchTasks.filter((task) => task.status === "failed").length, 98);
-  assert.equal(compacted.details.fetchTasks.some((task) => task.evidence), false);
+  assert.equal(compactedFetchTasks.length, 98);
+  assert.equal(compactedFetchTasks.filter((task) => task.status === "failed").length, 98);
+  assert.equal(compactedFetchTasks.some((task) => task.evidence), false);
   assert.deepEqual(
     deriveFetchRunStatusFromDetails({ status: "ok", errorCount: 0 }, compacted.details),
     { status: "failed", errorCount: 98 },

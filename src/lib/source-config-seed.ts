@@ -61,6 +61,7 @@ export const DEFAULT_COMMON_FETCH_RULES = [
 export const DEFAULT_COMMON_SUMMARY_RULES = `This task is self-contained; do not read external prompt files.
 
 - Summarize exactly one supplied task item.
+- Also write exactly one one-sentence headline for that same item.
 - Use task.item.body as the primary content.
 - Use task.item.title, source metadata, and task.item.url only as context and source attribution.
 - Include the direct source URL for every claim.

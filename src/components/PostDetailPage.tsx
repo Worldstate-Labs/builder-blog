@@ -107,6 +107,7 @@ export async function PostDetailPage({
         post={{
           id: item.id,
           title: item.title,
+          headline: item.headline,
           body: item.body,
           summary: item.summary,
           url: item.url,

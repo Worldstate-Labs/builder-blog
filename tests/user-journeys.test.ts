@@ -1717,8 +1717,8 @@ test("digest sync user path requires structured digest items and derives digeste
   assert.equal(markdownOnly.success, false);
 });
 
-test("fetch task success requires a persisted summary; failures are recorded with a reason", () => {
-  // Server is the authoritative gate: a no-summary item is a recorded FAILURE
+test("fetch task success requires persisted summary and headline; failures are recorded with a reason", () => {
+  // Server is the authoritative gate: a no-summary or no-headline item is a recorded FAILURE
   // (with reason), not a silent skip, and per-task results come back to the CLI.
   const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
   const feedSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
@@ -1726,6 +1726,8 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   assert.match(feedSync, /reason: "admin_fetch_only_source"/);
   assert.match(buildersRoute, /itemResults/);
   assert.match(feedSync, /reason: "summary_missing"/);
+  assert.match(feedSync, /reason: headlineError/);
+  assert.match(feedSync, /headline_missing/);
   assert.match(feedSync, /status: "failed"/);
   assert.match(buildersRoute, /readFetchTaskId/);
   // Body / crawled-content gate: a post with no real content is also a recorded
@@ -1738,31 +1740,34 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   assert.match(fetchRunsRoute, /failureReason/);
 
   // The CLI reconciles the FULL planned task list against the server result, so
-  // a task the agent never summarized is marked failed/not_summarized, not left
+  // a task the agent never summarized/headlined is marked failed, not left
   // pending; the server result (not the payload) decides success.
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
   assert.match(cli, /not_summarized/);
+  assert.match(cli, /headline_missing/);
   assert.match(cli, /serverResult/);
   assert.match(cli, /plannedTasks/);
   assert.match(cli, /library-fetch-result\.json/);
 
-  // The fetch log UI no longer claims "Fetched & summarized" for a ready fetch
-  // that has no summary, and renders the failure reason.
+  // The fetch log UI no longer claims summarize completion for a ready fetch
+  // that has only a summary or only a headline, and renders the failure reason.
   const panel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");
   assert.match(panel, /isSummarized/);
   assert.match(panel, /failureReason/);
   assert.match(panel, /fetchFailureMessage\(task\.failureReason\)/);
   assert.match(readFileSync("src/lib/fetch-failure-taxonomy.ts", "utf8"), /summary_missing:[\s\S]*No summary was produced/);
-  // Banner must key off a persisted summary, not contentStatus === "ready".
+  assert.match(readFileSync("src/lib/fetch-failure-taxonomy.ts", "utf8"), /headline_missing:[\s\S]*No headline was produced/);
+  // Banner must key off persisted summary + headline, not contentStatus === "ready".
   assert.doesNotMatch(panel, /task\.contentStatus === "ready"\s*\|\|\s*s === "fetched"/);
 
   // The contract tells the agent a task is complete only when synced with a
-  // summary, and to not silently drop unsummarized tasks.
+  // summary and headline, and to not silently drop incomplete tasks.
   const contract = readFileSync(
     "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
     "utf8",
   );
   assert.match(contract, /complete ONLY when its local sync item has real crawled content/);
+  assert.match(contract, /non-empty `summary` and `headline`/);
   assert.match(contract, /source-specific raw retention/);
   assert.match(contract, /FAILURE/);
 });
@@ -3520,6 +3525,7 @@ function recommendationCandidate({
     id,
     kind: FeedItemKind.BLOG_POST,
     title,
+    headline: null,
     body,
     summary: null,
     url: `https://example.com/${id}`,

@@ -207,7 +207,7 @@ async function builderSyncFailureResponse({
 
 function itemResultsToFetchRunOutcomes(
   itemResults: ItemResult[],
-  builders: Array<{ items: Array<{ body?: string; summary?: string | null; rawJson?: unknown }> }>,
+  builders: Array<{ items: Array<{ body?: string; headline?: string | null; summary?: string | null; rawJson?: unknown }> }>,
 ): FetchRunTaskOutcomePatch[] {
   const statsByTaskId = new Map<string, Record<string, unknown>>();
   for (const input of builders) {
@@ -216,10 +216,13 @@ function itemResultsToFetchRunOutcomes(
       if (!fetchTaskId) continue;
       const rawJson = rawJsonRecord(item.rawJson);
       const body = syncTextStats(item.body);
+      const headline = syncTextStats(item.headline);
       const summary = syncTextStats(item.summary);
       statsByTaskId.set(fetchTaskId, {
         bodyChars: body.chars,
         bodyWords: body.words,
+        headlineChars: headline.chars,
+        headlineWords: headline.words,
         summaryChars: summary.chars,
         summaryWords: summary.words,
         agentRuntime: typeof rawJson.agentRuntime === "string" ? rawJson.agentRuntime : null,

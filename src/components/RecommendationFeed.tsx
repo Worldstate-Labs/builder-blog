@@ -18,6 +18,7 @@ export type RecommendationFeedEntry = {
   item: {
     id: string;
     title: string | null;
+    headline: string | null;
     body: string;
     summary: string | null;
     url: string;

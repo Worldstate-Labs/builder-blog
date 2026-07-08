@@ -44,6 +44,7 @@ export async function FavoritePostsSection({ userId }: { userId: string }) {
           body: item.body,
           createdAt: item.createdAt.toISOString(),
           fetchTool: item.fetchTool,
+          headline: item.headline,
           publishedAt: item.publishedAt?.toISOString() ?? null,
           sourceName: item.sourceName,
           sourceType: item.builder?.sourceType ?? null,

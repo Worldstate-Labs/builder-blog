@@ -27,6 +27,7 @@ test("shared post reuse resolver is scoped to Hub-shared feed items", () => {
   assert.match(route, /title:\s*z\.string\(\)\.max\(500\)\.nullable\(\)\.optional\(\)/);
   assert.match(route, /function reusableSourceSummaryIsValid/);
   assert.match(route, /function finalReusableSummaryIsValid/);
+  assert.match(route, /function reusableHeadlineIsValid/);
   assert.match(route, /rowSummaryCanBeReused/);
 });
 
@@ -133,6 +134,7 @@ test("deterministic same-language reuse syncs as a normal item without a worker 
       sourceName: "Current Source",
       body,
       summary: "这是一条已经按当前语言写好的摘要，说明发布内容的重点、背景、关键事实、后续影响和对读者的实际价值。",
+      headline: "发布说明突出关键影响",
       rawJson: {
         fetchTaskId: "reuse-task",
         readMethod: "Copied body from a Hub-shared post with the same URL",
@@ -141,6 +143,7 @@ test("deterministic same-language reuse syncs as a normal item without a worker 
           source: "hub_shared_post",
           bodyReused: true,
           summaryReused: true,
+          headlineReused: true,
           feedItemId: "feed_shared",
         },
       },
@@ -157,6 +160,7 @@ test("deterministic same-language reuse syncs as a normal item without a worker 
   assert.equal(merged.payload.builders[0].items.length, 1);
   assert.equal(merged.payload.builders[0].items[0].body, body);
   assert.equal(merged.payload.builders[0].items[0].summary, "这是一条已经按当前语言写好的摘要，说明发布内容的重点、背景、关键事实、后续影响和对读者的实际价值。");
+  assert.equal(merged.payload.builders[0].items[0].headline, "发布说明突出关键影响");
   assert.equal(merged.payload.builders[0].items[0].rawJson.fetchTaskId, "reuse-task");
   assert.equal(merged.payload.builders[0].items[0].rawJson.deterministicSync, true);
   assert.equal(merged.payload.taskOutcomes.length, 0);
@@ -169,6 +173,7 @@ test("deterministic same-language reuse syncs as a normal item without a worker 
   const planned = cli.fetchRunPlannedTaskPatches(fetchResult)[0];
   assert.equal(planned.status, "fetched");
   assert.equal(planned.summaryChars, task.item.summary.length);
+  assert.equal(planned.headlineChars, task.item.headline.length);
   assert.equal(planned.readMethod, "Copied body from a Hub-shared post with the same URL");
   assert.equal(planned.summaryMethod, "Copied matching-language summary from a Hub-shared post");
 });
@@ -212,6 +217,7 @@ test("CLI shared-summary fallback keeps original distinct from fixed languages",
     body: null,
     bodyReused: false,
     summary: "A source-language summary that should not count as English.",
+    headline: "Source language summary needs translation",
     summaryLanguage: "source",
     source: {
       feedItemId: "feed_shared",
@@ -230,6 +236,7 @@ test("CLI shared-summary fallback keeps original distinct from fixed languages",
     body: null,
     bodyReused: false,
     summary: "A source-language summary that can be reused for original mode.",
+    headline: "Source language summary can be reused",
     summaryLanguage: "source",
     source: {
       feedItemId: "feed_shared",
@@ -242,6 +249,7 @@ test("CLI shared-summary fallback keeps original distinct from fixed languages",
   assert.equal(originalLanguageReuse.contentStatus, "ready");
   assert.equal(originalLanguageReuse.deterministicSync, true);
   assert.equal(originalLanguageReuse.item.rawJson.hubSharedReuse.summaryReused, true);
+  assert.equal(originalLanguageReuse.item.rawJson.hubSharedReuse.headlineReused, true);
 });
 
 test("same-language Hub summary can sync without copying a reusable body", async () => {
@@ -252,6 +260,7 @@ test("same-language Hub summary can sync without copying a reusable body", async
     body: null,
     bodyReused: false,
     summary: "这是一条已经按当前语言写好的摘要，说明发布内容的重点、背景、关键事实、后续影响和对读者的实际价值。",
+    headline: "当前语言摘要可以直接复用",
     summaryLanguage: "zh",
     summaryMatchesTarget: true,
     source: {
@@ -269,6 +278,7 @@ test("same-language Hub summary can sync without copying a reusable body", async
   assert.equal(reused.item.body, "");
   assert.equal(reused.item.rawJson.hubSharedReuse.bodyReused, false);
   assert.equal(reused.item.rawJson.hubSharedReuse.summaryReused, true);
+  assert.equal(reused.item.rawJson.hubSharedReuse.headlineReused, true);
   assert.equal(reused.item.rawJson.readMethod, undefined);
   assert.equal(reused.item.rawJson.summaryMethod, "Copied matching-language summary from a Hub-shared post");
 
@@ -278,10 +288,34 @@ test("same-language Hub summary can sync without copying a reusable body", async
   const merged = cli.mergeShardSyncPayloads(fetchResult, []);
   assert.equal(merged.payload.builders[0].items[0].body, "");
   assert.equal(merged.payload.builders[0].items[0].summary, reused.item.summary);
+  assert.equal(merged.payload.builders[0].items[0].headline, reused.item.headline);
 
   const validation = cli.validateAgentSyncPayload(fetchResult, merged.payload);
   assert.equal(validation.status, "ok");
   assert.equal(validation.validatedFetchTasks, 1);
+});
+
+test("same-language Hub summary without a headline cannot sync deterministically", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = baseFetchTask();
+  const reused = cli.applySharedPostReuseToTask(task, {
+    id: task.id,
+    body: null,
+    bodyReused: false,
+    summary: "这是一条已经按当前语言写好的摘要，说明发布内容的重点、背景、关键事实、后续影响和对读者的实际价值。",
+    summaryLanguage: "zh",
+    summaryMatchesTarget: true,
+    source: {
+      feedItemId: "feed_shared",
+      builderId: "builder_shared",
+      builderName: "Shared Source",
+      url: "https://example.com/posts/launch",
+    },
+  }, { summaryLanguage: "zh" });
+
+  assert.equal(reused, task);
+  assert.equal(reused.contentStatus, "requires_agent");
+  assert.equal(reused.agentWorkType, "fetch_post");
 });
 
 test("same-language Hub summary must pass reusable and final validation before copy", async () => {
@@ -428,6 +462,7 @@ test("different-language Hub summary becomes a ready fetch_post subtask that onl
                 publishedAt: reused.item.publishedAt,
                 sourceName: reused.item.sourceName,
                 summary: "这条来源说明一次发布、核心产品变化、可能的受众影响，以及读者可以采取的后续步骤。",
+                headline: "发布影响和后续步骤已翻译",
                 rawJson: {
                   fetchTaskId: reused.id,
                   agentWorkType: "translate_summary_only",

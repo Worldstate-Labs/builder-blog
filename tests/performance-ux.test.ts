@@ -2482,7 +2482,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-chev fb-task-chev"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-source-type"/);
   assert.doesNotMatch(fetchLogPanel, /\{group\.sourceType\}<\/span>/);
-  assert.match(fetchLogPanel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.synced\} synced\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
+  assert.match(fetchLogPanel, /aria-label=\{`\$\{displayText\(group\.name\)\}: \$\{stats\.planned\} planned, \$\{stats\.synced\} synced\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
   assert.match(fetchLogPanel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-stat is-danger"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);

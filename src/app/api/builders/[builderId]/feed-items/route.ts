@@ -45,6 +45,7 @@ export async function GET(_request: Request, { params }: Params) {
         kind: item.kind,
         externalId: item.externalId,
         title: item.title,
+        headline: item.headline,
         body: item.body,
         summary: item.summary,
         url: item.url,

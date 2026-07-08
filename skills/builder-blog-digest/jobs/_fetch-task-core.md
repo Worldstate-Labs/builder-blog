@@ -14,14 +14,15 @@
 If the fetch result contains a non-empty `fetchTasks` array, complete exactly
 the task IDs returned by the CLI. Do not add new sources, URLs, or feed items
 that were not returned by the CLI, the task payload, or a CLI-expanded
-candidate discovery result. Every produced item must include `summary`.
+candidate discovery result. Every produced item must include `summary` and
+`headline`.
 
 Lifecycle vocabulary for this contract:
 - Planned = each CLI-returned post task that must end in one terminal outcome.
 - Read = obtain the final primary body for the post. For `contentStatus="ready"`,
   the CLI already did this and `task.item.body` is the body.
-- Summarize = generate exactly one single-post summary from
-  `task.summaryInstructions.prompt`.
+- Summarize = generate exactly one single-post summary and one one-sentence
+  post headline from `task.summaryInstructions.prompt`.
 - Sync = validate and upload the item or a `taskOutcomes` terminal outcome to
   FollowBrief. Use "sync" for this step; do not call it "save". The sync command
   applies source-specific raw retention policy before the server stores a row:
@@ -78,16 +79,17 @@ How to execute each `fetchTask`:
   `minLocalDiversity` and `maxTimestampDensity`. Never accept body content whose origin string appears in
   `disallowedPrimarySources` (the list is per source). Title, description, feed
   description, and page metadata are never acceptable body content for any source.
-- Generate a single-post `summary` only after the body is final. Follow
+- Generate a single-post `summary` and `headline` only after the body is final. Follow
   `task.summaryInstructions.prompt` and summarize this one task item only.
   `task.summaryInstructions.prompt` is the only prompt source for fetch-task
   summaries. It already includes the common post-summary rules, source-specific
-  rules, and output language. Do not re-compose it from `context.sources` or
-  other prompt configuration. Keep the finished summary under 1200 characters —
-  the validator rejects longer ones as `summary_too_long`.
+  rules, output language, and headline rules. Do not re-compose it from
+  `context.sources` or other prompt configuration. Keep the finished summary
+  under 1200 characters — the validator rejects longer ones as
+  `summary_too_long`. Keep `headline` one sentence and no more than 20 words.
 - Build one output item under the copied builder. Copy stable item fields from
   `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
-  `sourceName`), set `body`, set `summary`, and set `rawJson`.
+  `sourceName`), set `body`, set `summary`, set `headline`, and set `rawJson`.
 - Treat `body` in this local sync payload as the final primary content used for
   validation and summarization. Do not put raw HTML, full transcripts, raw API
   responses, or large copied source text into `rawJson`; `rawJson` is for

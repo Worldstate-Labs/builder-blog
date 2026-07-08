@@ -53,6 +53,8 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
               bodyWords: 180,
               summaryChars: 300,
               summaryWords: 45,
+              headlineChars: 32,
+              headlineWords: 5,
               readMethod: "Copied body from a Hub-shared post with the same URL",
               summaryMethod: "Copied matching-language summary from a Hub-shared post",
               hubSharedReuse: { bodyReused: true, summaryReused: true },
@@ -103,6 +105,8 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
     bodyWords: 180,
     summaryChars: 300,
     summaryWords: 45,
+    headlineChars: 32,
+    headlineWords: 5,
     readMethod: "Copied body from a Hub-shared post with the same URL",
     summaryMethod: "Copied matching-language summary from a Hub-shared post",
     hubSharedReuse: { bodyReused: true, summaryReused: true },
@@ -431,6 +435,8 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
               bodyWords: 180,
               summaryChars: 300,
               summaryWords: 45,
+              headlineChars: 32,
+              headlineWords: 5,
               updatedAt: "2026-06-28T10:01:20.000Z",
             },
           ],
@@ -463,6 +469,8 @@ test("serializeCloudWorkerHost exposes live host progress and post task queue", 
   assert.equal(result.tasks[0].bodyWords, 180);
   assert.equal(result.tasks[0].summaryChars, 300);
   assert.equal(result.tasks[0].summaryWords, 45);
+  assert.equal(result.tasks[0].headlineChars, 32);
+  assert.equal(result.tasks[0].headlineWords, 5);
   assert.equal(result.recentEvents[0].status, "synced");
 });
 
