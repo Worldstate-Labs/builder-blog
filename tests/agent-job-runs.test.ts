@@ -101,6 +101,9 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60/);
   assert.match(cli, /FETCH_PROGRESS_SOURCE_LIMIT = 120/);
   assert.match(cli, /FETCH_PROGRESS_TASK_LIMIT = 120/);
+  assert.match(cli, /FETCH_PROGRESS_WEB_RECENT_EVENT_LIMIT = 20/);
+  assert.match(cli, /FETCH_PROGRESS_WEB_SOURCE_LIMIT = 32/);
+  assert.match(cli, /FETCH_PROGRESS_WEB_TASK_LIMIT = 24/);
   assert.match(cli, /function createFetchProgressState/);
   assert.match(cli, /async function emitFetchJobProgress/);
   assert.match(cli, /async function emitCheckpointProgress/);
@@ -117,6 +120,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /backfillMissing: !completedOnly/);
   assert.match(cli, /completedTaskIds/);
   assert.match(cli, /includeInternal/);
+  assert.match(cli, /fetchProgressSnapshot\(progress, \{ web: true \}\)/);
   assert.match(cli, /progress: fetchProgressSnapshotValue/);
   assert.match(cli, /agentModel: DEFAULT_AGENT_MODEL \|\| null/);
   assert.match(cli, /tasks: Array\.isArray\(progress\.tasks\)/);
@@ -133,6 +137,8 @@ test("library fetch job runs carry bounded live progress without schema churn", 
 
   assert.match(panel, /type FetchJobProgress/);
   assert.match(panel, /type FetchTaskProgress/);
+  assert.match(panel, /decodeHtmlEntities/);
+  assert.match(panel, /function displayText/);
   assert.match(panel, /function readFetchJobProgress/);
   assert.match(panel, /function fetchTaskProgressMap/);
   assert.match(panel, /function JobLifecycle/);
@@ -149,8 +155,11 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(panel, /showRuntimeState && runtimeStageLabel/);
   assert.doesNotMatch(panel, /\{jobRun\.stage \|\| "runtime"\} ·/);
   assert.match(route, /function mergeAgentJobRunDetails/);
+  assert.match(route, /function mergeAgentJobRunProgress/);
+  assert.match(route, /function mergeAgentJobRunStage/);
+  assert.match(route, /compactAgentJobRunDetails/);
   assert.match(route, /existingRun\?\.details/);
-  assert.match(route, /merged\.progress = current\.progress/);
+  assert.match(route, /mergeAgentJobRunProgress\(current\.progress, next\.progress\)/);
 });
 
 test("runner supervises cron workers instead of skipping active old instances", () => {

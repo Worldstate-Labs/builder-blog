@@ -21,6 +21,7 @@ import { RunUsageSummary } from "@/components/RunUsageSummary";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import { decodeHtmlEntities } from "@/lib/decode-entities";
 import {
   fetchFailureMessage,
   isContentFailureReason,
@@ -301,6 +302,11 @@ function formatAbsolute(iso: string): string {
 
 function formatLanguage(value: string) {
   return displayLanguagePreference(value);
+}
+
+function displayText(value: string | null | undefined, fallback = ""): string {
+  const text = String(value ?? "").trim();
+  return text ? decodeHtmlEntities(text) : fallback;
 }
 
 function formatDuration(ms: number): string {
@@ -1821,7 +1827,7 @@ function countNoun(count: number, singular: string, plural = `${singular}s`): st
 }
 
 function fetchRunDisplaySummary(run: LibraryFetchRunListItem, stats: FetchRunStats, liveProgress: FetchJobProgress | null): string {
-  if (!liveProgress) return run.summary;
+  if (!liveProgress) return displayText(run.summary);
   const sourceCount = Math.max(stats.sourcesTotal, stats.sourcesScanned, run.buildersAttempted);
   const readPart = stats.read > 0
     ? `Read ${countNoun(stats.read, "post")} from ${countNoun(sourceCount, "source")}`
@@ -2035,7 +2041,7 @@ function JobLifecycle({
       open: Boolean(current.source),
       children: (
         <dl className="sync-panel-task-fact-list">
-          <FactRow label="Current source" value={<span>{current.source ?? "None"}</span>} />
+          <FactRow label="Current source" value={<span>{displayText(current.source, "None")}</span>} />
           {stage ? <FactRow label="Stage" value={<span>{stage}</span>} /> : null}
         </dl>
       ),
@@ -2061,7 +2067,7 @@ function JobLifecycle({
       children: (
         <dl className="sync-panel-task-fact-list">
           <FactRow label="Posts with body" value={<span>{formatCount(stats.read)}</span>} />
-          {current.task ? <FactRow label="Current task" value={<span>{current.task}</span>} /> : null}
+          {current.task ? <FactRow label="Current task" value={<span>{displayText(current.task)}</span>} /> : null}
         </dl>
       ),
     },
@@ -2091,7 +2097,7 @@ function JobLifecycle({
           {stats.skipped > 0 ? <FactRow label="Skipped" value={<span>{formatCount(stats.skipped)}</span>} /> : null}
           {stats.failed > 0 ? <FactRow label="Failed" value={<span className="sync-panel-task-danger">{formatCount(stats.failed)}</span>} /> : null}
           {stats.actionNeeded > 0 ? <FactRow label="Action needed" value={<span>{formatCount(stats.actionNeeded)}</span>} /> : null}
-          {recentEvent?.message ? <FactRow label="Latest event" value={<span>{recentEvent.message}</span>} /> : null}
+          {recentEvent?.message ? <FactRow label="Latest event" value={<span>{displayText(recentEvent.message)}</span>} /> : null}
         </dl>
       ),
     },
@@ -2410,7 +2416,7 @@ function taskSourceGroups(fetchTasks: FetchTaskLog[]): FetchTaskSourceGroup[] {
     }
     groups.set(key, {
       key,
-      name: task.builder || "Unknown source",
+      name: displayText(task.builder, "Unknown source"),
       sourceType: task.sourceType || "Unknown source type",
       tasks: [task],
     });
@@ -2615,10 +2621,10 @@ function DetailsBody({
                 <li className="sync-panel-task-worker-group" key={workerGroup.key}>
                   <details className="sync-panel-task-worker-details" open>
                     <summary className="sync-panel-task-worker-summary">
-                      <span className="sync-panel-task-worker-name">{workerGroup.name}</span>
+                      <span className="sync-panel-task-worker-name">{displayText(workerGroup.name)}</span>
                       {usageText ? (
                         <span
-                          aria-label={`${workerGroup.name}: ${usageText}`}
+                          aria-label={`${displayText(workerGroup.name)}: ${usageText}`}
                           className="sync-panel-task-worker-meta"
                         >
                           {usageText}
@@ -2632,9 +2638,9 @@ function DetailsBody({
                           <li className="sync-panel-task-source-group" key={group.key}>
                             <details className="sync-panel-task-source-details" open>
                               <summary className="sync-panel-task-source-summary">
-                                <span className="sync-panel-task-source-name">{group.name}</span>
+                                <span className="sync-panel-task-source-name">{displayText(group.name)}</span>
                                 <span
-                                  aria-label={`${group.name}: ${stats.planned} planned, ${stats.synced} synced${stats.failed > 0 ? `, ${stats.failed} failed` : ""}`}
+                                  aria-label={`${displayText(group.name)}: ${stats.planned} planned, ${stats.synced} synced${stats.failed > 0 ? `, ${stats.failed} failed` : ""}`}
                                   className="sync-panel-task-source-meta"
                                 >
                                   <span className="sync-panel-task-source-stat">
@@ -2683,9 +2689,9 @@ function DetailsBody({
             {userActions.map((action, index) => (
               <li key={`${action.kind ?? "action"}-${index}`} className="sync-panel-detail-action-row">
                 <span className="fb-chip sync-panel-detail-action-chip">{action.kind ?? "action"}</span>
-                <span className="sync-panel-detail-action-builder">{action.builder ?? ""}</span>
+                <span className="sync-panel-detail-action-builder">{displayText(action.builder)}</span>
                 {action.message ? (
-                  <span className="sync-panel-detail-action-message">: {action.message}</span>
+                  <span className="sync-panel-detail-action-message">: {displayText(action.message)}</span>
                 ) : null}
                 {action.helpUrl ? (
                   <>
@@ -2717,7 +2723,7 @@ function DetailsBody({
                 key={`${message.slice(0, 32)}-${index}`}
                 className="mono sync-panel-detail-error-row"
               >
-                {message}
+                {displayText(message)}
               </li>
             ))}
           </ul>
@@ -2786,6 +2792,7 @@ function describeWork(task: FetchTaskLog): WorkInfo {
         fix: null,
       };
     case "x_token_missing":
+    case "x_token_invalid":
       return {
         label: "Needs X access",
         blurb:
@@ -2821,7 +2828,7 @@ function isBlocked(task: FetchTaskLog): boolean {
   const code = task.agentWorkType ?? task.fetchTool ?? "";
   return (
     typeof code === "string" &&
-    (code.startsWith("user_action_") || code.includes("token_missing"))
+    (code.startsWith("user_action_") || code.includes("token_missing") || code.includes("token_invalid"))
   );
 }
 
@@ -3234,11 +3241,11 @@ export function TaskRow({
   const liveBodySize = sizeText(liveTask?.bodyChars, liveTask?.bodyWords);
   const liveSummarySize = sizeText(liveTask?.summaryChars, liveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
-  const summaryMethod = task.summaryMethod?.trim() || null;
+  const summaryMethod = displayText(task.summaryMethod) || null;
   const bannerBlurb =
     banner.tone === "fail"
-      ? failureReasonText(task) ?? work.blurb
-      : work.blurb;
+      ? failureReasonText(task) ?? displayText(work.blurb)
+      : displayText(work.blurb);
   const missingShard = missingShardText(task);
   const workerLog = workerLogText(task);
   const missingWorkerLog = missingWorkerLogText(task);
@@ -3345,7 +3352,7 @@ export function TaskRow({
                   rel="noreferrer"
                   target="_blank"
                 >
-                  {task.url}
+                  {displayText(task.url)}
                 </a>
               }
             />
@@ -3448,8 +3455,8 @@ export function TaskRow({
               value={<span className={syncOutcome.tone === "fail" ? "sync-panel-task-danger" : "sync-panel-task-muted"}>{failureReasonText(task)}</span>}
             />
           ) : null}
-          {liveTask?.message ? <FactRow label="Latest event" value={<span>{liveTask.message}</span>} /> : null}
-          {liveTask?.workerId ? <FactRow label="Local Agent" value={<span>{liveTask.workerId}</span>} /> : null}
+          {liveTask?.message ? <FactRow label="Latest event" value={<span>{displayText(liveTask.message)}</span>} /> : null}
+          {liveTask?.workerId ? <FactRow label="Local Agent" value={<span>{displayText(liveTask.workerId)}</span>} /> : null}
           {liveTask?.updatedAt ? (
             <FactRow
               label="Updated"
@@ -3475,7 +3482,7 @@ export function TaskRow({
             {pill.label}
           </span>
           <span className="sync-panel-task-title">
-            {task.title ?? task.url ?? "Untitled task"}
+            {displayText(task.title ?? task.url, "Untitled task")}
           </span>
         </summary>
 
@@ -3495,10 +3502,10 @@ export function TaskRow({
             >
               {liveLabel}
               {liveTask?.message ? (
-                <span className="sync-panel-task-banner-blurb">: {liveTask.message}</span>
+                <span className="sync-panel-task-banner-blurb">: {displayText(liveTask.message)}</span>
               ) : null}
               {liveTask?.workerId ? (
-                <span className="sync-panel-task-banner-blurb"> · {liveTask.workerId}</span>
+                <span className="sync-panel-task-banner-blurb"> · {displayText(liveTask.workerId)}</span>
               ) : null}
               {liveTask?.updatedAt ? (
                 <span className="sync-panel-task-banner-blurb">

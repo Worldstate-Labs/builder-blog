@@ -1276,6 +1276,9 @@ const FETCH_PROGRESS_VERSION = 1;
 const FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60;
 const FETCH_PROGRESS_SOURCE_LIMIT = 120;
 const FETCH_PROGRESS_TASK_LIMIT = 120;
+const FETCH_PROGRESS_WEB_RECENT_EVENT_LIMIT = 20;
+const FETCH_PROGRESS_WEB_SOURCE_LIMIT = 32;
+const FETCH_PROGRESS_WEB_TASK_LIMIT = 24;
 
 function createFetchProgressState(initial = {}) {
   return {
@@ -1307,6 +1310,19 @@ function createFetchProgressState(initial = {}) {
 }
 
 function fetchProgressSnapshot(progress, options = {}) {
+  const sourceLimit = options.includeInternal
+    ? undefined
+    : options.web
+      ? FETCH_PROGRESS_WEB_SOURCE_LIMIT
+      : FETCH_PROGRESS_SOURCE_LIMIT;
+  const taskLimit = options.includeInternal
+    ? undefined
+    : options.web
+      ? FETCH_PROGRESS_WEB_TASK_LIMIT
+      : FETCH_PROGRESS_TASK_LIMIT;
+  const eventLimit = options.web
+    ? FETCH_PROGRESS_WEB_RECENT_EVENT_LIMIT
+    : FETCH_PROGRESS_RECENT_EVENT_LIMIT;
   const snapshot = {
     version: FETCH_PROGRESS_VERSION,
     stage: progress.stage,
@@ -1314,13 +1330,57 @@ function fetchProgressSnapshot(progress, options = {}) {
     counters: { ...(progress.counters ?? {}) },
     current: { ...(progress.current ?? {}) },
     sources: Array.isArray(progress.sources)
-      ? progress.sources.slice(options.includeInternal ? undefined : -FETCH_PROGRESS_SOURCE_LIMIT)
+      ? progress.sources.slice(sourceLimit === undefined ? undefined : -sourceLimit).map((source) =>
+          options.web
+            ? {
+                builderId: compactProgressText(source.builderId, 120),
+                name: compactProgressText(source.name, 160),
+                sourceType: compactProgressText(source.sourceType, 80),
+                status: compactProgressText(source.status, 80),
+                itemsFetched: source.itemsFetched,
+                tasksGenerated: source.tasksGenerated,
+                discoveryTasksGenerated: source.discoveryTasksGenerated,
+                error: compactProgressText(source.error, 180),
+                updatedAt: compactProgressText(source.updatedAt, 80),
+              }
+            : source)
       : [],
     tasks: Array.isArray(progress.tasks)
-      ? progress.tasks.slice(options.includeInternal ? undefined : -FETCH_PROGRESS_TASK_LIMIT)
+      ? progress.tasks.slice(taskLimit === undefined ? undefined : -taskLimit).map((task) =>
+          options.web
+            ? {
+                id: compactProgressText(task.id ?? task.taskId, 500),
+                status: compactProgressText(task.status, 80),
+                phase: compactProgressText(task.phase, 80),
+                message: compactProgressText(task.message, 180),
+                reason: compactProgressText(task.reason, 160),
+                builder: compactProgressText(task.builder, 160),
+                builderId: compactProgressText(task.builderId, 120),
+                sourceType: compactProgressText(task.sourceType, 80),
+                title: compactProgressText(task.title, 180),
+                url: compactProgressText(task.url, 240),
+                workerId: compactProgressText(task.workerId, 80),
+                bodyChars: task.bodyChars,
+                bodyWords: task.bodyWords,
+                summaryChars: task.summaryChars,
+                summaryWords: task.summaryWords,
+                updatedAt: compactProgressText(task.updatedAt, 80),
+              }
+            : task)
       : [],
     recentEvents: Array.isArray(progress.recentEvents)
-      ? progress.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
+      ? progress.recentEvents.slice(-eventLimit).map((event) =>
+          options.web
+            ? {
+                at: compactProgressText(event.at, 80),
+                type: compactProgressText(event.type, 80),
+                message: compactProgressText(event.message, 220),
+                taskId: compactProgressText(event.taskId, 500),
+                builderId: compactProgressText(event.builderId, 120),
+                status: compactProgressText(event.status, 80),
+                reason: compactProgressText(event.reason, 180),
+              }
+            : event)
       : [],
   };
   if (options.includeInternal && Array.isArray(progress.completedTaskIds)) {
@@ -1476,7 +1536,7 @@ async function emitFetchJobProgress(config, progress, update = {}) {
 
   if (webSyncDisabled() || !config?.appUrl || !config?.token || !envJobRunId()) return;
   try {
-    const fetchProgressSnapshotValue = fetchProgressSnapshot(progress);
+    const fetchProgressSnapshotValue = fetchProgressSnapshot(progress, { web: true });
     await emitAgentJobRunRecord(config, {
       jobType: envJobType(),
       trigger: envJobTrigger(),
@@ -9488,8 +9548,8 @@ async function patchFetchRunOutcomes(
         ? agentOutcome.plannedTask
         : null;
     const work = String(planned?.agentWorkType || "");
-    // Informational user-action tasks (e.g. x_token_missing) aren't failures.
-    if (work === "x_token_missing" || work.startsWith("user_action_")) {
+    // Informational user-action tasks (e.g. invalid X access) aren't failures.
+    if (isUserActionAgentWorkType(work)) {
       taskOutcomes.push({
         fetchTaskId: id,
         status: "action_needed",
@@ -9674,7 +9734,7 @@ function fetchTaskLogPatch(task, id) {
 
 function plannedFetchTaskStatus(task) {
   const work = String(task?.agentWorkType ?? "");
-  if (work === "x_token_missing" || work.startsWith("user_action_")) return "action_needed";
+  if (isUserActionAgentWorkType(work)) return "action_needed";
   if (task?.contentStatus === "ready") return "fetched";
   return "pending";
 }

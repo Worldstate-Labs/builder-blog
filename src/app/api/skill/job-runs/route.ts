@@ -8,6 +8,28 @@ import { formatZodError } from "@/lib/zod-error";
 const MAX_DETAILS_BYTES = 50_000;
 const MAX_SUMMARY_CHARS = 500;
 const TERMINAL_AGENT_JOB_STATUSES = new Set(["succeeded", "failed", "timed_out", "killed", "replaced", "stale"]);
+const FETCH_PROGRESS_SOURCE_LIMIT = 32;
+const FETCH_PROGRESS_TASK_LIMIT = 24;
+const FETCH_PROGRESS_RECENT_EVENT_LIMIT = 20;
+
+const AGENT_JOB_STAGE_RANK: Record<string, number> = {
+  starting: 0,
+  heartbeat: 1,
+  fetch_sources: 10,
+  scanning_sources: 10,
+  expand_discovery: 15,
+  shard_fetch_tasks: 20,
+  tasks_planned: 20,
+  run_fetch_workers: 30,
+  workers_running: 30,
+  merge_results: 40,
+  validate_results: 45,
+  checkpoint_syncing: 50,
+  sync_to_followbrief: 55,
+  syncing: 55,
+  reconciled: 60,
+  no_update: 60,
+};
 
 const AgentJobRunSchema = z.object({
   jobType: z.enum(["library-fetch", "cloud-library-fetch", "digest-build"]),
@@ -37,6 +59,200 @@ function detailsRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function compactText(value: unknown, max: number): string | null {
+  if (value === null || value === undefined) return null;
+  const text = String(value).replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > max ? text.slice(0, max - 1) : text;
+}
+
+function finiteNumber(value: unknown): number | null {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function stageRank(stage: unknown): number {
+  const key = String(stage ?? "").trim();
+  if (!key) return -1;
+  return AGENT_JOB_STAGE_RANK[key] ?? 5;
+}
+
+function mergeAgentJobRunStage(current: unknown, incoming: unknown): string | null {
+  const currentStage = compactText(current, 120);
+  const incomingStage = compactText(incoming, 120);
+  if (!incomingStage) return currentStage;
+  if (!currentStage) return incomingStage;
+  return stageRank(incomingStage) >= stageRank(currentStage) ? incomingStage : currentStage;
+}
+
+function mergeAgentJobRunSummary(
+  currentStage: unknown,
+  currentSummary: string | null,
+  incomingStage: unknown,
+  incomingSummary: string | null,
+): string | null {
+  const nextSummary = compactText(incomingSummary, MAX_SUMMARY_CHARS);
+  if (!nextSummary) return currentSummary ?? null;
+  if (!compactText(incomingStage, 120) && currentSummary) return currentSummary;
+  if (stageRank(incomingStage) < stageRank(currentStage) && currentSummary) return currentSummary;
+  return nextSummary;
+}
+
+function sortByUpdatedAt<T extends Record<string, unknown>>(items: T[]): T[] {
+  return items.slice().sort((left, right) =>
+    String(left.updatedAt ?? left.at ?? "").localeCompare(String(right.updatedAt ?? right.at ?? "")),
+  );
+}
+
+function compactProgressSource(value: unknown): Record<string, unknown> {
+  const source = detailsRecord(value);
+  return {
+    ...(compactText(source.builderId, 120) ? { builderId: compactText(source.builderId, 120) } : {}),
+    ...(compactText(source.name, 160) ? { name: compactText(source.name, 160) } : {}),
+    ...(compactText(source.sourceType, 80) ? { sourceType: compactText(source.sourceType, 80) } : {}),
+    ...(compactText(source.status, 80) ? { status: compactText(source.status, 80) } : {}),
+    ...(finiteNumber(source.itemsFetched) !== null ? { itemsFetched: finiteNumber(source.itemsFetched) } : {}),
+    ...(finiteNumber(source.tasksGenerated) !== null ? { tasksGenerated: finiteNumber(source.tasksGenerated) } : {}),
+    ...(finiteNumber(source.discoveryTasksGenerated) !== null
+      ? { discoveryTasksGenerated: finiteNumber(source.discoveryTasksGenerated) }
+      : {}),
+    ...(compactText(source.error, 180) ? { error: compactText(source.error, 180) } : {}),
+    ...(compactText(source.updatedAt, 80) ? { updatedAt: compactText(source.updatedAt, 80) } : {}),
+  };
+}
+
+function compactProgressTask(value: unknown): Record<string, unknown> {
+  const task = detailsRecord(value);
+  return {
+    ...(compactText(task.id ?? task.taskId, 500) ? { id: compactText(task.id ?? task.taskId, 500) } : {}),
+    ...(compactText(task.status, 80) ? { status: compactText(task.status, 80) } : {}),
+    ...(compactText(task.phase, 80) ? { phase: compactText(task.phase, 80) } : {}),
+    ...(compactText(task.message, 180) ? { message: compactText(task.message, 180) } : {}),
+    ...(compactText(task.reason, 160) ? { reason: compactText(task.reason, 160) } : {}),
+    ...(compactText(task.builder, 160) ? { builder: compactText(task.builder, 160) } : {}),
+    ...(compactText(task.builderId, 120) ? { builderId: compactText(task.builderId, 120) } : {}),
+    ...(compactText(task.sourceType, 80) ? { sourceType: compactText(task.sourceType, 80) } : {}),
+    ...(compactText(task.title, 180) ? { title: compactText(task.title, 180) } : {}),
+    ...(compactText(task.url, 240) ? { url: compactText(task.url, 240) } : {}),
+    ...(compactText(task.workerId, 80) ? { workerId: compactText(task.workerId, 80) } : {}),
+    ...(finiteNumber(task.bodyChars) !== null ? { bodyChars: finiteNumber(task.bodyChars) } : {}),
+    ...(finiteNumber(task.bodyWords) !== null ? { bodyWords: finiteNumber(task.bodyWords) } : {}),
+    ...(finiteNumber(task.summaryChars) !== null ? { summaryChars: finiteNumber(task.summaryChars) } : {}),
+    ...(finiteNumber(task.summaryWords) !== null ? { summaryWords: finiteNumber(task.summaryWords) } : {}),
+    ...(compactText(task.updatedAt, 80) ? { updatedAt: compactText(task.updatedAt, 80) } : {}),
+  };
+}
+
+function compactProgressEvent(value: unknown): Record<string, unknown> {
+  const event = detailsRecord(value);
+  return {
+    ...(compactText(event.at, 80) ? { at: compactText(event.at, 80) } : {}),
+    ...(compactText(event.type, 80) ? { type: compactText(event.type, 80) } : {}),
+    ...(compactText(event.message, 220) ? { message: compactText(event.message, 220) } : {}),
+    ...(compactText(event.taskId, 500) ? { taskId: compactText(event.taskId, 500) } : {}),
+    ...(compactText(event.builderId, 120) ? { builderId: compactText(event.builderId, 120) } : {}),
+    ...(compactText(event.status, 80) ? { status: compactText(event.status, 80) } : {}),
+    ...(compactText(event.reason, 180) ? { reason: compactText(event.reason, 180) } : {}),
+  };
+}
+
+function mergeProgressArray(
+  current: unknown,
+  incoming: unknown,
+  keyFor: (value: Record<string, unknown>) => string,
+  compact: (value: unknown) => Record<string, unknown>,
+  limit: number,
+): Record<string, unknown>[] {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const item of Array.isArray(current) ? current : []) {
+    const compacted = compact(item);
+    const key = keyFor(compacted);
+    if (key) byKey.set(key, compacted);
+  }
+  for (const item of Array.isArray(incoming) ? incoming : []) {
+    const compacted = compact(item);
+    const key = keyFor(compacted);
+    if (!key) continue;
+    byKey.set(key, { ...(byKey.get(key) ?? {}), ...compacted });
+  }
+  return sortByUpdatedAt([...byKey.values()]).slice(-limit);
+}
+
+function mergeProgressCounters(current: unknown, incoming: unknown): Record<string, number> {
+  const merged: Record<string, number> = {};
+  for (const source of [detailsRecord(current), detailsRecord(incoming)]) {
+    for (const [key, value] of Object.entries(source)) {
+      const number = finiteNumber(value);
+      if (number === null) continue;
+      merged[key] = Math.max(merged[key] ?? Number.NEGATIVE_INFINITY, number);
+    }
+  }
+  return merged;
+}
+
+function mergeAgentJobRunProgress(currentValue: unknown, incomingValue: unknown): Record<string, unknown> | null {
+  const current = detailsRecord(currentValue);
+  const incoming = detailsRecord(incomingValue);
+  if (!hasOwn(current, "stage") && !hasOwn(incoming, "stage")) return null;
+  const mergedStage = mergeAgentJobRunStage(current.stage, incoming.stage) ?? "running";
+  const incomingIsCurrent = stageRank(incoming.stage) >= stageRank(current.stage);
+  const currentValueRecord = detailsRecord(current.current);
+  const incomingValueRecord = detailsRecord(incoming.current);
+  const currentTask = incomingIsCurrent
+    ? { ...incomingValueRecord }
+    : { ...currentValueRecord };
+  const recentEvents = [
+    ...(Array.isArray(current.recentEvents) ? current.recentEvents : []),
+    ...(Array.isArray(incoming.recentEvents) ? incoming.recentEvents : []),
+  ]
+    .map(compactProgressEvent)
+    .filter((event) => compactText(event.at ?? event.message, 500));
+  const eventKeys = new Set<string>();
+  const dedupedEvents = recentEvents.filter((event) => {
+    const key = `${event.at ?? ""}:${event.type ?? ""}:${event.message ?? ""}`;
+    if (eventKeys.has(key)) return false;
+    eventKeys.add(key);
+    return true;
+  });
+
+  return {
+    version: finiteNumber(incoming.version) ?? finiteNumber(current.version) ?? 1,
+    stage: mergedStage,
+    updatedAt: compactText(incoming.updatedAt, 80) ?? compactText(current.updatedAt, 80) ?? new Date().toISOString(),
+    counters: mergeProgressCounters(current.counters, incoming.counters),
+    current: currentTask,
+    sources: mergeProgressArray(
+      current.sources,
+      incoming.sources,
+      (source) => String(source.builderId ?? source.name ?? ""),
+      compactProgressSource,
+      FETCH_PROGRESS_SOURCE_LIMIT,
+    ),
+    tasks: mergeProgressArray(
+      current.tasks,
+      incoming.tasks,
+      (task) => String(task.id ?? task.taskId ?? ""),
+      compactProgressTask,
+      FETCH_PROGRESS_TASK_LIMIT,
+    ),
+    recentEvents: sortByUpdatedAt(dedupedEvents).slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT),
+  };
+}
+
+function compactAgentJobRunDetails(details: Record<string, unknown>): Record<string, unknown> {
+  const compacted = { ...details };
+  if (hasOwn(compacted, "progress")) {
+    const progress = mergeAgentJobRunProgress({}, compacted.progress);
+    if (progress) compacted.progress = progress;
+    else delete compacted.progress;
+  }
+  return compacted;
+}
+
 function mergeAgentJobRunDetails(
   existing: unknown,
   incoming: unknown,
@@ -44,13 +260,11 @@ function mergeAgentJobRunDetails(
   const current = detailsRecord(existing);
   const next = detailsRecord(incoming);
   const merged = { ...current, ...next };
-  if (
-    Object.prototype.hasOwnProperty.call(current, "progress") &&
-    !Object.prototype.hasOwnProperty.call(next, "progress")
-  ) {
-    merged.progress = current.progress;
+  if (hasOwn(current, "progress") || hasOwn(next, "progress")) {
+    const progress = mergeAgentJobRunProgress(current.progress, next.progress);
+    if (progress) merged.progress = progress;
   }
-  return merged;
+  return compactAgentJobRunDetails(merged);
 }
 
 function isTerminalAgentJobStatus(status: unknown): boolean {
@@ -132,6 +346,13 @@ export async function POST(request: Request) {
 
   const now = new Date();
   const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
+  const mergedStage = mergeAgentJobRunStage(existingRun?.stage, parsed.data.stage ?? null);
+  const mergedSummary = mergeAgentJobRunSummary(
+    existingRun?.stage ?? null,
+    existingRun?.summary ?? null,
+    parsed.data.stage ?? null,
+    parsed.data.summary ?? null,
+  );
   const incomingRunData = {
     status: parsed.data.status,
     scheduleJob: parsed.data.scheduleJob ?? null,
@@ -145,8 +366,8 @@ export async function POST(request: Request) {
     workerPid: parsed.data.workerPid ?? null,
     hostname: parsed.data.hostname ?? request.headers.get("x-machine-hostname"),
     platform: parsed.data.platform ?? request.headers.get("x-machine-platform"),
-    stage: parsed.data.stage ?? null,
-    summary: parsed.data.summary ?? null,
+    stage: mergedStage,
+    summary: mergedSummary,
     details: detailsValue as object,
   };
   const runData = existingRun && isTerminalAgentJobStatus(existingRun.status)

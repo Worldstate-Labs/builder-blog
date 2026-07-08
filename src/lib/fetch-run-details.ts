@@ -143,6 +143,15 @@ function isPlannedPostTask(task: FetchRunTask): boolean {
   return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
 }
 
+export function countPlannedPostTasks(detailsValue: unknown): number {
+  const details = detailsValue && typeof detailsValue === "object" && !Array.isArray(detailsValue)
+    ? (detailsValue as Record<string, unknown>)
+    : {};
+  return Array.isArray(details.fetchTasks)
+    ? details.fetchTasks.map(taskRecord).filter(isPlannedPostTask).length
+    : 0;
+}
+
 export function deriveFetchRunStatusFromDetails(
   current: FetchRunStatusSnapshot,
   detailsValue: unknown,

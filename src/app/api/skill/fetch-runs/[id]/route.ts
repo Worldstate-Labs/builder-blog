@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { deriveFetchRunStatusFromDetails, mergeFetchRunDetails } from "@/lib/fetch-run-details";
+import { countPlannedPostTasks, deriveFetchRunStatusFromDetails, mergeFetchRunDetails } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { MAX_FETCH_TASK_ID } from "@/lib/skill-contracts";
@@ -67,6 +67,40 @@ const PatchSchema = z.object({
 
 type Params = { params: Promise<{ id: string }> };
 
+function countNoun(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function fetchRunPatchSummary({
+  buildersAttempted,
+  errorCount,
+  itemsFetched,
+  plannedPosts,
+  userActionsCount,
+}: {
+  buildersAttempted: number;
+  errorCount: number;
+  itemsFetched: number;
+  plannedPosts: number;
+  userActionsCount: number;
+}): string {
+  const sources = countNoun(buildersAttempted, "source");
+  const readPart = itemsFetched > 0
+    ? `Read ${countNoun(itemsFetched, "post")} from ${sources}`
+    : `Checked ${sources}`;
+  const parts = [readPart];
+  if (plannedPosts > 0 && plannedPosts !== itemsFetched) {
+    parts.push(`${countNoun(plannedPosts, "post")} planned`);
+  }
+  if (userActionsCount > 0) {
+    parts.push(`${countNoun(userActionsCount, "action")} needed`);
+  }
+  if (errorCount > 0) {
+    parts.push(`${countNoun(errorCount, "post")} failed`);
+  }
+  return parts.join(" · ");
+}
+
 export async function PATCH(request: Request, { params }: Params) {
   const user = await getUserFromBearer(request);
   if (!user) {
@@ -91,7 +125,15 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const run = await prisma.libraryFetchRun.findFirst({
     where: { id, userId: user.id },
-    select: { id: true, details: true, errorCount: true, status: true },
+    select: {
+      id: true,
+      buildersAttempted: true,
+      details: true,
+      errorCount: true,
+      itemsFetched: true,
+      status: true,
+      userActionsCount: true,
+    },
   });
   if (!run) {
     return NextResponse.json({ error: "Fetch run not found" }, { status: 404 });
@@ -108,6 +150,14 @@ export async function PATCH(request: Request, { params }: Params) {
     { status: run.status as "ok" | "partial" | "failed", errorCount: run.errorCount },
     details,
   );
+  const plannedPosts = countPlannedPostTasks(details);
+  const summary = fetchRunPatchSummary({
+    buildersAttempted: run.buildersAttempted,
+    errorCount: nextStatus.errorCount,
+    itemsFetched: run.itemsFetched,
+    plannedPosts,
+    userActionsCount: run.userActionsCount,
+  });
 
   if (Buffer.byteLength(JSON.stringify(details), "utf8") > MAX_DETAILS_BYTES) {
     return NextResponse.json(
@@ -122,6 +172,8 @@ export async function PATCH(request: Request, { params }: Params) {
       details: details as object,
       errorCount: nextStatus.errorCount,
       status: nextStatus.status,
+      summary,
+      tasksGenerated: plannedPosts,
     },
   });
 

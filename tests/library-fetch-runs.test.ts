@@ -110,9 +110,13 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(patchRoute, /TERMINAL_FETCH_TASK_STATUSES/);
   assert.match(patchRoute, /MAX_FETCH_TASK_ID/);
   assert.match(patchRoute, /mergeFetchRunDetails/);
+  assert.match(patchRoute, /countPlannedPostTasks/);
+  assert.match(patchRoute, /function fetchRunPatchSummary/);
   assert.match(patchRoute, /deriveFetchRunStatusFromDetails/);
   assert.match(patchRoute, /errorCount: nextStatus\.errorCount/);
   assert.match(patchRoute, /status: nextStatus\.status/);
+  assert.match(patchRoute, /tasksGenerated: plannedPosts/);
+  assert.match(patchRoute, /summary,/);
   assert.match(patchRoute, /workerId: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
   assert.match(patchRoute, /readMethod: z\.string\(\)\.max\(300\)\.nullable\(\)\.optional\(\)/);
   assert.match(patchRoute, /summaryMethod: z\.string\(\)\.max\(300\)\.nullable\(\)\.optional\(\)/);
@@ -781,7 +785,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-chev fb-task-chev"/);
   assert.doesNotMatch(panel, /className="sync-panel-task-source-type"/);
   assert.doesNotMatch(panel, /\{group\.sourceType\}<\/span>/);
-  assert.match(panel, /aria-label=\{`\$\{group\.name\}: \$\{stats\.planned\} planned, \$\{stats\.synced\} synced\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
+  assert.match(panel, /aria-label=\{`\$\{displayText\(group\.name\)\}: \$\{stats\.planned\} planned, \$\{stats\.synced\} synced\$\{stats\.failed > 0 \? `, \$\{stats\.failed\} failed` : ""\}`\}/);
   assert.match(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
   assert.match(panel, /className="sync-panel-task-source-stat is-danger"/);
   assert.match(panel, /className=\{`sync-panel-task-status-pill is-\$\{pill\.tone\}`\}/);
@@ -972,7 +976,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /suppressStalled=\{liveLogSuppressStalled\}/);
   assert.match(panel, /if \(isStalledDigestJobRun\(jobRun, nowMs, stallGraceUntilMs\)\) return "Stalled"/);
   assert.match(panel, /function hasTerminalFailedDigestJob/);
-  assert.match(panel, /if \(hasTerminalFailedDigestJob\(jobRun\)\) return "failed";[\s\S]*if \(run\.status === "synced"\) return "ok";/);
+  assert.match(panel, /if \(hasTerminalFailedDigestJob\(jobRun\)\) return "failed";[\s\S]*if \(run\.status === "synced" && run\.syncedAt\) return "ok";/);
   assert.match(digestUpdateStatus, /function digestSlotStatusForRun/);
   assert.match(digestUpdateStatus, /if \(run\.status === "synced"\) return "ok";/);
   assert.match(panel, /Local Agent stopped reporting before the AI Digest was saved\./);
