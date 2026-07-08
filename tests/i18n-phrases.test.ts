@@ -181,8 +181,8 @@ test("Favorites tab and home copy are localized by locale keys", () => {
   assert.equal(translate("ko", "tabs.favorites"), "즐겨찾기");
   assert.equal(translate("es", "tabs.favorites"), "Favoritos");
   assert.equal(
-    translate("zh-CN", "home.featureReadingCopy"),
-    "AI Digest、Following 和收藏分开呈现，让补读更聚焦。",
+    translate("zh-CN", "home.step3Copy"),
+    "两分钟速览摘要，翻看关注动态，把值得深读的内容保存下来。一切都可搜索。",
   );
 });
 
