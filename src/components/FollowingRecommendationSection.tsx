@@ -10,6 +10,10 @@ import {
   type RecommendationSnapshotEntry,
 } from "@/components/RecommendationFeed";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import {
+  defaultRecommendationSortMode,
+  type RecommendationSortMode,
+} from "@/lib/recommendation-sort";
 
 type TimelineResponse = {
   snapshots: RecommendationSnapshotEntry[];
@@ -48,6 +52,7 @@ function FollowingRecommendationLoader({
 }) {
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [sortMode, setSortMode] = useState<RecommendationSortMode>(defaultRecommendationSortMode);
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
 
@@ -64,7 +69,8 @@ function FollowingRecommendationLoader({
     setStatus("loading");
 
     try {
-      const response = await fetch("/api/recommendations/timeline", {
+      const params = new URLSearchParams({ sort: sortMode });
+      const response = await fetch(`/api/recommendations/timeline?${params.toString()}`, {
         cache: "no-store",
       });
       if (!response.ok) throw new Error("Could not load Following posts.");
@@ -78,12 +84,18 @@ function FollowingRecommendationLoader({
         setStatus("error");
       }
     }
-  }, []);
+  }, [sortMode]);
 
   useEffect(() => {
     const id = window.setTimeout(() => void loadTimeline(), 0);
     return () => window.clearTimeout(id);
   }, [loadTimeline]);
+
+  const handleSortModeChange = useCallback((nextSortMode: RecommendationSortMode) => {
+    setTimeline(null);
+    setStatus("loading");
+    setSortMode(nextSortMode);
+  }, []);
 
   if (status === "loading") {
     return <FeedLoadingState label="Loading Following" />;
@@ -101,9 +113,11 @@ function FollowingRecommendationLoader({
 
   return (
     <RecommendationFeed
-      key={visibleSnapshots.map((snapshot) => snapshot.id).join("|")}
+      key={`${sortMode}:${visibleSnapshots.map((snapshot) => snapshot.id).join("|")}`}
       initialSnapshots={visibleSnapshots}
+      onSortModeChange={handleSortModeChange}
       showAdminActions={isAdmin}
+      sortMode={sortMode}
     />
   );
 }

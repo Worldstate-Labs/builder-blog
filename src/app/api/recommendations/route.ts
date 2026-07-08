@@ -5,6 +5,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { getRecommendationFeed } from "@/lib/recommendations";
+import { normalizeRecommendationSortMode } from "@/lib/recommendation-sort";
 
 const ReadBodySchema = z.object({
   feedItemId: z.string().trim().min(1).max(64),
@@ -19,13 +20,26 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const limit = Number(url.searchParams.get("limit") ?? "6");
   const direction = url.searchParams.get("direction") === "prepend" ? "prepend" : "append";
+  const sortMode = normalizeRecommendationSortMode(url.searchParams.get("sort"));
+  const beforePublishedAt = parseBeforePublishedAt(url.searchParams.get("beforePublishedAt"));
+  if (beforePublishedAt === "invalid") {
+    return NextResponse.json({ error: "Invalid beforePublishedAt" }, { status: 400 });
+  }
   const feed = await getRecommendationFeed({
     userId: session.user.id,
     limit,
     reason: direction,
+    sortMode,
+    beforePublishedAt,
   });
 
   return NextResponse.json(feed);
+}
+
+function parseBeforePublishedAt(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "invalid" : date;
 }
 
 export async function POST(request: Request) {

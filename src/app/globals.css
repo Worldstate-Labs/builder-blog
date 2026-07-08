@@ -1353,6 +1353,43 @@ details:not([open]) > :not(summary) {
   min-width: 0;
 }
 
+.recommendation-feed-toolbar {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.recommendation-sort-control {
+  align-items: center;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: var(--text-role-meta-size);
+  font-weight: var(--text-role-label-weight);
+  gap: 0.5rem;
+  letter-spacing: var(--text-role-tracking);
+}
+
+.recommendation-sort-control select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, currentColor 50%) calc(100% - 0.82rem) 50% / 0.32rem 0.32rem no-repeat,
+    linear-gradient(135deg, currentColor 50%, transparent 50%) calc(100% - 0.62rem) 50% / 0.32rem 0.32rem no-repeat,
+    var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: 0;
+  min-height: 2rem;
+  padding: 0.3rem 1.4rem 0.3rem 0.7rem;
+}
+
+.recommendation-sort-control select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .feed-skeleton-list {
   display: grid;
   gap: 0.75rem;

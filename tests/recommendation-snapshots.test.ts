@@ -730,13 +730,21 @@ test("digest renderer links source headings from canonical source metadata", () 
 
 test("recommendation snapshots request six posts at a time", () => {
   assert.match(source("src/lib/recommendations.ts"), /defaultRecommendationLimit = 6/);
-  assert.match(source("src/app/api/recommendations/timeline/route.ts"), /itemLimit: 6/);
-  assert.doesNotMatch(source("src/app/api/recommendations/timeline/route.ts"), /recommendationScope/);
+  const timelineRoute = source("src/app/api/recommendations/timeline/route.ts");
+  const apiRoute = source("src/app/api/recommendations/route.ts");
+  assert.match(timelineRoute, /itemLimit: 6/);
+  assert.match(timelineRoute, /normalizeRecommendationSortMode/);
+  assert.doesNotMatch(timelineRoute, /recommendationScope/);
   assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /permanentRedirect\("\/dashboard\?tab=following"\)/);
-  assert.match(source("src/app/api/recommendations/route.ts"), /limit"\) \?\? "6"/);
-  assert.doesNotMatch(source("src/app/api/recommendations/route.ts"), /scope: recommendationScope/);
+  assert.match(apiRoute, /limit"\) \?\? "6"/);
+  assert.match(apiRoute, /normalizeRecommendationSortMode/);
+  assert.match(apiRoute, /beforePublishedAt/);
+  assert.doesNotMatch(apiRoute, /scope: recommendationScope/);
   const feed = source("src/components/RecommendationFeed.tsx");
-  assert.match(feed, /limit=6/);
+  assert.match(feed, /limit: "6"/);
+  assert.match(feed, /sort: sortMode/);
+  assert.match(feed, /sortMode === "recent" && direction === "append"/);
+  assert.match(feed, /params\.set\("beforePublishedAt", cursor\)/);
   assert.match(feed, />Update<\/span>/);
   assert.doesNotMatch(feed, /Following update/);
   assert.doesNotMatch(feed, /Following snapshot/);
@@ -795,6 +803,9 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(recommendations, /\.\.\.existing/);
   assert.match(recommendations, /items: \{ some: \{\} \}/);
   assert.match(recommendations, /const subscriptionBuilderIds = subscriptions\.map/);
-  assert.match(recommendations, /reason: \{ startsWith: "subscription:" \}/);
+  assert.match(recommendations, /snapshotReasonPrefix\(sortMode\)/);
+  assert.match(recommendations, /subscription-recent:/);
+  assert.match(recommendations, /rankRecommendationResults/);
+  assert.match(recommendations, /sortMode === "recent"[\s\S]*publishedAt/);
   assert.match(recommendations, /const dedupGroups = new Map<string, typeof rawCandidates>\(\)/);
 });

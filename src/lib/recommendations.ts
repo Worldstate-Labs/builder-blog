@@ -1,4 +1,8 @@
 import type { BuilderKind, FeedItemKind, Prisma, PrismaClient } from "@prisma/client";
+import {
+  defaultRecommendationSortMode,
+  type RecommendationSortMode,
+} from "@/lib/recommendation-sort";
 
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
@@ -120,15 +124,18 @@ export async function getRecommendationTimeline({
   userId,
   snapshotLimit = defaultTimelineSnapshotLimit,
   itemLimit = defaultRecommendationLimit,
+  sortMode = defaultRecommendationSortMode,
 }: {
   userId: string;
   snapshotLimit?: number;
   itemLimit?: number;
+  sortMode?: RecommendationSortMode;
 }) {
   const created = await createRecommendationSnapshot({
     userId,
     limit: itemLimit,
     reason: "initial",
+    sortMode,
   });
   const { prisma } = await import("@/lib/prisma");
   const normalizedSnapshotLimit = Math.max(1, Math.floor(snapshotLimit));
@@ -141,6 +148,7 @@ export async function getRecommendationTimeline({
         excludeSnapshotId: created.snapshot?.id ?? null,
         prisma,
         snapshotLimit: existingLimit,
+        sortMode,
         userId,
       })
     : [];
@@ -152,7 +160,7 @@ export async function getRecommendationTimeline({
   return {
     snapshots,
     unreadRemaining: created.unreadRemaining,
-    strategy: "snapshot-subscription-v1" as const,
+    strategy: recommendationStrategy(sortMode),
   };
 }
 
@@ -160,19 +168,29 @@ export async function getRecommendationFeed({
   userId,
   limit = defaultRecommendationLimit,
   reason = "recommendation",
+  sortMode = defaultRecommendationSortMode,
+  beforePublishedAt,
 }: {
   userId: string;
   limit?: number;
   reason?: string;
+  sortMode?: RecommendationSortMode;
+  beforePublishedAt?: Date | null;
 }) {
-  const created = await createRecommendationSnapshot({ userId, limit, reason });
+  const created = await createRecommendationSnapshot({
+    userId,
+    limit,
+    reason,
+    sortMode,
+    beforePublishedAt,
+  });
   return {
     items: created.snapshot?.items ?? [],
     snapshot: created.snapshot,
     nextOffset: created.snapshot?.items.length ? 1 : null,
     unreadRemaining: created.unreadRemaining,
     candidateCount: created.candidateCount,
-    strategy: "snapshot-subscription-v1" as const,
+    strategy: recommendationStrategy(sortMode),
   };
 }
 
@@ -180,10 +198,14 @@ export async function createRecommendationSnapshot({
   userId,
   limit = defaultRecommendationLimit,
   reason = "recommendation",
+  sortMode = defaultRecommendationSortMode,
+  beforePublishedAt,
 }: {
   userId: string;
   limit?: number;
   reason?: string;
+  sortMode?: RecommendationSortMode;
+  beforePublishedAt?: Date | null;
 }): Promise<{
   snapshot: RecommendationSnapshotResult | null;
   unreadRemaining: number;
@@ -264,7 +286,7 @@ export async function createRecommendationSnapshot({
       take: 50,
     }),
     prisma.recommendationSnapshotItem.findMany({
-      where: { snapshot: snapshotWhere(userId) },
+      where: { snapshot: snapshotWhere(userId, sortMode) },
       select: { feedItemId: true },
       take: 5000,
     }),
@@ -284,6 +306,13 @@ export async function createRecommendationSnapshot({
     where: {
       builderId: { in: subscriptionBuilderIds },
       createdAt: { gte: cutoff },
+      ...(sortMode === "recent"
+        ? {
+            publishedAt: beforePublishedAt
+              ? { not: null, lt: beforePublishedAt }
+              : { not: null },
+          }
+        : {}),
     },
     include: {
       builder: {
@@ -304,7 +333,7 @@ export async function createRecommendationSnapshot({
         },
       },
     },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    orderBy: candidateOrderBy(sortMode),
     take: Math.max(candidateWindow, normalizedLimit * 3),
   });
 
@@ -365,6 +394,7 @@ export async function createRecommendationSnapshot({
     userId,
     normalizedLimit,
     reason,
+    sortMode,
     candidates,
     unreadRemaining,
     subscriptions,
@@ -419,6 +449,7 @@ async function buildAndSaveSnapshot({
   userId,
   normalizedLimit,
   reason,
+  sortMode,
   candidates,
   unreadRemaining,
   subscriptions,
@@ -429,6 +460,7 @@ async function buildAndSaveSnapshot({
   userId: string;
   normalizedLimit: number;
   reason: string;
+  sortMode: RecommendationSortMode;
   candidates: CandidateList;
   unreadRemaining: number;
   subscriptions: Array<{
@@ -498,9 +530,10 @@ async function buildAndSaveSnapshot({
       .filter((item): item is NonNullable<typeof item> => Boolean(item)),
   });
 
-  const ranked = candidates
-    .map((item) => scoreRecommendation({ item, signals }))
-    .sort((a, b) => b.score - a.score || compareDates(b.item, a.item));
+  const ranked = rankRecommendationResults(
+    candidates.map((item) => scoreRecommendation({ item, signals })),
+    sortMode,
+  );
   const page = ranked.slice(0, normalizedLimit);
 
   if (page.length === 0) {
@@ -510,7 +543,7 @@ async function buildAndSaveSnapshot({
   const snapshot = await prisma.recommendationSnapshot.create({
     data: {
       userId,
-      reason: snapshotReason(reason),
+      reason: snapshotReason(sortMode, reason),
       items: {
         create: page.map((result, index) => ({
           feedItemId: result.item.id,
@@ -534,16 +567,18 @@ async function loadRecommendationSnapshots({
   excludeSnapshotId,
   prisma,
   snapshotLimit,
+  sortMode,
   userId,
 }: {
   excludeSnapshotId: string | null;
   prisma: PrismaClient;
   snapshotLimit: number;
+  sortMode: RecommendationSortMode;
   userId: string;
 }) {
   const snapshots = await prisma.recommendationSnapshot.findMany({
     where: {
-      ...snapshotWhere(userId),
+      ...snapshotWhere(userId, sortMode),
       ...(excludeSnapshotId ? { id: { not: excludeSnapshotId } } : {}),
       items: { some: {} },
     },
@@ -555,15 +590,34 @@ async function loadRecommendationSnapshots({
   return snapshots.map((snapshot) => formatSnapshot(snapshot));
 }
 
-function snapshotWhere(userId: string): Prisma.RecommendationSnapshotWhereInput {
+function snapshotWhere(
+  userId: string,
+  sortMode: RecommendationSortMode,
+): Prisma.RecommendationSnapshotWhereInput {
   return {
     userId,
-    reason: { startsWith: "subscription:" },
+    reason: { startsWith: snapshotReasonPrefix(sortMode) },
   };
 }
 
-function snapshotReason(reason: string) {
-  return `subscription:${reason}`;
+function snapshotReason(sortMode: RecommendationSortMode, reason: string) {
+  return `${snapshotReasonPrefix(sortMode)}${reason}`;
+}
+
+function snapshotReasonPrefix(sortMode: RecommendationSortMode) {
+  return sortMode === "recent" ? "subscription-recent:" : "subscription:";
+}
+
+function recommendationStrategy(sortMode: RecommendationSortMode) {
+  return sortMode === "recent"
+    ? ("snapshot-subscription-recent-v1" as const)
+    : ("snapshot-subscription-v1" as const);
+}
+
+function candidateOrderBy(sortMode: RecommendationSortMode): Prisma.FeedItemOrderByWithRelationInput[] {
+  return sortMode === "recent"
+    ? [{ publishedAt: "desc" }, { id: "desc" }]
+    : [{ publishedAt: "desc" }, { createdAt: "desc" }];
 }
 
 function snapshotInclude(userId: string) {
@@ -761,6 +815,17 @@ export function scoreRecommendation({
   };
 }
 
+export function rankRecommendationResults(
+  results: RecommendationResult[],
+  sortMode: RecommendationSortMode,
+) {
+  return [...results].sort((a, b) =>
+    sortMode === "recent"
+      ? comparePublishedAtDesc(a.item, b.item) || b.score - a.score
+      : b.score - a.score || compareDates(b.item, a.item),
+  );
+}
+
 export function originalPostTime(item: Pick<RecommendationCandidate, "publishedAt" | "createdAt">) {
   return item.publishedAt ?? item.createdAt;
 }
@@ -804,6 +869,13 @@ function itemText(item: RecommendationCandidate) {
 
 function compareDates(a: RecommendationCandidate, b: RecommendationCandidate) {
   return originalPostTime(a).getTime() - originalPostTime(b).getTime();
+}
+
+function comparePublishedAtDesc(a: RecommendationCandidate, b: RecommendationCandidate) {
+  const aPublishedAt = a.publishedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+  const bPublishedAt = b.publishedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+  if (aPublishedAt !== bPublishedAt) return bPublishedAt - aPublishedAt;
+  return b.id.localeCompare(a.id);
 }
 
 function uniqueIds(values: string[]) {

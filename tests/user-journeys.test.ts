@@ -25,6 +25,7 @@ import { DEFAULT_SOURCE_CONFIGS } from "../src/lib/source-config-seed";
 import { checkBodyContentQuality } from "../src/lib/content-quality";
 import {
   buildRecommendationSignals,
+  rankRecommendationResults,
   scoreRecommendation,
   type RecommendationCandidate,
 } from "../src/lib/recommendations";
@@ -2069,6 +2070,57 @@ test("recommendation feed user path scores unread fetched posts from profile, su
   assert.ok(relevant.score > unrelated.score);
   assert.ok(relevant.reasons.includes("from a followed source"));
   assert.ok(relevant.reasons.includes("matches your profile and reading topics"));
+});
+
+test("recommendation feed sort modes separate relevance from strict publish recency", () => {
+  const builder = {
+    id: "builder_agents",
+    entityId: "entity_agents",
+    name: "Agent Research",
+    handle: null,
+    kind: BuilderKind.BLOG,
+    sourceType: "blog",
+    sourceUrl: "https://example.com",
+    fetchUrl: "https://example.com/feed",
+    avatarUrl: null,
+    avatarDataUrl: null,
+    bio: null,
+    ownerUserId: null,
+    lastFetchedAt: null,
+  };
+  const olderRelevant = {
+    item: recommendationCandidate({
+      id: "older_relevant",
+      builder,
+      body: "Deep agent memory research.",
+      publishedAt: "2026-05-20T09:00:00.000Z",
+    }),
+    score: 100,
+    reasons: ["test relevance"],
+  };
+  const newerLessRelevant = {
+    item: recommendationCandidate({
+      id: "newer_less_relevant",
+      builder,
+      body: "Short update.",
+      publishedAt: "2026-05-22T09:00:00.000Z",
+    }),
+    score: 1,
+    reasons: ["test recency"],
+  };
+
+  assert.deepEqual(
+    rankRecommendationResults([newerLessRelevant, olderRelevant], "relevant").map(
+      (result) => result.item.id,
+    ),
+    ["older_relevant", "newer_less_relevant"],
+  );
+  assert.deepEqual(
+    rankRecommendationResults([olderRelevant, newerLessRelevant], "recent").map(
+      (result) => result.item.id,
+    ),
+    ["newer_less_relevant", "older_relevant"],
+  );
 });
 
 test("digest generation user path exposes source-specific prompt instructions", () => {

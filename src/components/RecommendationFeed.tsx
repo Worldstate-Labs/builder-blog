@@ -8,6 +8,7 @@ import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFa
 import { RelativeTime } from "@/components/RelativeTime";
 import { markPostRead } from "@/lib/mark-read";
 import { postDetailHref } from "@/lib/navigation";
+import type { RecommendationSortMode } from "@/lib/recommendation-sort";
 
 export type RecommendationFeedEntry = {
   score: number;
@@ -49,12 +50,17 @@ export type RecommendationSnapshotEntry = {
 
 export function RecommendationFeed({
   initialSnapshots,
+  onSortModeChange,
   showAdminActions = false,
+  sortMode,
 }: {
   initialSnapshots: RecommendationSnapshotEntry[];
+  onSortModeChange: (sortMode: RecommendationSortMode) => void;
   showAdminActions?: boolean;
+  sortMode: RecommendationSortMode;
 }) {
   const [snapshots, setSnapshots] = useState(() => nonEmptySnapshots(initialSnapshots));
+  const snapshotsRef = useRef(snapshots);
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
   const [loadErrorDirection, setLoadErrorDirection] = useState<"append" | "prepend" | null>(null);
   const [favoriteError, setFavoriteError] = useState("");
@@ -72,6 +78,10 @@ export function RecommendationFeed({
       }
     }
     return stateByItemId;
+  }, [snapshots]);
+
+  useEffect(() => {
+    snapshotsRef.current = snapshots;
   }, [snapshots]);
 
   const markRead = useCallback(async (feedItemId: string) => {
@@ -126,7 +136,20 @@ export function RecommendationFeed({
       setLoadingDirection(direction);
       setLoadErrorDirection(null);
       try {
-        const response = await fetch(`/api/recommendations?direction=${direction}&limit=6`);
+        const params = new URLSearchParams({
+          direction,
+          limit: "6",
+          sort: sortMode,
+        });
+        if (sortMode === "recent" && direction === "append") {
+          const cursor = lastPublishedAt(snapshotsRef.current);
+          if (!cursor) {
+            setExhausted(true);
+            return;
+          }
+          params.set("beforePublishedAt", cursor);
+        }
+        const response = await fetch(`/api/recommendations?${params.toString()}`);
         if (!response.ok) throw new Error("Could not load Following posts.");
         const data = await response.json();
         const snapshot = data.snapshot as RecommendationSnapshotEntry | null | undefined;
@@ -147,7 +170,7 @@ export function RecommendationFeed({
         setLoadingDirection(null);
       }
     },
-    [],
+    [sortMode],
   );
 
   useEffect(() => {
@@ -165,6 +188,21 @@ export function RecommendationFeed({
 
   return (
     <section className="feed-content-stack recommendation-feed">
+      <div className="recommendation-feed-toolbar">
+        <label className="recommendation-sort-control">
+          <span>Sort</span>
+          <select
+            aria-label="Sort Following posts"
+            onChange={(event) =>
+              onSortModeChange(event.currentTarget.value as RecommendationSortMode)
+            }
+            value={sortMode}
+          >
+            <option value="relevant">Most relevant</option>
+            <option value="recent">Most recent</option>
+          </select>
+        </label>
+      </div>
       {favoriteError ? (
         <p className="feed-load-error recommendation-favorite-error" role="status">
           {favoriteError}
@@ -313,4 +351,10 @@ function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {
 
 function nonEmptySnapshots(snapshots: RecommendationSnapshotEntry[]) {
   return snapshots.filter((snapshot) => snapshot.items.length > 0);
+}
+
+function lastPublishedAt(snapshots: RecommendationSnapshotEntry[]) {
+  const lastSnapshot = snapshots[snapshots.length - 1];
+  const lastItem = lastSnapshot?.items[lastSnapshot.items.length - 1]?.item;
+  return lastItem?.publishedAt ?? null;
 }
