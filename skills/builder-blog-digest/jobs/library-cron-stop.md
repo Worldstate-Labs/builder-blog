@@ -279,6 +279,7 @@ NODE
 }
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
 rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG" \
+      "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/cron-owner-library-cron-$ACCOUNT_SLUG" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/parallel-library-cron-$ACCOUNT_SLUG"

@@ -3788,12 +3788,6 @@ summary.library-section-summary::after {
   min-width: 0;
 }
 
-.recommendation-refresh-button {
-  letter-spacing: 0;
-  margin-left: auto;
-  text-transform: none;
-}
-
 .fetched-post-card[data-read="true"] {
   opacity: 0.82;
 }

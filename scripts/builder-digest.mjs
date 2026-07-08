@@ -287,6 +287,8 @@ function usage() {
   sync --file builder-blog-digest.json [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   schedule-spec --freq 12h --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
+  cron-state --job library-cron|digest-cron
+  cron-guard --job library-cron|digest-cron --owner-id <local-owner-id>
   fetch-status-audit
   digest-status-audit
   parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw|hermes] [--provider openai-codex] [--model gpt-5.4-mini] [--out runtime-usage.jsonl]
@@ -10148,6 +10150,7 @@ async function cronStatus(args) {
   const forceValue = argValue(args, "--force", "0");
   const regenerateValue = argValue(args, "--regenerate", "0");
   const startedAt = argValue(args, "--started-at") || new Date().toISOString();
+  const ownerId = argValue(args, "--owner-id", null);
 
   const payload = {
     job,
@@ -10159,6 +10162,7 @@ async function cronStatus(args) {
     overrideFetched: forceValue === "1",
     regenerateDigest: regenerateValue === "1",
     startedAt,
+    ownerId,
   };
 
   await recordCronAuditEvent(config, {
@@ -10167,7 +10171,7 @@ async function cronStatus(args) {
     status: parseAuditStatus(statusValue),
     reason: "cron_status_command",
     runtime,
-    details: { frequencyKey: freq ?? null, schedule: schedule ?? null },
+    details: { frequencyKey: freq ?? null, schedule: schedule ?? null, ownerId },
   });
 
   let result;
@@ -10201,6 +10205,37 @@ async function cronStatus(args) {
     details: { result },
   });
   console.log(JSON.stringify(result, null, 2));
+}
+
+async function cronState(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const job = normalizeCronJob(argValue(args, "--job", "library-cron"));
+  const result = await getJson(
+    `${config.appUrl}/api/skill/cron-jobs?job=${encodeURIComponent(job)}`,
+    config.token,
+    { label: "cron state" },
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function cronGuard(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const job = normalizeCronJob(argValue(args, "--job", "library-cron"));
+  const ownerId = argValue(args, "--owner-id", null);
+  const params = new URLSearchParams({
+    job,
+    mode: "guard",
+    ...(ownerId ? { ownerId } : {}),
+  });
+  const result = await getJson(
+    `${config.appUrl}/api/skill/cron-jobs?${params.toString()}`,
+    config.token,
+    { label: "cron guard", retries: HTTP_SYNC_RETRY_DELAYS_MS.length },
+  );
+  console.log(JSON.stringify(result, null, 2));
+  if (result?.decision !== "run") process.exitCode = 75;
 }
 
 function normalizeScheduleFrequency(value) {
@@ -10602,6 +10637,8 @@ async function main() {
   else if (command === "cron-audit") await cronAudit(args);
   else if (command === "schedule-spec") await scheduleSpec(args);
   else if (command === "cron-status") await cronStatus(args);
+  else if (command === "cron-state") await cronState(args);
+  else if (command === "cron-guard") await cronGuard(args);
   else if (command === "fetch-status-audit") await fetchStatusAudit();
   else if (command === "digest-status-audit") await digestStatusAudit();
   else if (command === "parse-runtime-usage") await parseRuntimeUsageCommand(args);

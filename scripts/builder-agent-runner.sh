@@ -19,6 +19,12 @@ const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
 console.log(`${base}_${hash}`);
 NODE
 }
+legacy_account_slug() {
+  node - "${1:-default}" <<'NODE'
+const account = String(process.argv[2] || "default");
+console.log(account.replace(/[^a-zA-Z0-9]/g, "_"));
+NODE
+}
 ACCOUNT_SLUG="$(account_slug "${BUILDER_BLOG_ACCOUNT:-default}")"
 DEFAULT_JOB_STATE_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
 DEFAULT_JOB_TMP_DIR="$DEFAULT_JOB_STATE_DIR"
@@ -1935,6 +1941,115 @@ console.log(new Date(anchorMs + slotIndex * intervalMs).toISOString().replace(/\
 NODE
 }
 
+cron_owner_id_file() {
+  printf '%s\n' "$AGENT_DIR/cron-owner-$JOB_NAME-$ACCOUNT_SLUG"
+}
+
+ensure_cron_owner_id() {
+  _coi_file="$(cron_owner_id_file)"
+  if [ -s "$_coi_file" ]; then
+    sed -n '1p' "$_coi_file"
+    return 0
+  fi
+  _coi_id="$(
+    node - "$JOB_NAME" "$ACCOUNT_SLUG" <<'NODE'
+const { randomUUID } = require("node:crypto");
+const os = require("node:os");
+const [job, accountSlug] = process.argv.slice(2);
+const host = (os.hostname() || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+console.log(`local:${host}:${accountSlug}:${job}:${randomUUID()}`);
+NODE
+  )"
+  printf '%s\n' "$_coi_id" > "$_coi_file"
+  chmod 600 "$_coi_file" 2>/dev/null || true
+  printf '%s\n' "$_coi_id"
+}
+
+remove_local_cron_schedule() {
+  _rlcs_reason="${1:-server_guard_stop}"
+  case "$JOB_NAME" in
+    library-cron)
+      _rlcs_kind="library"
+      _rlcs_marker="FollowBrief library cron"
+      ;;
+    digest-cron)
+      _rlcs_kind="digest"
+      _rlcs_marker="FollowBrief digest cron"
+      ;;
+    *) return 0 ;;
+  esac
+
+  _rlcs_acct="${BUILDER_BLOG_ACCOUNT:-}"
+  _rlcs_label="com.followbrief.$_rlcs_kind.$(account_slug "${_rlcs_acct:-default}")"
+  _rlcs_legacy_label="com.followbrief.$_rlcs_kind.$(legacy_account_slug "${_rlcs_acct:-default}")"
+
+  if [ "$(uname 2>/dev/null || printf unknown)" = "Darwin" ]; then
+    _rlcs_labels="$_rlcs_label"
+    [ "$_rlcs_legacy_label" = "$_rlcs_label" ] || _rlcs_labels="$_rlcs_labels $_rlcs_legacy_label"
+    for _rlcs_current_label in $_rlcs_labels; do
+      _rlcs_plist="$HOME/Library/LaunchAgents/$_rlcs_current_label.plist"
+      if launchctl print "gui/$(id -u)/$_rlcs_current_label" >/dev/null 2>&1; then
+        _rlcs_loaded=1
+      else
+        _rlcs_loaded=0
+      fi
+      if [ -f "$_rlcs_plist" ]; then
+        _rlcs_plist_exists=1
+      else
+        _rlcs_plist_exists=0
+      fi
+      if [ "$_rlcs_loaded" = "1" ] || [ "$_rlcs_plist_exists" = "1" ]; then
+        node "$AGENT_DIR/builder-digest.mjs" cron-audit --job "$JOB_NAME" --event launchd_self_uninstall_start --label "$_rlcs_current_label" --plist-exists "$_rlcs_plist_exists" --launchctl-loaded "$_rlcs_loaded" --reason "$_rlcs_reason" || true
+        launchctl bootout "gui/$(id -u)/$_rlcs_current_label" 2>/dev/null || true
+        rm -f "$_rlcs_plist" 2>/dev/null || true
+        node "$AGENT_DIR/builder-digest.mjs" cron-audit --job "$JOB_NAME" --event launchd_self_uninstall_finished --label "$_rlcs_current_label" --plist-exists "$([ -f "$_rlcs_plist" ] && echo 1 || echo 0)" --launchctl-loaded 0 --reason "$_rlcs_reason" || true
+      fi
+    done
+  else
+    if [ -n "$_rlcs_acct" ]; then
+      crontab -l 2>/dev/null | grep -v "# $_rlcs_marker · $_rlcs_acct" | grep -v "BUILDER_BLOG_ACCOUNT=\"$_rlcs_acct\".*builder-agent-runner.sh $JOB_NAME" | crontab - 2>/dev/null || true
+    else
+      crontab -l 2>/dev/null | grep -v "# $_rlcs_marker" | grep -v "builder-agent-runner.sh $JOB_NAME" | crontab - 2>/dev/null || true
+    fi
+    node "$AGENT_DIR/builder-digest.mjs" cron-audit --job "$JOB_NAME" --event crontab_self_uninstall_succeeded --label "$_rlcs_label" --reason "$_rlcs_reason" || true
+  fi
+
+  rm -f \
+    "$(cron_owner_id_file)" \
+    "$AGENT_DIR/runtime-$JOB_NAME-$ACCOUNT_SLUG" \
+    "$AGENT_DIR/schedule-anchor-$JOB_NAME-$ACCOUNT_SLUG" \
+    "$AGENT_DIR/fetch-force-$JOB_NAME-$ACCOUNT_SLUG" \
+    "$AGENT_DIR/fetch-days-$JOB_NAME-$ACCOUNT_SLUG" \
+    "$AGENT_DIR/parallel-$JOB_NAME-$ACCOUNT_SLUG" \
+    "$AGENT_DIR/regenerate-$JOB_NAME-$ACCOUNT_SLUG" \
+    2>/dev/null || true
+}
+
+cron_server_guard() {
+  case "$JOB_NAME" in
+    library-cron|digest-cron) ;;
+    *) return 0 ;;
+  esac
+  if [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-0}" = "1" ]; then return 0; fi
+  _csg_owner_id="$(ensure_cron_owner_id)"
+  _csg_out="$JOB_STATE_DIR/cron-guard.json"
+  _csg_err="$JOB_STATE_DIR/cron-guard.err"
+  if node "$AGENT_DIR/builder-digest.mjs" cron-guard --job "$JOB_NAME" --owner-id "$_csg_owner_id" > "$_csg_out" 2> "$_csg_err"; then
+    return 0
+  fi
+  _csg_decision="$(json_get_string decision "$_csg_out")"
+  if [ "$_csg_decision" != "stop" ]; then
+    printf 'FollowBrief server guard could not verify %s; keeping local schedule for this run.\n' "$JOB_NAME" >&2
+    cat "$_csg_err" >&2 2>/dev/null || true
+    return 0
+  fi
+  _csg_reason="$(json_get_string reason "$_csg_out")"
+  [ -n "$_csg_reason" ] || _csg_reason="cron_guard_rejected"
+  printf 'FollowBrief server no longer authorizes this %s schedule (%s). Removing local scheduler state.\n' "$JOB_NAME" "$_csg_reason" >&2
+  remove_local_cron_schedule "$_csg_reason"
+  return 75
+}
+
 job_run_update_for_instance() {
   _target_instance="$1"
   _target_started="$2"
@@ -2000,6 +2115,10 @@ run_cron_supervisor() {
   export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
   export BUILDER_BLOG_RUNNER_PID="$$"
 
+  if ! cron_server_guard; then
+    exit 0
+  fi
+
   if [ -r "$CURRENT_FILE" ]; then
     OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
     OLD_INSTANCE="$(json_get_string instanceId "$CURRENT_FILE")"
@@ -2046,6 +2165,11 @@ run_cron_scheduler_tick() {
     return 0
   fi
 
+  self_update_and_reexec "$JOB_NAME"
+  if ! cron_server_guard; then
+    return 0
+  fi
+
   INSTANCE_STAMP="$(printf '%s' "$EXPECTED_AT" | tr -d ':-' | sed 's/Z$//')"
   INSTANCE_ID="${INSTANCE_STAMP}-$$"
   STARTED_AT="$(iso_now)"
@@ -2076,7 +2200,6 @@ run_cron_scheduler_tick() {
     fi
   fi
 
-  self_update_and_reexec "$JOB_NAME"
   job_run_update starting "Scheduled window accepted by local scheduler tick." "scheduler_tick_due"
   if ! ( set -e; refresh_skill_files ); then
     printf '%s\n' "$EXPECTED_AT" > "$LAST_FIRED_FILE"

@@ -68,7 +68,9 @@ test("Stop fetching dialog lets users choose local or cloud fetch without stoppi
   assert.match(skillPromptActions, /type StopFetchTarget = "cloud" \| "local"/);
   assert.match(skillPromptActions, /method: "DELETE"/);
   assert.match(skillPromptActions, /\/api\/cloud-library\/source-submissions/);
+  assert.match(skillPromptActions, /\/api\/skill\/cron-jobs/);
   assert.doesNotMatch(skillPromptActions, /cloud-library-cron-stop/);
+  assert.match(skillPromptActions, /Any installed Local Agent schedule will remove itself on its next check/);
   assert.match(stopDialog, /name="stop-fetch-target"/);
   assert.match(stopDialog, /Your Local Agent/);
   assert.match(stopDialog, /Cloud/);

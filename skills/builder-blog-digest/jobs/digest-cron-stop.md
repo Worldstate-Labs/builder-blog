@@ -279,6 +279,7 @@ NODE
 }
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
 rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOUNT_SLUG" \
+      "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/cron-owner-digest-cron-$ACCOUNT_SLUG" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
 ```
 

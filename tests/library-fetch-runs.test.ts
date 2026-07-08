@@ -53,7 +53,10 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   assert.match(schema, /@@index\(\[userId, startedAt\(sort: Desc\)\]\)/);
   assert.match(schema, /model LibraryCronJob \{/);
   assert.match(schema, /intervalMinutes\s+Int/);
+  assert.match(schema, /ownerId\s+String\?/);
+  assert.match(schema, /ownerHeartbeatAt\s+DateTime\?/);
   assert.match(schema, /@@index\(\[userId, status\]\)/);
+  assert.match(schema, /@@index\(\[userId, ownerId\]\)/);
   assert.match(schema, /model DigestCronJob \{/);
   assert.match(schema, /regenerateDigest\s+Boolean\s+@default\(false\)/);
 });
@@ -74,6 +77,11 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
   assert.match(digestCronMigration, /"regenerateDigest"\s+BOOLEAN\s+NOT NULL DEFAULT false/);
   assert.match(digestCronMigration, /CREATE UNIQUE INDEX "DigestCronJob_userId_key"/);
   assert.match(digestCronMigration, /REFERENCES "User"\("id"\)[\s\S]*ON DELETE CASCADE/);
+  const localCronOwnerMigration = source("prisma/migrations/000085_local_cron_owner_lease/migration.sql");
+  assert.match(localCronOwnerMigration, /ALTER TABLE "LibraryCronJob"[\s\S]*"ownerId" TEXT/);
+  assert.match(localCronOwnerMigration, /ALTER TABLE "DigestCronJob"[\s\S]*"ownerHeartbeatAt" TIMESTAMP\(3\)/);
+  assert.match(localCronOwnerMigration, /CREATE INDEX "LibraryCronJob_userId_ownerId_idx"/);
+  assert.match(localCronOwnerMigration, /CREATE INDEX "DigestCronJob_userId_ownerId_idx"/);
 });
 
 test("skill fetch-runs route validates payload size and gates auth on user or bearer", () => {
@@ -137,6 +145,16 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
   assert.match(cronRoute, /z\.enum\(\["library-cron", "digest-cron"\]\)/);
   assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);
+  assert.match(cronRoute, /ownerId: z\.string\(\)\.max\(200\)\.nullable\(\)\.optional\(\)/);
+  assert.match(cronRoute, /export async function GET\(request: Request\)/);
+  assert.match(cronRoute, /mode: z\.enum\(\["state", "guard"\]\)\.optional\(\)/);
+  assert.match(cronRoute, /decision: "stop"/);
+  assert.match(cronRoute, /reason: "owner_changed"/);
+  assert.match(cronRoute, /updateMany\(\{[\s\S]*status: "active"[\s\S]*\.\.\.\(current\.ownerId \? \{ ownerId \} : \{ ownerId: null \}\)/);
+  assert.match(cronRoute, /if \(guarded\.count === 0\)/);
+  assert.match(cronRoute, /reason: current\.ownerId \? "owner_heartbeat" : "owner_claimed"/);
+  assert.match(cronRoute, /export async function DELETE\(request: Request\)/);
+  assert.match(cronRoute, /getCurrentSession\(\)/);
   assert.match(cronRoute, /intervalMinutes/);
   assert.match(cronRoute, /libraryCronJob\.upsert/);
   assert.match(cronRoute, /libraryCronJob\.updateMany/);
@@ -155,7 +173,10 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /BUILDER_BLOG_DISABLE_WEB_SYNC/);
   assert.match(cli, /webSyncDisabled\(\)/);
   assert.match(cli, /cron-status/);
+  assert.match(cli, /cron-state/);
+  assert.match(cli, /cron-guard/);
   assert.match(cli, /\/api\/skill\/cron-jobs/);
+  assert.match(cli, /ownerId/);
   // Detects cron vs manual via the env variable exported by the runner.
   assert.match(cli, /BUILDER_BLOG_RUN_SOURCE/);
   // Success path logs the record after printing JSON to stdout.

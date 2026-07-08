@@ -1,4 +1,4 @@
-export const defaultRecommendationSortMode = "relevant";
+export const defaultRecommendationSortMode = "recent";
 
 export const recommendationSortModes = ["relevant", "recent"] as const;
 

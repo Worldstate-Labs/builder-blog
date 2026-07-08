@@ -1004,12 +1004,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.match(skillPromptActions, /Stop fetching/);
   assert.doesNotMatch(skillPromptActions, /Choose which Fetch sources runtime to stop/);
-  assert.match(skillPromptActions, /Copy instructions for your agent to stop the following schedule\./);
-  assert.match(skillPromptActions, /Copy instructions for your agent to stop the local recurring schedule/);
+  assert.match(skillPromptActions, /Stop the server-authorized recurring schedule\./);
+  assert.match(skillPromptActions, /Stop the server-authorized local recurring schedule\./);
+  assert.match(skillPromptActions, /\/api\/skill\/cron-jobs/);
+  assert.match(skillPromptActions, /method: "DELETE"/);
   assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
   assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
-  assert.match(skillPromptActions, /const token = activeTokens\[0\]/);
+  assert.doesNotMatch(skillPromptActions, /const token = activeTokens\[0\]/);
   assert.doesNotMatch(skillPromptActions, /Copy stop prompt/);
   assert.doesNotMatch(skillPromptActions, /Creates a setup code that expires in 10 minutes|Creates a 10-minute setup code for this key|We&rsquo;ll create a 10-minute setup code for this key/);
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
@@ -2133,8 +2135,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /followBriefDataChanged/);
   assert.doesNotMatch(followingSection, /contentSyncStateChanged/);
   assert.doesNotMatch(followingSection, /window\.addEventListener/);
-  assert.match(recommendationFeed, /Refresh/);
-  assert.match(recommendationFeed, /aria-label="Refresh Following posts"/);
+  assert.doesNotMatch(recommendationFeed, /aria-label="Refresh Following posts"/);
+  assert.doesNotMatch(recommendationFeed, /recommendation-refresh-button/);
   assert.match(recommendationFeed, /showAdminActions = false/);
   assert.match(recommendationFeed, /reasons=\{showAdminActions \? entry\.reasons : undefined\}/);
   assert.match(recommendationFeed, /showDebugActions=\{showAdminActions\}/);
@@ -2148,7 +2150,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /function nonEmptySnapshots/);
   assert.match(recommendationFeed, />Update<\/span>/);
   assert.doesNotMatch(recommendationFeed, /Following update/);
-  assert.match(recommendationFeed, /snapshots\.map\(\(snapshot,\s*index\) =>/);
+  assert.match(recommendationFeed, /snapshots\.map\(\(snapshot\) =>/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-meta"/);
   assert.match(recommendationSnapshotHeaderRule, /justify-content:\s*space-between/);
   assert.doesNotMatch(recommendationSnapshotHeaderRule, /text-transform:\s*uppercase/);
@@ -2156,8 +2158,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationSnapshotMetaRule, /font-size:\s*var\(--text-role-meta-size\)/);
   assert.match(recommendationSnapshotMetaRule, /font-weight:\s*var\(--text-role-label-weight\)/);
   assert.match(recommendationSnapshotMetaRule, /letter-spacing:\s*var\(--text-role-tracking\)/);
-  assert.match(recommendationFeed, /index === 0 \? \(/);
-  assert.match(recommendationFeed, /className="fb-btn light compact recommendation-refresh-button"/);
+  assert.doesNotMatch(recommendationFeed, /className="fb-btn light compact recommendation-refresh-button"/);
   assert.doesNotMatch(recommendationFeed, /Following snapshot/);
   assert.doesNotMatch(recommendationFeed, />Picks</);
   assert.match(recommendationFeed, /className="feed-load-more"/);
@@ -2204,7 +2205,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /className="feed-action-icon"/);
   assert.match(followingSection, /onRetry=\{\(\) => void loadTimeline\(\)\}/);
   assert.match(followingSection, /Retry/);
-  assert.match(recommendationFeed, /className="feed-action-icon"/);
+  assert.doesNotMatch(recommendationFeed, /className="feed-action-icon"/);
   assert.match(recommendationFeed, /className="feed-loading-icon"/);
   assert.match(favoriteButton, /className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
@@ -2228,7 +2229,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(globals, /\.recommendation-feed-actions\s*{/);
   assert.match(globals, /\.recommendation-snapshot-header\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.recommendation-snapshot-meta\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.recommendation-refresh-button\s*{[\s\S]*margin-left:\s*auto/);
+  assert.doesNotMatch(globals, /\.recommendation-refresh-button\s*{/);
   assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.feed-load-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.feed-inline-retry\s*{[\s\S]*color:\s*var\(--accent\)/);

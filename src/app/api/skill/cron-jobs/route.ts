@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -26,7 +27,80 @@ const CronJobSchema = z.object({
   overrideFetched: z.boolean().optional(),
   regenerateDigest: z.boolean().optional(),
   startedAt: z.string().datetime().optional(),
+  ownerId: z.string().max(200).nullable().optional(),
 });
+
+const CronJobQuerySchema = z.object({
+  job: z.enum(["library-cron", "digest-cron"]),
+  ownerId: z.string().max(200).optional(),
+  mode: z.enum(["state", "guard"]).optional(),
+});
+
+const CronJobDeleteSchema = z.object({
+  job: z.enum(["library-cron", "digest-cron"]),
+});
+
+type LocalCronJobRecord = {
+  id: string;
+  status: string;
+  startedAt: Date;
+  stoppedAt: Date | null;
+  frequencyKey: string;
+  frequencyLabel: string;
+  schedule: string;
+  intervalMinutes: number;
+  runtime: string | null;
+  hostname: string | null;
+  platform: string | null;
+  ownerId: string | null;
+  ownerHeartbeatAt: Date | null;
+  overrideFetched?: boolean;
+  regenerateDigest?: boolean;
+};
+
+function serializeCronJob(record: LocalCronJobRecord | null) {
+  if (!record) return null;
+  return {
+    id: record.id,
+    status: record.status,
+    startedAt: record.startedAt.toISOString(),
+    stoppedAt: record.stoppedAt?.toISOString() ?? null,
+    frequencyKey: record.frequencyKey,
+    frequencyLabel: record.frequencyLabel,
+    schedule: record.schedule,
+    intervalMinutes: record.intervalMinutes,
+    runtime: record.runtime,
+    hostname: record.hostname,
+    platform: record.platform,
+    ownerId: record.ownerId,
+    ownerHeartbeatAt: record.ownerHeartbeatAt?.toISOString() ?? null,
+    ...(record.overrideFetched === undefined ? {} : { overrideFetched: record.overrideFetched }),
+    ...(record.regenerateDigest === undefined ? {} : { regenerateDigest: record.regenerateDigest }),
+  };
+}
+
+async function findCronJob(userId: string, job: "library-cron" | "digest-cron") {
+  return job === "digest-cron"
+    ? prisma.digestCronJob.findUnique({ where: { userId } })
+    : prisma.libraryCronJob.findUnique({ where: { userId } });
+}
+
+async function markCronJobStopped({
+  job,
+  userId,
+}: {
+  job: "library-cron" | "digest-cron";
+  userId: string;
+}) {
+  const data = {
+    status: "stopped",
+    stoppedAt: new Date(),
+    ownerHeartbeatAt: null,
+  };
+  return job === "digest-cron"
+    ? prisma.digestCronJob.updateMany({ where: { userId }, data })
+    : prisma.libraryCronJob.updateMany({ where: { userId }, data });
+}
 
 async function recordCronJobStatusEvent({
   request,
@@ -61,6 +135,100 @@ async function recordCronJobStatusEvent({
   }
 }
 
+export async function GET(request: Request) {
+  const user = await getUserFromBearer(request);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const parsed = CronJobQuerySchema.safeParse({
+    job: url.searchParams.get("job"),
+    ownerId: url.searchParams.get("ownerId") ?? undefined,
+    mode: url.searchParams.get("mode") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+  }
+
+  const { job, ownerId, mode = "state" } = parsed.data;
+  const current = await findCronJob(user.id, job);
+  if (mode !== "guard") {
+    return NextResponse.json({ job: serializeCronJob(current) });
+  }
+
+  if (!ownerId) {
+    return NextResponse.json({
+      decision: "stop",
+      reason: "missing_owner_id",
+      job: serializeCronJob(current),
+    });
+  }
+
+  if (!current) {
+    return NextResponse.json({
+      decision: "stop",
+      reason: "missing_server_schedule",
+      job: null,
+    });
+  }
+
+  if (current.status !== "active") {
+    return NextResponse.json({
+      decision: "stop",
+      reason: "server_stopped",
+      job: serializeCronJob(current),
+    });
+  }
+
+  if (current.ownerId && current.ownerId !== ownerId) {
+    return NextResponse.json({
+      decision: "stop",
+      reason: "owner_changed",
+      job: serializeCronJob(current),
+    });
+  }
+
+  const data = {
+    ownerId,
+    ownerHeartbeatAt: new Date(),
+    hostname: request.headers.get("x-machine-hostname"),
+    platform: request.headers.get("x-machine-platform"),
+  };
+  const guarded = job === "digest-cron"
+    ? await prisma.digestCronJob.updateMany({
+        where: {
+          userId: user.id,
+          status: "active",
+          ...(current.ownerId ? { ownerId } : { ownerId: null }),
+        },
+        data,
+      })
+    : await prisma.libraryCronJob.updateMany({
+        where: {
+          userId: user.id,
+          status: "active",
+          ...(current.ownerId ? { ownerId } : { ownerId: null }),
+        },
+        data,
+      });
+  if (guarded.count === 0) {
+    const latest = await findCronJob(user.id, job);
+    return NextResponse.json({
+      decision: "stop",
+      reason: "owner_changed",
+      job: serializeCronJob(latest),
+    });
+  }
+  const next = await findCronJob(user.id, job);
+
+  return NextResponse.json({
+    decision: "run",
+    reason: current.ownerId ? "owner_heartbeat" : "owner_claimed",
+    job: serializeCronJob(next),
+  });
+}
+
 export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
   if (!user) {
@@ -84,32 +252,14 @@ export async function POST(request: Request) {
   const isDigestCron = parsed.data.job === "digest-cron";
 
   if (parsed.data.status === "stopped") {
-    if (isDigestCron) {
-      const stopped = await prisma.digestCronJob.updateMany({
-        where: { userId: user.id },
-        data: { status: "stopped", stoppedAt: new Date() },
-      });
-      await recordCronJobStatusEvent({
-        request,
-        userId: user.id,
-        job: parsed.data.job,
-        status: "stopped",
-        runtime: parsed.data.runtime ?? null,
-        details: { updated: stopped.count },
-      });
-      return NextResponse.json({ status: "stopped", updated: stopped.count });
-    }
-    const stopped = await prisma.libraryCronJob.updateMany({
-      where: { userId: user.id },
-      data: { status: "stopped", stoppedAt: new Date() },
-    });
+    const stopped = await markCronJobStopped({ job: parsed.data.job, userId: user.id });
     await recordCronJobStatusEvent({
       request,
       userId: user.id,
       job: parsed.data.job,
       status: "stopped",
       runtime: parsed.data.runtime ?? null,
-      details: { updated: stopped.count },
+      details: { updated: stopped.count, ownerId: parsed.data.ownerId ?? null },
     });
     return NextResponse.json({ status: "stopped", updated: stopped.count });
   }
@@ -139,6 +289,8 @@ export async function POST(request: Request) {
         regenerateDigest: Boolean(parsed.data.regenerateDigest),
         hostname: request.headers.get("x-machine-hostname"),
         platform: request.headers.get("x-machine-platform"),
+        ownerId: parsed.data.ownerId ?? null,
+        ownerHeartbeatAt: parsed.data.ownerId ? new Date() : null,
       },
       create: {
         userId: user.id,
@@ -152,6 +304,8 @@ export async function POST(request: Request) {
         regenerateDigest: Boolean(parsed.data.regenerateDigest),
         hostname: request.headers.get("x-machine-hostname"),
         platform: request.headers.get("x-machine-platform"),
+        ownerId: parsed.data.ownerId ?? null,
+        ownerHeartbeatAt: parsed.data.ownerId ? new Date() : null,
       },
     });
 
@@ -167,21 +321,12 @@ export async function POST(request: Request) {
         schedule: record.schedule,
         intervalMinutes: record.intervalMinutes,
         regenerateDigest: record.regenerateDigest,
+        ownerId: record.ownerId,
       },
     });
 
     return NextResponse.json({
-      job: {
-        id: record.id,
-        status: record.status,
-        startedAt: record.startedAt.toISOString(),
-        frequencyKey: record.frequencyKey,
-        frequencyLabel: record.frequencyLabel,
-        schedule: record.schedule,
-        intervalMinutes: record.intervalMinutes,
-        runtime: record.runtime,
-        regenerateDigest: record.regenerateDigest,
-      },
+      job: serializeCronJob(record),
     });
   }
 
@@ -199,6 +344,8 @@ export async function POST(request: Request) {
       overrideFetched: Boolean(parsed.data.overrideFetched),
       hostname: request.headers.get("x-machine-hostname"),
       platform: request.headers.get("x-machine-platform"),
+      ownerId: parsed.data.ownerId ?? null,
+      ownerHeartbeatAt: parsed.data.ownerId ? new Date() : null,
     },
     create: {
       userId: user.id,
@@ -212,6 +359,8 @@ export async function POST(request: Request) {
       overrideFetched: Boolean(parsed.data.overrideFetched),
       hostname: request.headers.get("x-machine-hostname"),
       platform: request.headers.get("x-machine-platform"),
+      ownerId: parsed.data.ownerId ?? null,
+      ownerHeartbeatAt: parsed.data.ownerId ? new Date() : null,
     },
   });
 
@@ -227,20 +376,34 @@ export async function POST(request: Request) {
       schedule: record.schedule,
       intervalMinutes: record.intervalMinutes,
       overrideFetched: record.overrideFetched,
+      ownerId: record.ownerId,
     },
   });
 
   return NextResponse.json({
-    job: {
-      id: record.id,
-      status: record.status,
-      startedAt: record.startedAt.toISOString(),
-      frequencyKey: record.frequencyKey,
-      frequencyLabel: record.frequencyLabel,
-      schedule: record.schedule,
-      intervalMinutes: record.intervalMinutes,
-      runtime: record.runtime,
-      overrideFetched: record.overrideFetched,
-    },
+    job: serializeCronJob(record),
   });
+}
+
+export async function DELETE(request: Request) {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const parsed = CronJobDeleteSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+  }
+
+  const stopped = await markCronJobStopped({ job: parsed.data.job, userId: session.user.id });
+  await recordCronJobStatusEvent({
+    request,
+    userId: session.user.id,
+    job: parsed.data.job,
+    status: "stopped",
+    runtime: null,
+    details: { updated: stopped.count, source: "web_stop" },
+  });
+  return NextResponse.json({ status: "stopped", updated: stopped.count });
 }

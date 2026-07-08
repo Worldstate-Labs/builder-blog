@@ -591,16 +591,9 @@ export function SkillPromptActions({
   function openStopDialog() {
     if (!canStopLocal && !canStopCloud) return;
     setStatus(null);
-    if (canStopLocal && !canStopCloud && activeTokens.length === 0) {
-      setStatus({ kind: "info", text: missingAccessMessage });
-      return;
-    }
     setStopDialogOpen(true);
   }
 
-  // Stop flows report "stopped" back to the server after local removal, so they
-  // need a token-backed prompt just like setup. Use the most-recent active key
-  // to keep the stop confirmation dialog to Cancel + Copy.
   async function copyStopCommand(target: StopFetchTarget) {
     if (target === "cloud") {
       try {
@@ -632,20 +625,31 @@ export function SkillPromptActions({
       }
     }
     if (!stopJob) return false;
-    const token = activeTokens[0];
-    if (!token) {
-      setStatus({ kind: "info", text: missingAccessMessage });
+    try {
+      const response = await fetch("/api/skill/cron-jobs", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ job: context === "digest" ? "digest-cron" : "library-cron" }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        setStatus({
+          kind: "error",
+          text: body?.error ?? "Could not stop the local schedule.",
+        });
+        return false;
+      }
+      setStatus({
+        kind: "info",
+        text: "Local schedule stopped. Any installed Local Agent schedule will remove itself on its next check.",
+      });
+      setStopDialogOpen(false);
+      router.refresh();
+      return true;
+    } catch {
+      setStatus({ kind: "error", text: "Could not stop the local schedule." });
       return false;
     }
-    const copied = await copyForToken("stop", token.id, {
-      cron: null,
-      runtime: RUNTIME_OPTIONS[0].id,
-      force: false,
-      fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
-      parallelWorkers: DEFAULT_PARALLEL_WORKERS,
-    });
-    setStopDialogOpen(false);
-    return copied;
   }
 
   // A cloud submission just succeeded: reveal Stop immediately (optimistic),
@@ -868,7 +872,7 @@ function StopScheduleDialog({
           </h2>
           {showFetchTargetPicker ? null : (
             <p className="token-picker-sub">
-              Copy instructions for your agent to stop the following schedule.
+              Stop the server-authorized recurring schedule.
             </p>
           )}
         </header>
@@ -891,7 +895,7 @@ function StopScheduleDialog({
                   <span className="cron-check-name">Your Local Agent</span>
                   <span className="cron-field-hint">
                     {canStopLocal
-                      ? "Copy instructions for your agent to stop the local recurring schedule"
+                      ? "Stop the server-authorized local recurring schedule."
                       : "No local run is active."}
                   </span>
                 </span>
@@ -978,14 +982,10 @@ function StopScheduleDialog({
               (effectiveSelectedTarget === "cloud" && !canStopCloud)
             }
           >
-            {effectiveSelectedTarget === "local" ? <Copy aria-hidden="true" /> : <CircleStop aria-hidden="true" />}
+            <CircleStop aria-hidden="true" />
             {submitting
-              ? effectiveSelectedTarget === "local"
-                ? "Copying"
-                : "Stopping"
-              : effectiveSelectedTarget === "local"
-                ? "Copy"
-                : "Stop"}
+              ? "Stopping"
+              : "Stop"}
           </button>
         </footer>
       </form>

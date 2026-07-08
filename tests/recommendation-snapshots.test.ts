@@ -744,6 +744,11 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.match(apiRoute, /afterItemId/);
   assert.doesNotMatch(apiRoute, /scope: recommendationScope/);
   const feed = source("src/components/RecommendationFeed.tsx");
+  const followingSection = source("src/components/FollowingRecommendationSection.tsx");
+  const recommendationSort = source("src/lib/recommendation-sort.ts");
+  assert.match(recommendationSort, /defaultRecommendationSortMode = "recent"/);
+  assert.match(recommendationSort, /return value === "recent" \? "recent" : defaultRecommendationSortMode/);
+  assert.match(followingSection, /useState<RecommendationSortMode>\(defaultRecommendationSortMode\)/);
   assert.match(feed, /limit: "6"/);
   assert.match(feed, /sort: sortMode/);
   assert.match(feed, /oldestPublishedCursor/);
@@ -760,7 +765,8 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.match(feed, />Update<\/span>/);
   assert.doesNotMatch(feed, /Following update/);
   assert.doesNotMatch(feed, /Following snapshot/);
-  assert.match(feed, /aria-label="Refresh Following posts"/);
+  assert.doesNotMatch(feed, /aria-label="Refresh Following posts"/);
+  assert.doesNotMatch(feed, /recommendation-refresh-button/);
   assert.match(feed, /Loading Following posts/);
   assert.doesNotMatch(feed, />\s*Loading\s*<|Loading posts/);
 });

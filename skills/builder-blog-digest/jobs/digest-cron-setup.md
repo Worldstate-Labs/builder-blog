@@ -45,9 +45,27 @@ if [ ! -s "$ACCOUNT_FILE" ]; then
 fi
 ```
 
-3. Before changing anything, check whether this account's digest cron already
-exists on this machine. Run the check for this machine's OS — run `uname` if
-unsure.
+3. Before changing anything, check FollowBrief's server state for this
+account's digest cron, then check whether the schedule already exists on this
+machine. The server check detects another machine that may already own the
+recurring schedule.
+
+```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-state --job digest-cron
+```
+
+If the JSON output contains `"status": "active"`, STOP: report the current
+frequency, runtime, hostname, platform, and ownerId from the server output,
+explain that continuing replaces the server-authorized digest schedule owner
+after this setup proves a new initial run and schedule install, and ask the user
+whether to replace it. Only continue after the user explicitly confirms. If they
+decline, stop and change nothing. Do not run `cron-status` yet: the old server
+owner must remain authorized until this setup's initial run and local schedule
+install both succeed.
+
+Next, check whether this account's digest cron already exists on this machine.
+Run the check for this machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin)
 
@@ -225,6 +243,17 @@ NODE
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
 ANCHOR_FILE="$AGENT_DIR/schedule-anchor-digest-cron-$ACCOUNT_SLUG"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-schedule"
+OWNER_FILE="$AGENT_DIR/cron-owner-digest-cron-$ACCOUNT_SLUG"
+if [ ! -s "$OWNER_FILE" ]; then
+  node - "$ACCOUNT_SLUG" <<'NODE' > "$OWNER_FILE"
+const { randomUUID } = require("node:crypto");
+const os = require("node:os");
+const accountSlug = process.argv[2] || "default";
+const host = (os.hostname() || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+console.log(`local:${host}:${accountSlug}:digest-cron:${randomUUID()}`);
+NODE
+  chmod 600 "$OWNER_FILE" 2>/dev/null || true
+fi
 printf '{{AGENT_RUNTIME}}\n' > "$AGENT_DIR/runtime-digest-cron-$ACCOUNT_SLUG"
 printf '{{DIGEST_REGENERATE}}\n' > "$AGENT_DIR/regenerate-digest-cron-$ACCOUNT_SLUG"
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ANCHOR_FILE"
@@ -353,6 +382,8 @@ NODE
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
 ANCHOR_FILE="$AGENT_DIR/schedule-anchor-digest-cron-$ACCOUNT_SLUG"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-schedule"
+OWNER_FILE="$AGENT_DIR/cron-owner-digest-cron-$ACCOUNT_SLUG"
+OWNER_ID="$(cat "$OWNER_FILE")"
 ANCHOR_AT="$(cat "$ANCHOR_FILE")"
 SCHEDULE_STATUS="$(cat "$SCHEDULE_SPEC_DIR/status.txt")"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
@@ -364,5 +395,6 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
   --schedule "$SCHEDULE_STATUS" \
   --started-at "$ANCHOR_AT" \
   --runtime "{{AGENT_RUNTIME}}" \
+  --owner-id "$OWNER_ID" \
   --regenerate "{{DIGEST_REGENERATE}}"
 ```

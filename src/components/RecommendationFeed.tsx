@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Loader2, RefreshCcw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
@@ -303,7 +303,7 @@ export function RecommendationFeed({
         </p>
       ) : null}
       <div className="recommendation-snapshot-list">
-        {snapshots.map((snapshot, index) => (
+        {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
               <span className="recommendation-snapshot-meta">
@@ -314,18 +314,6 @@ export function RecommendationFeed({
                   value={snapshot.items.length}
                 />
               </span>
-              {index === 0 ? (
-                <button
-                  aria-label="Refresh Following posts"
-                  className="fb-btn light compact recommendation-refresh-button"
-                  disabled={loadingDirection !== null}
-                  onClick={() => void requestSnapshot("prepend")}
-                  type="button"
-                >
-                  <RefreshCcw className="feed-action-icon" />
-                  Refresh
-                </button>
-              ) : null}
             </div>
             {snapshot.items.map((entry) => (
               <RecommendationPositionMarker

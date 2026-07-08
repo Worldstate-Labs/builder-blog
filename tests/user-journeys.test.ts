@@ -535,8 +535,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /optimisticCloudActive/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.doesNotMatch(skillPromptActions, /Choose which Fetch sources runtime to stop/);
-  assert.match(skillPromptActions, /Copy instructions for your agent to stop the following schedule\./);
-  assert.match(skillPromptActions, /Copy instructions for your agent to stop the local recurring schedule/);
+  assert.match(skillPromptActions, /Stop the server-authorized recurring schedule\./);
+  assert.match(skillPromptActions, /Stop the server-authorized local recurring schedule\./);
+  assert.match(skillPromptActions, /\/api\/skill\/cron-jobs/);
+  assert.match(skillPromptActions, /method: "DELETE"/);
+  assert.match(skillPromptActions, /Any installed Local Agent schedule will remove itself on its next check/);
   assert.match(skillPromptActions, /Schedule/);
   assert.match(skillPromptActions, /Frequency/);
   assert.match(skillPromptActions, /Runtime/);
@@ -545,7 +548,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
   assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
-  assert.match(skillPromptActions, /const token = activeTokens\[0\]/);
+  assert.doesNotMatch(skillPromptActions, /const token = activeTokens\[0\]/);
   assert.doesNotMatch(skillPromptActions, /Copy stop prompt/);
   assert.doesNotMatch(skillPromptActions, /Run or schedule/);
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
@@ -772,7 +775,8 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(libraryCronSetupPrompt, [
     "Create required directories and verify this account's local credential",
     "Account file not found for $ACCT",
-    "Before changing anything, check whether this account's library fetch cron",
+    "Before changing anything, check FollowBrief's server state",
+    "Next, check whether this account's library fetch cron already exists",
     "Keep the selected runtime and fetch mode scoped",
   ]);
   assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
@@ -793,7 +797,8 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(digestCronSetupPrompt, [
     "Create required directories and verify this account's local credential",
     "Account file not found for $ACCT",
-    "Before changing anything, check whether this account's digest cron",
+    "Before changing anything, check FollowBrief's server state",
+    "Next, check whether this account's digest cron already exists",
     "Keep the selected runtime and digest mode scoped",
   ]);
   assert.doesNotMatch(digestCronSetupPrompt, /0 8 \* \* \*/);
@@ -1096,6 +1101,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /--status stopped/);
   assert.match(libraryCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
   assert.match(libraryCronStopPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronStopPrompt, /cron-owner-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /fetch-force-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
@@ -1137,6 +1143,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronStopPrompt, /--status stopped/);
   assert.match(digestCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
   assert.match(digestCronStopPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);
+  assert.match(digestCronStopPrompt, /cron-owner-digest-cron-\$ACCOUNT_SLUG/);
   assert.match(digestCronStopPrompt, /regenerate-digest-cron-\$ACCOUNT_SLUG/);
   assert.match(digestCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron\/current\.json/);
   assert.doesNotMatch(digestCronStopPrompt, /Do not\s+exchange a token or make any network call/);
@@ -1151,6 +1158,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
   assert.match(digestCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
   assert.match(libraryCronSetupPrompt, /pin the\s+scheduled runtime\/fetch settings/);
+  assert.match(libraryCronSetupPrompt, /cron-state --job library-cron/);
+  assert.match(libraryCronSetupPrompt, /"status": "active"/);
+  assert.match(libraryCronSetupPrompt, /old server owner must remain authorized/);
+  assert.match(libraryCronSetupPrompt, /cron-owner-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronSetupPrompt, /--owner-id "\$OWNER_ID"/);
+  assert.match(digestCronSetupPrompt, /cron-state --job digest-cron/);
+  assert.match(digestCronSetupPrompt, /cron-owner-digest-cron-\$ACCOUNT_SLUG/);
+  assert.match(digestCronSetupPrompt, /--owner-id "\$OWNER_ID"/);
   assert.match(libraryCronSetupPrompt, /openclaw exec-policy show/);
   assert.match(libraryCronSetupPrompt, /grep -q 'ask=off'/);
   assert.match(libraryCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
@@ -1231,7 +1246,7 @@ test("web app serves the agent skill and setup command", () => {
     "schedule-anchor-library-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
     "8. After the schedule is installed",
-    "cron-status",
+    "--owner-id \"$OWNER_ID\"",
   ]);
   // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
   // the runtime, and the runner turns 1 into --force for its deterministic
@@ -1320,7 +1335,7 @@ test("web app serves the agent skill and setup command", () => {
     "schedule-anchor-digest-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
     "8. After the schedule is installed",
-    "cron-status",
+    "--owner-id \"$OWNER_ID\"",
   ]);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
@@ -1351,6 +1366,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /run_cron_worker\(\) \{[\s\S]*run_with_job_tracking "\$\{BUILDER_BLOG_JOB_TRIGGER:-scheduled\}"/);
   assert.match(runner, /job_run_update starting "Runtime job accepted by local runner\." "runtime_job_started"[\s\S]*job_run_update running "Runtime agent started\." "runtime_agent_started"/);
   assert.match(runner, /run_cron_scheduler_tick\(\)/);
+  assert.match(runner, /cron_server_guard\(\)/);
+  assert.match(runner, /cron-guard --job "\$JOB_NAME" --owner-id "\$_csg_owner_id"/);
+  assert.match(runner, /\[ "\$_csg_decision" != "stop" \]/);
+  assert.match(runner, /remove_local_cron_schedule\(\)/);
+  assert.match(runner, /launchd_self_uninstall_start/);
+  assert.match(runner, /crontab_self_uninstall_succeeded/);
+  assert.match(runner, /cron-owner-\$JOB_NAME-\$ACCOUNT_SLUG/);
   assert.match(runner, /BUILDER_BLOG_SCHEDULER_TICK/);
   assert.match(runner, /schedule-anchor-\$JOB_NAME-\$ACCOUNT_SLUG/);
   assert.match(runner, /last-fired-expected-at/);

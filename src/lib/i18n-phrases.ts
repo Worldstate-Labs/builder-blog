@@ -316,6 +316,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "클라우드 가져오기를 중지할 수 없습니다.",
     es: "No se pudo detener la obtención en la nube.",
   },
+  "Could not stop the local schedule.": {
+    "zh-CN": "无法停止本地计划。",
+    "zh-TW": "無法停止本機排程。",
+    ja: "ローカルスケジュールを停止できませんでした。",
+    ko: "로컬 일정을 중지할 수 없습니다.",
+    es: "No se pudo detener la programación local.",
+  },
   "Fetching runtime": {
     "zh-CN": "抓取运行时",
     "zh-TW": "抓取執行環境",
@@ -4181,19 +4188,26 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "찾음",
     es: "encontrado",
   },
-  "Copy instructions for your agent to stop the following schedule.": {
-    "zh-CN": "复制给你的 agent 的指令，用来停止以下计划。",
-    "zh-TW": "複製給你的 agent 的指令，用來停止以下排程。",
-    ja: "次のスケジュールを停止するためのエージェント向け手順をコピーします。",
-    ko: "다음 일정을 중지하도록 에이전트에 전달할 지침을 복사합니다.",
-    es: "Copia instrucciones para que tu agente detenga la siguiente programación.",
+  "Stop the server-authorized recurring schedule.": {
+    "zh-CN": "停止服务器授权的重复计划。",
+    "zh-TW": "停止伺服器授權的重複排程。",
+    ja: "サーバーで承認された定期スケジュールを停止します。",
+    ko: "서버가 승인한 반복 일정을 중지합니다.",
+    es: "Detén la programación recurrente autorizada por el servidor.",
   },
-  "Copy instructions for your agent to stop the local recurring schedule": {
-    "zh-CN": "复制给你的 agent 的指令，用来停止本地重复计划",
-    "zh-TW": "複製給你的 agent 的指令，用來停止本機重複排程",
-    ja: "ローカルの定期スケジュールを停止するためのエージェント向け手順をコピー",
-    ko: "로컬 반복 일정을 중지하도록 에이전트에 전달할 지침 복사",
-    es: "Copia instrucciones para que tu agente detenga la programación local recurrente",
+  "Stop the server-authorized local recurring schedule.": {
+    "zh-CN": "停止服务器授权的本地重复计划。",
+    "zh-TW": "停止伺服器授權的本機重複排程。",
+    ja: "サーバーで承認されたローカル定期スケジュールを停止します。",
+    ko: "서버가 승인한 로컬 반복 일정을 중지합니다.",
+    es: "Detén la programación local recurrente autorizada por el servidor.",
+  },
+  "Local schedule stopped. Any installed Local Agent schedule will remove itself on its next check.": {
+    "zh-CN": "本地计划已停止。已安装的 Local Agent 计划会在下次检查时自动移除自身。",
+    "zh-TW": "本機排程已停止。已安裝的 Local Agent 排程會在下次檢查時自動移除自身。",
+    ja: "ローカルスケジュールを停止しました。インストール済みの Local Agent スケジュールは次回の確認時に自動で削除されます。",
+    ko: "로컬 일정이 중지되었습니다. 설치된 Local Agent 일정은 다음 확인 시 자체적으로 제거됩니다.",
+    es: "Programación local detenida. Cualquier programación instalada de Local Agent se eliminará sola en su próxima comprobación.",
   },
   "Export account data or delete your FollowBrief account, including reads, favorites, settings, Hub sharing records, AI Digest records, and Local Agent activity.": {
     "zh-CN": "导出账号数据，或删除你的 FollowBrief 账号，包括阅读记录、收藏、设置、Hub 分享记录、AI Digest 记录和 Local Agent 活动。",
