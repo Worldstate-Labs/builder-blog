@@ -505,6 +505,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(buildersPage, /cloudFetchActive=\{showStopCloudFetch\}/);
   assert.match(buildersPage, /localFetchActive=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /showStop=\{showStopFetching\}/);
+  assert.match(buildersPage, /hasStoppedLocalScheduleActivity\(data\.libraryCronJob, data\.cronRuns, data\.scheduledJobRuns\)/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="digest"/);
   assert.match(buildersPage, /activeSchedule=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);

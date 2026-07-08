@@ -1137,11 +1137,15 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /const showStopCloudFetch = data\.cloudFetchLog\.submittedSourceCount > 0/);
+  assert.match(buildersPage, /function hasStoppedLocalScheduleActivity/);
+  assert.match(buildersPage, /cronJob\.stoppedAt \?\? cronJob\.updatedAt/);
+  assert.match(buildersPage, /cronRuns\.some\(\(run\) => occurredAfter\(run\.startedAt, stoppedAtMs\)\)/);
+  assert.match(buildersPage, /scheduledJobRuns\.some\(\(jobRun\) => occurredAfter\(jobRun\.startedAt, stoppedAtMs\)\)/);
   assert.match(buildersPage, /const showStopFetching = showStopLibraryCron \|\| showStopCloudFetch/);
   assert.match(buildersPage, /cloudFetchActive=\{showStopCloudFetch\}/);
   assert.match(buildersPage, /localFetchActive=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /showStop=\{showStopFetching\}/);
-  assert.match(buildersPage, /libraryCronJob\?\.status === "active"/);
+  assert.match(buildersPage, /libraryCronJob\?\.status === "active" \|\|[\s\S]*hasStoppedLocalScheduleActivity/);
   assert.match(buildersPage, /cloudLog=\{data\.cloudFetchLog\}/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);

@@ -44,16 +44,30 @@ const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
 console.log(`${base}_${hash}`);
 NODE
 }
+legacy_account_slug() {
+  node - "${1:-default}" <<'NODE'
+const account = String(process.argv[2] || "default");
+console.log(account.replace(/[^a-zA-Z0-9]/g, "_"));
+NODE
+}
 if [ -n "$ACCT" ]; then
-  LABEL="$JOB_PREFIX.$(account_slug "$ACCT")"
-  PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-  if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
-    printf 'loaded:%s\n' "$LABEL"
-  elif [ -f "$PLIST" ]; then
-    printf 'stale-plist:%s\n' "$LABEL"
-  else
-    printf 'no-local-schedule:%s\n' "$LABEL"
-  fi
+  CURRENT_LABEL="$JOB_PREFIX.$(account_slug "$ACCT")"
+  LEGACY_LABEL="$JOB_PREFIX.$(legacy_account_slug "$ACCT")"
+  FOUND=0
+  SEEN_LABEL=""
+  for CANDIDATE_LABEL in "$CURRENT_LABEL" "$LEGACY_LABEL"; do
+    [ "$CANDIDATE_LABEL" = "$SEEN_LABEL" ] && continue
+    SEEN_LABEL="$CANDIDATE_LABEL"
+    PLIST="$HOME/Library/LaunchAgents/$CANDIDATE_LABEL.plist"
+    if launchctl print "gui/$(id -u)/$CANDIDATE_LABEL" >/dev/null 2>&1; then
+      printf 'loaded:%s\n' "$CANDIDATE_LABEL"
+      FOUND=1
+    elif [ -f "$PLIST" ]; then
+      printf 'stale-plist:%s\n' "$CANDIDATE_LABEL"
+      FOUND=1
+    fi
+  done
+  [ "$FOUND" = "1" ] || printf 'no-local-schedule:%s\n' "$CURRENT_LABEL"
 else
   FOUND="$({
     launchctl list 2>/dev/null | awk '{ print $3 }' | grep -E '^com\.followbrief\.digest\.' || true
@@ -88,8 +102,9 @@ machine. Treat `stale-plist:<label>` as scheduler state that must be removed.
 ### macOS (`uname` is Darwin) → unload the LaunchAgent and delete its plist
 
 Set `LABEL` to the job you are stopping. When the account email is available it
-derives the label exactly as the setup did; otherwise set `LABEL` to the exact
-label printed in step 2.
+removes both the current hashed label and the legacy unhashed label that older
+setup prompts may have created; otherwise set `LABEL` to the exact label
+printed in step 2.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
@@ -103,41 +118,54 @@ const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
 console.log(`${base}_${hash}`);
 NODE
 }
+legacy_account_slug() {
+  node - "${1:-default}" <<'NODE'
+const account = String(process.argv[2] || "default");
+console.log(account.replace(/[^a-zA-Z0-9]/g, "_"));
+NODE
+}
 if [ -n "$ACCT" ]; then
-  LABEL="com.followbrief.digest.$(account_slug "$ACCT")"
-fi
-# If BUILDER_BLOG_ACCOUNT is unset, set LABEL to the exact label from step 2,
-# e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
-[ -n "$LABEL" ] || { echo "LABEL is required"; exit 1; }
-PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
-  LOADED=1
+  CURRENT_LABEL="com.followbrief.digest.$(account_slug "$ACCT")"
+  LEGACY_LABEL="com.followbrief.digest.$(legacy_account_slug "$ACCT")"
+  LABELS="$CURRENT_LABEL"
+  [ "$LEGACY_LABEL" = "$CURRENT_LABEL" ] || LABELS="$LABELS $LEGACY_LABEL"
 else
-  LOADED=0
+  # If BUILDER_BLOG_ACCOUNT is unset, set LABEL to the exact label from step 2,
+  # e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
+  [ -n "$LABEL" ] || { echo "LABEL is required"; exit 1; }
+  LABELS="$LABEL"
 fi
-if [ -f "$PLIST" ]; then
-  PLIST_EXISTS=1
-else
-  PLIST_EXISTS=0
-fi
-
-if [ "$LOADED" = "1" ] || [ "$PLIST_EXISTS" = "1" ]; then
-  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$PLIST_EXISTS" --launchctl-loaded "$LOADED" --reason stop_cron
-  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
-  BOOTOUT_CODE="$?"
+for LABEL in $LABELS; do
+  PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
   if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
-    LOADED_AFTER=1
+    LOADED=1
   else
-    LOADED_AFTER=0
+    LOADED=0
   fi
-  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason "exit_$BOOTOUT_CODE"
-  rm -f "$PLIST"
-  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason stop_cron
-else
-  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_no_schedule_found --label "$LABEL" --plist-exists 0 --launchctl-loaded 0 --reason stop_cron
-fi
-launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL LOADED: $LABEL" || echo "launchd absent: $LABEL"
-[ -f "$PLIST" ] && echo "STILL PLIST: $PLIST" || echo "plist absent: $PLIST"
+  if [ -f "$PLIST" ]; then
+    PLIST_EXISTS=1
+  else
+    PLIST_EXISTS=0
+  fi
+
+  if [ "$LOADED" = "1" ] || [ "$PLIST_EXISTS" = "1" ]; then
+    node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$PLIST_EXISTS" --launchctl-loaded "$LOADED" --reason stop_cron
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
+    BOOTOUT_CODE="$?"
+    if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+      LOADED_AFTER=1
+    else
+      LOADED_AFTER=0
+    fi
+    node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason "exit_$BOOTOUT_CODE"
+    rm -f "$PLIST"
+    node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason stop_cron
+  else
+    node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_no_schedule_found --label "$LABEL" --plist-exists 0 --launchctl-loaded 0 --reason stop_cron
+  fi
+  launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL LOADED: $LABEL" || echo "launchd absent: $LABEL"
+  [ -f "$PLIST" ] && echo "STILL PLIST: $PLIST" || echo "plist absent: $PLIST"
+done
 ```
 
 ### Linux / other → drop the crontab entry

@@ -99,6 +99,13 @@ test("cron stop prompts clean stale local scheduler state before reporting stopp
     assert.match(prompt, /Stopped-state contract/);
     assert.match(prompt, /stale LaunchAgent plist/);
     assert.match(prompt, /When `BUILDER_BLOG_ACCOUNT` is set,[\s\S]*continue/);
+    assert.match(prompt, /legacy_account_slug/);
+    assert.match(prompt, /CURRENT_LABEL=/);
+    assert.match(prompt, /LEGACY_LABEL=/);
+    assert.match(prompt, /for CANDIDATE_LABEL in "\$CURRENT_LABEL" "\$LEGACY_LABEL"/);
+    assert.match(prompt, /LABELS="\$CURRENT_LABEL"/);
+    assert.match(prompt, /LABELS="\$LABELS \$LEGACY_LABEL"/);
+    assert.match(prompt, /for LABEL in \$LABELS/);
     assert.match(prompt, /loaded service,\s+no target plist\/crontab entry,\s+no current\s+worker file, no pin files/);
     assert.match(prompt, /launchctl print "gui\/\$\(id -u\)\/\$LABEL"/);
     assert.match(prompt, /\[ -f "\$PLIST" \]/);

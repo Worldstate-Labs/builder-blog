@@ -34,7 +34,11 @@ import {
   ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS,
   isAdminFetchOnlySourceType,
 } from "@/lib/admin-fetch-only-sources";
-import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
+import {
+  getAgentJobRuns,
+  getScheduledAgentJobRuns,
+  type AgentJobRunListItem,
+} from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
 import {
   emptyDigestPipelineMetadata,
@@ -806,6 +810,27 @@ function serializeAgentTokens(
   }));
 }
 
+function occurredAfter(value: string | null | undefined, afterMs: number): boolean {
+  if (!value) return false;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) && ms >= afterMs;
+}
+
+function hasStoppedLocalScheduleActivity(
+  cronJob: LibraryCronJobStatus | null,
+  cronRuns: LibraryFetchRunListItem[],
+  scheduledJobRuns: AgentJobRunListItem[],
+): boolean {
+  if (!cronJob || cronJob.status === "active") return false;
+  const stoppedAtMs = Date.parse(cronJob.stoppedAt ?? cronJob.updatedAt);
+  if (!Number.isFinite(stoppedAtMs)) return false;
+
+  return (
+    cronRuns.some((run) => occurredAfter(run.startedAt, stoppedAtMs)) ||
+    scheduledJobRuns.some((jobRun) => occurredAfter(jobRun.startedAt, stoppedAtMs))
+  );
+}
+
 function sourceOptionsForForms(
   sources: Array<{ id: string; label: string }>,
 ) {
@@ -865,7 +890,9 @@ async function FetchSyncSection({
   dataPromise: Promise<FetchSyncData>;
 }) {
   const data = await dataPromise;
-  const showStopLibraryCron = data.libraryCronJob?.status === "active";
+  const showStopLibraryCron =
+    data.libraryCronJob?.status === "active" ||
+    hasStoppedLocalScheduleActivity(data.libraryCronJob, data.cronRuns, data.scheduledJobRuns);
   const showStopCloudFetch = data.cloudFetchLog.submittedSourceCount > 0;
   const showStopFetching = showStopLibraryCron || showStopCloudFetch;
 
