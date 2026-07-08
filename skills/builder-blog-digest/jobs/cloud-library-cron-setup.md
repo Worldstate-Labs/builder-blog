@@ -16,7 +16,7 @@ Execution contract:
 1. Install or refresh the skill:
 
 ```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
+/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
 2. Pin the agent runtime for the unattended host:

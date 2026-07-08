@@ -183,9 +183,11 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /prepare_run_tmp_dir/);
   assert.match(runner, /write_run_owner_file/);
   assert.match(runner, /validate_run_tmp_dir/);
+  assert.match(runner, /terminate_job_tmp_processes/);
+  assert.match(runner, /job_tmp_process_pids/);
   assert.match(runner, /cleanup_job_tmp_dir/);
   assert.match(runner, /cleanup_old_job_runs/);
-  assert.match(runner, /tracked_job_signal_cleanup\(\)[\s\S]*terminate_process_tree "\$RUNTIME_PID" TERM 10/);
+  assert.match(runner, /tracked_job_signal_cleanup\(\)[\s\S]*terminate_process_tree "\$RUNTIME_PID" TERM 10[\s\S]*terminate_job_tmp_processes TERM 3/);
   assert.match(runner, /CURRENT_FILE="\$JOB_STATE_DIR\/current\.json"/);
   assert.match(runner, /clear_current_file/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
@@ -287,6 +289,50 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(workerPrompt, /under the `progress\/`[\s\S]*subdirectory/);
   assert.match(workerPrompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
   assert.match(workerPrompt, /extraction_exceeds_shard_timeout/);
+});
+
+test("runner cleans cloud host temp files and orphaned fetch tools", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+
+  assert.match(runner, /job_tmp_process_pids\(\)/);
+  assert.match(runner, /index\(\$0, dir\)/);
+  assert.match(runner, /terminate_job_tmp_processes\(\)/);
+  assert.match(runner, /validate_run_tmp_dir/);
+  assert.match(runner, /kill -s "\$_tjtp_signal" "\$_tjtp_pid"/);
+  assert.match(runner, /kill -KILL "\$_tjtp_pid"/);
+  assert.match(runner, /cleanup_transient_job_artifacts\(\)/);
+  assert.match(runner, /-name 'fetch-\*'/);
+  assert.match(runner, /-name 'youtube-asr'/);
+  assert.match(runner, /cloud_host_signal_cleanup\(\)[\s\S]*terminate_job_tmp_processes TERM 3[\s\S]*cleanup_job_tmp_dir killed "worker_host_interrupted"/);
+  assert.match(runner, /run_cloud_worker_host\(\)[\s\S]*cleanup_job_tmp_dir "\$_cleanup_status" "\$_cleanup_reason"[\s\S]*cleanup_old_job_runs/);
+  assert.match(runner, /cloud_host_sleep_with_heartbeat[\s\S]*cleanup_transient_job_artifacts/);
+});
+
+test("production app defaults use the FollowBrief domain", () => {
+  const cli = source("scripts/builder-digest.mjs");
+  const runner = source("scripts/builder-agent-runner.sh");
+  const enrichment = source("src/lib/builder-enrichment.ts");
+
+  assert.match(cli, /const DEFAULT_APP_URL = "https:\/\/followbrief\.worldstatelabs\.com"/);
+  assert.match(runner, /APP_URL="\$\{BUILDER_BLOG_URL:-https:\/\/followbrief\.worldstatelabs\.com\}"/);
+  assert.match(enrichment, /\+https:\/\/followbrief\.worldstatelabs\.com/);
+  for (const path of [
+    "scripts/builder-digest.mjs",
+    "scripts/builder-agent-runner.sh",
+    "src/lib/builder-enrichment.ts",
+    "skills/builder-blog-digest/jobs/library-once.md",
+    "skills/builder-blog-digest/jobs/library-cron-setup.md",
+    "skills/builder-blog-digest/jobs/library-cron-stop.md",
+    "skills/builder-blog-digest/jobs/digest-once.md",
+    "skills/builder-blog-digest/jobs/digest-cron-setup.md",
+    "skills/builder-blog-digest/jobs/digest-cron-stop.md",
+    "skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
+    "skills/builder-blog-digest/jobs/cloud-library-cron-stop.md",
+    "README.md",
+    "HANDOFF.md",
+  ]) {
+    assert.doesNotMatch(source(path), /builder-blog\.worldstatelabs\.com/, path);
+  }
 });
 
 test("web status uses scheduled job instances while history can show one-time runs", () => {

@@ -2,7 +2,7 @@
 set -eu
 
 JOB_NAME="${1:-}"
-APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
+APP_URL="${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
 # launchd/cron do not inherit the user's interactive shell PATH. Set this
@@ -1495,6 +1495,7 @@ cleanup_job_tmp_dir() {
     echo "Skipping FollowBrief run cleanup: run temp dir ownership check failed for ${JOB_TMP_DIR:-unset}." >&2
     return 0
   fi
+  terminate_job_tmp_processes TERM 3 || true
   case "$_status" in
     succeeded)
       rm -rf "$JOB_TMP_DIR"
@@ -1592,6 +1593,7 @@ tracked_job_signal_cleanup() {
   if [ -n "${RUNTIME_PID:-}" ]; then
     terminate_process_tree "$RUNTIME_PID" TERM 10 || true
   fi
+  terminate_job_tmp_processes TERM 3 || true
   aggregate_runtime_usage_files || true
   job_run_update killed "Runtime interrupted before normal cleanup completed." "runner_interrupted" \
     --stage "interrupted" \
@@ -1730,6 +1732,56 @@ terminate_process_tree() {
     tpt_left=$(( tpt_left - 1 ))
   done
   return 1
+}
+
+job_tmp_process_pids() {
+  [ -n "${JOB_TMP_DIR:-}" ] || return 0
+  # Match only the current owned run directory. This catches orphaned fetch
+  # tools whose command line still references output files under this run.
+  ps -axo pid=,command= 2>/dev/null | awk -v dir="$JOB_TMP_DIR" -v self="$$" '
+    index($0, "awk -v dir=") { next }
+    index($0, dir) {
+      pid = $1
+      if (pid ~ /^[0-9]+$/ && pid != self) print pid
+    }
+  ' | sort -u
+}
+
+terminate_job_tmp_processes() {
+  _tjtp_signal="${1:-TERM}"
+  _tjtp_wait_seconds="${2:-3}"
+  validate_run_tmp_dir || return 0
+  _tjtp_pids="$(job_tmp_process_pids)"
+  [ -n "$_tjtp_pids" ] || return 0
+
+  for _tjtp_pid in $_tjtp_pids; do
+    kill -s "$_tjtp_signal" "$_tjtp_pid" 2>/dev/null || true
+  done
+
+  _tjtp_left="$_tjtp_wait_seconds"
+  while [ "$_tjtp_left" -gt 0 ]; do
+    _tjtp_alive=0
+    for _tjtp_pid in $_tjtp_pids; do
+      if kill -0 "$_tjtp_pid" 2>/dev/null; then
+        _tjtp_alive=1
+        break
+      fi
+    done
+    [ "$_tjtp_alive" -eq 0 ] && return 0
+    sleep 1
+    _tjtp_left=$(( _tjtp_left - 1 ))
+  done
+
+  for _tjtp_pid in $_tjtp_pids; do
+    kill -KILL "$_tjtp_pid" 2>/dev/null || true
+  done
+  return 0
+}
+
+cleanup_transient_job_artifacts() {
+  validate_run_tmp_dir || return 0
+  terminate_job_tmp_processes TERM 3 || true
+  find "$JOB_TMP_DIR" -mindepth 1 -maxdepth 1 \( -name 'fetch-*' -o -name 'youtube-asr' \) -exec rm -rf {} + 2>/dev/null || true
 }
 
 write_worker_control_event() {
@@ -2312,9 +2364,13 @@ cloud_host_idle_seconds() {
 
 cloud_host_signal_cleanup() {
   _signal="${1:-TERM}"
+  terminate_job_tmp_processes TERM 3 || true
+  aggregate_runtime_usage_files || true
   job_run_update killed "Worker host interrupted before normal shutdown." "worker_host_interrupted" \
     --stage "interrupted" \
     --signal "$_signal" || true
+  cleanup_job_tmp_dir killed "worker_host_interrupted" || true
+  cleanup_old_job_runs
   if [ -n "${CLOUD_HOST_CURRENT_FILE:-}" ]; then
     clear_current_file "$CLOUD_HOST_CURRENT_FILE" "${BUILDER_BLOG_JOB_RUN_ID:-}" || true
   fi
@@ -2399,11 +2455,17 @@ run_cloud_worker_host() {
   clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
   if [ "$_code" -eq 0 ]; then
     job_run_update succeeded "Worker host stopped." "worker_host_stopped" --stage "stopped"
+    _cleanup_status="succeeded"
+    _cleanup_reason="worker_host_stopped"
   else
     job_run_update failed "Worker host exited with code $_code." "worker_host_failed" \
       --stage "failed" \
       --exit-code "$_code"
+    _cleanup_status="failed"
+    _cleanup_reason="worker_host_failed"
   fi
+  cleanup_job_tmp_dir "$_cleanup_status" "$_cleanup_reason"
+  cleanup_old_job_runs
   return "$_code"
 }
 
@@ -4052,6 +4114,9 @@ run_library_job() {
         if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "cloud-host-idle"; then
           job_run_update running "Worker host could not sync every idle result; it will keep running and retry with later progress." "worker_host_idle_flush_failed" \
             --stage "waiting_after_sync_issue"
+        else
+          cleanup_transient_job_artifacts || true
+          cleanup_old_job_runs
         fi
         for _entry in ${_worker_entries:-}; do
           _pid="${_entry%%:*}"

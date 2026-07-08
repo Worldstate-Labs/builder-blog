@@ -20,7 +20,7 @@ below uses this pinned runtime; do not fall back to a different one.
 1. Install or refresh the skill:
 
 ```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
+/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
 2. Create required directories and verify this account's local credential before

@@ -21,7 +21,7 @@ existed.
 1. Install or refresh the skill so local status commands are current:
 
 ```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
+/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
 2. Remove the persistent Cloud worker host service for this machine. Run the

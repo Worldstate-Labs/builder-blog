@@ -74,7 +74,7 @@ The deployed web app serves the skill and CLI script. Users should copy the
 setup command from Settings, or run:
 
 ```bash
-/bin/sh -c "$(curl -fsSL https://builder-blog.worldstatelabs.com/api/skill/bootstrap)"
+/bin/sh -c "$(curl -fsSL https://followbrief.worldstatelabs.com/api/skill/bootstrap)"
 ```
 
 Served files:

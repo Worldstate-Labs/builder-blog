@@ -16,6 +16,18 @@ const missingCommandRunner = async () => ({
   timedOut: false,
 });
 
+test("external local tools are terminated as a process group on timeout", () => {
+  const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
+
+  assert.match(cli, /function terminateToolChild/);
+  assert.match(cli, /detached: process\.platform !== "win32"/);
+  assert.match(cli, /process\.kill\(-child\.pid, signal\)/);
+  assert.match(cli, /child\.kill\(signal\)/);
+  assert.match(cli, /"SIGTERM"/);
+  assert.match(cli, /"SIGKILL"/);
+  assert.doesNotMatch(cli, /child\.kill\("SIGTERM"\);/);
+});
+
 test("personal blog fetcher discovers RSS feed articles", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(

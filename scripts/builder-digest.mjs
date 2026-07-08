@@ -247,7 +247,7 @@ export function sourceConfigFor(builderOrSourceTypeId) {
     : normalizeSourceType(builderOrSourceTypeId?.sourceType) || sourceTypeIdForBuilder(builderOrSourceTypeId);
   return config.sources.find((s) => s.id === id) ?? config.sources.find((s) => s.id === "website");
 }
-const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
+const DEFAULT_APP_URL = "https://followbrief.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
 const DEFAULT_PERSONAL_FETCH_DAYS = 30;
@@ -4516,17 +4516,38 @@ async function fetchPersonalWithExternalCommand(builder, { fallbackCutoff, force
 
 function runExternalFetcher(command, payload) {
   return new Promise((resolve, reject) => {
+    const timeoutMs = envToolTimeoutMs("BUILDER_BLOG_EXTERNAL_FETCHER_TIMEOUT_MS", 30 * 60 * 1000);
     const child = spawn(command, {
       shell: true,
+      detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
       env: process.env,
     });
     const stdout = [];
     const stderr = [];
+    let timedOut = false;
+    let killTimer = null;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      terminateToolChild(child, "SIGTERM");
+      killTimer = setTimeout(() => terminateToolChild(child, "SIGKILL"), envToolTimeoutMs("BUILDER_BLOG_TOOL_KILL_GRACE_MS", 5_000));
+    }, timeoutMs);
+    const clearTimers = () => {
+      clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+    };
     child.stdout.on("data", (chunk) => stdout.push(chunk));
     child.stderr.on("data", (chunk) => stderr.push(chunk));
-    child.on("error", reject);
+    child.on("error", (error) => {
+      clearTimers();
+      reject(error);
+    });
     child.on("close", (code) => {
+      clearTimers();
+      if (timedOut) {
+        reject(new Error(`External fetcher timed out after ${timeoutMs}ms`));
+        return;
+      }
       if (code === 0) {
         resolve(Buffer.concat(stdout).toString("utf8"));
         return;
@@ -4548,25 +4569,43 @@ function envToolTimeoutMs(name, fallback) {
   return Math.min(2 * 60 * 60 * 1000, Math.max(1_000, Math.floor(raw)));
 }
 
+function terminateToolChild(child, signal) {
+  if (!child?.pid) return;
+  if (process.platform !== "win32") {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch {}
+  }
+  try {
+    child.kill(signal);
+  } catch {}
+}
+
 function runTool(command, args = [], options = {}) {
   const timeoutMs = options.timeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_TOOL_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS);
+  const killGraceMs = envToolTimeoutMs("BUILDER_BLOG_TOOL_KILL_GRACE_MS", 5_000);
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env ?? process.env,
+      detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
     });
     const stdout = [];
     const stderr = [];
     let timedOut = false;
+    let killTimer = null;
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
+      terminateToolChild(child, "SIGTERM");
+      killTimer = setTimeout(() => terminateToolChild(child, "SIGKILL"), killGraceMs);
     }, timeoutMs);
     child.stdout.on("data", (chunk) => stdout.push(chunk));
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on("error", (error) => {
       clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
       resolve({
         ok: false,
         code: null,
@@ -4577,6 +4616,7 @@ function runTool(command, args = [], options = {}) {
     });
     child.on("close", (code) => {
       clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
       resolve({
         ok: code === 0 && !timedOut,
         code,

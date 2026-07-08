@@ -6,7 +6,7 @@ This document is a continuation note for Codex CLI. Read it first, then inspect 
 
 - Local repo: `/Users/jie/code/builder_blog`
 - GitHub repo: `https://github.com/Worldstate-Labs/builder-blog`
-- Production app: `https://builder-blog.worldstatelabs.com`
+- Production app: `https://followbrief.worldstatelabs.com`
 - Vercel project: `worldstatelabs/builder-blog`
 - Current branch: `main`
 - Current git state at handoff: clean and pushed to `origin/main`
@@ -187,7 +187,7 @@ sed -n '859,1099p' /tmp/follow-builders-generate-feed.js
 ## Deployment Notes
 
 - Pushing to `main` triggers Vercel production deployment.
-- Vercel production URL should remain `https://builder-blog.worldstatelabs.com`.
+- Vercel production URL should remain `https://followbrief.worldstatelabs.com`.
 - Do not print or commit OAuth/API secrets.
 - If environment variables are changed in Vercel, trigger a new deployment so runtime functions receive them.
 
@@ -199,7 +199,7 @@ git status --short --branch
 npm run lint
 npm run build
 vercel ls builder-blog --scope worldstatelabs
-curl -fsS https://builder-blog.worldstatelabs.com/api/auth/providers
+curl -fsS https://followbrief.worldstatelabs.com/api/auth/providers
 ```
 
 ## Known Risks

@@ -73,7 +73,7 @@ type ProbeInput = {
 };
 
 const USER_AGENT =
-  "FollowBriefBot/1.0 (avatar resolver; +https://builder-blog.worldstatelabs.com)";
+  "FollowBriefBot/1.0 (avatar resolver; +https://followbrief.worldstatelabs.com)";
 
 const FETCH_TIMEOUT_MS = 4000;
 const AVATAR_CACHE_MAX_BYTES = 192 * 1024;
