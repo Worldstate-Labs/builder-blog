@@ -157,6 +157,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(route, /function mergeAgentJobRunDetails/);
   assert.match(route, /function mergeAgentJobRunProgress/);
   assert.match(route, /function mergeAgentJobRunStage/);
+  assert.match(route, /run_fetch_workers: 30,[\s\S]*workers_running: 30,[\s\S]*checkpoint_syncing: 30/);
   assert.match(route, /compactAgentJobRunDetails/);
   assert.match(route, /existingRun\?\.details/);
   assert.match(route, /mergeAgentJobRunProgress\(current\.progress, next\.progress\)/);
