@@ -10,7 +10,11 @@ import {
   syncTextStats,
   type BuilderFeedSyncItemResult,
 } from "@/lib/builder-feed-sync";
-import { mergeFetchRunDetails, type FetchRunTaskOutcomePatch } from "@/lib/fetch-run-details";
+import {
+  compactFetchRunDetailsForStorage,
+  mergeFetchRunDetails,
+  type FetchRunTaskOutcomePatch,
+} from "@/lib/fetch-run-details";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { prisma } from "@/lib/prisma";
@@ -295,16 +299,16 @@ async function patchFetchRunForBuilderSync({
       plannedTasks: fetchRun.plannedTasks ?? [],
       taskOutcomes: outcomes,
     });
-    const detailsJson = JSON.stringify(merged.details);
     // Same column, same cap as the fetch-runs POST/PATCH writers (100 KB).
-    if (Buffer.byteLength(detailsJson, "utf8") > 100_000) {
+    const compacted = compactFetchRunDetailsForStorage(merged.details, 100_000);
+    if (compacted.bytes > 100_000) {
       console.error(`Fetch run ${fetchRun.id} details patch exceeded 100 KB; leaving log unpatched.`);
       return { status: "failed", reason: "details_too_large" };
     }
 
     await prisma.libraryFetchRun.update({
       where: { id: run.id },
-      data: { details: merged.details as object },
+      data: { details: compacted.details as object },
     });
     return {
       status: "ok",

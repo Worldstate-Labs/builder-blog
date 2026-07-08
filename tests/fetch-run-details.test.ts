@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deriveFetchRunStatusFromDetails, mergeFetchRunDetails } from "../src/lib/fetch-run-details";
+import {
+  compactFetchRunDetailsForStorage,
+  deriveFetchRunStatusFromDetails,
+  mergeFetchRunDetails,
+} from "../src/lib/fetch-run-details";
 
 test("late planned-task patches do not regress terminal fetch task outcomes", () => {
   const result = mergeFetchRunDetails(
@@ -195,5 +199,52 @@ test("failed terminal post outcomes derive a failed fetch run status", () => {
   assert.deepEqual(
     deriveFetchRunStatusFromDetails({ status: "ok", errorCount: 0 }, result.details),
     { status: "failed", errorCount: 2 },
+  );
+});
+
+test("fetch run storage compaction preserves terminal accounting under the details cap", () => {
+  const tasks = Array.from({ length: 98 }, (_, index) => {
+    const id = `fetch_post:builder_${index % 8}:BLOG_POST:https%3A%2F%2Fexample.com%2Fposts%2F${index}`;
+    return {
+      id,
+      builder: `Source ${index % 8}`,
+      builderId: `builder_${index % 8}`,
+      sourceType: "blog",
+      contentStatus: "requires_agent",
+      agentWorkType: "blog_article_fetch",
+      title: `A long post title ${index} with enough text to resemble real feed data`,
+      url: `https://example.com/posts/${index}?utm_source=followbrief`,
+      status: "failed",
+      failureReason: "runtime_timeout",
+      evidence: {
+        missingShard: {
+          shard: `shard-${index % 5}`,
+          taskIds: Array.from({ length: 20 }, (_, taskIndex) => `fetch_post:builder_${taskIndex}:post_${taskIndex}`),
+          taskTitles: Array.from({ length: 10 }, (_, titleIndex) => `Large evidence title ${titleIndex}`),
+          workerLogFile: `shard-${index % 5}-worker.log`,
+        },
+        runShardSummary: ["shard-0-result.json:missing", "shard-1-result.json:missing"],
+      },
+      workerId: `shard-${index % 5}`,
+    };
+  });
+
+  const details = {
+    cliFlags: { days: 30, limit: 3 },
+    fetchTasks: tasks,
+    perBuilder: [{ builderId: "builder_1" }],
+  };
+  assert.ok(Buffer.byteLength(JSON.stringify(details), "utf8") > 100_000);
+
+  const compacted = compactFetchRunDetailsForStorage(details, 100_000);
+
+  assert.equal(compacted.compacted, true);
+  assert.ok(compacted.bytes <= 100_000);
+  assert.equal(compacted.details.fetchTasks.length, 98);
+  assert.equal(compacted.details.fetchTasks.filter((task) => task.status === "failed").length, 98);
+  assert.equal(compacted.details.fetchTasks.some((task) => task.evidence), false);
+  assert.deepEqual(
+    deriveFetchRunStatusFromDetails({ status: "ok", errorCount: 0 }, compacted.details),
+    { status: "failed", errorCount: 98 },
   );
 });

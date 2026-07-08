@@ -34,6 +34,12 @@ export type MergeFetchRunDetailsResult = {
   planned: number;
 };
 
+export type CompactFetchRunDetailsResult = {
+  details: Record<string, unknown>;
+  bytes: number;
+  compacted: boolean;
+};
+
 function taskRecord(value: unknown): FetchRunTask {
   return value && typeof value === "object" && !Array.isArray(value)
     ? { ...(value as FetchRunTask) }
@@ -42,6 +48,10 @@ function taskRecord(value: unknown): FetchRunTask {
 
 function taskStatus(task: FetchRunTask): string | null {
   return typeof task.status === "string" ? task.status : null;
+}
+
+function jsonBytes(value: unknown): number {
+  return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
 
 function normalizedFetchRunStatus(status: string): FetchRunStatus {
@@ -113,6 +123,65 @@ function mergeWorkerUsages(
     byWorkerId.set(workerId, { ...(byWorkerId.get(workerId) ?? {}), ...record });
   }
   details.workerUsages = [...byWorkerId.values()];
+}
+
+function nonNullEntries(task: FetchRunTask): FetchRunTask {
+  return Object.fromEntries(
+    Object.entries(task).filter(([, value]) => value !== null && value !== undefined),
+  );
+}
+
+function compactTask(task: FetchRunTask, level: number): FetchRunTask {
+  const compacted = nonNullEntries(task);
+  if (level >= 1) {
+    delete compacted.evidence;
+  }
+  if (level >= 2) {
+    delete compacted.fetchTool;
+    delete compacted.hubSharedReuse;
+    delete compacted.readMethod;
+    delete compacted.summaryMethod;
+  }
+  if (level >= 3) {
+    delete compacted.url;
+  }
+  if (level >= 4) {
+    delete compacted.title;
+  }
+  if (level >= 5) {
+    const keep = new Set([
+      "id",
+      "builder",
+      "builderId",
+      "sourceType",
+      "contentStatus",
+      "agentWorkType",
+      "status",
+      "failureReason",
+      "workerId",
+      "bodyChars",
+      "bodyWords",
+      "summaryChars",
+      "summaryWords",
+      "agentRuntime",
+      "agentModel",
+    ]);
+    for (const key of Object.keys(compacted)) {
+      if (!keep.has(key)) delete compacted[key];
+    }
+  }
+  return compacted;
+}
+
+function compactFetchTasks(details: Record<string, unknown>, level: number): Record<string, unknown> {
+  const next = { ...details };
+  if (Array.isArray(next.fetchTasks)) {
+    next.fetchTasks = next.fetchTasks.map((task) => compactTask(taskRecord(task), level));
+  }
+  if (level >= 5) {
+    next.detailsCompacted = "fetch_tasks";
+  }
+  return next;
 }
 
 function builderIdsFromDetails(details: Record<string, unknown>): Set<string> {
@@ -271,4 +340,28 @@ export function mergeFetchRunDetails(
   mergeWorkerUsages(details, workerUsages);
 
   return { details, matched, planned };
+}
+
+export function compactFetchRunDetailsForStorage(
+  details: Record<string, unknown>,
+  maxBytes: number,
+): CompactFetchRunDetailsResult {
+  const initialBytes = jsonBytes(details);
+  if (initialBytes <= maxBytes) {
+    return { details, bytes: initialBytes, compacted: false };
+  }
+
+  let best = details;
+  let bestBytes = initialBytes;
+  for (const level of [1, 2, 3, 4, 5]) {
+    const candidate = compactFetchTasks(details, level);
+    const bytes = jsonBytes(candidate);
+    best = candidate;
+    bestBytes = bytes;
+    if (bytes <= maxBytes) {
+      return { details: candidate, bytes, compacted: true };
+    }
+  }
+
+  return { details: best, bytes: bestBytes, compacted: true };
 }

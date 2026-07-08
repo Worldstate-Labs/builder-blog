@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { countPlannedPostTasks, deriveFetchRunStatusFromDetails, mergeFetchRunDetails } from "@/lib/fetch-run-details";
+import {
+  compactFetchRunDetailsForStorage,
+  countPlannedPostTasks,
+  deriveFetchRunStatusFromDetails,
+  mergeFetchRunDetails,
+} from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { MAX_FETCH_TASK_ID } from "@/lib/skill-contracts";
@@ -141,11 +146,13 @@ export async function PATCH(request: Request, { params }: Params) {
 
   // mergeFetchRunDetails preserves terminal statuses from TERMINAL_FETCH_TASK_STATUSES
   // when a late plannedTasks patch arrives after synced/skipped/failed outcomes.
-  const { details, matched, planned } = mergeFetchRunDetails(run.details, {
+  const { details: mergedDetails, matched, planned } = mergeFetchRunDetails(run.details, {
     plannedTasks: parsed.data.plannedTasks ?? [],
     taskOutcomes: parsed.data.taskOutcomes ?? [],
     workerUsages: parsed.data.workerUsages ?? [],
   });
+  const compacted = compactFetchRunDetailsForStorage(mergedDetails, MAX_DETAILS_BYTES);
+  const details = compacted.details;
   const nextStatus = deriveFetchRunStatusFromDetails(
     { status: run.status as "ok" | "partial" | "failed", errorCount: run.errorCount },
     details,
@@ -159,7 +166,7 @@ export async function PATCH(request: Request, { params }: Params) {
     userActionsCount: run.userActionsCount,
   });
 
-  if (Buffer.byteLength(JSON.stringify(details), "utf8") > MAX_DETAILS_BYTES) {
+  if (compacted.bytes > MAX_DETAILS_BYTES) {
     return NextResponse.json(
       { error: "details payload too large; cap at 100 KB" },
       { status: 400 },
