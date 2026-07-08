@@ -1556,7 +1556,7 @@ async function emitFetchJobProgress(config, progress, update = {}) {
   }
 }
 
-function progressSummary(progress) {
+export function progressSummary(progress) {
   const counters = progress.counters ?? {};
   const stage = String(progress.stage ?? "running").replace(/_/g, " ");
   const sourcePart = counters.sourcesTotal
@@ -1565,7 +1565,18 @@ function progressSummary(progress) {
   const taskPart = counters.tasksPlanned
     ? `${formatProgressCount(counters.tasksDone ?? 0)}/${formatProgressCount(counters.tasksPlanned)} tasks`
     : null;
-  return [stage, sourcePart, taskPart].filter(Boolean).join(" · ").slice(0, 500);
+  const outcomeParts = [
+    ["synced", counters.synced],
+    ["failed", counters.failed],
+    ["skipped", counters.skipped],
+    ["action needed", counters.actionNeeded],
+  ]
+    .map(([label, value]) => {
+      const count = Number(value);
+      return Number.isFinite(count) && count > 0 ? `${formatProgressCount(count)} ${label}` : null;
+    })
+    .filter(Boolean);
+  return [stage, sourcePart, taskPart, ...outcomeParts].filter(Boolean).join(" · ").slice(0, 500);
 }
 
 function formatProgressCount(value) {
@@ -6280,6 +6291,14 @@ function workerLogLooksLikeBackgroundedTool(text) {
   ));
 }
 
+function workerLogLooksLikeNoProgressTimeout(text) {
+  return workerLogHasFailureReason(text, "worker_no_progress_timeout");
+}
+
+function workerLogLooksLikeStalledTimeout(text) {
+  return workerLogHasFailureReason(text, "worker_stalled_timeout");
+}
+
 function missingShardFailure(shardPlan, shardSummary) {
   if (workerLogLooksLikeRuntimeAuthFailure(shardPlan?.workerLogTail)) {
     return {
@@ -6291,6 +6310,18 @@ function missingShardFailure(shardPlan, shardSummary) {
     return {
       reason: "worker_backgrounded_tool",
       failureKind: "worker_backgrounded_tool",
+    };
+  }
+  if (workerLogLooksLikeNoProgressTimeout(shardPlan?.workerLogTail)) {
+    return {
+      reason: "worker_no_progress_timeout",
+      failureKind: "worker_no_progress_timeout",
+    };
+  }
+  if (workerLogLooksLikeStalledTimeout(shardPlan?.workerLogTail)) {
+    return {
+      reason: "worker_stalled_timeout",
+      failureKind: "worker_stalled_timeout",
     };
   }
   if (workerLogLooksLikeShardTimeout(shardPlan?.workerLogTail)) {
@@ -6308,6 +6339,15 @@ function missingShardFailure(shardPlan, shardSummary) {
   return {
     reason: "worker_missing_result",
     failureKind: "missing_worker_result_file",
+  };
+}
+
+function defaultMissingFailure(options = {}) {
+  const reason = String(options.defaultMissingFailureReason || "").trim();
+  if (!reason) return null;
+  return {
+    reason,
+    failureKind: String(options.defaultMissingFailureKind || reason).trim() || reason,
   };
 }
 
@@ -6331,6 +6371,28 @@ function stampItemWorkerId(item, workerId) {
     rawJson: {
       ...rawJson,
       workerId: rawJson.workerId ?? workerId,
+    },
+  };
+}
+
+function normalizeAgentExecutionMetadata(item, task, taskId, workerId) {
+  if (task?.contentStatus !== "requires_agent") return item;
+  if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+  const rawJson = objectRecord(item.rawJson);
+  const fallbackProof = [
+    "Local Agent worker",
+    workerId || rawJson.workerId || "unknown",
+    "produced this requires_agent item for fetch task",
+    taskId,
+    "but omitted rawJson.agentExecutionProof; merge-task-results added this provenance fallback.",
+  ].join(" ");
+  return {
+    ...item,
+    rawJson: {
+      ...rawJson,
+      agentRuntime: stringValue(rawJson.agentRuntime) || DEFAULT_AGENT_RUNTIME || "local_agent",
+      agentCompletedAt: normalizedDate(rawJson.agentCompletedAt) || new Date().toISOString(),
+      agentExecutionProof: stringValue(rawJson.agentExecutionProof) || fallbackProof,
     },
   };
 }
@@ -6537,7 +6599,10 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
         const mergedItem = taskId
           ? preserveReadyTaskItem(canonicalItem, match?.task)
           : canonicalItem;
-        const normalized = normalizeSyncItemSummary(mergedItem);
+        const itemWithExecutionMetadata = taskId
+          ? normalizeAgentExecutionMetadata(mergedItem, match?.task, taskId, workerId)
+          : mergedItem;
+        const normalized = normalizeSyncItemSummary(itemWithExecutionMetadata);
         if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.
@@ -6617,7 +6682,9 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       accounted.add(id);
       const shardPlan = shardPlanByTaskId.get(id);
       const shardSummary = shardPlan ? shardSummaryByResultFile.get(shardPlan.resultFile) : null;
-      const failure = missingShardFailure(shardPlan, shardSummary);
+      const failure = shardPlan
+        ? missingShardFailure(shardPlan, shardSummary)
+        : defaultMissingFailure(options) ?? missingShardFailure(shardPlan, shardSummary);
       taskOutcomes.push({
         fetchTaskId: id,
         status: "failed",
@@ -6968,6 +7035,7 @@ async function mergeTaskResults(args) {
   const completedOnly = args.includes("--completed-only");
   const excludeTaskIdsFile = argValue(args, "--exclude-task-ids-file", null);
   const shardTimeoutSeconds = Number(argValue(args, "--shard-timeout-seconds", ""));
+  const defaultMissingFailureReason = argValue(args, "--default-missing-reason", null);
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!resultsDir) throw new Error("Missing --results-dir");
   if (!outFile) throw new Error("Missing --out library-agent-sync.json");
@@ -6997,6 +7065,8 @@ async function mergeTaskResults(args) {
   const merged = mergeShardSyncPayloads(fetchResult, shardResults, {
     shardPlans: await readShardPlans(resultsDir),
     shardTimeoutSeconds: Number.isFinite(shardTimeoutSeconds) ? shardTimeoutSeconds : null,
+    defaultMissingFailureReason,
+    defaultMissingFailureKind: defaultMissingFailureReason,
     backfillMissing: !completedOnly,
   });
   const excluded = await readIdSetFile(excludeTaskIdsFile);
@@ -7095,6 +7165,78 @@ function excludedTaskIdsContains(excludedIds, task) {
   const cloudRunId = taskCloudRunIdForSync(task);
   if (cloudRunId) return excludedIds.has(taskKeyForSync(task));
   return excludedIds.has(taskIdForSync(task));
+}
+
+const TERMINAL_FETCH_RUN_TASK_STATUSES = new Set(["synced", "skipped", "failed", "action_needed"]);
+
+export function terminalFetchRunTaskKeysFromDetails(detailsValue, fetchResultOrTasks = []) {
+  const plannedTasks = Array.isArray(fetchResultOrTasks?.fetchTasks)
+    ? extractFetchTasks(fetchResultOrTasks)
+    : Array.isArray(fetchResultOrTasks)
+      ? fetchResultOrTasks
+      : [];
+  const plannedById = new Map(plannedTasks.map((task) => [taskIdForSync(task), task]));
+  const details = objectRecord(detailsValue);
+  const tasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  const keys = new Set();
+  for (const value of tasks) {
+    const task = objectRecord(value);
+    const id = String(task.id || task.fetchTaskId || "").trim();
+    if (!id) continue;
+    const status = String(task.status || "").trim();
+    if (!TERMINAL_FETCH_RUN_TASK_STATUSES.has(status)) continue;
+    const planned = plannedById.get(id);
+    if (planned) keys.add(taskKeyForSync(planned));
+    else keys.add(taskKeyForSync(task));
+    keys.add(id);
+  }
+  return [...keys].sort();
+}
+
+async function appendFetchRunTerminalTaskIds(args) {
+  const outFile = argValue(args, "--out");
+  if (!outFile) throw new Error("Missing --out completed-task-ids.txt");
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify({ status: "skipped", webSyncDisabled: true }, null, 2));
+    return;
+  }
+  const config = await readConfig();
+  requireLoggedIn(config);
+
+  const tasksFile = argValue(args, "--tasks", null);
+  const fetchResult = tasksFile ? JSON.parse(await readFile(tasksFile, "utf8")) : null;
+  let runId = String(argValue(args, "--run-id", "") || "").trim();
+  if (!runId) {
+    try {
+      runId = (await readFile(libraryFetchRunIdFile(), "utf8")).trim();
+    } catch {
+      runId = "";
+    }
+  }
+  if (!runId) {
+    console.log(JSON.stringify({ status: "skipped", reason: "fetch_run_id_missing" }, null, 2));
+    return;
+  }
+
+  const data = await getJson(`${config.appUrl}/api/skill/fetch-runs`, config.token, {
+    label: "fetch run terminal task lookup",
+    timeoutMs: HTTP_SYNC_TIMEOUT_MS,
+  });
+  const candidates = [
+    ...(Array.isArray(data?.runs) ? data.runs : []),
+    ...(Array.isArray(data?.cronRuns) ? data.cronRuns : []),
+  ];
+  const run = candidates.find((candidate) => candidate?.id === runId) ?? null;
+  if (!run) {
+    console.log(JSON.stringify({ status: "skipped", reason: "fetch_run_not_in_recent_page", runId }, null, 2));
+    return;
+  }
+
+  const ids = terminalFetchRunTaskKeysFromDetails(run.details, fetchResult ?? []);
+  if (ids.length > 0) {
+    await appendFile(outFile, `${ids.join("\n")}\n`, "utf8");
+  }
+  console.log(JSON.stringify({ status: "ok", runId, appended: ids.length }, null, 2));
 }
 
 async function readIdSetFile(file) {
@@ -10356,6 +10498,7 @@ async function main() {
   else if (command === "merge-fetch-results") await mergeFetchResultsCommand(args);
   else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
+  else if (command === "append-fetch-run-terminal-task-ids") await appendFetchRunTerminalTaskIds(args);
   else if (command === "split-sync-slices") await splitSyncSlices(args);
   else if (command === "fail-sync-slice") await failSyncSlice(args);
   else if (command === "prepare") await prepare(args);

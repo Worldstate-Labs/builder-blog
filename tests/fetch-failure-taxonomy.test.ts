@@ -21,12 +21,18 @@ const REQUIRED_CODES = [
   "content_validation_failed",
   "primary_content_unavailable",
   "runtime_auth_failed",
+  "runtime_timeout",
+  "runtime_timeout_no_fetch_result",
+  "runtime_timeout_flush_failed",
+  "runtime_timeout_flush_finished",
   "task_validation_failed",
   "task_sync_failed",
   "slice_sync_failed",
   "cloud_feed_sync_rejected",
   "worker_missing_result",
   "worker_shard_timeout",
+  "worker_no_progress_timeout",
+  "worker_stalled_timeout",
   "worker_incomplete_result",
   "worker_backgrounded_tool",
   "discovery_not_expanded",
@@ -50,9 +56,20 @@ test("fetch failure taxonomy covers known CLI and sync failure codes", () => {
 
 test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", () => {
   assert.equal(fetchFailureMessage("worker_backgrounded_tool"), "Local Agent started a background tool before this post finished");
+  assert.equal(fetchFailureMessage("runtime_timeout"), "Local Agent runtime timed out before this post finished");
+  assert.equal(
+    fetchFailureMessage("runtime_timeout_flush_finished"),
+    "Local Agent runtime timed out after syncing terminal fetch results",
+  );
+  assert.equal(fetchFailureMessage("worker_no_progress_timeout"), "Local Agent made no checkpoint progress for this post");
+  assert.equal(fetchFailureMessage("worker_stalled_timeout"), "Local Agent stopped making checkpoint progress for this post");
   assert.equal(fetchFailureMessage("unknown_new_code"), "Unknown failure: unknown new code");
   assert.equal(isContentFailureReason("content_missing"), true);
   assert.equal(isContentFailureReason("worker_missing_result"), false);
+  assert.equal(isNotCompletedFailureReason("worker_no_progress_timeout"), true);
+  assert.equal(isNotCompletedFailureReason("runtime_timeout"), true);
+  assert.equal(isNotCompletedFailureReason("runtime_timeout_flush_finished"), true);
+  assert.equal(isNotCompletedFailureReason("worker_stalled_timeout"), true);
   assert.equal(isNotCompletedFailureReason("worker_backgrounded_tool"), true);
   assert.equal(isNotCompletedFailureReason("summary_missing"), false);
   assert.equal(isHiddenFailureReason("heartbeat"), true);

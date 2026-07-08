@@ -327,6 +327,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /process_tree_pids/);
   assert.match(runner, /worker_shard_timeout/);
+  assert.match(runner, /worker_no_progress_timeout/);
+  assert.match(runner, /worker_stalled_timeout/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
   assert.match(runner, /agent_runtime_failure_summary\(\)/);
@@ -500,6 +502,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /fetchFailureMessage\(task\.failureReason\)/);
   assert.match(panel, /isNotCompletedFailureReason\(task\.failureReason\)/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_missing_result:[\s\S]*Local Agent shard did not write a result file for this post/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /runtime_timeout:[\s\S]*Local Agent runtime timed out before this post finished/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_no_progress_timeout:[\s\S]*Local Agent made no checkpoint progress for this post/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_stalled_timeout:[\s\S]*Local Agent stopped making checkpoint progress for this post/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_backgrounded_tool:[\s\S]*Local Agent started a background tool before this post finished/);
   assert.match(panel, /function missingWorkerLogText/);
   assert.match(panel, /No worker log tail was captured for this shard\./);

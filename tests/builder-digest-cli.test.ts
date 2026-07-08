@@ -4553,6 +4553,79 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   );
 });
 
+test("merge-task-results adds missing agent execution metadata for agent tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchTask = {
+    id: "agent-task",
+    type: "fetch_post",
+    agentWorkType: "product_hunt_top_product_report",
+    contentStatus: "requires_agent",
+    builder: "Product Hunt Top Products",
+    builderId: "ph",
+    sourceType: "product_hunt_top_products",
+    builderSync: {
+      builderId: "ph",
+      kind: "WEBSITE",
+      sourceType: "product_hunt_top_products",
+      name: "Product Hunt Top Products",
+    },
+    item: {
+      kind: "BLOG_POST",
+      externalId: "product-hunt-top-products:example",
+      title: "#1 Example",
+      url: "https://www.producthunt.com/products/example",
+      sourceName: "Product Hunt Top Products",
+    },
+  };
+  const merged = cli.mergeShardSyncPayloads(
+    { status: "ok", fetchTasks: [fetchTask] },
+    [
+      {
+        name: "shard-0-result.json",
+        payload: {
+          builders: [
+            {
+              builderId: "ph",
+              kind: "WEBSITE",
+              sourceType: "product_hunt_top_products",
+              name: "Product Hunt Top Products",
+              items: [
+                {
+                  kind: "BLOG_POST",
+                  externalId: "product-hunt-top-products:example",
+                  title: "#1 Example",
+                  url: "https://www.producthunt.com/products/example",
+                  body: "Product Hunt investigation body with enough concrete product evidence.",
+                  summary: "Example is a Product Hunt top product with concrete launch evidence.",
+                  rawJson: { fetchTaskId: "agent-task" },
+                },
+              ],
+            },
+          ],
+          taskOutcomes: [],
+        },
+      },
+    ],
+    {
+      shardPlans: [
+        {
+          shard: "shard-0",
+          resultFile: "shard-0-result.json",
+          workerId: "worker-a",
+          tasks: [fetchTask],
+        },
+      ],
+    },
+  );
+
+  const item = merged.payload.builders[0].items[0];
+  assert.equal(item.rawJson.fetchTaskId, "agent-task");
+  assert.equal(item.rawJson.workerId, "worker-a");
+  assert.ok(item.rawJson.agentRuntime);
+  assert.match(item.rawJson.agentCompletedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(item.rawJson.agentExecutionProof, /merge-task-results added this provenance fallback/);
+});
+
 test("merge-task-results restores ready task body when worker omits or rewrites it", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const omittedBodyTask = {
@@ -5002,6 +5075,139 @@ test("merge-task-results classifies backgrounded worker tools distinctly", async
   assert.equal(outcomes[0]?.evidence?.failureKind, "worker_backgrounded_tool");
 });
 
+test("merge-task-results classifies no-progress worker timeouts distinctly", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "stalled", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        workerLogTail: JSON.stringify({
+          type: "followbrief_worker_event",
+          reason: "worker_no_progress_timeout",
+          worker: "worker-0",
+          shard: "shard-0",
+          message: "Worker made no checkpoint progress.",
+        }),
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["stalled", "worker_no_progress_timeout"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "worker_no_progress_timeout");
+});
+
+test("merge-task-results can classify unassigned timeout backfills distinctly", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "ready",
+        agentWorkType: "fetch_post",
+        contentStatus: "ready",
+        deterministicSync: true,
+        item: {
+          kind: "article",
+          externalId: "ready",
+          title: "Ready item",
+          url: "https://example.com/ready",
+          summary: "Already summarized.",
+        },
+        builderSync: { builderId: "b1" },
+      },
+      {
+        id: "agent",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        builderSync: { builderId: "b1" },
+      },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [], {
+    defaultMissingFailureReason: "runtime_timeout",
+    defaultMissingFailureKind: "runtime_timeout",
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string; missingTask?: { taskId?: string } };
+  }[];
+  assert.equal(merged.payload.builders[0]?.items[0]?.rawJson?.fetchTaskId, "ready");
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["agent", "runtime_timeout"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "runtime_timeout");
+  assert.equal(outcomes[0]?.evidence?.missingTask?.taskId, "agent");
+});
+
+test("merge-task-results classifies stalled worker timeouts distinctly", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "done", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "stalled", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        workerLogTail: JSON.stringify({
+          type: "followbrief_worker_event",
+          reason: "worker_stalled_timeout",
+          worker: "worker-0",
+          shard: "shard-0",
+          message: "Worker stopped making checkpoint progress.",
+        }),
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["stalled", "worker_stalled_timeout"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.failureKind, "worker_stalled_timeout");
+});
+
 test("merge-task-results can exclude checkpoint-synced task ids from final sync output", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-exclude-"));
   const resultsDir = join(tmp, "results");
@@ -5069,6 +5275,57 @@ test("merge-task-results can exclude checkpoint-synced task ids from final sync 
   assert.deepEqual(
     remainingTasks.fetchTasks.map((task: { id: string }) => task.id),
     ["remaining"],
+  );
+});
+
+test("terminal fetch-run task exclusion ignores non-terminal fetched work", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const ids = cli.terminalFetchRunTaskKeysFromDetails(
+    {
+      fetchTasks: [
+        { id: "already-synced", status: "synced" },
+        { id: "already-failed", status: "failed" },
+        { id: "needs-user", status: "action_needed" },
+        { id: "no-content", status: "skipped" },
+        { id: "read-only", status: "fetched" },
+        { id: "not-started", status: "pending" },
+      ],
+    },
+    {
+      fetchTasks: [
+        { id: "already-synced", cloudRunId: "run_1" },
+        { id: "already-failed" },
+        { id: "needs-user" },
+        { id: "no-content" },
+        { id: "read-only" },
+        { id: "not-started" },
+      ],
+    },
+  );
+
+  assert.deepEqual(ids, [
+    "already-failed",
+    "already-synced",
+    "needs-user",
+    "no-content",
+    "run_1\talready-synced",
+  ]);
+});
+
+test("progress summary includes terminal task counters", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  assert.equal(
+    cli.progressSummary({
+      stage: "reconciled",
+      counters: {
+        sourcesChecked: 41,
+        sourcesTotal: 41,
+        tasksDone: 101,
+        tasksPlanned: 101,
+        failed: 101,
+      },
+    }),
+    "reconciled · 41/41 sources · 101/101 tasks · 101 failed",
   );
 });
 

@@ -1393,11 +1393,20 @@ copy_tail_file() {
   tail -c "$_bytes" "$_source" > "$_dest" 2>/dev/null || cp "$_source" "$_dest" 2>/dev/null || true
 }
 
+copy_recovery_file() {
+  _source="$1"
+  _dest="$2"
+  [ -r "$_source" ] || return 0
+  mkdir -p "$(dirname "$_dest")"
+  cp "$_source" "$_dest" 2>/dev/null || copy_tail_file "$_source" "$_dest" 2000000
+}
+
 write_cleanup_debug_bundle() {
   _status="$1"
   _reason="${2:-}"
   _debug_dir="$JOB_TMP_DIR/debug"
-  mkdir -p "$_debug_dir/errors" "$_debug_dir/worker-log-tails"
+  _recovery_dir="$_debug_dir/recovery"
+  mkdir -p "$_debug_dir/errors" "$_debug_dir/worker-log-tails" "$_recovery_dir"
   node - "$_debug_dir/runner-summary.json" "$ACCOUNT_SLUG" "$JOB_NAME" "${BUILDER_BLOG_JOB_RUN_ID:-}" "$_status" "$_reason" "$JOB_TMP_DIR" "$JOB_STATE_DIR" "${BUILDER_BLOG_RUNTIME:-}" "${BUILDER_BLOG_USAGE_FILE:-}" <<'NODE'
 const fs = require("fs");
 const [file, accountSlug, jobName, instanceId, status, reason, runTmpDir, jobStateDir, runtime, usageFile] = process.argv.slice(2);
@@ -1429,6 +1438,24 @@ NODE
   do
     [ -e "$_debug_source" ] || continue
     copy_tail_file "$_debug_source" "$_debug_dir/errors/$(basename "$_debug_source")"
+  done
+
+  for _recovery_source in \
+    "$JOB_TMP_DIR"/library-fetch-result.json \
+    "$JOB_TMP_DIR"/library-fetch-expanded.json \
+    "$JOB_TMP_DIR"/library-discovery-result.json \
+    "$JOB_TMP_DIR"/completed-checkpoint-synced-task-ids.txt \
+    "$JOB_TMP_DIR"/assigned-fetch-task-ids.txt \
+    "$JOB_TMP_DIR"/active-fetch-group-keys.txt \
+    "$JOB_TMP_DIR"/shards/shard-*.json \
+    "$JOB_TMP_DIR"/shards/results/shard-*-result.json \
+    "$JOB_TMP_DIR"/shards/results/shard-*-worker.log \
+    "$JOB_TMP_DIR"/shards/results/shard-*-usage.jsonl \
+    "$JOB_TMP_DIR"/shards/results/shard-*-checkpoints/*.json
+  do
+    [ -e "$_recovery_source" ] || continue
+    _recovery_relative="${_recovery_source#$JOB_TMP_DIR/}"
+    copy_recovery_file "$_recovery_source" "$_recovery_dir/$_recovery_relative"
   done
 
   for _worker_log in "$JOB_TMP_DIR"/shards/results/*-worker.log; do
@@ -1747,6 +1774,83 @@ for (const line of lines) {
   }
 }
 process.exit(1);
+NODE
+}
+
+worker_no_progress_timeout_seconds() {
+  _wnpts_shard_timeout="${1:-0}"
+  _wnpts_timeout="${BUILDER_BLOG_WORKER_NO_PROGRESS_SECONDS:-300}"
+  case "$_wnpts_timeout" in
+    ''|*[!0-9]*) _wnpts_timeout=300 ;;
+  esac
+  if [ "$_wnpts_timeout" -lt 60 ]; then
+    _wnpts_timeout=60
+  fi
+  case "$_wnpts_shard_timeout" in
+    ''|*[!0-9]*) _wnpts_shard_timeout=0 ;;
+  esac
+  if [ "$_wnpts_shard_timeout" -gt 0 ] && [ "$_wnpts_timeout" -ge "$_wnpts_shard_timeout" ]; then
+    _wnpts_timeout=$(( _wnpts_shard_timeout / 3 ))
+    if [ "$_wnpts_timeout" -lt 60 ]; then
+      _wnpts_timeout=60
+    fi
+  fi
+  printf '%s\n' "$_wnpts_timeout"
+}
+
+worker_stall_timeout_seconds() {
+  _wsts_shard_timeout="${1:-0}"
+  _wsts_timeout="${BUILDER_BLOG_WORKER_STALL_SECONDS:-600}"
+  case "$_wsts_timeout" in
+    ''|*[!0-9]*) _wsts_timeout=600 ;;
+  esac
+  if [ "$_wsts_timeout" -lt 120 ]; then
+    _wsts_timeout=120
+  fi
+  case "$_wsts_shard_timeout" in
+    ''|*[!0-9]*) _wsts_shard_timeout=0 ;;
+  esac
+  if [ "$_wsts_shard_timeout" -gt 0 ] && [ "$_wsts_timeout" -ge "$_wsts_shard_timeout" ]; then
+    _wsts_timeout=$(( _wsts_shard_timeout / 2 ))
+    if [ "$_wsts_timeout" -lt 120 ]; then
+      _wsts_timeout=120
+    fi
+  fi
+  printf '%s\n' "$_wsts_timeout"
+}
+
+worker_progress_mtime_seconds() {
+  _wpms_result_path="${1:-}"
+  _wpms_checkpoint_dir="${2:-}"
+  node - "$_wpms_result_path" "$_wpms_checkpoint_dir" <<'NODE' 2>/dev/null || printf '0\n'
+const fs = require("fs");
+const path = require("path");
+const [resultPath, checkpointDir] = process.argv.slice(2);
+let latest = 0;
+function addFile(file) {
+  if (!file) return;
+  try {
+    const stat = fs.statSync(file);
+    if (stat.isFile() && stat.size > 0) latest = Math.max(latest, stat.mtimeMs);
+  } catch {}
+}
+function walk(dir) {
+  if (!dir) return;
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full);
+    else if (entry.isFile()) addFile(full);
+  }
+}
+addFile(resultPath);
+walk(checkpointDir);
+console.log(String(Math.floor(latest / 1000)));
 NODE
 }
 
@@ -2180,6 +2284,46 @@ run_cloud_worker_host() {
   return "$_code"
 }
 
+finalize_library_timeout_results() {
+  case "$JOB_NAME" in
+    library-once|library-cron) ;;
+    *) return 0 ;;
+  esac
+
+  _fltr_result_file="$JOB_TMP_DIR/library-fetch-result.json"
+  _fltr_results_dir="$JOB_TMP_DIR/shards/results"
+  _fltr_checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
+  _fltr_recovery_dir="$JOB_TMP_DIR/debug/recovery"
+  if [ ! -s "$_fltr_result_file" ] && [ -s "$_fltr_recovery_dir/library-fetch-result.json" ]; then
+    _fltr_result_file="$_fltr_recovery_dir/library-fetch-result.json"
+    _fltr_results_dir="$_fltr_recovery_dir/shards/results"
+    _fltr_checkpoint_synced_ids_file="$_fltr_recovery_dir/completed-checkpoint-synced-task-ids.txt"
+  fi
+  if [ ! -s "$_fltr_result_file" ]; then
+    job_run_update timed_out "Runtime timed out before source fetch planning completed." "runtime_timeout_no_fetch_result" \
+      --stage "fetch_sources" \
+      --timeout-stage "runtime" || true
+    return 0
+  fi
+  mkdir -p "$_fltr_results_dir"
+  [ -s "$_fltr_checkpoint_synced_ids_file" ] || : > "$_fltr_checkpoint_synced_ids_file"
+  _fltr_shard_timeout="$(shard_timeout_seconds "$(job_timeout_seconds)")"
+
+  job_run_update running "Runtime timed out; syncing terminal library results." "runtime_timeout_flush_started" \
+    --stage "merge_results" \
+    --timeout-stage "runtime" || true
+  sync_completed_checkpoints "$_fltr_result_file" "$_fltr_results_dir" "$_fltr_checkpoint_synced_ids_file" || true
+  if ! flush_remaining_library_results "$_fltr_result_file" "$_fltr_results_dir" "$_fltr_checkpoint_synced_ids_file" "$_fltr_shard_timeout" "runtime-timeout" "runtime_timeout"; then
+    job_run_update timed_out "Runtime timed out and remaining library worker results could not be fully synced." "runtime_timeout_flush_failed" \
+      --stage "merge_results" \
+      --timeout-stage "runtime" || true
+    return 1
+  fi
+  job_run_update timed_out "Runtime timed out after syncing completed library worker results." "runtime_timeout_flush_finished" \
+    --stage "sync_to_followbrief" \
+    --timeout-stage "runtime" || true
+}
+
 run_with_job_tracking() {
   _trigger="$1"
   TRACKED_JOB_FINALIZED=0
@@ -2219,7 +2363,7 @@ run_with_job_tracking() {
   while kill -0 "$RUNTIME_PID" 2>/dev/null; do
     if [ "$_elapsed" -ge "$_timeout" ]; then
       _status="timed_out"
-      job_run_update timed_out "Runtime exceeded timeout and will be terminated." "timeout_seconds_for_job" \
+      job_run_update running "Runtime exceeded timeout and will be terminated." "timeout_seconds_for_job" \
         --timeout-seconds "$_timeout" \
         --timeout-stage "runtime" \
         --timed-out-worker-pid "$RUNTIME_PID" \
@@ -2231,11 +2375,22 @@ run_with_job_tracking() {
         _termination="still_alive_after_kill"
         echo "Runtime pid $RUNTIME_PID was still alive after forced termination; continuing without waiting." >&2
       fi
-      job_run_update timed_out "Runtime timed out." "timeout_seconds_for_job" \
+      job_run_update running "Runtime timed out; cleanup started." "timeout_seconds_for_job" \
         --timeout-seconds "$_timeout" \
         --timeout-stage "runtime" \
         --timed-out-worker-pid "$RUNTIME_PID" \
         --termination "$_termination"
+      finalize_library_timeout_results || true
+      case "$JOB_NAME" in
+        library-once|library-cron) ;;
+        *)
+          job_run_update timed_out "Runtime timed out." "timeout_seconds_for_job" \
+            --timeout-seconds "$_timeout" \
+            --timeout-stage "runtime" \
+            --timed-out-worker-pid "$RUNTIME_PID" \
+            --termination "$_termination"
+          ;;
+      esac
       TRACKED_JOB_FINALIZED=1
       cleanup_job_tmp_dir timed_out "timeout_seconds_for_job"
       cleanup_old_job_runs
@@ -2863,6 +3018,12 @@ flush_remaining_library_results() {
   _frlr_synced_ids_file="$3"
   _frlr_shard_timeout="$4"
   _frlr_label="${5:-library-result}"
+  _frlr_missing_reason="${6:-}"
+  _frlr_sync_command="${SYNC_BUILDERS_COMMAND:-}"
+  _frlr_missing_reason_args=""
+  if [ -n "$_frlr_missing_reason" ]; then
+    _frlr_missing_reason_args="--default-missing-reason $_frlr_missing_reason"
+  fi
 
   aggregate_runtime_usage_files
 
@@ -2872,17 +3033,26 @@ flush_remaining_library_results() {
     --tasks "$_frlr_result_file" \
     --results-dir "$_frlr_results_dir" \
     --shard-timeout-seconds "$_frlr_shard_timeout" \
+    $_frlr_missing_reason_args \
     --out "$JOB_TMP_DIR/library-agent-sync.json" | tee "$_frlr_merge_result_file"
   _frlr_merge_issue_count="$(merge_result_issue_count "$_frlr_merge_result_file" "$_frlr_results_dir")"
 
   _frlr_remaining_payload="$JOB_TMP_DIR/library-agent-sync-remaining.json"
   _frlr_remaining_tasks="$JOB_TMP_DIR/library-fetch-remaining.json"
   _frlr_remaining_merge="$JOB_TMP_DIR/merge-task-results-remaining.json"
+  if [ -n "$_frlr_synced_ids_file" ]; then
+    if ! node "$AGENT_DIR/builder-digest.mjs" append-fetch-run-terminal-task-ids \
+      --tasks "$_frlr_result_file" \
+      --out "$_frlr_synced_ids_file"; then
+      echo "Could not refresh fetch-run terminal task ids before $_frlr_label remaining sync; continuing with local checkpoint ids." >&2
+    fi
+  fi
   node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
     --tasks "$_frlr_result_file" \
     --results-dir "$_frlr_results_dir" \
     --shard-timeout-seconds "$_frlr_shard_timeout" \
     --exclude-task-ids-file "$_frlr_synced_ids_file" \
+    $_frlr_missing_reason_args \
     --tasks-out "$_frlr_remaining_tasks" \
     --out "$_frlr_remaining_payload" | tee "$_frlr_remaining_merge"
 
@@ -2895,7 +3065,7 @@ flush_remaining_library_results() {
   fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE=""
 
-  if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_frlr_sync_failures" -eq 0 ]; then
+  if [ "$_frlr_sync_command" = "sync-cloud-builders" ] && [ "$_frlr_sync_failures" -eq 0 ]; then
     _frlr_usage_refresh_slices_dir="$JOB_TMP_DIR/usage-refresh-sync-slices"
     echo "Refreshing cloud worker usage after final runtime usage aggregation."
     _frlr_previous_failure_mode="${SYNC_PAYLOAD_FAILURE_MODE:-}"
@@ -2916,8 +3086,8 @@ flush_remaining_library_results() {
   fi
   if [ "${_frlr_merge_issue_count:-0}" -gt 0 ]; then
     case "$_frlr_label" in
-      cloud-host-idle*)
-        echo "Parallel library run completed with $_frlr_merge_issue_count worker/result issue(s); terminal outcomes were synced for idle host checkpoint." >&2
+      cloud-host-idle*|runtime-timeout*)
+        echo "Parallel library run completed with $_frlr_merge_issue_count worker/result issue(s); terminal outcomes were synced for $_frlr_label." >&2
         return 0
         ;;
     esac
@@ -3553,6 +3723,8 @@ run_library_job() {
   _timed_out_worker_pids=""
   _started_shard_names=""
   _checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
+  _worker_no_progress_timeout="$(worker_no_progress_timeout_seconds "$_shard_timeout")"
+  _worker_stall_timeout="$(worker_stall_timeout_seconds "$_shard_timeout")"
   : > "$_checkpoint_synced_ids_file"
   job_run_update running "Running source fetch workers." "workers_started" --stage "run_fetch_workers"
   start_pending_library_workers
@@ -3613,7 +3785,78 @@ run_library_job() {
               --skipped-wait-pids "$_skip_wait_pids"
           fi
           _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
-        elif [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
+        else
+          _worker_progress_mtime="$(worker_progress_mtime_seconds "$_result_path" "$_results_dir/$_name-checkpoints")"
+          case "$_worker_progress_mtime" in
+            ''|*[!0-9]*) _worker_progress_mtime=0 ;;
+          esac
+          _worker_no_progress_age=$(( _now - _started ))
+          _worker_stall_age=$(( _now - _worker_progress_mtime ))
+          if [ "$_worker_progress_mtime" -le 0 ] && [ "$_worker_no_progress_age" -ge "$_worker_no_progress_timeout" ]; then
+          echo "Worker $_lane ($_name) made no checkpoint progress for ${_worker_no_progress_timeout}s; terminating it (unfinished tasks will be reported as failed)." >&2
+          write_worker_control_event "$_results_dir/$_name-worker.log" "worker_no_progress_timeout" "$_lane" "$_name" "Worker made no checkpoint, progress, or result-file progress for ${_worker_no_progress_timeout}s."
+          printf 'Worker %s (%s) made no checkpoint progress for %ss; terminating it (unfinished tasks will be reported as failed).\n' "$_lane" "$_name" "$_worker_no_progress_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
+          job_run_update running "Worker $_lane made no checkpoint progress and will be terminated." "worker_no_progress_timeout" \
+            --timeout-seconds "$_worker_no_progress_timeout" \
+            --timeout-stage "worker_no_progress" \
+            --timed-out-worker "$_name" \
+            --timed-out-worker-lane "$_lane" \
+            --timed-out-worker-pid "$_pid" \
+            --termination "terminating"
+          if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
+            job_run_update running "Worker $_lane with no checkpoint progress was terminated." "worker_no_progress_timeout" \
+              --timeout-seconds "$_worker_no_progress_timeout" \
+              --timeout-stage "worker_no_progress" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "terminated"
+          else
+            echo "Worker $_lane ($_name) pid $_pid was still alive after no-progress termination; continuing without waiting." >&2
+            _skip_wait_pids="$_skip_wait_pids $_pid"
+            job_run_update running "Worker $_lane with no checkpoint progress did not exit after forced termination." "worker_no_progress_timeout" \
+              --timeout-seconds "$_worker_no_progress_timeout" \
+              --timeout-stage "worker_no_progress" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "still_alive_after_kill" \
+              --skipped-wait-pids "$_skip_wait_pids"
+          fi
+          _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
+          elif [ "$_worker_progress_mtime" -gt 0 ] && [ "$_worker_stall_age" -ge "$_worker_stall_timeout" ]; then
+            echo "Worker $_lane ($_name) made no checkpoint progress for ${_worker_stall_timeout}s after prior progress; terminating it (unfinished tasks will be reported as failed)." >&2
+            write_worker_control_event "$_results_dir/$_name-worker.log" "worker_stalled_timeout" "$_lane" "$_name" "Worker stopped updating result, checkpoint, or progress files for ${_worker_stall_timeout}s after prior progress."
+            printf 'Worker %s (%s) stalled after prior progress for %ss; terminating it (unfinished tasks will be reported as failed).\n' "$_lane" "$_name" "$_worker_stall_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
+            job_run_update running "Worker $_lane stopped making checkpoint progress and will be terminated." "worker_stalled_timeout" \
+              --timeout-seconds "$_worker_stall_timeout" \
+              --timeout-stage "worker_stalled" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-lane "$_lane" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "terminating"
+            if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
+              job_run_update running "Worker $_lane with stalled checkpoint progress was terminated." "worker_stalled_timeout" \
+                --timeout-seconds "$_worker_stall_timeout" \
+                --timeout-stage "worker_stalled" \
+                --timed-out-worker "$_name" \
+                --timed-out-worker-lane "$_lane" \
+                --timed-out-worker-pid "$_pid" \
+                --termination "terminated"
+            else
+              echo "Worker $_lane ($_name) pid $_pid was still alive after stalled-worker termination; continuing without waiting." >&2
+              _skip_wait_pids="$_skip_wait_pids $_pid"
+              job_run_update running "Worker $_lane with stalled checkpoint progress did not exit after forced termination." "worker_stalled_timeout" \
+                --timeout-seconds "$_worker_stall_timeout" \
+                --timeout-stage "worker_stalled" \
+                --timed-out-worker "$_name" \
+                --timed-out-worker-lane "$_lane" \
+                --timed-out-worker-pid "$_pid" \
+                --termination "still_alive_after_kill" \
+                --skipped-wait-pids "$_skip_wait_pids"
+            fi
+            _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
+          elif [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
           echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
           write_worker_control_event "$_results_dir/$_name-worker.log" "worker_shard_timeout" "$_lane" "$_name" "Worker exceeded ${_shard_timeout}s before completing every task."
           printf 'Worker %s (%s) exceeded %ss; terminating it (its tasks will be reported as failed).\n' "$_lane" "$_name" "$_shard_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
@@ -3645,8 +3888,9 @@ run_library_job() {
               --skipped-wait-pids "$_skip_wait_pids"
           fi
           _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
-        else
-          _alive=$(( _alive + 1 ))
+          else
+            _alive=$(( _alive + 1 ))
+          fi
         fi
       fi
     done
