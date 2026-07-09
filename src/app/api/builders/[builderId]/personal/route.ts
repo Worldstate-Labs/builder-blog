@@ -13,6 +13,7 @@ import {
   DUPLICATE_PERSONAL_SOURCE_ERROR,
   findConflictingPersonalSource,
 } from "@/lib/personal-source-identity";
+import { editableSourceIdentityChanged } from "@/lib/personal-source-edit";
 import {
   combineWarnings,
   hostnameOrNull,
@@ -192,11 +193,12 @@ export async function PATCH(request: Request, { params }: Params) {
     ],
   });
   const avatarUrl = enrichment.avatarUrl ?? null;
-  const sourceIdentityChanged =
-    input.sourceType !== existing.sourceType ||
-    (input.sourceUrl ?? null) !== (existing.sourceUrl ?? null) ||
-    finalFetchUrl !== (existing.fetchUrl ?? null) ||
-    (handle ?? null) !== (existing.handle ?? null);
+  const sourceIdentityChanged = editableSourceIdentityChanged(existing, {
+    sourceType: input.sourceType,
+    sourceUrl: input.sourceUrl ?? null,
+    fetchUrl: finalFetchUrl,
+    handle: handle ?? null,
+  });
   const fetchedPostCount = sourceIdentityChanged
     ? await prisma.feedItem.count({ where: { builderId: existing.id } })
     : 0;
