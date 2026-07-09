@@ -91,7 +91,7 @@ export function DigestArchivePickerView({
 
   if (digests.length <= 1) {
     return (
-      <div className="digest-picker-static" aria-label={`AI Digest issue: ${selectedLabel}`}>
+      <div className="digest-picker-static" aria-label={`AI Brief: ${selectedLabel}`}>
         <DigestPickerItem
           digest={selectedDigest}
           isLatest={selectedDigest.id === latestDigestId}
@@ -147,7 +147,7 @@ export function DigestArchivePickerView({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={`Choose AI Digest issue, current: ${selectedLabel}`}
+        aria-label={`Choose AI Brief, current: ${selectedLabel}`}
         className="digest-picker-summary"
         onClick={(event) => {
           event.preventDefault();
@@ -155,14 +155,14 @@ export function DigestArchivePickerView({
         }}
         ref={summaryRef}
       >
-        <span className="sr-only">AI Digest issue</span>
+        <span className="sr-only">AI Brief</span>
         <DigestPickerItem
           digest={selectedDigest}
           isLatest={selectedDigest.id === latestDigestId}
         />
         <ChevronDown aria-hidden="true" className="digest-picker-icon" />
       </summary>
-      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="AI Digest issues">
+      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="AI Briefs">
         {digests.map((digest) => {
           const selected = digest.id === selectedDigest.id;
           return (
@@ -212,7 +212,7 @@ function DigestPickerItem({
   return (
     <span className="digest-picker-item">
       <span className="digest-picker-mainline">
-        <span className="digest-picker-issue">Issue #{digest.issueNumber}</span>
+        <span className="digest-picker-issue">Brief #{digest.issueNumber}</span>
         {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
       </span>
       <span className="digest-picker-subtitle">
@@ -235,7 +235,7 @@ function digestArchiveLabel({
   isLatest: boolean;
 }) {
   return [
-    `Issue #${digest.issueNumber}`,
+    `Brief #${digest.issueNumber}`,
     relativeTime(digest.createdAt, now ?? Date.now()),
     `from ${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"}`,
     isLatest ? "Latest" : "",

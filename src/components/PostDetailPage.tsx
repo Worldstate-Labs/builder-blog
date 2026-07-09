@@ -161,7 +161,7 @@ function isSafeInternalReturnTo(value: string) {
 
 function safeReturnLabel(value: string, returnTo: string) {
   switch (value) {
-    case "AI Digest":
+    case "AI Brief":
     case "Following":
     case "Favorites":
     case "Search":
@@ -186,7 +186,7 @@ function labelFromReturnTo(returnTo: string) {
   if (returnTo.startsWith("/library-hub")) return "Hub";
   if (returnTo.startsWith("/dashboard")) {
     if (returnTo.includes("tab=favorites")) return "Favorites";
-    return returnTo.includes("tab=following") ? "Following" : "AI Digest";
+    return returnTo.includes("tab=following") ? "Following" : "AI Brief";
   }
   return "Back";
 }

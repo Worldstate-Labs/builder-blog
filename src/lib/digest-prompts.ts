@@ -246,7 +246,7 @@ professional. Use only task.item.body plus task.item metadata.
 Use the user-selected output language supplied by the enclosing task. Do not
 hard-code any fixed language.
 
-Write a mobile-friendly digest card summary, not a label/value template.
+Write a mobile-friendly brief card summary, not a label/value template.
 
 Use two short paragraphs:
 
@@ -269,10 +269,10 @@ Rules:
 - Preserve the Product Hunt URL and any important supporting URLs from the body.`,
   // Legacy field retained only for old database rows / old local clients. New
   // digest runs do not ask the agent to assemble markdown with this prompt.
-  digestIntro: `# Legacy Digest Intro Prompt
+  digestIntro: `# Legacy Brief Intro Prompt
 
-FollowBrief now assembles the digest body programmatically. This legacy prompt is not used by current digest jobs.`,
-  headline: `# Digest Headline Prompt
+FollowBrief now assembles the brief body programmatically. This legacy prompt is not used by current brief jobs.`,
+  headline: `# Brief Headline Prompt
 
 Write only \`headlineSummary\` for the candidate posts in the supplied FollowBrief context.
 
@@ -289,7 +289,7 @@ Rules:
 
 - Cover every source that has candidate posts. A source may be covered by a
   combined line such as \`GitHub Trending and Product Hunt Top Products: ...\`.
-- Use the same source order as the digest: follow \`context.digest.order\` when provided; otherwise use Podcast / Audio Feed, YouTube, Blog / Article Feed, X/Twitter, GitHub Trending, Product Hunt Top Products, then Website. Within each source type, order sources by source name.
+- Use the same source order as the brief: follow \`context.digest.order\` when provided; otherwise use Podcast / Audio Feed, YouTube, Blog / Article Feed, X/Twitter, GitHub Trending, Product Hunt Top Products, then Website. Within each source type, order sources by source name.
 - Keep each source summary to 50 characters or fewer for Chinese/Japanese/Korean output, or 50 words or fewer for word-delimited languages.
 - Keep the entire \`headlineSummary\` at 1200 characters or fewer. Before writing
   the JSON, count or conservatively estimate the final string length and
@@ -300,7 +300,7 @@ Rules:
 - Do not include raw URLs.`,
   perSourceSummary: `# Per-Source Summary Prompt
 
-You are writing an optional source-level summary for exactly one source in a FollowBrief digest.
+You are writing an optional source-level summary for exactly one source in a FollowBrief brief.
 
 Use \`context.language\`. If \`context.language\` is \`source\`, write in the dominant language of this source group's supplied post summaries. The input contains one source and that source's candidate posts only. Write a short source-level summary only when this source has multiple candidate posts and those posts are meaningfully about the same actor, source, or main subject. If the posts are unrelated, too sparse, or there is only one candidate post, output an empty string.
 

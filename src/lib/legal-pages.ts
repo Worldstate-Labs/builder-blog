@@ -22,12 +22,12 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "data-we-collect",
     title: "Data we collect",
-    copy: "Account and identity data includes your OAuth profile, email, name, image, sessions, and sign-in provider records. Content and source data includes sources, subscriptions, feed items, read history, favorites, AI Digest issues, digest runs, recommendations, Hub imports, Hub shares, source submissions, summary language, and editable prompt/settings records. Usage, device, and diagnostic data includes Local Agent activity, cron status, fetch logs, cloud fetch queue and run records, access keys, token use, IP address, User-Agent, hostname, platform, runtime, error details, token and cost summaries, and timestamps needed to operate the app and protect your account.",
+    copy: "Account and identity data includes your OAuth profile, email, name, image, sessions, and sign-in provider records. Content and source data includes sources, subscriptions, feed items, read history, favorites, AI Briefs, brief runs, recommendations, Hub imports, Hub shares, source submissions, summary language, and editable prompt/settings records. Usage, device, and diagnostic data includes Local Agent activity, cron status, fetch logs, cloud fetch queue and run records, access keys, token use, IP address, User-Agent, hostname, platform, runtime, error details, token and cost summaries, and timestamps needed to operate the app and protect your account.",
   },
   {
     id: "how-we-use-it",
     title: "How we use it",
-    copy: "FollowBrief uses this data to authenticate you, fetch source updates, build cited AI Digest issues, keep search and recommendations useful, sync cloud source libraries, show account activity in Settings, secure sessions, prevent abuse, debug failures, honor account export and account deletion requests, and maintain operational records. Where laws require a legal basis, we rely on contract performance, legitimate interests in operating and securing the service, consent where requested, and legal compliance.",
+    copy: "FollowBrief uses this data to authenticate you, fetch source updates, build cited AI Briefs, keep search and recommendations useful, sync cloud source libraries, show account activity in Settings, secure sessions, prevent abuse, debug failures, honor account export and account deletion requests, and maintain operational records. Where laws require a legal basis, we rely on contract performance, legitimate interests in operating and securing the service, consent where requested, and legal compliance.",
   },
   {
     id: "ai-automation-source-content",
@@ -47,7 +47,7 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "hub-sharing",
     title: "Hub sharing",
-    copy: "When you share source libraries or AI Digest collections to Hub, other users can see shared source names, source links, collection titles, headline metadata, latest digest timing, source-link metadata, descriptions, counts, owner display labels, imports, views, schedule status, update status, frequency labels, and public Hub activity. Private account data, access keys, OAuth tokens, raw crawled content, full transcripts, raw API objects, and private settings are not published to Hub.",
+    copy: "When you share source libraries or AI Brief collections to Hub, other users can see shared source names, source links, collection titles, headline metadata, latest brief timing, source-link metadata, descriptions, counts, owner display labels, imports, views, schedule status, update status, frequency labels, and public Hub activity. Private account data, access keys, OAuth tokens, raw crawled content, full transcripts, raw API objects, and private settings are not published to Hub.",
   },
   {
     id: "selling-advertising",
@@ -57,12 +57,12 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "retention",
     title: "Retention",
-    copy: "We retain account data while your account is active. Operational logs are kept based on security, diagnostics, abuse prevention, and service reliability needs, and some account export views include only recent operational run logs. Account deletion removes your user record and account-scoped records, including sessions, access keys, source library records, AI Digest records, preferences, reads, favorites, imports, and Hub sharing records. Operational backups and security logs may persist until they expire under their applicable retention processes.",
+    copy: "We retain account data while your account is active. Operational logs are kept based on security, diagnostics, abuse prevention, and service reliability needs, and some account export views include only recent operational run logs. Account deletion removes your user record and account-scoped records, including sessions, access keys, source library records, AI Brief records, preferences, reads, favorites, imports, and Hub sharing records. Operational backups and security logs may persist until they expire under their applicable retention processes.",
   },
   {
     id: "your-rights",
     title: "Your rights",
-    copy: "Settings lets you access core account details, export core account data and recent operational run logs, update editable source and digest settings, revoke access keys, stop sharing Hub items, and delete your account. For information that is not editable in Settings, or to exercise location-specific rights, contact us at legal@worldstatelabs.com. Depending on where you live, you may also have rights to correct information, object, restrict processing, request portability, withdraw consent, appeal a denied request, or lodge a complaint with a privacy authority. Source owners can contact FollowBrief to request review or removal of source material.",
+    copy: "Settings lets you access core account details, export core account data and recent operational run logs, update editable source and brief settings, revoke access keys, stop sharing Hub items, and delete your account. For information that is not editable in Settings, or to exercise location-specific rights, contact us at legal@worldstatelabs.com. Depending on where you live, you may also have rights to correct information, object, restrict processing, request portability, withdraw consent, appeal a denied request, or lodge a complaint with a privacy authority. Source owners can contact FollowBrief to request review or removal of source material.",
   },
   {
     id: "children-changes",
@@ -80,18 +80,18 @@ export const termsPageMeta = {
 } as const;
 
 export const termsIntro =
-  `Last updated: ${legalUpdatedDate}. These terms govern your use of FollowBrief, operated by Worldstate Labs, including Local Agent access, Hub sharing, third-party sources, third-party APIs, and AI Digest output. Contact: ${legalContactEmail}.`;
+  `Last updated: ${legalUpdatedDate}. These terms govern your use of FollowBrief, operated by Worldstate Labs, including Local Agent access, Hub sharing, third-party sources, third-party APIs, and AI Brief output. Contact: ${legalContactEmail}.`;
 
 export const termsBlocks: LegalBlock[] = [
   {
     id: "use-of-service",
     title: "Use of the service",
-    copy: "FollowBrief helps you follow sources, fetch updates, summarize source material, build AI Digest issues, sync cloud source libraries, search your own workspace, and import shared Hub collections. You must be able to form a binding contract to use FollowBrief. You are responsible for the sources you add, the prompts/settings you configure, the agent runtimes you run, and the way you use generated output.",
+    copy: "FollowBrief helps you follow sources, fetch updates, summarize source material, build AI Briefs, sync cloud source libraries, search your own workspace, and import shared Hub collections. You must be able to form a binding contract to use FollowBrief. You are responsible for the sources you add, the prompts/settings you configure, the agent runtimes you run, and the way you use generated output.",
   },
   {
     id: "accounts-access-keys",
     title: "Accounts and access keys",
-    copy: "You are responsible for keeping your account, devices, Local Agent files, and access keys secure. Local Agent commands run on your machine or in runtimes you configure using access keys you create in Settings. Keep each access key private, revoke keys you no longer use, and do not share keys, OAuth tokens, private digests, private source libraries, or private account data with others.",
+    copy: "You are responsible for keeping your account, devices, Local Agent files, and access keys secure. Local Agent commands run on your machine or in runtimes you configure using access keys you create in Settings. Keep each access key private, revoke keys you no longer use, and do not share keys, OAuth tokens, private briefs, private source libraries, or private account data with others.",
   },
   {
     id: "third-party-content-apis",
@@ -105,13 +105,13 @@ export const termsBlocks: LegalBlock[] = [
   },
   {
     id: "ai-digest-output",
-    title: "AI Digest output",
-    copy: "AI Digest output is generated from source material and may be incomplete, stale, biased, or wrong. No professional advice is provided. Do not rely on FollowBrief as legal, medical, financial, security, tax, employment, housing, credit, health, insurance, or other professional advice. Check original sources before acting on important information.",
+    title: "AI Brief output",
+    copy: "AI Brief output is generated from source material and may be incomplete, stale, biased, or wrong. No professional advice is provided. Do not rely on FollowBrief as legal, medical, financial, security, tax, employment, housing, credit, health, insurance, or other professional advice. Check original sources before acting on important information.",
   },
   {
     id: "hub-sharing",
     title: "Hub sharing",
-    copy: "If you share a source library or AI Digest collection to Hub, you grant FollowBrief permission to display the shared title, description, source names, source links, headline metadata, latest digest timing, source-link metadata, owner display label, import counts, view counts, schedule status, update status, frequency labels, and public collection activity to other users until you remove it. You must not share anything you do not have permission to publish.",
+    copy: "If you share a source library or AI Brief collection to Hub, you grant FollowBrief permission to display the shared title, description, source names, source links, headline metadata, latest brief timing, source-link metadata, owner display label, import counts, view counts, schedule status, update status, frequency labels, and public collection activity to other users until you remove it. You must not share anything you do not have permission to publish.",
   },
   {
     id: "acceptable-use",

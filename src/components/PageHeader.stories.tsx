@@ -20,7 +20,7 @@ export const Basic: Story = {
 export const WithActions: Story = {
   args: {
     title: "Your library",
-    description: "Sources feeding your daily AI Digest.",
+    description: "Sources feeding your daily AI Brief.",
     actions: (
       <button className="fb-btn" type="button">
         Add source

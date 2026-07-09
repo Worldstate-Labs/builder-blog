@@ -218,7 +218,7 @@ export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestU
     return {
       key: "waiting",
       label: "Idle",
-      summary: "No AI Digest job has started yet.",
+      summary: "No AI Brief job has started yet.",
       style: statusStyle("partial"),
     };
   }
@@ -227,7 +227,7 @@ export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestU
     return {
       key: "healthy",
       label: "No update",
-      summary: "The latest AI Digest job completed with no new posts to digest.",
+      summary: "The latest AI Brief job completed with no new posts to include.",
       style: statusStyle("ok"),
     };
   }
@@ -247,8 +247,8 @@ export function getDigestActivityStatus(entries: DigestTimelineEntry[]): DigestU
     key: failed || partial ? "needs-attention" : running ? "building" : latestLogEntry.status === "ok" ? "healthy" : "waiting",
     label,
     summary: running
-      ? `The latest ${runKind} AI Digest job is running.`
-      : `The latest ${runKind} AI Digest job is ${label.toLowerCase()}.`,
+      ? `The latest ${runKind} AI Brief job is running.`
+      : `The latest ${runKind} AI Brief job is ${label.toLowerCase()}.`,
     style: statusStyle(failed ? "failed" : latestLogEntry.status === "ok" ? "ok" : "partial"),
   };
 }
@@ -551,7 +551,7 @@ export function DigestLogPanel({
       {showHeading || showStatusToggle ? (
         <div className="sync-panel-title-row">
           {showHeading ? (
-            <h2 className="fb-section-heading">AI Digest updates</h2>
+            <h2 className="fb-section-heading">AI Brief updates</h2>
           ) : null}
           {showStatusToggle ? (
             <DigestStatusToggle
@@ -619,7 +619,7 @@ export function DigestStatusToggle({
       aria-expanded={detailsOpen}
       className={`fb-chip digest-status-toggle ${toneClass(digestStatusTone(status))}`}
       onClick={onToggle}
-      title={detailsOpen ? "Hide AI Digest status log" : "Show AI Digest status log"}
+      title={detailsOpen ? "Hide AI Brief status log" : "Show AI Brief status log"}
       type="button"
     >
       {status.label}
@@ -643,7 +643,7 @@ function DigestScheduleSummary({
   if (!cronJob) {
     return (
       <p className="sync-panel-schedule-summary">
-        {status.summary} Copy a Build AI Digest prompt to start a Local Agent run.
+        {status.summary} Copy a Build AI Brief prompt to start a Local Agent run.
       </p>
     );
   }
@@ -660,7 +660,7 @@ function DigestScheduleSummary({
     <p className="sync-panel-schedule-summary">
       {status.summary} · {digestCronFrequencyLabel(cronJob)}
       {nextLabel ? ` · next ${nextLabel}` : ""}
-      {cronJob.regenerateDigest ? " · includes posts already used in AI Digest" : ""}
+      {cronJob.regenerateDigest ? " · includes posts already used in AI Brief" : ""}
     </p>
   );
 }
@@ -679,8 +679,8 @@ function DigestStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
-        title="No AI Digest build history yet"
-        body="Copy a Build AI Digest prompt to create history."
+        title="No AI Brief build history yet"
+        body="Copy a Build AI Brief prompt to create history."
       />
     );
   }
@@ -707,8 +707,8 @@ function DigestStatusPanel({
         ) : (
           <EmptyState
             className="sync-panel-slot-empty"
-            title="No AI Digest build history yet"
-            body="Copy a Build AI Digest prompt to create history."
+            title="No AI Brief build history yet"
+            body="Copy a Build AI Brief prompt to create history."
           />
         )}
       </div>
@@ -864,7 +864,7 @@ function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
   if (providerError) return providerError;
   if (jobRun.signal) return `Stopped after receiving ${jobRun.signal}.`;
   if (jobRun.exitCode !== null) return `Exited with code ${jobRun.exitCode}.`;
-  return reason ? readableReason(reason) : "Stopped before completing the AI Digest build.";
+  return reason ? readableReason(reason) : "Stopped before completing the AI Brief build.";
 }
 
 function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
@@ -885,19 +885,19 @@ function jobRunVerdict(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGra
   if (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs)) {
     return {
       tone: "fail",
-      text: "Local Agent stopped reporting before the AI Digest was saved.",
+      text: "Local Agent stopped reporting before the AI Brief was saved.",
     };
   }
   if (jobRun.status === "starting" || jobRun.status === "running") {
     return {
       tone: "warn",
-      text: "Local Agent is preparing candidates and saving the AI Digest.",
+      text: "Local Agent is preparing candidates and saving the AI Brief.",
     };
   }
   if (jobRun.status === "succeeded") {
     return {
       tone: "warn",
-      text: "Local Agent finished without saving an AI Digest.",
+      text: "Local Agent finished without saving an AI Brief.",
     };
   }
   return {
@@ -933,7 +933,7 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem, 
   }
   return {
     tone: "warn",
-    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for Local Agent to save the AI Digest.`,
+    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for Local Agent to save the AI Brief.`,
   };
 }
 
@@ -948,10 +948,10 @@ function jobRunDisplaySummary(jobRun: AgentJobRunListItem): string {
   const summary = jobRun.summary?.trim() ?? "";
   if (isActiveDigestJobRun(jobRun)) {
     return /^runtime heartbeat\.?$/i.test(summary)
-      ? "Local Agent is working on this AI Digest."
-      : summary || "Local Agent is working on this AI Digest.";
+      ? "Local Agent is working on this AI Brief."
+      : summary || "Local Agent is working on this AI Brief.";
   }
-  return summary || "No AI Digest was saved for this run.";
+  return summary || "No AI Brief was saved for this run.";
 }
 
 function JobRunCard({
@@ -1188,11 +1188,11 @@ function DigestLifecycle({
               <DigestFactRow label="Sources" value={<span>{formatCount(run.contributingSourceCount)} of {formatCount(run.subscriptionCount)}</span>} />
             </>
           ) : noUpdateJob ? (
-            <DigestFactRow label="Candidates" value={<span>0 candidates; no AI Digest needed.</span>} />
+            <DigestFactRow label="Candidates" value={<span>0 candidates; no AI Brief needed.</span>} />
           ) : failedJob ? (
             <DigestFactRow
               label="What happened"
-              value={<span>No AI Digest preparation was recorded before the runtime exited.</span>}
+              value={<span>No AI Brief preparation was recorded before the runtime exited.</span>}
             />
           ) : null}
         </DigestLifecycleDetails>
@@ -1206,22 +1206,22 @@ function DigestLifecycle({
       open: stepFailed(1) || (failedJob && !synced && !noUpdate),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
-          {stepActive(1) ? <DigestFactRow label="Status" value={<span>Local Agent is writing digest summary JSON.</span>} /> : null}
+          {stepActive(1) ? <DigestFactRow label="Status" value={<span>Local Agent is writing brief summary JSON.</span>} /> : null}
           {synced ? <DigestFactRow label="Selected" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
-          {noUpdate ? <DigestFactRow label="Skipped" value={<span>No candidate posts to include in the AI Digest.</span>} /> : null}
+          {noUpdate ? <DigestFactRow label="Skipped" value={<span>No candidate posts to include in the AI Brief.</span>} /> : null}
           {failedJob ? <DigestFactRow label="Failure" value={<span>{jobRun ? jobRunFailureReason(jobRun) : "Local Agent stopped before completing."}</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
     {
       key: "render",
-      label: "Render digest JSON",
+      label: "Render brief JSON",
       outcome: digestSaved
         ? run!.digestTitle!
         : noUpdate
           ? "Not needed"
           : synced
-            ? "Untitled AI Digest"
+            ? "Untitled AI Brief"
             : stepActive(2)
               ? "Rendering"
               : stepPast(2)
@@ -1232,8 +1232,8 @@ function DigestLifecycle({
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {digestSaved ? <DigestFactRow label="Title" value={<span>{run!.digestTitle}</span>} /> : null}
-          {stepActive(2) ? <DigestFactRow label="Status" value={<span>The runner is validating and rendering the digest JSON.</span>} /> : null}
-          {!digestSaved && failedJob ? <DigestFactRow label="Blocked by" value={<span>Local Agent did not return digest JSON.</span>} /> : null}
+          {stepActive(2) ? <DigestFactRow label="Status" value={<span>The runner is validating and rendering the brief JSON.</span>} /> : null}
+          {!digestSaved && failedJob ? <DigestFactRow label="Blocked by" value={<span>Local Agent did not return brief JSON.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
@@ -1241,7 +1241,7 @@ function DigestLifecycle({
       key: "sync",
       label: "Save to FollowBrief",
       outcome: noUpdate
-        ? "No AI Digest needed"
+        ? "No AI Brief needed"
         : run?.syncedAt
           ? "Saved to FollowBrief"
           : stepActive(3)
@@ -1254,28 +1254,28 @@ function DigestLifecycle({
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {run?.syncedAt ? <DigestFactRow label="Saved at" value={<span>{formatAbsolute(run.syncedAt)}</span>} /> : null}
-          {stepActive(3) ? <DigestFactRow label="Status" value={<span>The runner is saving the rendered AI Digest.</span>} /> : null}
-          {!run?.syncedAt && failedJob ? <DigestFactRow label="Blocked by" value={<span>No saved AI Digest was linked to this run.</span>} /> : null}
+          {stepActive(3) ? <DigestFactRow label="Status" value={<span>The runner is saving the rendered AI Brief.</span>} /> : null}
+          {!run?.syncedAt && failedJob ? <DigestFactRow label="Blocked by" value={<span>No saved AI Brief was linked to this run.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
     {
       key: "mark",
-      label: "Record digested posts",
+      label: "Record included posts",
       outcome: noUpdate ? "No posts to record" : synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : run ? "Not recorded" : "Pending",
       tone: noUpdate || synced ? "ok" : stepFailed(4) ? "fail" : failedJob ? "fail" : "idle",
       open: false,
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {synced ? <DigestFactRow label="Recorded" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
-          {!synced && failedJob ? <DigestFactRow label="Blocked by" value={<span>No posts were recorded because the AI Digest was not saved.</span>} /> : null}
+          {!synced && failedJob ? <DigestFactRow label="Blocked by" value={<span>No posts were recorded because the AI Brief was not saved.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
   ];
 
   return (
-    <ol aria-label="AI Digest job lifecycle" className="sync-panel-lifecycle">
+    <ol aria-label="AI Brief job lifecycle" className="sync-panel-lifecycle">
       {steps.map((step, index) => (
         <li key={step.key} className="sync-panel-lifecycle-item">
           <details className={`sync-panel-lifecycle-step is-${step.tone}`} open={step.open}>
@@ -1345,7 +1345,7 @@ function RunCard({
     : "all new posts";
 
   const title =
-    run.digestTitle ?? (run.status === "synced" ? "Untitled AI Digest" : "Prepared, no AI Digest saved");
+    run.digestTitle ?? (run.status === "synced" ? "Untitled AI Brief" : "Prepared, no AI Brief saved");
 
   const contributing = run.sources.filter((s) => s.eligible > 0);
   const silentCount = run.subscriptionCount - contributing.length;
@@ -1406,7 +1406,7 @@ function RunCard({
         <span>Covered {windowLabel}</span>
         {run.lastDigestAt ? (
           <span>
-            Previous AI Digest <RelativeTime value={run.lastDigestAt} />
+            Previous AI Brief <RelativeTime value={run.lastDigestAt} />
           </span>
         ) : null}
       </div>
@@ -1519,7 +1519,7 @@ function DigestLogDialog({
   return (
     <div className="sync-panel-log-dialog-backdrop" role="presentation" onMouseDown={onClose}>
       <section
-        aria-label="AI Digest build log"
+        aria-label="AI Brief build log"
         aria-modal="true"
         className="sync-panel-log-dialog"
         onMouseDown={(event) => event.stopPropagation()}
@@ -1542,7 +1542,7 @@ function DigestLogDialog({
             <EmptyState
               className="sync-panel-empty is-dashed"
               title="Build log unavailable"
-              body="This AI Digest build is no longer in the current history."
+              body="This AI Brief build is no longer in the current history."
             />
           )}
         </div>
@@ -1598,14 +1598,14 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
   const outcome = !synced ? "pending" : item.included ? "used" : "not used";
   const outcomeTone = !synced ? "pending" : item.included ? "used" : "muted";
   const outcomeTitle = !synced
-    ? "Found, AI Digest not saved yet"
+    ? "Found, AI Brief not saved yet"
     : item.included
-      ? "Used in the AI Digest"
+      ? "Used in the AI Brief"
       : "Found but skipped";
   const title = item.title?.trim() || "Untitled candidate";
   const sourceType = item.sourceType?.trim() || sourceTag(item.kind);
   const detailHref = item.feedItemId
-    ? postDetailHref(item.feedItemId, "/dashboard?tab=ai-digest", "AI Digest")
+    ? postDetailHref(item.feedItemId, "/dashboard?tab=ai-digest", "AI Brief")
     : null;
   return (
     <li className="sync-panel-candidate-row">

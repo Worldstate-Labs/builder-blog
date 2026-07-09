@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { DigestPipelineSelectorView } from "./DigestPipelineSelectorView";
 
-const own = { id: "p-own", title: "My AI Digest", ownerLabel: "You", isOwnPipeline: true };
+const own = { id: "p-own", title: "My AI Brief", ownerLabel: "You", isOwnPipeline: true };
 const shared = {
   id: "p-team",
   title: "Infra reading group",

@@ -1,5 +1,5 @@
 UPDATE "DigestConfig"
-SET "headlinePrompt" = '# Digest Headline Prompt
+SET "headlinePrompt" = '# Brief Headline Prompt
 
 Write only `headlineSummary` for the candidate posts in the supplied FollowBrief context.
 
@@ -16,10 +16,10 @@ Rules:
 - Summarize all candidate posts from that source together instead of listing each post.
 - Use only facts already present in the candidate post summaries and metadata.
 - Do not include raw URLs.'
-WHERE "headlinePrompt" LIKE '# Digest Headline Prompt%one short news-headline paragraph%suitable for a mobile digest header%';
+WHERE "headlinePrompt" LIKE '# Brief Headline Prompt%one short news-headline paragraph%suitable for a mobile brief header%';
 
 UPDATE "UserDigestConfig"
-SET "headlinePrompt" = '# Digest Headline Prompt
+SET "headlinePrompt" = '# Brief Headline Prompt
 
 Write only `headlineSummary` for the candidate posts in the supplied FollowBrief context.
 
@@ -36,4 +36,4 @@ Rules:
 - Summarize all candidate posts from that source together instead of listing each post.
 - Use only facts already present in the candidate post summaries and metadata.
 - Do not include raw URLs.'
-WHERE "headlinePrompt" LIKE '# Digest Headline Prompt%one short news-headline paragraph%suitable for a mobile digest header%';
+WHERE "headlinePrompt" LIKE '# Brief Headline Prompt%one short news-headline paragraph%suitable for a mobile brief header%';

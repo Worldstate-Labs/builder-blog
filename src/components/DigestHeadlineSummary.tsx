@@ -88,7 +88,7 @@ export function DigestHeadlineSummary({
     <section
       className={`digest-headline-summary${loading ? " is-loading" : ""}`}
       aria-busy={loading || undefined}
-      aria-label="AI Digest headlines"
+      aria-label="AI Brief headlines"
     >
       <div className="digest-headline-top">
         <div className="digest-headline-label-row">

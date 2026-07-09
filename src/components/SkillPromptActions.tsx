@@ -92,7 +92,7 @@ function promptDialogDescription(context: SkillPromptContext, runtimeType: Runti
       ? "Submit a request for FollowBrief to fetch sources in your library."
       : "Copy instructions for your agent to fetch sources in your library.";
   }
-  return "Copy instructions for your agent to build AI Digest.";
+  return "Copy instructions for your agent to build AI Brief.";
 }
 
 async function copyTextToClipboard(text: string) {
@@ -165,8 +165,8 @@ const MAX_PARALLEL_WORKERS = 8;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
-// already in the source library. Digest: re-include posts already used in AI Digest
-// (additive — adds a new AI Digest that re-covers those posts, never deletes or
+// already in the source library. Digest: re-include posts already used in AI Brief
+// (additive — adds a new AI Brief that re-covers those posts, never deletes or
 // replaces past ones).
 const OVERRIDE_COPY: Record<
   SkillPromptContext,
@@ -315,13 +315,13 @@ const PROMPT_CONFIG = {
     stopLabel: "Stop fetching",
   },
   digest: {
-    title: "Build AI Digest",
+    title: "Build AI Brief",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Build AI Digest",
+    cronLabel: "Build AI Brief",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
     stopJob: "digest-cron-stop",
-    stopLabel: "Stop AI Digest",
+    stopLabel: "Stop AI Brief",
   },
 } satisfies Record<
   SkillPromptContext,
@@ -801,7 +801,7 @@ function StopScheduleDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<StopFetchTarget>("local");
-  const scheduleName = context === "digest" ? "AI Digest" : "Fetch sources";
+  const scheduleName = context === "digest" ? "AI Brief" : "Fetch sources";
   const machineLabel = formatScheduleMachine(schedule);
   const showFetchTargetPicker = context === "library";
   const effectiveSelectedTarget =
@@ -1540,7 +1540,7 @@ function CronConfigDialog({
 
           <SummaryLanguageField
             id="cron-lang"
-            label={context === "digest" ? "AI Digest language" : "Summary language"}
+            label={context === "digest" ? "AI Brief language" : "Summary language"}
             value={pickedLanguage}
             onChange={setPickedLanguage}
           />

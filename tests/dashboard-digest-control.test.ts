@@ -9,14 +9,14 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("home digest keeps collection and issue selection in a dedicated control bar", () => {
+test("home digest keeps collection and brief selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePickerView.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest collection and issue selection"/);
+  assert.match(dashboardPage, /aria-label="AI Brief collection and brief selection"/);
   assert.match(dashboardPage, /className="digest-control-bar"/);
   assert.match(dashboardPage, /className="digest-control-field"/);
   assert.match(dashboardPage, /className="digest-control-label"/);
@@ -24,13 +24,13 @@ test("home digest keeps collection and issue selection in a dedicated control ba
   assert.match(dashboardPage, /className="digest-control-empty"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
-  assert.match(dashboardPage, />\s*AI Digest collection\s*<\/span>/);
-  assert.match(dashboardPage, />\s*AI Digest issue\s*<\/span>/);
-  assert.doesNotMatch(dashboardPage, /aria-label="AI Digest selection"/);
+  assert.match(dashboardPage, />\s*AI Brief collection\s*<\/span>/);
+  assert.match(dashboardPage, />\s*AI Brief\s*<\/span>/);
+  assert.doesNotMatch(dashboardPage, /aria-label="AI Brief selection"/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
-  assert.match(dashboardPage, /No AI Digest issues/);
-  assert.doesNotMatch(dashboardPage, />\s*No AI Digest archives\s*<\/span>/);
-  assert.doesNotMatch(dashboardPage, /No archived AI Digests/);
+  assert.match(dashboardPage, /No AI Briefs/);
+  assert.doesNotMatch(dashboardPage, />\s*No AI Brief archives\s*<\/span>/);
+  assert.doesNotMatch(dashboardPage, /No archived AI Briefs/);
   assert.match(globals, /\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-selector"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
@@ -40,8 +40,8 @@ test("home digest keeps collection and issue selection in a dedicated control ba
   assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
   assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);
   assert.match(digestPipelineSelector, /role="listbox"/);
-  assert.match(digestPipelineSelector, /aria-label="AI Digest collections"/);
-  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|aria-label="AI Digest sources"/);
+  assert.match(digestPipelineSelector, /aria-label="AI Brief collections"/);
+  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Brief choices"|aria-label="AI Brief sources"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
   assert.match(digestPipelineSelector, /role="option"/);
   assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
@@ -56,14 +56,14 @@ test("home digest keeps collection and issue selection in a dedicated control ba
   assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
-  assert.match(digestArchivePicker, /aria-label=\{`AI Digest issue: \$\{selectedLabel\}`\}/);
-  assert.match(digestArchivePicker, /aria-label=\{`Choose AI Digest issue, current: \$\{selectedLabel\}`\}/);
+  assert.match(digestArchivePicker, /aria-label=\{`AI Brief: \$\{selectedLabel\}`\}/);
+  assert.match(digestArchivePicker, /aria-label=\{`Choose AI Brief, current: \$\{selectedLabel\}`\}/);
   assert.match(digestArchivePicker, /const pickerNavigationKeys = new Set\(\["ArrowDown", "ArrowUp", "Home", "End"\]\)/);
   assert.match(digestArchivePicker, /focusOption\(focusDirectionForKey\(event\.key\)\)/);
-  assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest issues"/);
+  assert.match(digestArchivePicker, /role="listbox" aria-label="AI Briefs"/);
   assert.match(digestArchivePicker, /issueNumber: number/);
   assert.match(digestArchivePicker, /itemCount: number/);
-  assert.match(digestArchivePicker, /Issue #\{digest\.issueNumber\}/);
+  assert.match(digestArchivePicker, /Brief #\{digest\.issueNumber\}/);
   assert.match(digestArchivePicker, /className="digest-picker-subtitle"/);
   assert.match(digestArchivePicker, /from \{digest\.itemCount\} \{digest\.itemCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(digestArchivePicker, /CountMeta/);
@@ -80,7 +80,7 @@ test("home digest keeps collection and issue selection in a dedicated control ba
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
 });
 
-test("home digest pipeline selector resets issue selection when changing collections", () => {
+test("home digest pipeline selector resets brief selection when changing collections", () => {
   const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
 
@@ -91,7 +91,7 @@ test("home digest pipeline selector resets issue selection when changing collect
   assert.doesNotMatch(digestPipelineSelector, /&digest=\$\{digest/);
 });
 
-test("home digest issue selector preserves explicit own collection selection", () => {
+test("home digest brief selector preserves explicit own collection selection", () => {
   const digestArchivePicker = source("src/components/DigestArchivePickerView.tsx");
 
   assert.match(digestArchivePicker, /function digestHref/);
@@ -104,10 +104,10 @@ test("home digest pipeline selector labels the selected pipeline owner", () => {
 
   assert.match(digestPipelineSelector, /function PipelineOwnerLine/);
   assert.match(digestPipelineSelector, /function pipelineOwnerLine/);
-  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your AI Digest collection" : `by \$\{pipeline\.ownerLabel\}`/);
+  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your AI Brief collection" : `by \$\{pipeline\.ownerLabel\}`/);
   assert.match(digestPipelineSelector, /by <UserName>\{pipeline\.ownerLabel\}<\/UserName>/);
   assert.doesNotMatch(digestPipelineSelector, /Shared by <UserName>\{pipeline\.ownerLabel\}<\/UserName>/);
-  assert.doesNotMatch(digestPipelineSelector, /Your digest|Your AI Digest" :/);
+  assert.doesNotMatch(digestPipelineSelector, /Your digest|Your AI Brief" :/);
   assert.doesNotMatch(digestPipelineSelector, /: pipeline\.ownerLabel/);
   assert.doesNotMatch(digestPipelineSelector, /Shared by Shared by/);
   assert.match(digestPipelineSelector, /options\.length <= 1[\s\S]*<PipelineOwnerLine pipeline=\{selectedPipeline\}/);

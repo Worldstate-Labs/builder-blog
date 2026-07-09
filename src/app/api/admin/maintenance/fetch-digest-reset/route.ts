@@ -24,9 +24,9 @@ export async function POST(request: Request) {
     const summary = await resetFetchDigestState();
     return NextResponse.json({ status: "reset", summary });
   } catch (error) {
-    console.error("Failed to reset fetch and digest state", error);
+    console.error("Failed to reset fetch and brief state", error);
     return NextResponse.json(
-      { error: "Could not reset fetch and digest state." },
+      { error: "Could not reset fetch and brief state." },
       { status: 500 },
     );
   }

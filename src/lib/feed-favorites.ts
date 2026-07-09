@@ -27,7 +27,7 @@ export async function assertFavoritePostAccess(userId: string, feedItemId: strin
 
   const canFavorite = await canFavoriteFeedItem(userId, item.id, item.builderId);
   if (!canFavorite) {
-    return { error: "Post is outside your Sources or AI Digest collections" as const, status: 403 as const };
+    return { error: "Post is outside your Sources or AI Brief collections" as const, status: 403 as const };
   }
 
   return {

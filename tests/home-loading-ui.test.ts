@@ -9,7 +9,7 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("home loading tabs mirror the default AI Digest tab without becoming interactive", () => {
+test("home loading tabs mirror the default AI Brief tab without becoming interactive", () => {
   const loading = source("src/app/(workspace)/dashboard/loading.tsx");
 
   assert.match(loading, /aria-label="Today feed tabs"[\s\S]*role="tablist"/);

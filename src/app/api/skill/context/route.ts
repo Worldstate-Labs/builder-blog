@@ -102,7 +102,7 @@ export async function GET(request: Request) {
   const languageMode = isOriginalContentLanguagePreference(summaryLanguage) ? "source" : "fixed";
   const languageInstruction =
     languageMode === "source"
-      ? "Use the original content language. For fetch-task summaries, write each summary in the same language as that task's final raw body. For digest tasks, write each post summary in the same language as the supplied post summary; write source summaries in the dominant language of that source group's supplied post summaries; write the headline in the dominant language of all supplied post summaries. If there are no post summaries to infer from, use English."
+      ? "Use the original content language. For fetch-task summaries, write each summary in the same language as that task's final raw body. For brief tasks, write each post summary in the same language as the supplied post summary; write source summaries in the dominant language of that source group's supplied post summaries; write the headline in the dominant language of all supplied post summaries. If there are no post summaries to infer from, use English."
       : `Use ${displayLanguagePreference(summaryLanguage)}.`;
 
   // Per-source skill context: merge static fields from sources.json

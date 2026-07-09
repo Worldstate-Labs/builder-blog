@@ -22,7 +22,7 @@ type TimelineResponse = {
 };
 
 const NO_FOLLOWED_SOURCES_BODY =
-  "Add sources for AI Digest and Following.";
+  "Add sources for AI Brief and Following.";
 
 export type FollowingSourceReadiness = {
   activeTokens: AgentTokenListItem[];

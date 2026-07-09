@@ -70,7 +70,7 @@ export async function PATCH(request: Request) {
   }
   if (!isAdmin && writesAdminOnlyDigestPrompts) {
     return NextResponse.json(
-      { error: "Headline and per-source digest prompts can only be changed by an admin." },
+      { error: "Headline and per-source brief prompts can only be changed by an admin." },
       { status: 403 },
     );
   }
@@ -86,7 +86,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ config });
   } catch {
     return NextResponse.json(
-      { error: "Could not save AI Digest rules." },
+      { error: "Could not save AI Brief rules." },
       { status: 500 },
     );
   }

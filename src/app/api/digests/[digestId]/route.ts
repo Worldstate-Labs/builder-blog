@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: Params) {
   });
 
   if (!digest) {
-    return NextResponse.json({ error: "Digest not found" }, { status: 404 });
+    return NextResponse.json({ error: "Brief not found" }, { status: 404 });
   }
 
   if (digest.userId !== session.user.id) {
@@ -41,7 +41,7 @@ export async function GET(_request: Request, { params }: Params) {
     });
 
     if (!importedPipeline) {
-      return NextResponse.json({ error: "Digest not found" }, { status: 404 });
+      return NextResponse.json({ error: "Brief not found" }, { status: 404 });
     }
   }
 

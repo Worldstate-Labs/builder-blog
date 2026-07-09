@@ -1,8 +1,8 @@
-Set up the FollowBrief subscription digest scheduled job.
+Set up the FollowBrief subscription brief scheduled job.
 
 This is an interactive local agent setup run. Do not ask the user questions
 except where step 3 requires it (confirming whether to replace an existing
-digest cron), or when crontab permissions or a missing local agent runtime
+brief cron), or when crontab permissions or a missing local agent runtime
 blocks the setup.
 
 Run these steps exactly. If any command fails, stop and report the command, exit
@@ -10,9 +10,9 @@ code, and stderr. Do not browse for extra context. Do not invoke any other
 skill, plugin, or subagent — run the numbered steps yourself exactly as written;
 this prompt is the whole task.
 
-This setup prompt only orchestrates scheduler setup. The real digest build
+This setup prompt only orchestrates scheduler setup. The real brief build
 happens only through the runner command in step 6; do not manually produce
-digest JSON or sync digest state outside the numbered commands.
+brief JSON or sync brief state outside the numbered commands.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.
@@ -46,7 +46,7 @@ fi
 ```
 
 3. Before changing anything, check FollowBrief's server state for this
-account's digest cron, then check whether the schedule already exists on this
+account's brief cron, then check whether the schedule already exists on this
 machine. The server check detects another machine that may already own the
 recurring schedule.
 
@@ -57,14 +57,14 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
 
 If the JSON output contains `"status": "active"`, STOP: report the current
 frequency, runtime, hostname, platform, and ownerId from the server output,
-explain that continuing replaces the server-authorized digest schedule owner
+explain that continuing replaces the server-authorized brief schedule owner
 after this setup proves a new initial run and schedule install, and ask the user
 whether to replace it. Only continue after the user explicitly confirms. If they
 decline, stop and change nothing. Do not run `cron-status` yet: the old server
 owner must remain authorized until this setup's initial run and local schedule
 install both succeed.
 
-Next, check whether this account's digest cron already exists on this machine.
+Next, check whether this account's brief cron already exists on this machine.
 Run the check for this machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin)
@@ -112,8 +112,8 @@ crontab -l 2>/dev/null | grep "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-run
 ```
 
 If the result is "(none found)", continue to the next step. If it lists one or
-more existing digest jobs for this account, STOP: report exactly what was found, explain that
-continuing replaces this account's digest schedule and its pinned runtime
+more existing brief jobs for this account, STOP: report exactly what was found, explain that
+continuing replaces this account's brief schedule and its pinned runtime
 (jobs for other accounts are left untouched), and ask the user whether to
 override. Only continue past this step after the user explicitly confirms. If
 they decline, stop and change nothing.
@@ -124,7 +124,7 @@ out the old job, then bootstraps the new one) only after the initial run has pas
 so a failed initial run never tears down a working schedule and leaves the account
 with none.
 
-4. Keep the selected runtime and digest mode scoped to this setup run until the
+4. Keep the selected runtime and brief mode scoped to this setup run until the
 initial run passes. Do not write cron pin files yet: on an override
 setup, the old schedule is still loaded, and writing new pins early could make
 that old schedule run with the new runtime before this setup has been proven.
@@ -171,8 +171,8 @@ if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
 fi
 ```
 
-6. Run one real initial digest job now. This runs on this machine through the
-selected local runtime, uses the selected digest mode, and performs the same
+6. Run one real initial brief job now. This runs on this machine through the
+selected local runtime, uses the selected brief mode, and performs the same
 candidate preparation, agent JSON output, rendering, and web-sync work as the
 recurring `digest-cron` job. It is recorded as a one-time setup run, not a
 scheduled window. This can take until the normal job timeout; do not treat a lack
@@ -206,19 +206,19 @@ $HOME/.builder-blog/builder-agent-runner.sh digest-cron
 
 Report its output. It succeeds when the command exits 0 and the digest is
 generated and synced to FollowBrief. This is a real run: it writes a DigestRun,
-digest, and digested-item markers. If it errors or times out, report the
+brief, and included-item markers. If it errors or times out, report the
 command, exit code, and stderr, and stop — do not install the schedule in step
-7. If the pinned runtime CLI is not installed, do not claim the digest cron is
+7. If the pinned runtime CLI is not installed, do not claim the brief cron is
 installed successfully — record that the user must install
 {{AGENT_RUNTIME_LABEL}} (or set `BUILDER_BLOG_AGENT_COMMAND`) first.
 
 7. Only after the initial run has succeeded, pin the
-scheduled runtime/digest mode and install the schedule to run
+scheduled runtime/brief mode and install the schedule to run
 {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
 while the unmanaged initial run above is still executing, and a pipeline that
 failed the initial run never gets scheduled. The concrete launchd/crontab
 schedule is generated from this install time after validation succeeds. The
-first scheduled digest window is install anchor + {{CRON_INTERVAL_MINUTES}}
+first scheduled brief window is install anchor + {{CRON_INTERVAL_MINUTES}}
 minutes, and later windows stay on that same anchor, so long previous runs
 cannot drift the cadence. Pick the path for this machine's OS — run `uname` if
 unsure.
@@ -226,7 +226,7 @@ unsure.
 Write the per-account, per-job pins immediately before installing the schedule:
 `runtime-digest-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
 unattended mode, and `regenerate-digest-cron-$ACCOUNT_SLUG` controls whether
-the recurring job replaces the existing same-day digest.
+the recurring job replaces the existing same-day brief.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
@@ -336,7 +336,7 @@ launchctl print "gui/$(id -u)/$LABEL" | grep -E "state =|program ="
 ### Linux / other (no keychain) → crontab
 
 The agent CLI's token is a plain file there, so cron works. This removes any
-previous FollowBrief digest job for this account, then installs one idempotent
+previous FollowBrief brief job for this account, then installs one idempotent
 job:
 
 ```bash

@@ -25,9 +25,9 @@ Rules:
   file before deciding what to write; do not stop for "no candidates" unless
   that exact file read proves `context.items[]` is empty.
 - Do not write per-post summaries. The CLI copies each `context.items[]` entry's
-  existing `summary` into the digest verbatim; you must not rewrite, translate,
+  existing `summary` into the brief verbatim; you must not rewrite, translate,
   restate, or shorten them, and the output JSON has no `postSummaries` field.
-- Language mode: write digest output in `context.language`. If
+- Language mode: write brief output in `context.language`. If
   `context.language` is `source`, write each source summary in the dominant
   language of that source group's supplied post summaries, and write
   `headlineSummary` in the dominant language of all supplied post summaries.
@@ -47,7 +47,7 @@ Rules:
   `item.url`.
 - If `headlineSummary` is empty or longer than 1200 characters, or a non-empty
   source summary references an unknown `entityId`, the job fails instead of
-  syncing a partial digest.
+  syncing a partial brief.
 
 Before finishing, reopen
 `$TMP_DIR/builder-blog-digest-agent-output.json` and self-check the saved JSON.

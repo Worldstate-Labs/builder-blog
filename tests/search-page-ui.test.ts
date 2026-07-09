@@ -21,13 +21,13 @@ test("search suggestions stay query-like instead of repeating result type labels
 
   assert.match(defaultSuggestionBlock, /"agent memory"/);
   assert.match(apiDefaultSuggestionBlock, /"research notes"/);
-  assert.doesNotMatch(defaultSuggestionBlock, /"AI Digest issues"/);
-  assert.doesNotMatch(apiDefaultSuggestionBlock, /"AI Digest issues"/);
-  assert.match(searchPage, /digest:\s*"AI Digest issues"/);
-  assert.doesNotMatch(searchPage, /const resultTypeFilterLabels[\s\S]*digest:\s*"AI Digest",/);
-  assert.match(suggestRoute, /return "AI Digest issue"/);
-  assert.doesNotMatch(searchPage, /digest:\s*"AI Digest archives"/);
-  assert.doesNotMatch(suggestRoute, /return "AI Digest archive"/);
+  assert.doesNotMatch(defaultSuggestionBlock, /"AI Briefs"/);
+  assert.doesNotMatch(apiDefaultSuggestionBlock, /"AI Briefs"/);
+  assert.match(searchPage, /digest:\s*"AI Briefs"/);
+  assert.match(searchPage, /const resultTypeItemLabels[\s\S]*digest:\s*"AI Brief",/);
+  assert.match(suggestRoute, /return "AI Brief"/);
+  assert.doesNotMatch(searchPage, /digest:\s*"AI Brief archives"/);
+  assert.doesNotMatch(suggestRoute, /return "AI Brief archive"/);
 });
 
 test("source search results expose add and in-library states", () => {

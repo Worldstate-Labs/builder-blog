@@ -187,7 +187,7 @@ export function getDigestUpdateStatus(
     return {
       key: "building",
       label: "Building",
-      summary: "A digest build has started and is waiting to be saved.",
+      summary: "A brief build has started and is waiting to be saved.",
       style: statusStyle("partial"),
     };
   }
@@ -203,7 +203,7 @@ export function getDigestUpdateStatus(
     return {
       key: "stopped",
       label: "Stopped",
-      summary: "The recurring digest schedule is stopped.",
+      summary: "The recurring brief schedule is stopped.",
       style: statusStyle("partial"),
     };
   }
@@ -213,7 +213,7 @@ export function getDigestUpdateStatus(
     return {
       key: "needs-attention",
       label: "Partial",
-      summary: "The latest scheduled digest run completed with partial results.",
+      summary: "The latest scheduled brief run completed with partial results.",
       style: statusStyle("partial"),
     };
   }
@@ -224,7 +224,7 @@ export function getDigestUpdateStatus(
       summary:
         latestResolved === "missed"
           ? "No run started in the latest scheduled window."
-          : "The latest scheduled run did not save an AI Digest.",
+          : "The latest scheduled run did not save an AI Brief.",
       style: statusStyle("failed"),
     };
   }
@@ -232,7 +232,7 @@ export function getDigestUpdateStatus(
     return {
       key: "healthy",
       label: "Healthy",
-      summary: "Recent scheduled digest runs are saving successfully.",
+      summary: "Recent scheduled brief runs are saving successfully.",
       style: statusStyle("ok"),
     };
   }

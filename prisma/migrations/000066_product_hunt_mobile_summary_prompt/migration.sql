@@ -7,7 +7,7 @@ professional. Use only task.item.body plus task.item metadata.
 Use the user-selected output language supplied by the enclosing task. Do not
 hard-code any fixed language.
 
-Write a mobile-friendly digest card summary, not a label/value template.
+Write a mobile-friendly brief card summary, not a label/value template.
 
 Use two short paragraphs:
 
@@ -65,7 +65,7 @@ professional. Use only task.item.body plus task.item metadata.
 Use the user-selected output language supplied by the enclosing task. Do not
 hard-code any fixed language.
 
-Write a mobile-friendly digest card summary, not a label/value template.
+Write a mobile-friendly brief card summary, not a label/value template.
 
 Use two short paragraphs:
 

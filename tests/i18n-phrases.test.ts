@@ -43,7 +43,7 @@ test("Sources page UI phrases translate while product and source names stay stab
   }
 
   const shouldStayStable = [
-    "AI Digest",
+    "AI Brief",
     "Local Agent",
     "Hub",
     "anthropic.com",
@@ -86,7 +86,7 @@ test("visible app TSX phrases have translations for supported non-English locale
     "title",
   ]);
   const stableProductPhrases = new Set([
-    "AI Digest",
+    "AI Brief",
     "Apple",
     "Claude Code",
     "Codex",

@@ -87,7 +87,7 @@ export function DashboardHomeTabs({
 function HomeAiDigestFallback() {
   return (
     <div className="ai-digest-stack home-loading-ai-digest" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading AI Digest</span>
+      <span className="sr-only">Loading AI Brief</span>
       <section className="digest-control-bar home-loading-control">
         {[
           { id: "tabs.aiDigestCollection" as const },

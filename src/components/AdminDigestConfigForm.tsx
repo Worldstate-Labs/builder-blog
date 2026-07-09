@@ -96,7 +96,7 @@ export function AdminDigestConfigForm({
         if (!response.ok) {
           setStatus({
             kind: "error",
-            message: body?.error ?? "Could not save AI Digest rules.",
+            message: body?.error ?? "Could not save AI Brief rules.",
           });
           return;
         }
@@ -109,7 +109,7 @@ export function AdminDigestConfigForm({
       } catch {
         setStatus({
           kind: "error",
-          message: "Could not save AI Digest rules.",
+          message: "Could not save AI Brief rules.",
         });
       }
     });

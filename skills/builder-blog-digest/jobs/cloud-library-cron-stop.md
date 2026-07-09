@@ -9,7 +9,7 @@ Scope: remove only the long-running Cloud worker host service on this machine,
 stop this account's active Cloud worker host process if one is still running,
 and report the stopped worker host to FollowBrief as a `cloud-library-fetch`
 job run. Do not delete Cloud library content, source submissions, source tasks,
-or regular Fetch sources / AI Digest schedules.
+or regular Fetch sources / AI Brief schedules.
 
 Stopped-state contract: this account is fully stopped only after there is no
 loaded `com.followbrief.cloud-library-host` LaunchAgent on macOS or

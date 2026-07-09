@@ -8,7 +8,7 @@ export default function WorkspaceNotFound() {
     <div className="page-pad page-pad--reading workspace-not-found">
       <PageHeader
         title="Page not found"
-        description="This page is unavailable or outside your sources or AI Digest collections."
+        description="This page is unavailable or outside your sources or AI Brief collections."
       />
       <div className="workspace-content-stack">
         <EmptyState
@@ -26,7 +26,7 @@ export default function WorkspaceNotFound() {
           }
           className="workspace-not-found-empty"
           title="Nothing to open here"
-          body="Search sources, posts, and AI Digest issues."
+          body="Search sources, posts, and AI Briefs."
         />
       </div>
     </div>

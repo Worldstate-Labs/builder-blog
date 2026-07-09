@@ -70,7 +70,7 @@ export function DigestContentView({
   if (digestItems.length === 0) {
     return (
       <div className={wrapClass(tone)}>
-        <p className="digest-prose">No AI Digest items yet.</p>
+        <p className="digest-prose">No AI Brief items yet.</p>
       </div>
     );
   }
@@ -147,7 +147,7 @@ function PostBlock({
     title: item.post.title || sourceName || "Untitled update",
     body: item.summary,
     summary: item.summary,
-    detailUrl: postDetailHref(item.post.feedItemId, "/dashboard?tab=ai-digest", "AI Digest"),
+    detailUrl: postDetailHref(item.post.feedItemId, "/dashboard?tab=ai-digest", "AI Brief"),
     url: item.post.url,
     publishedAt: item.post.publishedAt,
     createdAt: item.post.createdAt,

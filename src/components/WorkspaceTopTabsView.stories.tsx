@@ -10,7 +10,7 @@ const meta = {
     ariaLabel: "Today feed tabs",
     selectedValue: "ai-digest",
     items: [
-      { value: "ai-digest", label: "AI Digest", href: "/dashboard?tab=ai-digest" },
+      { value: "ai-digest", label: "AI Brief", href: "/dashboard?tab=ai-digest" },
       { value: "following", label: "Following", href: "/dashboard?tab=following" },
       { value: "favorites", label: "Favorites", href: "/dashboard?tab=favorites" },
     ],

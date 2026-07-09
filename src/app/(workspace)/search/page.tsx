@@ -103,13 +103,13 @@ const advancedSearchExamples = [
 const resultTypeFilterLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
   feed: "Posts",
-  digest: "AI Digest issues",
+  digest: "AI Briefs",
 };
 
 const resultTypeItemLabels: Record<SearchDocumentType, string> = {
   builder: "Source",
   feed: "Post",
-  digest: "AI Digest issue",
+  digest: "AI Brief",
 };
 
 const searchModeLabels: Record<SearchMode, string> = {
@@ -675,7 +675,7 @@ function searchResultCountLabel(typeFilter: SearchTypeFilter, count: number) {
   if (typeFilter === "builder") return count === 1 ? "source" : "sources";
   if (typeFilter === "feed") return count === 1 ? "post" : "posts";
   if (typeFilter === "digest") {
-    return count === 1 ? "AI Digest issue" : "AI Digest issues";
+    return count === 1 ? "AI Brief" : "AI Briefs";
   }
   return count === 1 ? "result" : "results";
 }

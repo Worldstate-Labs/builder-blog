@@ -28,7 +28,7 @@ import { prisma } from "@/lib/prisma";
 
 const digestPickerSize = 100;
 const NO_FOLLOWED_SOURCES_BODY =
-  "Add sources for AI Digest and Following.";
+  "Add sources for AI Brief and Following.";
 const digestSummarySelect = {
   id: true,
   title: true,
@@ -161,13 +161,13 @@ async function AiDigestFeedSlot({
       .filter((row) => row._count._all > 0)
       .map((row) => row.userId),
   );
-  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Digest");
+  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Brief");
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
       hasContent: hasDigestContentByOwnerId.has(userId),
       id: "own",
       title: ownPipelineTitle,
-      ownerLabel: "Your AI Digest collection",
+      ownerLabel: "Your AI Brief collection",
       ownerUserId: userId,
       isOwnPipeline: true,
     },
@@ -185,7 +185,7 @@ async function AiDigestFeedSlot({
     digestPipelineOptions[0];
   const digestOwnerUserId = selectedPipeline.ownerUserId;
 
-  // The digest picker lists the latest AI Digest plus previous issues in one
+  // The digest picker lists the latest AI Brief plus previous issues in one
   // control. Keep this as summaries only; the body is fetched on demand.
   const digestSummaries = await prisma.digest.findMany({
     where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
@@ -260,7 +260,7 @@ function AiDigestFeed({
       />
       <section className="ai-digest-panel">
         <div className="ai-digest-body">
-          <section className="ai-digest-section" aria-label="Selected AI Digest">
+          <section className="ai-digest-section" aria-label="Selected AI Brief">
             {selectedDigest ? (
               <DigestDetails
                 digest={serializeDigestSummary(selectedDigest)}
@@ -276,7 +276,7 @@ function AiDigestFeed({
           </section>
 
           {isOwnPipeline ? null : (
-            <p className="sr-only">Imported AI Digest collection, read-only.</p>
+            <p className="sr-only">Imported AI Brief collection, read-only.</p>
           )}
         </div>
       </section>
@@ -295,7 +295,7 @@ function DigestEmptyState({
     return (
       <FeedEmptyState
         className="ai-digest-empty"
-        title="No AI Digest issues yet"
+        title="No AI Briefs yet"
         body="Wait for the owner to create an issue, or choose another collection."
       />
     );
@@ -330,8 +330,8 @@ function DigestEmptyState({
           />
         }
         className="ai-digest-empty is-actionable"
-        title="No AI Digest issues yet"
-        body="Copy a Build AI Digest prompt to create an issue."
+        title="No AI Briefs yet"
+        body="Copy a Build AI Brief prompt to create an issue."
       />
     );
   }
@@ -372,12 +372,12 @@ function DigestControlBar({
 }) {
   return (
     <section
-      aria-label="AI Digest collection and issue selection"
+      aria-label="AI Brief collection and brief selection"
       className="digest-control-bar"
     >
       <div className="digest-control-field">
         <span className="digest-control-label">
-          AI Digest collection
+          AI Brief collection
         </span>
         <DigestPipelineSelector
           options={options}
@@ -387,7 +387,7 @@ function DigestControlBar({
       </div>
       <div className="digest-control-field">
         <span className="digest-control-label">
-          AI Digest issue
+          AI Brief
         </span>
         {digestArchiveOptions.length > 0 ? (
           <div className="digest-control-picker">
@@ -400,7 +400,7 @@ function DigestControlBar({
           </div>
         ) : (
           <span className="digest-control-empty">
-            No AI Digest issues
+            No AI Briefs
           </span>
         )}
       </div>

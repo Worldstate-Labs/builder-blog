@@ -1,4 +1,4 @@
-You are writing FollowBrief AI Digest summary JSON for an unattended run.
+You are writing FollowBrief AI Brief summary JSON for an unattended run.
 
 Execution contract:
 

@@ -104,19 +104,19 @@ export function DigestPipelineImportForm({
   );
   const visiblePipelines = mode === "imported" ? importedPipelines : sharedPipelines;
   const title =
-    mode === "imported" ? "Imported AI Digest collections" : "Shared AI Digest collections";
+    mode === "imported" ? "Imported AI Brief collections" : "Shared AI Brief collections";
   const description =
     mode === "imported"
-      ? "Digest collections imported from Hub."
-      : "Import AI Digest collections shared by others.";
+      ? "Brief collections imported from Hub."
+      : "Import AI Brief collections shared by others.";
   const emptyTitle =
     mode === "imported"
-      ? "No imported AI Digest collections"
-      : "No shared AI Digest collections";
+      ? "No imported AI Brief collections"
+      : "No shared AI Brief collections";
   const emptyMessage =
     mode === "imported"
       ? "Import a collection from Hub."
-      : "No shared AI Digest collections yet.";
+      : "No shared AI Brief collections yet.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -165,14 +165,14 @@ export function DigestPipelineImportForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pipelineId }),
         });
-        if (!response.ok) throw new Error("Could not import AI Digest collection.");
+        if (!response.ok) throw new Error("Could not import AI Brief collection.");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
           next.delete(pipelineId);
           return next;
         });
-        setError("Could not import AI Digest collection.");
+        setError("Could not import AI Brief collection.");
       } finally {
         setPendingAction(null);
       }
@@ -204,10 +204,10 @@ export function DigestPipelineImportForm({
         const response = await fetch(`/api/digest-pipelines/imports/${pipelineId}`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Could not remove imported AI Digest collection.");
+        if (!response.ok) throw new Error("Could not remove imported AI Brief collection.");
       } catch {
         setImportedIds((current) => new Set([...current, pipelineId]));
-        setError("Could not remove imported AI Digest collection.");
+        setError("Could not remove imported AI Brief collection.");
       } finally {
         setPendingAction(null);
       }
@@ -258,7 +258,7 @@ export function DigestPipelineImportForm({
             actions={
               mode === "imported" ? (
                 <Link className="fb-btn light compact" href="/library-hub?tab=ai-digests">
-                  Browse AI Digest collections
+                  Browse AI Brief collections
                 </Link>
               ) : null
             }
@@ -298,12 +298,12 @@ export function DigestPipelineImportForm({
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading" id="hub-remove-ai-digest-title">
-              Remove imported AI Digest collection?
+              Remove imported AI Brief collection?
             </h3>
             <div className="settings-dialog-copy">
               <p>
                 Removing <strong>{removeTarget.title}</strong> removes this collection
-                from AI Digest.
+                from AI Brief.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub.
@@ -392,7 +392,7 @@ function DigestPipelineCard({
   const action = imported && pending !== "import" ? (
     <button
       aria-busy={pending === "remove" && isPending}
-      aria-label={`Remove imported AI Digest collection ${pipeline.title}`}
+      aria-label={`Remove imported AI Brief collection ${pipeline.title}`}
       aria-pressed={true}
       className="fb-btn light compact hub-card-action-button is-imported"
       disabled={isPending || pending !== null}
@@ -405,7 +405,7 @@ function DigestPipelineCard({
   ) : (
     <button
       aria-busy={pending === "import" && isPending}
-      aria-label={`Import AI Digest collection ${pipeline.title}`}
+      aria-label={`Import AI Brief collection ${pipeline.title}`}
       aria-pressed={false}
       className="fb-btn dark compact hub-card-action-button"
       disabled={isPending || pending !== null}
@@ -418,7 +418,7 @@ function DigestPipelineCard({
   );
   return (
     <DigestPipelineInfoCard
-      actionGroupLabel={`AI Digest collection actions for ${pipeline.title}`}
+      actionGroupLabel={`AI Brief collection actions for ${pipeline.title}`}
       actions={action}
       className={
         panel
@@ -551,7 +551,7 @@ export function DigestPipelinePreviewCard({
               text={headline}
             />
           ) : (
-            <div className="fb-hub-digest-preview-title">No AI Digest issues yet</div>
+            <div className="fb-hub-digest-preview-title">No AI Briefs yet</div>
           )}
         </div>
       </div>
@@ -573,7 +573,7 @@ function DigestPipelineMetaGrid({
       : "N/A";
 
   return (
-    <dl className="fb-hub-digest-meta" aria-label="AI Digest details">
+    <dl className="fb-hub-digest-meta" aria-label="AI Brief details">
       <DigestPipelineMetaItem
         label="Build frequency"
         value={pipeline.frequencyLabel ?? "Not scheduled"}

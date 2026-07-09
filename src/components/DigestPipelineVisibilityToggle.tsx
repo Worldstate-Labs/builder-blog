@@ -41,18 +41,18 @@ export function DigestPipelineVisibilityToggle({
           body: nextShared ? JSON.stringify({}) : undefined,
         });
 
-        if (!response.ok) throw new Error("Could not update AI Digest collection sharing.");
+        if (!response.ok) throw new Error("Could not update AI Brief collection sharing.");
       } catch {
         setShared(!nextShared);
-        setError("Could not update AI Digest collection sharing.");
+        setError("Could not update AI Brief collection sharing.");
       }
     });
   }
 
   const label = shared ? "Remove from Hub" : "Share to Hub";
   const actionLabel = shared
-    ? "Remove AI Digest collection from Hub"
-    : "Share AI Digest collection to Hub";
+    ? "Remove AI Brief collection from Hub"
+    : "Share AI Brief collection to Hub";
 
   return (
     <div className="hub-share-control">
@@ -92,10 +92,10 @@ export function DigestPipelineVisibilityToggle({
       >
         <div className="fb-dialog-inner settings-dialog-stack">
           <div>
-            <h3 className="fb-section-heading">Share AI Digest collection?</h3>
+            <h3 className="fb-section-heading">Share AI Brief collection?</h3>
             <p className="settings-dialog-copy">
-              Sharing publishes this AI Digest collection to Hub. Other users
-              can see the latest AI Digest metadata, title, headline,
+              Sharing publishes this AI Brief collection to Hub. Other users
+              can see the latest AI Brief metadata, title, headline,
               description, import counts, and public Hub activity until you
               remove it.
             </p>

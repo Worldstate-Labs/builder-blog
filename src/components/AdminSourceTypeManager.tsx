@@ -292,7 +292,7 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Filters content before Following or AI Digest."
+            description="Filters content before Following or AI Brief."
           >
             <div className="source-type-quality-grid">
               <FieldNumber

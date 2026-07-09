@@ -44,7 +44,7 @@ export function DigestPipelineTitleEditor({
 
     const nextTitle = draft.trim();
     if (!nextTitle) {
-      setError("Enter an AI Digest collection name.");
+      setError("Enter an AI Brief collection name.");
       return;
     }
     if (nextTitle === title) {
@@ -62,14 +62,14 @@ export function DigestPipelineTitleEditor({
           body: JSON.stringify({ title: nextTitle }),
         });
 
-        if (!response.ok) throw new Error("Could not save AI Digest collection name.");
+        if (!response.ok) throw new Error("Could not save AI Brief collection name.");
 
         setTitle(nextTitle);
         setDraft(nextTitle);
         setEditing(false);
         router.refresh();
       } catch {
-        setError("Could not save AI Digest collection name.");
+        setError("Could not save AI Brief collection name.");
       }
     });
   }
@@ -84,7 +84,7 @@ export function DigestPipelineTitleEditor({
     return (
       <form className="digest-title-edit-form" onSubmit={saveTitle}>
         <label className="sr-only" htmlFor={inputId}>
-          AI Digest collection name
+          AI Brief collection name
         </label>
         <input
           aria-describedby={error ? errorId : undefined}
@@ -100,7 +100,7 @@ export function DigestPipelineTitleEditor({
         />
         <button
           aria-busy={isPending}
-          aria-label="Save AI Digest collection name"
+          aria-label="Save AI Brief collection name"
           className="fb-btn dark compact digest-title-icon-button"
           disabled={isPending}
           type="submit"
@@ -111,7 +111,7 @@ export function DigestPipelineTitleEditor({
           </span>
         </button>
         <button
-          aria-label="Cancel AI Digest collection name edit"
+          aria-label="Cancel AI Brief collection name edit"
           className="fb-btn ghost compact digest-title-icon-button"
           disabled={isPending}
           onClick={cancelEditing}
@@ -139,7 +139,7 @@ export function DigestPipelineTitleEditor({
         {title}
       </Heading>
       <button
-        aria-label="Edit AI Digest collection name"
+        aria-label="Edit AI Brief collection name"
         className="fb-btn ghost compact digest-title-edit-button digest-title-icon-button"
         onClick={startEditing}
         type="button"

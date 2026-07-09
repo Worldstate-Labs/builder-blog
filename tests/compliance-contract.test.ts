@@ -47,12 +47,12 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(globals, /\.legal-section/);
 
   assert.match(privacyContract, /OAuth profile|email|read history|favorites|access keys|IP address|User-Agent/);
-  assert.match(privacyContract, /Local Agent|AI Digest|summar/i);
+  assert.match(privacyContract, /Local Agent|AI Brief|summar/i);
   assert.match(privacyContract, /temporarily process crawled source content|source type policy/i);
   assert.match(privacyContract, /Google|GitHub|Apple|X|YouTube|Product Hunt|OpenAI/);
   assert.match(privacyContract, /access|export|correct|delete/);
   assert.match(privacyContract, /retention|retain|delete/i);
-  assert.match(privacyContract, /Hub|shared source libraries|AI Digest collections/);
+  assert.match(privacyContract, /Hub|shared source libraries|AI Brief collections/);
   assert.match(privacyContract, /legalUpdatedDate = "July 7, 2026"/);
   assert.match(privacyContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
   assert.match(privacyContract, /legal@worldstatelabs\.com/);
@@ -74,7 +74,7 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
 
   assert.match(termsContract, /third-party sources|third-party APIs|platform terms/i);
   assert.match(termsContract, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
-  assert.match(termsContract, /Local Agent|access key|AI Digest/);
+  assert.match(termsContract, /Local Agent|access key|AI Brief/);
   assert.match(termsContract, /Do not|must not/i);
   assert.match(termsContract, /legalUpdatedDate = "July 7, 2026"/);
   assert.match(termsContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
@@ -125,7 +125,7 @@ test("settings exposes account data export and deletion controls backed by scope
   assert.match(deleteRoute, /user\.delete/);
 });
 
-test("admin settings can reset all fetch and digest generated state through one shared helper", () => {
+test("admin settings can reset all fetch and brief generated state through one shared helper", () => {
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const panel = assertFile("src/components/AdminMaintenancePanel.tsx");
   const route = assertFile("src/app/api/admin/maintenance/fetch-digest-reset/route.ts");
@@ -133,7 +133,7 @@ test("admin settings can reset all fetch and digest generated state through one 
   const script = assertFile("scripts/clear-fetch-digest-state.mts");
 
   assert.match(settingsPage, /isAdmin \? <AdminMaintenancePanel \/> : null/);
-  assert.match(panel, /Reset fetch and digest state/);
+  assert.match(panel, /Reset fetch and brief state/);
   assert.match(panel, /\/api\/admin\/maintenance\/fetch-digest-reset/);
   assert.match(panel, /RESET/);
 
@@ -159,8 +159,8 @@ test("sharing controls explain Hub visibility before publishing user content", (
   const digestToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
   const libraryToggle = source("src/components/LibraryVisibilityToggle.tsx");
 
-  assert.match(digestToggle, /Share AI Digest collection\?/);
-  assert.match(digestToggle, /latest AI Digest metadata|headline|Hub/i);
+  assert.match(digestToggle, /Share AI Brief collection\?/);
+  assert.match(digestToggle, /latest AI Brief metadata|headline|Hub/i);
   assert.match(digestToggle, /Continue sharing/);
   assert.match(libraryToggle, /Share source library\?/);
   assert.match(libraryToggle, /source names|source links|Hub/i);

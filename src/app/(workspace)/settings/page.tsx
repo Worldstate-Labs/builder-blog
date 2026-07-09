@@ -149,9 +149,9 @@ async function SourceTypeConfigSection({
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">AI Digest rules</h3>
+            <h3 className="fb-section-heading">AI Brief rules</h3>
             <p className="settings-rules-summary-desc">
-              Build AI Digest issues.
+              Build AI Briefs.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">

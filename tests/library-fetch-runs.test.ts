@@ -243,7 +243,7 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.doesNotMatch(cli, /discoveryExpanded: true/);
 });
 
-test("fetch and digest log dialogs show task-level usage summaries", () => {
+test("fetch and brief log dialogs show task-level usage summaries", () => {
   const fetchPanel = source("src/components/FetchLogPanel.tsx");
   const digestPanel = source("src/components/DigestLogPanel.tsx");
   const usageComponent = source("src/components/RunUsageSummary.tsx");
@@ -889,7 +889,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /title=\{formatAbsolute\(run\.startedAt\)\}/);
 });
 
-test("DigestLogPanel renders digest status with modal-only build logs", () => {
+test("DigestLogPanel renders brief status with modal-only build logs", () => {
   const panel = source("src/components/DigestLogPanel.tsx");
   const route = source("src/app/api/digest-runs/route.ts");
   const digestRuns = source("src/lib/digest-runs.ts");
@@ -909,7 +909,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.doesNotMatch(digestUpdateStatus, /first expected run has not finished yet/);
   assert.doesNotMatch(digestUpdateStatus, /function floorToExpectedSchedule/);
   assert.doesNotMatch(digestUpdateStatus, /function addScheduleInterval/);
-  assert.match(panel, /AI Digest updates/);
+  assert.match(panel, /AI Brief updates/);
   assert.match(panel, /showHeading = true/);
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
@@ -923,7 +923,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /setSelectedLog\(logRef\)/);
   assert.match(panel, /onOpenLog/);
   assert.doesNotMatch(panel, /Build status/);
-  assert.doesNotMatch(panel, />\s*AI Digest build history\s*<\/h2>/);
+  assert.doesNotMatch(panel, />\s*AI Brief build history\s*<\/h2>/);
   assert.doesNotMatch(panel, /role="tablist"/);
   assert.doesNotMatch(panel, /onKeyDown=\{handleTabKeyDown\}/);
   assert.doesNotMatch(panel, /"ArrowLeft", "ArrowRight", "Home", "End"/);
@@ -933,7 +933,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.doesNotMatch(panel, /id="digest-update-tab-log"/);
   assert.doesNotMatch(panel, /id="digest-update-panel-log"/);
   assert.doesNotMatch(panel, /role="tabpanel"/);
-  assert.doesNotMatch(panel, /AI Digest build status graph/);
+  assert.doesNotMatch(panel, /AI Brief build status graph/);
   assert.doesNotMatch(panel, />Digest updates<|aria-label="Digest schedule status graph"/);
   assert.match(panel, /buildDigestCronStatus/);
   assert.match(digestUpdateStatus, /const nextExpectedMs = nextExpected\.getTime\(\)/);
@@ -941,7 +941,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(digestUpdateStatus, /expected\.push\(nextExpected\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "digest-cron", run\.source\)/);
   assert.match(panel, /run\.status === "synced"/);
-  assert.match(panel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
+  assert.match(panel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Brief"\)/);
   assert.doesNotMatch(panel, /sync-panel-candidate-link-icon/);
   assert.doesNotMatch(panel, /aria-label="Original"/);
   assert.doesNotMatch(panel, /h-3\.5 w-3\.5/);
@@ -969,19 +969,19 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-slot-rows is-scrollable is-timeline"/);
   assert.match(panel, /data-sync-log-row="true"/);
   assert.doesNotMatch(panel, /className="sync-panel-timeline-divider" aria-hidden="true"/);
-  assert.doesNotMatch(panel, /Last \{visibleCount\} AI Digest/);
+  assert.doesNotMatch(panel, /Last \{visibleCount\} AI Brief/);
   assert.doesNotMatch(panel, /className="sync-panel-timeline-axis"/);
   assert.doesNotMatch(panel, /visibleGraphEntries|graphStartLabel|graphEndLabel/);
   assert.doesNotMatch(panel, />Oldest</);
   assert.doesNotMatch(panel, />Newest</);
   assert.match(source("src/lib/scheduled-window-ui.ts"), /No run yet/);
-  assert.doesNotMatch(panel, /No AI Digest schedule has reported yet/);
-  assert.match(panel, /Copy a Build AI Digest prompt to start a Local Agent run/);
-  assert.doesNotMatch(panel, /Use Build AI Digest to copy a Local Agent prompt/);
-  assert.match(panel, /No AI Digest build history yet/);
-  assert.match(panel, /Copy a Build AI Digest prompt to create history/);
-  assert.doesNotMatch(panel, /No AI Digest builds yet|Started one-time and scheduled builds appear here|One-time and scheduled builds appear here after they start|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
-  assert.match(panel, /No AI Digest was saved for this run/);
+  assert.doesNotMatch(panel, /No AI Brief schedule has reported yet/);
+  assert.match(panel, /Copy a Build AI Brief prompt to start a Local Agent run/);
+  assert.doesNotMatch(panel, /Use Build AI Brief to copy a Local Agent prompt/);
+  assert.match(panel, /No AI Brief build history yet/);
+  assert.match(panel, /Copy a Build AI Brief prompt to create history/);
+  assert.doesNotMatch(panel, /No AI Brief builds yet|Started one-time and scheduled builds appear here|One-time and scheduled builds appear here after they start|One-time and scheduled AI Brief builds appear here|Scheduled and one-time AI Brief builds will appear here|after a Local Agent reports them/);
+  assert.match(panel, /No AI Brief was saved for this run/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);
   assert.match(panel, /scheduledWindowStyleStatus/);
@@ -991,7 +991,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /const noUpdate = isNoUpdateDigestRun\(entry\.run, entry\.jobRun\);/);
   assert.match(panel, /jobRunByInstanceId/);
   assert.match(panel, /<RunCard domId=\{null\} jobRun=\{jobRun \?\? undefined\} run=\{run\} suppressStalled=\{suppressStalled\} \/>/);
-  assert.match(panel, /AI Digest job lifecycle/);
+  assert.match(panel, /AI Brief job lifecycle/);
   assert.match(panel, /function isStalledDigestJobRun/);
   assert.match(panel, /function isNoUpdateDigestRun/);
   assert.match(panel, /\? "No update"[\s\S]*scheduledWindowStatusLabel\(entry\.status\)/);
@@ -1005,18 +1005,18 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /if \(hasTerminalFailedDigestJob\(jobRun\)\) return "failed";[\s\S]*if \(run\.status === "synced" && run\.syncedAt\) return "ok";/);
   assert.match(digestUpdateStatus, /function digestSlotStatusForRun/);
   assert.match(digestUpdateStatus, /if \(run\.status === "synced"\) return "ok";/);
-  assert.match(panel, /Local Agent stopped reporting before the AI Digest was saved\./);
+  assert.match(panel, /Local Agent stopped reporting before the AI Brief was saved\./);
   assert.match(panel, /Prepare candidates/);
   assert.match(panel, /Run Local Agent/);
-  assert.match(panel, /Render digest JSON/);
+  assert.match(panel, /Render brief JSON/);
   assert.match(panel, /Save to FollowBrief/);
-  assert.match(panel, /Record digested posts/);
+  assert.match(panel, /Record included posts/);
   assert.doesNotMatch(panel, /No saved title/);
   assert.match(panel, /jobRunVerdict/);
   assert.match(panel, /jobRunDiagnostic/);
   assert.match(panel, /function jobRunDisplaySummary/);
   assert.match(panel, /\^runtime heartbeat\\\.\?\$/);
-  assert.match(panel, /Local Agent is working on this AI Digest\./);
+  assert.match(panel, /Local Agent is working on this AI Brief\./);
   assert.match(panel, /const showRuntimeState = !activeJob && jobRun\.status !== "succeeded" && Boolean\(jobRun\.stage\);/);
   assert.match(panel, /const showFailureDetails = !activeJob && jobRun\.status !== "succeeded"/);
   assert.doesNotMatch(panel, /\{jobRun\.stage \|\| "runtime"\} · \{jobRun\.finishedAt \? "finished" : "active"\}/);
@@ -1025,11 +1025,11 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /jobRunFailureReason/);
   assert.match(panel, /readableReason/);
   assert.match(panel, /Timed out after \$\{formatCount\(timeoutSeconds\)\} seconds/);
-  assert.match(panel, /Local Agent is preparing candidates and saving the AI Digest/);
-  assert.match(panel, /Local Agent finished without saving an AI Digest/);
+  assert.match(panel, /Local Agent is preparing candidates and saving the AI Brief/);
+  assert.match(panel, /Local Agent finished without saving an AI Brief/);
   assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} posts, but Local Agent marked the run failed/);
   assert.match(panel, /Prepared \$\{formatCount\(run\.candidateCount\)\} candidates\. Local Agent stopped before saving/);
-  assert.match(panel, /Waiting for Local Agent to save the AI Digest/);
+  assert.match(panel, /Waiting for Local Agent to save the AI Brief/);
   assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} eligible posts to FollowBrief/);
   assert.match(panel, /DigestLifecycle/);
   assert.match(panel, /function hasFailedDigestJob/);
@@ -1038,7 +1038,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /runtime failed/);
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
-  assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest|digest build record|The Local Agent is running|Waiting for the Local Agent to save AI Digest|Runtime job did not create/);
+  assert.doesNotMatch(panel, /No brief schedule has reported yet|No brief builds yet|prepares a digest|brief build record|The Local Agent is running|Waiting for the Local Agent to save AI Brief|Runtime job did not create/);
   assert.match(panel, /Details/);
   assert.doesNotMatch(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);
@@ -1114,8 +1114,8 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(digestRuns, /const snapshotTitle = snapshot\.title\?\.trim\(\)/);
   assert.match(digestRuns, /const feedItemTitle = feedItem\?\.title\?\.trim\(\)/);
   assert.match(digestRuns, /firstBodyLine\(feedItem\.body\)/);
-  assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Digest build record/);
-  assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Previous AI Digest/);
+  assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Brief build record/);
+  assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Previous AI Brief/);
   assert.doesNotMatch(panel, /className="flex items-baseline justify-between gap-2 text-\[12px\]"/);
   assert.doesNotMatch(panel, /className="flex items-start gap-2 text-\[12\.5px\] leading-snug"/);
   assert.doesNotMatch(panel, /className="mono mt-\[1px\] w-\[2\.6em\] shrink-0 text-\[10px\]/);

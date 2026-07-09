@@ -234,7 +234,7 @@ export function DigestDetails({
           </span>
           <span className="item-summary-action">
             <BookOpen className="item-summary-action-icon" />
-            View AI Digest
+            View AI Brief
           </span>
         </summary>
         <DigestBody
@@ -282,7 +282,7 @@ function DigestBody({
         }
       >
         <Loader2 className="digest-loading-icon" />
-        Loading AI Digest
+        Loading AI Brief
       </span>
     );
 
@@ -298,7 +298,7 @@ function DigestBody({
   }
 
   if (status === "error") {
-    const errorNode = <span>Could not load AI Digest.</span>;
+    const errorNode = <span>Could not load AI Brief.</span>;
     if (isToday) {
       return (
         <div className="digest-load-error" aria-live="polite">

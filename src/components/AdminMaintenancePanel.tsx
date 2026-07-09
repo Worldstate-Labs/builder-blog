@@ -49,13 +49,13 @@ export function AdminMaintenancePanel() {
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          setError(body?.error ?? "Could not reset fetch and digest state.");
+          setError(body?.error ?? "Could not reset fetch and brief state.");
           return;
         }
         setStatus(resetSummaryMessage(body.summary));
         closeDialog();
       } catch {
-        setError("Could not reset fetch and digest state.");
+        setError("Could not reset fetch and brief state.");
       }
     });
   }
@@ -69,7 +69,7 @@ export function AdminMaintenancePanel() {
             <h2 className="fb-section-heading">Admin maintenance</h2>
           </div>
           <p className="access-keys-desc">
-            Reset generated fetch and AI Digest state for every user while keeping
+            Reset generated fetch and AI Brief state for every user while keeping
             accounts, sources, subscriptions, reads, and favorites.
           </p>
         </div>
@@ -87,7 +87,7 @@ export function AdminMaintenancePanel() {
           type="button"
         >
           <Trash2 aria-hidden="true" />
-          Reset fetch and digest state
+          Reset fetch and brief state
         </button>
       </div>
 
@@ -115,8 +115,8 @@ export function AdminMaintenancePanel() {
           <div>
             <h3 className="fb-section-heading">Reset generated state?</h3>
             <p className="settings-dialog-copy">
-              This deletes fetched posts, fetch logs, AI Digest issues, digest
-              logs, digested-post markers, and related Local Agent run records
+              This deletes fetched posts, fetch logs, AI Briefs, brief
+              logs, brief inclusion markers, and related Local Agent run records
               for every user. Sources and subscriptions are kept. Type RESET to
               continue.
             </p>
@@ -153,13 +153,13 @@ export function AdminMaintenancePanel() {
 }
 
 function resetSummaryMessage(summary: ResetSummary | null | undefined) {
-  if (!summary) return "Fetch and digest state reset.";
+  if (!summary) return "Fetch and brief state reset.";
   const logCount =
     summary.deletedLibraryFetchRuns +
     summary.deletedDigestRuns +
     summary.deletedAgentJobRuns;
   return [
     `Reset ${summary.resetBuilders} sources for ${summary.users} users.`,
-    `Deleted ${summary.deletedFeedItems} posts, ${summary.deletedDigests} digests, ${logCount} logs.`,
+    `Deleted ${summary.deletedFeedItems} posts, ${summary.deletedDigests} briefs, ${logCount} logs.`,
   ].join(" ");
 }

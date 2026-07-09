@@ -13,7 +13,7 @@ const meta = {
       { id: "all", label: "All", ariaLabel: "All results", href: "?type=all", active: true, count: 128 },
       { id: "posts", label: "Posts", ariaLabel: "Posts", href: "?type=posts", active: false, count: 96 },
       { id: "sources", label: "Sources", ariaLabel: "Sources", href: "?type=sources", active: false, count: 24 },
-      { id: "digests", label: "Digests", ariaLabel: "Digests", href: "?type=digests", active: false, count: null },
+      { id: "digests", label: "Briefs", ariaLabel: "Briefs", href: "?type=digests", active: false, count: null },
     ],
   },
 } satisfies Meta<typeof SearchTypeTabsView>;

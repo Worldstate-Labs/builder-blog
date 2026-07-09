@@ -80,7 +80,7 @@ export function DigestPipelineSelectorView({
   if (options.length <= 1) {
     return (
       <div
-        aria-label={`AI Digest collection: ${selectedLabel}`}
+        aria-label={`AI Brief collection: ${selectedLabel}`}
         className="digest-pipeline-static"
       >
         <span className="digest-pipeline-title">{selectedPipeline.title}</span>
@@ -143,7 +143,7 @@ export function DigestPipelineSelectorView({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={`Choose AI Digest collection, current: ${selectedLabel}`}
+        aria-label={`Choose AI Brief collection, current: ${selectedLabel}`}
         className="digest-pipeline-trigger"
         onClick={(event) => {
           event.preventDefault();
@@ -160,7 +160,7 @@ export function DigestPipelineSelectorView({
         <ChevronDown aria-hidden="true" className="digest-pipeline-icon" />
       </summary>
       <div
-        aria-label="AI Digest collections"
+        aria-label="AI Brief collections"
         className="digest-pipeline-menu"
         id={menuId}
         role="listbox"
@@ -207,12 +207,12 @@ function focusDirectionForKey(key: string): PickerFocusDirection {
 }
 
 function PipelineOwnerLine({ pipeline }: { pipeline: DigestPipelineSelectorOption }) {
-  if (pipeline.isOwnPipeline) return "Your AI Digest collection";
+  if (pipeline.isOwnPipeline) return "Your AI Brief collection";
   return <>by <UserName>{pipeline.ownerLabel}</UserName></>;
 }
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
-  return pipeline.isOwnPipeline ? "Your AI Digest collection" : `by ${pipeline.ownerLabel}`;
+  return pipeline.isOwnPipeline ? "Your AI Brief collection" : `by ${pipeline.ownerLabel}`;
 }
 
 function digestArchiveSourceLabel(pipeline: DigestPipelineSelectorOption) {

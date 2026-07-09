@@ -125,7 +125,7 @@ export function FavoritePostsList({
         actions={
           <div className="favorites-empty-actions">
             <Link className="fb-btn dark compact" href="/dashboard?tab=ai-digest">
-              Open AI Digest
+              Open AI Brief
             </Link>
             <Link className="fb-btn light compact" href="/dashboard?tab=following">
               Open Following
@@ -137,7 +137,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty is-actionable"
         title="No Favorites yet"
-        body="Save posts from AI Digest, Following, Search, or post details."
+        body="Save posts from AI Brief, Following, Search, or post details."
       />
     );
   }

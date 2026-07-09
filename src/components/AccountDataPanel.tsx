@@ -95,7 +95,7 @@ export function AccountDataPanel() {
           </div>
           <p className="access-keys-desc">
             Export account data or delete your FollowBrief account, including
-            reads, favorites, settings, Hub sharing records, AI Digest records,
+            reads, favorites, settings, Hub sharing records, AI Brief records,
             and Local Agent activity.
           </p>
         </div>
@@ -151,7 +151,7 @@ export function AccountDataPanel() {
             <h3 className="fb-section-heading">Delete account?</h3>
             <p className="settings-dialog-copy">
               This permanently removes your account, sessions, access keys,
-              source library records, AI Digest records, preferences, reads,
+              source library records, AI Brief records, preferences, reads,
               favorites, imports, and Hub sharing records. Type DELETE to
               continue.
             </p>

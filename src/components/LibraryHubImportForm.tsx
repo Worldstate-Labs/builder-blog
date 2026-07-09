@@ -19,7 +19,7 @@ import { UserName } from "@/components/UserName";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
 const sourceLibraryImportDescription =
-  "Import shared source libraries for AI Digest and Following.";
+  "Import shared source libraries for AI Brief and Following.";
 
 type HubLibraryBuilder = {
   id: string;
@@ -383,7 +383,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             <div className="settings-dialog-copy">
               <p>
                 Removing <strong>{removeTarget.name}</strong> removes its sources
-                from Sources and stops feeding AI Digest and Following.
+                from Sources and stops feeding AI Brief and Following.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub.

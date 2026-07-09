@@ -361,7 +361,7 @@ test("non-admin users default-import the admin community library and digest", ()
   assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
   assert.match(dashboardPage, /ensureDefaultCommunityDigestImport\(userId\)/);
   assert.match(userSearch, /ensureDefaultCommunityDigestImport\(userId\)/);
-  assert.match(libraryHub, /adminCommunityDigestTitle = "Community AI Digest"/);
+  assert.match(libraryHub, /adminCommunityDigestTitle = "Community AI Brief"/);
   assert.match(libraryHub, /findAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /findOrCreateAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /ensureDefaultCommunityDigestImport/);
@@ -522,7 +522,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
   assert.match(skillPromptActions, /Fetch sources/);
   assert.doesNotMatch(skillPromptActions, /Update sources/);
-  assert.match(skillPromptActions, /Build AI Digest/);
+  assert.match(skillPromptActions, /Build AI Brief/);
   assert.doesNotMatch(skillPromptActions, /Build digest/);
   assert.match(skillPromptActions, /Stop fetching/);
   // Regression: a cloud submission must surface the Stop button immediately.
@@ -545,7 +545,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Runtime/);
   assert.match(skillPromptActions, /Started/);
   assert.match(skillPromptActions, /Device/);
-  assert.match(skillPromptActions, /context === "digest" \? "AI Digest" : "Fetch sources"/);
+  assert.match(skillPromptActions, /context === "digest" \? "AI Brief" : "Fetch sources"/);
   assert.doesNotMatch(skillPromptActions, /source fetching schedule|Fetch sources schedule/);
   assert.match(skillPromptActions, /onClick=\{openStopDialog\}/);
   assert.doesNotMatch(skillPromptActions, /const token = activeTokens\[0\]/);
@@ -588,8 +588,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Includes posts already in your source library|Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
   assert.doesNotMatch(skillPromptActions, /Re-fetch existing source posts each run|Reuse posts from past issues each run/);
   assert.match(skillPromptActions, /Reuse posts from past issues/);
-  assert.doesNotMatch(skillPromptActions, /Reuse past AI Digest posts|Reuse posts from AI Digest issues|Include posts already used in AI Digest issues|Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
-  assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
+  assert.doesNotMatch(skillPromptActions, /Reuse past AI Brief posts|Reuse posts from AI Briefs|Include posts already used in AI Briefs|Include posts already used in AI Brief archives|Include posts already used in AI Briefs/);
+  assert.doesNotMatch(skillPromptActions, /Include already included posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
   // One-time runs now share the schedule dialog instead of a separate button/dialog.
@@ -603,16 +603,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
   assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
-  assert.match(skillPromptActions, /Copy instructions for your agent to build AI Digest\./);
+  assert.match(skillPromptActions, /Copy instructions for your agent to build AI Brief\./);
   assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, /Runs with Claude Code\.|Runs with Codex\.|Runs with Hermes\.|Runs with OpenClaw\./);
-  assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt for Fetch sources\.|Copy a Local Agent prompt for AI Digest\.|Copy a Local Agent prompt to fetch, summarize, and sync sources|Copy a Local Agent prompt to build your AI Digest|Copy a Local Agent prompt\./);
+  assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt for Fetch sources\.|Copy a Local Agent prompt for AI Brief\.|Copy a Local Agent prompt to fetch, summarize, and sync sources|Copy a Local Agent prompt to build your AI Brief|Copy a Local Agent prompt\./);
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Reuse posts from past issues once\./);
-  assert.doesNotMatch(skillPromptActions, /Reuse past AI Digest posts|Reuses posts already used in AI Digest this time\.|Reuses posts from AI Digest issues|Includes posts already used in AI Digest issues|Posts already used in AI Digest issues can be included again this time\.|Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
+  assert.doesNotMatch(skillPromptActions, /Reuse past AI Brief posts|Reuses posts already used in AI Brief this time\.|Reuses posts from AI Briefs|Includes posts already used in AI Briefs|Posts already used in AI Briefs can be included again this time\.|Posts already used in AI Brief archives can be included again this time\.|Already included posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Lookback window \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Max post age \(days\)|Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
@@ -639,8 +639,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Output/);
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
-  assert.match(skillPromptActions, /AI Digest language/);
-  assert.match(skillPromptActions, /label=\{context === "digest" \? "AI Digest language" : "Summary language"\}/);
+  assert.match(skillPromptActions, /AI Brief language/);
+  assert.match(skillPromptActions, /label=\{context === "digest" \? "AI Brief language" : "Summary language"\}/);
   assert.match(skillPromptActions, /languageOptions\(value\)/);
   assert.match(skillPromptActions, /const savedLanguage = summaryLanguage \?\? null/);
   assert.match(skillPromptActions, /const initialLanguage = savedLanguage \?\? ORIGINAL_CONTENT_LANGUAGE_VALUE/);
@@ -798,8 +798,8 @@ test("web app serves the agent skill and setup command", () => {
     "Create required directories and verify this account's local credential",
     "Account file not found for $ACCT",
     "Before changing anything, check FollowBrief's server state",
-    "Next, check whether this account's digest cron already exists",
-    "Keep the selected runtime and digest mode scoped",
+    "Next, check whether this account's brief cron already exists",
+    "Keep the selected runtime and brief mode scoped",
   ]);
   assert.doesNotMatch(digestCronSetupPrompt, /0 8 \* \* \*/);
 
@@ -1275,13 +1275,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /do not edit that timeout by hand here/);
   assert.doesNotMatch(libraryCronSetupPrompt, /current session/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
-  // digest cron-setup pins the runtime too (parity with library) so the
-  // scheduled job is self-sufficient even when only the digest cron is
+  // brief cron-setup pins the runtime too (parity with library) so the
+  // scheduled job is self-sufficient even when only the brief cron is
   // installed — without the pin it falls back to the discovery chain, which
   // prompts for permissions every run.
   assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
   assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
-  assert.match(digestCronSetupPrompt, /pin the\s+scheduled runtime\/digest mode/);
+  assert.match(digestCronSetupPrompt, /pin the\s+scheduled runtime\/brief mode/);
   assert.match(digestCronSetupPrompt, /openclaw exec-policy show/);
   assert.match(digestCronSetupPrompt, /grep -q 'ask=off'/);
   assert.match(digestCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
@@ -1321,9 +1321,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron/);
   assert.match(runner, /--context "\$_context_file"/);
   assertOrderedText(digestCronSetupPrompt, [
-    "account's digest cron",
-    "4. Keep the selected runtime and digest mode scoped",
-    "6. Run one real initial digest job now",
+    "account's brief cron",
+    "4. Keep the selected runtime and brief mode scoped",
+    "6. Run one real initial brief job now",
     "BUILDER_BLOG_WORKER_MODE=1",
     "BUILDER_BLOG_JOB_TRIGGER=one_time",
     "BUILDER_BLOG_AGENT_RUNTIME=\"{{AGENT_RUNTIME}}\"",
@@ -1620,13 +1620,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronExpanded, /1200 characters or fewer/);
   assert.match(digestCronExpanded, /Source A and Source B/);
   assert.match(digestCronExpanded, /runner invokes this contract only after it has already verified/);
-  assert.doesNotMatch(digestCronExpanded, /Do not write a no-updates digest JSON/);
+  assert.doesNotMatch(digestCronExpanded, /Do not write a no-updates brief JSON/);
   assert.match(digestCronExpanded, /reopen[\s\S]*builder-blog-digest-agent-output\.json[\s\S]*self-check/);
   assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);
   // Post summaries are copied verbatim by the CLI now — the agent must not
   // rewrite or translate them, so the prompt drops context.digest.translate.
   assert.match(digestCronExpanded, /Do not write per-post summaries/);
-  assert.match(digestCronExpanded, /into the digest verbatim/);
+  assert.match(digestCronExpanded, /into the brief verbatim/);
   assert.doesNotMatch(digestCronExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestCronExpanded, /context\.digest\.digestIntro/);
   assert.doesNotMatch(digestCronPrompt, /builder-digest\.mjs" prepare/);
@@ -1938,7 +1938,7 @@ test("server content-quality floor rejects empty / too-short crawls", () => {
   );
 });
 
-test("digest feed user path selects not-yet-digested posts within the configured lookback", () => {
+test("digest feed user path selects not-yet-included posts within the configured lookback", () => {
   const now = new Date("2026-05-23T12:00:00.000Z");
   // Lookback set → a publishedAt floor; 45 days before now = 2026-04-08.
   const withFloor = {
@@ -1961,7 +1961,7 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.equal(digestCandidateLimitForLastRun(now, "2026-05-10T12:00:00.000Z"), 100);
 
   // Candidate selection is gated by the per-user DigestedItem marker, not a
-  // time window. Override (regenerate) re-includes posts already used in AI Digest.
+  // time window. Override (regenerate) re-includes posts already used in AI Brief.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /publishedAfter: lookbackCutoff/);
   assert.match(contextRoute, /digestCandidateLimitForLastRun\(now, lastDigest\?\.createdAt\)/);
@@ -1993,8 +1993,8 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.match(digestCreateRoute, /digestedItem\.upsert/);
   assert.match(digestCreateRoute, /userId_entityId_kind_externalId/);
   assert.match(digestCreateRoute, /catch \(error\)/);
-  assert.match(digestCreateRoute, /console\.error\("Digest sync failed"/);
-  assert.match(digestCreateRoute, /Digest sync failed/);
+  assert.match(digestCreateRoute, /console\.error\("Brief sync failed"/);
+  assert.match(digestCreateRoute, /Brief sync failed/);
   assert.match(digestCreateRoute, /DIGEST_SYNC_TRANSACTION_OPTIONS/);
   assert.match(digestCreateRoute, /timeout:\s*30_000/);
 
@@ -2215,13 +2215,13 @@ test("digest generation user path exposes source-specific prompt instructions", 
     DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct,
     /user-selected output language/,
   );
-  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /mobile-friendly digest card/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /mobile-friendly brief card/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /two short paragraphs/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Do not output field labels/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /\nProduct name:\n/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /\nWhat the product does:\n/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Chinese|项目名称/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Brief Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Prefer one line per/);
@@ -2328,7 +2328,7 @@ test("search user path semantic mode finds related language without a literal ph
         id: "feed_1",
         type: "feed",
         title: "Archive retrieval",
-        body: "Vector recall over fetched posts and the AI Digest issue.",
+        body: "Vector recall over fetched posts and the AI Brief.",
       },
       {
         id: "builder_1",
@@ -3383,7 +3383,7 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   const builderFeedItems = readFileSync("src/components/BuilderFeedItems.tsx", "utf8");
 
   assert.equal(dashboardPage.includes("prisma.feedItem.findMany"), false);
-  assert.equal(dashboardPage.includes("Latest digest inputs"), false);
+  assert.equal(dashboardPage.includes("Latest brief inputs"), false);
   assert.equal(buildersPage.includes("prisma.feedItem.findMany"), false);
   assert.equal(buildersPage.includes("Recent fetched content"), false);
   assert.equal(buildersPage.includes("BuilderLibraryList"), true);
@@ -3536,7 +3536,7 @@ test("digest headline default migration covers length and combined sources", () 
   assert.match(migration, /UPDATE "UserDigestConfig"[\s\S]*"headlinePrompt"/);
   assert.match(migration, /1200 characters or fewer/);
   assert.match(migration, /Source A and Source B: one sentence summary/);
-  assert.match(migration, /WHERE "headlinePrompt" = '# Digest Headline Prompt/);
+  assert.match(migration, /WHERE "headlinePrompt" = '# Brief Headline Prompt/);
   assert.doesNotMatch(migration, /WHERE "headlinePrompt" LIKE/);
 });
 
@@ -3548,7 +3548,7 @@ test("Product Hunt summary prompt migration removes label-value card output", ()
 
   assert.match(migration, /UPDATE "SourceTypeConfig"[\s\S]*"sourceId" = 'product_hunt_top_products'/);
   assert.match(migration, /UPDATE "UserSourceTypeConfig"[\s\S]*"sourceId" = 'product_hunt_top_products'/);
-  assert.match(migration, /mobile-friendly digest card summary/);
+  assert.match(migration, /mobile-friendly brief card summary/);
   assert.match(migration, /Do not output field labels/);
   assert.match(migration, /WHERE "sourceId" = 'product_hunt_top_products'\s+AND "summaryPromptBody" = \$\$# Product Hunt Top Product Summary Prompt/);
   assert.match(migration, /Product name:/);
@@ -3682,7 +3682,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcRoute, /updateUserSourceConfigAndDefault/);
   assert.match(digestRoute, /isAdminEmail\(session\.user\.email\)/);
   assert.match(digestRoute, /Common fetch and post-summary rules can only be changed by an admin/);
-  assert.match(digestRoute, /Headline and per-source digest prompts can only be changed by an admin/);
+  assert.match(digestRoute, /Headline and per-source brief prompts can only be changed by an admin/);
   assert.match(digestRoute, /commonFetchRules: defaultConfig\.commonFetchRules/);
   assert.match(digestRoute, /commonSummaryRules: defaultConfig\.commonSummaryRules/);
   assert.match(digestRoute, /updateUserDigestConfigAndDefault/);
@@ -3713,7 +3713,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.match(settingsPage, /Source fetching rules/);
   assert.doesNotMatch(settingsPage, /Source fetch rules/);
-  assert.match(settingsPage, /AI Digest rules/);
+  assert.match(settingsPage, /AI Brief rules/);
   assert.doesNotMatch(settingsPage, />Digest rules</);
   assert.match(settingsPage, /CommonFetchRulesForm/);
   assert.match(settingsPage, /CommonSummaryRulesForm/);
@@ -3751,11 +3751,11 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.doesNotMatch(digestForm, /Section/);
-  assert.doesNotMatch(digestForm, /AI Digest prompts/);
-  assert.doesNotMatch(digestForm, /Prompts used to generate AI Digest\./);
+  assert.doesNotMatch(digestForm, /AI Brief prompts/);
+  assert.doesNotMatch(digestForm, /Prompts used to generate AI Brief\./);
   assert.doesNotMatch(digestForm, /Prompts used after posts already have per-post summaries\./);
   assert.match(digestForm, /Writes the headline summary in the selected language/);
-  assert.doesNotMatch(digestForm, /selected AI Digest language/);
+  assert.doesNotMatch(digestForm, /selected AI Brief language/);
   // The per-post "translate" prompt field is gone; post summaries are copied
   // verbatim by the CLI, so the form no longer exposes a post-summary prompt.
   assert.doesNotMatch(digestForm, /Post summary prompt/);
@@ -3764,7 +3764,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestForm, /Headline prompt cannot be empty\./);
   assert.match(digestForm, /canEditDigestAssemblyPrompts/);
   assert.match(digestForm, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
-  assert.match(digestForm, /Could not save AI Digest rules\./);
+  assert.match(digestForm, /Could not save AI Brief rules\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.doesNotMatch(digestForm, /Save failed/);
   assert.doesNotMatch(digestForm, /OrderedChoiceField/);

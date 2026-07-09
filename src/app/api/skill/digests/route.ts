@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   try {
     return await syncDigest(request);
   } catch (error) {
-    console.error("Digest sync failed", error);
+    console.error("Brief sync failed", error);
     return NextResponse.json(digestSyncErrorResponse(error), { status: 500 });
   }
 }
@@ -53,7 +53,7 @@ async function syncDigest(request: Request) {
   const now = new Date();
   const digestItems = cleanStructuredDigestItems(parsed.data.items);
   if (digestItems.length === 0) {
-    return NextResponse.json({ error: "Digest items are empty" }, { status: 400 });
+    return NextResponse.json({ error: "Brief items are empty" }, { status: 400 });
   }
   const digestedItems = parsed.data.digestedItems.length > 0
     ? parsed.data.digestedItems
@@ -188,7 +188,7 @@ function digestSyncErrorResponse(error: unknown) {
       : "Unknown error";
 
   return {
-    error: "Digest sync failed",
+    error: "Brief sync failed",
     ...(code ? { code } : {}),
     message,
   };

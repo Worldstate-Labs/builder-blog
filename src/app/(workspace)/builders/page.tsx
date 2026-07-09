@@ -141,7 +141,7 @@ export default async function BuildersPage({
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
           <SourcesTabShell
-            ariaLabel="Sources and AI Digest tabs"
+            ariaLabel="Sources and AI Brief tabs"
             digestFallback={<DigestSourcesFallback />}
             fetchFallback={<FetchSourcesFallback />}
             items={SOURCES_TABS}
@@ -195,7 +195,7 @@ async function DigestSourcesSection({
         <div className="library-section-summary library-section-summary--static">
           <div className="library-section-summary-copy">
             <h2 id="sources-digest-section-title" className="fb-section-heading">
-              Your AI Digest collection
+              Your AI Brief collection
             </h2>
           </div>
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
@@ -232,15 +232,15 @@ async function DigestSourcesSection({
 function DigestSourcesFallback() {
   return (
     <section className="digest-source-management" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading AI Digest controls</span>
+      <span className="sr-only">Loading AI Brief controls</span>
       <section
         className="your-digest-section your-digest-panel library-section-panel"
-        aria-label="Loading your AI Digest collection"
+        aria-label="Loading your AI Brief collection"
       >
         <div className="library-section-summary library-section-summary--static">
           <div className="library-section-summary-copy">
             <h2 className="fb-section-heading">
-              Your AI Digest collection
+              Your AI Brief collection
             </h2>
             <div className="source-sync-skeleton-line" />
           </div>
@@ -252,12 +252,12 @@ function DigestSourcesFallback() {
       </section>
       <section
         className="imported-digest-section imported-digest-panel library-section-panel"
-        aria-label="Loading imported AI Digest collections"
+        aria-label="Loading imported AI Brief collections"
       >
         <div className="imported-digest-head">
           <div className="imported-digest-copy">
             <h2 className="fb-section-heading">
-              Imported AI Digest collections
+              Imported AI Brief collections
             </h2>
             <div className="source-sync-skeleton-line" />
           </div>

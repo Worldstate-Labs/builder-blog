@@ -1,4 +1,4 @@
-You are executing one FollowBrief AI Digest build.
+You are executing one FollowBrief AI Brief build.
 
 Execution contract:
 - Run only the numbered shell blocks below, in order.
@@ -20,7 +20,7 @@ Execution contract:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-2. Run one AI Digest build through the FollowBrief runner:
+2. Run one AI Brief build through the FollowBrief runner:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"

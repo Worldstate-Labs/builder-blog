@@ -10,9 +10,9 @@ import { prisma } from "@/lib/prisma";
 export const adminCommunityLibraryName = "Community source library";
 export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
-export const adminCommunityDigestTitle = "Community AI Digest";
+export const adminCommunityDigestTitle = "Community AI Brief";
 export const adminCommunityDigestDescription =
-  "Community AI Digest curated by FollowBrief.";
+  "Community AI Brief curated by FollowBrief.";
 
 type LibraryHubPrisma = Pick<PrismaClient, "builder" | "libraryHubEntry" | "libraryHubItem">;
 
@@ -28,13 +28,13 @@ export function digestPipelineTitle(owner: {
   email?: string | null;
 }) {
   const identity = owner.name || owner.email?.split("@")[0] || "Builder";
-  return `${identity}'s AI Digest`;
+  return `${identity}'s AI Brief`;
 }
 
 export function displayDigestPipelineTitle(title: string) {
   return title
-    .replace(/AI Builder Digest/g, "AI Digest")
-    .replace(/Builder Digest/g, "AI Digest");
+    .replace(/AI Builder Digest/g, "AI Brief")
+    .replace(/Builder Digest/g, "AI Brief");
 }
 
 export function isAdminCommunityDigestOwner(owner: { email?: string | null } | null | undefined) {

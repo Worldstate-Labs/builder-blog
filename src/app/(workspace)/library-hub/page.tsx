@@ -291,7 +291,7 @@ function LibraryHubImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries for AI Digest and Following.
+            Import shared source libraries for AI Brief and Following.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
@@ -327,12 +327,12 @@ function LibraryHubImportFallback() {
 function DigestPipelineImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading shared AI Digest collections</span>
+      <span className="sr-only">Loading shared AI Brief collections</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">Shared AI Digest collections</h2>
+          <h2 className="fb-section-heading">Shared AI Brief collections</h2>
           <p className="hub-section-copy">
-            Import AI Digest collections shared by others.
+            Import AI Brief collections shared by others.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>

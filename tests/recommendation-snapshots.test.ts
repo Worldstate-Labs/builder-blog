@@ -158,7 +158,7 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.doesNotMatch(favoriteList, /favorites-feed-title|Newest saved posts\.|favorites-feed-count|favorite-saved-at|Saved <RelativeTime/);
   assert.doesNotMatch(favoriteList, /Starred posts|Reading queue|Focused reading queue|Posts you starred for focused reading/);
   assert.doesNotMatch(favoriteList, /@\/components\/Count|formatCount\(items\.length\)/);
-  assert.match(favoriteList, /Open AI Digest/);
+  assert.match(favoriteList, /Open AI Brief/);
   assert.match(favoriteList, /href="\/dashboard\?tab=ai-digest"/);
   assert.match(favoriteList, /Open Following/);
   assert.match(favoriteList, /href="\/dashboard\?tab=following"/);
@@ -169,11 +169,11 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post details\./);
-  assert.doesNotMatch(favoriteList, /post pages|AI Digest issues, Following posts|to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Save posts from AI Brief, Following, Search, or post details\./);
+  assert.doesNotMatch(favoriteList, /post pages|AI Briefs, Following posts|to build this queue|Use the star on any post in AI Brief, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
-  assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following/);
+  assert.doesNotMatch(favoriteList, /Star posts from AI Brief|Save posts from AI Brief or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /PostFavoriteButton/);
   assert.match(favoriteList, /const response = await fetch\("\/api\/favorites"/);
@@ -237,8 +237,8 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(digestRoute, /feedFavorite\.findMany/);
   assert.match(feedFavorites, /feedItemAppearsInAccessibleDigest/);
   assert.match(feedFavorites, /digestPipelineImport\.findMany/);
-  assert.match(feedFavorites, /Post is outside your Sources or AI Digest collections/);
-  assert.doesNotMatch(feedFavorites, /Post is not in your sources|imported AI Digest collections|imported AI Digest issues/);
+  assert.match(feedFavorites, /Post is outside your Sources or AI Brief collections/);
+  assert.doesNotMatch(feedFavorites, /Post is not in your sources|imported AI Brief collections|imported AI Briefs/);
   assert.match(digestDetails, /favoriteStateByFeedItemId/);
   assert.match(digestDetails, /cleanFavoriteStateByFeedItemId/);
   assert.match(digestDetails, /favoriteErrorByFeedItemId: Record<string, string>/);
@@ -359,7 +359,7 @@ test("digest read action links to post detail even when digest text omits a sour
     }),
   );
 
-  assert.match(html, /href="\/posts\/feed_mad_slingshot\?returnTo=%2Fdashboard%3Ftab%3Dai-digest&amp;returnLabel=AI\+Digest"/);
+  assert.match(html, /href="\/posts\/feed_mad_slingshot\?returnTo=%2Fdashboard%3Ftab%3Dai-digest&amp;returnLabel=AI\+Brief"/);
   assert.match(html, /aria-label="Read: Can an AI Therapist Actually Help\? \(Slingshot AI CEO\)"/);
   assert.doesNotMatch(html, /aria-expanded=/);
   assert.doesNotMatch(html, /fetched-post-raw/);
@@ -777,7 +777,7 @@ test("following recommendation feed uses subscribed builders only", () => {
   const followingSection = source("src/components/FollowingRecommendationSection.tsx");
   const recommendations = source("src/lib/recommendations.ts");
 
-  assert.match(tabs, /AI Digest/);
+  assert.match(tabs, /AI Brief/);
   assert.match(tabs, /Following/);
   assert.match(tabs, /Favorites/);
   assert.doesNotMatch(tabs, /For You/);
@@ -797,8 +797,8 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Add sources for AI Digest and Following\./);
-  assert.doesNotMatch(followingSection, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
+  assert.match(followingSection, /Add sources for AI Brief and Following\./);
+  assert.doesNotMatch(followingSection, /Add sources to feed AI Brief and Following\.|Add sources in the Sources tab|AI Briefs and Following posts|Add sources in Sources\. They feed AI Brief|They feed AI Brief/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Copy a Fetch sources prompt to summarize followed posts/);

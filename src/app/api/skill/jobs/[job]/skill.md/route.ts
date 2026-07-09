@@ -25,7 +25,7 @@ function safePromptText(value: string | null | undefined): string {
 
 function buildExistingCronWarning(job: string, serverActiveCron: ExistingCronRecord | null): string {
   if (!serverActiveCron || serverActiveCron.status !== "active") return "";
-  const label = job.startsWith("digest") ? "AI Digest" : "Fetch sources";
+  const label = job.startsWith("digest") ? "AI Brief" : "Fetch sources";
   const runner = [serverActiveCron.runtime, serverActiveCron.hostname]
     .map(safePromptText)
     .filter(Boolean)
@@ -138,7 +138,7 @@ function buildOpenClawInitialRunBootstrap({
 
 function setupInitialRunMarker(job: string): string {
   if (job === "library-cron-setup") return "6. Run one real initial fetch job now.";
-  if (job === "digest-cron-setup") return "6. Run one real initial digest job now.";
+  if (job === "digest-cron-setup") return "6. Run one real initial brief job now.";
   return "";
 }
 

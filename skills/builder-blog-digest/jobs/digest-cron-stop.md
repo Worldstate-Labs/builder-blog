@@ -1,7 +1,7 @@
-Stop the FollowBrief subscription digest scheduled job on this machine.
+Stop the FollowBrief subscription brief scheduled job on this machine.
 
 This is an interactive local agent task. Do not ask the user questions except
-where step 2 requires it (more than one digest job is found and the account is
+where step 2 requires it (more than one brief job is found and the account is
 ambiguous), or when a scheduler permission blocks removal. Run the numbered
 steps exactly. If any command fails, stop and report the command, exit code, and
 stderr. Do not invoke any other skill, plugin, or subagent — run the numbered
@@ -9,8 +9,8 @@ steps yourself exactly as written; this prompt is the whole task.
 
 Scope — do not exceed it: remove only the recurring **schedule** (the launchd
 LaunchAgent on macOS, or the crontab entry on Linux), stop this account's active
-digest cron worker if one is still running, then report that stopped state to
-FollowBrief. Do not delete any already-generated digests, and do not touch the
+brief cron worker if one is still running, then report that stopped state to
+FollowBrief. Do not delete any already-generated briefs, and do not touch the
 library cron.
 
 Stopped-state contract — preserve this invariant: this account is fully stopped
@@ -27,7 +27,7 @@ local schedule is found; otherwise the web app can keep expecting cron runs.
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-2. Find the existing FollowBrief digest job(s) on this machine. Run the path for
+2. Find the existing FollowBrief brief job(s) on this machine. Run the path for
 this machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin)
@@ -92,7 +92,7 @@ If `BUILDER_BLOG_ACCOUNT` is set, continue even when step 2 prints
 `no-local-schedule:<label>` or "(none found)"; steps 4-6 still make the stopped
 state complete. If `BUILDER_BLOG_ACCOUNT` is not set and the result is "(none
 found)", STOP because there is no safe account to report. If more than one
-digest job is listed and `BUILDER_BLOG_ACCOUNT` is not set (so you can't tell
+brief job is listed and `BUILDER_BLOG_ACCOUNT` is not set (so you can't tell
 which account to stop), list them and ask the user which to stop before
 continuing — removing all of them stops every FollowBrief account on this
 machine. Treat `stale-plist:<label>` as scheduler state that must be removed.
@@ -181,7 +181,7 @@ BUILDER_BLOG_ACCOUNT="$ACCT" node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog
 crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh digest-cron' && echo "STILL PRESENT" || echo "removed"
 ```
 
-4. Stop this account's active digest cron worker instance, if one is still
+4. Stop this account's active brief cron worker instance, if one is still
 running. This matters because the LaunchAgent only prevents future scheduled
 fires; the current worker may already have been detached by the supervisor.
 
@@ -259,7 +259,7 @@ if [ -r "$CURRENT_FILE" ]; then
   fi
   rm -f "$CURRENT_FILE"
 else
-  echo "no active digest cron worker recorded"
+  echo "no active brief cron worker recorded"
 fi
 ```
 
@@ -297,4 +297,4 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
 was removed (or that no local schedule existed), whether an active worker was
 stopped or no active worker was recorded, and that step 3 printed both
 "launchd absent" and "plist absent" on macOS (or "removed" on Linux). Tell the
-user they can resume later by re-running the digest cron setup prompt.
+user they can resume later by re-running the brief cron setup prompt.

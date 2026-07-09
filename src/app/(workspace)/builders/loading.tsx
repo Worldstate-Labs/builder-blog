@@ -16,7 +16,7 @@ export default function BuildersLoading() {
         <section className="sources-tab-surface">
           <div className="workspace-top-tabs-row">
             <div
-              aria-label="Sources and AI Digest tabs"
+              aria-label="Sources and AI Brief tabs"
               className="workspace-top-tabs fb-segmented-tabs sources-loading-tabs"
               role="tablist"
             >
