@@ -6158,6 +6158,7 @@ export function planFetchQueueAssignments(fetchResult, {
   activeGroupKeys = new Set(),
   excludeTaskIds = new Set(),
   maxGroupsPerAssignment = Number.POSITIVE_INFINITY,
+  maxTasksPerAssignment = Number.POSITIVE_INFINITY,
 } = {}) {
   const { workTasks, userActionTasks, discoveryTasks } = splitFetchTasksForWorkerQueue(fetchResult);
   const activeKeys = new Set(Array.from(activeGroupKeys, (key) => String(key)));
@@ -6184,6 +6185,9 @@ export function planFetchQueueAssignments(fetchResult, {
     : 1;
   const groupLimit = Number.isFinite(Number(maxGroupsPerAssignment))
     ? Math.max(1, Math.floor(Number(maxGroupsPerAssignment)))
+    : Number.POSITIVE_INFINITY;
+  const taskLimit = Number.isFinite(Number(maxTasksPerAssignment))
+    ? Math.max(1, Math.floor(Number(maxTasksPerAssignment)))
     : Number.POSITIVE_INFINITY;
   const assignmentCount = groupLimit === Number.POSITIVE_INFINITY
     ? Math.max(0, Math.min(workerLimit, runnableGroups.length))
@@ -6216,9 +6220,23 @@ export function planFetchQueueAssignments(fetchResult, {
       pendingGroups.push(group);
       continue;
     }
-    target.weight += group.weight;
+    const assignedTasks = taskLimit === Number.POSITIVE_INFINITY
+      ? group.tasks
+      : group.tasks.slice(0, taskLimit);
+    const remainingTasks = taskLimit === Number.POSITIVE_INFINITY
+      ? []
+      : group.tasks.slice(assignedTasks.length);
+    const assignedWeight = assignedTasks.reduce((sum, task) => sum + shardTaskWeight(task), 0);
+    target.weight += assignedWeight;
     target.groupKeys.push(group.key);
-    target.tasks.push(...group.tasks);
+    target.tasks.push(...assignedTasks);
+    if (remainingTasks.length > 0) {
+      pendingGroups.push({
+        ...group,
+        weight: remainingTasks.reduce((sum, task) => sum + shardTaskWeight(task), 0),
+        tasks: remainingTasks,
+      });
+    }
   }
   return {
     assignments: assignments.filter((assignment) => assignment.tasks.length > 0),
@@ -6344,6 +6362,7 @@ async function assignFetchTasks(args) {
     activeGroupKeys,
     excludeTaskIds,
     maxGroupsPerAssignment: 1,
+    maxTasksPerAssignment: 1,
   });
 
   await mkdir(outDir, { recursive: true });

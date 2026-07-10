@@ -4047,6 +4047,42 @@ test("fetch queue assignments can leave runnable work pending for later workers"
   assert.deepEqual(plan.pendingTasks.map((task: { id: string }) => task.id).sort(), ["other", "third"]);
 });
 
+test("dynamic fetch queue assigns only one post task per worker", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "example-a",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/a" },
+      },
+      {
+        id: "example-b",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b2", sourceUrl: "https://www.example.com/news.xml" },
+        item: { url: "https://www.example.com/posts/b" },
+      },
+    ],
+  };
+
+  const plan = cli.planFetchQueueAssignments(fetchResult, {
+    maxWorkers: 1,
+    maxGroupsPerAssignment: 1,
+    maxTasksPerAssignment: 1,
+  });
+
+  assert.deepEqual(plan.assignments[0].groupKeys, ["domain:example.com"]);
+  assert.deepEqual(plan.assignments[0].tasks.map((task: { id: string }) => task.id), ["example-a"]);
+  assert.deepEqual(plan.pendingGroupKeys, ["domain:example.com"]);
+  assert.deepEqual(plan.pendingTasks.map((task: { id: string }) => task.id), ["example-b"]);
+});
+
 test("fetch queue assignment exclusions are scoped by cloud run id", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
@@ -4157,7 +4193,7 @@ test("assign-fetch-tasks writes dynamic shards and skips already assigned task i
       ["shard-1", ["domain:other.example"]],
     ],
   );
-  assert.deepEqual(firstResult.pendingGroupKeys, ["domain:third.example"]);
+  assert.deepEqual(firstResult.pendingGroupKeys.sort(), ["domain:example.com", "domain:third.example"].sort());
 
   const shard0 = JSON.parse(await readFile(join(outDir, "shard-0.json"), "utf8"));
   assert.equal(shard0.dynamicAssignment, true);
@@ -4165,9 +4201,10 @@ test("assign-fetch-tasks writes dynamic shards and skips already assigned task i
   assert.equal(shard0.workerId, "worker-0");
   assert.deepEqual(shard0.groupKeys, ["domain:example.com"]);
   assert.equal(shard0.fetchTasks[0].workerId, "worker-0");
+  assert.deepEqual(shard0.fetchTasks.map((task: { id: string }) => task.id), ["example-a"]);
 
   const assignedAfterFirst = (await readFile(assignedIdsFile, "utf8")).trim().split(/\r?\n/).sort();
-  assert.deepEqual(assignedAfterFirst, ["example-a", "example-b", "other"]);
+  assert.deepEqual(assignedAfterFirst, ["example-a", "other"]);
 
   const second = await execFileAsync(
     process.execPath,
@@ -4188,7 +4225,10 @@ test("assign-fetch-tasks writes dynamic shards and skips already assigned task i
   const secondResult = JSON.parse(second.stdout);
   assert.deepEqual(
     secondResult.shards.map((shard: { shard: string; taskIds: string[] }) => [shard.shard, shard.taskIds]),
-    [["shard-2", ["third"]]],
+    [
+      ["shard-2", ["example-b"]],
+      ["shard-3", ["third"]],
+    ],
   );
   assert.deepEqual(secondResult.pendingGroupKeys, []);
 });
