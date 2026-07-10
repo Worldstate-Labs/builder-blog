@@ -3,6 +3,8 @@ import test from "node:test";
 import { localAgentShardTimeoutSeconds, localAgentTimeoutSeconds } from "../src/lib/local-agent-timeouts";
 
 test("local agent timeout policy is shared and clamps expected cron windows", () => {
+  assert.equal(localAgentTimeoutSeconds(60, "library-once"), "43200");
+  assert.equal(localAgentTimeoutSeconds(60, "digest-once"), "43200");
   assert.equal(localAgentTimeoutSeconds(30, "library-cron"), "1440");
   assert.equal(localAgentTimeoutSeconds(60, "library-cron"), "2880");
   assert.equal(localAgentTimeoutSeconds(180, "library-cron"), "7200");

@@ -3,6 +3,10 @@
   "baseMultiplierSecondsPerMinute": 48,
   "minSeconds": 1200,
   "defaultMaxSeconds": 2700,
+  "jobDefaultSeconds": {
+    "library-once": 43200,
+    "digest-once": 43200
+  },
   "jobMaxSeconds": {
     "cloud-library-cron": 7200,
     "cloud-library-host": 7200,

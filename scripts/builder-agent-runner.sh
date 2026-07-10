@@ -1255,6 +1255,11 @@ timeout_seconds_for_job() {
 const fs = require("fs");
 const [policyPath, intervalArg, job] = process.argv.slice(2);
 const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
+const jobDefault = policy.jobDefaultSeconds && Number(policy.jobDefaultSeconds[job]);
+if (Number.isFinite(jobDefault) && jobDefault > 0) {
+  console.log(String(jobDefault));
+  process.exit(0);
+}
 const interval = Number(intervalArg);
 const safeInterval = Number.isFinite(interval) && interval > 0
   ? interval
@@ -1277,6 +1282,7 @@ NODE
   _base=$(( _interval * 48 ))
   _min=$(( 20 * 60 ))
   case "$_job" in
+    library-once|digest-once) printf '%s\n' "43200"; return 0 ;;
     library-cron) _max=$(( 120 * 60 )) ;;
     digest-cron) _max=$(( 45 * 60 )) ;;
     *) _max=$(( 45 * 60 )) ;;
@@ -1290,19 +1296,7 @@ job_timeout_seconds() {
   _override="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-}"
   case "$_override" in
     ''|*[!0-9]*|0)
-      _timeout_interval="$RESOLVED_INTERVAL_MINUTES"
-      _timeout_job="$JOB_NAME"
-      case "$JOB_NAME" in
-        library-once)
-          _timeout_interval="720"
-          _timeout_job="library-cron"
-          ;;
-        digest-once)
-          _timeout_interval="720"
-          _timeout_job="digest-cron"
-          ;;
-      esac
-      timeout_seconds_for_job "$_timeout_interval" "$_timeout_job"
+      timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME"
       ;;
     *) printf '%s\n' "$_override" ;;
   esac
