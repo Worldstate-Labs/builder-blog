@@ -292,6 +292,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.doesNotMatch(runner, /--tools "\$_claude_allowed_tools"/);
   assert.match(runner, /BUILDER_BLOG_WORKER_NO_PROGRESS_SECONDS:-600/);
   assert.match(runner, /shards\/results\/shard-\*-agent-output\.log/);
+  assert.match(runner, /shards\/results\/shard-\*-checkpoints\/progress\/\*\.json/);
   assert.match(runner, /agent-output-tails/);
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);

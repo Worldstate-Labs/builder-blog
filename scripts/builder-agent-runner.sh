@@ -1175,7 +1175,7 @@ fi
 export BUILDER_BLOG_DIGEST_REGENERATE
 
 # Local job fan-out: the runner orchestrates the library job itself —
-# fetch-personal, discovery expansion, shard-tasks, merge-task-results,
+# fetch-personal, discovery expansion, assign-fetch-tasks, merge-task-results,
 # validate-agent-sync, and sync-builders are deterministic CLI steps. Runtime
 # workers only complete assigned fetchTasks. Digest jobs carry the same setting
 # in job-run telemetry and copied prompt state. The pin is per-account and per-job
@@ -1467,7 +1467,8 @@ NODE
     "$JOB_TMP_DIR"/shards/results/shard-*-result.json \
     "$JOB_TMP_DIR"/shards/results/shard-*-worker.log \
     "$JOB_TMP_DIR"/shards/results/shard-*-usage.jsonl \
-    "$JOB_TMP_DIR"/shards/results/shard-*-checkpoints/*.json
+    "$JOB_TMP_DIR"/shards/results/shard-*-checkpoints/*.json \
+    "$JOB_TMP_DIR"/shards/results/shard-*-checkpoints/progress/*.json
   do
     [ -e "$_recovery_source" ] || continue
     _recovery_relative="${_recovery_source#$JOB_TMP_DIR/}"
@@ -3930,16 +3931,9 @@ run_library_job() {
   fi
 
   job_run_update running "Assigning $_task_count fetch task(s)." "shard_started" --stage "shard_fetch_tasks"
-  if [ "$_sync_command" = "sync-cloud-builders" ]; then
-    _dynamic_queue_enabled=1
-    : > "$_assigned_fetch_task_ids_file"
-    assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
-  else
-    node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
-      --tasks "$_result_file" \
-      --out-dir "$_shards_dir" \
-      --max-workers "$MAX_PARALLEL_WORKERS"
-  fi
+  _dynamic_queue_enabled=1
+  : > "$_assigned_fetch_task_ids_file"
+  assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
 
   node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
     --tasks "$_result_file" \
@@ -4136,7 +4130,7 @@ run_library_job() {
           fi
         fi
         _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
-        if [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
+        if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
           fetch_more_cloud_sources
           if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
             assign_dynamic_fetch_workers "$_free_slots"

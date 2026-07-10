@@ -1,5 +1,4 @@
-Use the FollowBrief skill to complete one shard of private library fetch
-tasks.
+Complete one shard of private library fetch tasks for FollowBrief.
 
 This is an unattended parallel worker run launched by the FollowBrief runner.
 Do not ask the user questions.

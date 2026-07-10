@@ -355,6 +355,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /worker_shard_timeout/);
   assert.match(runner, /worker_no_progress_timeout/);
   assert.match(runner, /worker_stalled_timeout/);
+  assert.match(runner, /Assigning \$_task_count fetch task\(s\)[\s\S]*_dynamic_queue_enabled=1[\s\S]*assign_dynamic_fetch_workers "\$MAX_PARALLEL_WORKERS"/);
+  assert.doesNotMatch(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" shard-tasks[\s\S]*--max-workers "\$MAX_PARALLEL_WORKERS"/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
   assert.match(runner, /function resultFileHasTerminalProgress/);

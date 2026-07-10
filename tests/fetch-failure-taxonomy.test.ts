@@ -33,6 +33,7 @@ const REQUIRED_CODES = [
   "worker_shard_timeout",
   "worker_no_progress_timeout",
   "worker_stalled_timeout",
+  "worker_stopped_before_task_started",
   "worker_incomplete_result",
   "worker_backgrounded_tool",
   "discovery_not_expanded",
@@ -69,6 +70,10 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
     fetchFailureMessage("worker_stalled_timeout"),
     "Worker watchdog stopped this post after checkpoint progress stalled",
   );
+  assert.equal(
+    fetchFailureMessage("worker_stopped_before_task_started"),
+    "Local Agent stopped before starting this post",
+  );
   assert.equal(fetchFailureMessage("unknown_new_code"), "Unknown failure: unknown new code");
   assert.equal(isContentFailureReason("content_missing"), true);
   assert.equal(isContentFailureReason("worker_missing_result"), false);
@@ -76,6 +81,7 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
   assert.equal(isNotCompletedFailureReason("runtime_timeout"), true);
   assert.equal(isNotCompletedFailureReason("runtime_timeout_flush_finished"), true);
   assert.equal(isNotCompletedFailureReason("worker_stalled_timeout"), true);
+  assert.equal(isNotCompletedFailureReason("worker_stopped_before_task_started"), true);
   assert.equal(isNotCompletedFailureReason("worker_backgrounded_tool"), true);
   assert.equal(isNotCompletedFailureReason("summary_missing"), false);
   assert.equal(isHiddenFailureReason("heartbeat"), true);

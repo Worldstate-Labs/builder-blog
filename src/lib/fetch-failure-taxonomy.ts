@@ -219,6 +219,14 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: true,
     notCompleted: true,
   },
+  worker_stopped_before_task_started: {
+    category: "worker",
+    stage: "runtime",
+    userMessage: "Local Agent stopped before starting this post",
+    operatorMessage: "A shard worker stopped while handling another post, so this assigned post was never started.",
+    retryable: true,
+    notCompleted: true,
+  },
   worker_incomplete_result: {
     category: "worker",
     stage: "runtime",

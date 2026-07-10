@@ -3855,6 +3855,56 @@ test("shard-tasks groups by URL domain, balances by weight, excludes non-work ta
   assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
 });
 
+test("ready summary tasks split by task and weigh body size", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "ready-long",
+        agentWorkType: "fetch_post",
+        contentStatus: "ready",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/a", body: "long body ".repeat(900) },
+      },
+      {
+        id: "ready-short",
+        agentWorkType: "fetch_post",
+        contentStatus: "ready",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/b", body: "short body" },
+      },
+      {
+        id: "fetch-a",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: { builderId: "b1", sourceUrl: "https://example.com/feed.xml" },
+        item: { url: "https://example.com/posts/c" },
+      },
+    ],
+  };
+
+  const plan = cli.planFetchQueueAssignments(fetchResult, {
+    maxWorkers: 3,
+    maxGroupsPerAssignment: 1,
+  });
+
+  assert.deepEqual(
+    plan.assignments.map((assignment: { groupKeys: string[] }) => assignment.groupKeys[0]).sort(),
+    ["domain:example.com", "summary-task:ready-long", "summary-task:ready-short"].sort(),
+  );
+  const weightByTask = new Map(
+    plan.assignments.map((assignment: { tasks: { id: string }[]; weight: number }) => [
+      assignment.tasks[0].id,
+      assignment.weight,
+    ]),
+  );
+  assert.ok((weightByTask.get("ready-long") ?? 0) > (weightByTask.get("ready-short") ?? 0));
+});
+
 test("assign-fetch-tasks allows twenty local workers", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-assign-fetch-twenty-workers-"));
   const tasksFile = join(tmp, "fetch-result.json");
@@ -5445,6 +5495,64 @@ test("merge-task-results classifies stalled worker timeouts distinctly", async (
   assert.equal(outcomes[0]?.evidence?.failureKind, "worker_stalled_timeout");
   assert.equal(outcomes[0]?.evidence?.workerWatchdog?.reason, "worker_stalled_timeout");
   assert.equal(outcomes[0]?.evidence?.workerWatchdog?.timeoutSeconds, 600);
+});
+
+test("merge-task-results separates active stalled task from unstarted shard tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "done", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "active", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "pending", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogTail: JSON.stringify({
+          type: "followbrief_worker_event",
+          reason: "worker_stalled_timeout",
+          worker: "worker-0",
+          shard: "shard-0",
+          message: "Worker stopped updating result, checkpoint, or progress files for 600s after prior progress.",
+        }),
+        progressEntries: [
+          {
+            fetchTaskId: "active",
+            status: "reading",
+            updatedAt: "2026-07-10T15:27:45.000Z",
+          },
+        ],
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    reason: string;
+    evidence?: { failureKind?: string; missingShard?: { latestProgressTaskId?: string } };
+  }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["active", "worker_stalled_timeout"],
+    ["pending", "worker_stopped_before_task_started"],
+  ]);
+  assert.equal(outcomes[0]?.evidence?.missingShard?.latestProgressTaskId, "active");
+  assert.equal(outcomes[1]?.evidence?.failureKind, "worker_stopped_before_task_started");
 });
 
 test("merge-task-results can exclude checkpoint-synced task ids from final sync output", async () => {

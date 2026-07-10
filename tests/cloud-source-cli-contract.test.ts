@@ -620,6 +620,7 @@ agent_output_file claude
 test("library worker prompt forbids background task work", async () => {
   const prompt = await readFile("skills/builder-blog-digest/jobs/library-worker.md", "utf8");
 
+  assert.doesNotMatch(prompt, /Use the FollowBrief skill/);
   assert.match(prompt, /Do NOT start background commands or tool calls/);
   assert.match(prompt, /run_in_background/);
   assert.match(prompt, /Long[\s\S]*transcription[\s\S]*must run in the[\s\S]*foreground/);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readdir, readFile, rm, stat as fsStat, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir, hostname, platform, release, userInfo } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -6070,7 +6070,11 @@ async function expandDiscovery(args) {
 // onto one shard.
 
 function shardTaskWeight(task) {
-  if (task?.contentStatus === "ready") return 1;
+  if (task?.contentStatus === "ready") {
+    const bodyChars = typeof task?.item?.body === "string" ? task.item.body.length : 0;
+    return Math.max(1, Math.min(8, 1 + Math.ceil(bodyChars / 3000)));
+  }
+  if (task?.agentWorkType === "translate_summary_only") return 1;
   const sourceType = String(task?.sourceType || "").toLowerCase();
   if (sourceType === "youtube" || sourceType === "podcast") return 4;
   return 2;
@@ -6120,6 +6124,10 @@ function urlDomainKey(value) {
 }
 
 function shardGroupKey(task) {
+  const taskId = String(task?.id || fetchTaskId(task));
+  if (task?.contentStatus === "ready" || task?.agentWorkType === "translate_summary_only") {
+    return `summary-task:${taskId}`;
+  }
   const sync = task?.builderSync ?? {};
   const domain =
     urlDomainKey(task?.item?.url) ||
@@ -6419,6 +6427,31 @@ function normalizeShardPlan(plan) {
   const resultFile = String(plan.resultFile || `${shard}-result.json`);
   const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
   const usage = normalizeRuntimeUsage(plan.usage, "runtime_shard");
+  const progressEntries = Array.isArray(plan.progressEntries)
+    ? plan.progressEntries.filter((entry) => entry && typeof entry === "object")
+    : [];
+  const progressTaskIds = Array.from(new Set(
+    [
+      ...progressEntries.map((entry) => entry.fetchTaskId ?? entry.id),
+      ...(Array.isArray(plan.progressTaskIds) ? plan.progressTaskIds : []),
+    ]
+      .map((id) => String(id || ""))
+      .filter(Boolean),
+  ));
+  const latestProgressEntry = progressEntries
+    .slice()
+    .sort((a, b) => {
+      const at = Date.parse(String(a.updatedAt || "")) || Number(a.mtimeMs || 0) || 0;
+      const bt = Date.parse(String(b.updatedAt || "")) || Number(b.mtimeMs || 0) || 0;
+      return at - bt;
+    })
+    .at(-1) ?? null;
+  const latestProgressTaskId = String(
+    plan.latestProgressTaskId ||
+      latestProgressEntry?.fetchTaskId ||
+      latestProgressEntry?.id ||
+      "",
+  ).trim();
   return {
     shard,
     workerId,
@@ -6436,6 +6469,10 @@ function normalizeShardPlan(plan) {
       .map((task) => task?.title || task?.item?.title || task?.url || task?.item?.url || task?.id || null)
       .filter(Boolean)
       .slice(0, 5),
+    progressTaskIds,
+    latestProgressTaskId: latestProgressTaskId || null,
+    latestProgressStatus: latestProgressEntry?.status ?? null,
+    latestProgressUpdatedAt: latestProgressEntry?.updatedAt ?? null,
   };
 }
 
@@ -6459,6 +6496,11 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
     if (shardPlan.agentOutputFile) evidence.missingShard.agentOutputFile = shardPlan.agentOutputFile;
     if (shardPlan.agentOutputTail) evidence.missingShard.agentOutputTail = shardPlan.agentOutputTail;
     if (shardPlan.agentOutputBytes !== null) evidence.missingShard.agentOutputBytes = shardPlan.agentOutputBytes;
+    if (shardPlan.latestProgressTaskId) {
+      evidence.missingShard.latestProgressTaskId = shardPlan.latestProgressTaskId;
+      evidence.missingShard.latestProgressStatus = shardPlan.latestProgressStatus;
+      evidence.missingShard.latestProgressUpdatedAt = shardPlan.latestProgressUpdatedAt;
+    }
     const workerWatchdog = workerWatchdogEventFromLog(shardPlan.workerLogTail);
     if (workerWatchdog) evidence.workerWatchdog = workerWatchdog;
   } else {
@@ -6609,6 +6651,24 @@ function defaultMissingFailure(options = {}) {
   return {
     reason,
     failureKind: String(options.defaultMissingFailureKind || reason).trim() || reason,
+  };
+}
+
+function missingTaskFailure(task, shardPlan, shardSummary, options = {}) {
+  const failure = shardPlan
+    ? missingShardFailure(shardPlan, shardSummary)
+    : defaultMissingFailure(options) ?? missingShardFailure(shardPlan, shardSummary);
+  if (failure.reason !== "worker_stalled_timeout" || !shardPlan) return failure;
+  const taskId = String(task?.id || fetchTaskId(task));
+  const progressTaskIds = new Set(
+    Array.isArray(shardPlan.progressTaskIds)
+      ? shardPlan.progressTaskIds.map((id) => String(id))
+      : [],
+  );
+  if (progressTaskIds.size === 0 || progressTaskIds.has(taskId)) return failure;
+  return {
+    reason: "worker_stopped_before_task_started",
+    failureKind: "worker_stopped_before_task_started",
   };
 }
 
@@ -6945,9 +7005,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       accounted.add(id);
       const shardPlan = shardPlanByTaskId.get(id);
       const shardSummary = shardPlan ? shardSummaryByResultFile.get(shardPlan.resultFile) : null;
-      const failure = shardPlan
-        ? missingShardFailure(shardPlan, shardSummary)
-        : defaultMissingFailure(options) ?? missingShardFailure(shardPlan, shardSummary);
+      const failure = missingTaskFailure(task, shardPlan, shardSummary, options);
       taskOutcomes.push({
         fetchTaskId: id,
         status: "failed",
@@ -6987,6 +7045,29 @@ async function readOptionalText(file) {
   }
 }
 
+async function readShardPlanProgressEntries(progressDir) {
+  let files;
+  try {
+    files = await readdir(progressDir);
+  } catch {
+    return [];
+  }
+  const entries = [];
+  for (const fileName of files.filter((name) => name.endsWith(".json")).sort()) {
+    const file = join(progressDir, fileName);
+    try {
+      const payload = JSON.parse(await readFile(file, "utf8"));
+      const stat = await fsStat(file);
+      entries.push({ ...payload, file: fileName, mtimeMs: stat.mtimeMs });
+    } catch {
+      // Ignore malformed progress telemetry here; checkpoint-progress reports
+      // those separately and merge-task-results should not fail because a UI
+      // progress file is broken.
+    }
+  }
+  return entries;
+}
+
 async function readShardPlans(resultsDir) {
   const shardDir = dirname(resultsDir);
   let names;
@@ -7011,6 +7092,9 @@ async function readShardPlans(resultsDir) {
     const usageFile = `${shard}-usage.jsonl`;
     const workerLogText = await readOptionalText(join(resultsDir, workerLogFile));
     const agentOutputText = await readOptionalText(join(resultsDir, agentOutputFile));
+    const progressEntries = await readShardPlanProgressEntries(
+      join(resultsDir, `${shard}-checkpoints`, "progress"),
+    );
     const usage = runtimeUsageFromFile(join(resultsDir, usageFile), "runtime_sidecar") ??
       (workerLogText ? runtimeUsageFromText(workerLogText) : null) ??
       (agentOutputText ? runtimeUsageFromText(agentOutputText) : null);
@@ -7027,6 +7111,7 @@ async function readShardPlans(resultsDir) {
       agentOutputTail: agentOutputText ? tailLines(agentOutputText) : null,
       agentOutputBytes: agentOutputText ? Buffer.byteLength(agentOutputText, "utf8") : null,
       usage,
+      progressEntries,
       tasks: Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [],
     });
   }
