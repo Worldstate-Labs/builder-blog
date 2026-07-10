@@ -16,6 +16,24 @@ const contentSecurityPolicy = [
   "upgrade-insecure-requests",
 ].join("; ");
 
+// The landing page embeds the standalone promo animation (public/promo.html)
+// in a same-origin iframe, so that one file needs frame-ancestors 'self'
+// instead of 'none'. Its bundled Babel runtime also compiles at load time,
+// which requires 'unsafe-eval' — granted only to this static file.
+const promoContentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+  "style-src 'self' 'unsafe-inline'",
+  "connect-src 'self' blob:",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -49,6 +67,21 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+      {
+        // Later entries win on key collisions, so this loosens framing for
+        // the promo file only; every other path keeps the strict defaults.
+        source: "/promo.html",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: promoContentSecurityPolicy,
+          },
+          {
+            key: "X-Frame-Options",
+            value: "SAMEORIGIN",
+          },
+        ],
       },
     ];
   },

@@ -646,8 +646,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /className="lp-film-frame"/);
   assert.match(landingPage, /className="lp-film-chrome" aria-hidden="true"/);
   assert.doesNotMatch(landingPage, /followbrief\.worldstatelabs\.com/);
-  assert.match(landingPage, /src="\/followbrief-promo\.mp4"/);
-  assert.match(landingPage, /aria-label="FollowBrief promo film"/);
+  assert.match(landingPage, /src="\/promo\.html"/);
+  assert.match(landingPage, /title="FollowBrief promo film"/);
   assert.match(landingPage, /className="lp-section" id="how-it-works"/);
   assert.match(landingPage, /<I18nText id="home\.whatItDoes" \/>/);
   assert.match(landingPage, /<I18nText id="home\.loopTitle" \/>/);

@@ -15248,7 +15248,7 @@ body {
   position: relative;
 }
 
-.lp-film-body video {
+.lp-film-body iframe {
   border: 0;
   height: 100%;
   inset: 0;

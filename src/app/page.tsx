@@ -44,12 +44,10 @@ export default async function Home() {
                 <span className="lp-film-dot" />
               </div>
               <div className="lp-film-body">
-                <video
-                  src="/followbrief-promo.mp4"
-                  aria-label="FollowBrief promo film"
-                  controls
-                  playsInline
-                  preload="metadata"
+                <iframe
+                  src="/promo.html"
+                  title="FollowBrief promo film"
+                  loading="lazy"
                 />
               </div>
             </div>
