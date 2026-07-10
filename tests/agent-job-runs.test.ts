@@ -301,7 +301,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(workerPrompt, /under the `progress\/`[\s\S]*subdirectory/);
   assert.match(workerPrompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
   assert.match(workerPrompt, /extraction_exceeds_shard_timeout/);
-  assert.match(workerPrompt, /Do NOT use Claude Task\/subagent/);
+  assert.match(workerPrompt, /Do NOT use any subagent, nested agent, secondary session, or delegation/);
+  assert.match(workerPrompt, /including Claude Task\/subagent tools,[\s\S]*`codex exec`, `claude -p`, `openclaw agent`/);
 });
 
 test("runner cleans cloud host temp files and orphaned fetch tools", () => {
