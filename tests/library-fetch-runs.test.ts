@@ -597,7 +597,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /return postTasks\.some\(\(task\) => task\?\.status === "pending" \|\| task\?\.status === "fetched"\)/);
   assert.match(panel, /function isNoUpdateFetchRun/);
   assert.match(panel, /label: "No update"/);
-  assert.match(panel, /No update\. Sources were checked and no new posts needed to be saved\./);
+  assert.match(panel, /No update\. Sources were checked and no new posts needed to be synced\./);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
   assert.match(panel, /<RunCard[\s\S]*cronJob=\{cronJob\}[\s\S]*suppressStalled=\{suppressStalled\}[\s\S]*\/>/);
   assert.match(source("scripts/builder-agent-runner.sh"), /patch-fetch-run-plan[\s\S]*--results-dir "\$_results_dir"/);
@@ -647,7 +647,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /runtime_auth_failed:[\s\S]*OpenClaw auth failed before this post could be fetched/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /content_validation_failed:[\s\S]*Fetched content failed validation/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /task_validation_failed:[\s\S]*Sync payload for this post failed validation/);
-  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /task_sync_failed:[\s\S]*FollowBrief could not save this post/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /task_sync_failed:[\s\S]*FollowBrief could not sync this post/);
   assert.match(panel, /isNotCompletedFailureReason\(task\.failureReason\)/);
   assert.match(panel, /providerError/);
   assert.match(panel, /label: "Provider"/);
@@ -690,7 +690,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(source("src/app/globals.css"), /max-height: calc\(6 \* 3\.25rem/);
   assert.doesNotMatch(panel, /\.slice\(-CRON_SLOT_LIMIT\)/);
   assert.match(panel, /function formatRunSyncSummary\(done: number \| undefined, total: number \| undefined\): string/);
-  assert.match(panel, /return `\$\{formatCount\(synced\)\}\/\$\{formatCount\(planned\)\} saved`/);
+  assert.match(panel, /return `\$\{formatCount\(synced\)\}\/\$\{formatCount\(planned\)\} synced`/);
   assert.match(panel, /const hasDetailedPostTasks = Array\.isArray\(details\.fetchTasks\) && details\.fetchTasks\.filter\(isPlannedPostTask\)\.length > 0/);
   assert.match(panel, /\? Math\.max\(stats\.planned, stats\.synced\)[\s\S]*: Math\.max\(stats\.planned, run\.tasksGenerated, run\.itemsFetched, stats\.synced\)/);
   assert.doesNotMatch(panel, /if \(planned <= 0 && synced <= 0\) return null/);
@@ -1005,7 +1005,7 @@ test("DigestLogPanel renders brief status with modal-only build logs", () => {
   assert.match(panel, /No AI Brief build history yet/);
   assert.match(panel, /Copy a Build AI Brief prompt to create history/);
   assert.doesNotMatch(panel, /No AI Brief builds yet|Started one-time and scheduled builds appear here|One-time and scheduled builds appear here after they start|One-time and scheduled AI Brief builds appear here|Scheduled and one-time AI Brief builds will appear here|after a Local Agent reports them/);
-  assert.match(panel, /No AI Brief was saved for this run/);
+  assert.match(panel, /No AI Brief was synced for this run/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);
   assert.match(panel, /scheduledWindowStyleStatus/);
@@ -1029,11 +1029,11 @@ test("DigestLogPanel renders brief status with modal-only build logs", () => {
   assert.match(panel, /if \(hasTerminalFailedDigestJob\(jobRun\)\) return "failed";[\s\S]*if \(run\.status === "synced" && run\.syncedAt\) return "ok";/);
   assert.match(digestUpdateStatus, /function digestSlotStatusForRun/);
   assert.match(digestUpdateStatus, /if \(run\.status === "synced"\) return "ok";/);
-  assert.match(panel, /Local Agent stopped reporting before the AI Brief was saved\./);
+  assert.match(panel, /Local Agent stopped reporting before the AI Brief was synced\./);
   assert.match(panel, /Prepare candidates/);
   assert.match(panel, /Run Local Agent/);
   assert.match(panel, /Render brief JSON/);
-  assert.match(panel, /Save to FollowBrief/);
+  assert.match(panel, /Sync to FollowBrief/);
   assert.match(panel, /Record included posts/);
   assert.doesNotMatch(panel, /No saved title/);
   assert.match(panel, /jobRunVerdict/);
@@ -1049,12 +1049,12 @@ test("DigestLogPanel renders brief status with modal-only build logs", () => {
   assert.match(panel, /jobRunFailureReason/);
   assert.match(panel, /readableReason/);
   assert.match(panel, /Timed out after \$\{formatCount\(timeoutSeconds\)\} seconds/);
-  assert.match(panel, /Local Agent is preparing candidates and saving the AI Brief/);
-  assert.match(panel, /Local Agent finished without saving an AI Brief/);
-  assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} posts, but Local Agent marked the run failed/);
-  assert.match(panel, /Prepared \$\{formatCount\(run\.candidateCount\)\} candidates\. Local Agent stopped before saving/);
-  assert.match(panel, /Waiting for Local Agent to save the AI Brief/);
-  assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} eligible posts to FollowBrief/);
+  assert.match(panel, /Local Agent is preparing candidates and syncing the AI Brief/);
+  assert.match(panel, /Local Agent finished without syncing an AI Brief/);
+  assert.match(panel, /Synced \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} posts, but Local Agent marked the run failed/);
+  assert.match(panel, /Prepared \$\{formatCount\(run\.candidateCount\)\} candidates\. Local Agent stopped before syncing/);
+  assert.match(panel, /Waiting for Local Agent to sync the AI Brief/);
+  assert.match(panel, /Synced \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} eligible posts to FollowBrief/);
   assert.match(panel, /DigestLifecycle/);
   assert.match(panel, /function hasFailedDigestJob/);
   assert.match(panel, /statusChip\(run, jobRun, stallGraceUntilMs\)/);
@@ -1062,7 +1062,7 @@ test("DigestLogPanel renders brief status with modal-only build logs", () => {
   assert.match(panel, /runtime failed/);
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
-  assert.doesNotMatch(panel, /No brief schedule has reported yet|No brief builds yet|prepares a digest|brief build record|The Local Agent is running|Waiting for the Local Agent to save AI Brief|Runtime job did not create/);
+  assert.doesNotMatch(panel, /No brief schedule has reported yet|No brief builds yet|prepares a digest|brief build record|The Local Agent is running|Waiting for the Local Agent to sync AI Brief|Runtime job did not create/);
   assert.match(panel, /Details/);
   assert.doesNotMatch(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);

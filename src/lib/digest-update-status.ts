@@ -187,7 +187,7 @@ export function getDigestUpdateStatus(
     return {
       key: "building",
       label: "Building",
-      summary: "A brief build has started and is waiting to be saved.",
+      summary: "A brief build has started and is waiting to be synced.",
       style: statusStyle("partial"),
     };
   }
@@ -224,7 +224,7 @@ export function getDigestUpdateStatus(
       summary:
         latestResolved === "missed"
           ? "No run started in the latest scheduled window."
-          : "The latest scheduled run did not save an AI Brief.",
+          : "The latest scheduled run did not sync an AI Brief.",
       style: statusStyle("failed"),
     };
   }
@@ -232,7 +232,7 @@ export function getDigestUpdateStatus(
     return {
       key: "healthy",
       label: "Healthy",
-      summary: "Recent scheduled brief runs are saving successfully.",
+      summary: "Recent scheduled brief runs are syncing successfully.",
       style: statusStyle("ok"),
     };
   }

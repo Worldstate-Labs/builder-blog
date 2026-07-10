@@ -116,7 +116,7 @@ export function AdminCloudLibraryMaintenancePanel() {
           <div>
             <h3 className="fb-section-heading">Reset Cloud library generated state?</h3>
             <p className="settings-dialog-copy">
-              This deletes posts saved under Cloud library source owners, cloud source
+              This deletes posts synced under Cloud library source owners, cloud source
               delivery logs, queued leases, per-source fetch outcomes, and cloud worker host
               run records. Language libraries, sources, and active user submissions are kept.
               A running worker host can create new records after the reset. Type RESET to

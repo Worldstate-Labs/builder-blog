@@ -128,10 +128,10 @@ function succeededDigestJobRun(): AgentJobRunListItem {
   };
 }
 
-function unsavedDigestRun(): DigestRunListItem {
+function unsyncedDigestRun(): DigestRunListItem {
   return {
     ...syncedDigestRun(),
-    id: "run_unsaved",
+    id: "run_unsynced",
     status: "prepared",
     syncedAt: null,
     digestTitle: null,
@@ -194,14 +194,14 @@ test("digest timeline consumes job runs linked from a slotted synced run", () =>
 
   assert.equal(entries.length, 1);
   assert.equal(entries[0]?.status, "ok");
-  assert.equal(entries[0]?.syncSummary, "20/20 saved");
+  assert.equal(entries[0]?.syncSummary, "20/20 synced");
   assert.deepEqual(entries[0]?.logRef, { kind: "run", runId: "run_1" });
   assert.equal(entries[0]?.jobRun?.instanceId, jobRun.instanceId);
 });
 
-test("scheduled digest status is partial when the runtime succeeded without saving", () => {
+test("scheduled digest status is partial when the runtime succeeded without syncing", () => {
   const run = {
-    id: "cron_unsaved",
+    id: "cron_unsynced",
     status: "prepared",
     source: "cron",
     preparedAt: "2026-06-18T10:05:00.000Z",
@@ -220,8 +220,8 @@ test("scheduled digest status is partial when the runtime succeeded without savi
   assert.equal(status.label, "Partial");
 });
 
-test("digest activity status is partial when an unsaved run has a completed runtime", () => {
-  const run = unsavedDigestRun();
+test("digest activity status is partial when an unsynced run has a completed runtime", () => {
+  const run = unsyncedDigestRun();
   const jobRun = succeededDigestJobRun();
   const entries = buildDigestTimeline({
     jobRuns: [jobRun],
@@ -232,7 +232,7 @@ test("digest activity status is partial when an unsaved run has a completed runt
   const status = getDigestActivityStatus(entries);
 
   assert.equal(entries[0]?.status, "partial");
-  assert.equal(entries[0]?.syncSummary, "0/20 saved");
+  assert.equal(entries[0]?.syncSummary, "0/20 synced");
   assert.equal(status.key, "needs-attention");
   assert.equal(status.label, "Partial");
 });

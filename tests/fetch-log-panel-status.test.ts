@@ -488,7 +488,7 @@ test("fetch timeline status follows the concrete run bound to a scheduled slot",
   });
 
   assert.equal(entries[0]?.status, "failed");
-  assert.equal(entries[0]?.syncSummary, "5/7 saved");
+  assert.equal(entries[0]?.syncSummary, "5/7 synced");
   assert.equal(entries[0]?.run?.id, "run_failed");
 });
 
@@ -573,7 +573,7 @@ test("completed fetch outcomes outrank a later runtime timeout", () => {
   });
 
   assert.equal(entries[0]?.status, "ok");
-  assert.equal(entries[0]?.syncSummary, "1/1 saved");
+  assert.equal(entries[0]?.syncSummary, "1/1 synced");
 
   const displayState = fetchRunDisplayState({
     completedOutcomes: true,
@@ -666,7 +666,7 @@ test("partial checkpoint outcomes keep the expanded planned count visible", () =
   });
 
   assert.equal(entries[0]?.status, "failed");
-  assert.equal(entries[0]?.syncSummary, "1/3 saved");
+  assert.equal(entries[0]?.syncSummary, "1/3 synced");
 });
 
 test("running fetch job with partial failures stays syncing in the timeline", () => {
@@ -731,7 +731,7 @@ test("running fetch job with partial failures stays syncing in the timeline", ()
   assert.equal(status.label, "Running");
 });
 
-test("sync lifecycle progress separates saved posts from accounted terminal outcomes", () => {
+test("sync lifecycle progress separates synced posts from accounted terminal outcomes", () => {
   assert.deepEqual(
     fetchRunLifecycleSyncProgress({
       planned: 40,
@@ -834,7 +834,7 @@ test("failed post outcomes override an ok fetch run status", () => {
   });
 
   assert.equal(entries[0]?.status, "failed");
-  assert.equal(entries[0]?.syncSummary, "0/2 saved");
+  assert.equal(entries[0]?.syncSummary, "0/2 synced");
   assert.equal(status.key, "needs-attention");
   assert.equal(status.label, "Failed");
   assert.equal(stats.failed, 2);
@@ -1029,7 +1029,7 @@ test("action-needed post outcomes make a completed fetch run partial", () => {
   assert.equal(stats.synced, 3);
   assert.equal(stats.actionNeeded, 5);
   assert.equal(entries[0]?.status, "partial");
-  assert.equal(entries[0]?.syncSummary, "3/8 saved");
+  assert.equal(entries[0]?.syncSummary, "3/8 synced");
   assert.equal(activityStatus.key, "needs-attention");
   assert.equal(activityStatus.label, "Partial");
   assert.equal(updateStatus.key, "needs-attention");

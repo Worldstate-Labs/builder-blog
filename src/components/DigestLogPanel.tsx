@@ -198,10 +198,10 @@ function digestRunSummary(run: DigestRunListItem): string {
 
 function digestRunSyncSummary(run: DigestRunListItem | null): string | null {
   if (!run) return null;
-  const saved = Math.max(0, run.status === "synced" ? run.includedCount ?? 0 : 0);
-  const eligible = Math.max(0, run.candidateCount, saved);
-  if (eligible <= 0 && saved <= 0) return null;
-  return `${formatCount(saved)}/${formatCount(eligible)} saved`;
+  const synced = Math.max(0, run.status === "synced" ? run.includedCount ?? 0 : 0);
+  const eligible = Math.max(0, run.candidateCount, synced);
+  if (eligible <= 0 && synced <= 0) return null;
+  return `${formatCount(synced)}/${formatCount(eligible)} synced`;
 }
 
 function isNoUpdateDigestRun(run?: DigestRunListItem | null, jobRun?: AgentJobRunListItem | null): boolean {
@@ -885,19 +885,19 @@ function jobRunVerdict(jobRun: AgentJobRunListItem, nowMs = Date.now(), stallGra
   if (isStalledDigestJobRun(jobRun, nowMs, stallGraceUntilMs)) {
     return {
       tone: "fail",
-      text: "Local Agent stopped reporting before the AI Brief was saved.",
+      text: "Local Agent stopped reporting before the AI Brief was synced.",
     };
   }
   if (jobRun.status === "starting" || jobRun.status === "running") {
     return {
       tone: "warn",
-      text: "Local Agent is preparing candidates and saving the AI Brief.",
+      text: "Local Agent is preparing candidates and syncing the AI Brief.",
     };
   }
   if (jobRun.status === "succeeded") {
     return {
       tone: "warn",
-      text: "Local Agent finished without saving an AI Brief.",
+      text: "Local Agent finished without syncing an AI Brief.",
     };
   }
   return {
@@ -910,7 +910,7 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem, 
   if (hasFailedDigestJob(jobRun, nowMs, stallGraceUntilMs) && run.status === "synced") {
     return {
       tone: "fail",
-      text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} posts, but Local Agent marked the run failed. ${jobRunFailureReason(jobRun!)}`,
+      text: `Synced ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} posts, but Local Agent marked the run failed. ${jobRunFailureReason(jobRun!)}`,
     };
   }
   if (isNoUpdateDigestRun(run, jobRun)) {
@@ -922,18 +922,18 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem, 
   if (run.status === "synced") {
     return {
       tone: "ok",
-      text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} eligible posts to FollowBrief.`,
+      text: `Synced ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} eligible posts to FollowBrief.`,
     };
   }
   if (hasFailedDigestJob(jobRun, nowMs, stallGraceUntilMs)) {
     return {
       tone: "fail",
-      text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before saving. ${jobRunFailureReason(jobRun!)}`,
+      text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before syncing. ${jobRunFailureReason(jobRun!)}`,
     };
   }
   return {
     tone: "warn",
-    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for Local Agent to save the AI Brief.`,
+    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for Local Agent to sync the AI Brief.`,
   };
 }
 
@@ -951,7 +951,7 @@ function jobRunDisplaySummary(jobRun: AgentJobRunListItem): string {
       ? "Local Agent is working on this AI Brief."
       : summary || "Local Agent is working on this AI Brief.";
   }
-  return summary || "No AI Brief was saved for this run.";
+  return summary || "No AI Brief was synced for this run.";
 }
 
 function JobRunCard({
@@ -1132,7 +1132,7 @@ function DigestLifecycle({
   const hasRun = Boolean(run);
   const synced = run?.status === "synced";
   const failedJob = hasFailedDigestJob(jobRun, undefined, stallGraceUntilMs);
-  const digestSaved = synced && Boolean(run?.digestTitle);
+  const digestSynced = synced && Boolean(run?.digestTitle);
   const noUpdateRun = isNoUpdateDigestRun(run, jobRun);
   const noUpdateJob = isNoUpdateDigestJob(jobRun);
   const noUpdate = noUpdateRun || noUpdateJob;
@@ -1153,7 +1153,7 @@ function DigestLifecycle({
           ? `${formatCount(run.includedCount ?? 0)} selected`
         : activeJob
           ? "Generating"
-          : "No save reported"
+          : "No sync reported"
     : jobRun
       ? noUpdateJob
         ? "Not needed"
@@ -1216,7 +1216,7 @@ function DigestLifecycle({
     {
       key: "render",
       label: "Render brief JSON",
-      outcome: digestSaved
+      outcome: digestSynced
         ? run!.digestTitle!
         : noUpdate
           ? "Not needed"
@@ -1227,35 +1227,35 @@ function DigestLifecycle({
               : stepPast(2)
                 ? "Rendered"
                 : run ? "Not completed" : "Pending",
-      tone: digestSaved || noUpdate ? "ok" : synced ? "warn" : stepFailed(2) ? "fail" : stepActive(2) ? "warn" : stepPast(2) ? "ok" : failedJob ? "fail" : "idle",
+      tone: digestSynced || noUpdate ? "ok" : synced ? "warn" : stepFailed(2) ? "fail" : stepActive(2) ? "warn" : stepPast(2) ? "ok" : failedJob ? "fail" : "idle",
       open: stepFailed(2) || (failedJob && Boolean(run)),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
-          {digestSaved ? <DigestFactRow label="Title" value={<span>{run!.digestTitle}</span>} /> : null}
+          {digestSynced ? <DigestFactRow label="Title" value={<span>{run!.digestTitle}</span>} /> : null}
           {stepActive(2) ? <DigestFactRow label="Status" value={<span>The runner is validating and rendering the brief JSON.</span>} /> : null}
-          {!digestSaved && failedJob ? <DigestFactRow label="Blocked by" value={<span>Local Agent did not return brief JSON.</span>} /> : null}
+          {!digestSynced && failedJob ? <DigestFactRow label="Blocked by" value={<span>Local Agent did not return brief JSON.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
     {
       key: "sync",
-      label: "Save to FollowBrief",
+      label: "Sync to FollowBrief",
       outcome: noUpdate
         ? "No AI Brief needed"
         : run?.syncedAt
-          ? "Saved to FollowBrief"
+          ? "Synced to FollowBrief"
           : stepActive(3)
-            ? "Saving"
+            ? "Syncing"
             : stepPast(3)
-              ? "Saved"
-              : run ? "Not saved yet" : "Pending",
+              ? "Synced"
+              : run ? "Not synced yet" : "Pending",
       tone: noUpdate || run?.syncedAt ? "ok" : stepFailed(3) ? "fail" : stepActive(3) ? "warn" : stepPast(3) ? "ok" : failedJob ? "fail" : "idle",
       open: stepFailed(3) || (failedJob && Boolean(run) && !run?.syncedAt),
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
-          {run?.syncedAt ? <DigestFactRow label="Saved at" value={<span>{formatAbsolute(run.syncedAt)}</span>} /> : null}
-          {stepActive(3) ? <DigestFactRow label="Status" value={<span>The runner is saving the rendered AI Brief.</span>} /> : null}
-          {!run?.syncedAt && failedJob ? <DigestFactRow label="Blocked by" value={<span>No saved AI Brief was linked to this run.</span>} /> : null}
+          {run?.syncedAt ? <DigestFactRow label="Synced at" value={<span>{formatAbsolute(run.syncedAt)}</span>} /> : null}
+          {stepActive(3) ? <DigestFactRow label="Status" value={<span>The runner is syncing the rendered AI Brief.</span>} /> : null}
+          {!run?.syncedAt && failedJob ? <DigestFactRow label="Blocked by" value={<span>No synced AI Brief was linked to this run.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
@@ -1268,7 +1268,7 @@ function DigestLifecycle({
       children: (
         <DigestLifecycleDetails jobRun={jobRun} run={run}>
           {synced ? <DigestFactRow label="Recorded" value={<span>{formatCount(run?.includedCount ?? 0)} posts</span>} /> : null}
-          {!synced && failedJob ? <DigestFactRow label="Blocked by" value={<span>No posts were recorded because the AI Brief was not saved.</span>} /> : null}
+          {!synced && failedJob ? <DigestFactRow label="Blocked by" value={<span>No posts were recorded because the AI Brief was not synced.</span>} /> : null}
         </DigestLifecycleDetails>
       ),
     },
@@ -1313,12 +1313,12 @@ function statusChip(run: DigestRunListItem, jobRun?: AgentJobRunListItem, stallG
   }
   if (run.status !== "synced") {
     return {
-      label: "Not saved",
+      label: "Not synced",
       tone: "partial",
     };
   }
   return {
-    label: "Saved",
+    label: "Synced",
     tone: "ok",
   };
 }
@@ -1345,7 +1345,7 @@ function RunCard({
     : "all new posts";
 
   const title =
-    run.digestTitle ?? (run.status === "synced" ? "Untitled AI Brief" : "Prepared, no AI Brief saved");
+    run.digestTitle ?? (run.status === "synced" ? "Untitled AI Brief" : "Prepared, no AI Brief synced");
 
   const contributing = run.sources.filter((s) => s.eligible > 0);
   const silentCount = run.subscriptionCount - contributing.length;
@@ -1394,7 +1394,7 @@ function RunCard({
             <FunnelStat value={run.droppedCount ?? 0} label="skipped" tone="muted" />
           </>
         ) : (
-          <span className="sync-panel-run-card-muted">· not saved yet</span>
+          <span className="sync-panel-run-card-muted">· not synced yet</span>
         )}
       </div>
 
@@ -1598,7 +1598,7 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
   const outcome = !synced ? "pending" : item.included ? "used" : "not used";
   const outcomeTone = !synced ? "pending" : item.included ? "used" : "muted";
   const outcomeTitle = !synced
-    ? "Found, AI Brief not saved yet"
+    ? "Found, AI Brief not synced yet"
     : item.included
       ? "Used in the AI Brief"
       : "Found but skipped";

@@ -2973,7 +2973,7 @@ run_digest_job() {
     return "$_render_code"
   fi
 
-  job_run_update running "Saving digest to FollowBrief." "sync_started" --stage "save_to_followbrief"
+  job_run_update running "Syncing digest to FollowBrief." "sync_started" --stage "save_to_followbrief"
   _sync_stderr="$JOB_TMP_DIR/digest-sync.err"
   set +e
   BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
@@ -2988,7 +2988,7 @@ run_digest_job() {
   [ ! -s "$_sync_result_file" ] || cat "$_sync_result_file"
   [ ! -s "$_sync_stderr" ] || cat "$_sync_stderr" >&2
   if [ "$_sync_code" -ne 0 ]; then
-    job_run_update failed "Save to FollowBrief failed." "sync_failed" \
+    job_run_update failed "Sync to FollowBrief failed." "sync_failed" \
       --stage "save_to_followbrief" \
       --exit-code "$_sync_code"
     return "$_sync_code"
@@ -3285,7 +3285,7 @@ flush_remaining_library_results() {
     --out "$_frlr_remaining_payload" | tee "$_frlr_remaining_merge"
 
   _frlr_sync_slices_dir="$JOB_TMP_DIR/sync-slices"
-  job_run_update running "Saving fetched posts to FollowBrief." "sync_started" --stage "sync_to_followbrief"
+  job_run_update running "Syncing fetched posts to FollowBrief." "sync_started" --stage "sync_to_followbrief"
   _frlr_sync_failures=0
   SYNC_PAYLOAD_SYNCED_IDS_FILE="$_frlr_synced_ids_file"
   if ! sync_payload_slices "$_frlr_remaining_tasks" "$_frlr_remaining_payload" "$_frlr_sync_slices_dir" "$_frlr_label" --results-dir "$_frlr_results_dir"; then

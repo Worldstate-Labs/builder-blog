@@ -840,7 +840,7 @@ function timelineSlotRunNote(slot: CronSlot, run: LibraryFetchRunListItem | null
 function formatRunSyncSummary(done: number | undefined, total: number | undefined): string {
   const synced = Math.max(0, done ?? 0);
   const planned = Math.max(0, total ?? 0, synced);
-  return `${formatCount(synced)}/${formatCount(planned)} saved`;
+  return `${formatCount(synced)}/${formatCount(planned)} synced`;
 }
 
 function hasFinalFetchTaskOutcomes(details: DetailsShape): boolean {
@@ -986,7 +986,7 @@ export function getFetchActivityStatus(entries: FetchTimelineEntry[]): FetchUpda
     return {
       key: "healthy",
       label: "No update",
-      summary: "The latest Fetch sources job completed with no new posts to save.",
+      summary: "The latest Fetch sources job completed with no new posts to sync.",
       style: statusStyle("ok"),
     };
   }
@@ -1387,7 +1387,7 @@ export function getFetchUpdateStatus(
     return {
       key: "syncing",
       label: "Syncing",
-      summary: "A Fetch sources run is still saving post results.",
+      summary: "A Fetch sources run is still syncing post results.",
       style: statusStyle("partial"),
     };
   }
@@ -1930,7 +1930,7 @@ function fetchRunVerdict({
   if (displayStatus.label === "No update") {
     return {
       tone: "ok",
-      text: "No update. Sources were checked and no new posts needed to be saved.",
+      text: "No update. Sources were checked and no new posts needed to be synced.",
     };
   }
   if (stats.planned > 0 && accounted >= stats.planned) {

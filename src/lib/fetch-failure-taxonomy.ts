@@ -169,14 +169,14 @@ const FETCH_FAILURE_TAXONOMY = {
   task_sync_failed: {
     category: "sync",
     stage: "sync",
-    userMessage: "FollowBrief could not save this post",
+    userMessage: "FollowBrief could not sync this post",
     operatorMessage: "The sync endpoint rejected or failed this task.",
     retryable: true,
   },
   slice_sync_failed: {
     category: "sync",
     stage: "sync",
-    userMessage: "FollowBrief could not save this post",
+    userMessage: "FollowBrief could not sync this post",
     operatorMessage: "The sync slice failed after task processing.",
     retryable: true,
   },
@@ -184,7 +184,7 @@ const FETCH_FAILURE_TAXONOMY = {
     category: "sync",
     stage: "sync",
     userMessage: "FollowBrief rejected this post during sync",
-    operatorMessage: "The cloud feed sync result rejected a post that the worker expected to save.",
+    operatorMessage: "The cloud feed sync result rejected a post that the worker expected to sync.",
     retryable: false,
   },
   worker_missing_result: {

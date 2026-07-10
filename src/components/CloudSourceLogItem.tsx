@@ -260,7 +260,7 @@ function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
       tone: summarizeTone,
       children: noPosts ? (
         <p className="sync-panel-task-note">
-          No summary exists because there were no fetched posts to summarize or save.
+          No summary exists because there were no fetched posts to summarize or sync.
         </p>
       ) : undefined,
     },
