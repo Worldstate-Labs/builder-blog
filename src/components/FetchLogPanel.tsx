@@ -1977,6 +1977,45 @@ function RunCardVerdict({
   );
 }
 
+function RunCardTaskDetails({
+  details,
+  liveProgress,
+}: {
+  details: DetailsShape;
+  liveProgress: FetchJobProgress | null;
+}) {
+  const displayDetails = fetchDetailsForTaskDisplay(details, liveProgress);
+  const postTaskCount = Array.isArray(displayDetails.fetchTasks)
+    ? displayDetails.fetchTasks.filter(isPlannedPostTask).length
+    : 0;
+
+  return (
+    <details className="sync-panel-run-card-details">
+      <summary className="sync-panel-run-card-details-summary">
+        <span>Post task details</span>
+        {postTaskCount > 0 ? (
+          <span className="sync-panel-run-card-details-count">
+            {formatCount(postTaskCount)}
+          </span>
+        ) : null}
+      </summary>
+      <div className="sync-panel-run-card-details-body">
+        <DetailsBody details={displayDetails} liveProgress={liveProgress} />
+      </div>
+    </details>
+  );
+}
+
+function hasRunCardTaskDetails(details: DetailsShape, liveProgress: FetchJobProgress | null): boolean {
+  const displayDetails = fetchDetailsForTaskDisplay(details, liveProgress);
+  return (
+    (Array.isArray(displayDetails.fetchTasks) && displayDetails.fetchTasks.length > 0) ||
+    (Array.isArray(displayDetails.userActions) && displayDetails.userActions.length > 0) ||
+    (Array.isArray(displayDetails.localErrors) && displayDetails.localErrors.length > 0) ||
+    Boolean(displayDetails.cliFlags || displayDetails.error)
+  );
+}
+
 function lifecycleTone(done: number, total: number, {
   failed = 0,
   warnWhenPartial = true,
@@ -2163,6 +2202,7 @@ function JobRunCard({
       ]
     : [];
   const statusDetails = [...runtimeDetails, ...diagnostic];
+  const showTaskDetails = hasRunCardTaskDetails({}, liveProgress);
   return (
     <article className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
@@ -2184,6 +2224,9 @@ function JobRunCard({
         {jobRun.summary || fallbackSummary}
       </p>
       <JobLifecycle details={{}} progress={liveProgress} />
+      {showTaskDetails ? (
+        <RunCardTaskDetails details={{}} liveProgress={liveProgress} />
+      ) : null}
       {statusDetails.length > 0 ? (
         <RunCardVerdict
           details={statusDetails}
@@ -2254,9 +2297,6 @@ function RunCard({
     stats,
   });
   const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : [];
-  const postTaskCount = Array.isArray(details.fetchTasks)
-    ? details.fetchTasks.filter(isPlannedPostTask).length
-    : 0;
 
   return (
     <article
@@ -2302,19 +2342,7 @@ function RunCard({
         </div>
       ) : null}
 
-      <details className="sync-panel-run-card-details">
-        <summary className="sync-panel-run-card-details-summary">
-          <span>Post task details</span>
-          {postTaskCount > 0 ? (
-            <span className="sync-panel-run-card-details-count">
-              {formatCount(postTaskCount)}
-            </span>
-          ) : null}
-        </summary>
-        <div className="sync-panel-run-card-details-body">
-          <DetailsBody details={details} liveProgress={liveProgress} />
-        </div>
-      </details>
+      <RunCardTaskDetails details={details} liveProgress={liveProgress} />
     </article>
   );
 }
@@ -2405,6 +2433,52 @@ function isPlannedPostTask(task: FetchTaskLog): boolean {
   if (isCandidateDiscoveryTask(task)) return false;
   if (typeof task.id === "string" && task.id.startsWith("fetch_post:")) return true;
   return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
+}
+
+function liveProgressTaskDetailStatus(task: FetchTaskProgress): FetchTaskLog["status"] {
+  const status = String(task.status ?? "").toLowerCase();
+  if (
+    status === "synced" ||
+    status === "skipped" ||
+    status === "failed" ||
+    status === "action_needed"
+  ) {
+    return status;
+  }
+  return "pending";
+}
+
+function liveProgressPostTasks(liveProgress: FetchJobProgress | null): FetchTaskLog[] {
+  return (liveProgress?.tasks ?? []).filter(isLivePostTask).map((task) => ({
+    id: task.id ?? task.taskId ?? null,
+    builder: task.builder ?? null,
+    builderId: task.builderId ?? null,
+    sourceType: task.sourceType ?? null,
+    title: task.title ?? null,
+    url: task.url ?? null,
+    status: liveProgressTaskDetailStatus(task),
+    workerId: task.workerId ?? null,
+    bodyChars: task.bodyChars ?? null,
+    bodyWords: task.bodyWords ?? null,
+    headlineChars: task.headlineChars ?? null,
+    headlineWords: task.headlineWords ?? null,
+    summaryChars: task.summaryChars ?? null,
+    summaryWords: task.summaryWords ?? null,
+  }));
+}
+
+export function fetchDetailsForTaskDisplay(
+  details: DetailsShape,
+  liveProgress: FetchJobProgress | null,
+): DetailsShape {
+  const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  if (fetchTasks.some(isPlannedPostTask)) return details;
+  const liveTasks = liveProgressPostTasks(liveProgress);
+  if (liveTasks.length === 0) return details;
+  return {
+    ...details,
+    fetchTasks: [...fetchTasks, ...liveTasks],
+  };
 }
 
 function isReadForStats(task: FetchTaskLog): boolean {

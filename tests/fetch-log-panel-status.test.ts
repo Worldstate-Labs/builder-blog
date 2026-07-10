@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildFetchTimeline,
   fetchCronFrequencyLabel,
+  fetchDetailsForTaskDisplay,
   fetchRunLifecycleSyncProgress,
   fetchRunDisplayState,
   fetchRunStats,
@@ -1252,6 +1253,83 @@ test("fetch run stats exclude candidate discovery from live post counters", () =
   assert.equal(stats.read, 3);
   assert.equal(stats.summarized, 3);
   assert.equal(stats.synced, 3);
+});
+
+test("live job progress can backfill job-only post task details", () => {
+  const details = fetchDetailsForTaskDisplay({}, {
+    stage: "workers_running",
+    counters: {
+      tasksPlanned: 2,
+    },
+    tasks: [
+      {
+        id: "candidate_discovery:source:product_hunt_top_products",
+        status: "synced",
+        phase: "synced",
+        workerId: "shard-0",
+      },
+      {
+        id: "fetch_post:source:one",
+        builder: "Example Blog",
+        builderId: "builder_1",
+        sourceType: "blog",
+        title: "A running task",
+        url: "https://example.com/post",
+        status: "summarizing",
+        phase: "summarize",
+        workerId: "shard-1",
+        bodyChars: 1200,
+      },
+      {
+        id: "fetch_post:source:two",
+        builder: "Example Blog",
+        builderId: "builder_1",
+        sourceType: "blog",
+        title: "A synced task",
+        status: "synced",
+        phase: "synced",
+        workerId: "shard-2",
+        bodyChars: 900,
+        summaryChars: 140,
+        headlineChars: 42,
+      },
+    ],
+  });
+
+  assert.deepEqual(details.fetchTasks, [
+    {
+      id: "fetch_post:source:one",
+      builder: "Example Blog",
+      builderId: "builder_1",
+      sourceType: "blog",
+      title: "A running task",
+      url: "https://example.com/post",
+      status: "pending",
+      workerId: "shard-1",
+      bodyChars: 1200,
+      bodyWords: null,
+      headlineChars: null,
+      headlineWords: null,
+      summaryChars: null,
+      summaryWords: null,
+    },
+    {
+      id: "fetch_post:source:two",
+      builder: "Example Blog",
+      builderId: "builder_1",
+      sourceType: "blog",
+      title: "A synced task",
+      url: null,
+      status: "synced",
+      workerId: "shard-2",
+      bodyChars: 900,
+      bodyWords: null,
+      headlineChars: 42,
+      headlineWords: null,
+      summaryChars: 140,
+      summaryWords: null,
+    },
+  ]);
 });
 
 test("fetch run stats do not count summary translation as source read", () => {

@@ -773,6 +773,12 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /<RunCardVerdict details=\{diagnostic\} text=\{verdict\.text\} tone=\{verdict\.tone\} \/>/);
   assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-diagnostics\s*{/);
   assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-verdict-text\s*{/);
+  assert.match(panel, /function RunCardTaskDetails/);
+  assert.match(panel, /function fetchDetailsForTaskDisplay/);
+  assert.match(panel, /const displayDetails = fetchDetailsForTaskDisplay\(details, liveProgress\)/);
+  assert.match(panel, /function JobRunCard[\s\S]*<RunCardTaskDetails[\s\S]*details=\{\{\}\}[\s\S]*liveProgress=\{liveProgress\}[\s\S]*\/>/);
+  assert.match(panel, /function RunCard[\s\S]*<RunCardTaskDetails[\s\S]*details=\{details\}[\s\S]*liveProgress=\{liveProgress\}[\s\S]*\/>/);
+  assert.match(panel, /liveProgressPostTasks\(liveProgress\)/);
   assert.doesNotMatch(panel, /className="sync-panel-run-card-funnel"/);
   assert.doesNotMatch(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);
