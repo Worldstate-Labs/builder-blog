@@ -509,9 +509,23 @@ run_with_codex_unattended() {
 }
 
 run_with_claude_unattended() {
-  # acceptEdits auto-approves edits; allowedTools whitelists the tool
-  # surface the library-once skill actually uses (Bash for node CLI +
-  # curl, WebFetch for content extraction, file IO under tmp/).
+  _claude_allowed_tools="Bash,Edit,Read,Write,Grep,Glob,WebFetch"
+  _claude_disallowed_tools="Task,TaskCreate,TaskGet,TaskList,TaskOutput,TaskStop,TaskUpdate"
+  claude_unattended_command() {
+    # The runner owns library shard parallelism. Block only Claude's internal
+    # Task/subagent tools in shard workers: delegated agents do not write
+    # FollowBrief checkpoint/result files for this worker, so their work is not
+    # durable. Other unattended Claude jobs can keep their normal tool surface.
+    if [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" = "worker" ]; then
+      claude "$@" --disallowedTools "$_claude_disallowed_tools"
+    else
+      claude "$@"
+    fi
+  }
+  # acceptEdits auto-approves edits; allowedTools whitelists the primary tool
+  # surface the skill actually uses (Bash for node CLI + curl, WebFetch for
+  # content extraction, file IO under tmp/). Other built-in tools remain
+  # available to Claude unless explicitly denied.
   _claude_output="$(agent_output_file claude)"
   _claude_usage="$(agent_usage_file claude)"
   LAST_AGENT_OUTPUT_FILE="$_claude_output"
@@ -524,19 +538,19 @@ run_with_claude_unattended() {
     # `--print` (-p) with `--output-format stream-json` requires `--verbose`
     # on current Claude CLI versions; without it the CLI exits immediately
     # and the worker produces no shard result.
-    claude -p "$(cat "$PROMPT_FILE")" \
+    claude_unattended_command -p "$(cat "$PROMPT_FILE")" \
       --model "$_claude_model" \
       --output-format stream-json \
       --verbose \
       --add-dir "$AGENT_DIR" \
       --permission-mode acceptEdits \
-      --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
+      --allowedTools "$_claude_allowed_tools" > "$_claude_output" 2>&1
   else
-    claude -p "$(cat "$PROMPT_FILE")" \
+    claude_unattended_command -p "$(cat "$PROMPT_FILE")" \
       --model "$_claude_model" \
       --add-dir "$AGENT_DIR" \
       --permission-mode acceptEdits \
-      --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
+      --allowedTools "$_claude_allowed_tools" > "$_claude_output" 2>&1
   fi
   _claude_code="$?"
   set -e

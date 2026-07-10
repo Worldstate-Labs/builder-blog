@@ -282,6 +282,13 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /worker_stalled_timeout/);
   assert.match(runner, /worker_stall_timeout_seconds/);
   assert.match(runner, /worker_progress_mtime_seconds/);
+  assert.match(runner, /_claude_allowed_tools="Bash,Edit,Read,Write,Grep,Glob,WebFetch"/);
+  assert.match(runner, /_claude_disallowed_tools="Task,TaskCreate,TaskGet,TaskList,TaskOutput,TaskStop,TaskUpdate"/);
+  assert.match(runner, /claude_unattended_command\(\)/);
+  assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \][\s\S]*--disallowedTools "\$_claude_disallowed_tools"/);
+  assert.match(runner, /--allowedTools "\$_claude_allowed_tools"/);
+  assert.match(runner, /--disallowedTools "\$_claude_disallowed_tools"/);
+  assert.doesNotMatch(runner, /--tools "\$_claude_allowed_tools"/);
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
@@ -294,6 +301,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(workerPrompt, /under the `progress\/`[\s\S]*subdirectory/);
   assert.match(workerPrompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
   assert.match(workerPrompt, /extraction_exceeds_shard_timeout/);
+  assert.match(workerPrompt, /Do NOT use Claude Task\/subagent/);
 });
 
 test("runner cleans cloud host temp files and orphaned fetch tools", () => {
