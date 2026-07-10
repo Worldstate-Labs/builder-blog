@@ -3271,6 +3271,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "FollowBrief 프로모 필름",
     es: "Film promocional de FollowBrief",
   },
+  "Enter fullscreen": {
+    "zh-CN": "进入全屏",
+    "zh-TW": "進入全螢幕",
+    ja: "全画面表示",
+    ko: "전체 화면",
+    es: "Pantalla completa",
+  },
   "Preview data": {
     "zh-CN": "预览数据",
     "zh-TW": "預覽資料",

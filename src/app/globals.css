@@ -15256,6 +15256,34 @@ body {
   width: 100%;
 }
 
+/* Mobile-only overlay control; native mobile video controls often bury or
+   omit fullscreen, so the landing offers an explicit affordance. */
+.lp-film-fullscreen {
+  align-items: center;
+  background: color-mix(in oklch, var(--surface-ink) 72%, transparent);
+  border: 1px solid color-mix(in oklch, var(--surface-paper) 24%, transparent);
+  border-radius: 8px;
+  color: var(--surface-paper);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.25rem;
+  justify-content: center;
+  position: absolute;
+  right: 0.625rem;
+  top: 0.625rem;
+  width: 2.25rem;
+  z-index: 1;
+}
+
+.lp-film-fullscreen:hover {
+  background: color-mix(in oklch, var(--surface-ink) 88%, transparent);
+}
+
+.lp-film-fullscreen svg {
+  height: 1rem;
+  width: 1rem;
+}
+
 /* Sections */
 .lp-section {
   border-top: 1px solid var(--line);
