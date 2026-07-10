@@ -16,8 +16,11 @@ import {
 import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
 import { languageOptions } from "@/components/settings/SettingsFields";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { useHydrated } from "@/components/ThemeToggle";
+import { CLOUD_SOURCE_SUBMISSION_LIMIT } from "@/lib/cloud-source-contracts";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
+import { sourceLabelForType } from "@/lib/source-display";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
@@ -84,6 +87,16 @@ export type ActiveScheduleInfo = {
   startedAt: string;
   hostname: string | null;
   platform: string | null;
+};
+export type CloudSubmissionSource = {
+  id: string;
+  name: string;
+  handle: string | null;
+  sourceType: string;
+  sourceUrl: string | null;
+  fetchUrl: string | null;
+  avatarUrl: string | null;
+  avatarDataUrl: string | null;
 };
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
 function promptDialogDescription(context: SkillPromptContext, runtimeType: RuntimeType = "local") {
@@ -338,6 +351,7 @@ const PROMPT_CONFIG = {
 
 export function SkillPromptActions({
   activeSchedule = null,
+  cloudSubmissionSources = [],
   cloudFetchActive = false,
   context,
   localFetchActive,
@@ -348,6 +362,7 @@ export function SkillPromptActions({
   showStop = true,
 }: {
   activeSchedule?: ActiveScheduleInfo | null;
+  cloudSubmissionSources?: CloudSubmissionSource[];
   cloudFetchActive?: boolean;
   context: SkillPromptContext;
   localFetchActive?: boolean;
@@ -723,18 +738,21 @@ export function SkillPromptActions({
         </span>
       )}
 
-      <CronConfigDialog
-        open={cronConfigOpen}
-        context={context}
-        summaryLanguage={summaryLanguage}
-        digestMaxPostAgeDays={digestMaxPostAgeDays}
-        onCancel={() => setCronConfigOpen(false)}
-        onCloudSubmitted={handleCloudSubmitted}
-        onConfirm={async (selection) => {
-          const completed = await continueScheduleCopy(selection);
-          if (completed) setCronConfigOpen(false);
-        }}
-      />
+      {cronConfigOpen ? (
+        <CronConfigDialog
+          open={cronConfigOpen}
+          context={context}
+          cloudSubmissionSources={cloudSubmissionSources}
+          summaryLanguage={summaryLanguage}
+          digestMaxPostAgeDays={digestMaxPostAgeDays}
+          onCancel={() => setCronConfigOpen(false)}
+          onCloudSubmitted={handleCloudSubmitted}
+          onConfirm={async (selection) => {
+            const completed = await continueScheduleCopy(selection);
+            if (completed) setCronConfigOpen(false);
+          }}
+        />
+      ) : null}
 
       <TokenPickerDialog
         open={pickerTarget !== null}
@@ -1225,9 +1243,89 @@ function ManualCopyPromptPanel({
   );
 }
 
+function cloudSubmissionSourceMeta(source: CloudSubmissionSource) {
+  if (source.sourceType === "x" && source.handle) return `@${source.handle.replace(/^@+/, "")}`;
+  return source.sourceUrl ?? source.fetchUrl ?? source.handle ?? "";
+}
+
+function CloudSourceSelectionField({
+  sources,
+  selectedBuilderIds,
+  onChange,
+}: {
+  sources: CloudSubmissionSource[];
+  selectedBuilderIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const selectedSet = new Set(selectedBuilderIds);
+  const selectedCount = selectedBuilderIds.length;
+
+  function toggleSource(id: string) {
+    const nextSelected = new Set(selectedSet);
+    if (nextSelected.has(id)) {
+      nextSelected.delete(id);
+    } else if (nextSelected.size < CLOUD_SOURCE_SUBMISSION_LIMIT) {
+      nextSelected.add(id);
+    }
+    onChange(sources.filter((source) => nextSelected.has(source.id)).map((source) => source.id));
+  }
+
+  return (
+    <section className="cloud-submit-source-picker" aria-labelledby="cloud-submit-source-title">
+      <div className="cloud-submit-source-head">
+        <h3 id="cloud-submit-source-title" className="cloud-submit-source-title">
+          Sources
+        </h3>
+        <span className="cloud-submit-source-count">
+          {selectedCount}/{CLOUD_SOURCE_SUBMISSION_LIMIT} selected
+        </span>
+      </div>
+      <p className="cron-field-hint">
+        {`You can submit up to ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources to Cloud.`}
+      </p>
+      <div className="cloud-submit-source-list" role="group" aria-label="Cloud sources to submit">
+        {sources.map((source) => {
+          const checked = selectedSet.has(source.id);
+          const disabled = !checked && selectedCount >= CLOUD_SOURCE_SUBMISSION_LIMIT;
+          const meta = cloudSubmissionSourceMeta(source);
+          return (
+            <label
+              className={`cloud-submit-source-row${checked ? " is-selected" : ""}${
+                disabled ? " is-disabled" : ""
+              }`}
+              key={source.id}
+            >
+              <input
+                checked={checked}
+                className="cloud-submit-source-checkbox"
+                disabled={disabled}
+                onChange={() => toggleSource(source.id)}
+                type="checkbox"
+              />
+              <SourceAvatar
+                className="cloud-submit-source-avatar"
+                imageSize={32}
+                source={source}
+              />
+              <span className="cloud-submit-source-copy">
+                <span className="cloud-submit-source-name">{source.name}</span>
+                <span className="cloud-submit-source-meta">
+                  {sourceLabelForType(source.sourceType)}
+                  {meta ? ` · ${meta}` : ""}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function CronConfigDialog({
   open,
   context,
+  cloudSubmissionSources,
   summaryLanguage,
   digestMaxPostAgeDays,
   onCancel,
@@ -1236,6 +1334,7 @@ function CronConfigDialog({
 }: {
   open: boolean;
   context: SkillPromptContext;
+  cloudSubmissionSources: CloudSubmissionSource[];
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
   onCancel: () => void;
@@ -1265,6 +1364,13 @@ function CronConfigDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cloudSubmitMessage, setCloudSubmitMessage] = useState<string | null>(null);
+  const initialCloudSelectedBuilderIds = useMemo(
+    () => cloudSubmissionSources.slice(0, CLOUD_SOURCE_SUBMISSION_LIMIT).map((source) => source.id),
+    [cloudSubmissionSources],
+  );
+  const [cloudSelectedBuilderIds, setCloudSelectedBuilderIds] = useState<string[]>(
+    initialCloudSelectedBuilderIds,
+  );
   const [cloudExisting, setCloudExisting] = useState<{
     hasActiveSubmission: boolean;
     activeSourceCount: number;
@@ -1274,6 +1380,12 @@ function CronConfigDialog({
   } | null>(null);
   const dialogConfig = PROMPT_CONFIG[context];
   const isCloudMode = context === "library" && runtimeType === "cloud";
+  const needsCloudSourceSelection =
+    isCloudMode && cloudSubmissionSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT;
+  const cloudSelectionInvalid =
+    needsCloudSourceSelection &&
+    (cloudSelectedBuilderIds.length === 0 ||
+      cloudSelectedBuilderIds.length > CLOUD_SOURCE_SUBMISSION_LIMIT);
   // One submission per user: when a prior submission exists, the submit becomes
   // an explicit overwrite.
   const cloudSubmitLabel = submitting
@@ -1336,6 +1448,11 @@ function CronConfigDialog({
     setError(null);
     setCloudSubmitMessage(null);
     try {
+      if (cloudSelectionInvalid) {
+        setError(`Select 1-${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to Cloud.`);
+        setSubmitting(false);
+        return;
+      }
       // Summary language is account-wide, so persist it server-side (not via
       // the cron URL) — /api/skill/context reads it at every fetch. No-op when
       // unchanged.
@@ -1366,6 +1483,7 @@ function CronConfigDialog({
           body: JSON.stringify({
             frequency: pickedCloudFrequency,
             summaryLanguage: pickedLanguage,
+            ...(needsCloudSourceSelection ? { builderIds: cloudSelectedBuilderIds } : {}),
           }),
         });
         const body = await response.json().catch(() => null);
@@ -1483,6 +1601,14 @@ function CronConfigDialog({
                     : ""
               }. Submitting again overwrites your previous submission — switching language deactivates the old language.`}
             </p>
+          ) : null}
+
+          {needsCloudSourceSelection ? (
+            <CloudSourceSelectionField
+              selectedBuilderIds={cloudSelectedBuilderIds}
+              sources={cloudSubmissionSources}
+              onChange={setCloudSelectedBuilderIds}
+            />
           ) : null}
 
           <div className="cron-field">
@@ -1647,7 +1773,7 @@ function CronConfigDialog({
           <button
             type="submit"
             className="fb-btn dark compact"
-            disabled={submitting}
+            disabled={submitting || cloudSelectionInvalid}
           >
             <Copy aria-hidden="true" />
             {runtimeType === "cloud"

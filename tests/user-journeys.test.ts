@@ -502,6 +502,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(buildersPage, /activeSchedule=\{data\.libraryCronJob\}/);
+  assert.match(buildersPage, /cloudSubmissionSources=\{data\.cloudSubmissionSources\}/);
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /cloudFetchActive=\{showStopCloudFetch\}/);
   assert.match(buildersPage, /localFetchActive=\{showStopLibraryCron\}/);
@@ -533,6 +534,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /router\.refresh\(\)/);
   assert.match(skillPromptActions, /onCloudSubmitted/);
   assert.match(skillPromptActions, /optimisticCloudActive/);
+  assert.match(skillPromptActions, /CLOUD_SOURCE_SUBMISSION_LIMIT/);
+  assert.match(skillPromptActions, /CloudSourceSelectionField/);
+  assert.match(skillPromptActions, /cloud-submit-source-list/);
+  assert.match(skillPromptActions, /You can submit up to \$\{CLOUD_SOURCE_SUBMISSION_LIMIT\} sources/);
+  assert.match(skillPromptActions, /builderIds: cloudSelectedBuilderIds/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.doesNotMatch(skillPromptActions, /Choose which Fetch sources runtime to stop/);
   assert.match(skillPromptActions, /Stop the server-authorized recurring schedule\./);

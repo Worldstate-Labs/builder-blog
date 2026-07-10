@@ -4,15 +4,18 @@ import { SkillBuilderSchema, SkillTaskOutcomeSchema } from "@/lib/skill-contract
 
 export type CloudFetchFrequencyInput = "day" | "week";
 export type CloudFetchFrequency = "DAILY" | "WEEKLY";
+export const CLOUD_SOURCE_SUBMISSION_LIMIT = 20;
 
 export type CloudSourceSubmissionInput = {
   frequency: string;
   summaryLanguage: string | null | undefined;
+  builderIds?: unknown;
 };
 
 export type NormalizedCloudSourceSubmission = {
   frequency: CloudFetchFrequency;
   summaryLanguage: string;
+  builderIds?: string[];
 };
 
 export function normalizeCloudFetchFrequencyInput(value: string): CloudFetchFrequency {
@@ -22,6 +25,22 @@ export function normalizeCloudFetchFrequencyInput(value: string): CloudFetchFreq
   throw new Error("Cloud fetch frequency must be day or week.");
 }
 
+function normalizeCloudSubmissionBuilderIds(value: unknown): string[] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    throw new Error("Cloud source selections must be an array.");
+  }
+  const ids = Array.from(
+    new Set(
+      value.map((id) => (typeof id === "string" ? id.trim() : "")).filter(Boolean),
+    ),
+  );
+  if (ids.length > CLOUD_SOURCE_SUBMISSION_LIMIT) {
+    throw new Error(`Cloud submissions can include at most ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources.`);
+  }
+  return ids;
+}
+
 export function normalizeCloudSourceSubmissionInput(
   input: CloudSourceSubmissionInput,
 ): NormalizedCloudSourceSubmission {
@@ -29,6 +48,7 @@ export function normalizeCloudSourceSubmissionInput(
   return {
     frequency: normalizeCloudFetchFrequencyInput(input.frequency),
     summaryLanguage,
+    builderIds: normalizeCloudSubmissionBuilderIds(input.builderIds),
   };
 }
 

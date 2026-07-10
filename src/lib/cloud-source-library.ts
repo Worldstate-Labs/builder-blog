@@ -1,6 +1,9 @@
 import { BuilderPoolOrigin, type BuilderKind, type PrismaClient } from "@prisma/client";
 import { builderLibraryKey } from "@/lib/builder-keys";
-import type { CloudFetchFrequency } from "@/lib/cloud-source-contracts";
+import {
+  CLOUD_SOURCE_SUBMISSION_LIMIT,
+  type CloudFetchFrequency,
+} from "@/lib/cloud-source-contracts";
 import { cancelQueuedCloudFetchForTasks } from "@/lib/cloud-source-scheduler";
 import {
   displayLanguagePreference,
@@ -382,6 +385,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
   userId: string;
   frequency: CloudFetchFrequency;
   summaryLanguage: string;
+  builderIds?: string[];
   now?: Date;
   prisma?: PrismaClient;
   copyBuilderUpsert?: UpsertBuilderForCloudCopy;
@@ -401,6 +405,26 @@ export async function submitUserPrivateLibraryToCloud(params: {
   if (privateSources.length === 0) {
     throw new CloudSourceSubmissionError("Add at least one private source before submitting to Cloud.");
   }
+  const selectedBuilderIds = params.builderIds ? new Set(params.builderIds) : null;
+  if (!selectedBuilderIds && privateSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT) {
+    throw new CloudSourceSubmissionError(
+      `Select up to ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to Cloud.`,
+    );
+  }
+  const submissionSources = selectedBuilderIds
+    ? privateSources.filter((source) => selectedBuilderIds.has(source.builderId))
+    : privateSources;
+  if (selectedBuilderIds && submissionSources.length !== selectedBuilderIds.size) {
+    throw new CloudSourceSubmissionError("Some selected sources are not in your library.");
+  }
+  if (submissionSources.length === 0) {
+    throw new CloudSourceSubmissionError("Select at least one source before submitting to Cloud.");
+  }
+  if (submissionSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT) {
+    throw new CloudSourceSubmissionError(
+      `Select up to ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to Cloud.`,
+    );
+  }
   const cloudLibrary = await ensureCloudLanguageLibraryForSubmission({
     summaryLanguage: params.summaryLanguage,
     prisma,
@@ -415,7 +439,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
 
   let tasksTouched = 0;
   const keepCloudBuilderIds: string[] = [];
-  for (const source of privateSources) {
+  for (const source of submissionSources) {
     const cloudBuilder = await copyBuilderToCloudOwner({
       cloudOwnerUserId: cloudLibrary.ownerUserId,
       userBuilder: source.builder,
@@ -505,7 +529,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
 
   await syncCloudLanguageLibraryHub(params.summaryLanguage, prisma);
   return {
-    sourcesSubmitted: privateSources.length,
+    sourcesSubmitted: submissionSources.length,
     tasksSubmitted: tasksTouched,
     supersededSources,
     frequency: params.frequency,

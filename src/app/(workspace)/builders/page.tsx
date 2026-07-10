@@ -22,7 +22,10 @@ import { OwnDigestPipelineUpdatesCard } from "@/components/OwnDigestPipelineUpda
 import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
-import { SkillPromptActions } from "@/components/SkillPromptActions";
+import {
+  SkillPromptActions,
+  type CloudSubmissionSource,
+} from "@/components/SkillPromptActions";
 import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourcesTabShell } from "@/components/SourcesTabShell";
@@ -599,6 +602,7 @@ async function loadFetchSyncData(user: {
     jobRuns,
     scheduledJobRuns,
     feedPreference,
+    rawCloudSubmissionSources,
     rawCloudSubmissions,
   ] = await Promise.all([
     prisma.agentToken.findMany({
@@ -634,6 +638,29 @@ async function loadFetchSyncData(user: {
     prisma.userFeedPreference.findUnique({
       where: { userId: user.id },
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
+    }),
+    prisma.builderPoolEntry.findMany({
+      where: {
+        userId: user.id,
+        origin: BuilderPoolOrigin.PERSONAL_SYNC,
+        removedAt: null,
+        builder: { ownerUserId: user.id },
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        builder: {
+          select: {
+            id: true,
+            name: true,
+            handle: true,
+            sourceType: true,
+            sourceUrl: true,
+            fetchUrl: true,
+            avatarUrl: true,
+            avatarDataUrl: true,
+          },
+        },
+      },
     }),
     prisma.cloudSourceSubmission.findMany({
       where: { userId: user.id, active: true },
@@ -708,6 +735,18 @@ async function loadFetchSyncData(user: {
     }),
   ]);
   const activeTokens = serializeAgentTokens(rawTokens);
+  const cloudSubmissionSources: CloudSubmissionSource[] = rawCloudSubmissionSources.map(
+    ({ builder }) => ({
+      id: builder.id,
+      name: builder.name,
+      handle: builder.handle,
+      sourceType: builder.sourceType,
+      sourceUrl: builder.sourceUrl,
+      fetchUrl: builder.fetchUrl,
+      avatarUrl: builder.avatarUrl,
+      avatarDataUrl: builder.avatarDataUrl,
+    }),
+  );
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
     startedAt: run.startedAt.toISOString(),
@@ -779,6 +818,7 @@ async function loadFetchSyncData(user: {
     isAdmin: user.isAdmin,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
+    cloudSubmissionSources,
     cloudFetchLog: serializeUserCloudFetchLog(rawCloudSubmissions),
   };
 }
@@ -913,6 +953,7 @@ async function FetchSyncSection({
         </div>
         <SkillPromptActions
           activeSchedule={data.libraryCronJob}
+          cloudSubmissionSources={data.cloudSubmissionSources}
           cloudFetchActive={showStopCloudFetch}
           compactOnly
           context="library"

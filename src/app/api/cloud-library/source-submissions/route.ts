@@ -52,11 +52,13 @@ export async function POST(request: Request) {
     const input = normalizeCloudSourceSubmissionInput({
       frequency: String(body?.frequency ?? ""),
       summaryLanguage: body?.summaryLanguage,
+      builderIds: body?.builderIds,
     });
     const result = await submitUserPrivateLibraryToCloud({
       userId,
       frequency: input.frequency,
       summaryLanguage: input.summaryLanguage,
+      builderIds: input.builderIds,
     });
     // Invalidate the Sources page RSC so a fresh submittedSourceCount (and thus
     // the "Stop fetching" button) shows on the next request. The client also

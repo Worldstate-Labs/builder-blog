@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import {
+  CLOUD_SOURCE_SUBMISSION_LIMIT,
+  normalizeCloudSourceSubmissionInput,
+} from "../src/lib/cloud-source-contracts";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -11,7 +15,9 @@ test("cloud source submission route authenticates, normalizes input, and rate li
 
   assert.match(route, /getCurrentSession\(\)/);
   assert.match(route, /normalizeCloudSourceSubmissionInput/);
+  assert.match(route, /builderIds: body\?\.builderIds/);
   assert.match(route, /submitUserPrivateLibraryToCloud/);
+  assert.match(route, /builderIds: input\.builderIds/);
   assert.match(route, /CLOUD_SUBMISSION_RATE_LIMIT_MS/);
   assert.match(route, /sourcesSubmitted/);
   assert.match(route, /tasksSubmitted/);
@@ -19,9 +25,33 @@ test("cloud source submission route authenticates, normalizes input, and rate li
   assert.doesNotMatch(route, /AgentToken/);
 });
 
+test("cloud source submission input limits selected source ids", () => {
+  assert.equal(CLOUD_SOURCE_SUBMISSION_LIMIT, 20);
+  const input = normalizeCloudSourceSubmissionInput({
+    frequency: "week",
+    summaryLanguage: "zh",
+    builderIds: ["builder_1", "builder_1", "builder_2"],
+  });
+
+  assert.deepEqual(input.builderIds, ["builder_1", "builder_2"]);
+  assert.throws(
+    () =>
+      normalizeCloudSourceSubmissionInput({
+        frequency: "day",
+        summaryLanguage: "zh",
+        builderIds: Array.from({ length: CLOUD_SOURCE_SUBMISSION_LIMIT + 1 }, (_, index) => `b_${index}`),
+      }),
+    /at most 20 sources/,
+  );
+});
+
 test("cloud source library submission copies only private sources to language owner", () => {
   const library = source("src/lib/cloud-source-library.ts");
 
+  assert.match(library, /CLOUD_SOURCE_SUBMISSION_LIMIT/);
+  assert.match(library, /selectedBuilderIds/);
+  assert.match(library, /Select up to \$\{CLOUD_SOURCE_SUBMISSION_LIMIT\} sources/);
+  assert.match(library, /Some selected sources are not in your library/);
   assert.match(library, /ensureCloudLanguageLibraryForSubmission/);
   assert.match(library, /upsertCloudLanguageLibraryWithSystemOwner/);
   assert.match(library, /BuilderPoolOrigin\.PERSONAL_SYNC/);
