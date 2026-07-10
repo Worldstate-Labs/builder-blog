@@ -5174,7 +5174,7 @@ test("merge-task-results classifies no-progress worker timeouts distinctly", asy
           reason: "worker_no_progress_timeout",
           worker: "worker-0",
           shard: "shard-0",
-          message: "Worker made no checkpoint progress.",
+          message: "Worker made no checkpoint, progress, or result-file progress for 300s.",
         }),
         tasks: fetchResult.fetchTasks,
       },
@@ -5184,12 +5184,14 @@ test("merge-task-results classifies no-progress worker timeouts distinctly", asy
   const outcomes = merged.payload.taskOutcomes as {
     fetchTaskId: string;
     reason: string;
-    evidence?: { failureKind?: string };
+    evidence?: { failureKind?: string; workerWatchdog?: { timeoutSeconds?: number; reason?: string } };
   }[];
   assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
     ["stalled", "worker_no_progress_timeout"],
   ]);
   assert.equal(outcomes[0]?.evidence?.failureKind, "worker_no_progress_timeout");
+  assert.equal(outcomes[0]?.evidence?.workerWatchdog?.reason, "worker_no_progress_timeout");
+  assert.equal(outcomes[0]?.evidence?.workerWatchdog?.timeoutSeconds, 300);
 });
 
 test("merge-task-results can classify unassigned timeout backfills distinctly", async () => {
@@ -5270,7 +5272,7 @@ test("merge-task-results classifies stalled worker timeouts distinctly", async (
           reason: "worker_stalled_timeout",
           worker: "worker-0",
           shard: "shard-0",
-          message: "Worker stopped making checkpoint progress.",
+          message: "Worker stopped updating result, checkpoint, or progress files for 600s after prior progress.",
         }),
         tasks: fetchResult.fetchTasks,
       },
@@ -5280,12 +5282,14 @@ test("merge-task-results classifies stalled worker timeouts distinctly", async (
   const outcomes = merged.payload.taskOutcomes as {
     fetchTaskId: string;
     reason: string;
-    evidence?: { failureKind?: string };
+    evidence?: { failureKind?: string; workerWatchdog?: { timeoutSeconds?: number; reason?: string } };
   }[];
   assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
     ["stalled", "worker_stalled_timeout"],
   ]);
   assert.equal(outcomes[0]?.evidence?.failureKind, "worker_stalled_timeout");
+  assert.equal(outcomes[0]?.evidence?.workerWatchdog?.reason, "worker_stalled_timeout");
+  assert.equal(outcomes[0]?.evidence?.workerWatchdog?.timeoutSeconds, 600);
 });
 
 test("merge-task-results can exclude checkpoint-synced task ids from final sync output", async () => {

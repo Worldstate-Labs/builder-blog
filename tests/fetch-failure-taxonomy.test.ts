@@ -61,8 +61,14 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
     fetchFailureMessage("runtime_timeout_flush_finished"),
     "Local Agent runtime timed out after syncing terminal fetch results",
   );
-  assert.equal(fetchFailureMessage("worker_no_progress_timeout"), "Local Agent made no checkpoint progress for this post");
-  assert.equal(fetchFailureMessage("worker_stalled_timeout"), "Local Agent stopped making checkpoint progress for this post");
+  assert.equal(
+    fetchFailureMessage("worker_no_progress_timeout"),
+    "Worker watchdog stopped this post before any checkpoint progress",
+  );
+  assert.equal(
+    fetchFailureMessage("worker_stalled_timeout"),
+    "Worker watchdog stopped this post after checkpoint progress stalled",
+  );
   assert.equal(fetchFailureMessage("unknown_new_code"), "Unknown failure: unknown new code");
   assert.equal(isContentFailureReason("content_missing"), true);
   assert.equal(isContentFailureReason("worker_missing_result"), false);

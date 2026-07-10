@@ -6323,6 +6323,8 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
     };
     if (shardPlan.workerLogTail) evidence.missingShard.workerLogTail = shardPlan.workerLogTail;
     if (shardPlan.workerLogBytes !== null) evidence.missingShard.workerLogBytes = shardPlan.workerLogBytes;
+    const workerWatchdog = workerWatchdogEventFromLog(shardPlan.workerLogTail);
+    if (workerWatchdog) evidence.workerWatchdog = workerWatchdog;
   } else {
     evidence.missingTask = {
       taskId: String(task?.id || fetchTaskId(task)),
@@ -6355,6 +6357,40 @@ function workerEventReason(event) {
   const directReason = typeof event.reason === "string" ? event.reason : null;
   const itemReason = typeof event.item?.reason === "string" ? event.item.reason : null;
   return directReason || itemReason;
+}
+
+function workerEventString(event, key) {
+  if (!event || typeof event !== "object") return null;
+  const direct = typeof event[key] === "string" ? event[key] : null;
+  const item = typeof event.item?.[key] === "string" ? event.item[key] : null;
+  return direct || item;
+}
+
+function workerTimeoutSecondsFromMessage(message) {
+  const text = String(message || "");
+  const match = text.match(/\bfor\s+([0-9]+)s\b/) || text.match(/\bexceeded\s+([0-9]+)s\b/);
+  if (!match) return null;
+  const seconds = Number(match[1]);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+function workerWatchdogEventFromLog(text) {
+  const event = parsedWorkerLogEvents(text).find((candidate) => {
+    const reason = workerEventReason(candidate);
+    return reason === "worker_no_progress_timeout" || reason === "worker_stalled_timeout";
+  });
+  if (!event) return null;
+  const reason = workerEventReason(event);
+  const message = workerEventString(event, "message");
+  const timeoutSeconds = workerTimeoutSecondsFromMessage(message);
+  const details = { reason };
+  if (timeoutSeconds !== null) details.timeoutSeconds = timeoutSeconds;
+  for (const key of ["worker", "shard", "at"]) {
+    const value = workerEventString(event, key);
+    if (value) details[key] = value;
+  }
+  if (message) details.message = message;
+  return details;
 }
 
 function workerLogHasFailureReason(text, reason) {

@@ -537,14 +537,16 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /isNotCompletedFailureReason\(task\.failureReason\)/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_missing_result:[\s\S]*Local Agent shard did not write a result file for this post/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /runtime_timeout:[\s\S]*Local Agent runtime timed out before this post finished/);
-  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_no_progress_timeout:[\s\S]*Local Agent made no checkpoint progress for this post/);
-  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_stalled_timeout:[\s\S]*Local Agent stopped making checkpoint progress for this post/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_no_progress_timeout:[\s\S]*Worker watchdog stopped this post before any checkpoint progress/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_stalled_timeout:[\s\S]*Worker watchdog stopped this post after checkpoint progress stalled/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /worker_backgrounded_tool:[\s\S]*Local Agent started a background tool before this post finished/);
   assert.match(panel, /function missingWorkerLogText/);
   assert.match(panel, /No worker log tail was captured for this shard\./);
   assert.match(panel, /function shardTimeoutText/);
+  assert.match(panel, /function workerWatchdogText/);
   assert.match(panel, /function shardSummaryText/);
   assert.match(panel, /label="Shard timeout"/);
+  assert.match(panel, /label="Worker watchdog"/);
   assert.match(panel, /label="Shard summary"/);
   assert.match(panel, /label="Local Agent log"/);
   assert.doesNotMatch(panel, /Main Local Agent/);

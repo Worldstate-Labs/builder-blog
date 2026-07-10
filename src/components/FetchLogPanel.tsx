@@ -3266,6 +3266,29 @@ function shardTimeoutText(task: FetchTaskLog): string | null {
   return formatDuration(timeoutSeconds * 1000);
 }
 
+function workerWatchdogRecord(task: FetchTaskLog): Record<string, unknown> | null {
+  const watchdog = task.evidence?.workerWatchdog;
+  return watchdog && typeof watchdog === "object"
+    ? watchdog as Record<string, unknown>
+    : null;
+}
+
+function workerWatchdogText(task: FetchTaskLog): string | null {
+  const watchdog = workerWatchdogRecord(task);
+  if (!watchdog) return null;
+  const reason = String(watchdog.reason ?? task.failureReason ?? "");
+  const label =
+    reason === "worker_no_progress_timeout"
+      ? "No checkpoint progress"
+      : reason === "worker_stalled_timeout"
+        ? "Checkpoint progress stalled"
+        : null;
+  if (!label) return null;
+  const timeoutSeconds = Number(watchdog.timeoutSeconds);
+  if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) return label;
+  return `${label} · ${formatDuration(timeoutSeconds * 1000)}`;
+}
+
 function shardSummaryText(task: FetchTaskLog): string | null {
   const summary = task.evidence?.runShardSummary;
   if (!Array.isArray(summary)) return null;
@@ -3432,6 +3455,7 @@ export function TaskRow({
   const workerLog = workerLogText(task);
   const missingWorkerLog = missingWorkerLogText(task);
   const shardTimeout = shardTimeoutText(task);
+  const workerWatchdog = workerWatchdogText(task);
   const shardSummary = shardSummaryText(task);
   const discoveryExpansion = discoveryState?.expansionText ?? discoveryExpansionText(task.evidence);
   const syncOutcome = (() => {
@@ -3467,6 +3491,7 @@ export function TaskRow({
     workerLog ||
     missingWorkerLog ||
     shardTimeout ||
+    workerWatchdog ||
     shardSummary;
   const syncStatusText = (() => {
     if (discoveryState?.synced) {
@@ -3585,6 +3610,12 @@ export function TaskRow({
             <FactRow
               label="Shard timeout"
               value={<span>{shardTimeout}</span>}
+            />
+          ) : null}
+          {workerWatchdog ? (
+            <FactRow
+              label="Worker watchdog"
+              value={<span>{workerWatchdog}</span>}
             />
           ) : null}
           {shardSummary ? (
