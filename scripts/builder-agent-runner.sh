@@ -515,9 +515,10 @@ run_with_claude_unattended() {
     # The runner owns library shard parallelism. Block only Claude's internal
     # Task/subagent tools in shard workers: delegated agents do not write
     # FollowBrief checkpoint/result files for this worker, so their work is not
-    # durable. Other unattended Claude jobs can keep their normal tool surface.
+    # durable. Shard workers run in safe mode so user-level Claude hooks cannot
+    # block the runner's own BUILDER_BLOG_* environment variables.
     if [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" = "worker" ]; then
-      claude "$@" --disallowedTools "$_claude_disallowed_tools"
+      claude "$@" --safe-mode --allowedTools "$_claude_allowed_tools" --disallowedTools "$_claude_disallowed_tools"
     else
       claude "$@" --allowedTools "$_claude_allowed_tools"
     fi

@@ -285,9 +285,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /_claude_allowed_tools="Bash,Edit,Read,Write,Grep,Glob,WebFetch"/);
   assert.match(runner, /_claude_disallowed_tools="Task,TaskCreate,TaskGet,TaskList,TaskOutput,TaskStop,TaskUpdate"/);
   assert.match(runner, /claude_unattended_command\(\)/);
-  assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \][\s\S]*--disallowedTools "\$_claude_disallowed_tools"/);
+  assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \][\s\S]*--safe-mode --allowedTools "\$_claude_allowed_tools" --disallowedTools "\$_claude_disallowed_tools"/);
   assert.match(runner, /else[\s\S]*--allowedTools "\$_claude_allowed_tools"/);
   assert.match(runner, /--disallowedTools "\$_claude_disallowed_tools"/);
+  assert.match(runner, /user-level Claude hooks cannot/);
   assert.doesNotMatch(runner, /--tools "\$_claude_allowed_tools"/);
   assert.match(runner, /BUILDER_BLOG_WORKER_NO_PROGRESS_SECONDS:-600/);
   assert.match(runner, /shards\/results\/shard-\*-agent-output\.log/);
