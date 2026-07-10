@@ -3686,7 +3686,8 @@ async function fetchPersonalBlogBuilder(
   }
 
   const indexBody = await indexResponse.text();
-  const candidates = parseBlogCandidates(indexBody, indexUrl)
+  const discoveredCandidates = await discoverBlogArticleCandidates(indexBody, indexUrl, { fetcher, cutoff, limit });
+  const candidates = discoveredCandidates
     .filter((article) => isAfterCutoff(article.publishedAt, cutoff))
     .filter((article) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
     .slice(0, limit);
@@ -4657,17 +4658,63 @@ function isAfterCutoff(value, cutoff) {
 }
 
 export function parseBlogCandidates(body, indexUrl) {
-  let candidates;
+  return parseTypedBlogCandidates(body, indexUrl)
+    .filter((candidate) => candidate.kind === "article")
+    .map(stripCandidateKind);
+}
+
+export function parseTypedBlogCandidates(body, indexUrl) {
   if (/<rss[\s>]|<feed[\s>]/i.test(body)) {
-    candidates = parseFeedCandidates(body, indexUrl);
-  } else if (indexUrl.includes("anthropic.com")) {
-    candidates = parseAnthropicEngineeringIndex(body);
-  } else if (indexUrl.includes("claude.com")) {
-    candidates = parseClaudeBlogIndex(body);
-  } else {
-    candidates = parseHtmlCandidates(body, indexUrl);
+    return parseFeedCandidates(body, indexUrl);
   }
-  return candidates.filter((candidate) => !isObviousBlogListingUrl(candidate.url));
+  if (indexUrl.includes("anthropic.com")) return parseAnthropicEngineeringIndex(body).map(asArticleCandidate);
+  if (indexUrl.includes("claude.com")) return parseClaudeBlogIndex(body).map(asArticleCandidate);
+  return parseHtmlCandidates(body, indexUrl);
+}
+
+async function discoverBlogArticleCandidates(indexBody, indexUrl, { fetcher, cutoff, limit }) {
+  const finalLimit = Math.max(Number(limit) || 0, 1);
+  const candidateLimit = Math.min(Math.max(finalLimit * 4, finalLimit + 20), 100);
+  const maxDiscoveryPages = Math.min(Math.max(finalLimit * 2, 8), 20);
+  const queue = parseTypedBlogCandidates(indexBody, indexUrl).map((candidate) => ({
+    ...candidate,
+    depth: 0,
+  }));
+  const seenCandidates = new Set();
+  const seenDiscoveryPages = new Set([canonicalUrlKey(indexUrl)]);
+  const articles = [];
+  let discoveryPagesFetched = 0;
+
+  while (queue.length > 0 && articles.length < candidateLimit) {
+    const candidate = queue.shift();
+    if (!candidate?.url) continue;
+    const candidateKey = canonicalUrlKey(candidate.url);
+    if (!candidateKey || seenCandidates.has(candidateKey)) continue;
+    seenCandidates.add(candidateKey);
+
+    if (candidate.kind === "article") {
+      if (isAfterCutoff(candidate.publishedAt, cutoff)) articles.push(stripCandidateKind(candidate));
+      continue;
+    }
+
+    if (candidate.kind !== "feed" && candidate.kind !== "listing") continue;
+    if (candidate.depth >= 2 || seenDiscoveryPages.has(candidateKey)) continue;
+    if (discoveryPagesFetched >= maxDiscoveryPages) continue;
+    seenDiscoveryPages.add(candidateKey);
+    const policy = await sourceFetchPolicy(candidate.url, fetcher);
+    if (!policy.allowed) continue;
+    const response = await fetcher(candidate.url, {
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
+    });
+    if (!response.ok) continue;
+    const body = await response.text();
+    discoveryPagesFetched += 1;
+    for (const discovered of parseTypedBlogCandidates(body, response.url || candidate.url)) {
+      queue.push({ ...discovered, depth: candidate.depth + 1 });
+    }
+  }
+
+  return dedupeByUrl(articles);
 }
 
 function parseFeedCandidates(xml, indexUrl) {
@@ -4680,9 +4727,11 @@ function parseFeedCandidates(xml, indexUrl) {
       const block = match[0];
       const hrefMatch = block.match(/<link[^>]*href=["']([^"']+)["'][^>]*>/i);
       const linkText = tagText(block, "link");
+      const url = absoluteUrl(hrefMatch?.[1] || linkText, indexUrl);
       return {
+        kind: classifyBlogCandidateUrl(url, { feedEntry: true }),
         title: tagText(block, "title"),
-        url: absoluteUrl(hrefMatch?.[1] || linkText, indexUrl),
+        url,
         publishedAt: normalizedDate(
           tagText(block, "pubDate") ||
             tagText(block, "published") ||
@@ -4708,8 +4757,10 @@ function parseHtmlCandidates(html, indexUrl) {
     if (!url) continue;
     const parsed = new URL(url);
     if (parsed.origin !== base.origin || parsed.href === base.href) continue;
-    if (!looksLikeArticlePath(parsed.pathname)) continue;
+    const kind = classifyBlogCandidateUrl(parsed.href);
+    if (kind === "unknown") continue;
     candidates.push({
+      kind,
       title: stripHtml(match[2]),
       url: parsed.href,
       publishedAt: null,
@@ -4966,18 +5017,42 @@ function extractClaudeBlogArticle(html) {
 }
 
 function looksLikeArticlePath(pathname) {
-  if (isObviousBlogListingPath(pathname)) return false;
   return (
     /\/(blog|posts|post|news|article|articles|engineering|learn|writing)\//i.test(pathname) ||
     /\/20\d{2}\//.test(pathname)
   );
 }
 
-function isObviousBlogListingUrl(value) {
+function asArticleCandidate(candidate) {
+  return { kind: "article", ...candidate };
+}
+
+function stripCandidateKind(candidate) {
+  const result = { ...candidate };
+  delete result.kind;
+  delete result.depth;
+  return result;
+}
+
+function canonicalUrlKey(value) {
   try {
-    return isObviousBlogListingPath(new URL(value).pathname);
+    const parsed = new URL(value);
+    parsed.hash = "";
+    return parsed.href.replace(/\/+$/, "");
   } catch {
-    return false;
+    return "";
+  }
+}
+
+function classifyBlogCandidateUrl(value, { feedEntry = false } = {}) {
+  try {
+    const pathname = new URL(value).pathname;
+    if (isObviousBlogFeedPath(pathname)) return "feed";
+    if (isObviousBlogListingPath(pathname)) return "listing";
+    if (looksLikeArticlePath(pathname)) return "article";
+    return feedEntry ? "article" : "unknown";
+  } catch {
+    return "unknown";
   }
 }
 
@@ -4994,9 +5069,6 @@ function isObviousBlogListingPath(pathname) {
     "authors",
     "category",
     "categories",
-    "feed",
-    "feeds",
-    "rss",
     "tag",
     "tags",
     "topic",
@@ -5004,13 +5076,25 @@ function isObviousBlogListingPath(pathname) {
   ]);
   if (segments.some((segment) => listingSegments.has(segment))) return true;
   const last = segments[segments.length - 1] || "";
-  if (/^(atom|feed|index|rss)$/.test(last)) return true;
-  if (/\.(atom|rss|xml)$/.test(last)) return true;
+  if (/^index$/.test(last)) return true;
   const parent = segments[segments.length - 2] || "";
   if (/^20\d{2}$/.test(last) && /^(blog|blogs|engineering|learn|news|post|posts|writing)$/.test(parent)) {
     return true;
   }
   return false;
+}
+
+function isObviousBlogFeedPath(pathname) {
+  const normalized = decodeURIComponent(String(pathname || ""))
+    .toLowerCase()
+    .replace(/\/+$/, "");
+  const segments = normalized.split("/").filter(Boolean);
+  const last = segments[segments.length - 1] || "";
+  return (
+    segments.some((segment) => segment === "feed" || segment === "feeds" || segment === "rss" || segment === "atom") ||
+    /^(atom|feed|rss)$/.test(last) ||
+    /\.(atom|rss|xml)$/.test(last)
+  );
 }
 
 function tagText(text, tagName) {

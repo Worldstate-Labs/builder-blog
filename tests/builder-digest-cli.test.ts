@@ -90,6 +90,28 @@ test("personal blog fetcher drops feed entries that are listing pages", async ()
   );
 });
 
+test("personal blog discovery classifies index links before selecting post candidates", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const candidates = cli.parseTypedBlogCandidates(
+    `
+    <a href="/blog/building-agents">Building Agents</a>
+    <a href="/blog/category/company">Company category</a>
+    <a href="/blog/feed.xml">RSS feed</a>
+    <a href="/pricing">Pricing</a>
+    `,
+    "https://example.com",
+  );
+
+  assert.deepEqual(
+    candidates.map((candidate: { kind: string; url: string }) => [candidate.kind, candidate.url]),
+    [
+      ["article", "https://example.com/blog/building-agents"],
+      ["listing", "https://example.com/blog/category/company"],
+      ["feed", "https://example.com/blog/feed.xml"],
+    ],
+  );
+});
+
 test("personal blog fetcher extracts article text", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const article = cli.extractBlogArticle(`
@@ -811,6 +833,112 @@ test("personal blog fetcher drops articles older than cutoff after article extra
   });
 
   assert.equal(result.items.length, 0);
+  assert.equal(result.agentTasks.length, 0);
+});
+
+test("personal blog fetcher expands listing pages before planning post fetches", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "blog_listing",
+    name: "Listing Blog",
+    sourceUrl: "https://example.com/blog",
+    sourceType: "blog",
+  };
+  const fetchedUrls: string[] = [];
+  const fetcher = async (url: string) => {
+    fetchedUrls.push(url);
+    if (url === "https://example.com/blog") {
+      return new Response('<a href="/blog/category/company">Company category</a>');
+    }
+    if (url === "https://example.com/blog/category/company") {
+      return new Response('<a href="/blog/2026/07/09/real-post">Real post</a>');
+    }
+    if (url === "https://example.com/blog/2026/07/09/real-post") {
+      return new Response(`
+        <html>
+          <head>
+            <meta property="og:title" content="Real post">
+            <meta property="article:published_time" content="2026-07-09T12:00:00Z">
+          </head>
+          <body>
+            <article>
+              <p>This deterministic article body is long enough to satisfy the blog extractor and should sync as the only post task. It includes concrete implementation details, source context, follow-up implications, and enough unique wording for the content quality gate to treat it as primary article material rather than a short teaser.</p>
+            </article>
+          </body>
+        </html>
+      `);
+    }
+    return new Response("not found", { status: 404 });
+  };
+
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: "2026-07-01T00:00:00Z",
+    limit: 5,
+    fetcher,
+    sources: {},
+  });
+
+  assert.deepEqual(
+    result.items.map((item: { url: string }) => item.url),
+    ["https://example.com/blog/2026/07/09/real-post"],
+  );
+  assert.equal(result.agentTasks.length, 0);
+  assert.deepEqual(fetchedUrls.filter((url) => !url.endsWith("/robots.txt")), [
+    "https://example.com/blog",
+    "https://example.com/blog/category/company",
+    "https://example.com/blog/2026/07/09/real-post",
+  ]);
+});
+
+test("personal blog fetcher expands linked feeds before planning post fetches", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "blog_feed_link",
+    name: "Feed Linked Blog",
+    sourceUrl: "https://example.com/blog",
+    sourceType: "blog",
+  };
+  const fetcher = async (url: string) => {
+    if (url === "https://example.com/blog") {
+      return new Response('<a href="/blog/feed.xml">RSS feed</a>');
+    }
+    if (url === "https://example.com/blog/feed.xml") {
+      return new Response(`
+        <rss><channel>
+          <item>
+            <title>Feed post</title>
+            <link>https://example.com/posts/feed-post</link>
+            <pubDate>Thu, 09 Jul 2026 12:00:00 GMT</pubDate>
+          </item>
+        </channel></rss>
+      `);
+    }
+    if (url === "https://example.com/posts/feed-post") {
+      return new Response(`
+        <html>
+          <head><meta property="og:title" content="Feed post"></head>
+          <body>
+            <article>
+              <p>This feed-discovered article body is long enough to satisfy the blog extractor and should sync as a post task. It contains specific reporting context, enough distinct phrasing, and enough standalone substance for FollowBrief to summarize without asking a worker to fetch a listing page.</p>
+            </article>
+          </body>
+        </html>
+      `);
+    }
+    return new Response("not found", { status: 404 });
+  };
+
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: "2026-07-01T00:00:00Z",
+    limit: 5,
+    fetcher,
+    sources: {},
+  });
+
+  assert.deepEqual(
+    result.items.map((item: { url: string }) => item.url),
+    ["https://example.com/posts/feed-post"],
+  );
   assert.equal(result.agentTasks.length, 0);
 });
 
