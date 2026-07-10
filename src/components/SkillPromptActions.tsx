@@ -160,8 +160,8 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
 // own language.
 const DEFAULT_PROMPT_WINDOW_DAYS = 30;
 const MAX_PROMPT_WINDOW_DAYS = 90;
-const DEFAULT_PARALLEL_WORKERS = 5;
-const MAX_PARALLEL_WORKERS = 8;
+const DEFAULT_PARALLEL_WORKERS = 10;
+const MAX_PARALLEL_WORKERS = 20;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
@@ -438,6 +438,8 @@ export function SkillPromptActions({
     }
     if (context === "library" && (target === "once" || target === "cron")) {
       params.set("days", String(extras.fetchDays));
+    }
+    if ((context === "library" || context === "digest") && (target === "once" || target === "cron")) {
       params.set("parallel", String(extras.cron?.parallelWorkers ?? extras.parallelWorkers));
     }
     const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
@@ -1390,7 +1392,7 @@ function CronConfigDialog({
         return;
       }
       const parallelWorkers =
-        context === "library"
+        runtimeType === "local"
           ? parseParallelWorkers(pickedParallelWorkers)
           : DEFAULT_PARALLEL_WORKERS;
       if (parallelWorkers === null) {
@@ -1551,7 +1553,7 @@ function CronConfigDialog({
                 Advanced
               </h3>
 
-              {context === "library" && runtimeType === "local" ? (
+              {context === "library" || context === "digest" ? (
                 <>
                   <div className="cron-field">
                     <label htmlFor="cron-parallel-workers" className="cron-field-label">
@@ -1574,7 +1576,7 @@ function CronConfigDialog({
                     </select>
                   </div>
                   <p className="cron-field-hint">
-                    Controls how many source fetch tasks run at the same time.
+                    Controls how many local agent tasks run at the same time.
                   </p>
                 </>
               ) : null}

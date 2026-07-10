@@ -1161,21 +1161,23 @@ elif [ "$(read_pin regenerate)" = "1" ]; then
 fi
 export BUILDER_BLOG_DIGEST_REGENERATE
 
-# Library fetch fan-out: the runner orchestrates the library job itself —
+# Local job fan-out: the runner orchestrates the library job itself —
 # fetch-personal, discovery expansion, shard-tasks, merge-task-results,
 # validate-agent-sync, and sync-builders are deterministic CLI steps. Runtime
-# workers only complete assigned fetchTasks. The pin is per-account and per-job
+# workers only complete assigned fetchTasks. Digest jobs carry the same setting
+# in job-run telemetry and copied prompt state. The pin is per-account and per-job
 # with the usual once→cron fallback, so a one-time run uses the same worker
-# count as the recurring job. Absent/0/1 → one worker.
+# count as the recurring job. Absent/invalid → default worker count.
 if [ "$INCOMING_PARALLEL_WORKERS_SET" = "1" ]; then
   MAX_PARALLEL_WORKERS="$INCOMING_PARALLEL_WORKERS"
 else
   MAX_PARALLEL_WORKERS="$(read_pin parallel)"
 fi
 case "$MAX_PARALLEL_WORKERS" in
-  ''|*[!0-9]*) MAX_PARALLEL_WORKERS="1" ;;
+  ''|*[!0-9]*) MAX_PARALLEL_WORKERS="10" ;;
 esac
-if [ "$MAX_PARALLEL_WORKERS" -gt 8 ]; then MAX_PARALLEL_WORKERS="8"; fi
+if [ "$MAX_PARALLEL_WORKERS" -lt 1 ]; then MAX_PARALLEL_WORKERS="1"; fi
+if [ "$MAX_PARALLEL_WORKERS" -gt 20 ]; then MAX_PARALLEL_WORKERS="20"; fi
 
 cloud_fetch_source_limit() {
   # Backward compatibility: old copied prompts or hand-run shells may still pin

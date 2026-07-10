@@ -6090,7 +6090,7 @@ async function shardTasks(args) {
   const outDir = argValue(args, "--out-dir");
   const maxWorkersRaw = Number(argValue(args, "--max-workers", "3"));
   const maxWorkers = Number.isFinite(maxWorkersRaw)
-    ? Math.max(1, Math.min(8, Math.floor(maxWorkersRaw)))
+    ? Math.max(1, Math.min(20, Math.floor(maxWorkersRaw)))
     : 3;
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!outDir) throw new Error("Missing --out-dir");
@@ -6176,7 +6176,7 @@ async function assignFetchTasks(args) {
   const outDir = argValue(args, "--out-dir");
   const maxWorkersRaw = Number(argValue(args, "--max-workers", "1"));
   const maxWorkers = Number.isFinite(maxWorkersRaw)
-    ? Math.max(1, Math.min(8, Math.floor(maxWorkersRaw)))
+    ? Math.max(1, Math.min(20, Math.floor(maxWorkersRaw)))
     : 1;
   const assignedTaskIdsFile = argValue(args, "--assigned-task-ids-file", null);
   const activeGroupKeysFile = argValue(args, "--active-group-keys-file", null);

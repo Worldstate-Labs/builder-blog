@@ -78,7 +78,10 @@ export async function GET(_request: Request, { params }: Params) {
   content = content.replaceAll("{{AGENT_RUNTIME}}", "");
   content = content.replaceAll("{{FETCH_FLAG}}", "");
   content = content.replaceAll("{{FETCH_DAYS}}", "30");
-  content = content.replaceAll("{{PARALLEL_WORKERS}}", "1");
+  content = content.replaceAll(
+    "{{PARALLEL_WORKERS}}",
+    asset.path.includes("cloud-library") ? "1" : "10",
+  );
   content = content.replaceAll("{{FETCH_LIMIT}}", "3");
   return new Response(content, {
     headers: {

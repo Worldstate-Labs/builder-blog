@@ -3703,6 +3703,47 @@ test("shard-tasks groups by URL domain, balances by weight, excludes non-work ta
   assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
 });
 
+test("assign-fetch-tasks allows twenty local workers", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-assign-fetch-twenty-workers-"));
+  const tasksFile = join(tmp, "fetch-result.json");
+  const outDir = join(tmp, "shards");
+  await writeFile(
+    tasksFile,
+    JSON.stringify({
+      status: "ok",
+      fetchTasks: Array.from({ length: 20 }, (_, index) => ({
+        id: `task-${index}`,
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        sourceType: "blog",
+        builderSync: {
+          builderId: `builder-${index}`,
+          sourceUrl: `https://source-${index}.example/feed.xml`,
+        },
+        item: { url: `https://source-${index}.example/posts/${index}` },
+      })),
+    }),
+    "utf8",
+  );
+
+  const result = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "assign-fetch-tasks",
+      "--tasks",
+      tasksFile,
+      "--out-dir",
+      outDir,
+      "--max-workers",
+      "20",
+    ],
+    { cwd: process.cwd() },
+  );
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.shards.length, 20);
+});
+
 test("fetch queue assignments honor active domain locks", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {

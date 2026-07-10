@@ -371,18 +371,20 @@ export async function GET(request: Request, { params }: Params) {
   // only bake a bounded day count into shell commands and cron pins.
   const fetchDays = boundedIntegerParam(url.searchParams, "days", 30, 1, 90);
 
-  // Library worker fan-out. Closed numeric range; absent/invalid uses the
+  // Local worker fan-out. Closed numeric range; absent/invalid uses the
   // current UI default.
   const isCloudLibraryJob = job.startsWith("cloud-library");
   const isLibraryJob = job.startsWith("library") || isCloudLibraryJob;
-  const parallelDefault = isCloudLibraryJob ? 1 : 5;
+  const isDigestJob = job.startsWith("digest");
+  const parallelDefault = isCloudLibraryJob ? 1 : 10;
+  const parallelMax = isCloudLibraryJob ? 8 : 20;
   const parallelRaw = Number(url.searchParams.get("parallel") ?? String(parallelDefault));
   const parallelWorkers =
-    isLibraryJob &&
+    (isLibraryJob || isDigestJob) &&
     Number.isFinite(parallelRaw) &&
     Number.isInteger(parallelRaw) &&
     parallelRaw >= 1
-      ? String(Math.min(8, Math.floor(parallelRaw)))
+      ? String(Math.min(parallelMax, Math.floor(parallelRaw)))
       : String(parallelDefault);
 
   // Cloud source fetch run knobs. These affect only the local admin runner:

@@ -596,7 +596,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /<OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
   assert.match(skillPromptActions, /continueOnceCopy\([\s\S]*selection\.runtime[\s\S]*parallelWorkers/);
-  assert.match(skillPromptActions, /params\.set\("parallel", String\(extras\.cron\?\.parallelWorkers \?\? extras\.parallelWorkers\)\)/);
+  assert.match(skillPromptActions, /\(context === "library" \|\| context === "digest"\)[\s\S]*params\.set\("parallel", String\(extras\.cron\?\.parallelWorkers \?\? extras\.parallelWorkers\)\)/);
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
@@ -684,6 +684,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /boundedIntegerParam\(url\.searchParams, "days", 30, 1, 90\)/);
   assert.match(skillJobRoute, /searchParams\.get\("parallel"\)/);
   assert.match(skillJobRoute, /Number\.isInteger\(parallelRaw\)/);
+  assert.match(skillJobRoute, /parallelDefault = isCloudLibraryJob \? 1 : 10/);
+  assert.match(skillJobRoute, /parallelMax = isCloudLibraryJob \? 8 : 20/);
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
   assert.doesNotMatch(skillJobRoute, /\{\{CLOUD_FETCH_LIMIT\}\}/);
@@ -745,7 +747,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillFileRoute, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
   assert.match(skillFileRoute, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
-  assert.match(skillFileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "1"\)/);
+  assert.match(skillFileRoute, /asset\.path\.includes\("cloud-library"\) \? "1" : "10"/);
   // cron-setup prompts generate an anchor-aligned schedule after the
   // validation run passes, then install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /schedule-spec/);
@@ -1063,6 +1065,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR=/);
   assert.match(libraryOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
+  assert.match(digestOncePrompt, /BUILDER_BLOG_PARALLEL_WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/);
   const cloudCronSetupPrompt = readFileSync(
     "skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
     "utf8",
@@ -1327,12 +1330,14 @@ test("web app serves the agent skill and setup command", () => {
     "BUILDER_BLOG_WORKER_MODE=1",
     "BUILDER_BLOG_JOB_TRIGGER=one_time",
     "BUILDER_BLOG_AGENT_RUNTIME=\"{{AGENT_RUNTIME}}\"",
+    "BUILDER_BLOG_PARALLEL_WORKERS=\"{{PARALLEL_WORKERS}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "Report its output",
     "This is a real run",
     "7. Only after the initial run has succeeded",
     "runtime-digest-cron-$ACCOUNT_SLUG",
     "schedule-anchor-digest-cron-$ACCOUNT_SLUG",
+    "parallel-digest-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
     "8. After the schedule is installed",
     "--owner-id \"$OWNER_ID\"",
@@ -1358,6 +1363,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /INCOMING_FETCH_DAYS_SET/);
   assert.match(runner, /INCOMING_PARALLEL_WORKERS_SET/);
   assert.match(runner, /MAX_PARALLEL_WORKERS="\$INCOMING_PARALLEL_WORKERS"/);
+  assert.match(runner, /MAX_PARALLEL_WORKERS" -gt 20/);
   assert.match(runner, /DEFAULT_JOB_STATE_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/\$JOB_NAME"/);
   assert.match(runner, /DEFAULT_JOB_TMP_DIR="\$DEFAULT_JOB_STATE_DIR"/);
   assert.match(runner, /JOB_TMP_DIR="\$BUILDER_BLOG_JOB_TMP_DIR"/);

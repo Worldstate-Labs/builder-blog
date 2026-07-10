@@ -1001,13 +1001,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
   assert.match(skillPromptActions, /Parallel tasks/);
-  assert.match(skillPromptActions, /const DEFAULT_PARALLEL_WORKERS = 5;/);
+  assert.match(skillPromptActions, /const DEFAULT_PARALLEL_WORKERS = 10;/);
+  assert.match(skillPromptActions, /const MAX_PARALLEL_WORKERS = 20;/);
   assert.match(skillPromptActions, /1 task/);
   assert.match(skillPromptActions, /\`\$\{count\} tasks\`/);
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
-  assert.match(skillPromptActions, /Controls how many source fetch tasks run at the same time/);
+  assert.match(skillPromptActions, /Controls how many local agent tasks run at the same time/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
   assert.match(skillPromptActions, /<section className="cron-advanced-section"[\s\S]*Advanced[\s\S]*Parallel tasks[\s\S]*Lookback window \(days\)/);
+  assert.match(skillPromptActions, /\{context === "library" \|\| context === "digest" \? \(/);
   assert.match(skillPromptActions, /<SummaryLanguageField[\s\S]*<section className="cron-advanced-section"/);
   assert.match(skillPromptActions, /id="cron-override-fetched"[\s\S]*value=\{overrideFetched \? "yes" : "no"\}[\s\S]*<option value="no">No<\/option>[\s\S]*<option value="yes">Yes<\/option>/);
   assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
