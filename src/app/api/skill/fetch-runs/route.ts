@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
+import { compactFetchRunDetailsForStorage } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 
-// Cap details payload at ~100 KB serialized. A full library run legitimately
+// Cap details payload at ~1000 KB serialized. A full library run legitimately
 // stores a per-post outcome row for every planned task plus the per-source
-// prompts panel (tens of KB); beyond 100 KB we'd be storing crash dumps in
+// prompts panel (hundreds of KB); beyond 1000 KB we'd be storing crash dumps in
 // Postgres for free — refuse politely.
-const MAX_DETAILS_BYTES = 100_000;
+const MAX_DETAILS_BYTES = 1_000_000;
 const MAX_SUMMARY_CHARS = 280;
 const FETCH_RUN_PAGE_SIZE = 10;
 const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE + 1;
@@ -75,7 +76,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const detailsValue = parsed.data.details ?? {};
+  const rawDetailsValue = parsed.data.details ?? {};
+  const compactedDetails = rawDetailsValue && typeof rawDetailsValue === "object" && !Array.isArray(rawDetailsValue)
+    ? compactFetchRunDetailsForStorage(rawDetailsValue as Record<string, unknown>, MAX_DETAILS_BYTES)
+    : { details: rawDetailsValue, bytes: 0, compacted: false };
+  const detailsValue = compactedDetails.details;
   let detailsJson: string;
   try {
     detailsJson = JSON.stringify(detailsValue);
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
   }
   if (Buffer.byteLength(detailsJson, "utf8") > MAX_DETAILS_BYTES) {
     return NextResponse.json(
-      { error: "details payload too large; cap at 100 KB" },
+      { error: "details payload too large; cap at 1000 KB" },
       { status: 400 },
     );
   }

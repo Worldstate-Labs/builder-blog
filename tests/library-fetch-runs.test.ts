@@ -100,9 +100,12 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /z\.enum\(\["manual", "cron"\]\)/);
   // Summary is capped at 280 chars.
   assert.match(route, /MAX_SUMMARY_CHARS = 280/);
-  // details payload is rejected over 100 KB with the spec'd message.
-  assert.match(route, /MAX_DETAILS_BYTES = 100_000/);
-  assert.match(route, /details payload too large; cap at 100 KB/);
+  // details payload is compacted before the 1000 KB storage cap is enforced.
+  assert.match(route, /MAX_DETAILS_BYTES = 1_000_000/);
+  assert.match(patchRoute, /MAX_DETAILS_BYTES = 1_000_000/);
+  assert.match(route, /compactFetchRunDetailsForStorage/);
+  assert.match(route, /details payload too large; cap at 1000 KB/);
+  assert.match(patchRoute, /details payload too large; cap at 1000 KB/);
   // Server filters the GET by the caller's user id.
   assert.match(route, /where: \{ userId \}/);
   assert.match(route, /source: "cron"/);
@@ -209,6 +212,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /\.\.\.\(usage \? \{ usage \} : \{\}\)/);
   assert.match(cli, /HTTP \$\{details\.method\} \$\{details\.url\} \$\{message\}/);
   assert.match(cli, /timed out after \$\{Math\.round\(options\.timeoutMs \/ 1000\)\}s/);
+  assert.match(cli, /function exitCodeOrNull/);
+  assert.match(cli, /exitCode: exitCodeOrNull\(argValue\(args, "--exit-code", ""\)\)/);
   assert.match(cli, /providerError: argValue\(args, "--provider-error", null\)/);
   // Product Hunt direct-fetch 403s are recoverable: they should be shown as a
   // fallback note while agent discovery continues, not counted as a source error.

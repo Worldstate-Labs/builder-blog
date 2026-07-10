@@ -67,6 +67,8 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /job-run-start/);
   assert.match(cli, /job-run-update/);
   assert.match(cli, /\/api\/skill\/job-runs/);
+  assert.match(cli, /function exitCodeOrNull/);
+  assert.match(cli, /exitCode: exitCodeOrNull\(argValue\(args, "--exit-code", ""\)\)/);
   assert.match(cli, /runtimeUsageFromFile\(argValue\(args, "--usage-file", null\)\)/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
   assert.match(cli, /hermes: "Hermes"/);
@@ -78,6 +80,9 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
 
   const runner = source("scripts/builder-agent-runner.sh");
   assert.match(runner, /LAST_AGENT_OUTPUT_FILE/);
+  assert.match(runner, /job_run_update failed "Runtime exited with code \$_code\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
+  assert.match(runner, /job_run_update timed_out "Runtime reported a timeout\." "runtime_reported_timeout" \\\n\s+--exit-code "\$_code"/);
+  assert.match(runner, /job_run_update succeeded "Runtime completed successfully\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /--usage-file/);
 });
 

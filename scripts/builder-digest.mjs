@@ -515,6 +515,14 @@ function numberOrNull(value) {
   return numeric || null;
 }
 
+function exitCodeOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const code = Math.trunc(numeric);
+  return code >= 0 && code <= 255 ? code : null;
+}
+
 function usageNumber(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -1217,7 +1225,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
     heartbeatAt: stringOrNull(argValue(args, "--heartbeat-at", new Date().toISOString())) ?? new Date().toISOString(),
     finishedAt,
     status: statusValue,
-    exitCode: Number(argValue(args, "--exit-code", "")) || null,
+    exitCode: exitCodeOrNull(argValue(args, "--exit-code", "")),
     signal: argValue(args, "--signal", null),
     runtime: argValue(args, "--runtime", DEFAULT_AGENT_RUNTIME),
     runnerPid: Number(argValue(args, "--runner-pid", "")) || null,

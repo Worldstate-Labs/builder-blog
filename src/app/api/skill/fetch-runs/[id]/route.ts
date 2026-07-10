@@ -15,8 +15,8 @@ import { formatZodError } from "@/lib/zod-error";
 // Mirror of the POST route's cap — details still has to fit comfortably.
 // A full library run's fetch log holds a per-post outcome row for every
 // planned task plus the per-source prompts panel, so it legitimately reaches
-// tens of KB; 100 KB leaves headroom without inviting crash-dump payloads.
-const MAX_DETAILS_BYTES = 100_000;
+// hundreds of KB; 1000 KB leaves headroom without inviting crash-dump payloads.
+const MAX_DETAILS_BYTES = 1_000_000;
 
 const PlannedTaskSchema = z.object({
   id: z.string().min(1).max(MAX_FETCH_TASK_ID),
@@ -168,7 +168,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (compacted.bytes > MAX_DETAILS_BYTES) {
     return NextResponse.json(
-      { error: "details payload too large; cap at 100 KB" },
+      { error: "details payload too large; cap at 1000 KB" },
       { status: 400 },
     );
   }

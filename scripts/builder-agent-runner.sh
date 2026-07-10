@@ -2596,22 +2596,27 @@ run_with_job_tracking() {
       fi
       if [ "$_digest_final_count" = "0" ]; then
         job_run_update succeeded "No update. Prepared 0 candidates." "no_update" \
-          --stage "no_update"
+          --stage "no_update" \
+          --exit-code "$_code"
         _cleanup_reason="no_update"
       else
-        job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+        job_run_update succeeded "Runtime completed successfully." "runtime_finished" \
+          --exit-code "$_code"
       fi
     else
-      job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+      job_run_update succeeded "Runtime completed successfully." "runtime_finished" \
+        --exit-code "$_code"
     fi
   elif [ "$_code" -eq 124 ]; then
     _cleanup_status="timed_out"
     _cleanup_reason="runtime_reported_timeout"
-    job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout"
+    job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout" \
+      --exit-code "$_code"
   else
     _cleanup_status="failed"
     _cleanup_reason="runtime_finished"
-    job_run_update failed "Runtime exited with code $_code." "runtime_finished"
+    job_run_update failed "Runtime exited with code $_code." "runtime_finished" \
+      --exit-code "$_code"
   fi
   TRACKED_JOB_FINALIZED=1
   cleanup_job_tmp_dir "$_cleanup_status" "$_cleanup_reason"
