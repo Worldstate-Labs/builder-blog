@@ -3178,12 +3178,24 @@ sync_completed_checkpoints() {
     _scc_previous_granularity="$SYNC_PAYLOAD_SLICE_GRANULARITY"
   fi
   _scc_sync_ok=0
+  _scc_had_failure_mode=0
+  _scc_previous_failure_mode=""
+  if [ "${SYNC_PAYLOAD_FAILURE_MODE+x}" = "x" ]; then
+    _scc_had_failure_mode=1
+    _scc_previous_failure_mode="$SYNC_PAYLOAD_FAILURE_MODE"
+  fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE="$_scc_synced_ids_file"
   SYNC_PAYLOAD_SLICE_GRANULARITY="task"
+  SYNC_PAYLOAD_FAILURE_MODE=skip
   if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint" --partial-outcomes --results-dir "$_scc_results_dir"; then
     _scc_sync_ok=1
   fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE=""
+  if [ "$_scc_had_failure_mode" -eq 1 ]; then
+    SYNC_PAYLOAD_FAILURE_MODE="$_scc_previous_failure_mode"
+  else
+    unset SYNC_PAYLOAD_FAILURE_MODE
+  fi
   if [ "$_scc_had_granularity" -eq 1 ]; then
     SYNC_PAYLOAD_SLICE_GRANULARITY="$_scc_previous_granularity"
   else
@@ -3194,7 +3206,7 @@ sync_completed_checkpoints() {
     return 0
   fi
 
-  echo "One or more completed checkpoint task syncs failed; terminal outcomes were patched where possible." >&2
+  echo "One or more completed checkpoint task syncs failed; retrying during a later checkpoint or final sync." >&2
   return 0
 }
 

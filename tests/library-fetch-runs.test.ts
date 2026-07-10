@@ -370,6 +370,14 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /validate-agent-sync[\s\S]*--tasks "\$_slice_tasks"/);
   assert.match(runner, /validation-failed-payload\.json/);
   assert.match(runner, /--exclude-task-ids-file "\$_frlr_synced_ids_file"/);
+  assert.match(
+    runner,
+    /sync_completed_checkpoints\(\)[\s\S]*SYNC_PAYLOAD_FAILURE_MODE=skip[\s\S]*sync_payload_slices "\$_scc_tasks" "\$_scc_payload" "\$_scc_work_dir\/sync-slices" "completed-checkpoint"/,
+  );
+  assert.match(
+    runner,
+    /One or more completed checkpoint task syncs failed; retrying during a later checkpoint or final sync\./,
+  );
   assert.match(runner, /--reason "task_validation_failed"/);
   assert.match(runner, /--validation-file "\$_slice_validate"/);
   assert.match(runner, /--reason "task_sync_failed"/);
@@ -705,8 +713,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /Needs Local Agent/);
   assert.match(panel, /taskStatusPill/);
   assert.match(panel, /return \{ label: "summarizing", tone: "warn" \}/);
-  assert.match(panel, /return \{ label: "reading", tone: "idle" \}/);
-  assert.match(panel, /return \{ label: "summarizing", tone: "idle" \}/);
+  assert.match(panel, /return \{ label: "reading", tone: "warn" \}/);
+  assert.match(panel, /return \{ label: "ready", tone: "idle" \}/);
   assert.match(panel, /return \{ label: "syncing", tone: "warn" \}/);
   assert.match(panel, /return \{ label: "discovering", tone: "warn" \}/);
   assert.match(panel, /return \{ label: "failed", tone: "fail" \}/);
