@@ -24,6 +24,7 @@ import {
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 import { prisma } from "@/lib/prisma";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
+import { recordBackupSourceCandidateFromManualBuilder } from "@/lib/source-candidate-backup";
 
 const PersonalBuilderSchema = z.object({
   name: z.string().max(240).optional(),
@@ -157,6 +158,23 @@ export async function POST(request: Request) {
     // page the user pasted, persist that as the fetchUrl so the CLI
     // hits the real feed at sync time instead of re-scraping HTML.
     fetchUrl: finalFetchUrl,
+  });
+
+  await recordBackupSourceCandidateFromManualBuilder({
+    builder: {
+      id: builder.id,
+      canonicalKey: builder.canonicalKey,
+      name: builder.name,
+      sourceType: builder.sourceType,
+      sourceUrl: builder.sourceUrl,
+      fetchUrl: builder.fetchUrl,
+      handle: builder.handle,
+      avatarUrl: builder.avatarUrl,
+      avatarDataUrl: builder.avatarDataUrl,
+    },
+    userId: session.user.id,
+  }).catch((error) => {
+    console.warn("[personal-builder] backup candidate record failed", { error });
   });
 
   await addBuilderToPool({

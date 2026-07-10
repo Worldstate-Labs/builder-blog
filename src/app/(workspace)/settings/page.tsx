@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminMaintenancePanel } from "@/components/AdminMaintenancePanel";
+import { AdminSourceCandidateLibraries } from "@/components/AdminSourceCandidateLibraries";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AccountDataPanel } from "@/components/AccountDataPanel";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
@@ -19,6 +20,8 @@ import {
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { listAdminSourceCandidateLibraries } from "@/lib/source-candidate-backup";
+import { ensureSourceCandidateSeeded } from "@/lib/source-candidate-library";
 import {
   getAllSourceConfigs,
   getUserDigestConfig,
@@ -53,9 +56,52 @@ export default async function SettingsPage() {
         <Suspense fallback={<SettingsRulesSkeleton />}>
           <SourceTypeConfigSection userId={userId} isAdmin={isAdmin} />
         </Suspense>
+        {isAdmin ? (
+          <Suspense fallback={<SettingsRulesSkeleton />}>
+            <AdminSourceCandidateLibrarySection />
+          </Suspense>
+        ) : null}
         {isAdmin ? <AdminCloudFetchConfigSection /> : null}
       </div>
     </div>
+  );
+}
+
+async function AdminSourceCandidateLibrarySection() {
+  await ensureSourceCandidateSeeded();
+  const libraries = await listAdminSourceCandidateLibraries();
+  const totalCandidates =
+    libraries.sourceCandidates.length + libraries.backupCandidates.length;
+
+  return (
+    <section className="settings-rules">
+      <details className="settings-rules-panel fb-panel">
+        <summary className="settings-rules-summary">
+          <div className="settings-rules-summary-copy">
+            <h3 className="fb-section-heading">Source candidate libraries</h3>
+            <p className="settings-rules-summary-desc">
+              Review the primary source candidate library and backup candidates collected from
+              manual source adds.
+            </p>
+          </div>
+          <span className="settings-rules-summary-meta source-summary-line">
+            <CountMeta
+              label={totalCandidates === 1 ? "candidate" : "candidates"}
+              value={totalCandidates}
+            />
+          </span>
+          <span className="settings-rules-toggle-icon" aria-hidden="true">
+            <ChevronDown className="settings-rules-toggle-svg" />
+          </span>
+        </summary>
+        <div className="settings-rules-body">
+          <AdminSourceCandidateLibraries
+            backupCandidates={libraries.backupCandidates}
+            sourceCandidates={libraries.sourceCandidates}
+          />
+        </div>
+      </details>
+    </section>
   );
 }
 

@@ -272,6 +272,30 @@ model SourceCandidate {
   @@index([updatedAt])
 }
 
+model BackupSourceCandidate {
+  id                 String   @id @default(cuid())
+  sourceKey          String   @unique
+  name               String
+  sourceType         String
+  sourceUrl          String?
+  fetchUrl           String?
+  handle             String?
+  avatarUrl          String?
+  avatarDataUrl      String?
+  firstBuilderId     String?
+  lastBuilderId      String?
+  firstAddedByUserId String?
+  lastAddedByUserId  String?
+  seenCount          Int      @default(1)
+  lastSeenAt         DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([sourceType])
+  @@index([lastSeenAt])
+  @@index([updatedAt])
+}
+
 model BuilderEntity {
   id            String                  @id @default(cuid())
   canonicalKey  String                  @unique
