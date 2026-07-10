@@ -1881,11 +1881,22 @@ const fs = require("fs");
 const path = require("path");
 const [resultPath, checkpointDir] = process.argv.slice(2);
 let latest = 0;
-function addFile(file) {
+function resultFileHasTerminalProgress(file) {
+  try {
+    const payload = JSON.parse(fs.readFileSync(file, "utf8"));
+    const builders = Array.isArray(payload?.builders) ? payload.builders : [];
+    if (builders.some((builder) => Array.isArray(builder?.items) && builder.items.length > 0)) return true;
+    if (Array.isArray(payload?.taskOutcomes) && payload.taskOutcomes.length > 0) return true;
+  } catch {}
+  return false;
+}
+function addFile(file, options = {}) {
   if (!file) return;
   try {
     const stat = fs.statSync(file);
-    if (stat.isFile() && stat.size > 0) latest = Math.max(latest, stat.mtimeMs);
+    if (!stat.isFile() || stat.size <= 0) return;
+    if (options.requireTerminalProgress && !resultFileHasTerminalProgress(file)) return;
+    latest = Math.max(latest, stat.mtimeMs);
   } catch {}
 }
 function walk(dir) {
@@ -1902,7 +1913,7 @@ function walk(dir) {
     else if (entry.isFile()) addFile(full);
   }
 }
-addFile(resultPath);
+addFile(resultPath, { requireTerminalProgress: true });
 walk(checkpointDir);
 console.log(String(Math.floor(latest / 1000)));
 NODE

@@ -54,6 +54,10 @@ test("personal blog fetcher keeps only article-like same-origin HTML links", asy
   const candidates = cli.parseBlogCandidates(
     `
     <a href="/blog/building-agents">Building Agents</a>
+    <a href="/blog/category/company">Company category</a>
+    <a href="/blog/tag/agents">Agents tag</a>
+    <a href="/blog/rss/">RSS</a>
+    <a href="/blog/2026">Year archive</a>
     <a href="/pricing">Pricing</a>
     <a href="https://elsewhere.com/blog/nope">External</a>
     `,
@@ -63,6 +67,26 @@ test("personal blog fetcher keeps only article-like same-origin HTML links", asy
   assert.deepEqual(
     candidates.map((candidate: { url: string }) => candidate.url),
     ["https://example.com/blog/building-agents"],
+  );
+});
+
+test("personal blog fetcher drops feed entries that are listing pages", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const candidates = cli.parseBlogCandidates(
+    `
+    <rss><channel>
+      <item><title>Category</title><link>https://example.com/blog/category/company</link></item>
+      <item><title>RSS</title><link>https://example.com/blog/rss/</link></item>
+      <item><title>Year archive</title><link>https://example.com/blog/2026</link></item>
+      <item><title>Real post</title><link>https://example.com/blog/2026/07/09/real-post</link></item>
+    </channel></rss>
+    `,
+    "https://example.com/feed.xml",
+  );
+
+  assert.deepEqual(
+    candidates.map((candidate: { url: string }) => candidate.url),
+    ["https://example.com/blog/2026/07/09/real-post"],
   );
 });
 

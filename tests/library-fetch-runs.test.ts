@@ -357,6 +357,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /worker_stalled_timeout/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
   assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
+  assert.match(runner, /function resultFileHasTerminalProgress/);
+  assert.match(runner, /requireTerminalProgress/);
   assert.match(runner, /agent_runtime_failure_summary\(\)/);
   assert.match(runner, /agent_output_has_openclaw_capacity_failure\(\)/);
   assert.match(runner, /openclaw_model_candidates\(\)/);

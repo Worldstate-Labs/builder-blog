@@ -4657,12 +4657,17 @@ function isAfterCutoff(value, cutoff) {
 }
 
 export function parseBlogCandidates(body, indexUrl) {
+  let candidates;
   if (/<rss[\s>]|<feed[\s>]/i.test(body)) {
-    return parseFeedCandidates(body, indexUrl);
+    candidates = parseFeedCandidates(body, indexUrl);
+  } else if (indexUrl.includes("anthropic.com")) {
+    candidates = parseAnthropicEngineeringIndex(body);
+  } else if (indexUrl.includes("claude.com")) {
+    candidates = parseClaudeBlogIndex(body);
+  } else {
+    candidates = parseHtmlCandidates(body, indexUrl);
   }
-  if (indexUrl.includes("anthropic.com")) return parseAnthropicEngineeringIndex(body);
-  if (indexUrl.includes("claude.com")) return parseClaudeBlogIndex(body);
-  return parseHtmlCandidates(body, indexUrl);
+  return candidates.filter((candidate) => !isObviousBlogListingUrl(candidate.url));
 }
 
 function parseFeedCandidates(xml, indexUrl) {
@@ -4961,10 +4966,51 @@ function extractClaudeBlogArticle(html) {
 }
 
 function looksLikeArticlePath(pathname) {
+  if (isObviousBlogListingPath(pathname)) return false;
   return (
     /\/(blog|posts|post|news|article|articles|engineering|learn|writing)\//i.test(pathname) ||
     /\/20\d{2}\//.test(pathname)
   );
+}
+
+function isObviousBlogListingUrl(value) {
+  try {
+    return isObviousBlogListingPath(new URL(value).pathname);
+  } catch {
+    return false;
+  }
+}
+
+function isObviousBlogListingPath(pathname) {
+  const normalized = decodeURIComponent(String(pathname || ""))
+    .toLowerCase()
+    .replace(/\/+$/, "");
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length === 0) return false;
+  const listingSegments = new Set([
+    "archive",
+    "archives",
+    "author",
+    "authors",
+    "category",
+    "categories",
+    "feed",
+    "feeds",
+    "rss",
+    "tag",
+    "tags",
+    "topic",
+    "topics",
+  ]);
+  if (segments.some((segment) => listingSegments.has(segment))) return true;
+  const last = segments[segments.length - 1] || "";
+  if (/^(atom|feed|index|rss)$/.test(last)) return true;
+  if (/\.(atom|rss|xml)$/.test(last)) return true;
+  const parent = segments[segments.length - 2] || "";
+  if (/^20\d{2}$/.test(last) && /^(blog|blogs|engineering|learn|news|post|posts|writing)$/.test(parent)) {
+    return true;
+  }
+  return false;
 }
 
 function tagText(text, tagName) {
