@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Rss, Search, Terminal } from "lucide-react";
 import { I18nText } from "@/components/I18nProvider";
+import { PromoVideo } from "@/components/PromoVideo";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
 
@@ -44,11 +45,7 @@ export default async function Home() {
                 <span className="lp-film-dot" />
               </div>
               <div className="lp-film-body">
-                <iframe
-                  src="/promo.html"
-                  title="FollowBrief promo film"
-                  loading="lazy"
-                />
+                <PromoVideo />
               </div>
             </div>
           </div>

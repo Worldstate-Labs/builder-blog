@@ -646,8 +646,13 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /className="lp-film-frame"/);
   assert.match(landingPage, /className="lp-film-chrome" aria-hidden="true"/);
   assert.doesNotMatch(landingPage, /followbrief\.worldstatelabs\.com/);
-  assert.match(landingPage, /src="\/promo\.html"/);
-  assert.match(landingPage, /title="FollowBrief promo film"/);
+  assert.match(landingPage, /import \{ PromoVideo \} from "@\/components\/PromoVideo"/);
+  assert.match(landingPage, /<PromoVideo \/>/);
+  const promoVideo = source("src/components/PromoVideo.tsx");
+  assert.match(promoVideo, /"\/followbrief-promo-mobile\.mp4"/);
+  assert.match(promoVideo, /"\/followbrief-promo\.mp4"/);
+  assert.match(promoVideo, /max-width: 900px/);
+  assert.match(promoVideo, /aria-label="FollowBrief promo film"/);
   assert.match(landingPage, /className="lp-section" id="how-it-works"/);
   assert.match(landingPage, /<I18nText id="home\.whatItDoes" \/>/);
   assert.match(landingPage, /<I18nText id="home\.loopTitle" \/>/);
