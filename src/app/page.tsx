@@ -31,9 +31,6 @@ export default async function Home() {
               <Link className="fb-btn dark lp-btn-lg" href="/login">
                 <I18nText id="home.startBrief" />
               </Link>
-              <a className="fb-btn light lp-btn-lg" href="#film">
-                <I18nText id="home.watchFilm" />
-              </a>
             </div>
           </div>
         </header>

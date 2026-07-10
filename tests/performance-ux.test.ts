@@ -639,8 +639,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /className="lp-hero-actions"/);
   assert.match(landingPage, /className="fb-btn dark lp-btn-lg" href="\/login"/);
   assert.match(landingPage, /<I18nText id="home\.startBrief" \/>/);
-  assert.match(landingPage, /className="fb-btn light lp-btn-lg" href="#film"/);
-  assert.match(landingPage, /<I18nText id="home\.watchFilm" \/>/);
+  assert.doesNotMatch(landingPage, /home\.watchFilm|href="#film"|fb-btn light lp-btn-lg/);
   assert.doesNotMatch(landingPage, /home\.worksWith|\["x", "blog", "youtube", "podcast", "website"\]|className="fb-kind-pill"|className="lp-kinds"/);
   assert.match(landingPage, /className="lp-film" id="film"/);
   assert.doesNotMatch(landingPage, /home\.filmLabel|home\.filmNote|className="lp-film-head"|className="lp-film-note"/);
