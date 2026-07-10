@@ -3271,28 +3271,6 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "FollowBrief 프로모 필름",
     es: "Film promocional de FollowBrief",
   },
-  /* Browser-chrome and copyright decorations — intentionally identical across locales. */
-  "followbrief.worldstatelabs.com — everyone you follow, one brief": {
-    "zh-CN": "followbrief.worldstatelabs.com — everyone you follow, one brief",
-    "zh-TW": "followbrief.worldstatelabs.com — everyone you follow, one brief",
-    ja: "followbrief.worldstatelabs.com — everyone you follow, one brief",
-    ko: "followbrief.worldstatelabs.com — everyone you follow, one brief",
-    es: "followbrief.worldstatelabs.com — everyone you follow, one brief",
-  },
-  "followbrief.worldstatelabs.com": {
-    "zh-CN": "followbrief.worldstatelabs.com",
-    "zh-TW": "followbrief.worldstatelabs.com",
-    ja: "followbrief.worldstatelabs.com",
-    ko: "followbrief.worldstatelabs.com",
-    es: "followbrief.worldstatelabs.com",
-  },
-  "© 2026 FollowBrief": {
-    "zh-CN": "© 2026 FollowBrief",
-    "zh-TW": "© 2026 FollowBrief",
-    ja: "© 2026 FollowBrief",
-    ko: "© 2026 FollowBrief",
-    es: "© 2026 FollowBrief",
-  },
   "Preview data": {
     "zh-CN": "预览数据",
     "zh-TW": "預覽資料",
