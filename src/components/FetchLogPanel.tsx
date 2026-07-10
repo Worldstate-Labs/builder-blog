@@ -3057,7 +3057,7 @@ function summarizeOutcome(
   return { label: "Pending", tone: "warn" };
 }
 
-function taskStatusPill(
+export function taskStatusPill(
   task: FetchTaskLog,
   liveTask?: FetchTaskProgress | null,
 ): { label: string; tone: Tone } {
@@ -3082,15 +3082,15 @@ function taskStatusPill(
       return { label: "summarizing", tone: "warn" };
     }
     if (isSummarized(task) || liveStatus === "summarized") return { label: "syncing", tone: "warn" };
-    return { label: "summarizing", tone: "idle" };
+    return { label: "queued", tone: "idle" };
   }
   if (liveStatus === "reading" || livePhase === "read") return { label: "reading", tone: "warn" };
-  if (!hasReadSignal(task, liveTask)) return { label: "reading", tone: "idle" };
   if (liveStatus === "summarizing" || livePhase === "summarize") {
     return { label: "summarizing", tone: "warn" };
   }
   if (isSummarized(task) || liveStatus === "summarized") return { label: "syncing", tone: "warn" };
-  return { label: "summarizing", tone: "warn" };
+  if (hasReadSignal(task, liveTask)) return { label: "ready", tone: "idle" };
+  return { label: "queued", tone: "idle" };
 }
 
 function statusBanner(

@@ -9,6 +9,7 @@ import {
   fetchRunStats,
   getFetchActivityStatus,
   getFetchUpdateStatus,
+  taskStatusPill,
   type LibraryCronJobStatus,
   type LibraryFetchRunListItem,
 } from "../src/components/FetchLogPanel";
@@ -1330,6 +1331,36 @@ test("live job progress can backfill job-only post task details", () => {
       summaryWords: null,
     },
   ]);
+});
+
+test("planned ready tasks do not look like active summarizing work before worker progress", () => {
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:ready",
+      status: "pending",
+      contentStatus: "ready",
+      bodyChars: 1200,
+      bodyWords: 180,
+    }),
+    { label: "ready", tone: "idle" },
+  );
+  assert.deepEqual(
+    taskStatusPill(
+      {
+        id: "fetch_post:source:active",
+        status: "pending",
+        contentStatus: "ready",
+        bodyChars: 1200,
+      },
+      {
+        id: "fetch_post:source:active",
+        status: "summarizing",
+        phase: "summarize",
+        workerId: "worker-3",
+      },
+    ),
+    { label: "summarizing", tone: "warn" },
+  );
 });
 
 test("fetch run stats do not count summary translation as source read", () => {
