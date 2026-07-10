@@ -1978,9 +1978,11 @@ function RunCardVerdict({
 }
 
 function RunCardTaskDetails({
+  assignmentMayStillBePending,
   details,
   liveProgress,
 }: {
+  assignmentMayStillBePending: boolean;
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
 }) {
@@ -2000,7 +2002,11 @@ function RunCardTaskDetails({
         ) : null}
       </summary>
       <div className="sync-panel-run-card-details-body">
-        <DetailsBody details={displayDetails} liveProgress={liveProgress} />
+        <DetailsBody
+          assignmentMayStillBePending={assignmentMayStillBePending}
+          details={displayDetails}
+          liveProgress={liveProgress}
+        />
       </div>
     </details>
   );
@@ -2225,7 +2231,11 @@ function JobRunCard({
       </p>
       <JobLifecycle details={{}} progress={liveProgress} />
       {showTaskDetails ? (
-        <RunCardTaskDetails details={{}} liveProgress={liveProgress} />
+        <RunCardTaskDetails
+          assignmentMayStillBePending={isActiveJobRun(jobRun)}
+          details={{}}
+          liveProgress={liveProgress}
+        />
       ) : null}
       {statusDetails.length > 0 ? (
         <RunCardVerdict
@@ -2342,7 +2352,11 @@ function RunCard({
         </div>
       ) : null}
 
-      <RunCardTaskDetails details={details} liveProgress={liveProgress} />
+      <RunCardTaskDetails
+        assignmentMayStillBePending={inflight}
+        details={details}
+        liveProgress={liveProgress}
+      />
     </article>
   );
 }
@@ -2592,30 +2606,16 @@ function taskWorkerGroups(
   return [...groups.values()];
 }
 
-function liveProgressHasStartedTask(liveProgress: FetchJobProgress | null): boolean {
-  return (liveProgress?.tasks ?? []).some((task) => {
-    const status = String(task.status ?? "").toLowerCase();
-    const phase = String(task.phase ?? "").toLowerCase();
-    return (
-      status === "reading" ||
-      status === "summarizing" ||
-      status === "summarized" ||
-      status === "synced" ||
-      status === "skipped" ||
-      status === "failed" ||
-      status === "action_needed" ||
-      phase === "read" ||
-      phase === "summarize" ||
-      (typeof task.bodyChars === "number" && task.bodyChars > 0) ||
-      (typeof task.summaryChars === "number" && task.summaryChars > 0)
-    );
-  });
+function liveProgressNeedsWorkerAssignment(liveProgress: FetchJobProgress | null): boolean {
+  const stage = String(liveProgress?.stage ?? "").toLowerCase();
+  return stage.includes("worker") || stage.includes("shard") || stage.includes("task");
 }
 
-function fallbackTaskWorkerName(liveProgress: FetchJobProgress | null): string {
-  const stage = String(liveProgress?.stage ?? "").toLowerCase();
-  return !liveProgressHasStartedTask(liveProgress) &&
-    (stage.includes("worker") || stage.includes("shard") || stage.includes("task"))
+export function fallbackTaskWorkerName(
+  liveProgress: FetchJobProgress | null,
+  assignmentMayStillBePending: boolean,
+): string {
+  return assignmentMayStillBePending && liveProgressNeedsWorkerAssignment(liveProgress)
     ? "Worker assignment pending"
     : "Worker unknown";
 }
@@ -2693,9 +2693,11 @@ function formatInlineUsage(usage: UsageSummary | null): string | null {
 }
 
 function DetailsBody({
+  assignmentMayStillBePending,
   details,
   liveProgress,
 }: {
+  assignmentMayStillBePending: boolean;
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
 }) {
@@ -2707,7 +2709,7 @@ function DetailsBody({
   const taskGroups = taskWorkerGroups(
     postTasks,
     liveTasks,
-    fallbackTaskWorkerName(liveProgress),
+    fallbackTaskWorkerName(liveProgress, assignmentMayStillBePending),
     workerUsageMap(details.workerUsages),
     shardAssignmentMap(details.shardPlans),
   );

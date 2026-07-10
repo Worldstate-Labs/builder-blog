@@ -4,6 +4,7 @@ import {
   buildFetchTimeline,
   fetchCronFrequencyLabel,
   fetchDetailsForTaskDisplay,
+  fallbackTaskWorkerName,
   fetchRunLifecycleSyncProgress,
   fetchRunDisplayState,
   fetchRunStats,
@@ -1362,6 +1363,24 @@ test("planned ready tasks do not look like active summarizing work before worker
     ),
     { label: "summarizing", tone: "warn" },
   );
+});
+
+test("running dynamic fetch keeps unassigned planned tasks pending after worker progress starts", () => {
+  const liveProgress = {
+    stage: "workers_running",
+    tasks: [
+      {
+        id: "fetch_post:source:active",
+        status: "summarizing",
+        phase: "summarize",
+        workerId: "shard-1",
+        bodyChars: 1200,
+      },
+    ],
+  };
+
+  assert.equal(fallbackTaskWorkerName(liveProgress, true), "Worker assignment pending");
+  assert.equal(fallbackTaskWorkerName(liveProgress, false), "Worker unknown");
 });
 
 test("validation-failed fetch task reason includes the concrete validator error", () => {
