@@ -28,18 +28,82 @@ combined payload, repairs validation failures if needed, and syncs it with
   written its sync item or terminal `taskOutcomes` entry.
 
 Agent discretion boundary: use the exact shard paths and JSON shapes specified
-below.
+below. The shard file can be hundreds of KB because it includes all task bodies
+and instructions. Do NOT `cat`, `Read`, or paste the full shard file or a
+persisted tool-output copy of the full shard file. Loading the full shard before
+the first checkpoint can trigger the worker watchdog. Inspect the compact task
+queue first, then extract and process one task at a time.
 
-1. Resolve your shard assignment and read the tasks (the runner exports both
-variables):
+1. Resolve your shard assignment and inspect only a compact task queue (the
+runner exports all variables):
 
 ```bash
 printf 'shard file: %s\n' "$BUILDER_BLOG_SHARD_FILE"
 printf 'result file: %s\n' "$BUILDER_BLOG_SHARD_RESULT"
 printf 'checkpoint dir: %s\n' "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR"
 printf 'shard timeout seconds: %s\n' "${BUILDER_BLOG_SHARD_TIMEOUT_SECONDS:-unknown}"
-cat "$BUILDER_BLOG_SHARD_FILE"
+node - "$BUILDER_BLOG_SHARD_FILE" <<'NODE'
+const fs = require("fs");
+const shardFile = process.argv[2];
+const shard = JSON.parse(fs.readFileSync(shardFile, "utf8"));
+const tasks = Array.isArray(shard.fetchTasks) ? shard.fetchTasks : [];
+const queue = tasks.map((task, index) => ({
+  index,
+  id: task.id || null,
+  builder: task.builder || task.builderSync?.name || task.item?.sourceName || null,
+  sourceType: task.sourceType || null,
+  agentWorkType: task.agentWorkType || null,
+  contentStatus: task.contentStatus || null,
+  title: task.item?.title || null,
+  url: task.item?.url || null,
+  bodyChars: typeof task.item?.body === "string" ? task.item.body.length : 0,
+}));
+console.log(JSON.stringify({
+  shardIndex: shard.shardIndex ?? null,
+  shardCount: shard.shardCount ?? null,
+  taskCount: queue.length,
+  tasks: queue,
+}, null, 2));
+NODE
 ```
+
+For each task, set `FETCH_TASK_ID` from the compact queue, compute the task
+hash, write the `reading` progress checkpoint first, and only then extract the
+single task JSON you are about to process:
+
+```bash
+TASK_HASH="$(printf '%s' "$FETCH_TASK_ID" | shasum -a 256 | awk '{print $1}')"
+mkdir -p "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/progress"
+node - "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/progress/$TASK_HASH.json" "$FETCH_TASK_ID" <<'NODE'
+const fs = require("fs");
+const [progressFile, fetchTaskId] = process.argv.slice(2);
+fs.writeFileSync(progressFile, JSON.stringify({
+  fetchTaskId,
+  status: "reading",
+  phase: "read",
+  message: "Started reading this task.",
+  updatedAt: new Date().toISOString(),
+}, null, 2));
+NODE
+
+TASK_FILE="$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/task-$TASK_HASH.json"
+node - "$BUILDER_BLOG_SHARD_FILE" "$FETCH_TASK_ID" "$TASK_FILE" <<'NODE'
+const fs = require("fs");
+const [shardFile, fetchTaskId, taskFile] = process.argv.slice(2);
+const shard = JSON.parse(fs.readFileSync(shardFile, "utf8"));
+const tasks = Array.isArray(shard.fetchTasks) ? shard.fetchTasks : [];
+const task = tasks.find((candidate, index) =>
+  candidate.id === fetchTaskId || String(index) === fetchTaskId
+);
+if (!task) throw new Error(`Fetch task not found: ${fetchTaskId}`);
+fs.writeFileSync(taskFile, JSON.stringify(task, null, 2));
+console.log(taskFile);
+NODE
+```
+
+Read only that extracted task file for full task details. Repeat the extraction
+for the next task after writing the completed task checkpoint and full shard
+result for the current task.
 
 2. Complete every task in the shard file's `fetchTasks` array exactly as
 specified below. Notes for this worker context: "the sync payload" below means

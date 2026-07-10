@@ -625,6 +625,11 @@ test("library worker prompt forbids background task work", async () => {
   assert.match(prompt, /Long[\s\S]*transcription[\s\S]*must run in the[\s\S]*foreground/);
   assert.match(prompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
   assert.match(prompt, /extraction_exceeds_shard_timeout/);
+  assert.doesNotMatch(prompt, /cat "\$BUILDER_BLOG_SHARD_FILE"/);
+  assert.match(prompt, /compact task queue/);
+  assert.match(prompt, /process one task at a time/);
+  assert.match(prompt, /Started reading this task/);
+  assert.match(prompt, /TASK_FILE="\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/task-\$TASK_HASH\.json"/);
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
