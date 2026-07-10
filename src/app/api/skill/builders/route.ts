@@ -302,10 +302,10 @@ async function patchFetchRunForBuilderSync({
       plannedTasks: fetchRun.plannedTasks ?? [],
       taskOutcomes: outcomes,
     });
-    // Same column, same cap as the fetch-runs POST/PATCH writers (100 KB).
-    const compacted = compactFetchRunDetailsForStorage(merged.details, 100_000);
-    if (compacted.bytes > 100_000) {
-      console.error(`Fetch run ${fetchRun.id} details patch exceeded 100 KB; leaving log unpatched.`);
+    // Same column, same cap as the fetch-runs POST/PATCH writers (1000 KB).
+    const compacted = compactFetchRunDetailsForStorage(merged.details, 1_000_000);
+    if (compacted.bytes > 1_000_000) {
+      console.error(`Fetch run ${fetchRun.id} details patch exceeded 1000 KB; leaving log unpatched.`);
       return { status: "failed", reason: "details_too_large" };
     }
 
