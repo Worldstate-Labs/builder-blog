@@ -17,7 +17,7 @@ const policy = timeoutPolicy as TimeoutPolicy;
 
 export function localAgentTimeoutSeconds(intervalMinutes: string | number, job: string): string {
   const jobDefault = policy.jobDefaultSeconds?.[job];
-  if (Number.isFinite(jobDefault) && jobDefault > 0) {
+  if (typeof jobDefault === "number" && Number.isFinite(jobDefault) && jobDefault > 0) {
     return String(jobDefault);
   }
   const interval = Number(intervalMinutes);
