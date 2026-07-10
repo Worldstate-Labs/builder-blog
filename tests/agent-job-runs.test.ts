@@ -286,9 +286,12 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /_claude_disallowed_tools="Task,TaskCreate,TaskGet,TaskList,TaskOutput,TaskStop,TaskUpdate"/);
   assert.match(runner, /claude_unattended_command\(\)/);
   assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \][\s\S]*--disallowedTools "\$_claude_disallowed_tools"/);
-  assert.match(runner, /--allowedTools "\$_claude_allowed_tools"/);
+  assert.match(runner, /else[\s\S]*--allowedTools "\$_claude_allowed_tools"/);
   assert.match(runner, /--disallowedTools "\$_claude_disallowed_tools"/);
   assert.doesNotMatch(runner, /--tools "\$_claude_allowed_tools"/);
+  assert.match(runner, /BUILDER_BLOG_WORKER_NO_PROGRESS_SECONDS:-600/);
+  assert.match(runner, /shards\/results\/shard-\*-agent-output\.log/);
+  assert.match(runner, /agent-output-tails/);
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);

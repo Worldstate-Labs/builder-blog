@@ -3253,6 +3253,13 @@ function workerLogText(task: FetchTaskLog): string | null {
   return typeof tail === "string" && tail.trim() ? tail.trim() : null;
 }
 
+function agentOutputText(task: FetchTaskLog): string | null {
+  const missingShard = missingShardRecord(task);
+  if (!missingShard || !("agentOutputTail" in missingShard)) return null;
+  const tail = missingShard.agentOutputTail;
+  return typeof tail === "string" && tail.trim() ? tail.trim() : null;
+}
+
 function missingWorkerLogText(task: FetchTaskLog): string | null {
   if (task.failureReason !== "worker_missing_result") return null;
   if (workerLogText(task)) return null;
@@ -3453,6 +3460,7 @@ export function TaskRow({
       : displayText(work.blurb);
   const missingShard = missingShardText(task);
   const workerLog = workerLogText(task);
+  const agentOutput = agentOutputText(task);
   const missingWorkerLog = missingWorkerLogText(task);
   const shardTimeout = shardTimeoutText(task);
   const workerWatchdog = workerWatchdogText(task);
@@ -3489,6 +3497,7 @@ export function TaskRow({
     failureReasonText(task) ||
     missingShard ||
     workerLog ||
+    agentOutput ||
     missingWorkerLog ||
     shardTimeout ||
     workerWatchdog ||
@@ -3628,6 +3637,12 @@ export function TaskRow({
             <FactRow
               label="Local Agent log"
               value={<span className="mono">{workerLog}</span>}
+            />
+          ) : null}
+          {agentOutput ? (
+            <FactRow
+              label="Local Agent output"
+              value={<span className="mono">{agentOutput}</span>}
             />
           ) : null}
           {missingWorkerLog ? (

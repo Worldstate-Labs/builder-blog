@@ -551,6 +551,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /label="Worker watchdog"/);
   assert.match(panel, /label="Shard summary"/);
   assert.match(panel, /label="Local Agent log"/);
+  assert.match(panel, /label="Local Agent output"/);
   assert.doesNotMatch(panel, /Main Local Agent/);
   assert.doesNotMatch(panel, /Technical details/);
   assert.doesNotMatch(panel, /sync-panel-task-technical/);

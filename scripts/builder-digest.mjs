@@ -6426,6 +6426,9 @@ function normalizeShardPlan(plan) {
     workerLogFile: String(plan.workerLogFile || `${shard}-worker.log`),
     workerLogTail: typeof plan.workerLogTail === "string" ? plan.workerLogTail : null,
     workerLogBytes: Number.isFinite(Number(plan.workerLogBytes)) ? Number(plan.workerLogBytes) : null,
+    agentOutputFile: String(plan.agentOutputFile || `${shard}-agent-output.log`),
+    agentOutputTail: typeof plan.agentOutputTail === "string" ? plan.agentOutputTail : null,
+    agentOutputBytes: Number.isFinite(Number(plan.agentOutputBytes)) ? Number(plan.agentOutputBytes) : null,
     usage,
     taskCount: Number.isFinite(Number(plan.taskCount)) ? Number(plan.taskCount) : tasks.length,
     taskIds: tasks.map((task) => String(task?.id || fetchTaskId(task))),
@@ -6453,6 +6456,9 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
     };
     if (shardPlan.workerLogTail) evidence.missingShard.workerLogTail = shardPlan.workerLogTail;
     if (shardPlan.workerLogBytes !== null) evidence.missingShard.workerLogBytes = shardPlan.workerLogBytes;
+    if (shardPlan.agentOutputFile) evidence.missingShard.agentOutputFile = shardPlan.agentOutputFile;
+    if (shardPlan.agentOutputTail) evidence.missingShard.agentOutputTail = shardPlan.agentOutputTail;
+    if (shardPlan.agentOutputBytes !== null) evidence.missingShard.agentOutputBytes = shardPlan.agentOutputBytes;
     const workerWatchdog = workerWatchdogEventFromLog(shardPlan.workerLogTail);
     if (workerWatchdog) evidence.workerWatchdog = workerWatchdog;
   } else {
@@ -7001,19 +7007,25 @@ async function readShardPlans(resultsDir) {
       payload = {};
     }
     const workerLogFile = `${shard}-worker.log`;
+    const agentOutputFile = `${shard}-agent-output.log`;
     const usageFile = `${shard}-usage.jsonl`;
     const workerLogText = await readOptionalText(join(resultsDir, workerLogFile));
+    const agentOutputText = await readOptionalText(join(resultsDir, agentOutputFile));
     const usage = runtimeUsageFromFile(join(resultsDir, usageFile), "runtime_sidecar") ??
-      (workerLogText ? runtimeUsageFromText(workerLogText) : null);
+      (workerLogText ? runtimeUsageFromText(workerLogText) : null) ??
+      (agentOutputText ? runtimeUsageFromText(agentOutputText) : null);
     const firstTask = Array.isArray(payload.fetchTasks) ? payload.fetchTasks.find(Boolean) : null;
     plans.push({
       shard,
       workerId: payload.workerId ?? firstTask?.workerId ?? shard,
       resultFile: `${shard}-result.json`,
       workerLogFile,
+      agentOutputFile,
       usageFile,
       workerLogTail: workerLogText ? tailLines(workerLogText) : null,
       workerLogBytes: workerLogText ? Buffer.byteLength(workerLogText, "utf8") : null,
+      agentOutputTail: agentOutputText ? tailLines(agentOutputText) : null,
+      agentOutputBytes: agentOutputText ? Buffer.byteLength(agentOutputText, "utf8") : null,
       usage,
       tasks: Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [],
     });

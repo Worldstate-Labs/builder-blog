@@ -4721,6 +4721,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
           shard: "shard-1",
           message: "Worker shard-1 exceeded 1440s; terminating it.",
         }),
+        agentOutputTail: "Claude stalled before writing shard result.",
         tasks: [fetchResult.fetchTasks[2]],
       },
     ],
@@ -4749,6 +4750,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
       shard?: string;
       resultFile?: string;
       workerLogTail?: string;
+      agentOutputTail?: string;
       taskIds?: string[];
     };
     shardTimeoutSeconds?: number;
@@ -4758,6 +4760,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   assert.deepEqual(t3Evidence.missingShard?.taskIds, ["t3"]);
   assert.deepEqual(t3Evidence.runShardSummary, ["shard-0-result.json:ok", "shard-1-result.json:missing"]);
   assert.match(t3Evidence.missingShard?.workerLogTail ?? "", /worker_shard_timeout/);
+  assert.match(t3Evidence.missingShard?.agentOutputTail ?? "", /stalled before writing shard result/);
   assert.equal(t3Evidence.shardTimeoutSeconds, 1440);
   assert.equal(merged.backfilledOutcomes, 1);
   // Duplicate item for an already-synced normal task is dropped on merge.
@@ -5326,7 +5329,7 @@ test("merge-task-results classifies no-progress worker timeouts distinctly", asy
           reason: "worker_no_progress_timeout",
           worker: "worker-0",
           shard: "shard-0",
-          message: "Worker made no checkpoint, progress, or result-file progress for 300s.",
+          message: "Worker made no checkpoint, progress, or result-file progress for 600s.",
         }),
         tasks: fetchResult.fetchTasks,
       },
@@ -5343,7 +5346,7 @@ test("merge-task-results classifies no-progress worker timeouts distinctly", asy
   ]);
   assert.equal(outcomes[0]?.evidence?.failureKind, "worker_no_progress_timeout");
   assert.equal(outcomes[0]?.evidence?.workerWatchdog?.reason, "worker_no_progress_timeout");
-  assert.equal(outcomes[0]?.evidence?.workerWatchdog?.timeoutSeconds, 300);
+  assert.equal(outcomes[0]?.evidence?.workerWatchdog?.timeoutSeconds, 600);
 });
 
 test("merge-task-results can classify unassigned timeout backfills distinctly", async () => {

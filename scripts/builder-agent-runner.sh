@@ -519,13 +519,13 @@ run_with_claude_unattended() {
     if [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" = "worker" ]; then
       claude "$@" --disallowedTools "$_claude_disallowed_tools"
     else
-      claude "$@"
+      claude "$@" --allowedTools "$_claude_allowed_tools"
     fi
   }
-  # acceptEdits auto-approves edits; allowedTools whitelists the primary tool
-  # surface the skill actually uses (Bash for node CLI + curl, WebFetch for
-  # content extraction, file IO under tmp/). Other built-in tools remain
-  # available to Claude unless explicitly denied.
+  # acceptEdits auto-approves edits. Non-worker Claude jobs still pre-approve
+  # the primary tool surface they use; shard workers only deny nested delegation
+  # tools so a permission allowlist cannot block a useful built-in tool before
+  # the first checkpoint.
   _claude_output="$(agent_output_file claude)"
   _claude_usage="$(agent_usage_file claude)"
   LAST_AGENT_OUTPUT_FILE="$_claude_output"
@@ -543,14 +543,12 @@ run_with_claude_unattended() {
       --output-format stream-json \
       --verbose \
       --add-dir "$AGENT_DIR" \
-      --permission-mode acceptEdits \
-      --allowedTools "$_claude_allowed_tools" > "$_claude_output" 2>&1
+      --permission-mode acceptEdits > "$_claude_output" 2>&1
   else
     claude_unattended_command -p "$(cat "$PROMPT_FILE")" \
       --model "$_claude_model" \
       --add-dir "$AGENT_DIR" \
-      --permission-mode acceptEdits \
-      --allowedTools "$_claude_allowed_tools" > "$_claude_output" 2>&1
+      --permission-mode acceptEdits > "$_claude_output" 2>&1
   fi
   _claude_code="$?"
   set -e
@@ -1422,7 +1420,7 @@ write_cleanup_debug_bundle() {
   _reason="${2:-}"
   _debug_dir="$JOB_TMP_DIR/debug"
   _recovery_dir="$_debug_dir/recovery"
-  mkdir -p "$_debug_dir/errors" "$_debug_dir/worker-log-tails" "$_recovery_dir"
+  mkdir -p "$_debug_dir/errors" "$_debug_dir/worker-log-tails" "$_debug_dir/agent-output-tails" "$_recovery_dir"
   node - "$_debug_dir/runner-summary.json" "$ACCOUNT_SLUG" "$JOB_NAME" "${BUILDER_BLOG_JOB_RUN_ID:-}" "$_status" "$_reason" "$JOB_TMP_DIR" "$JOB_STATE_DIR" "${BUILDER_BLOG_RUNTIME:-}" "${BUILDER_BLOG_USAGE_FILE:-}" <<'NODE'
 const fs = require("fs");
 const [file, accountSlug, jobName, instanceId, status, reason, runTmpDir, jobStateDir, runtime, usageFile] = process.argv.slice(2);
@@ -1464,6 +1462,7 @@ NODE
     "$JOB_TMP_DIR"/assigned-fetch-task-ids.txt \
     "$JOB_TMP_DIR"/active-fetch-group-keys.txt \
     "$JOB_TMP_DIR"/shards/shard-*.json \
+    "$JOB_TMP_DIR"/shards/results/shard-*-agent-output.log \
     "$JOB_TMP_DIR"/shards/results/shard-*-result.json \
     "$JOB_TMP_DIR"/shards/results/shard-*-worker.log \
     "$JOB_TMP_DIR"/shards/results/shard-*-usage.jsonl \
@@ -1479,6 +1478,11 @@ NODE
     copy_tail_file "$_worker_log" "$_debug_dir/worker-log-tails/$(basename "$_worker_log")"
   done
 
+  for _agent_output_log in "$JOB_TMP_DIR"/shards/results/*-agent-output.log; do
+    [ -e "$_agent_output_log" ] || continue
+    copy_tail_file "$_agent_output_log" "$_debug_dir/agent-output-tails/$(basename "$_agent_output_log")"
+  done
+
   {
     find "$JOB_TMP_DIR" -type f \( \
       -name '*.mp3' -o -name '*.m4a' -o -name '*.aac' -o -name '*.wav' -o -name '*.webm' -o -name '*.opus' -o -name '*.ogg' -o -name '*.flac' \
@@ -1491,7 +1495,7 @@ NODE
     printf '%s\t%s\n' "${_bytes:-0}" "$_artifact"
   done > "$_debug_dir/media-cleanup-manifest.tsv"
 
-  for _path_log in "$JOB_TMP_DIR"/*-agent-output.* "$JOB_TMP_DIR"/shards/results/*-worker.log; do
+  for _path_log in "$JOB_TMP_DIR"/*-agent-output.* "$JOB_TMP_DIR"/shards/results/*-agent-output.log "$JOB_TMP_DIR"/shards/results/*-worker.log; do
     [ -r "$_path_log" ] || continue
     grep -Eo '(/tmp|/var/folders|/Users/[^[:space:]]+/(Downloads|\.cache))[^[:space:]`"'"'"'<>]+' "$_path_log" 2>/dev/null || true
   done | sort -u > "$_debug_dir/external-artifact-warnings.txt"
@@ -1847,9 +1851,9 @@ NODE
 
 worker_no_progress_timeout_seconds() {
   _wnpts_shard_timeout="${1:-0}"
-  _wnpts_timeout="${BUILDER_BLOG_WORKER_NO_PROGRESS_SECONDS:-300}"
+  _wnpts_timeout="${BUILDER_BLOG_WORKER_NO_PROGRESS_SECONDS:-600}"
   case "$_wnpts_timeout" in
-    ''|*[!0-9]*) _wnpts_timeout=300 ;;
+    ''|*[!0-9]*) _wnpts_timeout=600 ;;
   esac
   if [ "$_wnpts_timeout" -lt 60 ]; then
     _wnpts_timeout=60
