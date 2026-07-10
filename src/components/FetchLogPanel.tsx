@@ -2971,10 +2971,72 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   return { label: "Needs Local Agent", tone: "idle" };
 }
 
-function failureReasonText(task: FetchTaskLog): string | null {
+const VALIDATION_ERROR_MESSAGES: Record<string, string> = {
+  "item.body_required": "post body was missing",
+  "item.body_must_match_ready_fetch_task_body": "post body did not match the planned ready-task body",
+  "rawJson.fetchTaskId_required": "sync item was missing fetchTaskId",
+  "rawJson.fetchTaskId_must_match_task_id": "sync item fetchTaskId did not match this task",
+  "rawJson_agent_execution_proof_required": "Local Agent execution proof was missing",
+  "rawJson.agentRuntime_required": "Local Agent runtime was missing",
+  "rawJson.agentExecutionProof_required": "Local Agent execution proof was missing",
+  "rawJson.agentCompletedAt_required_iso_datetime": "Local Agent completion time was missing or invalid",
+  "summary:summary_too_short": "summary was too short",
+  "summary:summary_too_long": "summary was too long",
+  "summary:summary_duplicates_title": "summary duplicated the title",
+  "summary:summary_copies_body_prefix": "summary copied the start of the source body",
+  "headline:headline_missing": "headline was missing",
+  "headline:headline_too_long": "headline was too long",
+  "headline:headline_duplicates_title": "headline duplicated the title",
+  "headline:headline_duplicates_summary": "headline duplicated the summary",
+  "content_quality:content_too_short": "post body was too short",
+  "content_quality:content_duplicates_metadata": "post body duplicated title or description metadata instead of primary content",
+  "youtube_content_quality:transcript_missing": "YouTube transcript was missing",
+  "youtube_content_quality:metadata_masquerading_as_content": "YouTube content looked like metadata instead of transcript text",
+  "youtube_content_quality:content_too_short": "YouTube content was too short",
+  "youtube_content_quality:content_duplicates_metadata": "YouTube content duplicated title or description metadata",
+  "outcome.status_must_be_skipped_failed_or_blocked": "task outcome status was invalid",
+  "outcome.reason_required": "task outcome reason was missing",
+  "outcome.skipped_requires_per_task_evidence": "skipped task did not include per-task evidence",
+};
+
+function validationEvidence(task: FetchTaskLog): Record<string, unknown> | null {
+  const validation = task.evidence?.validation;
+  return validation && typeof validation === "object" && !Array.isArray(validation)
+    ? validation as Record<string, unknown>
+    : null;
+}
+
+function validationErrorText(error: unknown): string | null {
+  const code = String(error || "").trim();
+  if (!code) return null;
+  const message = VALIDATION_ERROR_MESSAGES[code];
+  return message ? `${code} (${message})` : code;
+}
+
+function validationFailureDetailsText(task: FetchTaskLog): string | null {
+  const validation = validationEvidence(task);
+  if (!validation) return null;
+  const errors = Array.isArray(validation.errors)
+    ? validation.errors.map(validationErrorText).filter((text): text is string => Boolean(text))
+    : [];
+  if (errors.length > 0) return errors.join("; ");
+  const item = typeof validation.item === "string" ? validation.item.trim() : "";
+  return item ? `validation failed for ${item}` : null;
+}
+
+export function fetchTaskFailureReasonText(task: FetchTaskLog): string | null {
   if (!task.failureReason) return null;
   if (isHiddenFailureReason(task.failureReason)) return null;
-  return fetchFailureMessage(task.failureReason);
+  const message = fetchFailureMessage(task.failureReason);
+  const validationDetails = validationFailureDetailsText(task);
+  if (validationDetails && task.failureReason === "task_validation_failed") {
+    return `${message}: ${validationDetails}`;
+  }
+  return message;
+}
+
+function failureReasonText(task: FetchTaskLog): string | null {
+  return fetchTaskFailureReasonText(task);
 }
 
 // Compact one-line render of per-task skip evidence, e.g.

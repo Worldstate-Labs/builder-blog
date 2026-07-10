@@ -7,6 +7,7 @@ import {
   fetchRunLifecycleSyncProgress,
   fetchRunDisplayState,
   fetchRunStats,
+  fetchTaskFailureReasonText,
   getFetchActivityStatus,
   getFetchUpdateStatus,
   taskStatusPill,
@@ -1360,6 +1361,24 @@ test("planned ready tasks do not look like active summarizing work before worker
       },
     ),
     { label: "summarizing", tone: "warn" },
+  );
+});
+
+test("validation-failed fetch task reason includes the concrete validator error", () => {
+  assert.equal(
+    fetchTaskFailureReasonText({
+      status: "failed",
+      failureReason: "task_validation_failed",
+      title: "Macron's sports protectionism",
+      evidence: {
+        validation: {
+          builder: "Politico",
+          item: "https://www.politico.com/live-updates/2026/07/09/world-cup-2026/emmanuel-macron-tour-de-france-world-cup-00992527",
+          errors: ["content_quality:content_duplicates_metadata"],
+        },
+      },
+    }),
+    "Sync payload for this post failed validation: content_quality:content_duplicates_metadata (post body duplicated title or description metadata instead of primary content)",
   );
 });
 
