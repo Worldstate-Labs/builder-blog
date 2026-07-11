@@ -28,6 +28,10 @@ type AgentRuntime = "claude" | "codex" | "hermes" | "openclaw";
 type RuntimeType = "cloud" | "local";
 type StopFetchTarget = "cloud" | "local";
 
+function defaultRuntimeTypeForContext(context: SkillPromptContext): RuntimeType {
+  return context === "library" ? "cloud" : "local";
+}
+
 const RUNTIME_OPTIONS: { id: AgentRuntime; label: string }[] = [
   {
     id: "claude",
@@ -99,7 +103,10 @@ export type CloudSubmissionSource = {
   avatarDataUrl: string | null;
 };
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
-function promptDialogDescription(context: SkillPromptContext, runtimeType: RuntimeType = "local") {
+function promptDialogDescription(
+  context: SkillPromptContext,
+  runtimeType: RuntimeType = defaultRuntimeTypeForContext(context),
+) {
   if (context === "library") {
     return runtimeType === "cloud"
       ? "Submit a request for FollowBrief to fetch sources in your library."
@@ -912,7 +919,7 @@ function StopScheduleDialog({
                   className="cron-check-input"
                 />
                 <span className="cron-check-body">
-                  <span className="cron-check-name">Your Local Agent</span>
+                  <span className="cron-check-name">Your agent</span>
                   <span className="cron-field-hint">
                     {canStopLocal
                       ? "Stop the server-authorized local recurring schedule."
@@ -931,11 +938,11 @@ function StopScheduleDialog({
                   className="cron-check-input"
                 />
                 <span className="cron-check-body">
-                  <span className="cron-check-name">Cloud</span>
+                  <span className="cron-check-name">FollowBrief</span>
                   <span className="cron-field-hint">
                     {canStopCloud
                       ? "Stop cloud fetching for your submitted sources."
-                      : "No cloud Fetch sources submission is active."}
+                      : "No FollowBrief Fetch sources submission is active."}
                   </span>
                 </span>
               </label>
@@ -947,8 +954,8 @@ function StopScheduleDialog({
               <dd>
                 {showFetchTargetPicker
                   ? effectiveSelectedTarget === "cloud"
-                    ? "Cloud Fetch sources"
-                    : "Local Agent Fetch sources"
+                    ? "FollowBrief Fetch sources"
+                    : "Your agent Fetch sources"
                   : scheduleName}
               </dd>
             </div>
@@ -1342,7 +1349,8 @@ function CronConfigDialog({
   onConfirm: (selection: SchedulePromptSelection) => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [runtimeType, setRuntimeType] = useState<RuntimeType>("local");
+  const defaultRuntimeType = defaultRuntimeTypeForContext(context);
+  const [runtimeType, setRuntimeType] = useState<RuntimeType>(defaultRuntimeType);
   const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
   const freqOptions = FREQUENCY_OPTIONS[context];
   const [pickedFreq, setPickedFreq] = useState<ScheduleFrequency>(DEFAULT_FREQUENCY[context]);
@@ -1449,7 +1457,7 @@ function CronConfigDialog({
     setCloudSubmitMessage(null);
     try {
       if (cloudSelectionInvalid) {
-        setError(`Select 1-${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to Cloud.`);
+        setError(`Select 1-${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to FollowBrief.`);
         setSubmitting(false);
         return;
       }
@@ -1488,7 +1496,7 @@ function CronConfigDialog({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          setError(body?.error ?? "Could not submit sources to FollowBrief Cloud.");
+          setError(body?.error ?? "Could not submit sources to FollowBrief.");
           setSubmitting(false);
           return;
         }
@@ -1583,8 +1591,8 @@ function CronConfigDialog({
                   setRuntimeType(next);
                 }}
               >
-                <option value="cloud">Cloud</option>
-                <option value="local">Your Local Agent</option>
+                <option value="cloud">FollowBrief</option>
+                <option value="local">Your agent</option>
               </select>
             </div>
           ) : null}

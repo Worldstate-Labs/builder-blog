@@ -6,7 +6,7 @@ import test from "node:test";
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
 
-test("Fetch sources dialog exposes cloud runtime before frequency and keeps local controls local-only", () => {
+test("Fetch sources dialog defaults to FollowBrief runtime before frequency and keeps agent controls local-only", () => {
   const skillPromptActions = source("src/components/SkillPromptActions.tsx");
   const cronConfigDialog = skillPromptActions.slice(
     skillPromptActions.indexOf("function CronConfigDialog"),
@@ -19,8 +19,9 @@ test("Fetch sources dialog exposes cloud runtime before frequency and keeps loca
         cronConfigDialog.indexOf('htmlFor="cron-freq"'),
     "Runtime type should render before Frequency",
   );
-  assert.match(skillPromptActions, /Cloud/);
-  assert.match(skillPromptActions, /Your Local Agent/);
+  assert.match(skillPromptActions, /defaultRuntimeTypeForContext\(context\)/);
+  assert.match(skillPromptActions, /<option value="cloud">FollowBrief<\/option>/);
+  assert.match(skillPromptActions, /<option value="local">Your agent<\/option>/);
   assert.match(skillPromptActions, /CLOUD_FREQUENCY_OPTIONS[\s\S]*Every day[\s\S]*Every week/);
   assert.match(skillPromptActions, /runtimeType === "cloud"[\s\S]*\/api\/cloud-library\/source-submissions/);
   assert.match(skillPromptActions, /const cloudSubmitLabel =/);
@@ -72,8 +73,8 @@ test("Stop fetching dialog lets users choose local or cloud fetch without stoppi
   assert.doesNotMatch(skillPromptActions, /cloud-library-cron-stop/);
   assert.match(skillPromptActions, /Any installed Local Agent schedule will remove itself on its next check/);
   assert.match(stopDialog, /name="stop-fetch-target"/);
-  assert.match(stopDialog, /Your Local Agent/);
-  assert.match(stopDialog, /Cloud/);
+  assert.match(stopDialog, /Your agent/);
+  assert.match(stopDialog, /FollowBrief/);
   assert.match(stopDialog, /disabled=\{!canStopLocal \|\| submitting\}/);
   assert.match(stopDialog, /disabled=\{!canStopCloud \|\| submitting\}/);
 });

@@ -606,7 +606,9 @@ test("web app serves the agent skill and setup command", () => {
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
-  assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
+  assert.match(skillPromptActions, /function defaultRuntimeTypeForContext\(context: SkillPromptContext\): RuntimeType/);
+  assert.match(skillPromptActions, /return context === "library" \? "cloud" : "local"/);
+  assert.match(skillPromptActions, /function promptDialogDescription\(\s*context: SkillPromptContext,\s*runtimeType: RuntimeType = defaultRuntimeTypeForContext\(context\),\s*\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
   assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to build AI Brief\./);

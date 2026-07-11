@@ -3380,9 +3380,9 @@ function discoveryTaskState({
   };
 }
 
-function sizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
-  if (typeof chars !== "number") return null;
-  const wordPart = typeof words === "number" ? ` · ~${words.toLocaleString()} words` : "";
+export function taskSizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
+  if (typeof chars !== "number" || chars <= 0) return null;
+  const wordPart = typeof words === "number" && words > 0 ? ` · ~${words.toLocaleString()} words` : "";
   return `${chars.toLocaleString()} chars${wordPart}`;
 }
 
@@ -3448,12 +3448,12 @@ export function TaskRow({
     : taskStatusPill(task, liveTask);
 
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
-  const bodySize = sizeText(task.bodyChars, task.bodyWords);
-  const headlineSize = sizeText(task.headlineChars, task.headlineWords);
-  const summarySize = sizeText(task.summaryChars, task.summaryWords);
-  const liveBodySize = sizeText(liveTask?.bodyChars, liveTask?.bodyWords);
-  const liveHeadlineSize = sizeText(liveTask?.headlineChars, liveTask?.headlineWords);
-  const liveSummarySize = sizeText(liveTask?.summaryChars, liveTask?.summaryWords);
+  const bodySize = taskSizeText(task.bodyChars, task.bodyWords);
+  const headlineSize = taskSizeText(task.headlineChars, task.headlineWords);
+  const summarySize = taskSizeText(task.summaryChars, task.summaryWords);
+  const liveBodySize = taskSizeText(liveTask?.bodyChars, liveTask?.bodyWords);
+  const liveHeadlineSize = taskSizeText(liveTask?.headlineChars, liveTask?.headlineWords);
+  const liveSummarySize = taskSizeText(liveTask?.summaryChars, liveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
   const summaryMethod = displayText(task.summaryMethod) || null;
   const bannerBlurb =

@@ -1017,7 +1017,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\{context === "library" \|\| context === "digest" \? \(/);
   assert.match(skillPromptActions, /<SummaryLanguageField[\s\S]*<section className="cron-advanced-section"/);
   assert.match(skillPromptActions, /id="cron-override-fetched"[\s\S]*value=\{overrideFetched \? "yes" : "no"\}[\s\S]*<option value="no">No<\/option>[\s\S]*<option value="yes">Yes<\/option>/);
-  assert.match(skillPromptActions, /function promptDialogDescription\(context: SkillPromptContext, runtimeType: RuntimeType = "local"\)/);
+  assert.match(skillPromptActions, /function defaultRuntimeTypeForContext\(context: SkillPromptContext\): RuntimeType/);
+  assert.match(skillPromptActions, /return context === "library" \? "cloud" : "local"/);
+  assert.match(skillPromptActions, /function promptDialogDescription\(\s*context: SkillPromptContext,\s*runtimeType: RuntimeType = defaultRuntimeTypeForContext\(context\),\s*\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
   assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to build AI Brief\./);
@@ -2350,9 +2352,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /runs=\{dialogRuns\}/);
   assert.match(fetchLogPanel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(fetchLogPanel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(fetchLogPanel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
-  assert.match(fetchLogPanel, /function liveProgressHasStartedTask/);
-  assert.match(fetchLogPanel, /!liveProgressHasStartedTask\(liveProgress\)[\s\S]*Worker assignment pending/);
+  assert.match(fetchLogPanel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress, assignmentMayStillBePending\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
+  assert.match(fetchLogPanel, /function liveProgressNeedsWorkerAssignment/);
+  assert.match(fetchLogPanel, /assignmentMayStillBePending && liveProgressNeedsWorkerAssignment\(liveProgress\)[\s\S]*Worker assignment pending/);
   assert.match(fetchLogPanel, /Worker unknown/);
   assert.match(fetchLogPanel, /Post task details/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-count"/);

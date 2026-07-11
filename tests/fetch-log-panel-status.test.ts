@@ -11,6 +11,7 @@ import {
   fetchTaskFailureReasonText,
   getFetchActivityStatus,
   getFetchUpdateStatus,
+  taskSizeText,
   taskStatusPill,
   type LibraryCronJobStatus,
   type LibraryFetchRunListItem,
@@ -1435,4 +1436,11 @@ test("fetch run stats do not count summary translation as source read", () => {
   assert.equal(stats.headlines, 1);
   assert.equal(stats.summarized, 1);
   assert.equal(stats.synced, 1);
+});
+
+test("fetch task size labels hide missing zero-size outputs", () => {
+  assert.equal(taskSizeText(0, 0), null);
+  assert.equal(taskSizeText(null, 0), null);
+  assert.equal(taskSizeText(240, 0), "240 chars");
+  assert.equal(taskSizeText(240, 36), "240 chars · ~36 words");
 });
