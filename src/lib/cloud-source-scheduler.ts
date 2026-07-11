@@ -682,11 +682,28 @@ async function loadEligibleCloudTasks(params: {
     params.prisma,
     tasks.map((task) => task.builderId),
   );
+  const orphanTaskIds = tasks
+    .filter((task) => (activeSubmissionCounts.get(task.builderId) ?? 0) === 0)
+    .map((task) => task.id);
+  if (orphanTaskIds.length > 0) {
+    await params.prisma.cloudSourceTask.updateMany({
+      where: { id: { in: orphanTaskIds } },
+      data: { status: "PAUSED" },
+    });
+    await cancelQueuedCloudFetchForTasks({
+      prisma: params.prisma,
+      taskIds: orphanTaskIds,
+    });
+  }
 
   return {
     activeCanonicalKeys,
     tasks: tasks
-      .filter((task) => !activeQueuedTaskIds.has(task.id))
+      .filter(
+        (task) =>
+          !activeQueuedTaskIds.has(task.id) &&
+          (activeSubmissionCounts.get(task.builderId) ?? 0) > 0,
+      )
       .map((task) => {
         const mustSucceedBy = task.mustSucceedBy ?? taskDeadline(task.effectiveFrequency, task.lastSuccessAt ?? params.now);
         // Work-conserving: a task is releasable as soon as its retry backoff has
@@ -714,7 +731,7 @@ async function loadEligibleCloudTasks(params: {
           estimatedPostYield: task.estimatedPostYield ?? estimate.estimatedPostYield,
           estimatedSuccessProbability:
             task.estimatedSuccessProbability ?? estimate.estimatedSuccessProbability,
-          activeSubmissionCount: activeSubmissionCounts.get(task.builderId) ?? 1,
+          activeSubmissionCount: activeSubmissionCounts.get(task.builderId) ?? 0,
           consecutiveDeferrals: task.consecutiveDeferrals,
           consecutiveFailures: task.consecutiveFailures,
           circuitBreakerUntil: task.circuitBreakerUntil,

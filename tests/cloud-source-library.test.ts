@@ -369,6 +369,7 @@ test("getUserCloudSubmissionSummary reads only the user's active submissions", a
 
 test("stopUserCloudSourceSubmissions deactivates the user's cloud submissions and cancels paused queued tasks", async () => {
   const calls: unknown[] = [];
+  const hubSyncs: string[] = [];
   const prisma = {
     cloudSourceSubmission: {
       async findMany(args: unknown) {
@@ -376,8 +377,8 @@ test("stopUserCloudSourceSubmissions deactivates the user's cloud submissions an
         const where = (args as { where?: { userId?: string; cloudBuilderId?: string } }).where;
         if (where?.userId) {
           return [
-            { id: "sub_a", cloudBuilderId: "cloud_builder_a" },
-            { id: "sub_b", cloudBuilderId: "cloud_builder_b" },
+            { id: "sub_a", cloudBuilderId: "cloud_builder_a", summaryLanguage: "zh" },
+            { id: "sub_b", cloudBuilderId: "cloud_builder_b", summaryLanguage: "zh" },
           ];
         }
         return [];
@@ -421,6 +422,10 @@ test("stopUserCloudSourceSubmissions deactivates the user's cloud submissions an
     userId: "user_1",
     prisma: prisma as never,
     now: new Date("2026-07-03T00:00:00.000Z"),
+    syncHub: async (summaryLanguage) => {
+      hubSyncs.push(summaryLanguage);
+      return {} as never;
+    },
   });
 
   assert.deepEqual(result, { stoppedSources: 2, cancelledQueuedTasks: 1 });
@@ -447,4 +452,5 @@ test("stopUserCloudSourceSubmissions deactivates the user's cloud submissions an
         JSON.stringify(call[1]).includes('"cloudSourceTaskId"'),
     ),
   );
+  assert.deepEqual(hubSyncs, ["zh"]);
 });

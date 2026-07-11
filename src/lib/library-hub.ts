@@ -71,11 +71,18 @@ export async function sharePersonalLibraryToHub(params: {
   name: string;
   description?: string | null;
   email?: string | null;
+  builderIds?: string[];
   prismaClient?: LibraryHubPrisma;
 }) {
   const client = params.prismaClient ?? prisma;
+  const selectedBuilderIds = params.builderIds
+    ? [...new Set(params.builderIds.filter(Boolean))]
+    : null;
   const ownedBuilders = await client.builder.findMany({
-    where: { ownerUserId: params.userId },
+    where: {
+      ownerUserId: params.userId,
+      ...(selectedBuilderIds ? { id: { in: selectedBuilderIds } } : {}),
+    },
     select: { id: true },
     orderBy: { name: "asc" },
   });

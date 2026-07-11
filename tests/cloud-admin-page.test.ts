@@ -70,7 +70,9 @@ test("cloud library maintenance reset is admin-gated and scoped to cloud generat
   assert.match(helper, /cloudFetchRunTask\.deleteMany\(\{[\s\S]*cloudSourceTaskId: \{ in: sourceTaskIds \}/);
   assert.match(helper, /cloudFetchRun\.deleteMany\(\)/);
   assert.match(helper, /agentJobRun\.deleteMany\(\{[\s\S]*jobType: "cloud-library-fetch"/);
+  assert.match(helper, /cloudSourceSubmission\.groupBy/);
   assert.match(helper, /cloudSourceTask\.updateMany/);
+  assert.match(helper, /status: "PAUSED"/);
   assert.match(helper, /builder\.updateMany\(\{[\s\S]*ownerUserId: \{ in: ownerIds \}/);
   assert.doesNotMatch(helper, /cloudSourceSubmission\.deleteMany/);
   assert.doesNotMatch(helper, /cloudLanguageLibrary\.deleteMany/);
@@ -291,4 +293,6 @@ test("cloud-library page mounts the library explorer with serialized libraries",
 
   assert.match(page, /AdminCloudLibraryExplorer/);
   assert.match(page, /serializeCloudLibrary/);
+  assert.match(page, /activeSourceTasks/);
+  assert.match(page, /submitterCountByBuilder\.get\(task\.builderId\) \?\? 0/);
 });

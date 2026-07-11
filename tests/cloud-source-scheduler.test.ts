@@ -6,6 +6,7 @@ import {
   estimateCloudTaskRuntime,
   heartbeatCloudFetchRun,
   leaseCloudFetchTasks,
+  materializeDueCloudFetchQueue,
   nextCloudTaskFailureSchedule,
   nextCloudTaskSuccessSchedule,
   planCloudFetchWindow,
@@ -29,6 +30,71 @@ const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTa
   consecutiveDeferrals: overrides.consecutiveDeferrals ?? 0,
   consecutiveFailures: overrides.consecutiveFailures ?? 0,
   circuitBreakerUntil: overrides.circuitBreakerUntil,
+});
+
+test("scheduler pauses active tasks with no active submitters before queueing", async () => {
+  const taskUpdates: unknown[] = [];
+  const queueUpdates: unknown[] = [];
+  let queueCreates = 0;
+  const prisma = {
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudSourceTask: {
+      findMany: async () => [
+        {
+          id: "orphan_task",
+          builderId: "orphan_builder",
+          effectiveFrequency: "DAILY",
+          lastSuccessAt: null,
+          mustSucceedBy: null,
+          nextAttemptAt: null,
+          estimatedDurationSeconds: null,
+          estimatedTokenCost: null,
+          estimatedPostYield: null,
+          estimatedSuccessProbability: null,
+          durationP75Seconds: null,
+          durationP90Seconds: null,
+          durationSampleCount: 0,
+          successSampleCount: 0,
+          consecutiveDeferrals: 0,
+          consecutiveFailures: 0,
+          circuitBreakerUntil: null,
+          lastDeferredAt: null,
+          builder: {
+            id: "orphan_builder",
+            canonicalKey: "BLOG:https://example.com/orphan",
+            sourceType: "blog",
+          },
+        },
+      ],
+      updateMany: async (args: unknown) => {
+        taskUpdates.push(args);
+        return { count: 1 };
+      },
+    },
+    cloudFetchQueueItem: {
+      findMany: async () => [],
+      updateMany: async (args: unknown) => {
+        queueUpdates.push(args);
+        return { count: 1 };
+      },
+      create: async () => {
+        queueCreates += 1;
+        return {};
+      },
+    },
+    cloudFetchRunTask: { findMany: async () => [] },
+    cloudSourceSubmission: { groupBy: async () => [] },
+  };
+
+  const result = await materializeDueCloudFetchQueue({
+    prisma: prisma as never,
+    now,
+  });
+
+  assert.equal(result.queued, 0);
+  assert.equal(queueCreates, 0);
+  assert.match(JSON.stringify(taskUpdates), /"status":"PAUSED"/);
+  assert.match(JSON.stringify(queueUpdates), /"status":"CANCELLED"/);
 });
 
 test("token-aware planning prefers higher-yield tasks under the hourly token budget", () => {

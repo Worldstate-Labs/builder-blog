@@ -61,6 +61,9 @@ test("cloud source library submission copies only private sources to language ow
   assert.match(library, /cloudSourceSubmission\.upsert/);
   assert.match(library, /recomputeCloudSourceTask/);
   assert.match(library, /syncCloudLanguageLibraryHub/);
+  assert.match(library, /activeCloudBuilderIds/);
+  assert.match(library, /builderIds: activeCloudBuilderIds/);
+  assert.match(library, /languagesToSync/);
 });
 
 test("cloud language hub entries stay internal to cloud reuse", () => {

@@ -31,6 +31,21 @@ export async function resetCloudLibraryGeneratedState(
       const builderIds = libraries.flatMap((library) =>
         library.sourceTasks.map((task) => task.builderId),
       );
+      const activeSubmissionGroups = await tx.cloudSourceSubmission.groupBy({
+        by: ["cloudBuilderId"],
+        where: { cloudBuilderId: { in: builderIds }, active: true },
+        _count: { _all: true },
+      });
+      const activeBuilderIds = new Set(
+        activeSubmissionGroups.map((group) => group.cloudBuilderId),
+      );
+      const activeTaskIds = libraries.flatMap((library) =>
+        library.sourceTasks
+          .filter((task) => activeBuilderIds.has(task.builderId))
+          .map((task) => task.id),
+      );
+      const activeTaskIdSet = new Set(activeTaskIds);
+      const inactiveTaskIds = sourceTaskIds.filter((id) => !activeTaskIdSet.has(id));
 
       const deletedFeedItems = await tx.feedItem.deleteMany({
         where: { builderId: { in: builderIds } },
@@ -45,34 +60,44 @@ export async function resetCloudLibraryGeneratedState(
       const deletedAgentJobRuns = await tx.agentJobRun.deleteMany({
         where: { jobType: "cloud-library-fetch" },
       });
-      const resetSourceTasks = await tx.cloudSourceTask.updateMany({
-        where: { id: { in: sourceTaskIds } },
+      const resetTaskData = {
+        lastQueuedAt: null,
+        lastStartedAt: null,
+        lastSuccessAt: null,
+        lastFailureAt: null,
+        lastFailureReason: null,
+        consecutiveFailures: 0,
+        consecutiveDeferrals: 0,
+        lastDeferredAt: null,
+        estimatedDurationSeconds: null,
+        estimatedTokenCost: null,
+        estimatedSuccessProbability: null,
+        estimatedPostYield: null,
+        durationP50Seconds: null,
+        durationP75Seconds: null,
+        durationP90Seconds: null,
+        durationSampleCount: 0,
+        tokenSampleCount: 0,
+        postYieldSampleCount: 0,
+        successSampleCount: 0,
+        circuitBreakerUntil: null,
+        circuitBreakerReason: null,
+        nextAttemptAt: null,
+        mustSucceedBy: null,
+        lastRunId: null,
+      };
+      const resetActiveTasks = await tx.cloudSourceTask.updateMany({
+        where: { id: { in: activeTaskIds } },
         data: {
           status: "ACTIVE",
-          lastQueuedAt: null,
-          lastStartedAt: null,
-          lastSuccessAt: null,
-          lastFailureAt: null,
-          lastFailureReason: null,
-          consecutiveFailures: 0,
-          consecutiveDeferrals: 0,
-          lastDeferredAt: null,
-          estimatedDurationSeconds: null,
-          estimatedTokenCost: null,
-          estimatedSuccessProbability: null,
-          estimatedPostYield: null,
-          durationP50Seconds: null,
-          durationP75Seconds: null,
-          durationP90Seconds: null,
-          durationSampleCount: 0,
-          tokenSampleCount: 0,
-          postYieldSampleCount: 0,
-          successSampleCount: 0,
-          circuitBreakerUntil: null,
-          circuitBreakerReason: null,
-          nextAttemptAt: null,
-          mustSucceedBy: null,
-          lastRunId: null,
+          ...resetTaskData,
+        },
+      });
+      const resetInactiveTasks = await tx.cloudSourceTask.updateMany({
+        where: { id: { in: inactiveTaskIds } },
+        data: {
+          status: "PAUSED",
+          ...resetTaskData,
         },
       });
       const resetBuilders = await tx.builder.updateMany({
@@ -89,7 +114,7 @@ export async function resetCloudLibraryGeneratedState(
       return {
         libraries: libraries.length,
         resetBuilders: resetBuilders.count,
-        resetSourceTasks: resetSourceTasks.count,
+        resetSourceTasks: resetActiveTasks.count + resetInactiveTasks.count,
         deletedFeedItems: deletedFeedItems.count,
         deletedQueueItems: deletedQueueItems.count,
         deletedRunTasks: deletedRunTasks.count,

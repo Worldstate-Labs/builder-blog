@@ -140,3 +140,17 @@ test("cloud fetch token budget migration replaces server concurrency knobs", () 
     assert.match(migration, new RegExp(`DROP COLUMN "${removedField}"`));
   }
 });
+
+test("cloud active demand migration removes zero-submitter sources from active delivery", () => {
+  const migration = source(
+    "prisma/migrations/000087_cloud_source_active_demand/migration.sql",
+  );
+
+  assert.match(migration, /UPDATE "CloudSourceTask"/);
+  assert.match(migration, /SET "status" = 'PAUSED'/);
+  assert.match(migration, /UPDATE "CloudFetchQueueItem"/);
+  assert.match(migration, /SET "status" = 'CANCELLED'/);
+  assert.match(migration, /DELETE FROM "LibraryHubItem"/);
+  assert.match(migration, /"CloudSourceSubmission"/);
+  assert.match(migration, /submission\."active" = true/);
+});

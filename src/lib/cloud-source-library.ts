@@ -182,12 +182,14 @@ export async function stopUserCloudSourceSubmissions(params: {
   userId: string;
   prisma?: StopCloudSubmissionsPrisma;
   now?: Date;
+  syncHub?: typeof syncCloudLanguageLibraryHub;
 }): Promise<{ stoppedSources: number; cancelledQueuedTasks: number }> {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
+  const syncHub = params.syncHub ?? syncCloudLanguageLibraryHub;
   const activeSubmissions = await prisma.cloudSourceSubmission.findMany({
     where: { userId: params.userId, active: true },
-    select: { id: true, cloudBuilderId: true },
+    select: { id: true, cloudBuilderId: true, summaryLanguage: true },
   });
   if (activeSubmissions.length === 0) {
     return { stoppedSources: 0, cancelledQueuedTasks: 0 };
@@ -227,6 +229,11 @@ export async function stopUserCloudSourceSubmissions(params: {
     prisma,
     taskIds: pausedTasks.map((task) => task.id),
   });
+  for (const summaryLanguage of new Set(
+    activeSubmissions.map((submission) => submission.summaryLanguage),
+  )) {
+    await syncHub(summaryLanguage, prisma);
+  }
 
   return {
     stoppedSources: stopped.count,
@@ -389,9 +396,11 @@ export async function submitUserPrivateLibraryToCloud(params: {
   now?: Date;
   prisma?: PrismaClient;
   copyBuilderUpsert?: UpsertBuilderForCloudCopy;
+  syncHub?: typeof syncCloudLanguageLibraryHub;
 }) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
+  const syncHub = params.syncHub ?? syncCloudLanguageLibraryHub;
   const privateSources = await prisma.builderPoolEntry.findMany({
     where: {
       userId: params.userId,
@@ -434,7 +443,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
   // so we can cancel whatever the new submission does not include.
   const existingActive = await prisma.cloudSourceSubmission.findMany({
     where: { userId: params.userId, active: true },
-    select: { id: true, cloudBuilderId: true },
+    select: { id: true, cloudBuilderId: true, summaryLanguage: true },
   });
 
   let tasksTouched = 0;
@@ -527,7 +536,13 @@ export async function submitUserPrivateLibraryToCloud(params: {
     });
   }
 
-  await syncCloudLanguageLibraryHub(params.summaryLanguage, prisma);
+  const languagesToSync = new Set([
+    params.summaryLanguage,
+    ...existingActive.map((submission) => submission.summaryLanguage),
+  ]);
+  for (const summaryLanguage of languagesToSync) {
+    await syncHub(summaryLanguage, prisma);
+  }
   return {
     sourcesSubmitted: submissionSources.length,
     tasksSubmitted: tasksTouched,
@@ -593,11 +608,23 @@ export async function syncCloudLanguageLibraryHub(
 ) {
   const prisma = prismaClient ?? (await getPrismaClient());
   const cloudLibrary = await resolveCloudLanguageLibrary({ summaryLanguage, prisma });
+  const activeSubmissions = await prisma.cloudSourceSubmission.findMany({
+    where: {
+      summaryLanguage,
+      active: true,
+      cloudBuilder: { ownerUserId: cloudLibrary.ownerUserId },
+    },
+    select: { cloudBuilderId: true },
+  });
+  const activeCloudBuilderIds = [
+    ...new Set(activeSubmissions.map((submission) => submission.cloudBuilderId)),
+  ];
   const libraryHub = await import("@/lib/library-hub");
   const result = await libraryHub.sharePersonalLibraryToHub({
     userId: cloudLibrary.ownerUserId,
     name: cloudLanguageLibraryHubName(summaryLanguage),
     description: `Cloud source library for ${displayLanguagePreference(summaryLanguage)} summaries.`,
+    builderIds: activeCloudBuilderIds,
     prismaClient: prisma,
   });
   await prisma.cloudLanguageLibrary.update({

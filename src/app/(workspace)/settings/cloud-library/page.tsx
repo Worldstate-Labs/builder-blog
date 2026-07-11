@@ -104,17 +104,20 @@ export default async function CloudLibraryManagementPage() {
   const postCountByBuilder = new Map(
     postGroups.map((group) => [group.builderId, group._count._all]),
   );
-  const libraries = libraryRows.map((library) =>
-    serializeCloudLibrary(
+  const libraries = libraryRows.map((library) => {
+    const activeSourceTasks = library.sourceTasks.filter(
+      (task) => (submitterCountByBuilder.get(task.builderId) ?? 0) > 0,
+    );
+    return serializeCloudLibrary(
       library,
-      library.sourceTasks.map((task) =>
+      activeSourceTasks.map((task) =>
         serializeCloudLibrarySource(task, {
           submitterCount: submitterCountByBuilder.get(task.builderId) ?? 0,
           postCount: postCountByBuilder.get(task.builderId) ?? 0,
         }),
       ),
-    ),
-  );
+    );
+  });
 
   return (
     <div className="page-pad page-pad--settings">
