@@ -541,7 +541,9 @@ function WorkerHostPanel({
   const stage = progress?.stage ?? workerHost.stage ?? (runningWithoutHeartbeat ? "waiting_for_heartbeat" : null);
   const summary = runningWithoutHeartbeat
     ? `${runningSourceDeliveries} source ${runningSourceDeliveries === 1 ? "delivery is" : "deliveries are"} still running without a worker heartbeat.`
-    : workerHost.summary;
+    : workerHost.status === "offline" && workerHost.summary
+      ? `Last reported: ${workerHost.summary}`
+      : workerHost.summary;
   const sourceProgress =
     progress?.sourcesTotal != null
       ? `${formatMetric(progress.sourcesChecked ?? 0)}/${formatMetric(progress.sourcesTotal)}`

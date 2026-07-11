@@ -16,12 +16,10 @@ const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "openclaw", label: "OpenClaw" },
 ];
 
-const FETCH_LIMIT_DEFAULT = 3;
-const FETCH_LIMIT_MAX = 20;
 const FETCH_DAYS_DEFAULT = 30;
 const FETCH_DAYS_MAX = 90;
-const PARALLEL_WORKERS_DEFAULT = 1;
-const PARALLEL_WORKERS_MAX = 8;
+const PARALLEL_WORKERS_DEFAULT = 10;
+const PARALLEL_WORKERS_MAX = 20;
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -79,7 +77,6 @@ function NumberField({
 export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: ActiveToken[] }) {
   const [tokenId, setTokenId] = useState(activeTokens[0]?.id ?? "");
   const [runtime, setRuntime] = useState<Runtime>("codex");
-  const [fetchLimit, setFetchLimit] = useState(String(FETCH_LIMIT_DEFAULT));
   const [fetchDays, setFetchDays] = useState(String(FETCH_DAYS_DEFAULT));
   const [parallelWorkers, setParallelWorkers] = useState(String(PARALLEL_WORKERS_DEFAULT));
   const [busyAction, setBusyAction] = useState<PromptAction | null>(null);
@@ -94,7 +91,6 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
     const params = new URLSearchParams({ runtime });
     const job = action === "host" ? CLOUD_WORKER_HOST_JOB : CLOUD_WORKER_STOP_JOB;
     if (action === "host") {
-      const postLimitParam = normalizeNumberParam(fetchLimit, FETCH_LIMIT_DEFAULT, 1, FETCH_LIMIT_MAX);
       const daysParam = normalizeNumberParam(fetchDays, FETCH_DAYS_DEFAULT, 1, FETCH_DAYS_MAX);
       const parallelParam = normalizeNumberParam(
         parallelWorkers,
@@ -102,14 +98,13 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
         1,
         PARALLEL_WORKERS_MAX,
       );
-      if (!postLimitParam || !daysParam || !parallelParam) {
+      if (!daysParam || !parallelParam) {
         setStatus({
           kind: "error",
-          text: "Use whole numbers in range: posts 1-20, days 1-90, workers 1-8.",
+          text: "Use whole numbers in range: days 1-90, workers 1-20.",
         });
         return;
       }
-      params.set("postLimit", postLimitParam);
       params.set("days", daysParam);
       params.set("parallel", parallelParam);
     }
@@ -184,14 +179,6 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
               ))}
             </select>
           </div>
-
-          <NumberField
-            id="cloud-run-post-limit"
-            label="Posts per source"
-            max={FETCH_LIMIT_MAX}
-            value={fetchLimit}
-            onChange={setFetchLimit}
-          />
 
           <NumberField
             id="cloud-run-fetch-days"

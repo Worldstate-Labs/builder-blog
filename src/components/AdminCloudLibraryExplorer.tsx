@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CloudSourceLogItem,
   type CloudSourceLogSource,
@@ -39,16 +39,17 @@ export function AdminCloudLibraryExplorer({
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [drill, setDrill] = useState<Record<string, SourceDrill>>({});
-  const [loading, setLoading] = useState<string | null>(null);
 
-  const loadSource = useCallback(
-    async (builderId: string) => {
-      if (drill[builderId] || loading === builderId) return;
+  useEffect(() => {
+    if (!expanded) return;
+    const builderId = expanded;
+    const controller = new AbortController();
 
-      setLoading(builderId);
+    async function loadExpandedSource() {
       try {
         const response = await fetch(`/api/admin/cloud-fetch/sources/${builderId}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
         const body = (await response.json().catch(() => null)) as SourceDrillResponse | null;
         if (!response.ok) {
@@ -61,24 +62,17 @@ export function AdminCloudLibraryExplorer({
           },
         }));
       } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading((current) => (current === builderId ? null : current));
+        if (!controller.signal.aborted) console.error(error);
       }
-    },
-    [drill, loading],
-  );
+    }
 
-  const toggleSource = useCallback(
-    (builderId: string) => {
-      const shouldOpen = expanded !== builderId;
-      setExpanded(shouldOpen ? builderId : null);
-      if (shouldOpen) {
-        void loadSource(builderId);
-      }
-    },
-    [expanded, loadSource],
-  );
+    void loadExpandedSource();
+    return () => controller.abort();
+  }, [expanded, libraries]);
+
+  function toggleSource(builderId: string) {
+    setExpanded((current) => current === builderId ? null : builderId);
+  }
 
   if (libraries.length === 0) {
     return <p className="cron-field-hint">No cloud language libraries configured yet.</p>;

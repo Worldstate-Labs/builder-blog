@@ -3,19 +3,16 @@ import { ChevronDown } from "lucide-react";
 import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
 import { AdminCloudFetchLog } from "@/components/AdminCloudFetchLog";
 import { AdminCloudFetchRunActions } from "@/components/AdminCloudFetchRunActions";
+import { AdminCloudLibrariesPanel } from "@/components/AdminCloudLibrariesPanel";
+import { AdminCloudLibraryLiveProvider } from "@/components/AdminCloudLibraryLiveProvider";
 import { AdminCloudLibraryMaintenancePanel } from "@/components/AdminCloudLibraryMaintenancePanel";
-import { AdminCloudLibraryExplorer } from "@/components/AdminCloudLibraryExplorer";
-import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
 import { getAgentJobRuns } from "@/lib/agent-job-runs";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { serializeCloudFetchRun, serializeCloudWorkerHost } from "@/lib/cloud-fetch-run-log";
 import { CLOUD_FETCH_CONFIG_ID, serializeCloudFetchConfig } from "@/lib/cloud-source-config";
-import {
-  serializeCloudLibrary,
-  serializeCloudLibrarySource,
-} from "@/lib/cloud-library-overview";
+import { getCloudLibraryAdminSnapshot } from "@/lib/cloud-library-overview-data";
 import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 20;
@@ -26,7 +23,7 @@ export default async function CloudLibraryManagementPage() {
   if (!isAdminEmail(session.user.email)) redirect("/settings");
   const userId = session.user.id;
 
-  const [tokens, runRows, jobRuns, libraryRows, cloudConfig] = await Promise.all([
+  const [tokens, runRows, jobRuns, cloudLibrarySnapshot, cloudConfig] = await Promise.all([
     prisma.agentToken.findMany({
       where: { userId, revokedAt: null },
       orderBy: { createdAt: "desc" },
@@ -43,34 +40,7 @@ export default async function CloudLibraryManagementPage() {
       },
     }),
     getAgentJobRuns(userId, "cloud-library-fetch", 5),
-    prisma.cloudLanguageLibrary.findMany({
-      orderBy: { summaryLanguage: "asc" },
-      include: {
-        owner: { select: { email: true, name: true } },
-        sourceTasks: {
-          orderBy: { id: "asc" },
-          include: {
-            runTasks: {
-              orderBy: { startedAt: "desc" },
-              take: 1,
-              include: { builder: { select: { name: true, sourceType: true } } },
-            },
-            builder: {
-              select: {
-                entityId: true,
-                kind: true,
-                name: true,
-                sourceType: true,
-                sourceUrl: true,
-                fetchUrl: true,
-                avatarUrl: true,
-                avatarDataUrl: true,
-              },
-            },
-          },
-        },
-      },
-    }),
+    getCloudLibraryAdminSnapshot(),
     prisma.cloudFetchConfig.findUnique({ where: { id: CLOUD_FETCH_CONFIG_ID } }),
   ]);
 
@@ -82,43 +52,6 @@ export default async function CloudLibraryManagementPage() {
       null,
   );
 
-  // Counts per cloud-owner builder, batched with groupBy to avoid N+1.
-  const builderIds = libraryRows.flatMap((library) =>
-    library.sourceTasks.map((task) => task.builderId),
-  );
-  const [submitterGroups, postGroups] = await Promise.all([
-    prisma.cloudSourceSubmission.groupBy({
-      by: ["cloudBuilderId"],
-      where: { cloudBuilderId: { in: builderIds }, active: true },
-      _count: { _all: true },
-    }),
-    prisma.feedItem.groupBy({
-      by: ["builderId"],
-      where: { builderId: { in: builderIds } },
-      _count: { _all: true },
-    }),
-  ]);
-  const submitterCountByBuilder = new Map(
-    submitterGroups.map((group) => [group.cloudBuilderId, group._count._all]),
-  );
-  const postCountByBuilder = new Map(
-    postGroups.map((group) => [group.builderId, group._count._all]),
-  );
-  const libraries = libraryRows.map((library) => {
-    const activeSourceTasks = library.sourceTasks.filter(
-      (task) => (submitterCountByBuilder.get(task.builderId) ?? 0) > 0,
-    );
-    return serializeCloudLibrary(
-      library,
-      activeSourceTasks.map((task) =>
-        serializeCloudLibrarySource(task, {
-          submitterCount: submitterCountByBuilder.get(task.builderId) ?? 0,
-          postCount: postCountByBuilder.get(task.builderId) ?? 0,
-        }),
-      ),
-    );
-  });
-
   return (
     <div className="page-pad page-pad--settings">
       <PageHeader
@@ -126,7 +59,8 @@ export default async function CloudLibraryManagementPage() {
         description="Monitor the long-running worker host, its live post queue, and the source deliveries feeding it."
       />
 
-      <div className="workspace-content-stack settings-workspace">
+      <AdminCloudLibraryLiveProvider initialSnapshot={cloudLibrarySnapshot}>
+        <div className="workspace-content-stack settings-workspace">
         <section className="settings-rules">
           <details className="settings-rules-panel fb-panel" open>
             <summary className="settings-rules-summary">
@@ -167,30 +101,7 @@ export default async function CloudLibraryManagementPage() {
             </div>
           </details>
 
-          <details className="settings-rules-panel fb-panel">
-            <summary className="settings-rules-summary">
-              <div className="settings-rules-summary-copy">
-                <h3 className="fb-section-heading">Cloud libraries</h3>
-                <p className="settings-rules-summary-desc">
-                  Each language library and its sources — fetch status, how many users submitted
-                  each source, and how many posts it has. Expand a source for its submitters and
-                  recent posts.
-                </p>
-              </div>
-              <span className="settings-rules-summary-meta source-summary-line">
-                <CountMeta
-                  label={libraries.length === 1 ? "language library" : "language libraries"}
-                  value={libraries.length}
-                />
-              </span>
-              <span className="settings-rules-toggle-icon" aria-hidden="true">
-                <ChevronDown className="settings-rules-toggle-svg" />
-              </span>
-            </summary>
-            <div className="settings-rules-body">
-              <AdminCloudLibraryExplorer libraries={libraries} />
-            </div>
-          </details>
+          <AdminCloudLibrariesPanel />
 
           <details className="settings-rules-panel fb-panel">
             <summary className="settings-rules-summary">
@@ -228,19 +139,12 @@ export default async function CloudLibraryManagementPage() {
                   ...serializeCloudFetchConfig(cloudConfig),
                   updatedAt: cloudConfig?.updatedAt.toISOString() ?? new Date(0).toISOString(),
                 }}
-                initialLibraries={libraryRows.map((library) => ({
-                  id: library.id,
-                  summaryLanguage: library.summaryLanguage,
-                  ownerUserId: library.ownerUserId,
-                  ownerEmail: library.owner.email,
-                  ownerName: library.owner.name,
-                  enabled: library.enabled,
-                }))}
               />
             </div>
           </details>
         </section>
-      </div>
+        </div>
+      </AdminCloudLibraryLiveProvider>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RotateCcw, Trash2 } from "lucide-react";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 
 type CloudLibraryResetSummary = {
   libraries: number;
@@ -53,6 +54,7 @@ export function AdminCloudLibraryMaintenancePanel() {
           return;
         }
         setStatus(resetSummaryMessage(body.summary));
+        window.dispatchEvent(new Event(contentSyncStateChanged));
         closeDialog();
       } catch {
         setError("Could not reset cloud library state.");

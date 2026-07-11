@@ -1211,14 +1211,9 @@ cloud_fetch_source_limit() {
     ''|*[!0-9]*) _cfsl_workers="1" ;;
   esac
   if [ "$_cfsl_workers" -lt 1 ]; then _cfsl_workers="1"; fi
-  if [ "$_cfsl_workers" -gt 8 ]; then _cfsl_workers="8"; fi
+  if [ "$_cfsl_workers" -gt 20 ]; then _cfsl_workers="20"; fi
 
-  _cfsl_post_limit="${BUILDER_BLOG_FETCH_LIMIT:-3}"
-  case "$_cfsl_post_limit" in
-    ''|*[!0-9]*) _cfsl_post_limit="3" ;;
-  esac
-  if [ "$_cfsl_post_limit" -lt 1 ]; then _cfsl_post_limit="1"; fi
-  if [ "$_cfsl_post_limit" -gt 20 ]; then _cfsl_post_limit="20"; fi
+  _cfsl_post_limit="5"
 
   # Ask for enough sources to likely produce several post tasks per worker.
   # The cloud still enforces token budget and eligibility; this is only the
@@ -3555,7 +3550,7 @@ fetch_more_cloud_sources() {
   set +e
   node "$AGENT_DIR/builder-digest.mjs" fetch-cloud-library \
     --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
-    --post-limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
+    --post-limit "5" \
     --limit "$_fmcs_limit" \
     ${BUILDER_BLOG_FETCH_FORCE:-} > "$_fmcs_file" 2> "$_fmcs_stderr"
   _fmcs_code="$?"
@@ -3844,7 +3839,7 @@ run_library_job() {
     _cloud_fetch_source_limit="$(cloud_fetch_source_limit)"
     node "$AGENT_DIR/builder-digest.mjs" fetch-cloud-library \
       --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
-      --post-limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
+      --post-limit "5" \
       --limit "$_cloud_fetch_source_limit" \
       ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file" 2> "$_fetch_stderr"
   else

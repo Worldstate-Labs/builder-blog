@@ -8,6 +8,8 @@ import {
   SUMMARY_LANGUAGE_OPTIONS,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
+import { useCloudLibraryLiveSnapshot } from "@/components/AdminCloudLibraryLiveProvider";
+import type { CloudLanguageLibraryAdmin } from "@/lib/cloud-library-overview";
 
 export type AdminCloudFetchConfig = {
   tokenBudgetPerHour: number;
@@ -21,14 +23,7 @@ export type AdminCloudFetchConfig = {
   updatedAt: string;
 };
 
-export type AdminCloudLanguageLibrary = {
-  id: string;
-  summaryLanguage: string;
-  ownerUserId: string;
-  ownerEmail: string | null;
-  ownerName: string | null;
-  enabled: boolean;
-};
+export type AdminCloudLanguageLibrary = CloudLanguageLibraryAdmin;
 
 type Status = SaveStatusState;
 type EditableConfigKey =
@@ -64,14 +59,12 @@ const CONFIG_FIELDS = [...BUDGET_CONFIG_FIELDS, ...ADVANCED_CONFIG_FIELDS];
 
 export function AdminCloudFetchConfigForm({
   initialConfig,
-  initialLibraries,
 }: {
   initialConfig: AdminCloudFetchConfig;
-  initialLibraries: AdminCloudLanguageLibrary[];
 }) {
+  const { languageLibraries: libraries, updateLanguageLibrary } = useCloudLibraryLiveSnapshot();
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState(() => configDraft(initialConfig));
-  const [libraries, setLibraries] = useState(initialLibraries);
   const [configStatus, setConfigStatus] = useState<Status>({ kind: "idle" });
   const [libraryStatus, setLibraryStatus] = useState<Status>({ kind: "idle" });
   const [isConfigPending, startConfigTransition] = useTransition();
@@ -144,10 +137,7 @@ export function AdminCloudFetchConfigForm({
           return;
         }
         const next = serializeLanguageLibrary(body.library);
-        setLibraries((current) => [
-          next,
-          ...current.filter((library) => library.summaryLanguage !== next.summaryLanguage),
-        ].sort((a, b) => a.summaryLanguage.localeCompare(b.summaryLanguage)));
+        updateLanguageLibrary(next);
         setLibraryStatus({ kind: "saved", message: "Saved" });
       } catch {
         setLibraryStatus({ kind: "error", message: "Could not save cloud language library." });

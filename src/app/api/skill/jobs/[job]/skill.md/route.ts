@@ -373,11 +373,10 @@ export async function GET(request: Request, { params }: Params) {
 
   // Local worker fan-out. Closed numeric range; absent/invalid uses the
   // current UI default.
-  const isCloudLibraryJob = job.startsWith("cloud-library");
-  const isLibraryJob = job.startsWith("library") || isCloudLibraryJob;
+  const isLibraryJob = job.startsWith("library") || job.startsWith("cloud-library");
   const isDigestJob = job.startsWith("digest");
-  const parallelDefault = isCloudLibraryJob ? 1 : 10;
-  const parallelMax = isCloudLibraryJob ? 8 : 20;
+  const parallelDefault = 10;
+  const parallelMax = 20;
   const parallelRaw = Number(url.searchParams.get("parallel") ?? String(parallelDefault));
   const parallelWorkers =
     (isLibraryJob || isDigestJob) &&

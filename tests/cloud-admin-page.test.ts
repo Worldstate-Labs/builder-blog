@@ -61,6 +61,8 @@ test("cloud library maintenance reset is admin-gated and scoped to cloud generat
   assert.match(panel, /Reset Cloud library posts and fetch records/);
   assert.match(panel, /\/api\/admin\/cloud-fetch\/reset/);
   assert.match(panel, /RESET/);
+  assert.match(panel, /contentSyncStateChanged/);
+  assert.match(panel, /window\.dispatchEvent\(new Event\(contentSyncStateChanged\)\)/);
   assert.match(route, /requireCloudFetchAdmin/);
   assert.match(route, /resetCloudLibraryGeneratedState/);
   assert.match(route, /confirmation[\s\S]*RESET/);
@@ -102,11 +104,13 @@ test("cloud run actions component copies worker host and stop prompts via exchan
   assert.match(actions, /exchange-code/);
   assert.match(actions, /\/api\/skill\/jobs\//);
   assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
-  assert.match(actions, /cloud-run-post-limit/);
+  assert.doesNotMatch(actions, /cloud-run-post-limit/);
   assert.match(actions, /cloud-run-fetch-days/);
   assert.match(actions, /cloud-run-parallel-workers/);
+  assert.match(actions, /const PARALLEL_WORKERS_DEFAULT = 10/);
+  assert.match(actions, /const PARALLEL_WORKERS_MAX = 20/);
   assert.doesNotMatch(actions, /params\.set\("cloudLimit"/);
-  assert.match(actions, /params\.set\("postLimit"/);
+  assert.doesNotMatch(actions, /params\.set\("postLimit"/);
   assert.match(actions, /params\.set\("days"/);
   assert.match(actions, /params\.set\("parallel"/);
   assert.doesNotMatch(actions, /params\.set\("freq"/);
@@ -162,6 +166,15 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.doesNotMatch(log, /workerHost\.platform,/);
   assert.doesNotMatch(log, /claimed\s*\{/);
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
+});
+
+test("offline worker host presents its retained summary as historical", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+
+  assert.match(
+    log,
+    /workerHost\.status === "offline" && workerHost\.summary[\s\S]*Last reported:/,
+  );
 });
 
 test("cloud worker host metrics wrap long stage and usage values", () => {
@@ -267,9 +280,41 @@ test("cloud library explorer lists libraries and renders recent posts via Builde
   assert.match(explorer, /showSubmitters=\{true\}/);
   assert.match(explorer, /\/api\/admin\/cloud-fetch\/sources\/\$\{builderId\}/);
   assert.match(explorer, /submitters: detail\?\.submitters/);
+  assert.match(explorer, /useEffect\(\(\) => \{[\s\S]*const builderId = expanded[\s\S]*\/api\/admin\/cloud-fetch\/sources\/\$\{builderId\}[\s\S]*\}, \[expanded, libraries\]\)/);
   assert.doesNotMatch(explorer, /BuilderFeedItems/);
   assert.doesNotMatch(explorer, /showSubmitters=\{false\}/);
   assert.doesNotMatch(explorer, /className="cloud-source-head"/);
+});
+
+test("cloud library overview has a focused admin endpoint shared with the server page", () => {
+  const page = source("src/app/(workspace)/settings/cloud-library/page.tsx");
+  const route = source("src/app/api/admin/cloud-fetch/libraries/route.ts");
+  const data = source("src/lib/cloud-library-overview-data.ts");
+
+  assert.match(page, /getCloudLibraryAdminSnapshot/);
+  assert.match(route, /requireCloudFetchAdmin\(request\)/);
+  assert.match(route, /getCloudLibraryAdminSnapshot/);
+  assert.match(route, /"Cache-Control": "no-store, max-age=0"/);
+  assert.match(data, /cloudLanguageLibrary\.findMany/);
+  assert.match(data, /cloudSourceSubmission\.groupBy/);
+  assert.match(data, /feedItem\.groupBy/);
+});
+
+test("cloud library status refreshes while visible without refreshing editable config", () => {
+  const provider = source("src/components/AdminCloudLibraryLiveProvider.tsx");
+  const config = source("src/components/AdminCloudFetchConfigForm.tsx");
+
+  assert.match(provider, /useEffect/);
+  assert.match(provider, /\/api\/admin\/cloud-fetch\/libraries/);
+  assert.match(provider, /cache: "no-store"/);
+  assert.match(provider, /hasRunningSourceTask \? 15_000 : 60_000/);
+  assert.match(provider, /document\.visibilityState === "visible"/);
+  assert.match(provider, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(provider, /contentSyncStateChanged/);
+  assert.match(config, /useCloudLibraryLiveSnapshot/);
+  assert.match(config, /updateLanguageLibrary\(next\)/);
+  assert.doesNotMatch(config, /setInterval/);
+  assert.doesNotMatch(config, /\/api\/admin\/cloud-fetch\/libraries/);
 });
 
 test("cloud source log item is shared by admin and user cloud source lists", () => {
@@ -290,9 +335,14 @@ test("cloud source log item is shared by admin and user cloud source lists", () 
 
 test("cloud-library page mounts the library explorer with serialized libraries", () => {
   const page = source("src/app/(workspace)/settings/cloud-library/page.tsx");
+  const panel = source("src/components/AdminCloudLibrariesPanel.tsx");
+  const data = source("src/lib/cloud-library-overview-data.ts");
 
-  assert.match(page, /AdminCloudLibraryExplorer/);
-  assert.match(page, /serializeCloudLibrary/);
-  assert.match(page, /activeSourceTasks/);
-  assert.match(page, /submitterCountByBuilder\.get\(task\.builderId\) \?\? 0/);
+  assert.match(page, /AdminCloudLibraryLiveProvider/);
+  assert.match(page, /AdminCloudLibrariesPanel/);
+  assert.match(panel, /AdminCloudLibraryExplorer/);
+  assert.match(panel, /CountMeta/);
+  assert.match(data, /serializeCloudLibrary/);
+  assert.match(data, /activeSourceTasks/);
+  assert.match(data, /submitterCountByBuilder\.get\(task\.builderId\) \?\? 0/);
 });

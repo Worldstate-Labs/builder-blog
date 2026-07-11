@@ -521,19 +521,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "cloud fetch 중지 prompt 복사",
     es: "Copiar prompt para detener cloud fetch",
   },
-  "Use whole numbers in range: posts 1-20, days 1-90, workers 1-8.": {
-    "zh-CN": "请输入范围内的整数：帖子 1-20、天数 1-90、workers 1-8。",
-    "zh-TW": "請輸入範圍內的整數：貼文 1-20、天數 1-90、workers 1-8。",
-    ja: "範囲内の整数を入力してください: 投稿 1-20、日数 1-90、workers 1-8。",
-    ko: "범위 안의 정수를 입력하세요: 게시물 1-20, 일수 1-90, workers 1-8.",
-    es: "Usa números enteros dentro del rango: posts 1-20, días 1-90, workers 1-8.",
-  },
-  "Posts per source": {
-    "zh-CN": "每个 source 的帖子数",
-    "zh-TW": "每個 source 的貼文數",
-    ja: "ソースごとの投稿数",
-    ko: "소스당 게시물 수",
-    es: "Posts por fuente",
+  "Use whole numbers in range: days 1-90, workers 1-20.": {
+    "zh-CN": "请输入范围内的整数：天数 1-90、workers 1-20。",
+    "zh-TW": "請輸入範圍內的整數：天數 1-90、workers 1-20。",
+    ja: "範囲内の整数を入力してください: 日数 1-90、workers 1-20。",
+    ko: "범위 안의 정수를 입력하세요: 일수 1-90, workers 1-20.",
+    es: "Usa números enteros dentro del rango: días 1-90, workers 1-20.",
   },
   "Lookback days": {
     "zh-CN": "回看天数",

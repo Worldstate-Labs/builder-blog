@@ -42,6 +42,20 @@ export type CloudLibraryOverview = {
   sources: CloudLibrarySource[];
 };
 
+export type CloudLanguageLibraryAdmin = {
+  id: string;
+  summaryLanguage: string;
+  ownerUserId: string;
+  ownerEmail: string | null;
+  ownerName: string | null;
+  enabled: boolean;
+};
+
+export type CloudLibraryAdminSnapshot = {
+  libraries: CloudLibraryOverview[];
+  languageLibraries: CloudLanguageLibraryAdmin[];
+};
+
 export type CloudSourceSubmitter = {
   email: string | null;
   name: string | null;

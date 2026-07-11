@@ -11,7 +11,6 @@ Use this command:
 ```bash
 BUILDER_BLOG_RUN_SOURCE=cloud \
 BUILDER_BLOG_AGENT_RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" \
-BUILDER_BLOG_FETCH_LIMIT="${BUILDER_BLOG_FETCH_LIMIT-{{FETCH_LIMIT}}}" \
 BUILDER_BLOG_FETCH_DAYS="${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}}" \
 BUILDER_BLOG_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKERS}}}" \
 "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-agent-runner.sh" cloud-library-host
@@ -37,7 +36,6 @@ Useful environment variables:
 
 - `BUILDER_BLOG_ACCOUNT`: admin account email with Cloud Fetch access.
 - `BUILDER_BLOG_AGENT_RUNTIME`: local runtime for unattended shard workers. Copied value: `{{AGENT_RUNTIME}}`.
-- `BUILDER_BLOG_FETCH_LIMIT`: posts to try per leased source. Copied value: `{{FETCH_LIMIT}}`.
 - `BUILDER_BLOG_FETCH_DAYS`: source post lookback window. Copied value: `{{FETCH_DAYS}}`.
 - `BUILDER_BLOG_PARALLEL_WORKERS`: local worker count on this admin machine. Copied value: `{{PARALLEL_WORKERS}}`.
 - `BUILDER_BLOG_CLOUD_IDLE_SECONDS`: seconds to wait before asking Cloud for more sources when no work is available.

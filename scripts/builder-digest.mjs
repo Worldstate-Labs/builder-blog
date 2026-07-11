@@ -279,7 +279,7 @@ function usage() {
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   lease-cloud-builders [--limit 10] [--lease-owner local-cloud-runner]
-  fetch-cloud-library [--limit 10] [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--post-limit 3] [--force] [--agent-model gpt-5.5]
+  fetch-cloud-library [--limit 10] [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--post-limit 5] [--force] [--agent-model gpt-5.5]
   heartbeat-cloud-fetch --cloud-run-id <id> [--lease-owner local-cloud-runner]
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5] [--partial-outcomes]
   sync-cloud-builders --file personal-builders.json --cloud-run-id <id> [--agent-model gpt-5.5]
@@ -9564,8 +9564,8 @@ async function fetchCloudLibrary(args) {
   const days = Number.isFinite(rawDays)
     ? Math.min(90, Math.max(1, Math.floor(rawDays)))
     : DEFAULT_PERSONAL_FETCH_DAYS;
-  const rawPostLimit = Number(argValue(args, "--post-limit", argValue(args, "--fetch-limit", "3")));
-  const postLimit = Number.isFinite(rawPostLimit) ? Math.max(1, Math.min(20, Math.floor(rawPostLimit))) : 3;
+  const rawPostLimit = Number(argValue(args, "--post-limit", argValue(args, "--fetch-limit", "5")));
+  const postLimit = Number.isFinite(rawPostLimit) ? Math.max(1, Math.min(20, Math.floor(rawPostLimit))) : 5;
   const rawCloudLimit = Number(argValue(args, "--limit", process.env.BUILDER_BLOG_CLOUD_FETCH_LIMIT || "10"));
   const cloudLimit = Number.isFinite(rawCloudLimit)
     ? Math.max(1, Math.min(100, Math.floor(rawCloudLimit)))

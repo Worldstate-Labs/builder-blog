@@ -692,8 +692,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /boundedIntegerParam\(url\.searchParams, "days", 30, 1, 90\)/);
   assert.match(skillJobRoute, /searchParams\.get\("parallel"\)/);
   assert.match(skillJobRoute, /Number\.isInteger\(parallelRaw\)/);
-  assert.match(skillJobRoute, /parallelDefault = isCloudLibraryJob \? 1 : 10/);
-  assert.match(skillJobRoute, /parallelMax = isCloudLibraryJob \? 8 : 20/);
+  assert.match(skillJobRoute, /const parallelDefault = 10/);
+  assert.match(skillJobRoute, /const parallelMax = 20/);
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
   assert.doesNotMatch(skillJobRoute, /\{\{CLOUD_FETCH_LIMIT\}\}/);
@@ -755,7 +755,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillFileRoute, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
   assert.match(skillFileRoute, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
-  assert.match(skillFileRoute, /asset\.path\.includes\("cloud-library"\) \? "1" : "10"/);
+  assert.match(skillFileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
   // cron-setup prompts generate an anchor-aligned schedule after the
   // validation run passes, then install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /schedule-spec/);

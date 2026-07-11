@@ -692,6 +692,8 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   const stopPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
   const cronPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron.md", "utf8");
   const hostPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-host.md", "utf8");
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const cli = await readFile("scripts/builder-digest.mjs", "utf8");
 
   assert.doesNotMatch(actions, /cloud-library-once/);
   assert.doesNotMatch(actions, /FREQUENCY_OPTIONS/);
@@ -699,20 +701,24 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(actions, /Copy worker host prompt/);
   assert.match(actions, /Copy stop cloud fetch prompt/);
   assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
-  assert.match(actions, /cloud-run-post-limit/);
+  assert.doesNotMatch(actions, /cloud-run-post-limit/);
   assert.match(actions, /cloud-run-fetch-days/);
   assert.match(actions, /cloud-run-parallel-workers/);
   assert.doesNotMatch(actions, /params\.set\("cloudLimit"/);
-  assert.match(actions, /params\.set\("postLimit"/);
+  assert.doesNotMatch(actions, /params\.set\("postLimit"/);
   assert.match(actions, /params\.set\("days"/);
   assert.match(actions, /params\.set\("parallel"/);
 
   assert.doesNotMatch(route, /boundedIntegerParam\(url\.searchParams, "cloudLimit", 10, 1, 100\)/);
   assert.match(route, /boundedIntegerParam\(url\.searchParams, "postLimit", 3, 1, 20\)/);
+  assert.match(route, /const parallelDefault = 10/);
+  assert.match(route, /const parallelMax = 20/);
   assert.doesNotMatch(route, /\{\{CLOUD_FETCH_LIMIT\}\}/);
   assert.match(route, /\{\{FETCH_LIMIT\}\}/);
   assert.match(fileRoute, /builder-blog-cloud-library-host\.md/);
   assert.match(fileRoute, /skills\/builder-blog-digest\/jobs\/cloud-library-host\.md/);
+  assert.match(fileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
+  assert.doesNotMatch(fileRoute, /asset\.path\.includes\("cloud-library"\) \? "1"/);
   assert.match(bootstrapRoute, /builder-blog-cloud-library-host\.md/);
   assert.match(bootstrapRoute, /jobs\/cloud-library-host\.md/);
   assert.match(jobFiles, /"cloud-library-host":/);
@@ -722,7 +728,8 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
 
   for (const prompt of [setupPrompt, cronPrompt, hostPrompt]) {
     assert.doesNotMatch(prompt, /\{\{CLOUD_FETCH_LIMIT\}\}/);
-    assert.match(prompt, /\{\{FETCH_LIMIT\}\}/);
+    assert.doesNotMatch(prompt, /\{\{FETCH_LIMIT\}\}/);
+    assert.doesNotMatch(prompt, /BUILDER_BLOG_FETCH_LIMIT/);
     assert.match(prompt, /\{\{FETCH_DAYS\}\}/);
     assert.match(prompt, /\{\{PARALLEL_WORKERS\}\}/);
   }
@@ -735,13 +742,18 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(setupPrompt, /cloud-library-host\/current\.json/);
   assert.match(setupPrompt, /cloud-library-cron\/current\.json/);
   assert.doesNotMatch(setupPrompt, /CLOUD_LIMIT=/);
-  assert.match(setupPrompt, /POST_LIMIT="\$\{BUILDER_BLOG_FETCH_LIMIT-\{\{FETCH_LIMIT\}\}\}"/);
   assert.match(setupPrompt, /FETCH_DAYS="\$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\}"/);
   assert.match(setupPrompt, /WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/);
   assert.match(
     setupPrompt,
-    /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" BUILDER_BLOG_AGENT_RUNTIME="\$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_LIMIT="\$POST_LIMIT" BUILDER_BLOG_FETCH_DAYS="\$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="\$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="\$IDLE_SECONDS" "\$AGENT_DIR\/builder-agent-runner\.sh" cloud-library-host/,
+    /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" BUILDER_BLOG_AGENT_RUNTIME="\$RUNTIME" BUILDER_BLOG_RUN_SOURCE=cloud BUILDER_BLOG_FETCH_DAYS="\$FETCH_DAYS" BUILDER_BLOG_PARALLEL_WORKERS="\$WORKERS" BUILDER_BLOG_CLOUD_IDLE_SECONDS="\$IDLE_SECONDS" "\$AGENT_DIR\/builder-agent-runner\.sh" cloud-library-host/,
   );
+  assert.match(runner, /fetch-cloud-library[\s\S]*--post-limit "5"/);
+  assert.match(runner, /if \[ "\$_cfsl_workers" -gt 20 \]/);
+  assert.doesNotMatch(runner, /if \[ "\$_cfsl_workers" -gt 8 \]/);
+  assert.match(cli, /fetch-cloud-library \[--limit 10\][^\n]*\[--post-limit 5\]/);
+  assert.match(cli, /argValue\(args, "--fetch-limit", "5"\)/);
+  assert.match(cli, /argValue\(args, "--post-limit", argValue\(args, "--fetch-limit", "5"\)\)/);
   assert.match(setupPrompt, /launchctl bootstrap "gui\/\$\(id -u\)" "\$PLIST" \|\| \{/);
   assert.match(setupPrompt, /sleep 2/);
   assert.match(setupPrompt, /launchctl bootstrap "gui\/\$\(id -u\)" "\$PLIST" \|\| exit "\$BOOTSTRAP_CODE"/);
