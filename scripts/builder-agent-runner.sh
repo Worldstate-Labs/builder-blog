@@ -1822,6 +1822,45 @@ fs.appendFileSync(file, `${JSON.stringify({
 NODE
 }
 
+worker_log_has_failed_turn() {
+  _wlhft_log="${1:-}"
+  [ -r "$_wlhft_log" ] || return 1
+  node - "$_wlhft_log" <<'NODE'
+const fs = require("fs");
+const lines = fs.readFileSync(process.argv[2], "utf8").split(/\r?\n/);
+for (const line of lines) {
+  try {
+    const event = JSON.parse(line);
+    if (event?.type === "turn.failed") process.exit(0);
+  } catch {}
+}
+process.exit(1);
+NODE
+}
+
+worker_log_has_runtime_auth_failure() {
+  _wlhrf_log="${1:-}"
+  [ -r "$_wlhrf_log" ] || return 1
+  grep -Eq 'auth error code: token_expired|Provided authentication token is expired|"code"[[:space:]]*:[[:space:]]*"token_expired"' "$_wlhrf_log" || return 1
+  worker_log_has_failed_turn "$_wlhrf_log"
+}
+
+record_worker_runtime_auth_failure() {
+  _wrraf_name="${1:-}"
+  _wrraf_lane="${2:-}"
+  _wrraf_worker_log="$_results_dir/$_wrraf_name-worker.log"
+  _wrraf_agent_log="$_results_dir/$_wrraf_name-agent-output.log"
+  grep -q '"reason":"runtime_auth_failed"' "$_wrraf_worker_log" 2>/dev/null && return 0
+  if worker_log_has_runtime_auth_failure "$_wrraf_worker_log" || worker_log_has_runtime_auth_failure "$_wrraf_agent_log"; then
+    write_worker_control_event \
+      "$_wrraf_worker_log" \
+      "runtime_auth_failed" \
+      "$_wrraf_lane" \
+      "$_wrraf_name" \
+      "The selected agent runtime could not refresh its authentication token."
+  fi
+}
+
 worker_log_has_backgrounded_tool() {
   _wlbt_log="${1:-}"
   [ -n "$_wlbt_log" ] || return 1
@@ -3248,21 +3287,29 @@ flush_remaining_library_results() {
   _frlr_shard_timeout="$4"
   _frlr_label="${5:-library-result}"
   _frlr_missing_reason="${6:-}"
+  _frlr_scope="${7:-all}"
   _frlr_sync_command="${SYNC_BUILDERS_COMMAND:-}"
   _frlr_missing_reason_args=""
+  _frlr_scope_args=""
   if [ -n "$_frlr_missing_reason" ]; then
     _frlr_missing_reason_args="--default-missing-reason $_frlr_missing_reason"
   fi
+  case "$_frlr_scope" in
+    assigned) _frlr_scope_args="--assigned-only --complete-sources-only" ;;
+  esac
 
   aggregate_runtime_usage_files
 
   _frlr_merge_result_file="$JOB_TMP_DIR/merge-task-results.json"
+  _frlr_merged_tasks="$JOB_TMP_DIR/library-fetch-merged.json"
   job_run_update running "Merging source fetch worker results." "merge_started" --stage "merge_results"
   node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
     --tasks "$_frlr_result_file" \
     --results-dir "$_frlr_results_dir" \
     --shard-timeout-seconds "$_frlr_shard_timeout" \
     $_frlr_missing_reason_args \
+    $_frlr_scope_args \
+    --tasks-out "$_frlr_merged_tasks" \
     --out "$JOB_TMP_DIR/library-agent-sync.json" | tee "$_frlr_merge_result_file"
   _frlr_merge_issue_count="$(merge_result_issue_count "$_frlr_merge_result_file" "$_frlr_results_dir")"
 
@@ -3282,6 +3329,7 @@ flush_remaining_library_results() {
     --shard-timeout-seconds "$_frlr_shard_timeout" \
     --exclude-task-ids-file "$_frlr_synced_ids_file" \
     $_frlr_missing_reason_args \
+    $_frlr_scope_args \
     --tasks-out "$_frlr_remaining_tasks" \
     --out "$_frlr_remaining_payload" | tee "$_frlr_remaining_merge"
 
@@ -3299,7 +3347,7 @@ flush_remaining_library_results() {
     echo "Refreshing cloud worker usage after final runtime usage aggregation."
     _frlr_previous_failure_mode="${SYNC_PAYLOAD_FAILURE_MODE:-}"
     SYNC_PAYLOAD_FAILURE_MODE=skip
-    if ! sync_payload_slices "$_frlr_result_file" "$JOB_TMP_DIR/library-agent-sync.json" "$_frlr_usage_refresh_slices_dir" "$_frlr_label-usage-refresh" --results-dir "$_frlr_results_dir"; then
+    if ! sync_payload_slices "$_frlr_merged_tasks" "$JOB_TMP_DIR/library-agent-sync.json" "$_frlr_usage_refresh_slices_dir" "$_frlr_label-usage-refresh" --results-dir "$_frlr_results_dir"; then
       echo "Usage refresh sync was skipped for one or more non-destructive slice failures." >&2
     fi
     if [ -n "$_frlr_previous_failure_mode" ]; then
@@ -4114,6 +4162,8 @@ run_library_job() {
             _alive=$(( _alive + 1 ))
           fi
         fi
+      else
+        record_worker_runtime_auth_failure "$_name" "$_lane"
       fi
     done
     if [ "$_dynamic_queue_enabled" -eq 1 ]; then
@@ -4148,7 +4198,7 @@ run_library_job() {
     if [ "$_alive" -eq 0 ]; then
       if [ "$_cloud_persistent_host" -eq 1 ] && [ "$_dynamic_queue_enabled" -eq 1 ]; then
         sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
-        if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "cloud-host-idle"; then
+        if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "cloud-host-idle" "" "assigned"; then
           job_run_update running "Worker host could not sync every idle result; it will keep running and retry with later progress." "worker_host_idle_flush_failed" \
             --stage "waiting_after_sync_issue"
         else

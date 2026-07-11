@@ -4872,6 +4872,185 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   );
 });
 
+test("merge-task-results assigned-only mode leaves unassigned queue tasks pending", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const assigned = {
+    id: "assigned",
+    agentWorkType: "fetch_post",
+    builderSync: { builderId: "b1" },
+  };
+  const pending = {
+    id: "pending",
+    agentWorkType: "translate_summary_only",
+    contentStatus: "ready",
+    builderSync: { builderId: "b2" },
+  };
+
+  const merged = cli.mergeShardSyncPayloads(
+    { status: "ok", fetchTasks: [assigned, pending] },
+    [],
+    {
+      shardPlans: [
+        {
+          shard: "shard-0",
+          resultFile: "shard-0-result.json",
+          tasks: [assigned],
+        },
+      ],
+      backfillUnassigned: false,
+    },
+  );
+
+  assert.deepEqual(
+    merged.payload.taskOutcomes.map((outcome: { fetchTaskId: string; reason: string }) => [
+      outcome.fetchTaskId,
+      outcome.reason,
+    ]),
+    [["assigned", "worker_missing_result"]],
+  );
+  assert.deepEqual(merged.accountedTaskIds, ["assigned"]);
+  assert.equal(
+    merged.payload.taskOutcomes.some(
+      (outcome: { fetchTaskId: string }) => outcome.fetchTaskId === "pending",
+    ),
+    false,
+  );
+});
+
+test("merge-task-results assigned-only CLI writes only assigned tasks and outcomes", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-assigned-only-"));
+  const shardsDir = join(tmp, "shards");
+  const resultsDir = join(shardsDir, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "assigned-payload.json");
+  const tasksOutFile = join(tmp, "assigned-tasks.json");
+  await mkdir(resultsDir, { recursive: true });
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        { id: "assigned", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+        { id: "pending", agentWorkType: "fetch_post", builderSync: { builderId: "b2" } },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    join(shardsDir, "shard-0.json"),
+    `${JSON.stringify({
+      workerId: "worker-0",
+      fetchTasks: [
+        { id: "assigned", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--assigned-only",
+      "--tasks-out",
+      tasksOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const tasksOut = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  assert.deepEqual(
+    payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId),
+    ["assigned"],
+  );
+  assert.deepEqual(
+    tasksOut.fetchTasks.map((task: { id: string }) => task.id),
+    ["assigned"],
+  );
+});
+
+test("merge-task-results complete-sources-only keeps partial cloud sources local", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-complete-sources-"));
+  const shardsDir = join(tmp, "shards");
+  const resultsDir = join(shardsDir, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "complete-source-payload.json");
+  const tasksOutFile = join(tmp, "complete-source-tasks.json");
+  await mkdir(resultsDir, { recursive: true });
+  const fetchTasks = [
+    {
+      id: "source-a-assigned",
+      cloudSourceTaskId: "source-a",
+      agentWorkType: "fetch_post",
+      builderSync: { builderId: "b1", cloudSourceTaskId: "source-a" },
+    },
+    {
+      id: "source-a-pending",
+      cloudSourceTaskId: "source-a",
+      agentWorkType: "fetch_post",
+      builderSync: { builderId: "b1", cloudSourceTaskId: "source-a" },
+    },
+    {
+      id: "source-b-assigned",
+      cloudSourceTaskId: "source-b",
+      agentWorkType: "fetch_post",
+      builderSync: { builderId: "b2", cloudSourceTaskId: "source-b" },
+    },
+  ];
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({ status: "ok", fetchTasks })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    join(shardsDir, "shard-0.json"),
+    `${JSON.stringify({ workerId: "worker-0", fetchTasks: [fetchTasks[0]] })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    join(shardsDir, "shard-1.json"),
+    `${JSON.stringify({ workerId: "worker-1", fetchTasks: [fetchTasks[2]] })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--complete-sources-only",
+      "--tasks-out",
+      tasksOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const tasksOut = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  assert.deepEqual(
+    payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId),
+    ["source-b-assigned"],
+  );
+  assert.deepEqual(
+    tasksOut.fetchTasks.map((task: { id: string }) => task.id),
+    ["source-b-assigned"],
+  );
+});
+
 test("merge-task-results adds missing agent execution metadata for agent tasks", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchTask = {

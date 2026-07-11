@@ -122,7 +122,7 @@ const FETCH_FAILURE_TAXONOMY = {
   runtime_auth_failed: {
     category: "runtime",
     stage: "runtime",
-    userMessage: "OpenClaw auth failed before this post could be fetched",
+    userMessage: "Agent authentication failed before this post could be fetched",
     operatorMessage: "The local runtime could not authenticate before or during worker execution.",
     retryable: true,
     notCompleted: true,

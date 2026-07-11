@@ -148,6 +148,55 @@ test("cloud worker host treats synced idle checkpoint issues as flushed", async 
 
   assert.match(runner, /case "\$_frlr_label" in[\s\S]*cloud-host-idle\*/);
   assert.match(runner, /terminal outcomes were synced for \$_frlr_label/);
+  assert.match(
+    runner,
+    /flush_remaining_library_results "\$_result_file" "\$_results_dir" "\$_checkpoint_synced_ids_file" "\$_shard_timeout" "cloud-host-idle" "" "assigned"/,
+  );
+  assert.match(runner, /_frlr_scope="\$\{7:-all\}"/);
+  assert.match(
+    runner,
+    /assigned\)[\s\S]*_frlr_scope_args="--assigned-only --complete-sources-only"/,
+  );
+});
+
+test("cloud worker host records failed Codex token refresh as runtime auth failure", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("worker_log_has_failed_turn() {");
+  const end = runner.indexOf("\nworker_log_has_backgrounded_tool() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-auth-failure-"));
+  try {
+    const failedLog = join(dir, "failed.log");
+    const benignLog = join(dir, "benign.log");
+    await writeFile(
+      failedLog,
+      [
+        "ERROR auth error code: token_expired",
+        JSON.stringify({ type: "turn.failed", error: { message: "refresh failed" } }),
+      ].join("\n"),
+      "utf8",
+    );
+    await writeFile(
+      benignLog,
+      "Fetched documentation mentions token_expired but the worker continued.",
+      "utf8",
+    );
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}
+worker_log_has_runtime_auth_failure "${failedLog}"
+! worker_log_has_runtime_auth_failure "${benignLog}"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("cloud worker host only stops a runtime after its shard result covers every task", async () => {

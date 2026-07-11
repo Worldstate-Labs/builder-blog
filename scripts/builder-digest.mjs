@@ -273,7 +273,7 @@ function usage() {
   shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
   assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
-  merge-task-results --tasks fetch-result.json --results-dir shards/results/ --out library-agent-sync.json
+  merge-task-results --tasks fetch-result.json --results-dir shards/results/ [--assigned-only] [--complete-sources-only] --out library-agent-sync.json
   split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task|cloud-run]
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
@@ -7021,8 +7021,9 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
       const id = String(task?.id || fetchTaskId(task));
       if (accounted.has(id)) continue;
-      accounted.add(id);
       const shardPlan = shardPlanByTaskId.get(id);
+      if (options.backfillUnassigned === false && !shardPlan) continue;
+      accounted.add(id);
       const shardSummary = shardPlan ? shardSummaryByResultFile.get(shardPlan.resultFile) : null;
       const failure = missingTaskFailure(task, shardPlan, shardSummary, options);
       taskOutcomes.push({
@@ -7411,6 +7412,8 @@ async function mergeTaskResults(args) {
   const tasksOutFile = argValue(args, "--tasks-out", null);
   const idsOutFile = argValue(args, "--ids-out", null);
   const completedOnly = args.includes("--completed-only");
+  const assignedOnly = args.includes("--assigned-only");
+  const completeSourcesOnly = args.includes("--complete-sources-only");
   const excludeTaskIdsFile = argValue(args, "--exclude-task-ids-file", null);
   const shardTimeoutSeconds = Number(argValue(args, "--shard-timeout-seconds", ""));
   const defaultMissingFailureReason = argValue(args, "--default-missing-reason", null);
@@ -7446,10 +7449,13 @@ async function mergeTaskResults(args) {
     defaultMissingFailureReason,
     defaultMissingFailureKind: defaultMissingFailureReason,
     backfillMissing: !completedOnly,
+    backfillUnassigned: !(assignedOnly || completeSourcesOnly),
   });
   const excluded = await readIdSetFile(excludeTaskIdsFile);
   const availableIds = syncPayloadTaskIds(merged.payload);
-  const completedSourceIds = completedOnly ? completedOnlySourceIds(fetchResult, availableIds) : null;
+  const completedSourceIds = completedOnly || completeSourcesOnly
+    ? completeSourceIdsForAvailableTasks(fetchResult, availableIds)
+    : null;
   const selectedTasks = extractFetchTasks(fetchResult).filter((task) => {
     const id = taskIdForSync(task);
     const sourceTaskId = taskSourceTaskIdForSync(task);
@@ -7459,7 +7465,7 @@ async function mergeTaskResults(args) {
   const selectedIds = new Set(
     selectedTasks.map((task) => taskIdForSync(task)),
   );
-  const shouldFilterOutput = completedOnly || excluded.size > 0;
+  const shouldFilterOutput = completedOnly || assignedOnly || completeSourcesOnly || excluded.size > 0;
   const payloadOut = shouldFilterOutput
     ? filterSyncPayloadToTaskIds(merged.payload, selectedIds)
     : merged.payload;
@@ -7486,6 +7492,8 @@ async function mergeTaskResults(args) {
         ...(tasksOutFile ? { tasksOut: tasksOutFile } : {}),
         ...(idsOutFile ? { idsOut: idsOutFile } : {}),
         completedOnly,
+        assignedOnly,
+        completeSourcesOnly,
         taskIds: [...selectedIds].sort(),
         builders: payloadOut.builders.length,
         items: payloadOut.builders.reduce(
@@ -7510,7 +7518,7 @@ function taskSourceTaskIdForSync(task) {
   return String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
 }
 
-function completedOnlySourceIds(fetchResult, availableIds) {
+function completeSourceIdsForAvailableTasks(fetchResult, availableIds) {
   const tasksBySourceId = new Map();
   for (const task of extractFetchTasks(fetchResult)) {
     if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;

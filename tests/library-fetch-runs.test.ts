@@ -529,10 +529,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /runs=\{dialogRuns\}/);
   assert.match(panel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
-  assert.match(panel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
+  assert.match(panel, /taskWorkerGroups\([\s\S]*postTasks,[\s\S]*liveTasks,[\s\S]*fallbackTaskWorkerName\(liveProgress, assignmentMayStillBePending\),[\s\S]*workerUsageMap\(details\.workerUsages\),[\s\S]*shardAssignmentMap\(details\.shardPlans\),[\s\S]*\)/);
   assert.match(panel, /function shardAssignmentMap/);
-  assert.match(panel, /function liveProgressHasStartedTask/);
-  assert.match(panel, /!liveProgressHasStartedTask\(liveProgress\)[\s\S]*stage\.includes\("worker"\) \|\| stage\.includes\("shard"\) \|\| stage\.includes\("task"\)/);
+  assert.match(panel, /function liveProgressNeedsWorkerAssignment/);
+  assert.match(panel, /assignmentMayStillBePending && liveProgressNeedsWorkerAssignment\(liveProgress\)/);
   assert.match(panel, /function fallbackTaskWorkerName/);
   assert.match(panel, /Worker assignment pending/);
   assert.match(panel, /Worker unknown/);
@@ -646,7 +646,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /timeoutSeconds/);
   assert.match(panel, /Timed out after \$\{formatDuration\(details\.timeoutSeconds \* 1000\)\}/);
   assert.match(panel, /Cleanup did not finish/);
-  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /runtime_auth_failed:[\s\S]*OpenClaw auth failed before this post could be fetched/);
+  assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /runtime_auth_failed:[\s\S]*Agent authentication failed before this post could be fetched/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /content_validation_failed:[\s\S]*Fetched content failed validation/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /task_validation_failed:[\s\S]*Sync payload for this post failed validation/);
   assert.match(source("src/lib/fetch-failure-taxonomy.ts"), /task_sync_failed:[\s\S]*FollowBrief could not sync this post/);
