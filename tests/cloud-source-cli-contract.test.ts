@@ -812,7 +812,9 @@ test("cloud rollback smoke exercises the DB flow inside one rolled-back transact
   assert.match(script, /prisma\.\$transaction/);
   assert.match(script, /throw new SmokeRollback\(\)/);
   assert.match(script, /submitUserPrivateLibraryToCloud/);
+  assert.match(script, /cloudFetchQueueItem\.create/);
   assert.match(script, /leaseCloudFetchTasks/);
+  assert.match(script, /lease\.tasks\[0\]\?\.cloudSourceTaskId !== task\.id/);
   assert.match(script, /syncBuilderFeedItems/);
   assert.match(script, /applyCloudFetchTaskSyncResult/);
   assert.match(script, /upsertSourceCandidateFromCloudBuilder/);

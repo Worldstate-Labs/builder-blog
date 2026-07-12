@@ -3872,6 +3872,7 @@ summary.library-section-summary::after {
 }
 
 .search-query-label {
+  display: block;
   flex: 1 1 100%;
   min-width: 0;
 }
@@ -4106,6 +4107,12 @@ summary.library-section-summary::after {
   right: 0;
   top: calc(100% + 0.35rem);
   z-index: 30;
+}
+
+.search-page-suggestion-dropdown {
+  margin-top: 0.35rem;
+  max-height: min(24rem, 50vh);
+  position: static;
 }
 
 .search-suggestion-item,

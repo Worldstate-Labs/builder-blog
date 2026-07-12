@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
+import { canonicalFetchTaskId } from "@/lib/fetch-task-id";
 
 const MAX_DETAILS_BYTES = 50_000;
 const MAX_SUMMARY_CHARS = 500;
@@ -29,6 +30,7 @@ const AGENT_JOB_STAGE_RANK: Record<string, number> = {
   syncing: 55,
   reconciled: 60,
   no_update: 60,
+  completed: 70,
 };
 
 const AgentJobRunSchema = z.object({
@@ -127,8 +129,9 @@ function compactProgressSource(value: unknown): Record<string, unknown> {
 
 function compactProgressTask(value: unknown): Record<string, unknown> {
   const task = detailsRecord(value);
+  const id = canonicalFetchTaskId(task.id ?? task.taskId);
   return {
-    ...(compactText(task.id ?? task.taskId, 500) ? { id: compactText(task.id ?? task.taskId, 500) } : {}),
+    ...(compactText(id, 500) ? { id: compactText(id, 500) } : {}),
     ...(compactText(task.status, 80) ? { status: compactText(task.status, 80) } : {}),
     ...(compactText(task.phase, 80) ? { phase: compactText(task.phase, 80) } : {}),
     ...(compactText(task.message, 180) ? { message: compactText(task.message, 180) } : {}),
@@ -235,7 +238,7 @@ function mergeAgentJobRunProgress(currentValue: unknown, incomingValue: unknown)
     tasks: mergeProgressArray(
       current.tasks,
       incoming.tasks,
-      (task) => String(task.id ?? task.taskId ?? ""),
+      (task) => canonicalFetchTaskId(task.id ?? task.taskId),
       compactProgressTask,
       FETCH_PROGRESS_TASK_LIMIT,
     ),
@@ -269,6 +272,37 @@ function mergeAgentJobRunDetails(
 
 function isTerminalAgentJobStatus(status: unknown): boolean {
   return typeof status === "string" && TERMINAL_AGENT_JOB_STATUSES.has(status);
+}
+
+function finalizeAgentJobRunProgress(
+  details: Record<string, unknown>,
+  status: string,
+  stage: string | null | undefined,
+  summary: string | null | undefined,
+  at: string,
+): Record<string, unknown> {
+  const progress = detailsRecord(details.progress);
+  if (!hasOwn(progress, "stage")) return details;
+  const message = compactText(summary, 220) ?? `Runtime ${status.replace(/_/g, " ")}.`;
+  const event = compactProgressEvent({
+    at,
+    type: "job_completed",
+    status,
+    message,
+  });
+  return {
+    ...details,
+    progress: {
+      ...progress,
+      stage: compactText(stage, 120) ?? status,
+      updatedAt: at,
+      current: {},
+      recentEvents: sortByUpdatedAt([
+        ...(Array.isArray(progress.recentEvents) ? progress.recentEvents : []),
+        event,
+      ]).slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT),
+    },
+  };
 }
 
 function mergeAgentJobRunLifecycle<
@@ -333,7 +367,18 @@ export async function POST(request: Request) {
     },
     select: { id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true },
   });
-  const detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
+  const now = new Date();
+  const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
+  let detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
+  if (isTerminalAgentJobStatus(parsed.data.status)) {
+    detailsValue = finalizeAgentJobRunProgress(
+      detailsValue,
+      parsed.data.status,
+      parsed.data.stage,
+      parsed.data.summary,
+      (finishedAt ?? now).toISOString(),
+    );
+  }
   let detailsJson = "";
   try {
     detailsJson = JSON.stringify(detailsValue);
@@ -344,8 +389,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "details payload too large; cap at 50 KB" }, { status: 400 });
   }
 
-  const now = new Date();
-  const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
   const mergedStage = mergeAgentJobRunStage(existingRun?.stage, parsed.data.stage ?? null);
   const mergedSummary = mergeAgentJobRunSummary(
     existingRun?.stage ?? null,

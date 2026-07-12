@@ -109,9 +109,13 @@ test("settings exposes account data export and deletion controls backed by scope
   assert.match(settingsPage, /AccountDataPanel/);
   assert.match(accountPanel, /Export account data/);
   assert.match(accountPanel, /Delete account/);
+  assert.match(accountPanel, /useI18n/);
+  assert.match(accountPanel, /translateUiPhrase/);
   assert.match(accountPanel, /\/api\/account\/export/);
   assert.match(accountPanel, /\/api\/account\/delete/);
   assert.match(accountPanel, /DELETE/);
+  assert.doesNotMatch(accountPanel, /signOut/);
+  assert.match(accountPanel, /window\.location\.replace\("\/"\)/);
 
   assert.match(exportRoute, /getCurrentSession\(\)/);
   assert.match(exportRoute, /session\.user\.id/);
@@ -123,6 +127,8 @@ test("settings exposes account data export and deletion controls backed by scope
   assert.match(deleteRoute, /session\.user\.id/);
   assert.match(deleteRoute, /feedItem\.deleteMany/);
   assert.match(deleteRoute, /user\.delete/);
+  assert.match(deleteRoute, /session-token/);
+  assert.match(deleteRoute, /maxAge:\s*0/);
 });
 
 test("admin settings can reset all fetch and brief generated state through one shared helper", () => {

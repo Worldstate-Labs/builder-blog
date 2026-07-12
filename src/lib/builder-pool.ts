@@ -75,10 +75,22 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
   }
 
   const builderIds = [...new Set(library.items.map((item) => item.builderId))];
-  const existingImport = await prisma.libraryImport.findUnique({
-    where: { userId_hubEntryId: { userId, hubEntryId: library.id } },
-    select: { userId: true },
-  });
+  const [existingImport, activeImportedBuilderCount] = await Promise.all([
+    prisma.libraryImport.findUnique({
+      where: { userId_hubEntryId: { userId, hubEntryId: library.id } },
+      select: { userId: true },
+    }),
+    prisma.builderPoolEntry.count({
+      where: {
+        userId,
+        builderId: { in: builderIds },
+        removedAt: null,
+      },
+    }),
+  ]);
+  if (existingImport && activeImportedBuilderCount === builderIds.length) {
+    return { imported: true, builderCount: builderIds.length };
+  }
 
   await prisma.$transaction([
     prisma.builderPoolEntry.updateMany({

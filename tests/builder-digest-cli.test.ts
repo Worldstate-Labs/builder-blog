@@ -2448,6 +2448,25 @@ test("library fetch reconciliation defaults to the job-specific tmp directory", 
   }
 });
 
+test("agent account and source config paths follow BUILDER_BLOG_AGENT_DIR", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const previousAgentDir = process.env.BUILDER_BLOG_AGENT_DIR;
+  try {
+    process.env.BUILDER_BLOG_AGENT_DIR = "/tmp/followbrief-isolated-agent";
+    assert.equal(
+      cli.accountFilePathForTest("person+test@example.com"),
+      "/tmp/followbrief-isolated-agent/accounts/person+test@example.com.json",
+    );
+    assert.equal(
+      cli.sourcesConfigPathForTest(),
+      "/tmp/followbrief-isolated-agent/sources.json",
+    );
+  } finally {
+    if (previousAgentDir === undefined) delete process.env.BUILDER_BLOG_AGENT_DIR;
+    else process.env.BUILDER_BLOG_AGENT_DIR = previousAgentDir;
+  }
+});
+
 test("YouTube local ASR work directory stays inside the job tmp tree", async () => {
   const cli = await readFile("scripts/builder-digest.mjs", "utf8");
   assert.match(cli, /const asrRoot = join\(jobTmpDir\("library-cron"\), "youtube-asr"\)/);

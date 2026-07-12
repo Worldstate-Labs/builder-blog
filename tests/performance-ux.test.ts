@@ -2232,7 +2232,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /status=\{activityStatus\}/);
   assert.match(fetchLogPanel, /fetchCronFrequencyLabel\(cronJob\)/);
   assert.doesNotMatch(fetchLogPanel, /status=\{updateStatus\}/);
-  assert.match(fetchLogPanel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
+  assert.match(
+    fetchLogPanel,
+    /<RelativeTime value=\{latestRun\?\.finishedAt \?\? latestRun\?\.startedAt\} fallback="None yet" \/>/,
+  );
   assert.doesNotMatch(fetchLogPanel, /formatMetaDate/);
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
   assert.match(digestLogPanel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Brief"\)/);
@@ -2311,7 +2314,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
-  assert.match(fetchLogPanel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
+  assert.match(fetchLogPanel, /latestRun\?\.finishedAt \?\? latestRun\?\.startedAt/);
   assert.match(fetchLogPanel, /Status \/ log/);
   assert.match(fetchLogPanel, /Show Fetch sources status log/);
   assert.match(fetchLogPanel, /Hide Fetch sources status log/);
@@ -2392,7 +2395,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /entry\.name \?\? entry\.builderId \?\? "unknown"/);
   assert.doesNotMatch(fetchLogPanel, /refreshes library posts/);
   assert.doesNotMatch(fetchLogPanel, /Cron status|library fetch cron|Items checked|refreshes saved posts|refreshes fetched posts|refreshes fetched items|label="checked"|\} checked<\/span>/);
-  assert.match(fetchLogPanel, /<RelativeTime value=\{latestRun\?\.startedAt\} fallback="None yet" \/>/);
+  assert.match(fetchLogPanel, /latestRun\?\.finishedAt \?\? latestRun\?\.startedAt/);
   assert.doesNotMatch(fetchLogPanel, /formatMetaDate/);
   assert.match(fetchLogPanel, /formatLanguage/);
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
@@ -3262,7 +3265,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"[\s\S]*<button[\s\S]*className="search-suggestion-chip"/);
   assert.match(searchForm, /aria-label=\{t\("search\.searchFor", \{ query: suggestion\.query \}\)\}/);
   assert.match(searchForm, /className="search-suggestion-remove"/);
-  assert.doesNotMatch(searchForm, /role="option"[\s\S]{0,220}onClick=\{\(\) => \{[\s\S]{0,220}submitSuggestion\(suggestion/);
+  assert.doesNotMatch(searchForm, /<div[^>]*onClick=[^>]*role="option"/);
   assert.match(globals, /\.search-suggestion-chip\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
@@ -3494,7 +3497,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"/);
   assert.match(searchForm, /<button[\s\S]*aria-label=\{t\("search\.searchFor", \{ query: suggestion\.query \}\)\}[\s\S]*className="search-suggestion-chip"/);
-  assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)/);
+  assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*onMouseDown=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)/);
   assert.doesNotMatch(searchForm, /<span className="search-suggestion-chip">/);
   assert.match(searchForm, /event\.stopPropagation\(\);[\s\S]*removeRecentSearch\(suggestion\.query\)/);
@@ -5637,6 +5640,15 @@ test("library hub exposes share and multi-import flows", () => {
   // (raw updateMany).
   assert.match(builderPool, /existing\?\.origin === BuilderPoolOrigin\.PERSONAL_SYNC/);
   assert.match(builderPool, /origin: \{ not: BuilderPoolOrigin\.PERSONAL_SYNC \}/);
+  assert.match(builderPool, /activeImportedBuilderCount/);
+  assert.match(
+    builderPool,
+    /existingImport && activeImportedBuilderCount === builderIds\.length/,
+  );
+  assert.match(
+    buildersPage,
+    /items:\s*\{\s*select:\s*\{\s*builderId:\s*true\s*\},\s*orderBy:/,
+  );
   // Library import preview is capped (page take: 200); show an honest "first N
   // of M" notice instead of silently truncating below the reported count.
   assert.match(

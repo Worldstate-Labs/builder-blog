@@ -29,6 +29,7 @@ import {
   isNotCompletedFailureReason,
 } from "@/lib/fetch-failure-taxonomy";
 import { displayLanguagePreference } from "@/lib/language-preference";
+import { canonicalFetchTaskId } from "@/lib/fetch-task-id";
 import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
 import {
   formatUsageCost,
@@ -402,16 +403,51 @@ function readJobRunDetails(value: unknown): JobRunDetailsShape {
 function readFetchJobProgress(value: unknown): FetchJobProgress | null {
   const progress = readJobRunDetails(value).progress;
   if (!progress || typeof progress !== "object" || Array.isArray(progress)) return null;
-  return progress;
+  return {
+    ...progress,
+    tasks: dedupeFetchProgressTasks(progress.tasks ?? []),
+  };
 }
 
 function fetchTaskProgressMap(progress: FetchJobProgress | null): Map<string, FetchTaskProgress> {
   const map = new Map<string, FetchTaskProgress>();
-  for (const task of progress?.tasks ?? []) {
-    const id = String(task.id ?? task.taskId ?? "");
+  for (const task of dedupeFetchProgressTasks(progress?.tasks ?? [])) {
+    const id = canonicalFetchTaskId(task.id ?? task.taskId);
     if (id) map.set(id, task);
   }
   return map;
+}
+
+const FETCH_PROGRESS_STATUS_RANK: Record<string, number> = {
+  planned: 0,
+  queued: 0,
+  fetched: 1,
+  reading: 2,
+  summarizing: 3,
+  summarized: 4,
+  synced: 5,
+  skipped: 5,
+  failed: 5,
+  action_needed: 5,
+};
+
+function dedupeFetchProgressTasks(tasks: FetchTaskProgress[]): FetchTaskProgress[] {
+  const byId = new Map<string, FetchTaskProgress>();
+  for (const task of tasks) {
+    const id = canonicalFetchTaskId(task.id ?? task.taskId);
+    if (!id) continue;
+    const previous = byId.get(id);
+    if (!previous) {
+      byId.set(id, { ...task, id });
+      continue;
+    }
+    const previousRank = FETCH_PROGRESS_STATUS_RANK[String(previous.status ?? "")] ?? -1;
+    const taskRank = FETCH_PROGRESS_STATUS_RANK[String(task.status ?? "")] ?? -1;
+    const preferred = taskRank >= previousRank ? task : previous;
+    const fallback = preferred === task ? previous : task;
+    byId.set(id, { ...fallback, ...preferred, id });
+  }
+  return [...byId.values()];
 }
 
 function liveTaskWasRead(task: FetchTaskProgress): boolean {
@@ -444,7 +480,7 @@ export function fetchRunStats({
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
   const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
   const counters = liveProgress?.counters ?? {};
-  const liveTasks = liveProgress?.tasks ?? [];
+  const liveTasks = dedupeFetchProgressTasks(liveProgress?.tasks ?? []);
   const plannedTasks = fetchTasks.filter(isPlannedPostTask);
   const livePostTasks = liveTasks.filter(isLivePostTask);
   const hasDetailedPostTasks = plannedTasks.length > 0;
@@ -1536,7 +1572,7 @@ function SourceFetchMetaGrid({
       />
       <SourceFetchMetaItem
         label="Latest fetch"
-        value={<RelativeTime value={latestRun?.startedAt} fallback="None yet" />}
+        value={<RelativeTime value={latestRun?.finishedAt ?? latestRun?.startedAt} fallback="None yet" />}
       />
       <div className="fb-hub-digest-meta-item source-fetch-status-item">
         <dt>Status / log</dt>
@@ -2583,7 +2619,7 @@ function taskWorkerGroups(
 ): FetchTaskWorkerGroup[] {
   const groups = new Map<string, FetchTaskWorkerGroup>();
   for (const task of fetchTasks) {
-    const liveTask = task.id ? liveTasks.get(task.id) ?? null : null;
+    const liveTask = task.id ? liveTasks.get(canonicalFetchTaskId(task.id)) ?? null : null;
     const workerId = taskWorkerId(task, liveTask, shardAssignments);
     const key = workerId ? `worker:${workerId}` : "worker:main";
     let group = groups.get(key);
@@ -2765,7 +2801,7 @@ function DetailsBody({
                                   <TaskRow
                                     key={task.id ?? `${task.builderId ?? "task"}-${index}`}
                                     groupTasks={group.tasks}
-                                    liveTask={task.id ? liveTasks.get(task.id) ?? null : null}
+                                    liveTask={task.id ? liveTasks.get(canonicalFetchTaskId(task.id)) ?? null : null}
                                     liveTasks={liveTasks}
                                     task={task}
                                   />
@@ -3323,7 +3359,7 @@ function taskLiveProgress(
   task: FetchTaskLog,
   liveTasks: Map<string, FetchTaskProgress>,
 ): FetchTaskProgress | null {
-  return task.id ? liveTasks.get(task.id) ?? null : null;
+  return task.id ? liveTasks.get(canonicalFetchTaskId(task.id)) ?? null : null;
 }
 
 function taskSyncedForDisplay(

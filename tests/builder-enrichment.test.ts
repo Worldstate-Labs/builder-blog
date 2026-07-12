@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { pickFinalName } from "../src/lib/builder-enrichment";
 
 const ENRICHMENT_SOURCE = readFileSync("src/lib/builder-enrichment.ts", "utf8");
 
@@ -13,6 +14,33 @@ test("builder-enrichment module exports the dispatch entry point", () => {
   // The helper used by the route to choose between user-typed,
   // resolver-derived, and enrichment-derived display names.
   assert.match(ENRICHMENT_SOURCE, /export\s+function\s+pickFinalName/);
+});
+
+test("custom display name wins when the resolver carries the same typed name", () => {
+  assert.equal(
+    pickFinalName("NASA Journey Test", "NASA Journey Test", "NASA", {
+      urlSignals: ["www.nasa.gov", "https://www.nasa.gov/feed/"],
+    }),
+    "NASA Journey Test",
+  );
+});
+
+test("hostname-shaped auto-fill yields to a better enriched source name", () => {
+  assert.equal(
+    pickFinalName("www.nasa.gov", "www.nasa.gov", "NASA", {
+      urlSignals: ["www.nasa.gov", "https://www.nasa.gov/feed/"],
+    }),
+    "NASA",
+  );
+});
+
+test("blank display name uses the enriched source name", () => {
+  assert.equal(
+    pickFinalName("", "www.nasa.gov", "NASA", {
+      urlSignals: ["www.nasa.gov"],
+    }),
+    "NASA",
+  );
 });
 
 test("builder-enrichment dispatches supported source types", () => {

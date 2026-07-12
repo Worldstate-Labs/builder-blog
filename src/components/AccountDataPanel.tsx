@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Download, Trash2 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { useI18n } from "@/components/I18nProvider";
+import { translateUiPhrase } from "@/lib/i18n-phrases";
 
 export function AccountDataPanel() {
+  const { locale } = useI18n();
+  const tr = (text: string) => translateUiPhrase(locale, text) ?? text;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -78,7 +81,7 @@ export function AccountDataPanel() {
         }
 
         setStatus("Account deleted.");
-        await signOut({ callbackUrl: "/" });
+        window.location.replace("/");
       } catch {
         setError("Could not delete account.");
       }
@@ -91,12 +94,12 @@ export function AccountDataPanel() {
         <div className="access-keys-copy">
           <div className="access-keys-headline">
             <Download className="access-keys-headline-icon" aria-hidden="true" />
-            <h2 className="fb-section-heading">Account data</h2>
+            <h2 className="fb-section-heading">{tr("Account data")}</h2>
           </div>
           <p className="access-keys-desc">
-            Export account data or delete your FollowBrief account, including
-            reads, favorites, settings, Hub sharing records, AI Brief records,
-            and Local Agent activity.
+            {tr(
+              "Export account data or delete your FollowBrief account, including reads, favorites, settings, Hub sharing records, AI Brief records, and Local Agent activity.",
+            )}
           </p>
         </div>
       </div>
@@ -109,7 +112,7 @@ export function AccountDataPanel() {
           type="button"
         >
           <Download aria-hidden="true" />
-          Export account data
+          {tr("Export account data")}
         </button>
         <button
           className="fb-btn light is-danger-outline"
@@ -122,18 +125,18 @@ export function AccountDataPanel() {
           type="button"
         >
           <Trash2 aria-hidden="true" />
-          Delete account
+          {tr("Delete account")}
         </button>
       </div>
 
       {status ? (
         <span className="access-keys-status" role="status">
-          <span className="access-keys-status-message">{status}</span>
+          <span className="access-keys-status-message">{tr(status)}</span>
         </span>
       ) : null}
       {error ? (
         <span className="access-keys-status" role="alert">
-          <span className="access-keys-status-message is-error">{error}</span>
+          <span className="access-keys-status-message is-error">{tr(error)}</span>
         </span>
       ) : null}
 
@@ -148,12 +151,11 @@ export function AccountDataPanel() {
       >
         <div className="fb-dialog-inner settings-dialog-stack">
           <div>
-            <h3 className="fb-section-heading">Delete account?</h3>
+            <h3 className="fb-section-heading">{tr("Delete account?")}</h3>
             <p className="settings-dialog-copy">
-              This permanently removes your account, sessions, access keys,
-              source library records, AI Brief records, preferences, reads,
-              favorites, imports, and Hub sharing records. Type DELETE to
-              continue.
+              {tr(
+                "This permanently removes your account, sessions, access keys, source library records, AI Brief records, preferences, reads, favorites, imports, and Hub sharing records. Type DELETE to continue.",
+              )}
             </p>
           </div>
           <input
@@ -170,7 +172,7 @@ export function AccountDataPanel() {
               onClick={closeDeleteDialog}
               type="button"
             >
-              Cancel
+              {tr("Cancel")}
             </button>
             <button
               className="fb-btn danger"
@@ -178,7 +180,7 @@ export function AccountDataPanel() {
               onClick={deleteAccount}
               type="button"
             >
-              Delete account
+              {tr("Delete account")}
             </button>
           </div>
         </div>

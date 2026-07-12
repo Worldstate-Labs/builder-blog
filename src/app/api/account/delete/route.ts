@@ -4,7 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE() {
+const sessionCookieNames = [
+  "next-auth.session-token",
+  "__Secure-next-auth.session-token",
+  "authjs.session-token",
+  "__Secure-authjs.session-token",
+];
+
+export async function DELETE(request: Request) {
   const session = await getCurrentSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,5 +32,24 @@ export async function DELETE() {
     }),
   ]);
 
-  return NextResponse.json({ status: "deleted" });
+  const response = NextResponse.json({ status: "deleted" });
+  const requestCookieNames = (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((cookie) => cookie.split("=", 1)[0]?.trim())
+    .filter((name): name is string => Boolean(name?.endsWith(".session-token")));
+
+  for (const name of new Set([...sessionCookieNames, ...requestCookieNames])) {
+    response.cookies.set({
+      name,
+      value: "",
+      expires: new Date(0),
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+      sameSite: "lax",
+      secure: name.startsWith("__Secure-"),
+    });
+  }
+
+  return response;
 }

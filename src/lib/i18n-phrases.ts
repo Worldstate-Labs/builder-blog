@@ -22,6 +22,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "내 Local Agent",
     es: "Tu Local Agent",
   },
+  "Your agent": {
+    "zh-CN": "你的 Agent",
+    "zh-TW": "你的 Agent",
+    ja: "あなたのエージェント",
+    ko: "내 에이전트",
+    es: "Tu agente",
+  },
   "Search recommendations or enter a name": {
     "zh-CN": "搜索推荐或输入名称",
     "zh-TW": "搜尋推薦或輸入名稱",
@@ -1459,6 +1466,34 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ja: "アカウントを削除しますか？",
     ko: "계정을 삭제할까요?",
     es: "¿Eliminar la cuenta?",
+  },
+  "Account export downloaded.": {
+    "zh-CN": "账号数据已下载。",
+    "zh-TW": "帳號資料已下載。",
+    ja: "アカウントデータをダウンロードしました。",
+    ko: "계정 데이터를 다운로드했습니다.",
+    es: "Se descargaron los datos de la cuenta.",
+  },
+  "Could not export account data.": {
+    "zh-CN": "无法导出账号数据。",
+    "zh-TW": "無法匯出帳號資料。",
+    ja: "アカウントデータをエクスポートできませんでした。",
+    ko: "계정 데이터를 내보낼 수 없습니다.",
+    es: "No se pudieron exportar los datos de la cuenta.",
+  },
+  "Account deleted.": {
+    "zh-CN": "账号已删除。",
+    "zh-TW": "帳號已刪除。",
+    ja: "アカウントを削除しました。",
+    ko: "계정을 삭제했습니다.",
+    es: "Se eliminó la cuenta.",
+  },
+  "Could not delete account.": {
+    "zh-CN": "无法删除账号。",
+    "zh-TW": "無法刪除帳號。",
+    ja: "アカウントを削除できませんでした。",
+    ko: "계정을 삭제할 수 없습니다.",
+    es: "No se pudo eliminar la cuenta.",
   },
   "Access keys": {
     "zh-CN": "访问密钥",
@@ -3270,6 +3305,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ja: "Local Agent",
     ko: "Local Agent",
     es: "Local Agent",
+  },
+  "Local Agent output": {
+    "zh-CN": "Local Agent 输出",
+    "zh-TW": "Local Agent 輸出",
+    ja: "Local Agent の出力",
+    ko: "Local Agent 출력",
+    es: "Salida de Local Agent",
   },
   "Source note": {
     "zh-CN": "信息源备注",

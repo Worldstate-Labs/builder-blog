@@ -94,7 +94,7 @@ test("fetch log treats summary translation as summarize work without claiming a 
   assert.match(panel, /function hasSummarizeInputSignal/);
   assert.match(panel, /if \(isSummaryTranslationTask\(task\)\) return false/);
   assert.match(panel, /return isSummaryTranslationTask\(task\) \|\| hasReadSignal\(task, liveTask\)/);
-  assert.match(panel, /return \{ label: "summarizing", tone: "idle" \}/);
+  assert.match(panel, /return \{ label: "queued", tone: "idle" \}/);
   assert.match(panel, /if \(isSummaryTranslationTask\(task\) && isSummarized\(task\)\) return \{ label: "Summarized", tone: "ok" \}/);
   assert.match(panel, /label: isDiscovery \? "Discover" : "Read"/);
   assert.match(panel, /label: isDiscovery \? "Expand" : "Summarize"/);

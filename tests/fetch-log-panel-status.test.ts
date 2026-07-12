@@ -1259,6 +1259,32 @@ test("fetch run stats exclude candidate discovery from live post counters", () =
   assert.equal(stats.synced, 3);
 });
 
+test("fetch run stats count encoded and decoded forms of one post task once", () => {
+  const stats = fetchRunStats({
+    details: {},
+    liveProgress: {
+      counters: { tasksPlanned: 1, synced: 1 },
+      tasks: [
+        {
+          id: "fetch_post:builder_1:BLOG_POST:https://example.com/posts/one",
+          status: "reading",
+          phase: "read",
+        },
+        {
+          id: "fetch_post:builder_1:BLOG_POST:https%3A%2F%2Fexample.com%2Fposts%2Fone",
+          status: "synced",
+          phase: "synced",
+        },
+      ],
+    },
+  });
+
+  assert.equal(stats.planned, 1);
+  assert.equal(stats.read, 1);
+  assert.equal(stats.summarized, 1);
+  assert.equal(stats.synced, 1);
+});
+
 test("live job progress can backfill job-only post task details", () => {
   const details = fetchDetailsForTaskDisplay({}, {
     stage: "workers_running",

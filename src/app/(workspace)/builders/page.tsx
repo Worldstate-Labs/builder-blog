@@ -464,13 +464,7 @@ async function loadSourceLibraryData(user: {
           include: {
             owner: { select: { name: true, email: true } },
             items: {
-              include: {
-                builder: {
-                  include: {
-                    _count: { select: { feedItems: true } },
-                  },
-                },
-              },
+              select: { builderId: true },
               orderBy: { createdAt: "asc" },
             },
           },

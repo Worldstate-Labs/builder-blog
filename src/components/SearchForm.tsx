@@ -191,6 +191,75 @@ export function SearchForm({
     inputRef.current?.focus();
   }
 
+  const suggestionDropdown = (className: string) => shouldShowSuggestions ? (
+    <div
+      className={className}
+      aria-label={t("search.suggestions")}
+      aria-live="polite"
+      id={suggestionListId}
+      role="listbox"
+    >
+      {visibleSuggestions.map((suggestion, index) => (
+        <div
+          aria-selected={index === activeSuggestionIndex}
+          data-active={index === activeSuggestionIndex ? "true" : undefined}
+          id={`${suggestionIdPrefix}-${index}`}
+          key={`${suggestion.kind}:${suggestion.query}`}
+          role="option"
+          className="search-suggestion-item"
+        >
+          <button
+            aria-label={t("search.searchFor", { query: suggestion.query })}
+            className="search-suggestion-chip"
+            onClick={(event) => {
+              submitSuggestion(suggestion, event.currentTarget.form);
+            }}
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+            type="button"
+          >
+            {suggestion.kind === "recent" ? (
+              <Clock aria-hidden="true" className="search-suggestion-icon" />
+            ) : suggestionAvatarSource(suggestion) ? (
+              <SourceAvatar
+                className="search-suggestion-avatar"
+                imageSize={32}
+                source={suggestionAvatarSource(suggestion)!}
+              />
+            ) : (
+              <Search aria-hidden="true" className="search-suggestion-icon" />
+            )}
+            <span className="search-suggestion-copy">
+              <span className="search-suggestion-title">{suggestion.label}</span>
+              {suggestion.detail ? (
+                <span className="search-suggestion-detail">{suggestion.detail}</span>
+              ) : null}
+            </span>
+          </button>
+          {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion.query)) ? (
+            <button
+              aria-label={t("search.removeRecent", { query: suggestion.query })}
+              className="search-suggestion-remove"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                removeRecentSearch(suggestion.query);
+              }}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              type="button"
+            >
+              <X aria-hidden="true" className="search-action-icon" />
+            </button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <form
       action="/search"
@@ -269,75 +338,9 @@ export function SearchForm({
                 <X aria-hidden="true" className="search-action-icon" />
               </button>
             ) : null}
-            {shouldShowSuggestions ? (
-              <div
-                className="search-suggestion-dropdown"
-                aria-label={t("search.suggestions")}
-                aria-live="polite"
-                id={suggestionListId}
-                role="listbox"
-              >
-                {visibleSuggestions.map((suggestion, index) => (
-                  <div
-                    aria-selected={index === activeSuggestionIndex}
-                    data-active={index === activeSuggestionIndex ? "true" : undefined}
-                    id={`${suggestionIdPrefix}-${index}`}
-                    key={`${suggestion.kind}:${suggestion.query}`}
-                    role="option"
-                    className="search-suggestion-item"
-                  >
-                    <button
-                      aria-label={t("search.searchFor", { query: suggestion.query })}
-                      className="search-suggestion-chip"
-                      onClick={() => {
-                        submitSuggestion(suggestion, inputRef.current?.form ?? null);
-                      }}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                      }}
-                      type="button"
-                    >
-                      {suggestion.kind === "recent" ? (
-                        <Clock aria-hidden="true" className="search-suggestion-icon" />
-                      ) : suggestionAvatarSource(suggestion) ? (
-                        <SourceAvatar
-                          className="search-suggestion-avatar"
-                          imageSize={32}
-                          source={suggestionAvatarSource(suggestion)!}
-                        />
-                      ) : (
-                        <Search aria-hidden="true" className="search-suggestion-icon" />
-                      )}
-                      <span className="search-suggestion-copy">
-                        <span className="search-suggestion-title">{suggestion.label}</span>
-                        {suggestion.detail ? (
-                          <span className="search-suggestion-detail">{suggestion.detail}</span>
-                        ) : null}
-                      </span>
-                    </button>
-                    {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion.query)) ? (
-                      <button
-                        aria-label={t("search.removeRecent", { query: suggestion.query })}
-                        className="search-suggestion-remove"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          removeRecentSearch(suggestion.query);
-                        }}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                        }}
-                        type="button"
-                      >
-                        <X aria-hidden="true" className="search-action-icon" />
-                      </button>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : null}
+            {isHeader ? suggestionDropdown("search-suggestion-dropdown") : null}
           </span>
+          {isHeader ? null : suggestionDropdown("search-suggestion-dropdown search-page-suggestion-dropdown")}
         </label>
         {isHeader ? null : (
           <>
@@ -466,12 +469,14 @@ function mergeAutocompleteSuggestions({
     for (const suggestion of recentSuggestions) addSuggestion(suggestion);
   }
   for (const suggestion of liveSuggestions) addSuggestion(suggestion);
-  for (const suggestion of serverSuggestions) {
-    addSuggestion({
-      query: suggestion,
-      label: suggestion,
-      kind: "query",
-    });
+  if (!hasQuery) {
+    for (const suggestion of serverSuggestions) {
+      addSuggestion({
+        query: suggestion,
+        label: suggestion,
+        kind: "query",
+      });
+    }
   }
   if (hasQuery) {
     for (const suggestion of recentSuggestions) addSuggestion(suggestion);

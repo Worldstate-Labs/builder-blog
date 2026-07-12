@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   const { results } = await searchUserLibrary({
     userId: session.user.id,
     query,
-    mode: "hybrid",
+    mode: "exact",
   });
   const corrected = didYouMeanSearch(query);
   const items: SearchSuggestionItem[] = [];

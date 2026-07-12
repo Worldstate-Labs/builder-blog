@@ -82,7 +82,10 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(runner, /LAST_AGENT_OUTPUT_FILE/);
   assert.match(runner, /job_run_update failed "Runtime exited with code \$_code\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /job_run_update timed_out "Runtime reported a timeout\." "runtime_reported_timeout" \\\n\s+--exit-code "\$_code"/);
-  assert.match(runner, /job_run_update succeeded "Runtime completed successfully\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
+  assert.match(runner, /job_run_update succeeded "Runtime completed successfully\." "runtime_finished" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/);
+  assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CODEX_MODEL:-gpt-5\.4-mini\}"/);
+  assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CLAUDE_MODEL:-sonnet\}"/);
+  assert.match(runner, /export BUILDER_BLOG_AGENT_MODEL/);
   assert.match(runner, /--usage-file/);
 });
 
@@ -148,7 +151,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(panel, /function fetchTaskProgressMap/);
   assert.match(panel, /function JobLifecycle/);
   assert.match(panel, /function LifecyclePipeline/);
-  assert.match(panel, /liveTask=\{task\.id \? liveTasks\.get\(task\.id\) \?\? null : null\}/);
+  assert.match(panel, /liveTask=\{task\.id \? liveTasks\.get\(canonicalFetchTaskId\(task\.id\)\) \?\? null : null\}/);
   assert.match(panel, /function liveFetchOutcome/);
   assert.match(panel, /function liveSummarizeOutcome/);
   assert.match(panel, /jobRun\.details[\s\S]*progress/);
@@ -163,6 +166,10 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(route, /function mergeAgentJobRunProgress/);
   assert.match(route, /function mergeAgentJobRunStage/);
   assert.match(route, /run_fetch_workers: 30,[\s\S]*workers_running: 30,[\s\S]*checkpoint_syncing: 30/);
+  assert.match(route, /completed: 70/);
+  assert.match(route, /canonicalFetchTaskId/);
+  assert.match(route, /function finalizeAgentJobRunProgress/);
+  assert.match(route, /type: "job_completed"/);
   assert.match(route, /compactAgentJobRunDetails/);
   assert.match(route, /existingRun\?\.details/);
   assert.match(route, /mergeAgentJobRunProgress\(current\.progress, next\.progress\)/);

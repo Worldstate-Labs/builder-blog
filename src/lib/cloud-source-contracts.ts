@@ -45,10 +45,11 @@ export function normalizeCloudSourceSubmissionInput(
   input: CloudSourceSubmissionInput,
 ): NormalizedCloudSourceSubmission {
   const summaryLanguage = normalizeSummaryLanguagePreference(input.summaryLanguage);
+  const builderIds = normalizeCloudSubmissionBuilderIds(input.builderIds);
   return {
     frequency: normalizeCloudFetchFrequencyInput(input.frequency),
     summaryLanguage,
-    builderIds: normalizeCloudSubmissionBuilderIds(input.builderIds),
+    ...(builderIds === undefined ? {} : { builderIds }),
   };
 }
 

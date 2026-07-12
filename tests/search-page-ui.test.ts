@@ -28,6 +28,7 @@ test("search suggestions stay query-like instead of repeating result type labels
   assert.match(suggestRoute, /return "AI Brief"/);
   assert.doesNotMatch(searchPage, /digest:\s*"AI Brief archives"/);
   assert.doesNotMatch(suggestRoute, /return "AI Brief archive"/);
+  assert.match(suggestRoute, /mode:\s*"exact"/);
 });
 
 test("source search results expose add and in-library states", () => {
@@ -65,4 +66,17 @@ test("header search suggestions use source avatars instead of letter placeholder
   assert.match(suggestRoute, /avatarDataUrl:\s*result\.avatarDataUrl/);
   assert.match(suggestRoute, /sourceType:\s*result\.sourceType/);
   assert.match(suggestRoute, /result\.type !== "builder"/);
+});
+
+test("page search suggestions do not cover the submit controls or show unrelated defaults", () => {
+  const searchForm = source("src/components/SearchForm.tsx");
+
+  assert.match(searchForm, /const suggestionDropdown = \(className: string\) => shouldShowSuggestions/);
+  assert.match(searchForm, /\{isHeader \? suggestionDropdown\("search-suggestion-dropdown"\) : null\}/);
+  assert.match(
+    searchForm,
+    /\{isHeader \? null : suggestionDropdown\("search-suggestion-dropdown search-page-suggestion-dropdown"\)\}/,
+  );
+  assert.match(searchForm, /if \(!hasQuery\) \{[\s\S]*serverSuggestions/);
+  assert.match(searchForm, /search-page-suggestion-dropdown/);
 });

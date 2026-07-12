@@ -1071,6 +1071,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryOncePrompt, /JSON schema, or success criteria/);
   assert.doesNotMatch(digestOncePrompt, /Environment contract/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR=/);
+  assert.match(
+    digestOncePrompt,
+    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*ACCOUNT_SLUG="\$\(account_slug "\$ACCT"\)"[\s\S]*BUILDER_BLOG_ACCOUNT="\$ACCT"/,
+  );
   assert.match(libraryOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_PARALLEL_WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/);
@@ -1586,7 +1590,8 @@ test("web app serves the agent skill and setup command", () => {
   // hint instead of silently running on guessed values.
   assert.match(bootstrapRoute, /api\/skill\/files\/sources\.json/);
   assert.doesNotMatch(cli, /disallowedPrimarySources:\s*\[/);
-  assert.match(cli, /Could not read \$\{SOURCES_CONFIG_PATH\}/);
+  assert.match(cli, /const path = sourcesConfigPath\(\)/);
+  assert.match(cli, /Could not read \$\{path\}/);
   assert.match(cli, /Re-run the FollowBrief/);
   assert.doesNotMatch(bootstrapRoute, /FollowBrief skill saved/);
   assert.match(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" fetch-personal/);

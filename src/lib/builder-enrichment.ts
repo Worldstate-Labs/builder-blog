@@ -788,7 +788,7 @@ export function pickFinalName(
   // otherwise win over the much better enriched name (e.g. iTunes'
   // "硅谷101" or a blog's og:title). Treat user input as "weak" if it
   // exactly matches any URL-derivable signal — hostname (with or
-  // without "www."), handle, "@handle", or the resolved name itself.
+  // without "www."), handle, or "@handle".
   if (typed && fromEnrichment) {
     const weakSignals = new Set<string>();
     for (const raw of opts.urlSignals ?? []) {
@@ -798,7 +798,6 @@ export function pickFinalName(
       weakSignals.add(value.replace(/^www\./, ""));
       weakSignals.add(value.replace(/^@/, ""));
     }
-    weakSignals.add(resolved.trim().toLowerCase());
     if (weakSignals.has(typed.toLowerCase())) {
       return fromEnrichment;
     }

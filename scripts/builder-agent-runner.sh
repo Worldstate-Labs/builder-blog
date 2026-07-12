@@ -1127,6 +1127,13 @@ fi
 # signal for hermes/openclaw. Empty for un-pinned interactive runs → the CLI
 # falls back to env detection.
 export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
+if [ -z "${BUILDER_BLOG_AGENT_MODEL:-}" ]; then
+  case "$PINNED_RUNTIME" in
+    codex) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.4-mini}" ;;
+    claude) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CLAUDE_MODEL:-sonnet}" ;;
+  esac
+fi
+export BUILDER_BLOG_AGENT_MODEL
 
 # Forced re-fetch: cron-setup writes 1 to the fetch-force pin when the user
 # picked "override already-fetched posts". We expose it as
@@ -2666,10 +2673,12 @@ run_with_job_tracking() {
         _cleanup_reason="no_update"
       else
         job_run_update succeeded "Runtime completed successfully." "runtime_finished" \
+          --stage "completed" \
           --exit-code "$_code"
       fi
     else
       job_run_update succeeded "Runtime completed successfully." "runtime_finished" \
+        --stage "completed" \
         --exit-code "$_code"
     fi
   elif [ "$_code" -eq 124 ]; then

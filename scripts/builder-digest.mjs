@@ -79,9 +79,18 @@ function envRetryDelaysMs(name, fallback) {
 }
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
-const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
 function agentDir() {
   return process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
+}
+function accountsDir() {
+  return join(agentDir(), "accounts");
+}
+function accountFilePath(email) {
+  const safeName = email.replace(/[^a-zA-Z0-9._@+-]/g, "_");
+  return join(accountsDir(), `${safeName}.json`);
+}
+function sourcesConfigPath() {
+  return join(agentDir(), "sources.json");
 }
 function accountSlug() {
   const fromEnv = process.env.BUILDER_BLOG_ACCOUNT_SLUG?.trim();
@@ -140,7 +149,6 @@ function defaultLibraryFetchProgressFile() {
 function defaultDigestContextFile() {
   return join(jobTmpDir("digest-once"), "builder-blog-context.json");
 }
-const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 const MAX_DIGEST_CONTENT_CHARS = 200_000;
@@ -222,8 +230,9 @@ export function timedSourceFetchForTest(input, init = {}, fetchImpl = fetch) {
 
 function loadSourcesConfig() {
   if (_sourcesConfig) return _sourcesConfig;
+  const path = sourcesConfigPath();
   try {
-    _sourcesConfig = JSON.parse(readFileSync(SOURCES_CONFIG_PATH, "utf8"));
+    _sourcesConfig = JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
     // No embedded fallback: config/sources.json (served verbatim) is the single
     // source of truth, and both entry points now guarantee it locally — the
@@ -232,7 +241,7 @@ function loadSourcesConfig() {
     // rather than silently running on stale/guessed values.
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Could not read ${SOURCES_CONFIG_PATH} (${reason}). Re-run the FollowBrief ` +
+      `Could not read ${path} (${reason}). Re-run the FollowBrief ` +
         `skill bootstrap to download it: /bin/sh -c "$(curl -fsSL ` +
         `${process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL}/api/skill/bootstrap)"`,
     );
@@ -299,7 +308,7 @@ function usage() {
 
 To set up an account, use the Copy-prompt button in the FollowBrief web app.
 The first command in the prompt exchanges a one-time code for an agent token
-saved to ~/.builder-blog/accounts/<email>.json`);
+saved under ${accountsDir()}.`);
 }
 
 export function skillFetchTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
@@ -411,12 +420,11 @@ function detectedHermesModel() {
 }
 
 /**
- * Load an account file from ~/.builder-blog/accounts/<email>.json.
+ * Load an account file from the configured agent accounts directory.
  * Returns { email, token, appUrl } or throws with a clear error.
  */
 async function loadAccountFile(email) {
-  const safeName = email.replace(/[^a-zA-Z0-9._@+-]/g, "_");
-  const accountPath = join(ACCOUNTS_DIR, `${safeName}.json`);
+  const accountPath = accountFilePath(email);
   if (!existsSync(accountPath)) {
     throw new Error(
       `Account file not found for ${email} (expected ${accountPath}). ` +
@@ -1674,7 +1682,7 @@ function requireLoggedIn(config) {
   if (!config.token) {
     throw new Error(
       `No agent token. Set BUILDER_BLOG_TOKEN in your environment, ` +
-      `or set BUILDER_BLOG_ACCOUNT to an email that has a ~/.builder-blog/accounts/<email>.json file. ` +
+      `or set BUILDER_BLOG_ACCOUNT to an email that has an account file under ${accountsDir()}. ` +
       `Use the Copy-prompt button in the FollowBrief web app to set up this account.`,
     );
   }
@@ -1694,8 +1702,8 @@ async function exchange(args) {
     throw new Error("Exchange response missing token or email.");
   }
   const safeName = data.email.replace(/[^a-zA-Z0-9._@+-]/g, "_");
-  const accountPath = join(ACCOUNTS_DIR, `${safeName}.json`);
-  await mkdir(ACCOUNTS_DIR, { recursive: true });
+  const accountPath = accountFilePath(data.email);
+  await mkdir(accountsDir(), { recursive: true });
   await writeFile(accountPath, JSON.stringify({ email: data.email, token: data.token, userId: data.userId, appUrl: data.appUrl ?? appUrl }, null, 2), { mode: 0o600 });
   console.log(`Exchanged for account ${data.email}; saved to accounts/${safeName}.json`);
 }
@@ -3083,6 +3091,14 @@ export function libraryFetchRunIdFileForTest() {
 
 export function defaultDigestContextFileForTest() {
   return defaultDigestContextFile();
+}
+
+export function accountFilePathForTest(email) {
+  return accountFilePath(email);
+}
+
+export function sourcesConfigPathForTest() {
+  return sourcesConfigPath();
 }
 
 export function personalFetcherSourceForBuilder(builder) {
@@ -10357,7 +10373,7 @@ async function status() {
         loggedIn: Boolean(config.token),
         appUrl: config.appUrl ?? null,
         account,
-        accountsDir: ACCOUNTS_DIR,
+        accountsDir: accountsDir(),
       },
       null,
       2,
@@ -10948,7 +10964,7 @@ async function main() {
     console.warn(
       "The `login` command has been removed. Use the Copy-prompt button in the FollowBrief web app. " +
       "The first command in the prompt exchanges a one-time code for an agent token " +
-      "saved to ~/.builder-blog/accounts/<email>.json",
+      `saved under ${accountsDir()}.`,
     );
     process.exit(1);
   }

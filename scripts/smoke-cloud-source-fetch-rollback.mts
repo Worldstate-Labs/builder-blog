@@ -290,13 +290,25 @@ async function main() {
       }
 
       const leaseNow = new Date(Date.now() + 5_000);
+      const smokeDeadline = new Date(leaseNow.getTime() + 30 * 60 * 1000);
       await tx.cloudSourceTask.update({
         where: { id: task.id },
         data: {
           nextAttemptAt: leaseNow,
-          mustSucceedBy: new Date(leaseNow.getTime() + 30 * 60 * 1000),
+          mustSucceedBy: smokeDeadline,
           estimatedDurationSeconds: 60,
           estimatedSuccessProbability: 0.99,
+        },
+      });
+      // This smoke runs against a shared database. Pin its own queue row first
+      // so limit: 1 cannot lease an unrelated production task.
+      await tx.cloudFetchQueueItem.create({
+        data: {
+          cloudSourceTaskId: task.id,
+          status: "QUEUED",
+          priorityScore: Number.MAX_SAFE_INTEGER,
+          dueAt: leaseNow,
+          mustSucceedBy: smokeDeadline,
         },
       });
       const lease = await leaseCloudFetchTasks({
@@ -307,6 +319,9 @@ async function main() {
       });
       if (lease.status !== "ok" || !lease.runId || lease.tasks.length !== 1) {
         throw new Error(`Expected one leased task, got ${JSON.stringify(lease)}.`);
+      }
+      if (lease.tasks[0]?.cloudSourceTaskId !== task.id) {
+        throw new Error(`Expected smoke task ${task.id}, got ${JSON.stringify(lease.tasks)}.`);
       }
 
       const fetchTaskId = `fetch_post:${task.builderId}:BLOG_POST:${marker}`;
@@ -329,6 +344,7 @@ async function main() {
                 url: `https://example.com/${marker}/post`,
                 body: "This rollback-only smoke body is long enough to pass content quality checks and prove feed item persistence.",
                 summary: "Cloud smoke summary persisted in the requested language.",
+                headline: "Rollback smoke validates cloud delivery",
                 publishedAt: now.toISOString(),
                 sourceName: task.builder.name,
                 rawJson: {
