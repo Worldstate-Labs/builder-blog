@@ -1214,13 +1214,13 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /initialRuns=\{data\.digestRuns\}/);
 });
 
-test("source sync log tabs keep local fetch log and cloud fetch log separate", () => {
+test("source sync log tabs default to FollowBrief before Agent", () => {
   const tabs = source("src/components/SourceSyncLogTabs.tsx");
 
   assert.match(tabs, /role="tablist"/);
-  assert.match(tabs, /Agent fetch log/);
-  assert.match(tabs, /Cloud fetch log/);
-  assert.doesNotMatch(tabs, /Local Agent fetch log/);
+  assert.match(tabs, /useState<SyncLogTab>\("cloud"\)/);
+  assert.match(tabs, /FollowBrief sync log[\s\S]*Agent sync log/);
+  assert.doesNotMatch(tabs, /Agent fetch log|Cloud fetch log|Local Agent fetch log/);
   assert.doesNotMatch(tabs, /Latest submission/);
   assert.match(tabs, /source\.deadlineStatus === "ON_TIME"/);
   assert.match(tabs, /On time sources/);

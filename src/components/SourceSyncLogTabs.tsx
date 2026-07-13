@@ -40,28 +40,16 @@ export function SourceSyncLogTabs({
   initialHasMoreHistory?: boolean;
   summaryLanguage?: string | null;
 }) {
-  const [selected, setSelected] = useState<SyncLogTab>("local");
+  const [selected, setSelected] = useState<SyncLogTab>("cloud");
 
   return (
     <div className="source-sync-log-tabs">
       <div className="source-sync-log-tabs-head">
         <div
-          aria-label="Fetch log type"
+          aria-label="Sync log type"
           className="fb-segmented-tabs source-sync-log-tablist"
           role="tablist"
         >
-          <button
-            aria-controls="source-sync-local-log-panel"
-            aria-selected={selected === "local"}
-            className="fb-btn compact"
-            id="source-sync-local-log-tab"
-            onClick={() => setSelected("local")}
-            role="tab"
-            tabIndex={selected === "local" ? 0 : -1}
-            type="button"
-          >
-            Agent fetch log
-          </button>
           <button
             aria-controls="source-sync-cloud-log-panel"
             aria-selected={selected === "cloud"}
@@ -72,12 +60,32 @@ export function SourceSyncLogTabs({
             tabIndex={selected === "cloud" ? 0 : -1}
             type="button"
           >
-            Cloud fetch log
+            FollowBrief sync log
+          </button>
+          <button
+            aria-controls="source-sync-local-log-panel"
+            aria-selected={selected === "local"}
+            className="fb-btn compact"
+            id="source-sync-local-log-tab"
+            onClick={() => setSelected("local")}
+            role="tab"
+            tabIndex={selected === "local" ? 0 : -1}
+            type="button"
+          >
+            Agent sync log
           </button>
         </div>
       </div>
 
-      {selected === "local" ? (
+      {selected === "cloud" ? (
+        <section
+          aria-labelledby="source-sync-cloud-log-tab"
+          id="source-sync-cloud-log-panel"
+          role="tabpanel"
+        >
+          <UserCloudFetchLogPanel cloudLog={cloudLog} />
+        </section>
+      ) : (
         <section
           aria-labelledby="source-sync-local-log-tab"
           id="source-sync-local-log-panel"
@@ -92,14 +100,6 @@ export function SourceSyncLogTabs({
             initialRuns={initialRuns}
             summaryLanguage={summaryLanguage}
           />
-        </section>
-      ) : (
-        <section
-          aria-labelledby="source-sync-cloud-log-tab"
-          id="source-sync-cloud-log-panel"
-          role="tabpanel"
-        >
-          <UserCloudFetchLogPanel cloudLog={cloudLog} />
         </section>
       )}
     </div>
