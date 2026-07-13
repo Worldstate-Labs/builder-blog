@@ -91,9 +91,11 @@ function toDraft(config: AdminSourceTypeConfig): Draft {
 }
 
 export function AdminSourceTypeManager({
+  canEditFetchingInstructions,
   canEditQualityGates,
   initialConfigs,
 }: {
+  canEditFetchingInstructions?: boolean;
   canEditQualityGates?: boolean;
   initialConfigs: AdminSourceTypeConfig[];
 }) {
@@ -103,6 +105,7 @@ export function AdminSourceTypeManager({
       {configs.map((config) => (
         <SourceTypeCard
           key={config.sourceId}
+          canEditFetchingInstructions={Boolean(canEditFetchingInstructions)}
           canEditQualityGates={Boolean(canEditQualityGates)}
           config={config}
           onSaved={(next) =>
@@ -117,10 +120,12 @@ export function AdminSourceTypeManager({
 }
 
 function SourceTypeCard({
+  canEditFetchingInstructions,
   canEditQualityGates,
   config,
   onSaved,
 }: {
+  canEditFetchingInstructions: boolean;
   canEditQualityGates: boolean;
   config: AdminSourceTypeConfig;
   onSaved: (next: AdminSourceTypeConfig) => void;
@@ -136,18 +141,18 @@ function SourceTypeCard({
   const editableDraft = useMemo(
     () => ({
       summaryPromptBody: draft.summaryPromptBody,
-      fetchPromptBody: draft.fetchPromptBody,
+      ...(canEditFetchingInstructions ? { fetchPromptBody: draft.fetchPromptBody } : {}),
       ...(canEditQualityGates ? { contentQuality: draft.contentQuality } : {}),
     }),
-    [canEditQualityGates, draft],
+    [canEditFetchingInstructions, canEditQualityGates, draft],
   );
   const editableBaseline = useMemo(
     () => ({
       summaryPromptBody: baseline.summaryPromptBody,
-      fetchPromptBody: baseline.fetchPromptBody,
+      ...(canEditFetchingInstructions ? { fetchPromptBody: baseline.fetchPromptBody } : {}),
       ...(canEditQualityGates ? { contentQuality: baseline.contentQuality } : {}),
     }),
-    [baseline, canEditQualityGates],
+    [baseline, canEditFetchingInstructions, canEditQualityGates],
   );
   const dirty = JSON.stringify(editableDraft) !== JSON.stringify(editableBaseline);
   const displayLabel = settingsSourceTypeLabel(config);
@@ -177,12 +182,14 @@ function SourceTypeCard({
   function save() {
     const patch: {
       summaryPromptBody: string;
-      fetchPromptBody: string | null;
+      fetchPromptBody?: string | null;
       contentQuality?: Record<string, unknown>;
     } = {
       summaryPromptBody: draft.summaryPromptBody,
-      fetchPromptBody: draft.fetchPromptBody.trim() === "" ? null : draft.fetchPromptBody,
     };
+    if (canEditFetchingInstructions) {
+      patch.fetchPromptBody = draft.fetchPromptBody.trim() === "" ? null : draft.fetchPromptBody;
+    }
     if (canEditQualityGates) {
       const cq = draft.contentQuality;
       if (!Number.isInteger(cq.minChars) || cq.minChars < 0) {
@@ -234,7 +241,9 @@ function SourceTypeCard({
           return;
         }
         onSaved(body.config);
-        if (draft.fetchPromptBody.trim() === "") setFetchPromptExpanded(false);
+        if (canEditFetchingInstructions && draft.fetchPromptBody.trim() === "") {
+          setFetchPromptExpanded(false);
+        }
         setStatus({ kind: "saved", message: "Saved" });
       } catch {
         setStatus({
@@ -255,27 +264,29 @@ function SourceTypeCard({
       </summary>
 
       <div className="settings-config-form source-type-config-form">
-        <Section
-          step="01"
-          title="Fetching"
-          optional
-          description="Source-specific extraction instructions."
-        >
-          <OptionalMarkdownField
-            ariaLabel={`${displayLabel} fetch prompt`}
-            buttonLabel="Add fetch prompt"
-            emptyText="No fetch prompt set."
-            expanded={fetchPromptExpanded}
-            height={340}
-            onExpand={() => setFetchPromptExpanded(true)}
-            placeholder={FETCH_PROMPT_PLACEHOLDER}
-            value={draft.fetchPromptBody}
-            onChange={(v) => update("fetchPromptBody", v)}
-          />
-        </Section>
+        {canEditFetchingInstructions ? (
+          <Section
+            step="01"
+            title="Fetching"
+            optional
+            description="Source-specific extraction instructions."
+          >
+            <OptionalMarkdownField
+              ariaLabel={`${displayLabel} fetch prompt`}
+              buttonLabel="Add fetch prompt"
+              emptyText="No fetch prompt set."
+              expanded={fetchPromptExpanded}
+              height={340}
+              onExpand={() => setFetchPromptExpanded(true)}
+              placeholder={FETCH_PROMPT_PLACEHOLDER}
+              value={draft.fetchPromptBody}
+              onChange={(v) => update("fetchPromptBody", v)}
+            />
+          </Section>
+        ) : null}
 
         <Section
-          step="02"
+          step={canEditFetchingInstructions ? "02" : "01"}
           title="Summarization"
           description="Defines each post summary; the run prompt sets language."
         >

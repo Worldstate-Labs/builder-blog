@@ -3735,12 +3735,13 @@ test("content config is per-user, seeded from a system default", () => {
   assert.equal(DEFAULT_SOURCE_CONFIGS.github_trending.defaultFetchDays, 30);
   assert.equal(DEFAULT_SOURCE_CONFIGS.product_hunt_top_products.defaultFetchDays, 30);
 
-  // Settings page shows source/digest config to every user, but only admins can
-  // edit the common fetching and post-summary rules shared defaults.
+  // Settings page shows source summary config to every user, but admin-only
+  // fetch instructions and AI Brief assembly rules stay behind the admin gate.
   const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
   assert.match(settingsPage, /where: \{ userId, revokedAt: null \}/);
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
   assert.match(settingsPage, /getAllSourceConfigs\(\)/);
+  assert.match(settingsPage, /canEditFetchingInstructions=\{isAdmin\}/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
@@ -3752,7 +3753,8 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /CommonSummaryRulesForm/);
   assert.match(settingsPage, /isAdminEmail\(session\.user\.email\)/);
   assert.match(settingsPage, /isAdmin \?/);
-  assert.match(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
+  assert.doesNotMatch(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
+  assert.match(settingsPage, /\{isAdmin \? \([\s\S]*AI Brief rules[\s\S]*AdminDigestConfigForm[\s\S]*\) : null\}/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
   // The cloud-fetch config form now lives on the Cloud library management page;
   // Settings only keeps a pointer section to it.
@@ -3780,6 +3782,9 @@ test("content config is per-user, seeded from a system default", () => {
   const digestForm = readFileSync("src/components/AdminDigestConfigForm.tsx", "utf8");
   const commonSummaryRulesForm = readFileSync("src/components/CommonSummaryRulesForm.tsx", "utf8");
   assert.match(srcManager, /\/api\/settings\/source-types/);
+  assert.match(srcManager, /canEditFetchingInstructions/);
+  assert.match(srcManager, /\.\.\.\(canEditFetchingInstructions \? \{ fetchPromptBody: draft\.fetchPromptBody \} : \{\}\)/);
+  assert.match(srcManager, /if \(canEditFetchingInstructions\) \{[\s\S]*patch\.fetchPromptBody =/);
   assert.match(srcManager, /canEditQualityGates/);
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);

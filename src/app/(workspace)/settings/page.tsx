@@ -29,7 +29,6 @@ import {
 } from "@/lib/source-config-store";
 
 const ADMIN_DIGEST_PROMPT_COUNT: number = 3;
-const USER_DIGEST_PROMPT_COUNT: number = 1;
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
@@ -53,7 +52,7 @@ export default async function SettingsPage() {
           {isAdmin ? <AdminMaintenancePanel /> : null}
         </div>
 
-        <Suspense fallback={<SettingsRulesSkeleton />}>
+        <Suspense fallback={<SettingsRulesSkeleton showDigestRules={isAdmin} />}>
           <SourceTypeConfigSection userId={userId} isAdmin={isAdmin} />
         </Suspense>
         {isAdmin ? (
@@ -141,7 +140,6 @@ async function SourceTypeConfigSection({
     ...config,
     contentQuality: defaultSourceConfigById.get(config.sourceId)?.contentQuality ?? config.contentQuality,
   }));
-  const digestPromptCount = isAdmin ? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT;
   return (
     <section className="settings-rules">
       <details className="settings-rules-panel fb-panel" open>
@@ -176,6 +174,7 @@ async function SourceTypeConfigSection({
             </div>
           ) : null}
           <AdminSourceTypeManager
+            canEditFetchingInstructions={isAdmin}
             canEditQualityGates={isAdmin}
             initialConfigs={sourceConfigs.map((c) => ({
               sourceId: c.sourceId,
@@ -192,37 +191,39 @@ async function SourceTypeConfigSection({
         </div>
       </details>
 
-      <details className="settings-rules-panel fb-panel">
-        <summary className="settings-rules-summary">
-          <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">AI Brief rules</h3>
-            <p className="settings-rules-summary-desc">
-              Build AI Briefs.
-            </p>
-          </div>
-          <span className="settings-rules-summary-meta source-summary-line">
-            <CountMeta
-              label={digestPromptCount === 1 ? "prompt" : "prompts"}
-              value={digestPromptCount}
+      {isAdmin ? (
+        <details className="settings-rules-panel fb-panel">
+          <summary className="settings-rules-summary">
+            <div className="settings-rules-summary-copy">
+              <h3 className="fb-section-heading">AI Brief rules</h3>
+              <p className="settings-rules-summary-desc">
+                Build AI Briefs.
+              </p>
+            </div>
+            <span className="settings-rules-summary-meta source-summary-line">
+              <CountMeta
+                label={ADMIN_DIGEST_PROMPT_COUNT === 1 ? "prompt" : "prompts"}
+                value={ADMIN_DIGEST_PROMPT_COUNT}
+              />
+            </span>
+            <span className="settings-rules-toggle-icon" aria-hidden="true">
+              <ChevronDown className="settings-rules-toggle-svg" />
+            </span>
+          </summary>
+          <div className="settings-rules-body">
+            <AdminDigestConfigForm
+              initialConfig={{
+                id: digestConfig.userId,
+                headlinePrompt: digestConfig.headlinePrompt,
+                perSourceSummaryPrompt: digestConfig.perSourceSummaryPrompt,
+                updatedAt: digestConfig.updatedAt.toISOString(),
+                updatedBy: digestConfig.updatedBy,
+              }}
+              canEditDigestAssemblyPrompts={isAdmin}
             />
-          </span>
-          <span className="settings-rules-toggle-icon" aria-hidden="true">
-            <ChevronDown className="settings-rules-toggle-svg" />
-          </span>
-        </summary>
-        <div className="settings-rules-body">
-          <AdminDigestConfigForm
-            initialConfig={{
-              id: digestConfig.userId,
-              headlinePrompt: digestConfig.headlinePrompt,
-              perSourceSummaryPrompt: digestConfig.perSourceSummaryPrompt,
-              updatedAt: digestConfig.updatedAt.toISOString(),
-              updatedBy: digestConfig.updatedBy,
-            }}
-            canEditDigestAssemblyPrompts={isAdmin}
-          />
-        </div>
-      </details>
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }
