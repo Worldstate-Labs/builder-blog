@@ -574,7 +574,9 @@ test("web app serves the agent skill and setup command", () => {
   // also pass cadence.
   assert.match(skillPromptActions, /CronConfigDialog/);
   assert.match(skillPromptActions, /FREQUENCY_OPTIONS/);
-  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "30m"/);
+  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "daily", label: "Every day" \}[\s\S]*\{ id: "weekly", label: "Every week" \}/);
+  assert.doesNotMatch(skillPromptActions, /Every 30 minutes|Every hour|Every 12 hours/);
+  assert.doesNotMatch(skillPromptActions, /id: "30m"|id: "1h"|id: "12h"/);
   assert.match(skillPromptActions, /pickedFreq === "once"/);
   assert.match(skillPromptActions, /target: "once"/);
   assert.match(skillPromptActions, /runtime: pickedRuntime/);
@@ -677,6 +679,9 @@ test("web app serves the agent skill and setup command", () => {
   // the setup prompt derives the concrete cron/launchd schedule from the
   // install-time anchor after validation succeeds.
   assert.match(skillJobRoute, /cronFrequencies/);
+  assert.match(skillJobRoute, /daily: \{ label: "every day" \}[\s\S]*weekly: \{ label: "every week" \}/);
+  assert.doesNotMatch(skillJobRoute, /every 30 minutes|every hour|every 12 hours|every 3 hours|every 6 hours/);
+  assert.doesNotMatch(skillJobRoute, /"30m"|"1h"|"3h"|"6h"|"12h"/);
   assert.match(skillJobRoute, /new Set\(\["claude", "codex", "hermes", "openclaw"\]\)/);
   assert.match(skillJobRoute, /hermes: "Hermes"/);
   assert.match(skillPromptActions, /id: "hermes"/);

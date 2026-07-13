@@ -53,7 +53,7 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string }[] = [
 
 // Cron cadence. `id` values match the server whitelist in the
 // jobs/[job]/skill.md route, which maps each to a fixed cron expression.
-type CronFrequency = "30m" | "1h" | "12h" | "daily" | "weekly";
+type CronFrequency = "daily" | "weekly";
 type ScheduleFrequency = "once" | CronFrequency;
 // `overrideFetched` = one-time re-fetch/reuse behavior. Cron schedules never
 // carry it because recurring jobs should keep normal incremental boundaries.
@@ -154,9 +154,6 @@ async function copyTextToClipboard(text: string) {
 
 const FREQUENCY_CHOICES: { id: ScheduleFrequency; label: string }[] = [
   { id: "once", label: "One-time" },
-  { id: "30m", label: "Every 30 minutes" },
-  { id: "1h", label: "Every hour" },
-  { id: "12h", label: "Every 12 hours" },
   { id: "daily", label: "Every day" },
   { id: "weekly", label: "Every week" },
 ];

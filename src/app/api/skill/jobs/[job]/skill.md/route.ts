@@ -316,34 +316,21 @@ export async function GET(request: Request, { params }: Params) {
 
   // Cron cadence for cron-setup prompts. Whitelisted key → fixed interval
   // metadata; the concrete cron/launchd schedule is generated on the user's
-  // machine from the install-time anchor after validation succeeds. Defaults
-  // keep old copied no-freq links working.
+  // machine from the install-time anchor after validation succeeds.
   const cronFrequencies: Record<string, { label: string }> = {
-    "30m": { label: "every 30 minutes" },
-    "1h": { label: "every hour" },
-    "12h": { label: "every 12 hours" },
     daily: { label: "every day" },
     weekly: { label: "every week" },
-    // Legacy keys kept so any previously-copied ?freq= link still resolves.
-    "3h": { label: "every 3 hours" },
-    "6h": { label: "every 6 hours" },
   };
   const cronIntervalMinutes: Record<string, string> = {
-    "30m": "30",
-    "1h": "60",
-    "12h": "720",
     daily: "1440",
     weekly: "10080",
-    "3h": "180",
-    "6h": "360",
   };
-  // Default cadence keys match the old no-freq defaults: digest = daily, the
-  // fetch/library job = every 6 hours. The concrete clock time is now generated
-  // from the post-validation install anchor.
-  const defaultFreq = job.startsWith("digest") ? "daily" : "6h";
+  // The concrete clock time is generated from the post-validation install
+  // anchor. One-time runs are handled by the non-cron prompt branch.
+  const defaultFreq = "daily";
   const freqRaw = url.searchParams.get("freq");
   const freq = freqRaw && cronFrequencies[freqRaw] ? freqRaw : defaultFreq;
-  const cronInterval = cronIntervalMinutes[freq] ?? "360";
+  const cronInterval = cronIntervalMinutes[freq] ?? "1440";
   const cronIntervalSeconds = String(Number(cronInterval) * 60);
   const cronTimeoutJob =
     job === "library-cron-setup"

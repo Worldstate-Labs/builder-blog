@@ -3807,7 +3807,7 @@ test("schedule-spec emits anchor-aligned cron, launchd, and server schedule valu
       "scripts/builder-digest.mjs",
       "schedule-spec",
       "--freq",
-      "12h",
+      "daily",
       "--anchor-file",
       anchorFile,
       "--cron-out",
@@ -3828,13 +3828,12 @@ test("schedule-spec emits anchor-aligned cron, launchd, and server schedule valu
   const launchd = await readFile(launchdOut, "utf8");
   const status = (await readFile(statusOut, "utf8")).trim();
 
-  assert.equal(cron, "15 1,13 * * *");
-  assert.equal(status, "anchor:15 1,13 * * *");
+  assert.equal(cron, "15 13 * * *");
+  assert.equal(status, "anchor:15 13 * * *");
   assert.equal(result.anchorAt, "2026-06-21T13:15:22Z");
   assert.equal(result.cron, cron);
   assert.equal(result.statusSchedule, status);
   assert.match(launchd, /<key>StartCalendarInterval<\/key>/);
-  assert.match(launchd, /<key>Hour<\/key>\s*<integer>1<\/integer>/);
   assert.match(launchd, /<key>Hour<\/key>\s*<integer>13<\/integer>/);
   assert.match(launchd, /<key>Minute<\/key>\s*<integer>15<\/integer>/);
   assert.doesNotMatch(launchd, /StartInterval/);

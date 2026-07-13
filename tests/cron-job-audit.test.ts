@@ -39,6 +39,10 @@ test("cron scheduler status changes leave local and server audit events", () => 
 
   assert.match(cronJobsRoute, /recordCronJobStatusEvent/);
   assert.match(cronJobsRoute, /eventType: "cron_status_applied"/);
+  assert.match(cronJobsRoute, /daily: \{ intervalMinutes: 1_440, label: "every day" \}/);
+  assert.match(cronJobsRoute, /weekly: \{ intervalMinutes: 10_080, label: "every week" \}/);
+  assert.doesNotMatch(cronJobsRoute, /"30m"|"1h"|"3h"|"6h"|"12h"/);
+  assert.doesNotMatch(cronJobsRoute, /every 30 minutes|every hour|every 3 hours|every 6 hours|every 12 hours/);
 
   assert.match(cli, /cron-audit/);
   assert.match(cli, /cronAuditLogPath/);

@@ -294,8 +294,8 @@ function usage() {
   sync-cloud-builders --file personal-builders.json --cloud-run-id <id> [--agent-model gpt-5.5]
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
   sync --file builder-blog-digest.json [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
-  schedule-spec --freq 12h --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt]
-  cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
+  schedule-spec --freq daily --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt]
+  cron-status --job library-cron|digest-cron --status active|stopped [--freq daily] [--schedule "0 8 * * *"]
   cron-state --job library-cron|digest-cron
   cron-guard --job library-cron|digest-cron --owner-id <local-owner-id>
   fetch-status-audit
@@ -10833,16 +10833,8 @@ async function cronGuard(args) {
 
 function normalizeScheduleFrequency(value) {
   const key = String(value || "").trim();
-  if (["30m", "1h", "3h", "6h", "12h", "daily", "weekly"].includes(key)) return key;
-  return "6h";
-}
-
-function sortedHourList(anchorHour, stepHours) {
-  const values = [];
-  for (let hour = anchorHour; !values.includes(hour); hour = (hour + stepHours) % 24) {
-    values.push(hour);
-  }
-  return values.sort((a, b) => a - b);
+  if (["daily", "weekly"].includes(key)) return key;
+  return "daily";
 }
 
 function cronExpressionForAnchor(freq, anchorDate) {
@@ -10850,24 +10842,12 @@ function cronExpressionForAnchor(freq, anchorDate) {
   const hour = anchorDate.getHours();
   const weekday = anchorDate.getDay();
   switch (freq) {
-    case "30m": {
-      const minutes = [minute, (minute + 30) % 60].sort((a, b) => a - b);
-      return `${minutes.join(",")} * * * *`;
-    }
-    case "1h":
-      return `${minute} * * * *`;
-    case "3h":
-      return `${minute} ${sortedHourList(hour, 3).join(",")} * * *`;
-    case "6h":
-      return `${minute} ${sortedHourList(hour, 6).join(",")} * * *`;
-    case "12h":
-      return `${minute} ${sortedHourList(hour, 12).join(",")} * * *`;
     case "daily":
       return `${minute} ${hour} * * *`;
     case "weekly":
       return `${minute} ${hour} * * ${weekday}`;
     default:
-      return `${minute} ${sortedHourList(hour, 6).join(",")} * * *`;
+      return `${minute} ${hour} * * *`;
   }
 }
 
@@ -10890,34 +10870,14 @@ function launchdScheduleForAnchor(freq, anchorDate) {
   const weekday = anchorDate.getDay();
   const start = "  <key>StartCalendarInterval</key>";
   const dict = (fields) => launchdScheduleDict(fields, "  ");
-  const array = (items) => [
-    start,
-    "  <array>",
-    ...items.map((fields) => launchdScheduleDict(fields, "    ")),
-    "  </array>",
-  ].join("\n");
 
   switch (freq) {
-    case "30m":
-      return array(
-        [minute, (minute + 30) % 60]
-          .sort((a, b) => a - b)
-          .map((value) => [["Minute", value]]),
-      );
-    case "1h":
-      return `${start}\n${dict([["Minute", minute]])}`;
-    case "3h":
-      return array(sortedHourList(hour, 3).map((value) => [["Hour", value], ["Minute", minute]]));
-    case "6h":
-      return array(sortedHourList(hour, 6).map((value) => [["Hour", value], ["Minute", minute]]));
-    case "12h":
-      return array(sortedHourList(hour, 12).map((value) => [["Hour", value], ["Minute", minute]]));
     case "daily":
       return `${start}\n${dict([["Hour", hour], ["Minute", minute]])}`;
     case "weekly":
       return `${start}\n${dict([["Weekday", weekday], ["Hour", hour], ["Minute", minute]])}`;
     default:
-      return array(sortedHourList(hour, 6).map((value) => [["Hour", value], ["Minute", minute]]));
+      return `${start}\n${dict([["Hour", hour], ["Minute", minute]])}`;
   }
 }
 
@@ -10928,7 +10888,7 @@ async function writeOptionalText(path, value) {
 }
 
 async function scheduleSpec(args) {
-  const freq = normalizeScheduleFrequency(argValue(args, "--freq", "6h"));
+  const freq = normalizeScheduleFrequency(argValue(args, "--freq", "daily"));
   const anchorFile = argValue(args, "--anchor-file");
   const anchorText = anchorFile ? readFileSync(anchorFile, "utf8").trim() : argValue(args, "--anchor-at");
   const anchorMs = Date.parse(anchorText || "");
