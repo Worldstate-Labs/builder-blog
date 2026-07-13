@@ -30,6 +30,14 @@ Lifecycle vocabulary for this contract:
   body allowed for that source type is uploaded/stored.
 
 How to execute each `fetchTask`:
+
+- Treat planned `fetch_builder_fallback` item identity as a queue placeholder,
+  not as a post. Every successful fallback output must replace the
+  `agent-fallback:` external ID and null title with the actual post's stable
+  external ID, non-empty title, and canonical post URL. Keep the planned task ID
+  only in `rawJson.fetchTaskId` so FollowBrief can account for the task.
+- Emit every non-null `publishedAt` as an ISO-8601 datetime. Preserve a missing
+  publication time as null; never pass through feed-native date strings.
 - Read `task.id`; the finished item must set `rawJson.fetchTaskId` to exactly
   this value so validation can bind the output item to this task.
 - Copy `task.builderSync` exactly as the enclosing builder object in the sync
@@ -77,8 +85,13 @@ How to execute each `fetchTask`:
   acceptance bar for the extracted body. The structured fields drive acceptance:
   `minChars`, `minContentUnits`, and optional density/diversity gates such as
   `minLocalDiversity` and `maxTimestampDensity`. Never accept body content whose origin string appears in
-  `disallowedPrimarySources` (the list is per source). Title, description, feed
-  description, and page metadata are never acceptable body content for any source.
+  `disallowedPrimarySources` (the list is per source). Titles, snippets, and page
+  metadata are never acceptable body content. A full-content feed description can
+  contain the same text as the article body; that text is acceptable only after an
+  independent same-origin primary-page acquisition. Record that acquisition in
+  `rawJson.acquisition` with the article host as `provider` and the page retrieval
+  method (for example `http_get`, `curl`, or `browser`) as `method`. Copying a feed
+  description, metadata field, search result, or cross-origin page still fails.
 - Generate a single-post `summary` and `headline` only after the body is final. Follow
   `task.summaryInstructions.prompt` and summarize this one task item only.
   `task.summaryInstructions.prompt` is the only prompt source for fetch-task
@@ -87,9 +100,11 @@ How to execute each `fetchTask`:
   `context.sources` or other prompt configuration. Keep the finished summary
   under 1200 characters — the validator rejects longer ones as
   `summary_too_long`. Keep `headline` one sentence and no more than 20 words.
-- Build one output item under the copied builder. Copy stable item fields from
-  `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
-  `sourceName`), set `body`, set `summary`, set `headline`, and set `rawJson`.
+- Build one output item under the copied builder. For normal post tasks, copy
+  stable item fields from `task.item` (`kind`, `externalId`, `title`, `url`,
+  `publishedAt`, `sourceName`). For `fetch_builder_fallback`, use the actual
+  post identity required above instead of copying placeholder identity. Then
+  set `body`, set `summary`, set `headline`, and set `rawJson`.
 - Treat `body` in this local sync payload as the final primary content used for
   validation and summarization. Do not put raw HTML, full transcripts, raw API
   responses, or large copied source text into `rawJson`; `rawJson` is for

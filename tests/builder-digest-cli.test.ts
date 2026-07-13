@@ -219,6 +219,57 @@ test("personal blog fetcher sends short description-only reads to the agent", as
   assert.equal(result.agentTasks[0].item.rawJson.fallbackReason, "content_too_short");
 });
 
+test("personal blog fetcher accepts article HTML that matches a full-content feed description", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const primaryBody = [
+    "The Berkeley research group is celebrating a graduating class whose work spans robotics, language models, computer vision, safety, healthcare, and scientific discovery.",
+    "The article profiles each graduate with specific research interests, advisors, future positions, and links to their work, providing substantially more than title or teaser metadata.",
+  ].join(" ");
+  const articleUrl = "https://example.com/blog/2026/graduate-showcase";
+  const builder = {
+    id: "builder_full_content_feed",
+    name: "Full Content Blog",
+    kind: "BLOG",
+    sourceUrl: "https://example.com/feed.xml",
+    fetchUrl: "https://example.com/feed.xml",
+  };
+
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: new Date("2026-07-01T00:00:00.000Z"),
+    limit: 1,
+    agentModel: "test-model",
+    fetchedItemKeys: new Set(),
+    sources: {
+      blog: {
+        contentQuality: { minChars: 200, minContentUnits: 35 },
+      },
+    },
+    fetcher: async (url: string) => {
+      if (url === builder.fetchUrl) {
+        return new Response(`
+          <rss><channel><item>
+            <title>2026 Graduate Showcase</title>
+            <link>${articleUrl}</link>
+            <pubDate>Thu, 09 Jul 2026 12:00:00 GMT</pubDate>
+            <description><![CDATA[<p>${primaryBody}</p>]]></description>
+          </item></channel></rss>
+        `);
+      }
+      if (url === articleUrl) {
+        return new Response(`
+          <html><head><meta property="og:title" content="2026 Graduate Showcase"></head>
+          <body><article class="post-content"><p>${primaryBody}</p></article></body></html>
+        `);
+      }
+      return new Response("User-agent: *\nAllow: /");
+    },
+  });
+
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].body, primaryBody);
+  assert.equal(result.agentTasks.length, 0);
+});
+
 test("GitHub Trending parser extracts daily repo candidates sorted by stars", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseGithubTrendingCandidates(
@@ -2232,6 +2283,137 @@ test("fetch task validation rejects YouTube metadata masquerading as content", a
   );
 });
 
+test("fetch task validation accepts description-matching blog content with same-origin page acquisition", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const primaryBody = [
+    "The article profiles a graduating research class and explains concrete work across robotics, language models, computer vision, safety, healthcare, and scientific discovery.",
+    "It includes individual research interests, advisors, future positions, and links to primary work, making this the substantive article body rather than a title or teaser.",
+  ].join(" ");
+  const task = {
+    type: "fetch_post",
+    agentWorkType: "blog_article_fetch",
+    contentStatus: "requires_agent",
+    builder: "Research Blog",
+    builderId: "builder_research_blog",
+    sourceType: "blog",
+    minimumContentQuality: { minChars: 200, minContentUnits: 35 },
+    item: {
+      kind: "BLOG_POST",
+      externalId: "https://research.example.com/blog/graduates",
+      title: "Graduate Showcase",
+      url: "https://research.example.com/blog/graduates",
+      description: primaryBody,
+    },
+  };
+  const taskId = cli.fetchTaskId(task);
+  const result = cli.validateAgentSyncPayload(
+    { fetchTasks: [{ ...task, id: taskId }] },
+    {
+      builders: [
+        {
+          builderId: task.builderId,
+          kind: "BLOG",
+          sourceType: "blog",
+          name: task.builder,
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: task.item.externalId,
+              title: task.item.title,
+              body: primaryBody,
+              summary: "The research group profiles its graduating class, their technical work, and the positions they will take next.",
+              headline: "Research group presents its graduating class and their next roles",
+              url: task.item.url,
+              rawJson: {
+                builderId: task.builderId,
+                fetchTaskId: taskId,
+                agentRuntime: "Codex",
+                agentCompletedAt: "2026-07-12T10:00:00.000Z",
+                agentExecutionProof: "Fetched and extracted the article page.",
+                acquisition: {
+                  provider: "research.example.com",
+                  method: "http_get",
+                  processedLocally: true,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.validatedFetchTasks, 1);
+});
+
+test("fetch task validation still rejects description text without complete primary-page provenance", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const primaryBody = "Detailed feed description text ".repeat(20).trim();
+  const task = {
+    type: "fetch_post",
+    agentWorkType: "blog_article_fetch",
+    contentStatus: "requires_agent",
+    builder: "Research Blog",
+    builderId: "builder_research_blog",
+    sourceType: "blog",
+    minimumContentQuality: { minChars: 200, minContentUnits: 35 },
+    item: {
+      kind: "BLOG_POST",
+      externalId: "https://research.example.com/blog/graduates",
+      title: "Graduate Showcase",
+      url: "https://research.example.com/blog/graduates",
+      description: primaryBody,
+    },
+  };
+  const taskId = cli.fetchTaskId(task);
+
+  const invalidAcquisitions = [
+    { provider: "research.example.com", method: "feed-description", processedLocally: true },
+    { provider: "search.example.net", method: "http_get", processedLocally: true },
+    { provider: "research.example.com", method: "http_get", processedLocally: false },
+  ];
+
+  for (const acquisition of invalidAcquisitions) {
+    assert.throws(
+      () =>
+        cli.validateAgentSyncPayload(
+          { fetchTasks: [{ ...task, id: taskId }] },
+          {
+            builders: [
+              {
+                builderId: task.builderId,
+                kind: "BLOG",
+                sourceType: "blog",
+                name: task.builder,
+                items: [
+                  {
+                    kind: "BLOG_POST",
+                    externalId: task.item.externalId,
+                    title: task.item.title,
+                    body: primaryBody,
+                    summary: "The feed description provides a detailed overview of the graduating class and its research work.",
+                    headline: "Research group outlines its graduating class",
+                    url: task.item.url,
+                    rawJson: {
+                      builderId: task.builderId,
+                      fetchTaskId: taskId,
+                      agentRuntime: "Codex",
+                      agentCompletedAt: "2026-07-12T10:00:00.000Z",
+                      agentExecutionProof: "Copied the available description.",
+                      acquisition,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ),
+      /Agent sync validation failed/,
+    );
+  }
+});
+
 test("personal podcast fetcher parses RSS episodes as podcast items", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const items = cli.parsePodcastFeedItems(
@@ -2597,6 +2779,152 @@ test("failed / blocked outcomes require a reason", async () => {
   assert.equal(result.accountedOutcomes, 1);
 });
 
+test("sync-ready payload normalizes parseable timestamps and rejects invalid dates", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = youtubePlannedTask(cli, "vid_sync_ready_date");
+  const payload = {
+    builders: [
+      {
+        builderId: task.builderId,
+        name: task.builder,
+        items: [
+          {
+            ...task.item,
+            body: "A complete primary transcript body with enough detail for a valid fetch task. ".repeat(8),
+            summary: "The episode explains a complete primary topic with enough concrete detail to form a useful summary.",
+            headline: "Episode explains a complete primary topic",
+            publishedAt: "Fri, 10 Jul 2026 13:00:00 GMT",
+            rawJson: {
+              fetchTaskId: task.id,
+              agentRuntime: "codex",
+              agentCompletedAt: "2026-07-12T10:00:00.000Z",
+              agentExecutionProof: "Fetched the primary transcript.",
+              transcriptSource: "captions",
+            },
+          },
+        ],
+      },
+    ],
+    taskOutcomes: [],
+  };
+
+  const normalized = cli.prepareSyncReadyPayload(payload, [task]);
+  assert.equal(normalized.builders[0].items[0].publishedAt, "2026-07-10T13:00:00.000Z");
+
+  payload.builders[0].items[0].publishedAt = "not a real date";
+  assert.throws(
+    () => cli.prepareSyncReadyPayload(payload, [task]),
+    /publishedAt.*valid datetime/i,
+  );
+});
+
+test("sync-ready payload rejects synthetic builder-fallback identity", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "fetch_post:builder_cloudflare:agent-fallback%3Abuilder_cloudflare",
+    type: "fetch_post",
+    agentWorkType: "fetch_builder_fallback",
+    contentStatus: "requires_agent",
+    builder: "The Cloudflare Blog",
+    builderId: "builder_cloudflare",
+    sourceType: "blog",
+    item: {
+      kind: "BLOG_POST",
+      externalId: "agent-fallback:builder_cloudflare",
+      title: null,
+      url: "https://blog.cloudflare.com/rss/",
+      body: "",
+    },
+  };
+  const payload = {
+    builders: [
+      {
+        builderId: task.builderId,
+        name: task.builder,
+        items: [
+          {
+            ...task.item,
+            body: "A complete article body with enough substantive detail for the validator. ".repeat(8),
+            summary: "Cloudflare describes a concrete infrastructure improvement and explains how the implementation changes cache behavior.",
+            headline: "Cloudflare improves public cloud cache behavior",
+            rawJson: {
+              fetchTaskId: task.id,
+              agentRuntime: "codex",
+              agentCompletedAt: "2026-07-12T10:00:00.000Z",
+              agentExecutionProof: "Fetched the article page.",
+            },
+          },
+        ],
+      },
+    ],
+    taskOutcomes: [],
+  };
+
+  assert.throws(
+    () => cli.prepareSyncReadyPayload(payload, [task]),
+    /fallback.*identity|externalId.*placeholder|title.*required/i,
+  );
+});
+
+test("real builder-fallback post stays task-bound and validates after date normalization", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "fetch_post:builder_cloudflare:agent-fallback%3Abuilder_cloudflare",
+    type: "fetch_post",
+    agentWorkType: "fetch_builder_fallback",
+    contentStatus: "requires_agent",
+    builder: "The Cloudflare Blog",
+    builderId: "builder_cloudflare",
+    sourceType: "blog",
+    minimumContentQuality: { minChars: 300, minContentUnits: 45 },
+    item: {
+      kind: "BLOG_POST",
+      externalId: "agent-fallback:builder_cloudflare",
+      title: null,
+      url: "https://blog.cloudflare.com/rss/",
+      body: "",
+    },
+  };
+  const body = "Cloudflare explains a concrete cache architecture change, its rollout, measurements, and operational tradeoffs. ".repeat(8);
+  const payload = {
+    builders: [
+      {
+        builderId: task.builderId,
+        name: task.builder,
+        items: [
+          {
+            kind: "BLOG_POST",
+            externalId: "https://blog.cloudflare.com/smart-tiered-cache-public-cloud/",
+            title: "Improving Smart Tiered Cache for Public Cloud Regions",
+            url: "https://blog.cloudflare.com/smart-tiered-cache-public-cloud/",
+            publishedAt: "Fri, 10 Jul 2026 13:00:00 GMT",
+            body,
+            summary: "Cloudflare changes tier selection for public cloud regions and reports the operational impact of the new cache architecture.",
+            headline: "Cloudflare improves cache routing for public cloud regions",
+            rawJson: {
+              fetchTaskId: task.id,
+              agentRuntime: "codex",
+              agentCompletedAt: "2026-07-12T10:00:00.000Z",
+              agentExecutionProof: "Fetched and extracted the canonical article page.",
+              acquisition: {
+                provider: "blog.cloudflare.com",
+                method: "http_get",
+                processedLocally: true,
+              },
+            },
+          },
+        ],
+      },
+    ],
+    taskOutcomes: [],
+  };
+
+  const prepared = cli.prepareSyncReadyPayload(payload, [task]);
+  assert.equal(prepared.builders[0].items[0].publishedAt, "2026-07-10T13:00:00.000Z");
+  assert.equal(prepared.builders[0].items[0].rawJson.fetchTaskId, task.id);
+  assert.equal(cli.validateAgentSyncPayload({ fetchTasks: [task] }, prepared).status, "ok");
+});
+
 test("fail-sync-slice preserves per-task validation errors in evidence", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const dir = await mkdtemp(join(tmpdir(), "builder-digest-fail-slice-"));
@@ -2644,6 +2972,74 @@ test("fail-sync-slice preserves per-task validation errors in evidence", async (
     item: "vid_summary_short",
     errors: ["summary:summary_too_short"],
   });
+});
+
+test("fail-sync-slice preserves attempted item lifecycle evidence and concrete sync error", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "builder-digest-failed-sync-evidence-"));
+  const task = youtubePlannedTask(cli, "vid_sync_rejected");
+  const tasksFile = join(dir, "tasks.json");
+  const payloadFile = join(dir, "payload.json");
+  const diagnosticFile = join(dir, "sync.err");
+  const outFile = join(dir, "failed-payload.json");
+  const body = "A complete primary transcript body with enough concrete detail. ".repeat(9);
+  const summary = "The episode explains the primary subject, its practical consequences, and the evidence supporting the main conclusion.";
+  const headline = "Episode explains practical consequences of its primary subject";
+
+  await writeFile(tasksFile, JSON.stringify({ fetchTasks: [task] }), "utf8");
+  await writeFile(
+    payloadFile,
+    JSON.stringify({
+      builders: [
+        {
+          builderId: task.builderId,
+          name: task.builder,
+          items: [
+            {
+              ...task.item,
+              title: "The actual fetched episode",
+              url: "https://www.youtube.com/watch?v=vid_sync_rejected",
+              body,
+              summary,
+              headline,
+              rawJson: { fetchTaskId: task.id, agentRuntime: "codex", agentModel: "gpt-test" },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [],
+    }),
+    "utf8",
+  );
+  await writeFile(
+    diagnosticFile,
+    "Sync failed: builders.0.items.0.publishedAt: Invalid input\n",
+    "utf8",
+  );
+
+  await execFileAsync(process.execPath, [
+    "scripts/builder-digest.mjs",
+    "fail-sync-slice",
+    "--tasks",
+    tasksFile,
+    "--payload",
+    payloadFile,
+    "--diagnostic-file",
+    diagnosticFile,
+    "--out",
+    outFile,
+    "--reason",
+    "task_sync_failed",
+  ]);
+
+  const outcome = JSON.parse(await readFile(outFile, "utf8")).taskOutcomes[0];
+  assert.equal(outcome.title, "The actual fetched episode");
+  assert.equal(outcome.url, "https://www.youtube.com/watch?v=vid_sync_rejected");
+  assert.equal(outcome.bodyChars, body.length);
+  assert.equal(outcome.summaryChars, summary.length);
+  assert.equal(outcome.headlineChars, headline.length);
+  assert.equal(outcome.completedStage, "summarize");
+  assert.match(outcome.syncError, /publishedAt: Invalid input/);
 });
 
 test("sync-builders treats explicit empty builders payload as a successful no-op", async () => {

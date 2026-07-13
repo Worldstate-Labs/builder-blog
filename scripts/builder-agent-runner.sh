@@ -3120,6 +3120,8 @@ NODE
       _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-validation-failed-payload.json"
       node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
         --tasks "$_slice_tasks" \
+        --payload "$_slice_payload" \
+        --diagnostic-file "$_slice_validate" \
         --out "$_failed_payload" \
         --reason "task_validation_failed" \
         --message "validate-agent-sync failed for $_sps_label $_slice_name with exit $_slice_validate_code" \
@@ -3168,6 +3170,8 @@ NODE
     _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-payload.json"
     node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
       --tasks "$_slice_tasks" \
+      --payload "$_slice_payload" \
+      --diagnostic-file "$_slice_stderr" \
       --out "$_failed_payload" \
       --reason "task_sync_failed" \
       --message "$_sps_sync_command failed for $_sps_label $_slice_name with exit $_slice_code"

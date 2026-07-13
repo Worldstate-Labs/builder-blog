@@ -126,6 +126,54 @@ test("fetch run details do not downgrade a synced task after a late failed slice
   ]);
 });
 
+test("fetch run details replace fallback placeholders with attempted sync identity and stage evidence", () => {
+  const result = mergeFetchRunDetails(
+    {
+      fetchTasks: [
+        {
+          id: "fetch_post:builder_1:fallback",
+          builderId: "builder_1",
+          title: null,
+          url: "https://example.com/rss/",
+          status: "pending",
+        },
+      ],
+    },
+    {
+      taskOutcomes: [
+        {
+          fetchTaskId: "fetch_post:builder_1:fallback",
+          status: "failed",
+          failureReason: "task_sync_failed",
+          title: "Actual article title",
+          url: "https://example.com/articles/actual",
+          bodyChars: 1200,
+          summaryChars: 180,
+          headlineChars: 52,
+          completedStage: "summarize",
+          syncError: "builders.0.items.0.publishedAt: Invalid input",
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(result.details.fetchTasks, [
+    {
+      id: "fetch_post:builder_1:fallback",
+      builderId: "builder_1",
+      title: "Actual article title",
+      url: "https://example.com/articles/actual",
+      status: "failed",
+      failureReason: "task_sync_failed",
+      bodyChars: 1200,
+      summaryChars: 180,
+      headlineChars: 52,
+      completedStage: "summarize",
+      syncError: "builders.0.items.0.publishedAt: Invalid input",
+    },
+  ]);
+});
+
 test("fetch run details merge shard worker usage separately from post tasks", () => {
   const result = mergeFetchRunDetails(
     {
@@ -251,4 +299,42 @@ test("fetch run storage compaction preserves terminal accounting under the detai
     deriveFetchRunStatusFromDetails({ status: "ok", errorCount: 0 }, compacted.details),
     { status: "failed", errorCount: 98 },
   );
+});
+
+test("fetch run storage compaction preserves minimum sync-failure lifecycle evidence", () => {
+  const task = {
+    id: "fetch_post:builder_1:post_sync_failed",
+    builder: "Example source",
+    builderId: "builder_1",
+    sourceType: "blog",
+    status: "failed",
+    failureReason: "task_sync_failed",
+    title: "The actual fetched article",
+    url: "https://example.com/posts/actual-article",
+    bodyChars: 1200,
+    bodyWords: 190,
+    summaryChars: 180,
+    summaryWords: 31,
+    headlineChars: 52,
+    headlineWords: 8,
+    completedStage: "summarize",
+    syncError: "builders.0.items.0.publishedAt: Invalid input",
+    evidence: { verbose: "x".repeat(20_000) },
+  };
+
+  const compacted = compactFetchRunDetailsForStorage(
+    { fetchTasks: [task], verbose: "y".repeat(20_000) },
+    2_000,
+  );
+  const result = (compacted.details.fetchTasks as Array<Record<string, unknown>>)[0];
+
+  assert.equal(compacted.compacted, true);
+  assert.equal(result.evidence, undefined);
+  assert.equal(result.title, task.title);
+  assert.equal(result.url, task.url);
+  assert.equal(result.completedStage, "summarize");
+  assert.equal(result.syncError, task.syncError);
+  assert.equal(result.bodyChars, 1200);
+  assert.equal(result.summaryChars, 180);
+  assert.equal(result.headlineChars, 52);
 });

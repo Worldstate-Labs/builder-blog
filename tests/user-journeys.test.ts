@@ -1907,6 +1907,10 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
   assert.match(contract, /NEVER infer one task's content/);
   assert.match(contract, /per-task evidence/);
   assert.match(contract, /taskOutcomes/);
+  assert.match(contract, /full-content feed description/);
+  assert.match(contract, /same-origin primary-page acquisition/);
+  assert.match(contract, /replace the\s+`agent-fallback:` external ID/);
+  assert.match(contract, /non-null `publishedAt` as an ISO-8601 datetime/);
 
   // YouTube extraction strategy moved out of the contract into the source prompt.
   assert.doesNotMatch(contract, /silent screen recording/);

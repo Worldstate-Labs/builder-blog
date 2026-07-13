@@ -23,6 +23,7 @@ import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { decodeHtmlEntities } from "@/lib/decode-entities";
 import {
+  fetchFailureInfo,
   fetchFailureMessage,
   isContentFailureReason,
   isHiddenFailureReason,
@@ -131,6 +132,8 @@ export type FetchTaskLog = {
   // Why a task failed (e.g. "summary_missing", "not_summarized"). Present only
   // when status is "failed".
   failureReason?: string | null;
+  completedStage?: "read" | "summarize" | null;
+  syncError?: string | null;
   // Per-task evidence for a skipped (no-content) outcome, e.g.
   // { meanVolumeDb: -91, hasCaptions: false }.
   evidence?: Record<string, unknown> | null;
@@ -3003,7 +3006,11 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
     return { label: "Not completed", tone: "fail" };
   }
   if (isSummaryTranslationTask(task)) return { label: "Not reached", tone: "idle" };
-  if (typeof task.bodyChars === "number" && task.bodyChars > 0)
+  if (
+    task.completedStage === "read" ||
+    task.completedStage === "summarize" ||
+    (typeof task.bodyChars === "number" && task.bodyChars > 0)
+  )
     return { label: "Read", tone: "ok" };
   if (task.contentStatus === "ready") return { label: "Read", tone: "ok" };
   return { label: "Needs Local Agent", tone: "idle" };
@@ -3069,6 +3076,9 @@ export function fetchTaskFailureReasonText(task: FetchTaskLog): string | null {
   const validationDetails = validationFailureDetailsText(task);
   if (validationDetails && task.failureReason === "task_validation_failed") {
     return `${message}: ${validationDetails}`;
+  }
+  if (fetchFailureInfo(task.failureReason).stage === "sync" && task.syncError?.trim()) {
+    return task.syncError.trim();
   }
   return message;
 }
@@ -3145,7 +3155,9 @@ function summarizeOutcome(
     if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
     return { label: "Pending", tone: "warn" };
   }
-  if (isSummarized(task)) return { label: "Summarized", tone: "ok" };
+  if (task.completedStage === "summarize" || isSummarized(task)) {
+    return { label: "Summarized", tone: "ok" };
+  }
   // Skipped (no content) or a content failure means summarize never ran.
   if (task.status === "skipped") return { label: "Skipped", tone: "idle" };
   if (isContentFailure(task)) return { label: "Not reached", tone: "idle" };
@@ -3155,6 +3167,35 @@ function summarizeOutcome(
   if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
   if (!hasSummarizeInputSignal(task, liveTask)) return { label: "Not reached", tone: "idle" };
   return { label: "Pending", tone: "warn" };
+}
+
+function syncTaskOutcome(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): { label: string; tone: Tone } {
+  const liveStatus = String(liveTask?.status ?? "").toLowerCase();
+  if (task.status === "synced" || liveStatus === "synced") return { label: "Synced", tone: "ok" };
+  if (task.status === "failed" || liveStatus === "failed") return { label: "Failed", tone: "fail" };
+  if (task.status === "skipped" || liveStatus === "skipped") return { label: "Skipped", tone: "idle" };
+  if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
+    return { label: "Action needed", tone: "fail" };
+  }
+  if (isSummarized(task) || task.completedStage === "summarize" || liveStatus === "summarized") {
+    return { label: "Ready to sync", tone: "warn" };
+  }
+  return { label: "Pending", tone: "idle" };
+}
+
+export function fetchTaskLifecycleOutcomes(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+) {
+  return {
+    read: liveFetchOutcome(task, liveTask),
+    summarize: liveSummarizeOutcome(task, liveTask),
+    sync: syncTaskOutcome(task, liveTask),
+    failureStage: task.failureReason ? fetchFailureInfo(task.failureReason).stage : null,
+  };
 }
 
 export function taskStatusPill(
@@ -3208,6 +3249,9 @@ function statusBanner(
   // A deliberate, evidence-backed skip (no primary content) is a clean terminal
   // state, not a failure.
   if (task.status === "skipped") return { label: "Skipped: no content", tone: "idle" };
+  if (task.status === "failed" && fetchFailureInfo(task.failureReason).stage === "sync") {
+    return { label: "Sync failed", tone: "fail" };
+  }
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
   if (isSummaryTranslationTask(task) && isSummarized(task)) return { label: "Summarized", tone: "ok" };
@@ -3465,12 +3509,14 @@ export function TaskRow({
   const discoveryState = isDiscovery
     ? discoveryTaskState({ groupTasks, liveTask, liveTasks, task })
     : null;
+  const lifecycle = fetchTaskLifecycleOutcomes(task, liveTask);
+  const failureStage = lifecycle.failureStage;
   const fetchRes = discoveryState?.expanded
     ? { label: "Discovered", tone: "ok" as Tone }
-    : liveFetchOutcome(task, liveTask);
+    : lifecycle.read;
   const sumRes = discoveryState?.expanded
     ? { label: "Expanded", tone: "ok" as Tone }
-    : liveSummarizeOutcome(task, liveTask);
+    : lifecycle.summarize;
   const banner = discoveryState?.expanded
     ? { label: "Candidates discovered", tone: "ok" as Tone }
     : statusBanner(task, liveTask);
@@ -3504,19 +3550,11 @@ export function TaskRow({
   const workerWatchdog = workerWatchdogText(task);
   const shardSummary = shardSummaryText(task);
   const discoveryExpansion = discoveryState?.expansionText ?? discoveryExpansionText(task.evidence);
-  const syncOutcome = (() => {
-    const liveStatus = String(liveTask?.status ?? "").toLowerCase();
-    if (discoveryState?.synced) return { label: "Synced", tone: "ok" as Tone };
-    if (discoveryState?.expanded) return { label: "Waiting on posts", tone: "warn" as Tone };
-    if (task.status === "synced" || liveStatus === "synced") return { label: "Synced", tone: "ok" as Tone };
-    if (task.status === "failed" || liveStatus === "failed") return { label: "Failed", tone: "fail" as Tone };
-    if (task.status === "skipped" || liveStatus === "skipped") return { label: "Skipped", tone: "idle" as Tone };
-    if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
-      return { label: "Action needed", tone: "fail" as Tone };
-    }
-    if (isSummarized(task) || liveStatus === "summarized") return { label: "Ready to sync", tone: "warn" as Tone };
-    return { label: "Pending", tone: "idle" as Tone };
-  })();
+  const syncOutcome = discoveryState?.synced
+    ? { label: "Synced", tone: "ok" as Tone }
+    : discoveryState?.expanded
+      ? { label: "Waiting on posts", tone: "warn" as Tone }
+      : lifecycle.sync;
   const hasReadDetail =
     bodySize ||
     liveBodySize ||
@@ -3639,7 +3677,10 @@ export function TaskRow({
           {headlineSize ? <FactRow label="Headline size" value={headlineSize} /> : null}
           {!headlineSize && liveHeadlineSize ? <FactRow label="Live headline size" value={liveHeadlineSize} /> : null}
           {compression ? <FactRow label="Compression" value={compression} /> : null}
-          {!isSummarized(task) && !isContentFailure(task) && failureReasonText(task) ? (
+          {!isSummarized(task) &&
+          !isContentFailure(task) &&
+          failureStage !== "sync" &&
+          failureReasonText(task) ? (
             <FactRow
               label="Reason"
               value={
@@ -3719,7 +3760,7 @@ export function TaskRow({
       children: (
         <dl className="sync-panel-task-fact-list">
           <FactRow label="Status" value={<span>{syncStatusText}</span>} />
-          {failureReasonText(task) ? (
+          {failureStage === "sync" && failureReasonText(task) ? (
             <FactRow
               label="Reason"
               value={<span className={syncOutcome.tone === "fail" ? "sync-panel-task-danger" : "sync-panel-task-muted"}>{failureReasonText(task)}</span>}

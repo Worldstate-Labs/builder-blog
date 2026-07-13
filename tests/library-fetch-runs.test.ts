@@ -132,6 +132,11 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(patchRoute, /readMethod: z\.string\(\)\.max\(300\)\.nullable\(\)\.optional\(\)/);
   assert.match(patchRoute, /summaryMethod: z\.string\(\)\.max\(300\)\.nullable\(\)\.optional\(\)/);
   assert.match(patchRoute, /hubSharedReuse: z\.record\(z\.string\(\), z\.unknown\(\)\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /title: z\.string\(\)\.max\(500\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /url: z\.string\(\)\.url\(\)\.max\(2048\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /headlineChars: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100_000_000\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /completedStage: z\.enum\(\["read", "summarize"\]\)\.nullable\(\)\.optional\(\)/);
+  assert.match(patchRoute, /syncError: z\.string\(\)\.max\(1000\)\.nullable\(\)\.optional\(\)/);
   assert.match(mergeHelper, /plannedBuilderIds/);
   assert.match(mergeHelper, /details\.perBuilder/);
   // Server orders by startedAt desc and pages older history in 10-row batches.
@@ -385,6 +390,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /--reason "task_validation_failed"/);
   assert.match(runner, /--validation-file "\$_slice_validate"/);
   assert.match(runner, /--reason "task_sync_failed"/);
+  assert.match(runner, /fail-sync-slice[\s\S]*--payload "\$_slice_payload"/);
+  assert.match(runner, /--diagnostic-file "\$_slice_stderr"/);
   assert.doesNotMatch(runner, /library-repair-prompt\.md/);
   assert.doesNotMatch(runner, /--reason "validation_failed"/);
   assert.match(runner, /run_openclaw_library_preflight\(\)/);

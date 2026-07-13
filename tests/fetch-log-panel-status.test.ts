@@ -9,6 +9,7 @@ import {
   fetchRunDisplayState,
   fetchRunStats,
   fetchTaskFailureReasonText,
+  fetchTaskLifecycleOutcomes,
   getFetchActivityStatus,
   getFetchUpdateStatus,
   taskSizeText,
@@ -1426,6 +1427,30 @@ test("validation-failed fetch task reason includes the concrete validator error"
     }),
     "Sync payload for this post failed validation: content_quality:content_duplicates_metadata (post body duplicated title or description metadata instead of primary content)",
   );
+});
+
+test("sync failure with completed lifecycle evidence only fails the Sync stage", () => {
+  const task = {
+    id: "fetch_post:blog:sync-rejected",
+    status: "failed",
+    failureReason: "task_sync_failed",
+    completedStage: "summarize" as const,
+    syncError: "builders.0.items.0.publishedAt: Invalid input",
+    bodyChars: 1200,
+    bodyWords: 190,
+    summaryChars: 180,
+    summaryWords: 31,
+    headlineChars: 52,
+    headlineWords: 8,
+  };
+
+  assert.deepEqual(fetchTaskLifecycleOutcomes(task), {
+    read: { label: "Read", tone: "ok" },
+    summarize: { label: "Summarized", tone: "ok" },
+    sync: { label: "Failed", tone: "fail" },
+    failureStage: "sync",
+  });
+  assert.equal(fetchTaskFailureReasonText(task), task.syncError);
 });
 
 test("fetch run stats do not count summary translation as source read", () => {

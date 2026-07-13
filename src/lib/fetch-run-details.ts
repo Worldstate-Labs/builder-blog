@@ -1,3 +1,5 @@
+import { fetchFailureInfo } from "@/lib/fetch-failure-taxonomy";
+
 export const TERMINAL_FETCH_TASK_STATUSES = new Set(["synced", "skipped", "failed", "action_needed"]);
 const FETCH_RUN_STATUSES = new Set(["ok", "partial", "failed"]);
 
@@ -133,6 +135,8 @@ function nonNullEntries(task: FetchRunTask): FetchRunTask {
 
 function compactTask(task: FetchRunTask, level: number): FetchRunTask {
   const compacted = nonNullEntries(task);
+  const preserveSyncFailureProof =
+    typeof task.failureReason === "string" && fetchFailureInfo(task.failureReason).stage === "sync";
   if (level >= 1) {
     delete compacted.evidence;
   }
@@ -142,10 +146,10 @@ function compactTask(task: FetchRunTask, level: number): FetchRunTask {
     delete compacted.readMethod;
     delete compacted.summaryMethod;
   }
-  if (level >= 3) {
+  if (level >= 3 && !preserveSyncFailureProof) {
     delete compacted.url;
   }
-  if (level >= 4) {
+  if (level >= 4 && !preserveSyncFailureProof) {
     delete compacted.title;
   }
   if (level >= 5) {
@@ -158,6 +162,8 @@ function compactTask(task: FetchRunTask, level: number): FetchRunTask {
       "agentWorkType",
       "status",
       "failureReason",
+      "title",
+      "url",
       "workerId",
       "bodyChars",
       "bodyWords",
@@ -165,6 +171,8 @@ function compactTask(task: FetchRunTask, level: number): FetchRunTask {
       "headlineWords",
       "summaryChars",
       "summaryWords",
+      "completedStage",
+      "syncError",
       "agentRuntime",
       "agentModel",
     ]);

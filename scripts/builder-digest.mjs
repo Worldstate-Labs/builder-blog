@@ -3574,6 +3574,63 @@ function isNearDuplicate(text, reference) {
   return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
 }
 
+const NON_PRIMARY_ACQUISITION_METHOD_TOKENS = new Set([
+  "description",
+  "feed",
+  "index",
+  "listing",
+  "metadata",
+  "search",
+  "snippet",
+]);
+const PRIMARY_DOCUMENT_ACQUISITION_METHOD_TOKENS = new Set([
+  "article",
+  "browser",
+  "curl",
+  "document",
+  "fetch",
+  "get",
+  "http",
+  "https",
+  "page",
+  "web",
+]);
+
+function acquisitionHost(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  try {
+    const url = new URL(text.includes("://") ? text : `https://${text}`);
+    return url.hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function hasSameOriginPrimaryDocumentAcquisition(task, candidate) {
+  const rawJson = objectRecord(candidate?.item?.rawJson);
+  const acquisition = objectRecord(rawJson.acquisition);
+  const targetHost = acquisitionHost(task?.item?.url);
+  const providerHost = acquisitionHost(acquisition.provider);
+  if (
+    !targetHost ||
+    !providerHost ||
+    targetHost !== providerHost ||
+    acquisition.processedLocally !== true
+  ) {
+    return false;
+  }
+
+  const methodTokens = String(acquisition.method || "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  if (methodTokens.some((token) => NON_PRIMARY_ACQUISITION_METHOD_TOKENS.has(token))) {
+    return false;
+  }
+  return methodTokens.some((token) => PRIMARY_DOCUMENT_ACQUISITION_METHOD_TOKENS.has(token));
+}
+
 async function sourceFetchPolicy(url, fetcher = timedSourceFetch) {
   const robotsUrl = robotsTxtUrl(url);
   if (!robotsUrl) return { allowed: true, reason: "invalid_url" };
@@ -3727,7 +3784,10 @@ async function fetchPersonalBlogBuilder(
       continue;
     }
     const extracted = extractBlogArticle(html, articleResponse.url || article.url);
-    const body = extracted.body || article.description;
+    // Only article-page extraction can produce a deterministic ready body.
+    // Feed descriptions remain discovery metadata; if page extraction fails,
+    // the agent must obtain primary content instead of silently promoting them.
+    const body = extracted.body || "";
     const title = extracted.title || article.title || "Untitled";
     const publishedAt = extracted.publishedAt || article.publishedAt;
     if (!isAfterCutoff(publishedAt, cutoff)) continue;
@@ -3735,6 +3795,7 @@ async function fetchPersonalBlogBuilder(
       title,
       description: article.description,
       standards: qualityStandards,
+      primaryContentAcquisitionVerified: Boolean(extracted.body?.trim()),
     });
     if (!body.trim() || !quality.ok) {
       agentTasks.push(
@@ -8045,17 +8106,74 @@ function validationErrorsByTaskFromText(text = "") {
   }
 }
 
-function failedSyncPayloadForTasks(fetchResult, { reason, message, validationErrorsByTask = new Map() } = {}) {
+const MAX_SYNC_ERROR_CHARS = 1_000;
+
+function boundedSyncError(value) {
+  return String(value || "")
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_SYNC_ERROR_CHARS);
+}
+
+function syncFailureFactsByTask(payload) {
+  const byTaskId = new Map();
+  for (const { item } of extractSyncItems(payload)) {
+    const taskId = String(item?.rawJson?.fetchTaskId || "").trim();
+    if (!taskId || byTaskId.has(taskId)) continue;
+    const body = textStats(item?.body);
+    const headline = textStats(item?.headline);
+    const summary = textStats(item?.summary);
+    byTaskId.set(taskId, {
+      title: String(item?.title || "").trim() || null,
+      url: String(item?.url || "").trim() || null,
+      bodyChars: body.chars,
+      bodyWords: body.words,
+      headlineChars: headline.chars,
+      headlineWords: headline.words,
+      summaryChars: summary.chars,
+      summaryWords: summary.words,
+      ...(summary.chars > 0 && headline.chars > 0
+        ? { completedStage: "summarize" }
+        : body.chars > 0
+          ? { completedStage: "read" }
+          : {}),
+      agentRuntime: item?.rawJson?.agentRuntime ?? null,
+      agentModel: item?.rawJson?.agentModel ?? null,
+      workerId: item?.rawJson?.workerId ?? null,
+      readMethod: item?.rawJson?.readMethod ?? null,
+      summaryMethod: item?.rawJson?.summaryMethod ?? null,
+      hubSharedReuse: nonEmptyObjectRecord(item?.rawJson?.hubSharedReuse),
+    });
+  }
+  return byTaskId;
+}
+
+function failedSyncPayloadForTasks(
+  fetchResult,
+  {
+    reason,
+    message,
+    validationErrorsByTask = new Map(),
+    attemptedPayload = null,
+    syncError = "",
+  } = {},
+) {
   const taskOutcomes = [];
   const failureReason = reason || "slice_sync_failed";
+  const factsByTaskId = syncFailureFactsByTask(attemptedPayload);
+  const diagnostic = boundedSyncError(syncError || message);
   for (const task of extractFetchTasks(fetchResult)) {
     if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
     const id = taskIdForSync(task);
     const validation = validationErrorsByTask.get(id);
+    const facts = factsByTaskId.get(id);
     taskOutcomes.push({
       fetchTaskId: id,
       status: "failed",
       reason: failureReason,
+      ...(facts ?? {}),
+      ...(diagnostic ? { syncError: diagnostic } : {}),
       evidence: {
         failureKind: failureReason,
         failedBy: "sync-builders-slice",
@@ -8113,6 +8231,8 @@ async function splitSyncSlices(args) {
 
 async function failSyncSlice(args) {
   const tasksFile = argValue(args, "--tasks");
+  const payloadFile = argValue(args, "--payload", null);
+  const diagnosticFile = argValue(args, "--diagnostic-file", null);
   const outFile = argValue(args, "--out");
   const tasksOutFile = argValue(args, "--tasks-out", null);
   const excludeTaskIdsFile = argValue(args, "--exclude-task-ids-file", null);
@@ -8131,7 +8251,19 @@ async function failSyncSlice(args) {
   const validationErrorsByTask = validationFile
     ? validationErrorsByTaskFromText(await readFile(validationFile, "utf8").catch(() => ""))
     : new Map();
-  const payload = failedSyncPayloadForTasks(tasksOut, { reason, message, validationErrorsByTask });
+  const attemptedPayload = payloadFile
+    ? JSON.parse(await readFile(payloadFile, "utf8"))
+    : null;
+  const syncError = diagnosticFile
+    ? await readFile(diagnosticFile, "utf8").catch(() => "")
+    : "";
+  const payload = failedSyncPayloadForTasks(tasksOut, {
+    reason,
+    message,
+    validationErrorsByTask,
+    attemptedPayload,
+    syncError,
+  });
   await writeFile(outFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   if (tasksOutFile) {
     await writeFile(tasksOutFile, `${JSON.stringify(tasksOut, null, 2)}\n`, "utf8");
@@ -8174,9 +8306,10 @@ function validateTaskOutcome(outcome) {
 
 export function validateAgentSyncPayload(fetchResult, payload) {
   const fetchTasks = extractFetchTasks(fetchResult);
-  const syncItems = extractSyncItems(payload);
+  const syncReadyPayload = prepareSyncReadyPayload(payload, fetchTasks);
+  const syncItems = extractSyncItems(syncReadyPayload);
   const outcomeById = new Map(
-    (Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [])
+    (Array.isArray(syncReadyPayload?.taskOutcomes) ? syncReadyPayload.taskOutcomes : [])
       .filter((o) => o && o.fetchTaskId)
       .map((o) => [String(o.fetchTaskId), o]),
   );
@@ -8294,6 +8427,74 @@ function extractSyncItems(payload) {
   );
 }
 
+function syncReadyItemError(path, message, fetchTaskId = "") {
+  return {
+    ...(fetchTaskId ? { fetchTaskId } : {}),
+    field: path,
+    error: message,
+    errors: [`${path}: ${message}`],
+  };
+}
+
+export function prepareSyncReadyPayload(payload, plannedTasks = []) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  const plannedById = new Map(
+    plannedTasks.map((task) => [String(task?.id || fetchTaskId(task)), task]),
+  );
+  const errors = [];
+  const builders = (payload.builders ?? []).map((builder, builderIndex) => ({
+    ...builder,
+    items: (builder?.items ?? []).map((item, itemIndex) => {
+      const path = `builders.${builderIndex}.items.${itemIndex}`;
+      const fetchTaskIdValue = String(item?.rawJson?.fetchTaskId || "").trim();
+      const task = plannedById.get(fetchTaskIdValue);
+      const next = { ...item };
+
+      if (item?.publishedAt !== null && item?.publishedAt !== undefined) {
+        const publishedAt = normalizedDate(item.publishedAt);
+        if (!publishedAt) {
+          errors.push(syncReadyItemError(
+            `${path}.publishedAt`,
+            "publishedAt must be a valid datetime",
+            fetchTaskIdValue,
+          ));
+        } else {
+          next.publishedAt = publishedAt;
+        }
+      }
+
+      const isFallbackResult =
+        task?.agentWorkType === "fetch_builder_fallback" ||
+        String(item?.externalId || "").startsWith("agent-fallback:");
+      if (isFallbackResult) {
+        if (String(item?.externalId || "").startsWith("agent-fallback:")) {
+          errors.push(syncReadyItemError(
+            `${path}.externalId`,
+            "builder fallback externalId must replace the placeholder identity",
+            fetchTaskIdValue,
+          ));
+        }
+        if (!String(item?.title || "").trim()) {
+          errors.push(syncReadyItemError(
+            `${path}.title`,
+            "builder fallback title is required for the actual post identity",
+            fetchTaskIdValue,
+          ));
+        }
+      }
+      return next;
+    }),
+  }));
+
+  if (errors.length > 0) {
+    const summary = errors.map((entry) => `${entry.field}: ${entry.error}`).join("; ");
+    const error = new Error(`Sync-ready item validation failed: ${summary}`);
+    error.details = errors;
+    throw error;
+  }
+  return { ...payload, builders };
+}
+
 function itemMatchesBuilderFallback(candidate, task, taskId) {
   const rawJson = candidate.item.rawJson;
   if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) return false;
@@ -8408,6 +8609,7 @@ function validateFetchTaskItem(task, candidate) {
     title: task.item?.title || "",
     description: task.item?.description || "",
     standards: task.minimumContentQuality,
+    primaryContentAcquisitionVerified: hasSameOriginPrimaryDocumentAcquisition(task, candidate),
   });
   if (!quality.ok) errors.push(`content_quality:${quality.reason}`);
   return errors;
@@ -8524,7 +8726,15 @@ function validateItemHeadline(headline, { title = "", summary = "" } = {}) {
   return validateHeadlineShape(headline, { title, summary });
 }
 
-function genericContentQuality(text, { title = "", description = "", standards } = {}) {
+function genericContentQuality(
+  text,
+  {
+    title = "",
+    description = "",
+    standards,
+    primaryContentAcquisitionVerified = false,
+  } = {},
+) {
   const normalized = normalizeContentText(text);
   const units = contentUnits(normalized);
   const qualityStandards = standards ?? genericMinimumContentQuality();
@@ -8537,7 +8747,10 @@ function genericContentQuality(text, { title = "", description = "", standards }
   if (metrics.chars < minChars || metrics.contentUnits < minContentUnits) {
     return { ok: false, reason: "content_too_short", metrics, standards: qualityStandards };
   }
-  if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {
+  const duplicatesTitle = isNearDuplicate(normalized, title);
+  const duplicatesUnverifiedDescription =
+    !primaryContentAcquisitionVerified && isNearDuplicate(normalized, description);
+  if (duplicatesTitle || duplicatesUnverifiedDescription) {
     return { ok: false, reason: "content_duplicates_metadata", metrics, standards: qualityStandards };
   }
   return { ok: true, reason: "ok", metrics, standards: qualityStandards };
@@ -9118,7 +9331,9 @@ async function syncBuilders(args) {
   const { plannedTasks, plannedTaskOutcomes, discoveryExpansions, summaryLanguage } = await readPlannedFetchResult(tasksFile);
   const workerUsages = await readShardWorkerUsages(argValue(args, "--results-dir", null), plannedTasks);
   payload.summaryLanguage ??= summaryLanguage ?? null;
+  payload = prepareSyncReadyPayload(payload, plannedTasks);
   payload = filterStaleSyncItemsByFetchCutoff(payload, plannedTasks);
+  validateAgentSyncPayload({ fetchTasks: plannedTasks }, payload);
   const plannedPostTasks = plannedTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
   const fetchProgress =
     (await readFetchProgressState()) ??
@@ -9157,7 +9372,6 @@ async function syncBuilders(args) {
     },
   });
   if (Array.isArray(payload.builders) && payload.builders.length === 0) {
-    if (!partialOutcomes) validateAgentSyncPayload({ fetchTasks: plannedTasks }, payload);
     await patchFetchRunOutcomes(
       config,
       payload,
@@ -9506,6 +9720,7 @@ async function syncCloudBuilders(args) {
   const workerUsages = await readShardWorkerUsages(resultsDir, plannedTasks);
   if (workerUsages.length > 0) rawPayload.workerUsages = workerUsages;
   rawPayload.summaryLanguage ??= summaryLanguage ?? null;
+  rawPayload = prepareSyncReadyPayload(rawPayload, plannedTasks);
   rawPayload = filterStaleSyncItemsByFetchCutoff(rawPayload, plannedTasks);
   validateAgentSyncPayload({ fetchTasks: plannedTasks }, rawPayload);
   const cloudRunId =
@@ -10139,7 +10354,31 @@ async function patchFetchRunOutcomes(
       });
       continue;
     }
-    const sizes = sizesByTaskId.get(id) ?? {};
+    const agentFacts = agentOutcome
+      ? Object.fromEntries(
+          [
+            "title",
+            "url",
+            "bodyChars",
+            "bodyWords",
+            "headlineChars",
+            "headlineWords",
+            "summaryChars",
+            "summaryWords",
+            "completedStage",
+            "syncError",
+            "agentRuntime",
+            "agentModel",
+            "workerId",
+            "readMethod",
+            "summaryMethod",
+            "hubSharedReuse",
+          ]
+            .filter((key) => agentOutcome[key] !== undefined)
+            .map((key) => [key, agentOutcome[key]]),
+        )
+      : {};
+    const sizes = { ...agentFacts, ...(sizesByTaskId.get(id) ?? {}) };
     const server = serverByTaskId.get(id);
     let status;
     let failureReason;

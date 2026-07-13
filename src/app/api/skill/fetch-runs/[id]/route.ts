@@ -24,14 +24,21 @@ const PlannedTaskSchema = z.object({
 
 // One per-post outcome, merged onto the matching planned task (details.fetchTasks
 // entry whose `id` equals this fetchTaskId). All fields except the key are
-// optional so the CLI can grow the per-post record without a schema change.
+// optional. Display-critical fields stay explicit because Zod strips unknown
+// keys before the outcome is merged into persisted fetch-run details.
 const TaskOutcomeSchema = z.object({
   fetchTaskId: z.string().min(1).max(MAX_FETCH_TASK_ID),
   plannedTask: z.record(z.string(), z.unknown()).optional(),
   bodyChars: z.number().int().min(0).max(100_000_000).nullable().optional(),
   bodyWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
+  title: z.string().max(500).nullable().optional(),
+  url: z.string().url().max(2048).nullable().optional(),
+  headlineChars: z.number().int().min(0).max(100_000_000).nullable().optional(),
+  headlineWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
   summaryChars: z.number().int().min(0).max(100_000_000).nullable().optional(),
   summaryWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
+  completedStage: z.enum(["read", "summarize"]).nullable().optional(),
+  syncError: z.string().max(1000).nullable().optional(),
   agentRuntime: z.string().max(120).nullable().optional(),
   agentModel: z.string().max(120).nullable().optional(),
   contentStatus: z.string().max(80).nullable().optional(),
