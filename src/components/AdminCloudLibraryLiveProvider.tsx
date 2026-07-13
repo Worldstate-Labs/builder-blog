@@ -6,10 +6,17 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import {
+  contentSyncStateChanged,
+  liveDataSignature,
+  LIVE_POLL_IDLE_MS,
+  LIVE_POLL_RUNNING_MS,
+  requestWorkspaceRefresh,
+} from "@/lib/content-sync-events";
 import type {
   CloudLanguageLibraryAdmin,
   CloudLibraryAdminSnapshot,
@@ -29,6 +36,7 @@ export function AdminCloudLibraryLiveProvider({
   initialSnapshot: CloudLibraryAdminSnapshot;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const livePayloadSignatureRef = useRef(liveDataSignature(initialSnapshot));
   const hasRunningSourceTask = useMemo(
     () => snapshot.libraries.some((library) =>
       library.sources.some((source) => source.latestRunTask?.status.toUpperCase() === "RUNNING"),
@@ -45,7 +53,11 @@ export function AdminCloudLibraryLiveProvider({
       if (!response.ok) return;
       const body = (await response.json().catch(() => null)) as CloudLibraryAdminSnapshot | null;
       if (Array.isArray(body?.libraries) && Array.isArray(body.languageLibraries)) {
+        const nextSignature = liveDataSignature(body);
+        const changed = nextSignature !== livePayloadSignatureRef.current;
+        livePayloadSignatureRef.current = nextSignature;
         setSnapshot(body);
+        if (changed) requestWorkspaceRefresh("admin-cloud-library");
       }
     } catch {
       // Keep the last snapshot; the next visible refresh retries automatically.
@@ -58,7 +70,7 @@ export function AdminCloudLibraryLiveProvider({
   }, [refresh]);
 
   useEffect(() => {
-    const pollMs = hasRunningSourceTask ? 15_000 : 60_000;
+    const pollMs = hasRunningSourceTask ? LIVE_POLL_RUNNING_MS : LIVE_POLL_IDLE_MS;
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, pollMs);

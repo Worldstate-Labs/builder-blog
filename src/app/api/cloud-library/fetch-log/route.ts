@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
-import { contentSyncState } from "@/lib/content-sync-state";
+import { loadUserCloudFetchLog } from "@/lib/user-cloud-fetch-log-data";
 
+export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
@@ -11,11 +11,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const isAdmin = isAdminEmail(session.user.email);
-  const state = await contentSyncState(session.user.id, { isAdmin });
-  return NextResponse.json(state, {
+  const log = await loadUserCloudFetchLog(session.user.id);
+  return NextResponse.json(log, {
     headers: {
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-store, max-age=0",
     },
   });
 }

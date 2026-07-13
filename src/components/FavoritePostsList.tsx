@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type SetStateAction } from "react";
 import { flushSync } from "react-dom";
 import { FeedEmptyState } from "@/components/FeedState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
+import { liveDataSignature } from "@/lib/content-sync-events";
 import { postDetailHref } from "@/lib/navigation";
 
 const FAVORITE_READ_REORDER_DELAY_MS = 220;
@@ -22,10 +23,30 @@ export function FavoritePostsList({
 }: {
   initialItems: FavoritePostListItem[];
 }) {
-  const [items, setItems] = useState(initialItems);
+  const initialItemsSignature = liveDataSignature(initialItems);
+  const [itemState, setItemState] = useState(() => ({
+    items: initialItems,
+    signature: initialItemsSignature,
+  }));
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
   const [pendingReadIds, setPendingReadIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState("");
+  const canReconcileServerItems = pendingIds.size === 0 && pendingReadIds.size === 0;
+  const items = canReconcileServerItems && itemState.signature !== initialItemsSignature
+    ? initialItems
+    : itemState.items;
+
+  function setItems(nextItems: SetStateAction<FavoritePostListItem[]>) {
+    setItemState((current) => {
+      const currentItems = current.signature === initialItemsSignature
+        ? current.items
+        : initialItems;
+      return {
+        items: typeof nextItems === "function" ? nextItems(currentItems) : nextItems,
+        signature: initialItemsSignature,
+      };
+    });
+  }
 
   async function removeFavorite(feedItemId: string) {
     if (pendingIds.has(feedItemId)) return;

@@ -10,6 +10,7 @@ import {
 } from "@/components/DigestContent";
 import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
 import { RelativeTime } from "@/components/RelativeTime";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import {
@@ -177,6 +178,20 @@ export function DigestDetails({
       return () => window.clearTimeout(id);
     }
   }, [defaultOpen, fetchDigest, mode]);
+
+  useEffect(() => {
+    function refreshOpenDigest() {
+      if (document.visibilityState !== "visible") return;
+      if (!isOpen && mode !== "today") return;
+      if (pendingFavoriteFeedItemIds.size > 0) return;
+      void fetchDigest();
+    }
+
+    window.addEventListener(contentSyncStateChanged, refreshOpenDigest);
+    return () => {
+      window.removeEventListener(contentSyncStateChanged, refreshOpenDigest);
+    };
+  }, [fetchDigest, isOpen, mode, pendingFavoriteFeedItemIds.size]);
 
   if (mode === "today") {
     const headlineIsLoading = status === "loading" && items.length === 0;

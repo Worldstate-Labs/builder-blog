@@ -14,6 +14,7 @@ import {
   defaultRecommendationSortMode,
   type RecommendationSortMode,
 } from "@/lib/recommendation-sort";
+import { contentSyncStateChanged, liveDataSignature } from "@/lib/content-sync-events";
 
 type TimelineResponse = {
   snapshots: RecommendationSnapshotEntry[];
@@ -91,6 +92,18 @@ function FollowingRecommendationLoader({
     return () => window.clearTimeout(id);
   }, [loadTimeline]);
 
+  useEffect(() => {
+    function handleContentSyncStateChanged() {
+      if (document.visibilityState !== "visible") return;
+      void loadTimeline();
+    }
+
+    window.addEventListener(contentSyncStateChanged, handleContentSyncStateChanged);
+    return () => {
+      window.removeEventListener(contentSyncStateChanged, handleContentSyncStateChanged);
+    };
+  }, [loadTimeline]);
+
   const handleSortModeChange = useCallback((nextSortMode: RecommendationSortMode) => {
     setTimeline(null);
     setStatus("loading");
@@ -113,7 +126,7 @@ function FollowingRecommendationLoader({
 
   return (
     <RecommendationFeed
-      key={`${sortMode}:${visibleSnapshots.map((snapshot) => snapshot.id).join("|")}`}
+      key={`${sortMode}:${liveDataSignature(visibleSnapshots)}`}
       initialSnapshots={visibleSnapshots}
       onSortModeChange={handleSortModeChange}
       showAdminActions={isAdmin}

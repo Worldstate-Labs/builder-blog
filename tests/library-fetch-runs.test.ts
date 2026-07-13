@@ -1171,12 +1171,14 @@ test("DigestLogPanel renders brief status with modal-only build logs", () => {
 
 test("builders page mounts the fetch log inside the sync header section", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const cloudLogData = source("src/lib/user-cloud-fetch-log-data.ts");
   assert.match(buildersPage, /SourceSyncLogTabs/);
   // Fetch the user's recent runs server-side, ordered by startedAt desc.
   assert.match(buildersPage, /prisma\.libraryFetchRun\.findMany/);
   assert.match(buildersPage, /prisma\.libraryCronJob\.findUnique/);
-  assert.match(buildersPage, /prisma\.cloudSourceSubmission\.findMany/);
-  assert.match(buildersPage, /serializeUserCloudFetchLog/);
+  assert.match(buildersPage, /loadUserCloudFetchLog\(user\.id\)/);
+  assert.match(cloudLogData, /prisma\.cloudSourceSubmission\.findMany/);
+  assert.match(cloudLogData, /serializeUserCloudFetchLog/);
   assert.match(buildersPage, /source: "cron"/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(buildersPage, /const FETCH_RUN_PAGE_SIZE = 10/);

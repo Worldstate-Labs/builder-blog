@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
 
 export function PostFavoriteControl({
@@ -15,6 +15,13 @@ export function PostFavoriteControl({
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const syncedInitialIsFavoriteRef = useRef(initialIsFavorite);
+
+  useEffect(() => {
+    if (isPending || syncedInitialIsFavoriteRef.current === initialIsFavorite) return;
+    syncedInitialIsFavoriteRef.current = initialIsFavorite;
+    setIsFavorite(initialIsFavorite);
+  }, [initialIsFavorite, isPending]);
 
   function toggleFavorite() {
     const nextFavorite = !isFavorite;

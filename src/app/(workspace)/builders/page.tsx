@@ -68,7 +68,7 @@ import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { ensureSourceCandidateLibraryFromAdminSources } from "@/lib/source-candidate-library";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
-import { serializeUserCloudFetchLog } from "@/lib/user-cloud-fetch-log";
+import { loadUserCloudFetchLog } from "@/lib/user-cloud-fetch-log-data";
 
 type BuilderWithCount = {
   id: string;
@@ -120,7 +120,6 @@ const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
 ];
 const FETCH_RUN_PAGE_SIZE = 10;
 const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE + 1;
-const CLOUD_FETCH_SUBMISSION_QUERY_SIZE = 50;
 
 export default async function BuildersPage({
   searchParams,
@@ -597,7 +596,7 @@ async function loadFetchSyncData(user: {
     scheduledJobRuns,
     feedPreference,
     rawCloudSubmissionSources,
-    rawCloudSubmissions,
+    cloudFetchLog,
   ] = await Promise.all([
     prisma.agentToken.findMany({
       where: { userId: user.id, revokedAt: null },
@@ -656,77 +655,7 @@ async function loadFetchSyncData(user: {
         },
       },
     }),
-    prisma.cloudSourceSubmission.findMany({
-      where: { userId: user.id, active: true },
-      orderBy: { submittedAt: "desc" },
-      take: CLOUD_FETCH_SUBMISSION_QUERY_SIZE,
-      include: {
-        userBuilder: {
-          select: {
-            id: true,
-            entityId: true,
-            kind: true,
-            name: true,
-            sourceType: true,
-            sourceUrl: true,
-            fetchUrl: true,
-            avatarUrl: true,
-            avatarDataUrl: true,
-          },
-        },
-        cloudBuilder: {
-          select: {
-            id: true,
-            entityId: true,
-            kind: true,
-            name: true,
-            sourceType: true,
-            sourceUrl: true,
-            fetchUrl: true,
-            avatarUrl: true,
-            avatarDataUrl: true,
-            _count: { select: { feedItems: true } },
-            cloudSourceTask: {
-              select: {
-                id: true,
-                builderId: true,
-                status: true,
-                effectiveFrequency: true,
-                lastSuccessAt: true,
-                lastFailureAt: true,
-                lastFailureReason: true,
-                nextAttemptAt: true,
-                mustSucceedBy: true,
-                consecutiveFailures: true,
-                runTasks: {
-                  orderBy: [{ finishedAt: "desc" }, { startedAt: "desc" }],
-                  take: 1,
-                  select: {
-                    id: true,
-                    builderId: true,
-                    summaryLanguage: true,
-                    status: true,
-                    plannedPosts: true,
-                    syncedPosts: true,
-                    failedPosts: true,
-                    startedAt: true,
-                    finishedAt: true,
-                    actualDurationSeconds: true,
-                    estimatedDurationSeconds: true,
-                    successProbabilitySnapshot: true,
-                    usageTokens: true,
-                    usageCostUsd: true,
-                    failureReason: true,
-                    details: true,
-                    builder: { select: { name: true, sourceType: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
+    loadUserCloudFetchLog(user.id),
   ]);
   const activeTokens = serializeAgentTokens(rawTokens);
   const cloudSubmissionSources: CloudSubmissionSource[] = rawCloudSubmissionSources.map(
@@ -813,7 +742,7 @@ async function loadFetchSyncData(user: {
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
     cloudSubmissionSources,
-    cloudFetchLog: serializeUserCloudFetchLog(rawCloudSubmissions),
+    cloudFetchLog,
   };
 }
 

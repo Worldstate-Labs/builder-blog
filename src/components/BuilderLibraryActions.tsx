@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 type BuilderLibraryActionsProps = {
   builderId: string;
@@ -22,6 +22,13 @@ export function BuilderLibraryActions({
   const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const syncedInitialSubscribedRef = useRef(initialSubscribed);
+
+  useEffect(() => {
+    if (isPending || syncedInitialSubscribedRef.current === initialSubscribed) return;
+    syncedInitialSubscribedRef.current = initialSubscribed;
+    setSubscribed(initialSubscribed);
+  }, [initialSubscribed, isPending]);
 
   function updateSubscription() {
     if (isPending) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Star } from "lucide-react";
 
 type ChannelPreferenceToggleProps = {
@@ -29,6 +29,13 @@ export function ChannelPreferenceToggle({
   const [isPreferred, setIsPreferred] = useState(initialIsPreferred);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const syncedInitialIsPreferredRef = useRef(initialIsPreferred);
+
+  useEffect(() => {
+    if (isPending || syncedInitialIsPreferredRef.current === initialIsPreferred) return;
+    syncedInitialIsPreferredRef.current = initialIsPreferred;
+    setIsPreferred(initialIsPreferred);
+  }, [initialIsPreferred, isPending]);
 
   useEffect(() => {
     function handlePreferenceChanged(event: Event) {

@@ -1,10 +1,24 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
 import { RelativeTime } from "@/components/RelativeTime";
-import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import {
+  contentSyncStateChanged,
+  liveDataSignature,
+  LIVE_POLL_IDLE_MS,
+  LIVE_POLL_RUNNING_MS,
+  requestWorkspaceRefresh,
+} from "@/lib/content-sync-events";
 import { formatUsageCost, formatUsageTokens, readUsageSummary, type UsageSummary } from "@/lib/usage-summary";
 import type {
   CloudFetchPostOutcome,
@@ -711,7 +725,15 @@ export function AdminCloudFetchLog({
   const [expandedShard, setExpandedShard] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const livePayloadSignatureRef = useRef(
+    liveDataSignature({ workerHost: initialWorkerHost, leaseBatches: initialLeaseBatches }),
+  );
+  const workerHostRef = useRef(initialWorkerHost);
+  const leaseBatchesRef = useRef(initialLeaseBatches);
   const runningSourceDeliveries = leaseBatches.filter((batch) => batch.status.toUpperCase() === "RUNNING").length;
+  const hasRunningWorkerTask = workerHost.tasks.some(
+    (task) => task.status?.toUpperCase() === "RUNNING",
+  );
   const workerShardGroups = useMemo(
     () => buildWorkerShardGroups(leaseBatches, workerHost.tasks),
     [leaseBatches, workerHost.tasks],
@@ -730,11 +752,28 @@ export function AdminCloudFetchLog({
       if (!res.ok) return;
       const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;
       const batches = body?.leaseBatches ?? body?.runs;
-      if (Array.isArray(batches)) {
-        setLeaseBatches((current) => mergeLeaseBatches(current, batches));
-        setHasMore(Boolean(body?.hasMore));
+      const nextWorkerHost = body?.workerHost ?? workerHostRef.current;
+      if (Array.isArray(batches) || body?.workerHost) {
+        const nextSignature = liveDataSignature({
+          workerHost: nextWorkerHost,
+          leaseBatches: Array.isArray(batches) ? batches : leaseBatchesRef.current,
+        });
+        const changed = nextSignature !== livePayloadSignatureRef.current;
+        livePayloadSignatureRef.current = nextSignature;
+        if (Array.isArray(batches)) {
+          setLeaseBatches((current) => {
+            const next = mergeLeaseBatches(current, batches);
+            leaseBatchesRef.current = next;
+            return next;
+          });
+          setHasMore(Boolean(body?.hasMore));
+        }
+        if (body?.workerHost) {
+          workerHostRef.current = body.workerHost;
+          setWorkerHost(body.workerHost);
+        }
+        if (changed) requestWorkspaceRefresh("admin-cloud-fetch-log");
       }
-      if (body?.workerHost) setWorkerHost(body.workerHost);
     } catch {
       // keep showing what we have; transient errors self-heal on the next tick
     }
@@ -749,12 +788,14 @@ export function AdminCloudFetchLog({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const hasRunningBatch = leaseBatches.some((batch) => batch.status.toUpperCase() === "RUNNING");
-    const pollMs = workerHost.status === "offline" && !hasRunningBatch ? 15_000 : 5_000;
+    const pollMs = hasRunningBatch || hasRunningWorkerTask
+      ? LIVE_POLL_RUNNING_MS
+      : LIVE_POLL_IDLE_MS;
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") refresh();
     }, pollMs);
     return () => window.clearInterval(id);
-  }, [leaseBatches, refresh, workerHost.status]);
+  }, [hasRunningWorkerTask, leaseBatches, refresh]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -792,7 +833,11 @@ export function AdminCloudFetchLog({
       }
       const batches = body?.leaseBatches ?? body?.runs;
       if (Array.isArray(batches)) {
-        setLeaseBatches((current) => mergeLeaseBatches(current, batches));
+        setLeaseBatches((current) => {
+          const next = mergeLeaseBatches(current, batches);
+          leaseBatchesRef.current = next;
+          return next;
+        });
         setHasMore(Boolean(body?.hasMore));
       }
     } catch {

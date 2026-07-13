@@ -43,9 +43,9 @@ export async function builderLibraryState(
       ? prisma.feedItem.aggregate({
           where: { builderId: { in: sortedBuilderIds } },
           _count: true,
-          _max: { createdAt: true, publishedAt: true },
+          _max: { createdAt: true, publishedAt: true, updatedAt: true },
         })
-      : Promise.resolve({ _count: 0, _max: { createdAt: null, publishedAt: null } }),
+      : Promise.resolve({ _count: 0, _max: { createdAt: null, publishedAt: null, updatedAt: null } }),
   ]);
 
   const subCount = subscriptionState._count as number;
@@ -65,6 +65,7 @@ export async function builderLibraryState(
     feedCount,
     feedState._max.createdAt?.toISOString() ?? "",
     feedState._max.publishedAt?.toISOString() ?? "",
+    feedState._max.updatedAt?.toISOString() ?? "",
   ].join("|");
 
   return {

@@ -23,6 +23,13 @@ export function LibraryVisibilityToggle({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const syncedInitialIsPublicRef = useRef(initialIsPublic);
+
+  useEffect(() => {
+    if (isPending || syncedInitialIsPublicRef.current === initialIsPublic) return;
+    syncedInitialIsPublicRef.current = initialIsPublic;
+    setIsPublic(initialIsPublic);
+  }, [initialIsPublic, isPending]);
 
   useEffect(() => {
     const dialog = dialogRef.current;

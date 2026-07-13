@@ -18,7 +18,13 @@ import { RelativeTime } from "@/components/RelativeTime";
 import { RunUsageSummary } from "@/components/RunUsageSummary";
 import { useHydrated } from "@/components/ThemeToggle";
 import { relativeTime } from "@/lib/relative-time";
-import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import {
+  contentSyncStateChanged,
+  liveDataSignature,
+  LIVE_POLL_IDLE_MS,
+  LIVE_POLL_RUNNING_MS,
+  requestWorkspaceRefresh,
+} from "@/lib/content-sync-events";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import {
   buildDigestCronStatus,
@@ -383,6 +389,15 @@ export function DigestLogPanel({
   );
   const runsRef = useRef(runs);
   const jobRunsRef = useRef(jobRuns);
+  const livePayloadSignatureRef = useRef(
+    liveDataSignature({
+      runs: initialRuns,
+      cronRuns: initialCronRuns,
+      jobRuns: initialJobRuns,
+      scheduledJobRuns: initialScheduledJobRuns,
+      cronJob: initialCronJob,
+    }),
+  );
   const hydrated = useHydrated();
   const detailsRoot = detailsRootId && hydrated ? document.getElementById(detailsRootId) : null;
 
@@ -433,11 +448,28 @@ export function DigestLogPanel({
           setError(body?.error ?? "Could not refresh. Try again.");
           return;
         }
-        setRuns(Array.isArray(body?.runs) ? body.runs : []);
-        setCronRuns(Array.isArray(body?.cronRuns) ? body.cronRuns : []);
-        setJobRuns(Array.isArray(body?.jobRuns) ? body.jobRuns : []);
-        setScheduledJobRuns(Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : []);
-        setCronJob(body?.cronJob ?? null);
+        const nextRuns = Array.isArray(body?.runs) ? body.runs : [];
+        const nextCronRuns = Array.isArray(body?.cronRuns) ? body.cronRuns : [];
+        const nextJobRuns = Array.isArray(body?.jobRuns) ? body.jobRuns : [];
+        const nextScheduledJobRuns = Array.isArray(body?.scheduledJobRuns)
+          ? body.scheduledJobRuns
+          : [];
+        const nextCronJob = body?.cronJob ?? null;
+        const nextSignature = liveDataSignature({
+          runs: nextRuns,
+          cronRuns: nextCronRuns,
+          jobRuns: nextJobRuns,
+          scheduledJobRuns: nextScheduledJobRuns,
+          cronJob: nextCronJob,
+        });
+        const changed = nextSignature !== livePayloadSignatureRef.current;
+        livePayloadSignatureRef.current = nextSignature;
+        setRuns(nextRuns);
+        setCronRuns(nextCronRuns);
+        setJobRuns(nextJobRuns);
+        setScheduledJobRuns(nextScheduledJobRuns);
+        setCronJob(nextCronJob);
+        if (changed) requestWorkspaceRefresh("ai-brief-log");
       } catch {
         setError("Could not refresh. Try again.");
       }
@@ -500,9 +532,6 @@ export function DigestLogPanel({
     if (typeof window === "undefined") return;
     let cancelled = false;
     let timer = 0;
-    const pollInflightMs = 8_000;
-    const pollIdleMs = 45_000;
-
     const tick = () => {
       if (cancelled) return;
       if (document.visibilityState === "visible") refresh();
@@ -511,7 +540,10 @@ export function DigestLogPanel({
     const schedule = () => {
       const inflight = runsRef.current.some(isDigestRunInflight) ||
         jobRunsRef.current.some((run) => isActiveDigestJobRun(run));
-      timer = window.setTimeout(tick, inflight ? pollInflightMs : pollIdleMs);
+      timer = window.setTimeout(
+        tick,
+        inflight ? LIVE_POLL_RUNNING_MS : LIVE_POLL_IDLE_MS,
+      );
     };
     const onVisible = () => {
       if (document.visibilityState === "visible") refresh();

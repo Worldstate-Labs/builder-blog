@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   CloudSourceLogItem,
   type CloudSourceLogSource,
@@ -12,6 +12,13 @@ import {
 } from "@/components/FetchLogPanel";
 import { RelativeTime } from "@/components/RelativeTime";
 import { displayLanguagePreference } from "@/lib/language-preference";
+import {
+  contentSyncStateChanged,
+  liveDataSignature,
+  LIVE_POLL_IDLE_MS,
+  LIVE_POLL_RUNNING_MS,
+  requestWorkspaceRefresh,
+} from "@/lib/content-sync-events";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import type {
   UserCloudFetchLogData,
@@ -41,6 +48,78 @@ export function SourceSyncLogTabs({
   summaryLanguage?: string | null;
 }) {
   const [selected, setSelected] = useState<SyncLogTab>("cloud");
+  const cloudSignature = useMemo(() => liveDataSignature(cloudLog), [cloudLog]);
+  const [cloudState, setCloudState] = useState(() => ({
+    baseSignature: cloudSignature,
+    log: cloudLog,
+  }));
+  const liveCloudLog = cloudState.baseSignature === cloudSignature ? cloudState.log : cloudLog;
+  const cloudPropSignatureRef = useRef(cloudSignature);
+  const liveCloudSignatureRef = useRef(cloudSignature);
+  const cloudRefreshInFlight = useRef(false);
+  const hasRunningCloudSource = liveCloudLog.sources.some(
+    (source) => source.deadlineStatus === "RUNNING",
+  );
+
+  useEffect(() => {
+    cloudPropSignatureRef.current = cloudSignature;
+    liveCloudSignatureRef.current = cloudSignature;
+  }, [cloudSignature]);
+
+  const refreshCloudLog = useCallback(async () => {
+    if (cloudRefreshInFlight.current) return;
+    cloudRefreshInFlight.current = true;
+    try {
+      const response = await fetch("/api/cloud-library/fetch-log", {
+        cache: "no-store",
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) return;
+      const nextLog = (await response.json()) as UserCloudFetchLogData;
+      const nextSignature = liveDataSignature(nextLog);
+      if (nextSignature === liveCloudSignatureRef.current) return;
+      liveCloudSignatureRef.current = nextSignature;
+      setCloudState({
+        baseSignature: cloudPropSignatureRef.current,
+        log: nextLog,
+      });
+      requestWorkspaceRefresh("user-cloud-fetch-log");
+    } catch {
+      // Keep the last successful snapshot and retry on the next visible check.
+    } finally {
+      cloudRefreshInFlight.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selected !== "cloud") return;
+    let closed = false;
+    let timer = 0;
+    const pollMs = hasRunningCloudSource ? LIVE_POLL_RUNNING_MS : LIVE_POLL_IDLE_MS;
+    const schedule = () => {
+      timer = window.setTimeout(async () => {
+        if (closed) return;
+        if (document.visibilityState === "visible") await refreshCloudLog();
+        if (!closed) schedule();
+      }, pollMs);
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshCloudLog();
+    };
+    const initialRefresh = window.setTimeout(refreshWhenVisible, 0);
+    schedule();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener(contentSyncStateChanged, refreshWhenVisible);
+    return () => {
+      closed = true;
+      window.clearTimeout(initialRefresh);
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener(contentSyncStateChanged, refreshWhenVisible);
+    };
+  }, [hasRunningCloudSource, refreshCloudLog, selected]);
 
   return (
     <div className="source-sync-log-tabs">
@@ -83,7 +162,7 @@ export function SourceSyncLogTabs({
           id="source-sync-cloud-log-panel"
           role="tabpanel"
         >
-          <UserCloudFetchLogPanel cloudLog={cloudLog} />
+          <UserCloudFetchLogPanel cloudLog={liveCloudLog} />
         </section>
       ) : (
         <section

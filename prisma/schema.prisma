@@ -333,11 +333,13 @@ model UserLibraryVisibility {
   userId     String
   hubEntryId String
   hidden     Boolean
+  updatedAt  DateTime        @updatedAt
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   hubEntry   LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
 
   @@id([userId, hubEntryId])
   @@index([hubEntryId])
+  @@index([userId, updatedAt])
 }
 
 model BuilderPoolEntry {
@@ -455,6 +457,7 @@ model FeedItem {
   fetchTool                   String?
   rawJson                     String?
   createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
   builder                     Builder?                     @relation(fields: [builderId], references: [id], onDelete: SetNull)
   canonicalPost               CanonicalPost?               @relation(fields: [canonicalPostId], references: [id], onDelete: SetNull)
   reads                       FeedRead[]
@@ -464,6 +467,7 @@ model FeedItem {
 
   @@unique([builderId, kind, externalId])
   @@index([builderId, publishedAt])
+  @@index([builderId, updatedAt])
   @@index([canonicalPostId])
   @@index([publishedAt])
 }
@@ -604,11 +608,13 @@ model CloudFetchRun {
   summary         String?
   details         Json                  @default("{}")
   createdByUserId String?
+  updatedAt       DateTime              @updatedAt
   queueItems      CloudFetchQueueItem[]
   tasks           CloudFetchRunTask[]
 
   @@index([startedAt(sort: Desc)])
   @@index([status])
+  @@index([updatedAt])
 }
 
 model CloudFetchRunTask {
@@ -630,6 +636,7 @@ model CloudFetchRunTask {
   usageTokens                Int?
   usageCostUsd               Decimal?            @db.Decimal(10, 4)
   details                    Json                @default("{}")
+  updatedAt                  DateTime            @updatedAt
   run                        CloudFetchRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
   cloudSourceTask            CloudSourceTask     @relation(fields: [cloudSourceTaskId], references: [id], onDelete: Cascade)
   builder                    Builder             @relation(fields: [builderId], references: [id], onDelete: Cascade)
@@ -637,6 +644,7 @@ model CloudFetchRunTask {
   @@unique([runId, cloudSourceTaskId])
   @@index([cloudSourceTaskId, finishedAt])
   @@index([builderId, finishedAt])
+  @@index([builderId, updatedAt])
 }
 
 model UserFeedPreference {
@@ -665,12 +673,14 @@ model FeedRead {
   externalId String
   source     String        @default("recommendation")
   readAt     DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   feedItem   FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
   entity     BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entityId, kind, externalId])
   @@index([userId, readAt])
+  @@index([userId, updatedAt])
   @@index([userId, entityId])
   @@index([feedItemId])
 }
@@ -687,6 +697,7 @@ model FeedFavorite {
   externalId   String
   favoritedAt  DateTime      @default(now())
   markedReadAt DateTime?
+  updatedAt    DateTime      @updatedAt
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   feedItem     FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
   entity       BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
@@ -694,6 +705,7 @@ model FeedFavorite {
   @@unique([userId, entityId, kind, externalId])
   @@index([userId, favoritedAt])
   @@index([userId, markedReadAt])
+  @@index([userId, updatedAt])
   @@index([userId, entityId])
   @@index([feedItemId])
 }

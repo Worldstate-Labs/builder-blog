@@ -14,6 +14,13 @@ export function DigestPipelineVisibilityToggle({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const syncedInitialSharedRef = useRef(initialShared);
+
+  useEffect(() => {
+    if (isPending || syncedInitialSharedRef.current === initialShared) return;
+    syncedInitialSharedRef.current = initialShared;
+    setShared(initialShared);
+  }, [initialShared, isPending]);
 
   useEffect(() => {
     const dialog = dialogRef.current;

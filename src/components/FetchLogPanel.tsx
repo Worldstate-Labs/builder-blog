@@ -20,7 +20,13 @@ import { useHydrated } from "@/components/ThemeToggle";
 import { RunUsageSummary } from "@/components/RunUsageSummary";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
-import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import {
+  contentSyncStateChanged,
+  liveDataSignature,
+  LIVE_POLL_IDLE_MS,
+  LIVE_POLL_RUNNING_MS,
+  requestWorkspaceRefresh,
+} from "@/lib/content-sync-events";
 import { decodeHtmlEntities } from "@/lib/decode-entities";
 import {
   fetchFailureInfo,
@@ -1109,6 +1115,15 @@ export function FetchLogPanel({
   const runsRef = useRef(runs);
   const jobRunsRef = useRef(jobRuns);
   const cronJobRef = useRef(cronJob);
+  const livePayloadSignatureRef = useRef(
+    liveDataSignature({
+      runs: initialRuns,
+      cronRuns: initialCronRuns,
+      jobRuns: initialJobRuns,
+      scheduledJobRuns: initialScheduledJobRuns,
+      cronJob: initialCronJob,
+    }),
+  );
   useEffect(() => {
     runsRef.current = runs;
   }, [runs]);
@@ -1150,12 +1165,22 @@ export function FetchLogPanel({
         const bodyCronRuns = Array.isArray(body?.cronRuns) ? body.cronRuns : [];
         const bodyJobRuns = Array.isArray(body?.jobRuns) ? body.jobRuns : [];
         const bodyScheduledJobRuns = Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : [];
+        const nextSignature = liveDataSignature({
+          runs: bodyRuns,
+          cronRuns: bodyCronRuns,
+          jobRuns: bodyJobRuns,
+          scheduledJobRuns: bodyScheduledJobRuns,
+          cronJob: body?.cronJob ?? null,
+        });
+        const changed = nextSignature !== livePayloadSignatureRef.current;
+        livePayloadSignatureRef.current = nextSignature;
         setRuns((current) => mergeFetchRunLists(current, bodyRuns));
         setCronRuns((current) => mergeFetchRunLists(current, bodyCronRuns));
         setJobRuns((current) => mergeAgentJobRunLists(current, bodyJobRuns));
         setScheduledJobRuns((current) => mergeAgentJobRunLists(current, bodyScheduledJobRuns));
         setHasMoreFetchHistory(Boolean(body?.hasMore ?? bodyRuns.length === FETCH_LOG_PAGE_SIZE));
         setCronJob(body?.cronJob ?? null);
+        if (changed) requestWorkspaceRefresh("agent-fetch-log");
       } catch {
         setError("Could not refresh. Try again.");
       }
@@ -1247,9 +1272,6 @@ export function FetchLogPanel({
   // and never while the tab is hidden (saves requests and respects rate limits).
   // Unlike the timestamp tick above, this is data, not motion — so it runs
   // regardless of prefers-reduced-motion.
-  const POLL_ACTIVE_PROGRESS_MS = 3_000;
-  const POLL_INFLIGHT_MS = 8_000;
-  const POLL_IDLE_MS = 45_000;
   useEffect(() => {
     if (typeof window === "undefined") return;
     let cancelled = false;
@@ -1269,7 +1291,7 @@ export function FetchLogPanel({
       const activeProgress = hasActiveFetchProgress(jobRunsRef.current);
       timer = window.setTimeout(
         tick,
-        activeProgress ? POLL_ACTIVE_PROGRESS_MS : inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS,
+        activeProgress || inflight ? LIVE_POLL_RUNNING_MS : LIVE_POLL_IDLE_MS,
       );
     };
     // Refresh immediately when the user returns to the tab so they don't wait a

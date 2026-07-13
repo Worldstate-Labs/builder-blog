@@ -307,10 +307,11 @@ test("cloud library status refreshes while visible without refreshing editable c
   assert.match(provider, /useEffect/);
   assert.match(provider, /\/api\/admin\/cloud-fetch\/libraries/);
   assert.match(provider, /cache: "no-store"/);
-  assert.match(provider, /hasRunningSourceTask \? 15_000 : 60_000/);
+  assert.match(provider, /hasRunningSourceTask \? LIVE_POLL_RUNNING_MS : LIVE_POLL_IDLE_MS/);
   assert.match(provider, /document\.visibilityState === "visible"/);
   assert.match(provider, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(provider, /contentSyncStateChanged/);
+  assert.match(provider, /requestWorkspaceRefresh/);
   assert.match(config, /useCloudLibraryLiveSnapshot/);
   assert.match(config, /updateLanguageLibrary\(next\)/);
   assert.doesNotMatch(config, /setInterval/);
