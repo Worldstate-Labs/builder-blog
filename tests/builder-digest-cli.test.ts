@@ -3839,6 +3839,50 @@ test("schedule-spec emits anchor-aligned cron, launchd, and server schedule valu
   assert.doesNotMatch(launchd, /StartInterval/);
 });
 
+test("schedule-spec supports temporary hourly local schedules", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-hourly-schedule-spec-"));
+  const anchorFile = join(tmp, "schedule-anchor-library-cron-user");
+  const cronOut = join(tmp, "cron.txt");
+  const launchdOut = join(tmp, "launchd.xml");
+  const statusOut = join(tmp, "status.txt");
+  await writeFile(anchorFile, "2026-06-21T13:15:22Z\n", "utf8");
+
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "schedule-spec",
+      "--freq",
+      "1h",
+      "--anchor-file",
+      anchorFile,
+      "--cron-out",
+      cronOut,
+      "--launchd-out",
+      launchdOut,
+      "--status-out",
+      statusOut,
+    ],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, TZ: "UTC" },
+    },
+  );
+
+  const result = JSON.parse(stdout);
+  const cron = (await readFile(cronOut, "utf8")).trim();
+  const launchd = await readFile(launchdOut, "utf8");
+  const status = (await readFile(statusOut, "utf8")).trim();
+
+  assert.equal(cron, "15 * * * *");
+  assert.equal(status, "anchor:15 * * * *");
+  assert.equal(result.cron, cron);
+  assert.equal(result.statusSchedule, status);
+  assert.match(launchd, /<key>StartCalendarInterval<\/key>/);
+  assert.doesNotMatch(launchd, /<key>Hour<\/key>/);
+  assert.match(launchd, /<key>Minute<\/key>\s*<integer>15<\/integer>/);
+});
+
 test("sync-builders rejects empty builders when planned tasks are unaccounted", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-unaccounted-empty-sync-"));
   const payloadFile = join(tmp, "library-agent-sync.json");

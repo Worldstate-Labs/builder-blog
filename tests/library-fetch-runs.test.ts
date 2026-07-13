@@ -1216,16 +1216,20 @@ test("builders page mounts the fetch log inside the sync header section", () => 
 
 test("source sync log tabs default to FollowBrief before Agent", () => {
   const tabs = source("src/components/SourceSyncLogTabs.tsx");
+  const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
 
   assert.match(tabs, /role="tablist"/);
   assert.match(tabs, /useState<SyncLogTab>\("cloud"\)/);
-  assert.match(tabs, /FollowBrief sync log[\s\S]*Agent sync log/);
-  assert.doesNotMatch(tabs, /Agent fetch log|Cloud fetch log|Local Agent fetch log/);
+  assert.match(tabs, /FollowBrief fetch log[\s\S]*Agent fetch log/);
+  assert.doesNotMatch(tabs, /FollowBrief sync log|Agent sync log|Cloud fetch log|Local Agent fetch log/);
   assert.doesNotMatch(tabs, /Latest submission/);
   assert.match(tabs, /source\.deadlineStatus === "ON_TIME"/);
   assert.match(tabs, /On time sources/);
   assert.match(tabs, /onTimeSourceLabel/);
-  assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*Submitted sources[\s\S]*On time sources/);
+  assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*FollowBrief sources[\s\S]*On time sources/);
+  assert.match(tabs, /No FollowBrief fetching yet/);
+  assert.match(sourceLogItem, /Latest FollowBrief fetch log/);
+  assert.doesNotMatch(tabs, /No cloud fetch submissions yet|Submit sources to Cloud|Submitted sources|Latest cloud fetch log/);
   assert.match(tabs, /<FetchLogPanel/);
   assert.match(tabs, /<UserCloudFetchLogPanel/);
   assert.doesNotMatch(tabs, /actions/);

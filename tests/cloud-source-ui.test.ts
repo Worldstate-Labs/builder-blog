@@ -22,10 +22,10 @@ test("Fetch sources dialog defaults to FollowBrief runtime before frequency and 
   assert.match(skillPromptActions, /defaultRuntimeTypeForContext\(context\)/);
   assert.match(skillPromptActions, /<option value="cloud">FollowBrief<\/option>/);
   assert.match(skillPromptActions, /<option value="local">Your agent<\/option>/);
-  assert.match(skillPromptActions, /CLOUD_FREQUENCY_OPTIONS[\s\S]*Every day[\s\S]*Every week/);
+  assert.match(skillPromptActions, /CLOUD_FREQUENCY_OPTIONS[\s\S]*Daily[\s\S]*Weekly/);
   assert.match(skillPromptActions, /runtimeType === "cloud"[\s\S]*\/api\/cloud-library\/source-submissions/);
   assert.match(skillPromptActions, /const cloudSubmitLabel =/);
-  assert.match(skillPromptActions, /"Submitting"/);
+  assert.match(skillPromptActions, /"Asking FollowBrief"/);
   assert.match(skillPromptActions, /runtimeType === "local"[\s\S]*cron-parallel-workers/);
   assert.match(skillPromptActions, /runtimeType === "local"[\s\S]*cron-runtime/);
   assert.match(skillPromptActions, /runtimeType === "local"[\s\S]*cron-fetch-days/);
@@ -54,8 +54,13 @@ test("cloud submit reminds the user before overwriting a prior submission and re
   assert.match(skillPromptActions, /hasActiveSubmission/);
   assert.match(skillPromptActions, /cloudExisting/);
   // Shows an overwrite reminder and switches the primary button label.
-  assert.match(skillPromptActions, /already submitted/i);
-  assert.match(skillPromptActions, /Overwrite & submit/);
+  assert.match(skillPromptActions, /already asked FollowBrief to fetch/i);
+  assert.match(skillPromptActions, /Replace FollowBrief request/);
+  assert.match(skillPromptActions, /Fetch with FollowBrief/);
+  assert.match(skillPromptActions, /Ask FollowBrief to fetch and summarize sources in your library\./);
+  assert.match(skillPromptActions, /Could not ask FollowBrief to fetch these sources\./);
+  assert.match(skillPromptActions, /FollowBrief will fetch/);
+  assert.doesNotMatch(skillPromptActions, /Submit a request for FollowBrief|Could not submit sources to FollowBrief|Submitted \$\{body\?\.sourcesSubmitted|Overwrite & submit/);
 });
 
 test("Stop fetching dialog lets users choose local or cloud fetch without stopping the admin worker host", () => {
@@ -75,6 +80,9 @@ test("Stop fetching dialog lets users choose local or cloud fetch without stoppi
   assert.match(stopDialog, /name="stop-fetch-target"/);
   assert.match(stopDialog, /Your agent/);
   assert.match(stopDialog, /FollowBrief/);
+  assert.match(stopDialog, /Stop FollowBrief fetching for your sources\./);
+  assert.match(stopDialog, /No FollowBrief fetching is active\./);
   assert.match(stopDialog, /disabled=\{!canStopLocal \|\| submitting\}/);
   assert.match(stopDialog, /disabled=\{!canStopCloud \|\| submitting\}/);
+  assert.doesNotMatch(stopDialog, /Stop cloud fetching|cloud source submissions|queued cloud fetches/);
 });

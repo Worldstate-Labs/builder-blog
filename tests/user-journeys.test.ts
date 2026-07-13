@@ -537,7 +537,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /CLOUD_SOURCE_SUBMISSION_LIMIT/);
   assert.match(skillPromptActions, /CloudSourceSelectionField/);
   assert.match(skillPromptActions, /cloud-submit-source-list/);
-  assert.match(skillPromptActions, /You can submit up to \$\{CLOUD_SOURCE_SUBMISSION_LIMIT\} sources/);
+  assert.match(skillPromptActions, /You can choose up to \$\{CLOUD_SOURCE_SUBMISSION_LIMIT\} sources for FollowBrief\./);
   assert.match(skillPromptActions, /builderIds: cloudSelectedBuilderIds/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.doesNotMatch(skillPromptActions, /Choose which Fetch sources runtime to stop/);
@@ -574,9 +574,10 @@ test("web app serves the agent skill and setup command", () => {
   // also pass cadence.
   assert.match(skillPromptActions, /CronConfigDialog/);
   assert.match(skillPromptActions, /FREQUENCY_OPTIONS/);
-  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "daily", label: "Every day" \}[\s\S]*\{ id: "weekly", label: "Every week" \}/);
+  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "1h", label: "Hourly" \}[\s\S]*\{ id: "daily", label: "Daily" \}[\s\S]*\{ id: "weekly", label: "Weekly" \}/);
+  assert.doesNotMatch(skillPromptActions, /Every day|Every week/);
   assert.doesNotMatch(skillPromptActions, /Every 30 minutes|Every hour|Every 12 hours/);
-  assert.doesNotMatch(skillPromptActions, /id: "30m"|id: "1h"|id: "12h"/);
+  assert.doesNotMatch(skillPromptActions, /id: "30m"|id: "12h"/);
   assert.match(skillPromptActions, /pickedFreq === "once"/);
   assert.match(skillPromptActions, /target: "once"/);
   assert.match(skillPromptActions, /runtime: pickedRuntime/);
@@ -612,7 +613,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /return context === "library" \? "cloud" : "local"/);
   assert.match(skillPromptActions, /function promptDialogDescription\(\s*context: SkillPromptContext,\s*runtimeType: RuntimeType = defaultRuntimeTypeForContext\(context\),\s*\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
-  assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
+  assert.match(skillPromptActions, /Ask FollowBrief to fetch and summarize sources in your library\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to build AI Brief\./);
   assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);
@@ -679,9 +680,10 @@ test("web app serves the agent skill and setup command", () => {
   // the setup prompt derives the concrete cron/launchd schedule from the
   // install-time anchor after validation succeeds.
   assert.match(skillJobRoute, /cronFrequencies/);
-  assert.match(skillJobRoute, /daily: \{ label: "every day" \}[\s\S]*weekly: \{ label: "every week" \}/);
+  assert.match(skillJobRoute, /"1h": \{ label: "Hourly" \}[\s\S]*daily: \{ label: "Daily" \}[\s\S]*weekly: \{ label: "Weekly" \}/);
+  assert.doesNotMatch(skillJobRoute, /every day|every week/);
   assert.doesNotMatch(skillJobRoute, /every 30 minutes|every hour|every 12 hours|every 3 hours|every 6 hours/);
-  assert.doesNotMatch(skillJobRoute, /"30m"|"1h"|"3h"|"6h"|"12h"/);
+  assert.doesNotMatch(skillJobRoute, /"30m"|"3h"|"6h"|"12h"/);
   assert.match(skillJobRoute, /new Set\(\["claude", "codex", "hermes", "openclaw"\]\)/);
   assert.match(skillJobRoute, /hermes: "Hermes"/);
   assert.match(skillPromptActions, /id: "hermes"/);
@@ -690,8 +692,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /openclaw: "OpenClaw"/);
   assert.match(skillPromptActions, /id: "openclaw"/);
   assert.match(skillPromptActions, /label: "OpenClaw"/);
-  assert.match(skillPromptActions, /Every day/);
-  assert.match(skillPromptActions, /Every week/);
+  assert.match(skillPromptActions, /Hourly/);
+  assert.match(skillPromptActions, /Daily/);
+  assert.match(skillPromptActions, /Weekly/);
   assert.doesNotMatch(skillPromptActions, /08:00|Mon 08:00/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
   assert.match(skillJobRoute, /boundedIntegerParam\(url\.searchParams, "days", 30, 1, 90\)/);

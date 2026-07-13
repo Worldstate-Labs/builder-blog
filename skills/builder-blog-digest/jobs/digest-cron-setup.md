@@ -120,7 +120,7 @@ they decline, stop and change nothing.
 
 On an override, do not unload the existing schedule here. Leave it loaded through
 the initial run and let step 7 replace it atomically (its install block boots
-out the old job, then bootstraps the new one) only after the initial run has passed —
+out the old job, enables its label, then bootstraps the new one) only after the initial run has passed —
 so a failed initial run never tears down a working schedule and leaves the account
 with none.
 
@@ -324,6 +324,7 @@ node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launch
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
 BOOTOUT_CODE="$?"
 node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason "exit_$BOOTOUT_CODE"
+launchctl enable "gui/$(id -u)/$LABEL"
 if launchctl bootstrap "gui/$(id -u)" "$PLIST"; then
   node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootstrap_succeeded --label "$LABEL" --plist-exists 1 --reason setup_install
 else
@@ -331,7 +332,6 @@ else
   node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootstrap_failed --label "$LABEL" --plist-exists 1 --reason "exit_$BOOTSTRAP_CODE"
   exit "$BOOTSTRAP_CODE"
 fi
-launchctl enable "gui/$(id -u)/$LABEL"
 launchctl print "gui/$(id -u)/$LABEL" | grep -E "state =|program ="
 ```
 

@@ -2550,14 +2550,21 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "일회성",
     es: "Una vez",
   },
-  "Every day": {
+  "Hourly": {
+    "zh-CN": "每小时",
+    "zh-TW": "每小時",
+    ja: "毎時",
+    ko: "매시간",
+    es: "Cada hora",
+  },
+  "Daily": {
     "zh-CN": "每天",
     "zh-TW": "每天",
     ja: "毎日",
     ko: "매일",
     es: "Cada día",
   },
-  "Every week": {
+  "Weekly": {
     "zh-CN": "每周",
     "zh-TW": "每週",
     ja: "毎週",

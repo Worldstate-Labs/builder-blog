@@ -113,6 +113,13 @@ function CloudSourceLogDetail({
   showSubmitters: boolean;
   source: CloudSourceLogSource;
 }) {
+  const latestFetchLabel = showSubmitters ? "Latest cloud fetch log" : "Latest FollowBrief fetch log";
+  const taskDetailsLabel = showSubmitters
+    ? "Latest cloud source task details"
+    : "Latest FollowBrief source task details";
+  const noFetchMessage = showSubmitters
+    ? "No cloud fetch run has handled this source yet."
+    : "No FollowBrief fetch has handled this source yet.";
   const mappedPosts = useMemo(
     () =>
       source.latestRunTask?.posts.map((post, index) =>
@@ -125,10 +132,10 @@ function CloudSourceLogDetail({
     <div className="cloud-source-detail user-cloud-source-detail">
       {showSubmitters ? <Submitters source={source} /> : null}
 
-      <p className="cloud-source-detail-label">Latest cloud fetch log</p>
+      <p className="cloud-source-detail-label">{latestFetchLabel}</p>
       {source.latestRunTask ? (
         <div className="user-cloud-run-task">
-          <div className="cloud-fetch-log-task-facts" aria-label="Latest cloud source task details">
+          <div className="cloud-fetch-log-task-facts" aria-label={taskDetailsLabel}>
             <span>
               <strong>Status</strong>
               {source.latestRunTask.status}
@@ -151,11 +158,11 @@ function CloudSourceLogDetail({
               ))}
             </ul>
           ) : (
-            <CloudSourceLifecycle task={source.latestRunTask} />
+            <CloudSourceLifecycle showAdminCopy={showSubmitters} task={source.latestRunTask} />
           )}
         </div>
       ) : (
-        <p className="cron-field-hint">No cloud fetch run has handled this source yet.</p>
+        <p className="cron-field-hint">{noFetchMessage}</p>
       )}
 
       <p className="cloud-source-detail-label">Recent posts</p>
@@ -196,7 +203,13 @@ function Submitters({ source }: { source: CloudSourceLogSource }) {
   );
 }
 
-function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
+function CloudSourceLifecycle({
+  showAdminCopy,
+  task,
+}: {
+  showAdminCopy: boolean;
+  task: CloudFetchRunLogTask;
+}) {
   const status = task.status.toLowerCase();
   const failed = status === "failed";
   const running = status === "running";
@@ -241,7 +254,9 @@ function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
       meta: task.durationMs != null ? formatDuration(task.durationMs) : undefined,
       children: noPosts ? (
         <p className="sync-panel-task-note">
-          Cloud worker fetched this source but generated 0 post tasks.
+          {showAdminCopy
+            ? "Cloud worker fetched this source but generated 0 post tasks."
+            : "FollowBrief fetched this source but found no new post tasks."}
         </p>
       ) : undefined,
     },
@@ -274,7 +289,10 @@ function CloudSourceLifecycle({ task }: { task: CloudFetchRunLogTask }) {
   ];
 
   return (
-    <ol aria-label="Cloud source fetch lifecycle" className="sync-panel-lifecycle user-cloud-source-lifecycle">
+    <ol
+      aria-label={showAdminCopy ? "Cloud source fetch lifecycle" : "FollowBrief source fetch lifecycle"}
+      className="sync-panel-lifecycle user-cloud-source-lifecycle"
+    >
       {steps.map((step, index) => (
         <li key={step.key} className="sync-panel-lifecycle-item">
           <details className={`sync-panel-lifecycle-step is-${step.tone}`} open={Boolean(step.children)}>

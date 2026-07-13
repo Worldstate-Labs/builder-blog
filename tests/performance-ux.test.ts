@@ -1021,7 +1021,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /return context === "library" \? "cloud" : "local"/);
   assert.match(skillPromptActions, /function promptDialogDescription\(\s*context: SkillPromptContext,\s*runtimeType: RuntimeType = defaultRuntimeTypeForContext\(context\),\s*\)/);
   assert.match(skillPromptActions, /Copy instructions for your agent to fetch sources in your library\./);
-  assert.match(skillPromptActions, /Submit a request for FollowBrief to fetch sources in your library\./);
+  assert.match(skillPromptActions, /Ask FollowBrief to fetch and summarize sources in your library\./);
   assert.match(skillPromptActions, /Copy instructions for your agent to build AI Brief\./);
   assert.match(skillPromptActions, />\s*Agent\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, />\s*Runtime\s*<\/label>/);

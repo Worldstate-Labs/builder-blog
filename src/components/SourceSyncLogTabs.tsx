@@ -60,7 +60,7 @@ export function SourceSyncLogTabs({
             tabIndex={selected === "cloud" ? 0 : -1}
             type="button"
           >
-            FollowBrief sync log
+            FollowBrief fetch log
           </button>
           <button
             aria-controls="source-sync-local-log-panel"
@@ -72,7 +72,7 @@ export function SourceSyncLogTabs({
             tabIndex={selected === "local" ? 0 : -1}
             type="button"
           >
-            Agent sync log
+            Agent fetch log
           </button>
         </div>
       </div>
@@ -119,7 +119,7 @@ function UserCloudFetchLogPanel({
   return (
     <section className="fb-panel digest-updates-panel user-cloud-fetch-log">
       <div className="source-fetch-overview">
-        <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Cloud fetch details">
+        <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="FollowBrief fetch details">
           <SourceFetchMetaItem
             label="Fetch frequency"
             value={frequencyLabel(cloudLog.frequency)}
@@ -129,7 +129,7 @@ function UserCloudFetchLogPanel({
             value={cloudLog.summaryLanguage ? displayLanguagePreference(cloudLog.summaryLanguage) : "N/A"}
           />
           <SourceFetchMetaItem
-            label="Submitted sources"
+            label="FollowBrief sources"
             value={`${cloudLog.submittedSourceCount} ${sourceLabel}`}
           />
           <SourceFetchMetaItem
@@ -141,8 +141,8 @@ function UserCloudFetchLogPanel({
 
       {cloudLog.sources.length === 0 ? (
         <p className="cron-field-hint">
-          No cloud fetch submissions yet. Submit sources to Cloud from your source library to track
-          their cloud fetch status here.
+          No FollowBrief fetching yet. Ask FollowBrief to fetch sources from your library to track
+          their status here.
         </p>
       ) : (
         <ul className="cloud-source-list user-cloud-source-list">
@@ -183,7 +183,7 @@ function toUserCloudSourceLogItem(source: UserCloudFetchSourceLog): CloudSourceL
     statusChipClassName: deadlineStatusClass(source.deadlineStatus),
     metaItems: [
       frequencyLabel(source.frequency),
-      <>submitted <RelativeTime value={source.submittedAt} /></>,
+      <>added <RelativeTime value={source.submittedAt} /></>,
       <>
         latest fetch{" "}
         <RelativeTime

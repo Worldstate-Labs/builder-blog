@@ -318,10 +318,12 @@ export async function GET(request: Request, { params }: Params) {
   // metadata; the concrete cron/launchd schedule is generated on the user's
   // machine from the install-time anchor after validation succeeds.
   const cronFrequencies: Record<string, { label: string }> = {
-    daily: { label: "every day" },
-    weekly: { label: "every week" },
+    "1h": { label: "Hourly" },
+    daily: { label: "Daily" },
+    weekly: { label: "Weekly" },
   };
   const cronIntervalMinutes: Record<string, string> = {
+    "1h": "60",
     daily: "1440",
     weekly: "10080",
   };

@@ -53,7 +53,7 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string }[] = [
 
 // Cron cadence. `id` values match the server whitelist in the
 // jobs/[job]/skill.md route, which maps each to a fixed cron expression.
-type CronFrequency = "daily" | "weekly";
+type CronFrequency = "1h" | "daily" | "weekly";
 type ScheduleFrequency = "once" | CronFrequency;
 // `overrideFetched` = one-time re-fetch/reuse behavior. Cron schedules never
 // carry it because recurring jobs should keep normal incremental boundaries.
@@ -109,7 +109,7 @@ function promptDialogDescription(
 ) {
   if (context === "library") {
     return runtimeType === "cloud"
-      ? "Submit a request for FollowBrief to fetch sources in your library."
+      ? "Ask FollowBrief to fetch and summarize sources in your library."
       : "Copy instructions for your agent to fetch sources in your library.";
   }
   return "Copy instructions for your agent to build AI Brief.";
@@ -154,8 +154,9 @@ async function copyTextToClipboard(text: string) {
 
 const FREQUENCY_CHOICES: { id: ScheduleFrequency; label: string }[] = [
   { id: "once", label: "One-time" },
-  { id: "daily", label: "Every day" },
-  { id: "weekly", label: "Every week" },
+  { id: "1h", label: "Hourly" },
+  { id: "daily", label: "Daily" },
+  { id: "weekly", label: "Weekly" },
 ];
 
 const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: ScheduleFrequency; label: string }[]> = {
@@ -163,8 +164,8 @@ const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: ScheduleFrequency; lab
   digest: FREQUENCY_CHOICES,
 };
 const CLOUD_FREQUENCY_OPTIONS: { id: "day" | "week"; label: string }[] = [
-  { id: "day", label: "Every day" },
-  { id: "week", label: "Every week" },
+  { id: "day", label: "Daily" },
+  { id: "week", label: "Weekly" },
 ];
 
 const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
@@ -625,7 +626,7 @@ export function SkillPromptActions({
         if (!response.ok) {
           setStatus({
             kind: "error",
-            text: body?.error ?? "Could not stop cloud fetching.",
+            text: body?.error ?? "Could not stop FollowBrief fetching.",
           });
           return false;
         }
@@ -633,7 +634,7 @@ export function SkillPromptActions({
         setOptimisticCloudActive(false);
         setStatus({
           kind: "info",
-          text: `Cloud fetching stopped for ${body?.stoppedSources ?? 0} source${
+          text: `FollowBrief fetching stopped for ${body?.stoppedSources ?? 0} source${
             body?.stoppedSources === 1 ? "" : "s"
           }.`,
         });
@@ -641,7 +642,7 @@ export function SkillPromptActions({
         router.refresh();
         return true;
       } catch {
-        setStatus({ kind: "error", text: "Could not stop cloud fetching." });
+        setStatus({ kind: "error", text: "Could not stop FollowBrief fetching." });
         return false;
       }
     }
@@ -938,8 +939,8 @@ function StopScheduleDialog({
                   <span className="cron-check-name">FollowBrief</span>
                   <span className="cron-field-hint">
                     {canStopCloud
-                      ? "Stop cloud fetching for your submitted sources."
-                      : "No FollowBrief Fetch sources submission is active."}
+                      ? "Stop FollowBrief fetching for your sources."
+                      : "No FollowBrief fetching is active."}
                   </span>
                 </span>
               </label>
@@ -951,7 +952,7 @@ function StopScheduleDialog({
               <dd>
                 {showFetchTargetPicker
                   ? effectiveSelectedTarget === "cloud"
-                    ? "FollowBrief Fetch sources"
+                    ? "FollowBrief fetching"
                     : "Your agent Fetch sources"
                   : scheduleName}
               </dd>
@@ -982,7 +983,7 @@ function StopScheduleDialog({
             ) : (
               <div className="stop-schedule-detail">
                 <dt>Effect</dt>
-                <dd>Deactivate your cloud source submissions and cancel queued cloud fetches.</dd>
+                <dd>Stop FollowBrief fetching and cancel queued fetches.</dd>
               </div>
             )}
           </dl>
@@ -1285,9 +1286,9 @@ function CloudSourceSelectionField({
         </span>
       </div>
       <p className="cron-field-hint">
-        {`You can submit up to ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources to Cloud.`}
+        {`You can choose up to ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources for FollowBrief.`}
       </p>
-      <div className="cloud-submit-source-list" role="group" aria-label="Cloud sources to submit">
+      <div className="cloud-submit-source-list" role="group" aria-label="Sources for FollowBrief">
         {sources.map((source) => {
           const checked = selectedSet.has(source.id);
           const disabled = !checked && selectedCount >= CLOUD_SOURCE_SUBMISSION_LIMIT;
@@ -1394,10 +1395,10 @@ function CronConfigDialog({
   // One submission per user: when a prior submission exists, the submit becomes
   // an explicit overwrite.
   const cloudSubmitLabel = submitting
-    ? "Submitting"
+    ? "Asking FollowBrief"
     : cloudExisting?.hasActiveSubmission
-      ? "Overwrite & submit"
-      : "Submit";
+      ? "Replace FollowBrief request"
+      : "Fetch with FollowBrief";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -1425,7 +1426,7 @@ function CronConfigDialog({
   }, [onCancel]);
 
   // Load the user's existing cloud submission so we can warn before overwriting.
-  // Failures degrade silently: no notice, button stays "Submit".
+  // Failures degrade silently: no notice, button stays on the default FollowBrief action.
   useEffect(() => {
     if (!open || !isCloudMode) return;
     let cancelled = false;
@@ -1454,7 +1455,7 @@ function CronConfigDialog({
     setCloudSubmitMessage(null);
     try {
       if (cloudSelectionInvalid) {
-        setError(`Select 1-${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to FollowBrief.`);
+        setError(`Select 1-${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before asking FollowBrief to fetch.`);
         setSubmitting(false);
         return;
       }
@@ -1493,13 +1494,13 @@ function CronConfigDialog({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          setError(body?.error ?? "Could not submit sources to FollowBrief.");
+          setError(body?.error ?? "Could not ask FollowBrief to fetch these sources.");
           setSubmitting(false);
           return;
         }
         const replaced = Number(body?.supersededSources ?? 0);
         setCloudSubmitMessage(
-          `Submitted ${body?.sourcesSubmitted ?? 0} source${body?.sourcesSubmitted === 1 ? "" : "s"} and ${body?.tasksSubmitted ?? 0} task${body?.tasksSubmitted === 1 ? "" : "s"}.${
+          `FollowBrief will fetch ${body?.sourcesSubmitted ?? 0} source${body?.sourcesSubmitted === 1 ? "" : "s"} and prepare ${body?.tasksSubmitted ?? 0} task${body?.tasksSubmitted === 1 ? "" : "s"}.${
             replaced > 0 ? ` Replaced ${replaced} previous source${replaced === 1 ? "" : "s"}.` : ""
           }`,
         );
@@ -1596,7 +1597,7 @@ function CronConfigDialog({
 
           {isCloudMode && cloudExisting?.hasActiveSubmission ? (
             <p className="cron-field-hint" role="status">
-              {`You already submitted ${cloudExisting.activeSourceCount} ${
+              {`You already asked FollowBrief to fetch ${cloudExisting.activeSourceCount} ${
                 cloudExisting.activeSourceCount === 1 ? "source" : "sources"
               }${
                 cloudExisting.frequency === "DAILY"
@@ -1604,7 +1605,7 @@ function CronConfigDialog({
                   : cloudExisting.frequency === "WEEKLY"
                     ? " · Weekly"
                     : ""
-              }. Submitting again overwrites your previous submission — switching language deactivates the old language.`}
+              }. Asking again replaces the previous FollowBrief request. Switching language deactivates the old language.`}
             </p>
           ) : null}
 

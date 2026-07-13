@@ -10833,7 +10833,7 @@ async function cronGuard(args) {
 
 function normalizeScheduleFrequency(value) {
   const key = String(value || "").trim();
-  if (["daily", "weekly"].includes(key)) return key;
+  if (["1h", "daily", "weekly"].includes(key)) return key;
   return "daily";
 }
 
@@ -10842,6 +10842,8 @@ function cronExpressionForAnchor(freq, anchorDate) {
   const hour = anchorDate.getHours();
   const weekday = anchorDate.getDay();
   switch (freq) {
+    case "1h":
+      return `${minute} * * * *`;
     case "daily":
       return `${minute} ${hour} * * *`;
     case "weekly":
@@ -10872,6 +10874,8 @@ function launchdScheduleForAnchor(freq, anchorDate) {
   const dict = (fields) => launchdScheduleDict(fields, "  ");
 
   switch (freq) {
+    case "1h":
+      return `${start}\n${dict([["Minute", minute]])}`;
     case "daily":
       return `${start}\n${dict([["Hour", hour], ["Minute", minute]])}`;
     case "weekly":
