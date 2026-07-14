@@ -19,8 +19,18 @@ import {
 import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { prisma } from "@/lib/prisma";
 import { formatZodError } from "@/lib/zod-error";
+import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
 
 export const dynamic = "force-dynamic";
+
+const CLOUD_SYNC_TRANSACTION_OPTIONS = {
+  maxWait: 60_000,
+  timeout: 60_000,
+} as const;
+
+class CloudSyncWriteError extends Error {
+  readonly statusCode = 400;
+}
 
 export async function POST(request: Request) {
   const admin = await requireCloudFetchAdmin(request);
@@ -33,98 +43,143 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const config = await loadCloudFetchSyncConfig(prisma);
   const taskIds = [...new Set(parsed.data.taskResults.map((taskResult) => taskResult.cloudSourceTaskId))];
-  const cloudTasks = await prisma.cloudSourceTask.findMany({
-    where: { id: { in: taskIds } },
-    select: { id: true, builderId: true, summaryLanguage: true },
-  });
-  const cloudTaskById = new Map(cloudTasks.map((task) => [task.id, task]));
-  const missingTaskIds = taskIds.filter((taskId) => !cloudTaskById.has(taskId));
-  if (missingTaskIds.length > 0) {
-    return NextResponse.json(
-      {
-        error: `Cloud source task was not found: ${missingTaskIds.slice(0, 3).join(", ")}`,
-      },
-      { status: 400 },
-    );
-  }
-  const allowedBuilderIds = new Set(cloudTasks.map((task) => task.builderId));
-  const summaryLanguageByBuilderId = new Map(
-    cloudTasks.map((task) => [task.builderId, task.summaryLanguage]),
-  );
-  const feedSync = emptyBuilderFeedSyncResult();
-  for (const [summaryLanguage, builders] of groupBuildersBySummaryLanguage({
-    builders: parsed.data.builders,
-    fallbackSummaryLanguage: parsed.data.summaryLanguage,
-    summaryLanguageByBuilderId,
-  })) {
-    await syncBuilderFeedItems({
-      prisma,
-      builders,
-      force: parsed.data.force,
-      fetchTool: parsed.data.fetchTool,
-      summaryLanguage,
-      mode: {
-        type: "existing",
-        allowedBuilderIds,
-      },
-      result: feedSync,
-    });
+  let core;
+  try {
+    core = await prisma.$transaction(async (tx) => {
+      const run = await tx.cloudFetchRun.findFirst({
+        where: { id: parsed.data.cloudRunId, status: "RUNNING" },
+        select: { id: true, startedAt: true },
+      });
+      if (!run) throw new StaleWorkerWriteError();
+      await lockResetFenceForWorker(tx, run.startedAt);
+
+      const runningTasks = await tx.cloudFetchRunTask.findMany({
+        where: {
+          runId: run.id,
+          cloudSourceTaskId: { in: taskIds },
+          status: "RUNNING",
+        },
+        select: { cloudSourceTaskId: true },
+      });
+      const runningTaskIds = new Set(
+        runningTasks.map((task) => task.cloudSourceTaskId),
+      );
+      if (taskIds.some((taskId) => !runningTaskIds.has(taskId))) {
+        throw new StaleWorkerWriteError();
+      }
+
+      const config = await loadCloudFetchSyncConfig(tx);
+      const cloudTasks = await tx.cloudSourceTask.findMany({
+        where: { id: { in: taskIds } },
+        select: { id: true, builderId: true, summaryLanguage: true },
+      });
+      const cloudTaskById = new Map(cloudTasks.map((task) => [task.id, task]));
+      const missingTaskIds = taskIds.filter((taskId) => !cloudTaskById.has(taskId));
+      if (missingTaskIds.length > 0) {
+        throw new CloudSyncWriteError(
+          `Cloud source task was not found: ${missingTaskIds.slice(0, 3).join(", ")}`,
+        );
+      }
+
+      const allowedBuilderIds = new Set(cloudTasks.map((task) => task.builderId));
+      const summaryLanguageByBuilderId = new Map(
+        cloudTasks.map((task) => [task.builderId, task.summaryLanguage]),
+      );
+      const feedSync = emptyBuilderFeedSyncResult();
+      for (const [summaryLanguage, builders] of groupBuildersBySummaryLanguage({
+        builders: parsed.data.builders,
+        fallbackSummaryLanguage: parsed.data.summaryLanguage,
+        summaryLanguageByBuilderId,
+      })) {
+        await syncBuilderFeedItems({
+          prisma: tx,
+          builders,
+          force: parsed.data.force,
+          fetchTool: parsed.data.fetchTool,
+          summaryLanguage,
+          mode: {
+            type: "existing",
+            allowedBuilderIds,
+          },
+          result: feedSync,
+        });
+      }
+
+      const taskResults = [];
+      let runSummary = null;
+      const successfulLanguages = new Set<string>();
+      const successfulBuilderIds = new Set<string>();
+      const authoritativeTaskResults = reconcileTaskResultsWithFeedSync({
+        taskResults: parsed.data.taskResults,
+        itemResults: feedSync.itemResults,
+        taskOutcomes: parsed.data.taskOutcomes,
+      });
+      for (const taskResult of authoritativeTaskResults) {
+        const syncedTask = await applyCloudFetchTaskSyncResult({
+          prisma: tx,
+          config,
+          result: {
+            runId: parsed.data.cloudRunId,
+            cloudSourceTaskId: taskResult.cloudSourceTaskId,
+            status: taskResult.status,
+            plannedPosts: taskResult.plannedPosts,
+            syncedPosts: taskResult.syncedPosts,
+            failedPosts: taskResult.failedPosts,
+            actualDurationSeconds: taskResult.actualDurationSeconds,
+            failureReason: taskResult.failureReason,
+            usageTokens: taskResult.usageTokens,
+            usageCostUsd: taskResult.usageCostUsd,
+            details: taskResult.details,
+          },
+        });
+        taskResults.push({
+          ...syncedTask.sourceTaskResult,
+          builderId: syncedTask.builderId,
+          summaryLanguage: syncedTask.summaryLanguage,
+        });
+        runSummary = {
+          runStatus: syncedTask.runStatus,
+          tasksSucceeded: syncedTask.tasksSucceeded,
+          tasksFailed: syncedTask.tasksFailed,
+          tasksRunning: syncedTask.tasksRunning,
+          usageTokens: syncedTask.usageTokens,
+          usageCostUsd: syncedTask.usageCostUsd,
+        };
+        if (taskResult.status === "succeeded") {
+          successfulBuilderIds.add(syncedTask.builderId);
+          successfulLanguages.add(syncedTask.summaryLanguage);
+        }
+      }
+
+      return {
+        feedSync,
+        taskResults,
+        runSummary,
+        successfulBuilderIds: [...successfulBuilderIds],
+        successfulLanguages: [...successfulLanguages],
+      };
+    }, CLOUD_SYNC_TRANSACTION_OPTIONS);
+  } catch (error) {
+    if (error instanceof StaleWorkerWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    if (error instanceof CloudSyncWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    throw error;
   }
 
-  const taskResults = [];
-  let runSummary = null;
-  const successfulLanguages = new Set<string>();
   const projectionErrors = [];
-  const authoritativeTaskResults = reconcileTaskResultsWithFeedSync({
-    taskResults: parsed.data.taskResults,
-    itemResults: feedSync.itemResults,
-    taskOutcomes: parsed.data.taskOutcomes,
-  });
-  for (const taskResult of authoritativeTaskResults) {
-    const syncedTask = await applyCloudFetchTaskSyncResult({
-      prisma,
-      config,
-      result: {
-        runId: parsed.data.cloudRunId,
-        cloudSourceTaskId: taskResult.cloudSourceTaskId,
-        status: taskResult.status,
-        plannedPosts: taskResult.plannedPosts,
-        syncedPosts: taskResult.syncedPosts,
-        failedPosts: taskResult.failedPosts,
-        actualDurationSeconds: taskResult.actualDurationSeconds,
-        failureReason: taskResult.failureReason,
-        usageTokens: taskResult.usageTokens,
-        usageCostUsd: taskResult.usageCostUsd,
-        details: taskResult.details,
-      },
-    });
-    taskResults.push({
-      ...syncedTask.sourceTaskResult,
-      builderId: syncedTask.builderId,
-      summaryLanguage: syncedTask.summaryLanguage,
-    });
-    runSummary = {
-      runStatus: syncedTask.runStatus,
-      tasksSucceeded: syncedTask.tasksSucceeded,
-      tasksFailed: syncedTask.tasksFailed,
-      tasksRunning: syncedTask.tasksRunning,
-      usageTokens: syncedTask.usageTokens,
-      usageCostUsd: syncedTask.usageCostUsd,
-    };
-    if (taskResult.status === "succeeded") {
-      try {
-        await upsertSourceCandidateFromCloudBuilder(syncedTask.builderId, prisma);
-        successfulLanguages.add(syncedTask.summaryLanguage);
-      } catch (error) {
-        projectionErrors.push(projectionError("source_candidate", syncedTask.builderId, error));
-      }
+  for (const builderId of core.successfulBuilderIds) {
+    try {
+      await upsertSourceCandidateFromCloudBuilder(builderId, prisma);
+    } catch (error) {
+      projectionErrors.push(projectionError("source_candidate", builderId, error));
     }
   }
-
   const hubLanguages = [];
-  for (const summaryLanguage of successfulLanguages) {
+  for (const summaryLanguage of core.successfulLanguages) {
     try {
       await syncCloudLanguageLibraryHub(summaryLanguage, prisma);
       hubLanguages.push(summaryLanguage);
@@ -136,18 +191,18 @@ export async function POST(request: Request) {
   return NextResponse.json({
     status: "ok",
     cloudRunId: parsed.data.cloudRunId,
-    runSummary,
-    taskResults,
+    runSummary: core.runSummary,
+    taskResults: core.taskResults,
     projections: {
       hubLanguages,
       errors: projectionErrors,
     },
     builders: parsed.data.builders.length,
     feedSync: {
-      builders: feedSync.builders,
-      feedItems: feedSync.feedItems,
-      skippedFeedItems: feedSync.skippedFeedItems,
-      itemResults: feedSync.itemResults,
+      builders: core.feedSync.builders,
+      feedItems: core.feedSync.feedItems,
+      skippedFeedItems: core.feedSync.skippedFeedItems,
+      itemResults: core.feedSync.itemResults,
     },
     taskOutcomes: parsed.data.taskOutcomes.length,
     generatedAt: new Date().toISOString(),

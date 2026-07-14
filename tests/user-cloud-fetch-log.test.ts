@@ -101,6 +101,43 @@ test("serializeUserCloudFetchLog marks a daily source on time inside its current
   assert.equal(result.sources[0]?.postCount, 7);
 });
 
+test("serializeUserCloudFetchLog advances the user deadline after a recurring success", () => {
+  const result = serializeUserCloudFetchLog(
+    [
+      submission({
+        lastSuccessAt: new Date("2026-07-04T10:00:00.000Z"),
+        mustSucceedBy: new Date("2026-07-05T10:00:00.000Z"),
+        runTasks: [],
+      }),
+    ],
+    new Date("2026-07-04T12:00:00.000Z"),
+  );
+
+  assert.equal(result.sources[0]?.mustSucceedBy, "2026-07-05T10:00:00.000Z");
+  assert.equal(result.sources[0]?.deadlineStatus, "ON_TIME");
+});
+
+test("serializeUserCloudFetchLog keeps a weekly user's deadline when a shared task runs daily", () => {
+  const result = serializeUserCloudFetchLog(
+    [
+      {
+        ...submission({
+          effectiveFrequency: "DAILY",
+          lastSuccessAt: new Date("2026-07-04T10:00:00.000Z"),
+          mustSucceedBy: new Date("2026-07-05T10:00:00.000Z"),
+          runTasks: [],
+        }),
+        frequency: "WEEKLY",
+        submittedAt: new Date("2026-07-01T10:00:00.000Z"),
+      },
+    ],
+    new Date("2026-07-06T10:00:00.000Z"),
+  );
+
+  assert.equal(result.sources[0]?.mustSucceedBy, "2026-07-11T10:00:00.000Z");
+  assert.equal(result.sources[0]?.deadlineStatus, "ON_TIME");
+});
+
 test("serializeUserCloudFetchLog marks a source missed after its deadline passes without success", () => {
   const result = serializeUserCloudFetchLog(
     [

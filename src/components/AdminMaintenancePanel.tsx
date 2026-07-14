@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RotateCcw, Trash2 } from "lucide-react";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 
 type ResetSummary = {
   users: number;
@@ -12,6 +13,11 @@ type ResetSummary = {
   deletedDigestRuns: number;
   deletedDigestedItems: number;
   deletedAgentJobRuns: number;
+  resetCloudSourceTasks: number;
+  deletedCloudQueueItems: number;
+  deletedCloudRunTasks: number;
+  deletedCloudRuns: number;
+  deletedCloudAgentJobRuns: number;
 };
 
 export function AdminMaintenancePanel() {
@@ -53,6 +59,7 @@ export function AdminMaintenancePanel() {
           return;
         }
         setStatus(resetSummaryMessage(body.summary));
+        window.dispatchEvent(new Event(contentSyncStateChanged));
         closeDialog();
       } catch {
         setError("Could not reset fetch and brief state.");
@@ -69,7 +76,7 @@ export function AdminMaintenancePanel() {
             <h2 className="fb-section-heading">Admin maintenance</h2>
           </div>
           <p className="access-keys-desc">
-            Reset generated fetch and AI Brief state for every user while keeping
+            Reset all generated local and Cloud fetch and AI Brief state while keeping
             accounts, sources, subscriptions, reads, and favorites.
           </p>
         </div>
@@ -87,7 +94,7 @@ export function AdminMaintenancePanel() {
           type="button"
         >
           <Trash2 aria-hidden="true" />
-          Reset fetch and brief state
+          Reset all fetch and brief state
         </button>
       </div>
 
@@ -115,8 +122,8 @@ export function AdminMaintenancePanel() {
           <div>
             <h3 className="fb-section-heading">Reset generated state?</h3>
             <p className="settings-dialog-copy">
-              This deletes fetched posts, fetch logs, AI Briefs, brief
-              logs, brief inclusion markers, and related Local Agent run records
+              This deletes local and Cloud fetched posts, queues, fetch logs, AI Briefs,
+              brief logs, brief inclusion markers, and related Agent run records
               for every user. Sources and subscriptions are kept. Type RESET to
               continue.
             </p>
@@ -157,9 +164,13 @@ function resetSummaryMessage(summary: ResetSummary | null | undefined) {
   const logCount =
     summary.deletedLibraryFetchRuns +
     summary.deletedDigestRuns +
-    summary.deletedAgentJobRuns;
+    summary.deletedAgentJobRuns +
+    summary.deletedCloudRuns +
+    summary.deletedCloudAgentJobRuns;
+  const cloudWorkCount =
+    summary.deletedCloudQueueItems + summary.deletedCloudRunTasks;
   return [
     `Reset ${summary.resetBuilders} sources for ${summary.users} users.`,
-    `Deleted ${summary.deletedFeedItems} posts, ${summary.deletedDigests} briefs, ${logCount} logs.`,
+    `Deleted ${summary.deletedFeedItems} posts, ${summary.deletedDigests} briefs, ${logCount} logs, and ${cloudWorkCount} Cloud work records.`,
   ].join(" ");
 }

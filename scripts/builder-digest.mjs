@@ -6989,6 +6989,14 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   }
 
   for (const shard of shardResults) {
+    if (
+      shard.checkpoint &&
+      shard.payload &&
+      !(shard.payload.builders ?? []).some((builder) => (builder?.items ?? []).length > 0) &&
+      !(shard.payload.taskOutcomes ?? []).some((outcome) => outcome?.fetchTaskId)
+    ) {
+      continue;
+    }
     const workerId = shard.workerId ?? shardPlanByResultFile.get(shard.name)?.workerId ?? workerIdFromShardResultName(shard.name);
     if (!shard.payload) {
       shardSummaries.push({
@@ -7048,6 +7056,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       taskOutcomes.push(stampOutcomeWorkerId(outcome, workerId));
       outcomeCount += 1;
     }
+    if (shard.checkpoint && itemCount === 0 && outcomeCount === 0) continue;
     const sourceShard = sourceShardFromResultName(shard.name);
     const plan = shardPlanByResultFile.get(shard.name);
     shardSummaries.push({
@@ -7376,17 +7385,26 @@ function progressFromCheckpointOutcome(outcome, entry, plannedById) {
   if (isCandidateDiscoveryOutcome(outcome)) return null;
   const planned = plannedById.get(id) ?? {};
   const status = outcome.status ?? "done";
+  const reason = outcome.failureReason ?? outcome.reason;
   return {
     ...planned,
     id,
     status,
     phase: "completed",
-    message: outcome.failureReason
-      ? `${String(status).replace(/_/g, " ")}: ${outcome.failureReason}`
+    message: reason
+      ? `${String(status).replace(/_/g, " ")}: ${reason}`
       : `${String(status).replace(/_/g, " ")}.`,
-    reason: outcome.failureReason,
+    reason,
     workerId: planned.workerId ?? entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
   };
+}
+
+export function coalesceCheckpointProgressUpdates(updates) {
+  const byTaskId = new Map();
+  for (const update of updates) {
+    if (update?.id) byTaskId.set(update.id, update);
+  }
+  return [...byTaskId.values()];
 }
 
 function latestProgressTask(tasks) {
@@ -7448,8 +7466,9 @@ async function emitCheckpointProgress(args) {
     }
   }
 
+  const coalescedUpdates = coalesceCheckpointProgressUpdates(updates);
   let changed = false;
-  for (const update of updates) {
+  for (const update of coalescedUpdates) {
     changed = upsertFetchProgressTask(progress, update) || changed;
   }
   const counters = progress.counters ?? {};
@@ -7459,7 +7478,7 @@ async function emitCheckpointProgress(args) {
     progress.counters = { ...counters, tasksPlanned, tasksDone };
     changed = true;
   }
-  const latest = latestProgressTask(updates);
+  const latest = latestProgressTask(coalescedUpdates);
   if (latest) {
     progress.current = {
       ...(progress.current ?? {}),
@@ -9830,7 +9849,7 @@ async function fetchCloudLibrary(args) {
 
   const lease = await postJson(
     `${config.appUrl}/api/admin/cloud-fetch/lease`,
-    { limit: cloudLimit, leaseOwner },
+    { limit: cloudLimit, leaseOwner, jobRunId: envJobRunId() },
     config.token,
     { label: "cloud fetch lease", retries: 1 },
   );
@@ -9975,7 +9994,7 @@ async function leaseCloudBuilders(args) {
   }
   const result = await postJson(
     `${config.appUrl}/api/admin/cloud-fetch/lease`,
-    { limit, leaseOwner },
+    { limit, leaseOwner, jobRunId: envJobRunId() },
     config.token,
     {
       label: "cloud fetch lease",

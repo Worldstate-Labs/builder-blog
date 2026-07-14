@@ -11,6 +11,7 @@ import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { MAX_FETCH_TASK_ID } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
+import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
 
 // Mirror of the POST route's cap — details still has to fit comfortably.
 // A full library run's fetch log holds a per-post outcome row for every
@@ -135,61 +136,75 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const run = await prisma.libraryFetchRun.findFirst({
-    where: { id, userId: user.id },
-    select: {
-      id: true,
-      buildersAttempted: true,
-      details: true,
-      errorCount: true,
-      itemsFetched: true,
-      status: true,
-      userActionsCount: true,
-    },
-  });
-  if (!run) {
+  let result;
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      const run = await tx.libraryFetchRun.findFirst({
+        where: { id, userId: user.id },
+        select: {
+          id: true,
+          buildersAttempted: true,
+          details: true,
+          errorCount: true,
+          itemsFetched: true,
+          status: true,
+          userActionsCount: true,
+          createdAt: true,
+        },
+      });
+      if (!run) return null;
+      await lockResetFenceForWorker(tx, run.createdAt);
+
+      // mergeFetchRunDetails preserves statuses in TERMINAL_FETCH_TASK_STATUSES
+      // when a late plannedTasks patch arrives after terminal outcomes.
+      const { details: mergedDetails, matched, planned } = mergeFetchRunDetails(run.details, {
+        plannedTasks: parsed.data.plannedTasks ?? [],
+        taskOutcomes: parsed.data.taskOutcomes ?? [],
+        workerUsages: parsed.data.workerUsages ?? [],
+      });
+      const compacted = compactFetchRunDetailsForStorage(mergedDetails, MAX_DETAILS_BYTES);
+      const details = compacted.details;
+      const nextStatus = deriveFetchRunStatusFromDetails(
+        { status: run.status as "ok" | "partial" | "failed", errorCount: run.errorCount },
+        details,
+      );
+      const plannedPosts = countPlannedPostTasks(details);
+      const summary = fetchRunPatchSummary({
+        buildersAttempted: run.buildersAttempted,
+        errorCount: nextStatus.errorCount,
+        itemsFetched: run.itemsFetched,
+        plannedPosts,
+        userActionsCount: run.userActionsCount,
+      });
+
+      if (compacted.bytes > MAX_DETAILS_BYTES) {
+        return { error: "details payload too large; cap at 1000 KB", statusCode: 400 } as const;
+      }
+
+      await tx.libraryFetchRun.update({
+        where: { id: run.id },
+        data: {
+          details: details as object,
+          errorCount: nextStatus.errorCount,
+          status: nextStatus.status,
+          summary,
+          tasksGenerated: plannedPosts,
+        },
+      });
+
+      return { id: run.id, matched, planned, status: nextStatus.status };
+    });
+  } catch (error) {
+    if (error instanceof StaleWorkerWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    throw error;
+  }
+  if (!result) {
     return NextResponse.json({ error: "Fetch run not found" }, { status: 404 });
   }
-
-  // mergeFetchRunDetails preserves terminal statuses from TERMINAL_FETCH_TASK_STATUSES
-  // when a late plannedTasks patch arrives after synced/skipped/failed outcomes.
-  const { details: mergedDetails, matched, planned } = mergeFetchRunDetails(run.details, {
-    plannedTasks: parsed.data.plannedTasks ?? [],
-    taskOutcomes: parsed.data.taskOutcomes ?? [],
-    workerUsages: parsed.data.workerUsages ?? [],
-  });
-  const compacted = compactFetchRunDetailsForStorage(mergedDetails, MAX_DETAILS_BYTES);
-  const details = compacted.details;
-  const nextStatus = deriveFetchRunStatusFromDetails(
-    { status: run.status as "ok" | "partial" | "failed", errorCount: run.errorCount },
-    details,
-  );
-  const plannedPosts = countPlannedPostTasks(details);
-  const summary = fetchRunPatchSummary({
-    buildersAttempted: run.buildersAttempted,
-    errorCount: nextStatus.errorCount,
-    itemsFetched: run.itemsFetched,
-    plannedPosts,
-    userActionsCount: run.userActionsCount,
-  });
-
-  if (compacted.bytes > MAX_DETAILS_BYTES) {
-    return NextResponse.json(
-      { error: "details payload too large; cap at 1000 KB" },
-      { status: 400 },
-    );
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: result.statusCode });
   }
-
-  await prisma.libraryFetchRun.update({
-    where: { id: run.id },
-    data: {
-      details: details as object,
-      errorCount: nextStatus.errorCount,
-      status: nextStatus.status,
-      summary,
-      tasksGenerated: plannedPosts,
-    },
-  });
-
-  return NextResponse.json({ id: run.id, matched, planned, status: nextStatus.status });
+  return NextResponse.json(result);
 }

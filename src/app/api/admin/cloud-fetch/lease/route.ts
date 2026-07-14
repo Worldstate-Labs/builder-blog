@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
 import { leaseCloudFetchTasks } from "@/lib/cloud-source-scheduler";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,32 @@ export async function POST(request: Request) {
   const leaseOwner = typeof body?.leaseOwner === "string" && body.leaseOwner.trim()
     ? body.leaseOwner.trim().slice(0, 160)
     : `admin:${admin.user.id}`;
+  const jobRunId = typeof body?.jobRunId === "string" ? body.jobRunId.trim().slice(0, 160) : "";
+  if (!jobRunId) {
+    return NextResponse.json(
+      { error: "jobRunId is required; start a new cloud worker with the current runner." },
+      { status: 409 },
+    );
+  }
+  const jobRun = await prisma.agentJobRun.findFirst({
+    where: {
+      userId: admin.user.id,
+      jobType: "cloud-library-fetch",
+      instanceId: jobRunId,
+    },
+    select: { createdAt: true },
+  });
+  if (!jobRun) {
+    return NextResponse.json(
+      { error: "This cloud worker lease was reset. Start a new cloud worker." },
+      { status: 409 },
+    );
+  }
 
-  const result = await leaseCloudFetchTasks({ limit, leaseOwner });
+  const result = await leaseCloudFetchTasks({
+    limit,
+    leaseOwner,
+    workerStartedAt: jobRun.createdAt,
+  });
   return NextResponse.json(result);
 }

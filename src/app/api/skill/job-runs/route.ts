@@ -5,6 +5,11 @@ import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 import { canonicalFetchTaskId } from "@/lib/fetch-task-id";
+import {
+  lockResetFenceForNewWorker,
+  lockResetFenceForWorker,
+  StaleWorkerWriteError,
+} from "@/lib/reset-fence";
 
 const MAX_DETAILS_BYTES = 50_000;
 const MAX_SUMMARY_CHARS = 500;
@@ -12,6 +17,10 @@ const TERMINAL_AGENT_JOB_STATUSES = new Set(["succeeded", "failed", "timed_out",
 const FETCH_PROGRESS_SOURCE_LIMIT = 32;
 const FETCH_PROGRESS_TASK_LIMIT = 24;
 const FETCH_PROGRESS_RECENT_EVENT_LIMIT = 20;
+
+class AgentJobWriteError extends Error {
+  readonly statusCode = 400;
+}
 
 const AGENT_JOB_STAGE_RANK: Record<string, number> = {
   starting: 0,
@@ -359,81 +368,103 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const existingRun = await prisma.agentJobRun.findFirst({
-    where: {
-      userId: user.id,
-      jobType: parsed.data.jobType,
-      instanceId: parsed.data.instanceId,
-    },
-    select: { id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true },
-  });
-  const now = new Date();
-  const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
-  let detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
-  if (isTerminalAgentJobStatus(parsed.data.status)) {
-    detailsValue = finalizeAgentJobRunProgress(
-      detailsValue,
-      parsed.data.status,
-      parsed.data.stage,
-      parsed.data.summary,
-      (finishedAt ?? now).toISOString(),
-    );
-  }
-  let detailsJson = "";
+  const startedAt = new Date(parsed.data.startedAt);
+  let record;
   try {
-    detailsJson = JSON.stringify(detailsValue);
-  } catch {
-    return NextResponse.json({ error: "details must be JSON-serializable" }, { status: 400 });
-  }
-  if (Buffer.byteLength(detailsJson, "utf8") > MAX_DETAILS_BYTES) {
-    return NextResponse.json({ error: "details payload too large; cap at 50 KB" }, { status: 400 });
-  }
-
-  const mergedStage = mergeAgentJobRunStage(existingRun?.stage, parsed.data.stage ?? null);
-  const mergedSummary = mergeAgentJobRunSummary(
-    existingRun?.stage ?? null,
-    existingRun?.summary ?? null,
-    parsed.data.stage ?? null,
-    parsed.data.summary ?? null,
-  );
-  const incomingRunData = {
-    status: parsed.data.status,
-    scheduleJob: parsed.data.scheduleJob ?? null,
-    expectedAt: parsed.data.expectedAt ? new Date(parsed.data.expectedAt) : null,
-    heartbeatAt: parsed.data.heartbeatAt ? new Date(parsed.data.heartbeatAt) : now,
-    finishedAt,
-    exitCode: parsed.data.exitCode ?? null,
-    signal: parsed.data.signal ?? null,
-    runtime: parsed.data.runtime ?? null,
-    runnerPid: parsed.data.runnerPid ?? null,
-    workerPid: parsed.data.workerPid ?? null,
-    hostname: parsed.data.hostname ?? request.headers.get("x-machine-hostname"),
-    platform: parsed.data.platform ?? request.headers.get("x-machine-platform"),
-    stage: mergedStage,
-    summary: mergedSummary,
-    details: detailsValue as object,
-  };
-  const runData = existingRun && isTerminalAgentJobStatus(existingRun.status)
-    ? mergeAgentJobRunLifecycle(existingRun, incomingRunData)
-    : incomingRunData;
-
-  const record = existingRun
-    ? await prisma.agentJobRun.update({
-        where: { id: existingRun.id },
-        data: runData,
-        select: { id: true, instanceId: true, status: true },
-      })
-    : await prisma.agentJobRun.create({
-        data: {
+    record = await prisma.$transaction(async (tx) => {
+      const existingRun = await tx.agentJobRun.findFirst({
+        where: {
           userId: user.id,
           jobType: parsed.data.jobType,
-          trigger: parsed.data.trigger,
           instanceId: parsed.data.instanceId,
-          startedAt: new Date(parsed.data.startedAt),
-          ...runData,
         },
-        select: { id: true, instanceId: true, status: true },
+        select: { id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true, createdAt: true },
       });
+      if (existingRun) {
+        await lockResetFenceForWorker(tx, existingRun.createdAt);
+      } else {
+        if (parsed.data.status !== "starting") {
+          throw new StaleWorkerWriteError();
+        }
+        await lockResetFenceForNewWorker(tx);
+      }
+      const now = new Date();
+      const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
+      let detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
+      if (isTerminalAgentJobStatus(parsed.data.status)) {
+        detailsValue = finalizeAgentJobRunProgress(
+          detailsValue,
+          parsed.data.status,
+          parsed.data.stage,
+          parsed.data.summary,
+          (finishedAt ?? now).toISOString(),
+        );
+      }
+      let detailsJson = "";
+      try {
+        detailsJson = JSON.stringify(detailsValue);
+      } catch {
+        throw new AgentJobWriteError("details must be JSON-serializable");
+      }
+      if (Buffer.byteLength(detailsJson, "utf8") > MAX_DETAILS_BYTES) {
+        throw new AgentJobWriteError("details payload too large; cap at 50 KB");
+      }
+
+      const mergedStage = mergeAgentJobRunStage(existingRun?.stage, parsed.data.stage ?? null);
+      const mergedSummary = mergeAgentJobRunSummary(
+        existingRun?.stage ?? null,
+        existingRun?.summary ?? null,
+        parsed.data.stage ?? null,
+        parsed.data.summary ?? null,
+      );
+      const incomingRunData = {
+        status: parsed.data.status,
+        scheduleJob: parsed.data.scheduleJob ?? null,
+        expectedAt: parsed.data.expectedAt ? new Date(parsed.data.expectedAt) : null,
+        heartbeatAt: parsed.data.heartbeatAt ? new Date(parsed.data.heartbeatAt) : now,
+        finishedAt,
+        exitCode: parsed.data.exitCode ?? null,
+        signal: parsed.data.signal ?? null,
+        runtime: parsed.data.runtime ?? null,
+        runnerPid: parsed.data.runnerPid ?? null,
+        workerPid: parsed.data.workerPid ?? null,
+        hostname: parsed.data.hostname ?? request.headers.get("x-machine-hostname"),
+        platform: parsed.data.platform ?? request.headers.get("x-machine-platform"),
+        stage: mergedStage,
+        summary: mergedSummary,
+        details: detailsValue as object,
+      };
+      const runData = existingRun && isTerminalAgentJobStatus(existingRun.status)
+        ? mergeAgentJobRunLifecycle(existingRun, incomingRunData)
+        : incomingRunData;
+
+      return existingRun
+        ? tx.agentJobRun.update({
+            where: { id: existingRun.id },
+            data: runData,
+            select: { id: true, instanceId: true, status: true },
+          })
+        : tx.agentJobRun.create({
+            data: {
+              userId: user.id,
+              jobType: parsed.data.jobType,
+              trigger: parsed.data.trigger,
+              instanceId: parsed.data.instanceId,
+              startedAt,
+              ...runData,
+            },
+            select: { id: true, instanceId: true, status: true },
+          });
+    });
+  } catch (error) {
+    if (error instanceof StaleWorkerWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    if (error instanceof AgentJobWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ id: record.id, instanceId: record.instanceId, status: record.status });
 }

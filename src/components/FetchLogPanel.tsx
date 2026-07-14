@@ -14,7 +14,7 @@ import {
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { formatCount } from "@/components/Count";
 import { RelativeTime } from "@/components/RelativeTime";
-import { relativeTime } from "@/lib/relative-time";
+import { localizedRelativeTime } from "@/lib/relative-time";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import { RunUsageSummary } from "@/components/RunUsageSummary";
@@ -297,7 +297,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function formatRelative(iso: string): string {
-  return relativeTime(iso, Date.now());
+  const locale = typeof document === "undefined" ? "en-US" : document.documentElement.lang || "en-US";
+  return localizedRelativeTime(iso, Date.now(), locale);
 }
 
 function formatAbsolute(iso: string): string {
@@ -724,6 +725,28 @@ function mergeAgentJobRunLists(...runLists: AgentJobRunListItem[][]): AgentJobRu
   return Array.from(byId.values()).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
 }
 
+function reconcileLiveFetchRunLists(
+  current: LibraryFetchRunListItem[],
+  incoming: LibraryFetchRunListItem[],
+): LibraryFetchRunListItem[] {
+  if (incoming.length === 0) return [];
+  const currentIds = new Set(current.map((run) => run.id));
+  return incoming.some((run) => currentIds.has(run.id))
+    ? mergeFetchRunLists(current, incoming)
+    : incoming;
+}
+
+function reconcileLiveAgentJobRunLists(
+  current: AgentJobRunListItem[],
+  incoming: AgentJobRunListItem[],
+): AgentJobRunListItem[] {
+  if (incoming.length === 0) return [];
+  const currentIds = new Set(current.map((run) => run.id));
+  return incoming.some((run) => currentIds.has(run.id))
+    ? mergeAgentJobRunLists(current, incoming)
+    : incoming;
+}
+
 function oldestFetchHistoryCursor(
   runs: LibraryFetchRunListItem[],
   jobRuns: AgentJobRunListItem[],
@@ -886,6 +909,13 @@ function formatRunSyncSummary(done: number | undefined, total: number | undefine
   const synced = Math.max(0, done ?? 0);
   const planned = Math.max(0, total ?? 0, synced);
   return `${formatCount(synced)}/${formatCount(planned)} synced`;
+}
+
+function RunSyncSummary({ value }: { value: string }) {
+  const suffix = " synced";
+  return value.endsWith(suffix)
+    ? <>{value.slice(0, -suffix.length)} <span>synced</span></>
+    : <>{value}</>;
 }
 
 function hasFinalFetchTaskOutcomes(details: DetailsShape): boolean {
@@ -1174,10 +1204,10 @@ export function FetchLogPanel({
         });
         const changed = nextSignature !== livePayloadSignatureRef.current;
         livePayloadSignatureRef.current = nextSignature;
-        setRuns((current) => mergeFetchRunLists(current, bodyRuns));
-        setCronRuns((current) => mergeFetchRunLists(current, bodyCronRuns));
-        setJobRuns((current) => mergeAgentJobRunLists(current, bodyJobRuns));
-        setScheduledJobRuns((current) => mergeAgentJobRunLists(current, bodyScheduledJobRuns));
+        setRuns((current) => reconcileLiveFetchRunLists(current, bodyRuns));
+        setCronRuns((current) => reconcileLiveFetchRunLists(current, bodyCronRuns));
+        setJobRuns((current) => reconcileLiveAgentJobRunLists(current, bodyJobRuns));
+        setScheduledJobRuns((current) => reconcileLiveAgentJobRunLists(current, bodyScheduledJobRuns));
         setHasMoreFetchHistory(Boolean(body?.hasMore ?? bodyRuns.length === FETCH_LOG_PAGE_SIZE));
         setCronJob(body?.cronJob ?? null);
         if (changed) requestWorkspaceRefresh("agent-fetch-log");
@@ -1736,7 +1766,7 @@ function FetchTimelineRow({
             {hydrated ? formatRelative(entry.time) : formatAbsolute(entry.time)}
           </time>
           {entry.syncSummary ? (
-            <span className="mono sync-panel-slot-row-note">{entry.syncSummary}</span>
+            <span className="mono sync-panel-slot-row-note"><RunSyncSummary value={entry.syncSummary} /></span>
           ) : null}
         </div>
       </div>

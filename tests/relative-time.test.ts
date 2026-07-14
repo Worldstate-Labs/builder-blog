@@ -3,9 +3,15 @@ import test from "node:test";
 import {
   formatAbsoluteDate,
   formatAbsoluteDateTime,
+  localizedRelativeTime,
   relativeTime,
   toEpochMs,
 } from "../src/lib/relative-time";
+
+test("localizedRelativeTime formats fetch-log timestamps in the UI locale", () => {
+  assert.equal(localizedRelativeTime(NOW - 4 * MINUTE, NOW, "zh-CN"), "4分钟前");
+  assert.equal(localizedRelativeTime(NOW + 40 * MINUTE, NOW, "zh-CN"), "40分钟后");
+});
 
 const NOW = Date.UTC(2026, 5, 19, 12, 0, 0); // Fri Jun 19 2026 12:00:00 UTC
 const SECOND = 1_000;

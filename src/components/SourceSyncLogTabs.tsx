@@ -209,11 +209,11 @@ function UserCloudFetchLogPanel({
           />
           <SourceFetchMetaItem
             label="FollowBrief sources"
-            value={`${cloudLog.submittedSourceCount} ${sourceLabel}`}
+            value={<>{cloudLog.submittedSourceCount} <span>{sourceLabel}</span></>}
           />
           <SourceFetchMetaItem
             label="On time sources"
-            value={`${onTimeSourceCount} ${onTimeSourceLabel}`}
+            value={<>{onTimeSourceCount} <span>{onTimeSourceLabel}</span></>}
           />
         </dl>
       </div>

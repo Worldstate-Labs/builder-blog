@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
+import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
 
 // Cap details payload at ~1000 KB serialized. A full library run legitimately
 // stores a per-post outcome row for every planned task plus the per-source
@@ -75,6 +76,13 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (!parsed.data.jobRunId) {
+    return NextResponse.json(
+      { error: "jobRunId is required; start a new fetch with the current runner." },
+      { status: 409 },
+    );
+  }
+  const jobRunId = parsed.data.jobRunId;
 
   const rawDetailsValue = parsed.data.details ?? {};
   const compactedDetails = rawDetailsValue && typeof rawDetailsValue === "object" && !Array.isArray(rawDetailsValue)
@@ -104,28 +112,48 @@ export async function POST(request: Request) {
   // column non-negative even if clocks moved backwards.
   const durationMs = Math.max(0, finishedAt.getTime() - startedAt.getTime());
 
-  const record = await prisma.libraryFetchRun.create({
-    data: {
-      userId: user.id,
-      startedAt,
-      finishedAt,
-      durationMs,
-      status: parsed.data.status,
-      source: parsed.data.source,
-      jobRunId: parsed.data.jobRunId ?? null,
-      cliVersion: parsed.data.cliVersion ?? null,
-      hostname: parsed.data.hostname ?? null,
-      platform: parsed.data.platform ?? null,
-      buildersAttempted: parsed.data.buildersAttempted,
-      itemsFetched: parsed.data.itemsFetched,
-      tasksGenerated: parsed.data.tasksGenerated,
-      userActionsCount: parsed.data.userActionsCount,
-      errorCount: parsed.data.errorCount,
-      summary: parsed.data.summary,
-      details: detailsValue as object,
-    },
-    select: { id: true },
-  });
+  let record;
+  try {
+    record = await prisma.$transaction(async (tx) => {
+      const jobRun = await tx.agentJobRun.findFirst({
+        where: {
+          userId: user.id,
+          jobType: "library-fetch",
+          instanceId: jobRunId,
+        },
+        select: { createdAt: true },
+      });
+      if (!jobRun) throw new StaleWorkerWriteError();
+      await lockResetFenceForWorker(tx, jobRun.createdAt);
+      return tx.libraryFetchRun.create({
+        data: {
+          userId: user.id,
+          startedAt,
+          finishedAt,
+          durationMs,
+          status: parsed.data.status,
+          source: parsed.data.source,
+          jobRunId,
+          cliVersion: parsed.data.cliVersion ?? null,
+          hostname: parsed.data.hostname ?? null,
+          platform: parsed.data.platform ?? null,
+          buildersAttempted: parsed.data.buildersAttempted,
+          itemsFetched: parsed.data.itemsFetched,
+          tasksGenerated: parsed.data.tasksGenerated,
+          userActionsCount: parsed.data.userActionsCount,
+          errorCount: parsed.data.errorCount,
+          summary: parsed.data.summary,
+          details: detailsValue as object,
+        },
+        select: { id: true },
+      });
+    });
+  } catch (error) {
+    if (error instanceof StaleWorkerWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ id: record.id });
 }

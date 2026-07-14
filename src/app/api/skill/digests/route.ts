@@ -9,6 +9,7 @@ import {
 } from "@/lib/language-preference";
 import { cleanStructuredDigestItems } from "@/lib/structured-digest";
 import { getUserFromBearer } from "@/lib/tokens";
+import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
 
 const DIGEST_SYNC_TRANSACTION_OPTIONS = {
   maxWait: 10_000,
@@ -20,7 +21,8 @@ export async function POST(request: Request) {
     return await syncDigest(request);
   } catch (error) {
     console.error("Brief sync failed", error);
-    return NextResponse.json(digestSyncErrorResponse(error), { status: 500 });
+    const status = error instanceof StaleWorkerWriteError ? error.statusCode : 500;
+    return NextResponse.json(digestSyncErrorResponse(error), { status });
   }
 }
 
@@ -63,6 +65,20 @@ async function syncDigest(request: Request) {
         externalId: item.post.externalId,
         feedItemId: item.post.feedItemId,
       }));
+  if (!parsed.data.runId) {
+    return NextResponse.json(
+      { error: "A prepared Brief run is required for sync." },
+      { status: 409 },
+    );
+  }
+  if (!parsed.data.jobRunId) {
+    return NextResponse.json(
+      { error: "jobRunId is required; start a new Brief with the current runner." },
+      { status: 409 },
+    );
+  }
+  const runId = parsed.data.runId;
+  const jobRunId = parsed.data.jobRunId;
 
   // `regenerate` never deletes history. Its only meaning is "let posts the user
   // already had digested be reused in a new digest", which the prepare/context
@@ -76,28 +92,50 @@ async function syncDigest(request: Request) {
   // presents, computed from the real candidates rather than the cosmetic 24h
   // label the CLI sends. Falls back to that label (or now-24h..now) only when
   // none of the structured items has a dated persisted feed item.
-  let periodStart = parsed.data.periodStart
-    ? new Date(parsed.data.periodStart)
-    : new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  let periodEnd = parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : now;
   const presentedFeedItemIds = digestedItems
     .map((item) => item.feedItemId)
     .filter((id): id is string => Boolean(id));
-  if (presentedFeedItemIds.length > 0) {
-    const dated = await prisma.feedItem.findMany({
-      where: { id: { in: presentedFeedItemIds }, publishedAt: { not: null } },
-      select: { publishedAt: true },
-    });
-    const times = dated
-      .map((row) => row.publishedAt?.getTime())
-      .filter((t): t is number => typeof t === "number");
-    if (times.length > 0) {
-      periodStart = new Date(Math.min(...times));
-      periodEnd = new Date(Math.max(...times));
-    }
-  }
 
   const digest = await prisma.$transaction(async (tx) => {
+    const digestRun = await tx.digestRun.findFirst({
+      where: {
+        id: runId,
+        userId: user.id,
+        status: "prepared",
+        jobRunId,
+      },
+      select: { id: true },
+    });
+    if (!digestRun) throw new StaleWorkerWriteError();
+    const jobRun = await tx.agentJobRun.findFirst({
+      where: {
+        userId: user.id,
+        jobType: "digest-build",
+        instanceId: jobRunId,
+      },
+      select: { createdAt: true },
+    });
+    if (!jobRun) throw new StaleWorkerWriteError();
+    await lockResetFenceForWorker(tx, jobRun.createdAt);
+
+    let periodStart = parsed.data.periodStart
+      ? new Date(parsed.data.periodStart)
+      : new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    let periodEnd = parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : now;
+    if (presentedFeedItemIds.length > 0) {
+      const dated = await tx.feedItem.findMany({
+        where: { id: { in: presentedFeedItemIds }, publishedAt: { not: null } },
+        select: { publishedAt: true },
+      });
+      const times = dated
+        .map((row) => row.publishedAt?.getTime())
+        .filter((time): time is number => typeof time === "number");
+      if (times.length > 0) {
+        periodStart = new Date(Math.min(...times));
+        periodEnd = new Date(Math.max(...times));
+      }
+    }
+
     const createdDigest = await tx.digest.create({
       data: {
         userId: user.id,
@@ -146,35 +184,24 @@ async function syncDigest(request: Request) {
       });
     }
 
+    await tx.digestRun.update({
+      where: { id: digestRun.id },
+      data: {
+        status: "synced",
+        syncedAt: now,
+        digestId: createdDigest.id,
+        digestTitle: createdDigest.title,
+        language,
+        jobRunId,
+        includedCount: digestedItems.length,
+        includedKeys: digestedItems.map(
+          (item) => `${item.entityId}:${item.kind}:${item.externalId}`,
+        ),
+      },
+    });
+
     return createdDigest;
   }, DIGEST_SYNC_TRANSACTION_OPTIONS);
-
-  // Complete the diagnostic funnel: link this digest back to the DigestRun that
-  // recorded the candidate pool at `prepare`. includedKeys marks which
-  // candidates the editorial step actually presented (the rest are "eligible but
-  // dropped"). Scoped to this user and best-effort — a stale/missing runId must
-  // not fail the sync the user cares about.
-  if (parsed.data.runId) {
-    try {
-      await prisma.digestRun.updateMany({
-        where: { id: parsed.data.runId, userId: user.id },
-        data: {
-          status: "synced",
-          syncedAt: now,
-          digestId: digest.id,
-          digestTitle: digest.title,
-          language,
-          jobRunId: parsed.data.jobRunId ?? undefined,
-          includedCount: digestedItems.length,
-          includedKeys: digestedItems.map(
-            (item) => `${item.entityId}:${item.kind}:${item.externalId}`,
-          ),
-        },
-      });
-    } catch (error) {
-      console.error("Failed to link DigestRun on digest sync", error);
-    }
-  }
 
   return NextResponse.json({ status: "ok", digest });
 }

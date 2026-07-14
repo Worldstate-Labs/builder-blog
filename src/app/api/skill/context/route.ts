@@ -17,6 +17,7 @@ import {
   digestMaxPostAgeDays,
 } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
+import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
 import { getUserFromBearer } from "@/lib/tokens";
 import {
   displayLanguagePreference,
@@ -317,8 +318,9 @@ export async function GET(request: Request) {
   // Diagnostic funnel snapshot. Record this preparation as a DigestRun so the
   // digest log can later show the candidate pool, window, and source coverage
   // the agent was handed — the input that the produced digest is judged
-  // against. The subsequent `sync` call links back via this run id. Best-effort:
-  // a logging failure must never break the digest the user actually wants.
+  // against. The subsequent `sync` call links back via this run id. This row is
+  // also the durable RESET lease, so preparation must fail closed if it cannot
+  // be created.
   const entityDisplayNameById = new Map<string, string>();
   for (const sub of subscriptions) {
     const ent = sub.builder?.entity;
@@ -343,28 +345,53 @@ export async function GET(request: Request) {
   }));
   let runId: string | null = null;
   if (isDigest && !dryRun) {
+    if (!jobRunId) {
+      return NextResponse.json(
+        { error: "jobRunId is required; start a new Brief with the current runner." },
+        { status: 409 },
+      );
+    }
     try {
-      const digestRun = await prisma.digestRun.create({
-        data: {
-          userId: user.id,
-          status: "prepared",
-          source: runSource,
-          jobRunId,
-          preparedAt: now,
-          lookbackCutoff,
-          maxPostAgeDays: digestMaxPostAgeDays(preference),
-          lastDigestAt: lastDigest?.createdAt ?? null,
-          regenerate,
-          subscriptionCount: subscribedEntityIds.length,
-          candidateCount: items.length,
-          candidates: candidateSnapshot,
-          subscriptions: subscriptionSnapshot,
-        },
-        select: { id: true },
+      const digestRun = await prisma.$transaction(async (tx) => {
+        const jobRun = await tx.agentJobRun.findFirst({
+          where: {
+            userId: user.id,
+            jobType: "digest-build",
+            instanceId: jobRunId,
+          },
+          select: { createdAt: true },
+        });
+        if (!jobRun) throw new StaleWorkerWriteError();
+        await lockResetFenceForWorker(tx, jobRun.createdAt);
+        return tx.digestRun.create({
+          data: {
+            userId: user.id,
+            status: "prepared",
+            source: runSource,
+            jobRunId,
+            preparedAt: now,
+            lookbackCutoff,
+            maxPostAgeDays: digestMaxPostAgeDays(preference),
+            lastDigestAt: lastDigest?.createdAt ?? null,
+            regenerate,
+            subscriptionCount: subscribedEntityIds.length,
+            candidateCount: items.length,
+            candidates: candidateSnapshot,
+            subscriptions: subscriptionSnapshot,
+          },
+          select: { id: true },
+        });
       });
       runId = digestRun.id;
     } catch (error) {
+      if (error instanceof StaleWorkerWriteError) {
+        return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      }
       console.error("Failed to record DigestRun for digest prepare", error);
+      return NextResponse.json(
+        { error: "Could not prepare a durable Brief run. Start a new run." },
+        { status: 500 },
+      );
     }
   }
 

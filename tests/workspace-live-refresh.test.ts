@@ -130,6 +130,16 @@ test("all live logs use 5 second running and 15 second idle polling", () => {
   }
 });
 
+test("agent fetch live refresh removes rows deleted by RESET", () => {
+  const panel = source("src/components/FetchLogPanel.tsx");
+
+  assert.match(panel, /function reconcileLiveFetchRunLists/);
+  assert.match(panel, /function reconcileLiveAgentJobRunLists/);
+  assert.match(panel, /setRuns\(\(current\) => reconcileLiveFetchRunLists\(current, bodyRuns\)\)/);
+  assert.match(panel, /setJobRuns\(\(current\) => reconcileLiveAgentJobRunLists\(current, bodyJobRuns\)\)/);
+  assert.match(panel, /if \(incoming\.length === 0\) return \[\]/);
+});
+
 test("client-owned feed state reconciles after server freshness changes", () => {
   const following = source("src/components/FollowingRecommendationSection.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");

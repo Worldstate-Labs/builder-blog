@@ -1515,6 +1515,7 @@ test("web app serves the agent skill and setup command", () => {
   // deterministic fetch-personal command.
   assert.match(runner, /fetch-force/);
   assert.match(runner, /read_pin fetch-force/);
+  assert.match(runner, /1\|--force\) BUILDER_BLOG_FETCH_FORCE="--force"/);
   assert.match(runner, /BUILDER_BLOG_FETCH_FORCE="--force"/);
   assert.match(runner, /export BUILDER_BLOG_FETCH_FORCE/);
   assert.match(runner, /MAX_PARALLEL_WORKERS="\$\(read_pin parallel\)"/);

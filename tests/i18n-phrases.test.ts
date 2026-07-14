@@ -13,7 +13,13 @@ test("Sources page UI phrases translate while product and source names stay stab
       "Copy a prompt for your Local Agent to fetch and summarize sources in your own library.",
       "复制一段 prompt，让你的 Local Agent 抓取并总结自己信息源库里的信息源。",
     ],
+    [
+      "Choose FollowBrief or your own agent to fetch and summarize sources.",
+      "选择 FollowBrief 或你自己的智能体来抓取和总结信息源。",
+    ],
     ["Fetch frequency", "抓取频率"],
+    ["source", "个信息源"],
+    ["sources", "个信息源"],
     ["Language", "语言"],
     ["Latest fetch", "最近抓取"],
     ["Stopped", "已停止"],

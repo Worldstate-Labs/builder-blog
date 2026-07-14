@@ -150,10 +150,16 @@ function serializeUserCloudFetchSource(
     task?.lastSuccessAt ?? (latestLegacyFailureIsSkipped ? latestRunTask.finishedAt : null);
   const lastFailureAt = latestLegacyFailureIsSkipped ? null : task?.lastFailureAt ?? null;
   const lastFailureReason = latestLegacyFailureIsSkipped ? null : task?.lastFailureReason ?? null;
-  const userMustSucceedBy = submissionDeadline({
+  const firstUserDeadline = submissionDeadline({
     submittedAt: submission.submittedAt,
     frequency: submission.frequency,
   });
+  const recurringUserDeadline = effectiveLastSuccessAt
+    ? new Date(effectiveLastSuccessAt.getTime() + intervalMs(submission.frequency))
+    : null;
+  const userMustSucceedBy = recurringUserDeadline && recurringUserDeadline > firstUserDeadline
+    ? recurringUserDeadline
+    : firstUserDeadline;
   return {
     submissionId: submission.id,
     userBuilderId: submission.userBuilderId,

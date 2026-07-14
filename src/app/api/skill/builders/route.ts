@@ -21,8 +21,15 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { parseSkillBuilderSyncPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
+import type { Prisma } from "@prisma/client";
+import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
 
 type ItemResult = BuilderFeedSyncItemResult;
+
+const BUILDER_SYNC_TRANSACTION_OPTIONS = {
+  maxWait: 60_000,
+  timeout: 60_000,
+} as const;
 
 type BuilderSyncFetchRunPatch = {
   id: string;
@@ -45,6 +52,10 @@ function builderSyncErrorMessage(error: unknown): string {
 function builderSyncErrorStatus(error: unknown): number {
   const statusCode = error instanceof Error ? (error as Error & { statusCode?: unknown }).statusCode : null;
   return typeof statusCode === "number" && statusCode >= 400 && statusCode < 600 ? statusCode : 500;
+}
+
+function builderSyncTransactionError(message: string) {
+  return Object.assign(new Error(message), { statusCode: 500 });
 }
 
 export async function POST(request: Request) {
@@ -86,27 +97,42 @@ export async function POST(request: Request) {
   );
 
   try {
-    await syncBuilderFeedItems({
-      prisma,
-      builders: parsed.data.builders,
-      force: parsed.data.force,
-      fetchTool: parsed.data.fetchTool,
-      summaryLanguage: syncSummaryLanguage,
-      mode: {
-        type: "personal",
-        user,
-        userIsAdmin,
-      },
-      result: syncResult,
-    });
+    if (!parsed.data.fetchRun?.id) {
+      return NextResponse.json({ error: "An existing fetch run is required for builder sync." }, { status: 409 });
+    }
+    const fetchRunPatch = await prisma.$transaction(async (tx) => {
+      const run = await tx.libraryFetchRun.findFirst({
+        where: { id: parsed.data.fetchRun!.id, userId: user.id },
+        select: { id: true, details: true, createdAt: true },
+      });
+      if (!run) {
+        throw new StaleWorkerWriteError();
+      }
+      await lockResetFenceForWorker(tx, run.createdAt);
+      await syncBuilderFeedItems({
+        prisma: tx,
+        builders: parsed.data.builders,
+        force: parsed.data.force,
+        fetchTool: parsed.data.fetchTool,
+        summaryLanguage: syncSummaryLanguage,
+        mode: {
+          type: "personal",
+          user,
+          userIsAdmin,
+        },
+        result: syncResult,
+      });
 
-    const fetchRunPatch = await patchFetchRunForBuilderSync({
-      userId: user.id,
-      fetchRun: parsed.data.fetchRun,
-      itemResults,
-      builders: parsed.data.builders,
-      taskOutcomes: parsed.data.taskOutcomes,
-    });
+      return patchFetchRunForBuilderSync({
+        client: tx,
+        userId: user.id,
+        fetchRun: parsed.data.fetchRun,
+        itemResults,
+        builders: parsed.data.builders,
+        taskOutcomes: parsed.data.taskOutcomes,
+        existingRun: run,
+      });
+    }, BUILDER_SYNC_TRANSACTION_OPTIONS);
 
     let hubSync: { status: "ok" } | { status: "failed"; reason: string } = { status: "ok" };
     try {
@@ -137,6 +163,9 @@ export async function POST(request: Request) {
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
+    if (error instanceof StaleWorkerWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     return builderSyncFailureResponse({
       userId: user.id,
       fetchRun: parsed.data.fetchRun,
@@ -144,10 +173,10 @@ export async function POST(request: Request) {
       builders: parsed.data.builders,
       taskOutcomes: parsed.data.taskOutcomes,
       counters: {
-        builders: syncResult.builders,
-        feedItems: syncResult.feedItems,
-        skippedFeedItems: syncResult.skippedFeedItems,
-        subscriptions: syncResult.subscriptions,
+        builders: 0,
+        feedItems: 0,
+        skippedFeedItems: 0,
+        subscriptions: 0,
       },
       force: parsed.data.force,
       error,
@@ -276,23 +305,27 @@ function fetchRunOutcomesForBuilderSync({
 }
 
 async function patchFetchRunForBuilderSync({
+  client = prisma,
   userId,
   fetchRun,
   itemResults,
   builders,
   taskOutcomes,
+  existingRun,
 }: {
+  client?: Prisma.TransactionClient | typeof prisma;
   userId: string;
   fetchRun: BuilderSyncFetchRunPatch;
   itemResults: ItemResult[];
   builders: Array<{ items: Array<{ body?: string; summary?: string | null; rawJson?: unknown }> }>;
   taskOutcomes: BuilderSyncTaskOutcome[];
+  existingRun?: { id: string; details: unknown } | null;
 }) {
   if (!fetchRun?.id) return null;
 
   const outcomes = fetchRunOutcomesForBuilderSync({ itemResults, builders, taskOutcomes });
   try {
-    const run = await prisma.libraryFetchRun.findFirst({
+    const run = existingRun ?? await client.libraryFetchRun.findFirst({
       where: { id: fetchRun.id, userId },
       select: { id: true, details: true },
     });
@@ -306,10 +339,13 @@ async function patchFetchRunForBuilderSync({
     const compacted = compactFetchRunDetailsForStorage(merged.details, 1_000_000);
     if (compacted.bytes > 1_000_000) {
       console.error(`Fetch run ${fetchRun.id} details patch exceeded 1000 KB; leaving log unpatched.`);
+      if (existingRun) {
+        throw builderSyncTransactionError("Fetch run details patch exceeded 1000 KB.");
+      }
       return { status: "failed", reason: "details_too_large" };
     }
 
-    await prisma.libraryFetchRun.update({
+    await client.libraryFetchRun.update({
       where: { id: run.id },
       data: { details: compacted.details as object },
     });
@@ -320,6 +356,7 @@ async function patchFetchRunForBuilderSync({
       outcomes: outcomes.length,
     };
   } catch (error) {
+    if (existingRun) throw error;
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Failed to patch fetch run ${fetchRun.id} during builder sync: ${message}`);
     return { status: "failed", reason: message.slice(0, 300) };

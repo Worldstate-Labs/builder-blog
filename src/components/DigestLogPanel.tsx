@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
 import { RunUsageSummary } from "@/components/RunUsageSummary";
 import { useHydrated } from "@/components/ThemeToggle";
-import { relativeTime } from "@/lib/relative-time";
+import { localizedRelativeTime } from "@/lib/relative-time";
 import {
   contentSyncStateChanged,
   liveDataSignature,
@@ -55,7 +55,8 @@ import {
 } from "@/lib/scheduled-window-ui";
 
 function formatRelative(iso: string): string {
-  return relativeTime(iso, Date.now());
+  const locale = typeof document === "undefined" ? "en-US" : document.documentElement.lang || "en-US";
+  return localizedRelativeTime(iso, Date.now(), locale);
 }
 
 function formatAbsolute(iso: string): string {

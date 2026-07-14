@@ -287,6 +287,8 @@ test("builder sync endpoint durably patches fetch-run outcomes server-side", () 
   assert.match(buildersRoute, /builderSyncFailureResponse/);
   assert.match(buildersRoute, /catch \(error\)[\s\S]*builderSyncFailureResponse/);
   assert.match(buildersRoute, /patchFetchRunForBuilderSync[\s\S]*itemResults/);
+  assert.match(buildersRoute, /itemResults,\s*fetchRunPatch/);
+  assert.doesNotMatch(buildersRoute, /itemResults:\s*\[\]/);
 });
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
@@ -821,7 +823,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-slot-row-time"/);
   assert.match(panel, /className="mono sync-panel-slot-row-note"/);
   assert.match(panel, /\{entry\.syncSummary \? \(/);
-  assert.match(panel, /\{entry\.syncSummary\}<\/span>/);
+  assert.match(panel, /<RunSyncSummary value=\{entry\.syncSummary\} \/>/);
   assert.doesNotMatch(panel, /\{entry\.note\}<\/span>/);
   assert.doesNotMatch(panel, /sync-panel-chip-row/);
   assert.doesNotMatch(panel, /refreshes library posts/);

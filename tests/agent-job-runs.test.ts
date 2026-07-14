@@ -58,9 +58,13 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(route, /userId: user\.id,[\s\S]*jobType: parsed\.data\.jobType,[\s\S]*instanceId: parsed\.data\.instanceId/);
   assert.match(route, /mergeAgentJobRunLifecycle/);
   assert.match(route, /isTerminalAgentJobStatus/);
-  assert.match(route, /select: \{ id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true \}/);
+  assert.match(route, /select: \{ id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true, createdAt: true \}/);
   assert.match(route, /agentJobRun\.update/);
   assert.match(route, /agentJobRun\.create/);
+  assert.match(route, /parsed\.data\.status !== "starting"/);
+  assert.match(route, /lockResetFenceForNewWorker\(tx\)/);
+  assert.match(route, /lockResetFenceForWorker\(tx, existingRun\.createdAt\)/);
+  assert.doesNotMatch(route, /lockResetFenceForWorker\(tx, startedAt\)/);
   assert.doesNotMatch(route, /userId_instanceId/);
   assert.match(route, /MAX_DETAILS_BYTES = 50_000/);
 
@@ -87,6 +91,26 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CLAUDE_MODEL:-sonnet\}"/);
   assert.match(runner, /export BUILDER_BLOG_AGENT_MODEL/);
   assert.match(runner, /--usage-file/);
+  assert.match(runner, /if node "\$AGENT_DIR\/builder-digest\.mjs" job-run-update[\s\S]*if \[ "\$_status" = "starting" \]; then[\s\S]*refusing to start stale work[\s\S]*return 1/);
+  assert.match(runner, /if ! job_run_update starting "Runtime job accepted by local runner\." "runtime_job_started"; then[\s\S]*return 1[\s\S]*fi[\s\S]*run_job_payload &/);
+  assert.match(runner, /if ! job_run_update starting "Worker host accepted by local runner\." "worker_host_started"[\s\S]*clear_current_file[\s\S]*cleanup_job_tmp_dir killed "worker_host_lease_rejected"[\s\S]*return 1/);
+});
+
+test("server-issued job leases fence fetch writes without trusting runner clocks", () => {
+  const fetchRuns = source("src/app/api/skill/fetch-runs/route.ts");
+  const fetchRunPatch = source("src/app/api/skill/fetch-runs/[id]/route.ts");
+  const builders = source("src/app/api/skill/builders/route.ts");
+
+  assert.match(fetchRuns, /jobRunId[^\n]*required/i);
+  assert.match(fetchRuns, /jobType: "library-fetch"/);
+  assert.match(fetchRuns, /const jobRunId = parsed\.data\.jobRunId/);
+  assert.match(fetchRuns, /instanceId: jobRunId/);
+  assert.match(fetchRuns, /lockResetFenceForWorker\(tx, jobRun\.createdAt\)/);
+  assert.doesNotMatch(fetchRuns, /lockResetFenceForWorker\(tx, startedAt\)/);
+  assert.match(fetchRunPatch, /select: \{[\s\S]*createdAt: true/);
+  assert.match(fetchRunPatch, /lockResetFenceForWorker\(tx, run\.createdAt\)/);
+  assert.match(builders, /select: \{ id: true, details: true, createdAt: true \}/);
+  assert.match(builders, /lockResetFenceForWorker\(tx, run\.createdAt\)/);
 });
 
 test("terminal agent job runs cannot be regressed by late runtime updates", () => {
@@ -263,6 +287,11 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /_fltr_recovery_dir="\$JOB_TMP_DIR\/debug\/recovery"/);
   assert.match(runner, /_fltr_result_file="\$_fltr_recovery_dir\/library-fetch-result\.json"/);
   assert.match(runner, /flush_remaining_library_results\(\)/);
+  assert.match(runner, /_frlr_sync_failures="\$\{_sps_failures:-1\}"/);
+  assert.doesNotMatch(
+    runner,
+    /if ! sync_payload_slices[^]*?then\s+_frlr_sync_failures=1\s+fi/,
+  );
   assert.match(runner, /merge-task-results[\s\S]*tee "\$_frlr_merge_result_file"/);
   assert.match(runner, /checkpoint-progress[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(runner, /sync_completed_checkpoints/);
@@ -273,6 +302,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /runtime_timeout_flush_started/);
   assert.match(runner, /job_run_update running "Runtime timed out; syncing terminal library results\." "runtime_timeout_flush_started"/);
   assert.match(runner, /runtime_timeout_no_fetch_result/);
+  assert.match(
+    runner,
+    /tracked_job_signal_cleanup\(\)[\s\S]*terminate_process_tree "\$RUNTIME_PID" TERM 10 \|\| true\s+wait "\$RUNTIME_PID" 2>\/dev\/null \|\| true[\s\S]*cleanup_job_tmp_dir killed/,
+  );
   assert.match(runner, /job_run_update running "Runtime exceeded timeout and will be terminated\." "timeout_seconds_for_job"/);
   assert.match(runner, /job_run_update running "Runtime timed out; cleanup started\." "timeout_seconds_for_job"/);
   assert.doesNotMatch(runner, /job_run_update timed_out "Runtime exceeded timeout and will be terminated\." "timeout_seconds_for_job"/);
@@ -289,7 +322,23 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /worker_stalled_timeout/);
   assert.match(runner, /worker_stall_timeout_seconds/);
   assert.match(runner, /worker_progress_mtime_seconds/);
+  assert.match(
+    runner,
+    /if ! terminate_process_tree "\$_pid" TERM 5; then\s+terminate_process_tree "\$_pid" KILL 3 \|\| true\s+fi\s+wait "\$_pid" 2>\/dev\/null \|\| true/,
+  );
+  assert.match(
+    runner,
+    /Codex auth is missing access_token[\s\S]*hermes auth[\s\S]*hermes model/,
+  );
   assert.match(runner, /_claude_allowed_tools="Bash,Edit,Read,Write,Grep,Glob,WebFetch"/);
+  assert.match(
+    runner,
+    /\[ "\$INCOMING_RUNTIME_SET" = "1" \][\s\S]*Selected runtime '\$PINNED_RUNTIME' is not on PATH for this one-time run\.[\s\S]*exit 78/,
+  );
+  assert.doesNotMatch(
+    runner,
+    /Pinned runtime '\$PINNED_RUNTIME' not on PATH for this one-time run — falling back to the discovery chain\./,
+  );
   assert.match(runner, /_claude_disallowed_tools="Task,TaskCreate,TaskGet,TaskList,TaskOutput,TaskStop,TaskUpdate"/);
   assert.match(runner, /claude_unattended_command\(\)/);
   assert.match(runner, /\[ "\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}" = "worker" \][\s\S]*--safe-mode --allowedTools "\$_claude_allowed_tools" --disallowedTools "\$_claude_disallowed_tools"/);

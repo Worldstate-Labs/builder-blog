@@ -6,6 +6,9 @@ import {
   type PrismaClient,
 } from "@prisma/client";
 import { expireLeasedCloudFetchRuns } from "@/lib/cloud-fetch-run-lifecycle";
+import { lockResetFenceForWorker } from "@/lib/reset-fence";
+
+type CloudSchedulerDb = Prisma.TransactionClient;
 
 export type CloudSchedulerTaskInput = {
   id: string;
@@ -75,6 +78,7 @@ const MINUTE_MS = 60 * 1000;
 const MIN_ESTIMATED_TOKENS = 1_000;
 const DEFAULT_MATERIALIZE_LIMIT = 100;
 const CLOUD_FETCHED_ITEM_LIMIT_PER_LEASE = 5_000;
+const CLOUD_SCHEDULER_TRANSACTION_OPTIONS = { maxWait: 60_000, timeout: 60_000 } as const;
 
 const SOURCE_TYPE_PRIORS: Record<string, {
   durationP75Seconds: number;
@@ -228,6 +232,24 @@ export async function materializeDueCloudFetchQueue(params: {
 } = {}) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
+  return prisma.$transaction(
+    (tx) => materializeDueCloudFetchQueueInTransaction({
+      ...params,
+      prisma: tx,
+      now,
+    }),
+    CLOUD_SCHEDULER_TRANSACTION_OPTIONS,
+  );
+}
+
+async function materializeDueCloudFetchQueueInTransaction(params: {
+  limit?: number;
+  now: Date;
+  prisma: CloudSchedulerDb;
+  tokenBudgetRemaining?: number;
+}) {
+  const { prisma, now } = params;
+  await lockResetFenceForWorker(prisma, now);
   const config = await loadCloudFetchConfig(prisma);
   const { tasks, activeCanonicalKeys } = await loadEligibleCloudTasks({ prisma, now, config });
   const requestedLimit = normalizedLeaseLimit(params.limit ?? DEFAULT_MATERIALIZE_LIMIT);
@@ -288,9 +310,29 @@ export async function leaseCloudFetchTasks(params: {
   leaseOwner: string;
   now?: Date;
   prisma?: PrismaClient;
+  workerStartedAt?: Date;
 }) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
+  return prisma.$transaction(
+    (tx) => leaseCloudFetchTasksInTransaction({
+      ...params,
+      prisma: tx,
+      now,
+    }),
+    CLOUD_SCHEDULER_TRANSACTION_OPTIONS,
+  );
+}
+
+async function leaseCloudFetchTasksInTransaction(params: {
+  limit: number;
+  leaseOwner: string;
+  now: Date;
+  prisma: CloudSchedulerDb;
+  workerStartedAt?: Date;
+}) {
+  const { prisma, now } = params;
+  await lockResetFenceForWorker(prisma, params.workerStartedAt ?? now);
   const config = await loadCloudFetchConfig(prisma);
   await expireStaleCloudFetchLeases({ prisma, now });
 
@@ -298,7 +340,7 @@ export async function leaseCloudFetchTasks(params: {
   if (budget.limit <= 0) {
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
-  await materializeDueCloudFetchQueue({
+  await materializeDueCloudFetchQueueInTransaction({
     prisma,
     now,
     limit: budget.limit,
@@ -407,7 +449,7 @@ export async function leaseCloudFetchTasks(params: {
   };
 }
 
-async function loadFetchedItemsForCloudBuilders(prisma: PrismaClient, builderIds: string[]) {
+async function loadFetchedItemsForCloudBuilders(prisma: CloudSchedulerDb, builderIds: string[]) {
   const uniqueBuilderIds = [...new Set(builderIds.filter(Boolean))];
   if (uniqueBuilderIds.length === 0) return new Map<string, {
     builderId: string;
@@ -634,7 +676,7 @@ function cloudFrequencyIntervalMs(frequency: CloudFetchFrequencyKey) {
   return frequency === "DAILY" ? 24 * HOUR_MS : 7 * 24 * HOUR_MS;
 }
 
-async function loadCloudFetchConfig(prisma: PrismaClient): Promise<CloudFetchConfigShape> {
+async function loadCloudFetchConfig(prisma: CloudSchedulerDb): Promise<CloudFetchConfigShape> {
   const stored = await prisma.cloudFetchConfig.findUnique({ where: { id: "global" } });
   return {
     tokenBudgetPerHour: stored?.tokenBudgetPerHour ?? 1_000_000,
@@ -649,7 +691,7 @@ async function loadCloudFetchConfig(prisma: PrismaClient): Promise<CloudFetchCon
 }
 
 async function loadEligibleCloudTasks(params: {
-  prisma: PrismaClient;
+  prisma: CloudSchedulerDb;
   now: Date;
   config: CloudFetchConfigShape;
 }) {
@@ -741,7 +783,7 @@ async function loadEligibleCloudTasks(params: {
   };
 }
 
-async function loadActiveSubmissionCounts(prisma: PrismaClient, builderIds: string[]) {
+async function loadActiveSubmissionCounts(prisma: CloudSchedulerDb, builderIds: string[]) {
   if (builderIds.length === 0) return new Map<string, number>();
   const grouped = await prisma.cloudSourceSubmission.groupBy({
     by: ["cloudBuilderId"],
@@ -752,7 +794,7 @@ async function loadActiveSubmissionCounts(prisma: PrismaClient, builderIds: stri
 }
 
 async function loadActiveCanonicalKeys(params: {
-  prisma: PrismaClient;
+  prisma: CloudSchedulerDb;
   now: Date;
   config: CloudFetchConfigShape;
 }) {
@@ -779,12 +821,12 @@ async function loadActiveCanonicalKeys(params: {
   ]);
 }
 
-async function expireStaleCloudFetchLeases(params: { prisma: PrismaClient; now: Date }) {
+async function expireStaleCloudFetchLeases(params: { prisma: CloudSchedulerDb; now: Date }) {
   await expireLeasedCloudFetchRuns(params);
 }
 
 async function computeLeaseBudget(params: {
-  prisma: PrismaClient;
+  prisma: CloudSchedulerDb;
   now: Date;
   config: CloudFetchConfigShape;
   requestedLimit: number;
@@ -890,7 +932,7 @@ async function getPrismaClient() {
 // Cancel still-queued fetches for tasks that a submission change superseded.
 // Only QUEUED items are cancelled; LEASED / in-flight runs are left to finish.
 export async function cancelQueuedCloudFetchForTasks(params: {
-  prisma: PrismaClient;
+  prisma: PrismaClient | CloudSchedulerDb;
   taskIds: string[];
 }): Promise<{ cancelled: number }> {
   if (params.taskIds.length === 0) return { cancelled: 0 };

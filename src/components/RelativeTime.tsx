@@ -5,7 +5,7 @@ import {
   type DateInput,
   formatAbsoluteDate,
   formatAbsoluteDateTime,
-  relativeTime,
+  localizedRelativeTime,
   toEpochMs,
 } from "@/lib/relative-time";
 
@@ -73,8 +73,10 @@ export function RelativeTime({ value, className, fallback = "", prefix }: Relati
 
   const iso = new Date(ms).toISOString();
   const title = formatAbsoluteDateTime(ms);
-  const label =
-    now == null ? formatAbsoluteDate(ms, ms) : relativeTime(ms, now);
+  const locale = typeof document === "undefined" ? "en-US" : document.documentElement.lang || "en-US";
+  const label = now == null
+    ? formatAbsoluteDate(ms, ms)
+    : localizedRelativeTime(ms, now, locale);
 
   return (
     <time className={className} dateTime={iso} title={title} suppressHydrationWarning>

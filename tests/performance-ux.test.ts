@@ -2284,7 +2284,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-time"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-slot-row-note"/);
   assert.match(fetchLogPanel, /\{entry\.syncSummary \? \(/);
-  assert.match(fetchLogPanel, /\{entry\.syncSummary\}<\/span>/);
+  assert.match(fetchLogPanel, /<RunSyncSummary value=\{entry\.syncSummary\} \/>/);
   assert.doesNotMatch(fetchLogPanel, /\{entry\.note\}<\/span>/);
   assert.doesNotMatch(fetchLogPanel, /sync-panel-chip-row/);
   assert.doesNotMatch(fetchLogPanel, /one-time only/);
@@ -4097,6 +4097,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const postFavoriteControl = source("src/components/PostFavoriteControl.tsx");
   const legacyRecommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCardView.tsx");
+  const sourceSyncLogTabs = source("src/components/SourceSyncLogTabs.tsx");
   const globals = source("src/app/globals.css");
   const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
   const personalBuilderUpdateRoute = source("src/app/api/builders/[builderId]/personal/route.ts");
@@ -4118,11 +4119,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /className="sources-sync-section sources-sync-panel library-section-panel"/);
   assert.match(buildersPage, /className="library-section-summary library-section-summary--static"[\s\S]*id="source-syncing-section-title"/);
-  assert.match(buildersPage, /Copy a prompt for your Local Agent to fetch and summarize sources in[\s\S]*your own library\./);
+  assert.match(buildersPage, /Choose FollowBrief or your own agent to fetch and summarize sources\./);
   assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
   assert.match(buildersPage, /Source syncing/);
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /<SourceSyncLogTabs/);
+  assert.match(sourceSyncLogTabs, /value=\{<>\{cloudLog\.submittedSourceCount\} <span>\{sourceLabel\}<\/span><\/>\}/);
+  assert.match(sourceSyncLogTabs, /value=\{<>\{onTimeSourceCount\} <span>\{onTimeSourceLabel\}<\/span><\/>\}/);
   assert.doesNotMatch(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
   assert.match(buildersPage, /emptyTitle="No sources yet"/);

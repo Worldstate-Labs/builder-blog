@@ -139,9 +139,15 @@ test("admin settings can reset all fetch and brief generated state through one s
   const script = assertFile("scripts/clear-fetch-digest-state.mts");
 
   assert.match(settingsPage, /isAdmin \? <AdminMaintenancePanel \/> : null/);
-  assert.match(panel, /Reset fetch and brief state/);
+  assert.match(panel, /Reset all fetch and brief state/);
   assert.match(panel, /\/api\/admin\/maintenance\/fetch-digest-reset/);
   assert.match(panel, /RESET/);
+  assert.match(panel, /contentSyncStateChanged/);
+  assert.match(panel, /window\.dispatchEvent\(new Event\(contentSyncStateChanged\)\)/);
+  assert.match(panel, /deletedCloudQueueItems/);
+  assert.match(panel, /deletedCloudRunTasks/);
+  assert.match(panel, /deletedCloudRuns/);
+  assert.match(panel, /deletedCloudAgentJobRuns/);
 
   assert.match(route, /getCurrentSession\(\)/);
   assert.match(route, /isAdminEmail\(session\.user\.email\)/);
@@ -155,10 +161,40 @@ test("admin settings can reset all fetch and brief generated state through one s
   assert.match(helper, /digestedItem\.deleteMany/);
   assert.match(helper, /agentJobRun\.deleteMany/);
   assert.match(helper, /jobType:\s*\{\s*in:\s*\[\s*"library-fetch",\s*"digest-build"\s*\]/);
+  assert.match(helper, /cloudFetchQueueItem\.deleteMany/);
+  assert.match(helper, /cloudFetchRunTask\.deleteMany/);
+  assert.match(helper, /cloudFetchRun\.deleteMany/);
+  assert.match(helper, /jobType:\s*"cloud-library-fetch"/);
+  assert.match(helper, /cloudSourceTask\.updateMany/);
+  assert.match(helper, /lockResetFenceForReset/);
   assert.match(helper, /builder\.updateMany[\s\S]*lastFetchedAt:\s*null/);
   assert.match(helper, /builder\.updateMany[\s\S]*status:\s*"IDLE"/);
   assert.match(helper, /maxWait:\s*60_000/);
   assert.match(script, /resetFetchDigestState/);
+});
+
+test("official worker writes share the durable reset fence and reject stale runs", () => {
+  const schema = source("prisma/schema.prisma");
+  const resetFence = assertFile("src/lib/reset-fence.ts");
+  const fetchRuns = source("src/app/api/skill/fetch-runs/route.ts");
+  const fetchRunPatch = source("src/app/api/skill/fetch-runs/[id]/route.ts");
+  const jobRuns = source("src/app/api/skill/job-runs/route.ts");
+  const builders = source("src/app/api/skill/builders/route.ts");
+  const cloudSync = source("src/app/api/admin/cloud-fetch/sync/route.ts");
+
+  assert.match(schema, /model ResetFence \{[\s\S]*lastResetAt\s+DateTime/);
+  assert.match(resetFence, /FOR SHARE/);
+  assert.match(resetFence, /startedAt\.getTime\(\) <= lastResetAt\.getTime\(\)/);
+  assert.match(fetchRuns, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*libraryFetchRun\.create/);
+  assert.match(fetchRunPatch, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*libraryFetchRun\.update/);
+  assert.match(jobRuns, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*agentJobRun\.(?:create|update)/);
+  assert.match(builders, /libraryFetchRun\.findFirst[\s\S]*createdAt:\s*true/);
+  assert.match(builders, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*patchFetchRunForBuilderSync/);
+  assert.match(builders, /BUILDER_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
+  assert.match(cloudSync, /cloudFetchRun\.findFirst[\s\S]*status:\s*"RUNNING"/);
+  assert.match(cloudSync, /cloudFetchRunTask[\s\S]*status:\s*"RUNNING"/);
+  assert.match(cloudSync, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*applyCloudFetchTaskSyncResult/);
+  assert.match(cloudSync, /CLOUD_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
 });
 
 test("sharing controls explain Hub visibility before publishing user content", () => {

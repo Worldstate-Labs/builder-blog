@@ -4996,6 +4996,35 @@ test("partial task outcome progress does not shrink the canonical planned count"
   assert.equal(progress.counters.synced, 1);
 });
 
+test("checkpoint progress coalesces repeated updates for the same task", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const updates = cli.coalesceCheckpointProgressUpdates([
+    {
+      id: "fetch_post:source:article",
+      status: "running",
+      phase: "fetch",
+      message: "Fetching article.",
+    },
+    {
+      id: "fetch_post:source:article",
+      status: "failed",
+      phase: "completed",
+      message: "failed: blocked by robots",
+      reason: "blocked by robots",
+    },
+  ]);
+
+  assert.deepEqual(updates, [
+    {
+      id: "fetch_post:source:article",
+      status: "failed",
+      phase: "completed",
+      message: "failed: blocked by robots",
+      reason: "blocked by robots",
+    },
+  ]);
+});
+
 test("split-sync-slices isolates synced items and outcomes by source", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
@@ -5797,6 +5826,48 @@ test("merge-task-results preserves task checkpoints when a shard result is missi
   assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
     ["lost", "worker_missing_result"],
   ]);
+});
+
+test("merge-task-results ignores empty and redundant task checkpoints", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "done", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+    {
+      name: "shard-0-checkpoints/done.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+      checkpoint: true,
+    },
+    {
+      name: "shard-0-checkpoints/undefined.json",
+      payload: { builders: [], taskOutcomes: [] },
+      checkpoint: true,
+    },
+  ]);
+
+  assert.equal(
+    merged.shards.some((shard: { shard: string }) => shard.shard.includes("-checkpoints/")),
+    false,
+  );
 });
 
 test("merge-task-results classifies partial shard payloads as incomplete results", async () => {

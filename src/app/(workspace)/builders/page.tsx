@@ -870,8 +870,7 @@ async function FetchSyncSection({
             Source syncing
           </h2>
           <p className="library-section-copy">
-            Copy a prompt for your Local Agent to fetch and summarize sources in
-            your own library.
+            Choose FollowBrief or your own agent to fetch and summarize sources.
           </p>
         </div>
         <SkillPromptActions

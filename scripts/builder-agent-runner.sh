@@ -1143,7 +1143,10 @@ export BUILDER_BLOG_AGENT_MODEL
 # anything else → no flag.
 BUILDER_BLOG_FETCH_FORCE=""
 if [ "$INCOMING_FETCH_FORCE_SET" = "1" ]; then
-  BUILDER_BLOG_FETCH_FORCE="$INCOMING_FETCH_FORCE"
+  case "$INCOMING_FETCH_FORCE" in
+    1|--force) BUILDER_BLOG_FETCH_FORCE="--force" ;;
+    *) BUILDER_BLOG_FETCH_FORCE="" ;;
+  esac
 elif [ "$(read_pin fetch-force)" = "1" ]; then
   BUILDER_BLOG_FETCH_FORCE="--force"
 fi
@@ -1610,6 +1613,7 @@ tracked_job_signal_cleanup() {
   TRACKED_JOB_FINALIZED=1
   if [ -n "${RUNTIME_PID:-}" ]; then
     terminate_process_tree "$RUNTIME_PID" TERM 10 || true
+    wait "$RUNTIME_PID" 2>/dev/null || true
   fi
   terminate_job_tmp_processes TERM 3 || true
   aggregate_runtime_usage_files || true
@@ -1673,7 +1677,7 @@ job_run_update() {
   if [ -n "$_usage_file" ]; then
     _usage_args="--usage-file"
   fi
-  node "$AGENT_DIR/builder-digest.mjs" job-run-update \
+  if node "$AGENT_DIR/builder-digest.mjs" job-run-update \
     --job-type "$(job_type_for_name)" \
     --trigger "${BUILDER_BLOG_JOB_TRIGGER:-manual_cli}" \
     --schedule-job "${BUILDER_BLOG_SCHEDULE_JOB:-}" \
@@ -1690,7 +1694,14 @@ job_run_update() {
     --summary "$_summary" \
     --reason "$_reason" \
     ${_usage_args:+"$_usage_args"} ${_usage_file:+"$_usage_file"} \
-    "$@" >/dev/null 2>&1 || true
+    "$@" >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ "$_status" = "starting" ]; then
+    echo "FollowBrief rejected the runtime job lease; refusing to start stale work." >&2
+    return 1
+  fi
+  return 0
 }
 
 verify_followbrief_pid() {
@@ -1843,6 +1854,9 @@ NODE
 worker_log_has_runtime_auth_failure() {
   _wlhrf_log="${1:-}"
   [ -r "$_wlhrf_log" ] || return 1
+  if grep -Eq 'Codex auth is missing access_token|hermes auth.*re-authenticate|hermes model.*re-authenticate' "$_wlhrf_log"; then
+    return 0
+  fi
   grep -Eq 'auth error code: token_expired|Provided authentication token is expired|"code"[[:space:]]*:[[:space:]]*"token_expired"' "$_wlhrf_log" || return 1
   worker_log_has_failed_turn "$_wlhrf_log"
 }
@@ -2511,8 +2525,12 @@ run_cloud_worker_host() {
   export BUILDER_BLOG_USAGE_FILE="$JOB_TMP_DIR/runtime-usage-$_usage_key.jsonl"
   trap 'cloud_host_signal_cleanup TERM' TERM
   trap 'cloud_host_signal_cleanup INT' INT
-  job_run_update starting "Worker host accepted by local runner." "worker_host_started" \
-    --stage "worker_host_starting"
+  if ! job_run_update starting "Worker host accepted by local runner." "worker_host_started" \
+    --stage "worker_host_starting"; then
+    clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
+    cleanup_job_tmp_dir killed "worker_host_lease_rejected"
+    return 1
+  fi
 
   BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1
   export BUILDER_BLOG_CLOUD_PERSISTENT_HOST
@@ -2606,7 +2624,9 @@ run_with_job_tracking() {
   fi
   export BUILDER_BLOG_RUN_SOURCE
 
-  job_run_update starting "Runtime job accepted by local runner." "runtime_job_started"
+  if ! job_run_update starting "Runtime job accepted by local runner." "runtime_job_started"; then
+    return 1
+  fi
   _timeout="$(job_timeout_seconds)"
   job_run_update running "Runtime agent started." "runtime_agent_started"
   run_job_payload &
@@ -2716,7 +2736,11 @@ run_selected_runtime() {
           "run_with_$PINNED_RUNTIME"
           return "$?"
         fi
-        echo "Pinned runtime '$PINNED_RUNTIME' not on PATH for this one-time run — falling back to the discovery chain." >&2
+        if [ "$INCOMING_RUNTIME_SET" = "1" ]; then
+          echo "Selected runtime '$PINNED_RUNTIME' is not on PATH for this one-time run." >&2
+          exit 78
+        fi
+        echo "Pinned runtime '$PINNED_RUNTIME' not on PATH for this one-time run; falling back to the discovery chain." >&2
         PINNED_RUNTIME=""
         ;;
       *)
@@ -3346,7 +3370,7 @@ flush_remaining_library_results() {
   _frlr_sync_failures=0
   SYNC_PAYLOAD_SYNCED_IDS_FILE="$_frlr_synced_ids_file"
   if ! sync_payload_slices "$_frlr_remaining_tasks" "$_frlr_remaining_payload" "$_frlr_sync_slices_dir" "$_frlr_label" --results-dir "$_frlr_results_dir"; then
-    _frlr_sync_failures=1
+    _frlr_sync_failures="${_sps_failures:-1}"
   fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE=""
 
@@ -4028,6 +4052,7 @@ run_library_job() {
           if ! terminate_process_tree "$_pid" TERM 5; then
             terminate_process_tree "$_pid" KILL 3 || true
           fi
+          wait "$_pid" 2>/dev/null || true
           _skip_wait_pids="$_skip_wait_pids $_pid"
           _completed_worker_pids="${_completed_worker_pids:-} $_pid"
           continue

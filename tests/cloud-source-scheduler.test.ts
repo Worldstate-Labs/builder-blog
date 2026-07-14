@@ -37,6 +37,8 @@ test("scheduler pauses active tasks with no active submitters before queueing", 
   const queueUpdates: unknown[] = [];
   let queueCreates = 0;
   const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
     cloudFetchConfig: { findUnique: async () => null },
     cloudSourceTask: {
       findMany: async () => [
@@ -95,6 +97,33 @@ test("scheduler pauses active tasks with no active submitters before queueing", 
   assert.equal(queueCreates, 0);
   assert.match(JSON.stringify(taskUpdates), /"status":"PAUSED"/);
   assert.match(JSON.stringify(queueUpdates), /"status":"CANCELLED"/);
+});
+
+test("a scheduler invocation that began before RESET cannot recreate queue state", async () => {
+  let queueCreates = 0;
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) {
+      return callback(this);
+    },
+    async $queryRawUnsafe() {
+      return [{ lastResetAt: new Date(now.getTime() + 1) }];
+    },
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudSourceTask: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
+    cloudFetchQueueItem: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      create: async () => { queueCreates += 1; return {}; },
+    },
+    cloudFetchRunTask: { findMany: async () => [] },
+    cloudSourceSubmission: { groupBy: async () => [] },
+  };
+
+  await assert.rejects(
+    materializeDueCloudFetchQueue({ prisma: prisma as never, now }),
+    /started before the latest global reset/,
+  );
+  assert.equal(queueCreates, 0);
 });
 
 test("token-aware planning prefers higher-yield tasks under the hourly token budget", () => {
@@ -350,6 +379,8 @@ test("cancelQueuedCloudFetchForTasks no-ops on an empty task list", async () => 
 test("leaseCloudFetchTasks skips lease batch history when nothing is due", async () => {
   const createdRuns: { data: Record<string, unknown> }[] = [];
   const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async () => ({ count: 0 }),
@@ -393,6 +424,8 @@ test("leaseCloudFetchTasks marks expired leased run tasks failed before requeuei
   const runTaskUpdates: unknown[] = [];
   const runUpdates: unknown[] = [];
   const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async (args: unknown) => {
@@ -514,6 +547,8 @@ test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders",
     },
   };
   const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async () => ({ count: 0 }),

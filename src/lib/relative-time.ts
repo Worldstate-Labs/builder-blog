@@ -90,3 +90,31 @@ export function relativeTime(value: DateInput, nowMs: number): string {
   if (abs < RELATIVE_CUTOFF) return phrase(Math.floor(abs / DAY), "day", "days", future);
   return formatAbsoluteDate(ms, nowMs);
 }
+
+/** Locale-aware relative time for client UI while preserving compact English copy. */
+export function localizedRelativeTime(
+  value: DateInput,
+  nowMs: number,
+  locale = "en-US",
+): string {
+  if (locale.toLowerCase().startsWith("en")) return relativeTime(value, nowMs);
+  const ms = toEpochMs(value);
+  if (!Number.isFinite(ms) || !Number.isFinite(nowMs)) return "";
+  const diff = ms - nowMs;
+  const abs = Math.abs(diff);
+  if (abs >= RELATIVE_CUTOFF) {
+    const date = new Date(ms);
+    const sameYear = date.getUTCFullYear() === new Date(nowMs).getUTCFullYear();
+    return new Intl.DateTimeFormat(locale, {
+      month: "short",
+      day: "numeric",
+      ...(sameYear ? {} : { year: "numeric" }),
+      timeZone: "UTC",
+    }).format(date);
+  }
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" });
+  if (abs < MINUTE) return formatter.format(0, "second");
+  if (abs < HOUR) return formatter.format(Math.trunc(diff / MINUTE), "minute");
+  if (abs < DAY) return formatter.format(Math.trunc(diff / HOUR), "hour");
+  return formatter.format(Math.trunc(diff / DAY), "day");
+}

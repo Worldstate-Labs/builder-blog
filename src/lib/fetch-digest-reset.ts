@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { lockResetFenceForReset } from "@/lib/reset-fence";
 
 const FETCH_DIGEST_JOB_TYPES = ["library-fetch", "digest-build"] as const;
 
@@ -12,6 +13,12 @@ export type FetchDigestResetSummary = {
   deletedDigestRuns: number;
   deletedDigestedItems: number;
   deletedAgentJobRuns: number;
+  resetCloudSourceTasks: number;
+  deletedCloudQueueItems: number;
+  deletedCloudRunTasks: number;
+  deletedCloudRuns: number;
+  deletedCloudAgentJobRuns: number;
+  lastResetAt: string;
 };
 
 export async function resetFetchDigestState(
@@ -19,15 +26,82 @@ export async function resetFetchDigestState(
 ): Promise<FetchDigestResetSummary> {
   return client.$transaction(
     async (tx) => {
+      const lastResetAt = await lockResetFenceForReset(tx);
       const users = await tx.user.count();
+      const cloudSourceTasks = await tx.cloudSourceTask.findMany({
+        select: { id: true, builderId: true },
+      });
+      const activeSubmissionGroups = await tx.cloudSourceSubmission.groupBy({
+        by: ["cloudBuilderId"],
+        where: {
+          cloudBuilderId: { in: cloudSourceTasks.map((task) => task.builderId) },
+          active: true,
+        },
+        _count: { _all: true },
+      });
+      const activeBuilderIds = new Set(
+        activeSubmissionGroups.map((group) => group.cloudBuilderId),
+      );
+      const activeTaskIds = cloudSourceTasks
+        .filter((task) => activeBuilderIds.has(task.builderId))
+        .map((task) => task.id);
+      const inactiveTaskIds = cloudSourceTasks
+        .filter((task) => !activeBuilderIds.has(task.builderId))
+        .map((task) => task.id);
 
       const deletedFeedItems = await tx.feedItem.deleteMany();
+      const deletedCloudQueueItems = await tx.cloudFetchQueueItem.deleteMany();
+      const deletedCloudRunTasks = await tx.cloudFetchRunTask.deleteMany();
+      const deletedCloudRuns = await tx.cloudFetchRun.deleteMany();
       const deletedLibraryFetchRuns = await tx.libraryFetchRun.deleteMany();
       const deletedDigests = await tx.digest.deleteMany();
       const deletedDigestRuns = await tx.digestRun.deleteMany();
       const deletedDigestedItems = await tx.digestedItem.deleteMany();
       const deletedAgentJobRuns = await tx.agentJobRun.deleteMany({
         where: { jobType: { in: ["library-fetch", "digest-build"] } },
+      });
+      const deletedCloudAgentJobRuns = await tx.agentJobRun.deleteMany({
+        where: { jobType: "cloud-library-fetch" },
+      });
+      const resetTaskData = {
+        lastQueuedAt: null,
+        lastStartedAt: null,
+        lastSuccessAt: null,
+        lastFailureAt: null,
+        lastFailureReason: null,
+        consecutiveFailures: 0,
+        consecutiveDeferrals: 0,
+        lastDeferredAt: null,
+        estimatedDurationSeconds: null,
+        estimatedTokenCost: null,
+        estimatedSuccessProbability: null,
+        estimatedPostYield: null,
+        durationP50Seconds: null,
+        durationP75Seconds: null,
+        durationP90Seconds: null,
+        durationSampleCount: 0,
+        tokenSampleCount: 0,
+        postYieldSampleCount: 0,
+        successSampleCount: 0,
+        circuitBreakerUntil: null,
+        circuitBreakerReason: null,
+        nextAttemptAt: null,
+        mustSucceedBy: null,
+        lastRunId: null,
+      };
+      const resetActiveCloudSourceTasks = await tx.cloudSourceTask.updateMany({
+        where: { id: { in: activeTaskIds } },
+        data: {
+          status: "ACTIVE",
+          ...resetTaskData,
+        },
+      });
+      const resetInactiveCloudSourceTasks = await tx.cloudSourceTask.updateMany({
+        where: { id: { in: inactiveTaskIds } },
+        data: {
+          status: "PAUSED",
+          ...resetTaskData,
+        },
       });
       const resetBuilders = await tx.builder.updateMany({
         data: {
@@ -48,6 +122,13 @@ export async function resetFetchDigestState(
         deletedDigestRuns: deletedDigestRuns.count,
         deletedDigestedItems: deletedDigestedItems.count,
         deletedAgentJobRuns: deletedAgentJobRuns.count,
+        resetCloudSourceTasks:
+          resetActiveCloudSourceTasks.count + resetInactiveCloudSourceTasks.count,
+        deletedCloudQueueItems: deletedCloudQueueItems.count,
+        deletedCloudRunTasks: deletedCloudRunTasks.count,
+        deletedCloudRuns: deletedCloudRuns.count,
+        deletedCloudAgentJobRuns: deletedCloudAgentJobRuns.count,
+        lastResetAt: lastResetAt.toISOString(),
       };
     },
     { maxWait: 60_000, timeout: 60_000 },

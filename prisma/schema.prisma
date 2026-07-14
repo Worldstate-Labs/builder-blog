@@ -11,6 +11,12 @@ datasource db {
   provider = "postgresql"
 }
 
+model ResetFence {
+  id          String   @id
+  lastResetAt DateTime
+  updatedAt   DateTime @updatedAt
+}
+
 model User {
   id                      String                   @id @default(cuid())
   name                    String?
