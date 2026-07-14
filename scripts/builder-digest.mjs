@@ -9299,19 +9299,22 @@ async function patchFetchRunPlan(args) {
     return;
   }
 
-  let patchStatus = "ok";
+  const patchPayload = fetchRunPlanPatchPayload(plannedTasks);
+  let patchStatus = patchPayload ? "ok" : "skipped";
   let errorMessage = null;
-  try {
-    await patchJson(
-      `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`,
-      { plannedTasks },
-      config.token,
-      { label: "fetch log plan patch" },
-    );
-  } catch (error) {
-    patchStatus = "failed";
-    errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to patch fetch log plan: ${errorMessage}`);
+  if (patchPayload) {
+    try {
+      await patchJson(
+        `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`,
+        patchPayload,
+        config.token,
+        { label: "fetch log plan patch" },
+      );
+    } catch (error) {
+      patchStatus = "failed";
+      errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to patch fetch log plan: ${errorMessage}`);
+    }
   }
 
   const fetchProgress = await readFetchProgressState();
@@ -9352,6 +9355,10 @@ async function patchFetchRunPlan(args) {
     null,
     2,
   ));
+}
+
+export function fetchRunPlanPatchPayload(plannedTasks) {
+  return Array.isArray(plannedTasks) && plannedTasks.length > 0 ? { plannedTasks } : null;
 }
 
 async function syncBuilders(args) {

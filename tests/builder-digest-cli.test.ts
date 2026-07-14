@@ -713,6 +713,15 @@ test("sync payload can carry a durable fetch-run plan patch", async () => {
   );
 });
 
+test("an empty fetch plan does not produce an invalid API patch", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  assert.equal(cli.fetchRunPlanPatchPayload([]), null);
+  assert.deepEqual(cli.fetchRunPlanPatchPayload([{ id: "fetch_post:blog:one" }]), {
+    plannedTasks: [{ id: "fetch_post:blog:one" }],
+  });
+});
+
 test("blocked candidate discovery becomes an outcome, not an expanded fetch task", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const discoveryTask = {
