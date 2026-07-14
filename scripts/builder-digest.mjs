@@ -1411,9 +1411,15 @@ function fetchProgressSnapshot(progress, options = {}) {
   return snapshot;
 }
 
-function appendFetchProgressEvent(progress, event) {
+export function appendFetchProgressEvent(progress, event) {
+  const recentEvents = Array.isArray(progress.recentEvents) ? progress.recentEvents : [];
+  const previous = recentEvents.at(-1);
+  const duplicate = previous && ["type", "message", "builderId", "taskId", "status", "reason"]
+    .every((key) => (previous[key] ?? null) === (event[key] ?? null));
+  if (duplicate) return;
+
   progress.recentEvents = [
-    ...(Array.isArray(progress.recentEvents) ? progress.recentEvents : []),
+    ...recentEvents,
     {
       at: new Date().toISOString(),
       type: event.type,

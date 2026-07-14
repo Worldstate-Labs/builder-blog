@@ -5025,6 +5025,27 @@ test("checkpoint progress coalesces repeated updates for the same task", async (
   ]);
 });
 
+test("fetch progress does not append the same lifecycle event twice in a row", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const progress = {
+    recentEvents: [
+      {
+        at: "2026-07-14T06:09:20.402Z",
+        type: "tasks_planned",
+        message: "Planned 1 post task.",
+      },
+    ],
+  };
+
+  cli.appendFetchProgressEvent(progress, {
+    type: "tasks_planned",
+    message: "Planned 1 post task.",
+  });
+
+  assert.equal(progress.recentEvents.length, 1);
+  assert.equal(progress.recentEvents[0]?.at, "2026-07-14T06:09:20.402Z");
+});
+
 test("split-sync-slices isolates synced items and outcomes by source", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
