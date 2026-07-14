@@ -5702,6 +5702,64 @@ test("merge-task-results adds missing agent execution metadata for agent tasks",
   assert.match(item.rawJson.agentExecutionProof, /merge-task-results added this provenance fallback/);
 });
 
+test("merge-task-results records runtime and model for ready tasks summarized by an agent", async () => {
+  const previousRuntime = process.env.BUILDER_BLOG_RUNTIME;
+  const previousModel = process.env.BUILDER_BLOG_AGENT_MODEL;
+  process.env.BUILDER_BLOG_RUNTIME = "codex";
+  process.env.BUILDER_BLOG_AGENT_MODEL = "gpt-ready-test";
+  try {
+    const cli = await import(`../scripts/builder-digest.mjs?ready-agent-metadata=${Date.now()}`);
+    const task = {
+      id: "ready-agent-task",
+      type: "fetch_post",
+      contentStatus: "ready",
+      builder: "Example Blog",
+      builderId: "blog_builder",
+      sourceType: "blog",
+      item: {
+        kind: "BLOG_POST",
+        externalId: "https://example.com/ready",
+        title: "Ready source body",
+        url: "https://example.com/ready",
+        body: "The deterministic fetch stage supplied this complete source body.",
+      },
+    };
+    const merged = cli.mergeShardSyncPayloads(
+      { status: "ok", fetchTasks: [task] },
+      [{
+        name: "shard-0-result.json",
+        payload: {
+          builders: [{
+            builderId: "blog_builder",
+            kind: "BLOG",
+            sourceType: "blog",
+            name: "Example Blog",
+            items: [{
+              kind: "BLOG_POST",
+              externalId: "https://example.com/ready",
+              title: "Ready source body",
+              url: "https://example.com/ready",
+              summary: "The ready source was summarized from the supplied body.",
+              headline: "Ready source receives an agent summary",
+              rawJson: { fetchTaskId: "ready-agent-task" },
+            }],
+          }],
+          taskOutcomes: [],
+        },
+      }],
+    );
+
+    const rawJson = merged.payload.builders[0].items[0].rawJson;
+    assert.equal(rawJson.agentRuntime, "Codex");
+    assert.equal(rawJson.agentModel, "gpt-ready-test");
+  } finally {
+    if (previousRuntime === undefined) delete process.env.BUILDER_BLOG_RUNTIME;
+    else process.env.BUILDER_BLOG_RUNTIME = previousRuntime;
+    if (previousModel === undefined) delete process.env.BUILDER_BLOG_AGENT_MODEL;
+    else process.env.BUILDER_BLOG_AGENT_MODEL = previousModel;
+  }
+});
+
 test("merge-task-results restores ready task body when worker omits or rewrites it", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const omittedBodyTask = {

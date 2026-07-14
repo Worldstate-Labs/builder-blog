@@ -6802,9 +6802,18 @@ function stampItemWorkerId(item, workerId) {
 }
 
 function normalizeAgentExecutionMetadata(item, task, taskId, workerId) {
-  if (task?.contentStatus !== "requires_agent") return item;
   if (!item || typeof item !== "object" || Array.isArray(item)) return item;
   const rawJson = objectRecord(item.rawJson);
+  const agentRuntime = stringValue(rawJson.agentRuntime) || DEFAULT_AGENT_RUNTIME || "local_agent";
+  const agentModel = stringValue(rawJson.agentModel) || DEFAULT_AGENT_MODEL;
+  const executionMetadata = {
+    ...rawJson,
+    agentRuntime,
+    ...(agentModel ? { agentModel } : {}),
+  };
+  if (task?.contentStatus !== "requires_agent") {
+    return { ...item, rawJson: executionMetadata };
+  }
   const fallbackProof = [
     "Local Agent worker",
     workerId || rawJson.workerId || "unknown",
@@ -6815,8 +6824,7 @@ function normalizeAgentExecutionMetadata(item, task, taskId, workerId) {
   return {
     ...item,
     rawJson: {
-      ...rawJson,
-      agentRuntime: stringValue(rawJson.agentRuntime) || DEFAULT_AGENT_RUNTIME || "local_agent",
+      ...executionMetadata,
       agentCompletedAt: normalizedDate(rawJson.agentCompletedAt) || new Date().toISOString(),
       agentExecutionProof: stringValue(rawJson.agentExecutionProof) || fallbackProof,
     },
