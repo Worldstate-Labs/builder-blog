@@ -39,6 +39,15 @@ export async function lockResetFenceForNewWorker(client: ResetFenceClient) {
   return lastResetAt;
 }
 
+export async function databaseClockNow(client: ResetFenceClient) {
+  const rows = await client.$queryRawUnsafe(
+    'SELECT clock_timestamp() AS "now"',
+  ) as Array<{ now: Date }>;
+  const now = rows[0]?.now;
+  if (!now) throw new Error("Could not read the database clock.");
+  return now;
+}
+
 export async function lockResetFenceForReset(
   client: ResetFenceClient,
 ) {
@@ -46,7 +55,7 @@ export async function lockResetFenceForReset(
     'SELECT "id" FROM "ResetFence" WHERE "id" = $1 FOR UPDATE',
     GLOBAL_RESET_FENCE_ID,
   );
-  const lastResetAt = new Date();
+  const lastResetAt = await databaseClockNow(client);
   const fence = await client.resetFence.update({
     where: { id: GLOBAL_RESET_FENCE_ID },
     data: { lastResetAt },

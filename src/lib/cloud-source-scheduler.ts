@@ -6,7 +6,7 @@ import {
   type PrismaClient,
 } from "@prisma/client";
 import { expireLeasedCloudFetchRuns } from "@/lib/cloud-fetch-run-lifecycle";
-import { lockResetFenceForWorker } from "@/lib/reset-fence";
+import { databaseClockNow, lockResetFenceForWorker } from "@/lib/reset-fence";
 
 type CloudSchedulerDb = Prisma.TransactionClient;
 
@@ -232,11 +232,13 @@ export async function materializeDueCloudFetchQueue(params: {
 } = {}) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
+  const workerStartedAt = await databaseClockNow(prisma);
   return prisma.$transaction(
     (tx) => materializeDueCloudFetchQueueInTransaction({
       ...params,
       prisma: tx,
       now,
+      workerStartedAt,
     }),
     CLOUD_SCHEDULER_TRANSACTION_OPTIONS,
   );
@@ -247,9 +249,10 @@ async function materializeDueCloudFetchQueueInTransaction(params: {
   now: Date;
   prisma: CloudSchedulerDb;
   tokenBudgetRemaining?: number;
+  workerStartedAt: Date;
 }) {
   const { prisma, now } = params;
-  await lockResetFenceForWorker(prisma, now);
+  await lockResetFenceForWorker(prisma, params.workerStartedAt);
   const config = await loadCloudFetchConfig(prisma);
   const { tasks, activeCanonicalKeys } = await loadEligibleCloudTasks({ prisma, now, config });
   const requestedLimit = normalizedLeaseLimit(params.limit ?? DEFAULT_MATERIALIZE_LIMIT);
@@ -314,11 +317,13 @@ export async function leaseCloudFetchTasks(params: {
 }) {
   const prisma = params.prisma ?? (await getPrismaClient());
   const now = params.now ?? new Date();
+  const workerStartedAt = params.workerStartedAt ?? await databaseClockNow(prisma);
   return prisma.$transaction(
     (tx) => leaseCloudFetchTasksInTransaction({
       ...params,
       prisma: tx,
       now,
+      workerStartedAt,
     }),
     CLOUD_SCHEDULER_TRANSACTION_OPTIONS,
   );
@@ -329,10 +334,10 @@ async function leaseCloudFetchTasksInTransaction(params: {
   leaseOwner: string;
   now: Date;
   prisma: CloudSchedulerDb;
-  workerStartedAt?: Date;
+  workerStartedAt: Date;
 }) {
   const { prisma, now } = params;
-  await lockResetFenceForWorker(prisma, params.workerStartedAt ?? now);
+  await lockResetFenceForWorker(prisma, params.workerStartedAt);
   const config = await loadCloudFetchConfig(prisma);
   await expireStaleCloudFetchLeases({ prisma, now });
 
@@ -345,6 +350,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
     now,
     limit: budget.limit,
     tokenBudgetRemaining: budget.tokenBudget,
+    workerStartedAt: params.workerStartedAt,
   });
 
   const queuedItems = await prisma.cloudFetchQueueItem.findMany({

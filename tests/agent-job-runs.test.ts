@@ -63,6 +63,8 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(route, /agentJobRun\.create/);
   assert.match(route, /parsed\.data\.status !== "starting"/);
   assert.match(route, /lockResetFenceForNewWorker\(tx\)/);
+  assert.match(route, /lockResetFenceForNewWorker\(tx\)[\s\S]*newRunCreatedAt = await databaseClockNow\(tx\)/);
+  assert.match(route, /createdAt: newRunCreatedAt!/);
   assert.match(route, /lockResetFenceForWorker\(tx, existingRun\.createdAt\)/);
   assert.doesNotMatch(route, /lockResetFenceForWorker\(tx, startedAt\)/);
   assert.doesNotMatch(route, /userId_instanceId/);

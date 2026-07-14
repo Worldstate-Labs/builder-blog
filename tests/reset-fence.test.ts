@@ -12,7 +12,10 @@ test("RESET timestamps the fence only after acquiring its exclusive lock", async
   let lockResolvedAt = 0;
   let writtenAt = 0;
   const client = {
-    async $queryRawUnsafe() {
+    async $queryRawUnsafe(query: string) {
+      if (query.includes("clock_timestamp")) {
+        return [{ now: new Date(lockResolvedAt + 1) }];
+      }
       await new Promise((resolve) => setTimeout(resolve, 10));
       lockResolvedAt = Date.now();
       return [{ id: "global" }];
@@ -68,7 +71,7 @@ test("RESET advances the durable fence before deleting generated state", async (
 
   const summary = await resetFetchDigestState(client as never);
 
-  assert.deepEqual(calls.slice(0, 2), ["resetFence.lock", "resetFence.update"]);
+  assert.deepEqual(calls.slice(0, 3), ["resetFence.lock", "resetFence.clock", "resetFence.update"]);
   assert.deepEqual(summary, {
     users: 3,
     resetBuilders: 11,
@@ -98,7 +101,8 @@ test("cloud scheduler and digest writers serialize every generated-state mutatio
   assert.match(scheduler, /materializeDueCloudFetchQueue[\s\S]*\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*cloudFetchQueueItem\.create/);
   assert.match(scheduler, /leaseCloudFetchTasks[\s\S]*\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*cloudFetchRun\.create[\s\S]*cloudFetchRunTask\.create/);
   assert.match(scheduler, /workerStartedAt\?: Date/);
-  assert.match(scheduler, /lockResetFenceForWorker\(prisma, params\.workerStartedAt \?\? now\)/);
+  assert.match(scheduler, /const workerStartedAt = await databaseClockNow\(prisma\);[\s\S]*\$transaction/);
+  assert.match(scheduler, /lockResetFenceForWorker\(prisma, params\.workerStartedAt\)/);
   assert.match(leaseRoute, /jobRunId is required/);
   assert.match(leaseRoute, /jobType: "cloud-library-fetch"/);
   assert.match(leaseRoute, /instanceId: jobRunId/);
@@ -139,7 +143,11 @@ function fakeResetTransaction(calls: string[]) {
     },
   });
   return {
-    async $queryRawUnsafe() {
+    async $queryRawUnsafe(query: string) {
+      if (query.includes("clock_timestamp")) {
+        calls.push("resetFence.clock");
+        return [{ now: new Date("2026-07-14T04:00:00.000Z") }];
+      }
       calls.push("resetFence.lock");
       return [{ id: "global" }];
     },
@@ -153,12 +161,13 @@ function fakeResetTransaction(calls: string[]) {
     cloudSourceTask: {
       async findMany() {
         return [
-          { id: "task_active", builderId: "builder_active" },
-          { id: "task_paused", builderId: "builder_paused" },
+          { id: "task_active", builderId: "builder_active", effectiveFrequency: "DAILY" },
+          { id: "task_paused", builderId: "builder_paused", effectiveFrequency: "WEEKLY" },
         ];
       },
       updateIndex: 0,
-      async updateMany() {
+      async updateMany(args: { where: { id: { in: string[] } } }) {
+        if (args.where.id.in.length === 0) return { count: 0 };
         this.updateIndex += 1;
         calls.push("cloudSourceTask.updateMany");
         return { count: 1 };

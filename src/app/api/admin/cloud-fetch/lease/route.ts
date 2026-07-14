@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
 import { leaseCloudFetchTasks } from "@/lib/cloud-source-scheduler";
 import { prisma } from "@/lib/prisma";
+import { StaleWorkerWriteError } from "@/lib/reset-fence";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await leaseCloudFetchTasks({
-    limit,
-    leaseOwner,
-    workerStartedAt: jobRun.createdAt,
-  });
+  let result;
+  try {
+    result = await leaseCloudFetchTasks({
+      limit,
+      leaseOwner,
+      workerStartedAt: jobRun.createdAt,
+    });
+  } catch (error) {
+    if (error instanceof StaleWorkerWriteError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    throw error;
+  }
   return NextResponse.json(result);
 }

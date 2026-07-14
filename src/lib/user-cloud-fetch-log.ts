@@ -150,8 +150,21 @@ function serializeUserCloudFetchSource(
     task?.lastSuccessAt ?? (latestLegacyFailureIsSkipped ? latestRunTask.finishedAt : null);
   const lastFailureAt = latestLegacyFailureIsSkipped ? null : task?.lastFailureAt ?? null;
   const lastFailureReason = latestLegacyFailureIsSkipped ? null : task?.lastFailureReason ?? null;
+  const taskHasFreshWindow = Boolean(
+    task?.nextAttemptAt &&
+    task.mustSucceedBy &&
+    task.mustSucceedBy.getTime() - task.nextAttemptAt.getTime() ===
+      intervalMs(task.effectiveFrequency),
+  );
+  const resetWindowStart =
+    task && taskHasFreshWindow && !effectiveLastSuccessAt && !lastFailureAt && !latestRunTask
+      ? task.nextAttemptAt
+      : null;
+  const userWindowStart = resetWindowStart && resetWindowStart > submission.submittedAt
+    ? resetWindowStart
+    : submission.submittedAt;
   const firstUserDeadline = submissionDeadline({
-    submittedAt: submission.submittedAt,
+    submittedAt: userWindowStart,
     frequency: submission.frequency,
   });
   const recurringUserDeadline = effectiveLastSuccessAt

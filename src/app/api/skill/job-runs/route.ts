@@ -6,6 +6,7 @@ import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 import { canonicalFetchTaskId } from "@/lib/fetch-task-id";
 import {
+  databaseClockNow,
   lockResetFenceForNewWorker,
   lockResetFenceForWorker,
   StaleWorkerWriteError,
@@ -372,6 +373,7 @@ export async function POST(request: Request) {
   let record;
   try {
     record = await prisma.$transaction(async (tx) => {
+      let newRunCreatedAt: Date | null = null;
       const existingRun = await tx.agentJobRun.findFirst({
         where: {
           userId: user.id,
@@ -387,6 +389,7 @@ export async function POST(request: Request) {
           throw new StaleWorkerWriteError();
         }
         await lockResetFenceForNewWorker(tx);
+        newRunCreatedAt = await databaseClockNow(tx);
       }
       const now = new Date();
       const finishedAt = parsed.data.finishedAt ? new Date(parsed.data.finishedAt) : null;
@@ -451,6 +454,7 @@ export async function POST(request: Request) {
               trigger: parsed.data.trigger,
               instanceId: parsed.data.instanceId,
               startedAt,
+              createdAt: newRunCreatedAt!,
               ...runData,
             },
             select: { id: true, instanceId: true, status: true },

@@ -29,7 +29,7 @@ export async function resetFetchDigestState(
       const lastResetAt = await lockResetFenceForReset(tx);
       const users = await tx.user.count();
       const cloudSourceTasks = await tx.cloudSourceTask.findMany({
-        select: { id: true, builderId: true },
+        select: { id: true, builderId: true, effectiveFrequency: true },
       });
       const activeSubmissionGroups = await tx.cloudSourceSubmission.groupBy({
         by: ["cloudBuilderId"],
@@ -42,8 +42,13 @@ export async function resetFetchDigestState(
       const activeBuilderIds = new Set(
         activeSubmissionGroups.map((group) => group.cloudBuilderId),
       );
-      const activeTaskIds = cloudSourceTasks
-        .filter((task) => activeBuilderIds.has(task.builderId))
+      const activeTasks = cloudSourceTasks
+        .filter((task) => activeBuilderIds.has(task.builderId));
+      const activeDailyTaskIds = activeTasks
+        .filter((task) => task.effectiveFrequency === "DAILY")
+        .map((task) => task.id);
+      const activeWeeklyTaskIds = activeTasks
+        .filter((task) => task.effectiveFrequency === "WEEKLY")
         .map((task) => task.id);
       const inactiveTaskIds = cloudSourceTasks
         .filter((task) => !activeBuilderIds.has(task.builderId))
@@ -85,15 +90,24 @@ export async function resetFetchDigestState(
         successSampleCount: 0,
         circuitBreakerUntil: null,
         circuitBreakerReason: null,
-        nextAttemptAt: null,
-        mustSucceedBy: null,
         lastRunId: null,
       };
-      const resetActiveCloudSourceTasks = await tx.cloudSourceTask.updateMany({
-        where: { id: { in: activeTaskIds } },
+      const resetActiveDailyCloudSourceTasks = await tx.cloudSourceTask.updateMany({
+        where: { id: { in: activeDailyTaskIds } },
         data: {
           status: "ACTIVE",
           ...resetTaskData,
+          nextAttemptAt: lastResetAt,
+          mustSucceedBy: new Date(lastResetAt.getTime() + 24 * 60 * 60 * 1000),
+        },
+      });
+      const resetActiveWeeklyCloudSourceTasks = await tx.cloudSourceTask.updateMany({
+        where: { id: { in: activeWeeklyTaskIds } },
+        data: {
+          status: "ACTIVE",
+          ...resetTaskData,
+          nextAttemptAt: lastResetAt,
+          mustSucceedBy: new Date(lastResetAt.getTime() + 7 * 24 * 60 * 60 * 1000),
         },
       });
       const resetInactiveCloudSourceTasks = await tx.cloudSourceTask.updateMany({
@@ -101,6 +115,8 @@ export async function resetFetchDigestState(
         data: {
           status: "PAUSED",
           ...resetTaskData,
+          nextAttemptAt: null,
+          mustSucceedBy: null,
         },
       });
       const resetBuilders = await tx.builder.updateMany({
@@ -123,7 +139,9 @@ export async function resetFetchDigestState(
         deletedDigestedItems: deletedDigestedItems.count,
         deletedAgentJobRuns: deletedAgentJobRuns.count,
         resetCloudSourceTasks:
-          resetActiveCloudSourceTasks.count + resetInactiveCloudSourceTasks.count,
+          resetActiveDailyCloudSourceTasks.count +
+          resetActiveWeeklyCloudSourceTasks.count +
+          resetInactiveCloudSourceTasks.count,
         deletedCloudQueueItems: deletedCloudQueueItems.count,
         deletedCloudRunTasks: deletedCloudRunTasks.count,
         deletedCloudRuns: deletedCloudRuns.count,

@@ -15,6 +15,11 @@ import {
 
 const now = new Date("2026-06-27T12:00:00.000Z");
 const minutesFromNow = (minutes: number) => new Date(now.getTime() + minutes * 60_000);
+const resetFenceQuery = (
+  query: string,
+  lastResetAt = new Date(0),
+  startedAt = now,
+) => query.includes("clock_timestamp") ? [{ now: startedAt }] : [{ lastResetAt }];
 
 const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTaskInput => ({
   id: overrides.id ?? "task",
@@ -38,7 +43,7 @@ test("scheduler pauses active tasks with no active submitters before queueing", 
   let queueCreates = 0;
   const prisma = {
     async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
-    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
     cloudFetchConfig: { findUnique: async () => null },
     cloudSourceTask: {
       findMany: async () => [
@@ -105,8 +110,8 @@ test("a scheduler invocation that began before RESET cannot recreate queue state
     async $transaction(callback: (tx: unknown) => Promise<unknown>) {
       return callback(this);
     },
-    async $queryRawUnsafe() {
-      return [{ lastResetAt: new Date(now.getTime() + 1) }];
+    async $queryRawUnsafe(query: string) {
+      return resetFenceQuery(query, new Date(now.getTime() + 1));
     },
     cloudFetchConfig: { findUnique: async () => null },
     cloudSourceTask: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
@@ -380,7 +385,7 @@ test("leaseCloudFetchTasks skips lease batch history when nothing is due", async
   const createdRuns: { data: Record<string, unknown> }[] = [];
   const prisma = {
     async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
-    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async () => ({ count: 0 }),
@@ -425,7 +430,7 @@ test("leaseCloudFetchTasks marks expired leased run tasks failed before requeuei
   const runUpdates: unknown[] = [];
   const prisma = {
     async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
-    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async (args: unknown) => {
@@ -548,7 +553,7 @@ test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders",
   };
   const prisma = {
     async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
-    async $queryRawUnsafe() { return [{ lastResetAt: new Date(0) }]; },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async () => ({ count: 0 }),
