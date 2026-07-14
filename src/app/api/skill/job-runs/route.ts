@@ -6,6 +6,10 @@ import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 import { canonicalFetchTaskId } from "@/lib/fetch-task-id";
 import {
+  dedupeFetchProgressEvents,
+  mergeFetchProgressTask,
+} from "@/lib/fetch-progress-merge";
+import {
   databaseClockNow,
   lockResetFenceForNewWorker,
   lockResetFenceForWorker,
@@ -173,21 +177,6 @@ function compactProgressEvent(value: unknown): Record<string, unknown> {
   };
 }
 
-function progressEventIdentity(event: Record<string, unknown>): string {
-  return JSON.stringify([
-    event.type ?? "",
-    event.message ?? "",
-    event.taskId ?? "",
-    event.builderId ?? "",
-    event.status ?? "",
-    event.reason ?? "",
-  ]);
-}
-
-function progressEventExactKey(event: Record<string, unknown>): string {
-  return JSON.stringify([event.at ?? "", progressEventIdentity(event)]);
-}
-
 function mergeProgressArray(
   current: unknown,
   incoming: unknown,
@@ -208,6 +197,22 @@ function mergeProgressArray(
     byKey.set(key, { ...(byKey.get(key) ?? {}), ...compacted });
   }
   return sortByUpdatedAt([...byKey.values()]).slice(-limit);
+}
+
+function mergeProgressTasks(current: unknown, incoming: unknown): Record<string, unknown>[] {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const item of Array.isArray(current) ? current : []) {
+    const compacted = compactProgressTask(item);
+    const key = canonicalFetchTaskId(compacted.id);
+    if (key) byKey.set(key, compacted);
+  }
+  for (const item of Array.isArray(incoming) ? incoming : []) {
+    const compacted = compactProgressTask(item);
+    const key = canonicalFetchTaskId(compacted.id);
+    if (!key) continue;
+    byKey.set(key, mergeFetchProgressTask(byKey.get(key) ?? {}, compacted));
+  }
+  return sortByUpdatedAt([...byKey.values()]).slice(-FETCH_PROGRESS_TASK_LIMIT);
 }
 
 function mergeProgressCounters(current: unknown, incoming: unknown): Record<string, number> {
@@ -239,23 +244,10 @@ function mergeAgentJobRunProgress(currentValue: unknown, incomingValue: unknown)
   ]
     .map(compactProgressEvent)
     .filter((event) => compactText(event.at ?? event.message, 500));
-  const exactEventKeys = new Set<string>();
-  const dedupedEvents: Record<string, unknown>[] = [];
-  for (const event of recentEvents) {
-    const exactKey = progressEventExactKey(event);
-    if (exactEventKeys.has(exactKey)) continue;
-    exactEventKeys.add(exactKey);
-
-    const previousEvent = dedupedEvents.at(-1);
-    if (previousEvent && progressEventIdentity(previousEvent) === progressEventIdentity(event)) {
-      // Two producer phases can announce one unchanged milestone a few
-      // seconds apart. Keep the newer timestamp, while preserving a later
-      // recurrence when another lifecycle event happened in between.
-      dedupedEvents[dedupedEvents.length - 1] = event;
-    } else {
-      dedupedEvents.push(event);
-    }
-  }
+  const dedupedEvents = dedupeFetchProgressEvents(
+    recentEvents,
+    FETCH_PROGRESS_RECENT_EVENT_LIMIT,
+  );
 
   return {
     version: finiteNumber(incoming.version) ?? finiteNumber(current.version) ?? 1,
@@ -270,14 +262,8 @@ function mergeAgentJobRunProgress(currentValue: unknown, incomingValue: unknown)
       compactProgressSource,
       FETCH_PROGRESS_SOURCE_LIMIT,
     ),
-    tasks: mergeProgressArray(
-      current.tasks,
-      incoming.tasks,
-      (task) => canonicalFetchTaskId(task.id ?? task.taskId),
-      compactProgressTask,
-      FETCH_PROGRESS_TASK_LIMIT,
-    ),
-    recentEvents: sortByUpdatedAt(dedupedEvents).slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT),
+    tasks: mergeProgressTasks(current.tasks, incoming.tasks),
+    recentEvents: dedupedEvents,
   };
 }
 

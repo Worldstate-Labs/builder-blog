@@ -1413,9 +1413,12 @@ function fetchProgressSnapshot(progress, options = {}) {
 
 export function appendFetchProgressEvent(progress, event) {
   const recentEvents = Array.isArray(progress.recentEvents) ? progress.recentEvents : [];
+  const identityKeys = ["type", "message", "builderId", "taskId", "status", "reason"];
+  const sameIdentity = (candidate) => identityKeys
+    .every((key) => (candidate?.[key] ?? null) === (event[key] ?? null));
+  if (event.type === "tasks_planned" && recentEvents.some(sameIdentity)) return;
   const previous = recentEvents.at(-1);
-  const duplicate = previous && ["type", "message", "builderId", "taskId", "status", "reason"]
-    .every((key) => (previous[key] ?? null) === (event[key] ?? null));
+  const duplicate = previous && sameIdentity(previous);
   if (duplicate) return;
 
   progress.recentEvents = [
@@ -7419,10 +7422,15 @@ function progressFromCheckpointOutcome(outcome, entry, plannedById) {
   };
 }
 
-export function coalesceCheckpointProgressUpdates(updates) {
+export function coalesceCheckpointProgressUpdates(updates, completedTaskIds = []) {
+  const completed = new Set(
+    (Array.isArray(completedTaskIds) ? completedTaskIds : [])
+      .map((id) => String(id))
+      .filter(Boolean),
+  );
   const byTaskId = new Map();
   for (const update of updates) {
-    if (update?.id) byTaskId.set(update.id, update);
+    if (update?.id && !completed.has(String(update.id))) byTaskId.set(update.id, update);
   }
   return [...byTaskId.values()];
 }
@@ -7486,7 +7494,13 @@ async function emitCheckpointProgress(args) {
     }
   }
 
-  const coalescedUpdates = coalesceCheckpointProgressUpdates(updates);
+  // A successful server sync is authoritative. Worker progress/checkpoint files
+  // remain on disk and can still say "summarized" on later polling cycles; do
+  // not let that stale telemetry regress a terminal task back to waiting.
+  const coalescedUpdates = coalesceCheckpointProgressUpdates(
+    updates,
+    progress.completedTaskIds,
+  );
   let changed = false;
   for (const update of coalescedUpdates) {
     changed = upsertFetchProgressTask(progress, update) || changed;

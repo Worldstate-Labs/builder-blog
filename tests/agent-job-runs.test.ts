@@ -199,12 +199,9 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(route, /compactAgentJobRunDetails/);
   assert.match(route, /existingRun\?\.details/);
   assert.match(route, /mergeAgentJobRunProgress\(current\.progress, next\.progress\)/);
-  assert.match(route, /function progressEventIdentity/);
-  assert.match(route, /progressEventIdentity\(event\)/);
-  assert.match(route, /function progressEventExactKey/);
-  assert.match(route, /const previousEvent = dedupedEvents\.at\(-1\)/);
-  assert.doesNotMatch(route, /eventsByIdentity/);
-  assert.doesNotMatch(route, /const key = `\$\{event\.at \?\? ""\}:/);
+  assert.match(route, /dedupeFetchProgressEvents/);
+  assert.match(route, /mergeFetchProgressTask/);
+  assert.match(route, /function mergeProgressTasks/);
 });
 
 test("runner supervises cron workers instead of skipping active old instances", () => {

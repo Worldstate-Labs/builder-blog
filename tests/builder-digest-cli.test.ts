@@ -5034,6 +5034,38 @@ test("checkpoint progress coalesces repeated updates for the same task", async (
   ]);
 });
 
+test("checkpoint progress cannot regress a task already synced by the server", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const taskId = "fetch_post:source:already-synced";
+
+  const updates = cli.coalesceCheckpointProgressUpdates(
+    [
+      {
+        id: taskId,
+        status: "summarized",
+        phase: "summarize",
+        message: "Summary ready; waiting for server sync.",
+      },
+      {
+        id: "fetch_post:source:still-running",
+        status: "reading",
+        phase: "read",
+        message: "Started reading this task.",
+      },
+    ],
+    [taskId],
+  );
+
+  assert.deepEqual(updates, [
+    {
+      id: "fetch_post:source:still-running",
+      status: "reading",
+      phase: "read",
+      message: "Started reading this task.",
+    },
+  ]);
+});
+
 test("fetch progress does not append the same lifecycle event twice in a row", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const progress = {
@@ -5052,6 +5084,34 @@ test("fetch progress does not append the same lifecycle event twice in a row", a
   });
 
   assert.equal(progress.recentEvents.length, 1);
+  assert.equal(progress.recentEvents[0]?.at, "2026-07-14T06:09:20.402Z");
+});
+
+test("fetch progress records the task-planning milestone only once per run", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const progress = {
+    recentEvents: [
+      {
+        at: "2026-07-14T06:09:20.402Z",
+        type: "tasks_planned",
+        message: "Planned 3 post tasks.",
+      },
+      {
+        at: "2026-07-14T06:10:20.402Z",
+        type: "task_progress",
+        taskId: "fetch_post:source:first",
+        status: "summarized",
+        message: "First task summarized.",
+      },
+    ],
+  };
+
+  cli.appendFetchProgressEvent(progress, {
+    type: "tasks_planned",
+    message: "Planned 3 post tasks.",
+  });
+
+  assert.equal(progress.recentEvents.length, 2);
   assert.equal(progress.recentEvents[0]?.at, "2026-07-14T06:09:20.402Z");
 });
 
