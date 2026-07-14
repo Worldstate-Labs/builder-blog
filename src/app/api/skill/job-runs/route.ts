@@ -184,6 +184,10 @@ function progressEventIdentity(event: Record<string, unknown>): string {
   ]);
 }
 
+function progressEventExactKey(event: Record<string, unknown>): string {
+  return JSON.stringify([event.at ?? "", progressEventIdentity(event)]);
+}
+
 function mergeProgressArray(
   current: unknown,
   incoming: unknown,
@@ -235,15 +239,23 @@ function mergeAgentJobRunProgress(currentValue: unknown, incomingValue: unknown)
   ]
     .map(compactProgressEvent)
     .filter((event) => compactText(event.at ?? event.message, 500));
-  const eventsByIdentity = new Map<string, Record<string, unknown>>();
+  const exactEventKeys = new Set<string>();
+  const dedupedEvents: Record<string, unknown>[] = [];
   for (const event of recentEvents) {
-    // The fetch CLI can report the same semantic milestone from both its
-    // planning and fetch-log patch phases. Keep the newest timestamp, but do
-    // not show duplicate UI events merely because the reports arrived a few
-    // seconds apart.
-    eventsByIdentity.set(progressEventIdentity(event), event);
+    const exactKey = progressEventExactKey(event);
+    if (exactEventKeys.has(exactKey)) continue;
+    exactEventKeys.add(exactKey);
+
+    const previousEvent = dedupedEvents.at(-1);
+    if (previousEvent && progressEventIdentity(previousEvent) === progressEventIdentity(event)) {
+      // Two producer phases can announce one unchanged milestone a few
+      // seconds apart. Keep the newer timestamp, while preserving a later
+      // recurrence when another lifecycle event happened in between.
+      dedupedEvents[dedupedEvents.length - 1] = event;
+    } else {
+      dedupedEvents.push(event);
+    }
   }
-  const dedupedEvents = [...eventsByIdentity.values()];
 
   return {
     version: finiteNumber(incoming.version) ?? finiteNumber(current.version) ?? 1,

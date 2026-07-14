@@ -201,6 +201,9 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(route, /mergeAgentJobRunProgress\(current\.progress, next\.progress\)/);
   assert.match(route, /function progressEventIdentity/);
   assert.match(route, /progressEventIdentity\(event\)/);
+  assert.match(route, /function progressEventExactKey/);
+  assert.match(route, /const previousEvent = dedupedEvents\.at\(-1\)/);
+  assert.doesNotMatch(route, /eventsByIdentity/);
   assert.doesNotMatch(route, /const key = `\$\{event\.at \?\? ""\}:/);
 });
 
