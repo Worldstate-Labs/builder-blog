@@ -7070,6 +7070,20 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     });
   }
   for (const summary of shardSummaries) {
+    if (summary.status === "missing") {
+      const plan = shardPlanByResultFile.get(summary.shard);
+      if (plan && plan.taskIds.every((id) => accounted.has(id))) {
+        delete summary.error;
+        Object.assign(summary, {
+          status: "ok",
+          items: 0,
+          taskOutcomes: 0,
+          sourceShard: plan.shard,
+          taskCount: plan.taskCount,
+          completedBy: "checkpoints",
+        });
+      }
+    }
     if (summary.status !== "ok") continue;
     const plan = shardPlanByResultFile.get(summary.shard);
     if (!plan) continue;

@@ -212,6 +212,28 @@ test("cloud worker host only stops a runtime after its shard result covers every
   assert.match(runner, /_completed_worker_pids=".*\$_pid/);
 });
 
+test("completed workers are reaped inside process-tree termination before the shell reports them", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("process_tree_pids() {");
+  const end = runner.indexOf("\njob_tmp_process_pids() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-reap-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu\n${runner.slice(start, end)}\n(sleep 30) &\nworker_pid=$!\nterminate_process_tree "$worker_pid" TERM 2\n`,
+      "utf8",
+    );
+    const { stderr } = await execFileAsync("sh", [checkPath]);
+    assert.doesNotMatch(stderr, /Terminated(?:: 15)?/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud worker host does not reuse a lane whose previous shard exited incomplete", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("worker_entry_lane() {");

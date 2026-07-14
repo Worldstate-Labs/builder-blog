@@ -1747,6 +1747,11 @@ terminate_process_tree() {
     kill -s "$tpt_signal" "$tpt_pid" 2>/dev/null || true
   done
 
+  # If the root is one of this shell's background workers, reap it before the
+  # next command gives /bin/sh a chance to print a job-status diagnostic.
+  # `wait` fails harmlessly for non-child pids handled by other callers.
+  wait "$tpt_root" >/dev/null 2>&1 || true
+
   tpt_left="$tpt_wait_seconds"
   while [ "$tpt_left" -gt 0 ]; do
     tpt_alive=0
@@ -1756,7 +1761,14 @@ terminate_process_tree() {
         break
       fi
     done
-    [ "$tpt_alive" -eq 0 ] && return 0
+    if [ "$tpt_alive" -eq 0 ]; then
+      # Reap an owned background worker before returning. On macOS /bin/sh,
+      # leaving the dead child pending until the caller's next command prints
+      # a noisy `Terminated: 15 ( ... )` job diagnostic into an otherwise
+      # successful fetch log.
+      wait "$tpt_root" >/dev/null 2>&1 || true
+      return 0
+    fi
     sleep 1
     tpt_left=$(( tpt_left - 1 ))
   done

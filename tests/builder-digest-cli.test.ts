@@ -5828,6 +5828,58 @@ test("merge-task-results preserves task checkpoints when a shard result is missi
   ]);
 });
 
+test("merge-task-results reports a missing final shard as checkpoint-complete when checkpoints cover every task", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "done", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    { name: "shard-0-result.json", error: "no result file" },
+    {
+      name: "shard-0-checkpoints/done.json",
+      checkpoint: true,
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  assert.deepEqual(merged.shards, [
+    {
+      shard: "shard-0-result.json",
+      status: "ok",
+      items: 0,
+      taskOutcomes: 0,
+      sourceShard: "shard-0",
+      taskCount: 1,
+      completedBy: "checkpoints",
+    },
+    {
+      shard: "shard-0-checkpoints/done.json",
+      status: "ok",
+      items: 1,
+      taskOutcomes: 0,
+    },
+  ]);
+  assert.equal(merged.backfilledOutcomes, 0);
+});
+
 test("merge-task-results ignores empty and redundant task checkpoints", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
