@@ -173,6 +173,17 @@ function compactProgressEvent(value: unknown): Record<string, unknown> {
   };
 }
 
+function progressEventIdentity(event: Record<string, unknown>): string {
+  return JSON.stringify([
+    event.type ?? "",
+    event.message ?? "",
+    event.taskId ?? "",
+    event.builderId ?? "",
+    event.status ?? "",
+    event.reason ?? "",
+  ]);
+}
+
 function mergeProgressArray(
   current: unknown,
   incoming: unknown,
@@ -224,13 +235,15 @@ function mergeAgentJobRunProgress(currentValue: unknown, incomingValue: unknown)
   ]
     .map(compactProgressEvent)
     .filter((event) => compactText(event.at ?? event.message, 500));
-  const eventKeys = new Set<string>();
-  const dedupedEvents = recentEvents.filter((event) => {
-    const key = `${event.at ?? ""}:${event.type ?? ""}:${event.message ?? ""}`;
-    if (eventKeys.has(key)) return false;
-    eventKeys.add(key);
-    return true;
-  });
+  const eventsByIdentity = new Map<string, Record<string, unknown>>();
+  for (const event of recentEvents) {
+    // The fetch CLI can report the same semantic milestone from both its
+    // planning and fetch-log patch phases. Keep the newest timestamp, but do
+    // not show duplicate UI events merely because the reports arrived a few
+    // seconds apart.
+    eventsByIdentity.set(progressEventIdentity(event), event);
+  }
+  const dedupedEvents = [...eventsByIdentity.values()];
 
   return {
     version: finiteNumber(incoming.version) ?? finiteNumber(current.version) ?? 1,
