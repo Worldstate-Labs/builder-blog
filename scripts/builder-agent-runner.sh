@@ -402,7 +402,11 @@ run_with_hermes() {
   LAST_AGENT_OUTPUT_FILE="$_hermes_output"
   LAST_AGENT_USAGE_FILE="$_hermes_usage"
   set +e
-  hermes chat -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
+  # Hermes disables its no-byte TTFB watchdog for large Codex contexts by
+  # default. A stalled backend stream would then outlive the worker progress
+  # deadline without retrying, so keep its supported reconnect watchdog on for
+  # FollowBrief jobs unless the operator explicitly overrides it.
+  HERMES_CODEX_TTFB_STRICT="${HERMES_CODEX_TTFB_STRICT:-1}" hermes chat -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
   _hermes_code="$?"
   set -e
   capture_runtime_usage hermes "$_hermes_output" "$_hermes_usage"
@@ -938,7 +942,7 @@ run_with_hermes_unattended() {
   LAST_AGENT_OUTPUT_FILE="$_hermes_output"
   LAST_AGENT_USAGE_FILE="$_hermes_usage"
   set +e
-  hermes chat -Q --yolo --accept-hooks --source tool -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
+  HERMES_CODEX_TTFB_STRICT="${HERMES_CODEX_TTFB_STRICT:-1}" hermes chat -Q --yolo --accept-hooks --source tool -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
   _hermes_code="$?"
   set -e
   capture_runtime_usage hermes "$_hermes_output" "$_hermes_usage"

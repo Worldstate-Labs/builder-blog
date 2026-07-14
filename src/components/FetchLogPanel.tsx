@@ -1835,8 +1835,16 @@ export function fetchRunDisplayState({
     ? interruptedStatus?.label ?? null
     : null;
   const displayRunStatus = outcomeStatus ?? runStatus;
+  const inflightLabel = jobRun && [
+    "checkpoint_syncing",
+    "merge_results",
+    "sync_to_followbrief",
+    "syncing",
+  ].includes(String(jobRun.stage ?? ""))
+    ? "Syncing"
+    : "Running";
   const displayStatus = inflight
-    ? { label: "Syncing", style: statusStyle("partial"), tone: "partial" as const }
+    ? { label: inflightLabel, style: statusStyle("partial"), tone: "partial" as const }
     : noUpdate
       ? { label: "No update", style: statusStyle("ok"), tone: "ok" as const }
     : interruptedStatus && !completedOutcomes

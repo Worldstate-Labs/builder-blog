@@ -332,7 +332,7 @@ test("stale scheduled fetch run with pending tasks does not stay syncing", () =>
     suppressStalled: true,
   });
   assert.equal(stats.planned, 4);
-  assert.equal(openedLiveLogDisplay.displayStatus.label, "Syncing");
+  assert.equal(openedLiveLogDisplay.displayStatus.label, "Running");
 });
 
 test("fetch timeline opens the specific run bound to a scheduled slot", () => {
@@ -412,6 +412,31 @@ test("fetch timeline opens the specific run bound to a scheduled slot", () => {
   const olderEntry = entries.find((entry) => entry.time === "2026-06-20T12:00:00.000Z");
 
   assert.deepEqual(olderEntry?.logRef, { kind: "run", runId: "run_1hr" });
+});
+
+test("an inflight fetch log does not claim it is syncing before the sync stage", () => {
+  const jobRun = runningFetchJobRun();
+  jobRun.stage = "run_fetch_workers";
+
+  const displayState = fetchRunDisplayState({
+    completedOutcomes: false,
+    inflight: true,
+    jobRun,
+    outcomeStatus: "ok",
+    runStatus: "ok",
+  });
+
+  assert.equal(displayState.displayStatus.label, "Running");
+
+  jobRun.stage = "checkpoint_syncing";
+  const syncingDisplayState = fetchRunDisplayState({
+    completedOutcomes: false,
+    inflight: true,
+    jobRun,
+    outcomeStatus: "ok",
+    runStatus: "ok",
+  });
+  assert.equal(syncingDisplayState.displayStatus.label, "Syncing");
 });
 
 test("fetch timeline status follows the concrete run bound to a scheduled slot", () => {

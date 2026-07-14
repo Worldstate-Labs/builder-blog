@@ -1468,6 +1468,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /_whole_timeout="\$\(job_timeout_seconds\)"/);
   assert.doesNotMatch(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
   assert.match(runner, /hermes chat -q/);
+  assert.match(
+    runner,
+    /HERMES_CODEX_TTFB_STRICT="\$\{HERMES_CODEX_TTFB_STRICT:-1\}" hermes chat -q/,
+  );
   assert.doesNotMatch(runner, /gemini -p|run_with_gemini_unattended/);
   // Pinned-runtime dispatch for *-cron jobs: each runtime has an
   // _unattended variant with the matching allowlist / auto-approve
@@ -1477,6 +1481,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /run_with_hermes_unattended/);
   assert.match(runner, /run_with_openclaw_unattended/);
   assert.match(runner, /hermes chat -Q --yolo --accept-hooks --source tool -q/);
+  assert.match(
+    runner,
+    /HERMES_CODEX_TTFB_STRICT="\$\{HERMES_CODEX_TTFB_STRICT:-1\}" hermes chat -Q --yolo --accept-hooks --source tool -q/,
+  );
   assert.match(runner, /--permission-mode acceptEdits/);
   assert.match(runner, /--full-auto/);
   assert.match(runner, /--yolo/);
