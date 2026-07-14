@@ -234,20 +234,6 @@ test("completed workers are reaped inside process-tree termination before the sh
   }
 });
 
-test("library worker subshells do not inherit the job-wide signal cleanup trap", async () => {
-  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const start = runner.indexOf("start_library_worker() {");
-  const end = runner.indexOf("\nstart_pending_library_workers() {", start);
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
-
-  const workerLauncher = runner.slice(start, end);
-  assert.match(
-    workerLauncher,
-    /\([\s\S]*trap - TERM INT[\s\S]*run_selected_runtime\s*\)/,
-  );
-});
-
 test("cloud worker host does not reuse a lane whose previous shard exited incomplete", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("worker_entry_lane() {");

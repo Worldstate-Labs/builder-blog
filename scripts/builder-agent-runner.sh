@@ -3796,12 +3796,6 @@ NODE
   _slw_agent_output_file="$_results_dir/$_slw_shard_name-agent-output.log"
   mkdir -p "$_slw_checkpoint_dir"
   (
-    # The enclosing tracked job owns the TERM/INT cleanup trap. This worker is
-    # intentionally terminated after it has written a complete shard result;
-    # inheriting the job-wide trap would let that normal worker shutdown kill
-    # sibling/parent processes in the same run directory and strand the job in
-    # `running` before its final sync.
-    trap - TERM INT
     BUILDER_BLOG_SHARD_FILE="$_slw_shard_file"
     BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_slw_shard_name-result.json"
     BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_slw_checkpoint_dir"
