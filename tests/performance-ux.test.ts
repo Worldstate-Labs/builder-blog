@@ -2916,7 +2916,7 @@ test("dashboard digest tab owns the AI Brief selector", () => {
   assert.doesNotMatch(dashboardPage, /digestCronJob\.findUnique/);
   assert.doesNotMatch(dashboardPage, /getDigestRuns\(userId, 25, "cron"\)/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
-  assert.match(digestPipelineVisibilityToggle, /Remove from Hub/);
+  assert.match(digestPipelineVisibilityToggle, /Keep private/);
   assert.match(digestPipelineVisibilityToggle, /className="hub-share-control"/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(digestPipelineVisibilityToggle, /className=\{`fb-stateful-action hub-share-button \$\{shared \? "is-on" : "is-off"\}`\}/);
@@ -5185,7 +5185,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /aria-label=\{actionLabel\}/);
   assert.match(visibilityToggle, /aria-describedby=\{disabled \? disabledReasonId : undefined\}/);
   assert.match(visibilityToggle, /className="hub-share-label"/);
-  assert.match(visibilityToggle, /Remove from Hub/);
+  assert.match(visibilityToggle, /Keep private/);
   assert.match(visibilityToggle, /Remove source library from Hub/);
   assert.match(visibilityToggle, /Share source library to Hub/);
   assert.match(visibilityToggle, /Source library sharing/);
@@ -5506,7 +5506,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Your digest/);
   assert.doesNotMatch(digestPipelineForm, /pipeline\.owned \? \(/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
-  assert.match(digestPipelineVisibilityToggle, /Remove from Hub/);
+  assert.match(digestPipelineVisibilityToggle, /Keep private/);
   assert.match(digestPipelineVisibilityToggle, /aria-label=\{actionLabel\}/);
   assert.match(digestPipelineVisibilityToggle, /Remove AI Brief collection from Hub/);
   assert.match(digestPipelineVisibilityToggle, /Share AI Brief collection to Hub/);

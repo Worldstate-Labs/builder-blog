@@ -56,7 +56,7 @@ export function DigestPipelineVisibilityToggle({
     });
   }
 
-  const label = shared ? "Remove from Hub" : "Share to Hub";
+  const label = shared ? "Keep private" : "Share to Hub";
   const actionLabel = shared
     ? "Remove AI Brief collection from Hub"
     : "Share AI Brief collection to Hub";

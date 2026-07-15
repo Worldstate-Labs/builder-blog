@@ -71,7 +71,7 @@ export function LibraryVisibilityToggle({
   }
 
   if (compact) {
-    const compactLabel = isPublic ? "Remove from Hub" : "Share to Hub";
+    const compactLabel = isPublic ? "Keep private" : "Share to Hub";
     const actionLabel = isPublic
       ? "Remove source library from Hub"
       : "Share source library to Hub";

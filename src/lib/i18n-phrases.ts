@@ -2360,12 +2360,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "라이브러리의 소스를 언제 어떻게 가져오고 요약할지 사용자 지정할 수 있습니다",
     es: "Puedes personalizar cuándo y cómo obtener y resumir las fuentes de tu biblioteca",
   },
-  "Remove from Hub": {
-    "zh-CN": "从 Hub 移除",
-    "zh-TW": "從 Hub 移除",
-    ja: "Hub から削除",
-    ko: "Hub에서 제거",
-    es: "Quitar de Hub",
+  "Keep private": {
+    "zh-CN": "保持私密",
+    "zh-TW": "保持私密",
+    ja: "非公開にする",
+    ko: "비공개 유지",
+    es: "Mantener privado",
   },
   "Share to Hub": {
     "zh-CN": "分享到 Hub",

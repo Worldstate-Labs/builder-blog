@@ -31,7 +31,7 @@ test("Sources page UI phrases translate while product and source names stay stab
       "You can customize when and how to fetch and summarize sources in your library",
       "你可以自定义何时以及如何抓取和总结信息源库中的信息源",
     ],
-    ["Remove from Hub", "从 Hub 移除"],
+    ["Keep private", "保持私密"],
     ["Add a source", "添加信息源"],
     ["Following", "已关注"],
     ["Favorites", "收藏"],
