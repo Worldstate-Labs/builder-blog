@@ -5,11 +5,14 @@ import {
   computeEntityReachabilityAfterRemoval,
   rebindPrimaryChannels,
 } from "@/lib/builder-entities";
+import {
+  followBriefSourceLibraryDescription,
+  followBriefSourceLibraryName,
+} from "@/lib/followbrief-library";
 import { prisma } from "@/lib/prisma";
 
-export const adminCommunityLibraryName = "Community source library";
-export const adminCommunityLibraryDescription =
-  "Community source library curated by FollowBrief.";
+export const adminCommunityLibraryName = followBriefSourceLibraryName;
+export const adminCommunityLibraryDescription = followBriefSourceLibraryDescription;
 export const adminCommunityDigestTitle = "FollowBrief AI Brief";
 export const adminCommunityDigestDescription =
   "The AI Brief curated by FollowBrief.";

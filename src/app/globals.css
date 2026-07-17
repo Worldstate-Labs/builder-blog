@@ -5231,6 +5231,42 @@ summary.library-section-summary::after {
   width: 1.875rem;
 }
 
+.followbrief-library-identity,
+.followbrief-library-title,
+.followbrief-library-owner {
+  align-items: center;
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.followbrief-library-identity {
+  gap: 0.5rem;
+}
+
+.followbrief-library-identity > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.followbrief-library-mark.fb-mark {
+  border-radius: 5px;
+  font-size: 0.8125rem;
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.followbrief-library-identity.is-compact {
+  gap: 0.35rem;
+}
+
+.followbrief-library-identity.is-compact .followbrief-library-mark.fb-mark {
+  border-radius: 4px;
+  font-size: 0.625rem;
+  height: 1rem;
+  width: 1rem;
+}
+
 .fb-brand-name {
   color: var(--ink);
   font-size: 0.9375rem;

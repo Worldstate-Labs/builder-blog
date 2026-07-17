@@ -126,7 +126,7 @@ export function LibraryVisibilityToggle({
         <strong>
           {isPublic
             ? isAdminLibrary
-              ? "Community source library on Hub"
+              ? "FollowBrief source library on Hub"
               : "Shared on Hub"
             : "Private"}
         </strong>

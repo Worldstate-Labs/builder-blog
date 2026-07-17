@@ -1,10 +1,13 @@
 import { BuilderPoolOrigin } from "@prisma/client";
 import { adminEmails, isAdminEmail } from "@/lib/admin";
+import {
+  followBriefSourceLibraryDescription,
+  followBriefSourceLibraryName,
+} from "@/lib/followbrief-library";
 import { prisma } from "@/lib/prisma";
 
-const adminCommunityLibraryName = "Community source library";
-const adminCommunityLibraryDescription =
-  "Community source library curated by FollowBrief.";
+const adminCommunityLibraryName = followBriefSourceLibraryName;
+const adminCommunityLibraryDescription = followBriefSourceLibraryDescription;
 
 export async function addBuilderToPool(params: {
   userId: string;
@@ -140,7 +143,24 @@ async function findOrCreateDefaultCommunityLibrary() {
     },
     orderBy: { updatedAt: "desc" },
   });
-  if (existing) return existing;
+  if (existing) {
+    if (
+      existing.name !== adminCommunityLibraryName ||
+      existing.description !== adminCommunityLibraryDescription
+    ) {
+      return prisma.libraryHubEntry.update({
+        where: { id: existing.id },
+        data: {
+          name: adminCommunityLibraryName,
+          description: adminCommunityLibraryDescription,
+        },
+        include: {
+          items: { select: { builderId: true } },
+        },
+      });
+    }
+    return existing;
+  }
 
   const admin = await prisma.user.findFirst({
     where: { email: { in: adminEmails() } },

@@ -331,7 +331,7 @@ test("personal YouTube sync cannot create a duplicate builder through handle met
   );
 });
 
-test("non-admin users receive the community source library and FollowBrief AI Brief", () => {
+test("non-admin users receive the FollowBrief source library and FollowBrief AI Brief", () => {
   const builderPool = readFileSync("src/lib/builder-pool.ts", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
   const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
@@ -346,6 +346,9 @@ test("non-admin users receive the community source library and FollowBrief AI Br
   assert.match(builderPool, /userLibraryVisibility/);
   assert.match(builderPool, /isFeatured:\s*true/);
   assert.match(builderPool, /findOrCreateDefaultCommunityLibrary/);
+  assert.match(builderPool, /existing\.name !== adminCommunityLibraryName/);
+  assert.match(builderPool, /existing\.description !== adminCommunityLibraryDescription/);
+  assert.match(builderPool, /prisma\.libraryHubEntry\.update/);
   assert.match(builderPool, /adminEmails\(\)/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /libraryImport\.create/);
@@ -363,6 +366,11 @@ test("non-admin users receive the community source library and FollowBrief AI Br
   assert.doesNotMatch(dashboardPage, /ensureDefaultCommunityDigestImport/);
   assert.doesNotMatch(userSearch, /ensureDefaultCommunityDigestImport/);
   assert.match(libraryHub, /adminCommunityDigestTitle = "FollowBrief AI Brief"/);
+  assert.match(libraryHub, /adminCommunityLibraryName = followBriefSourceLibraryName/);
+  assert.match(
+    readFileSync("src/lib/followbrief-library.ts", "utf8"),
+    /followBriefSourceLibraryName = "FollowBrief source library"/,
+  );
   assert.match(libraryHub, /findAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /findOrCreateAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /ensureDefaultCommunityDigestImport/);

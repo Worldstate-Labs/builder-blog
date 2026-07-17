@@ -64,9 +64,9 @@ test("effectiveCloudFetchFrequency chooses daily when any active submission is d
 });
 
 test("cloud language library names are language-specific hub source libraries", () => {
-  assert.equal(cloudLanguageLibraryHubName("zh"), "Community source library - Chinese");
-  assert.equal(cloudLanguageLibraryHubName("en"), "Community source library - English");
-  assert.equal(cloudLanguageLibraryHubName("source"), "Community source library - original");
+  assert.equal(cloudLanguageLibraryHubName("zh"), "FollowBrief source library - Chinese");
+  assert.equal(cloudLanguageLibraryHubName("en"), "FollowBrief source library - English");
+  assert.equal(cloudLanguageLibraryHubName("source"), "FollowBrief source library - original");
 });
 
 test("cloud language system owners are deterministic per summary language", async () => {

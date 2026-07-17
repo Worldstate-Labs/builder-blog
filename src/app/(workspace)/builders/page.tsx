@@ -11,6 +11,7 @@ import {
   type OwnDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
 import { EmptyState } from "@/components/EmptyState";
+import { FollowBriefLibraryIdentity } from "@/components/FollowBriefLibraryIdentity";
 import {
   type LibraryCronJobStatus,
   type LibraryFetchRunListItem,
@@ -415,10 +416,11 @@ async function loadSourceLibraryData(user: {
       isAdminEmail(libraryImport.hubEntry.owner?.email);
     return {
       id: libraryImport.hubEntryId,
+      isFollowBrief: isCommunityLibrary,
       name: isCommunityLibrary ? adminCommunityLibraryName : libraryImport.hubEntry.name,
       description: libraryImport.hubEntry.description,
       ownerName: isCommunityLibrary
-        ? "FollowBrief community"
+        ? "FollowBrief"
         : libraryImport.hubEntry.owner?.name ||
           libraryImport.hubEntry.owner?.email ||
           "FollowBrief",
@@ -871,7 +873,13 @@ async function SourceLibrarySections({
         {data.importedLibrarySections.map((library) => (
           <LibrarySection
             key={library.id}
-            title={library.name}
+            title={
+              library.isFollowBrief ? (
+                <FollowBriefLibraryIdentity />
+              ) : (
+                library.name
+              )
+            }
             detail={<ImportedLibraryCollapsedMeta builders={library.builders} />}
             count={library.builders.length}
             showCount={false}
@@ -1022,7 +1030,7 @@ function LibrarySection({
   action,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   detail: ReactNode;
   badge?: string;
   count: number;

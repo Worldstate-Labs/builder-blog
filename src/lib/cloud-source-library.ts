@@ -242,7 +242,7 @@ export async function stopUserCloudSourceSubmissions(params: {
 }
 
 export function cloudLanguageLibraryHubName(summaryLanguage: string) {
-  return `Community source library - ${displayLanguagePreference(summaryLanguage)}`;
+  return `FollowBrief source library - ${displayLanguagePreference(summaryLanguage)}`;
 }
 
 function cloudLanguageSystemSlug(summaryLanguage: string) {

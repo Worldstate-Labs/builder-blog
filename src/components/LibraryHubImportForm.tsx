@@ -13,6 +13,7 @@ import { CheckCircle2, ChevronDown, Download } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { FollowBriefLibraryIdentity } from "@/components/FollowBriefLibraryIdentity";
 import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { UserName } from "@/components/UserName";
@@ -71,7 +72,7 @@ type FilterKey = "all" | "community" | "shared" | "my" | "imported";
 
 const FILTERS: Array<{ key: FilterKey; label: string; shortLabel: string }> = [
   { key: "all", label: "All source libraries", shortLabel: "All libraries" },
-  { key: "community", label: "Community", shortLabel: "Community" },
+  { key: "community", label: "FollowBrief", shortLabel: "FollowBrief" },
   { key: "shared", label: "Shared source libraries", shortLabel: "Shared" },
   { key: "my", label: "Your source libraries", shortLabel: "Yours" },
   { key: "imported", label: "Imported", shortLabel: "Imported" },
@@ -476,7 +477,13 @@ function HubCard({
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
             <h3 className="fb-hub-title">
-              {library.name}
+              {library.isCommunity ? (
+                <span className="followbrief-library-title">
+                  <FollowBriefLibraryIdentity label={library.name} />
+                </span>
+              ) : (
+                library.name
+              )}
             </h3>
           </div>
           {action ? (
@@ -678,8 +685,8 @@ function sourceLibraryListCopy(filter: FilterKey) {
   switch (filter) {
     case "community":
       return {
-        description: "Curated source libraries maintained by FollowBrief.",
-        emptyBody: "No community source libraries match this filter.",
+        description: "Source libraries selected and maintained by FollowBrief.",
+        emptyBody: "No FollowBrief source libraries match this filter.",
       };
     case "my":
       return {
@@ -707,7 +714,13 @@ function sourceLibraryListCopy(filter: FilterKey) {
 
 function sourceLibraryByline(library: HubLibrary) {
   if (library.owned) return "Your source library";
-  if (library.isCommunity) return "Curated by FollowBrief";
+  if (library.isCommunity) {
+    return (
+      <span className="followbrief-library-owner">
+        <FollowBriefLibraryIdentity compact label="FollowBrief" />
+      </span>
+    );
+  }
   return <>by <UserName>{sourceLibraryOwnerName(library.ownerLabel)}</UserName></>;
 }
 
