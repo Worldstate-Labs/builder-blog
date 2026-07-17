@@ -6,9 +6,32 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
-import { FileText, LogOut, Scale, Settings, ShieldCheck } from "lucide-react";
+import { FileText, LogOut, Scale, Settings, ShieldCheck, UserRound } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { UserName } from "@/components/UserName";
+
+function AccountAvatar({ image }: { image?: string | null }) {
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  if (image && !avatarFailed) {
+    return (
+      <Image
+        alt=""
+        aria-hidden="true"
+        className="user-avatar fb-avatar"
+        height={32}
+        onError={() => setAvatarFailed(true)}
+        src={image}
+        unoptimized
+        width={32}
+      />
+    );
+  }
+  return (
+    <span className="user-avatar fb-avatar" aria-hidden="true">
+      <UserRound size={18} strokeWidth={2} />
+    </span>
+  );
+}
 
 export function UserMenu({
   compact = false,
@@ -28,7 +51,6 @@ export function UserMenu({
   const user = session?.user;
   const name = user?.name || user?.email?.split("@")[0] || "User";
   const email = user?.email || "";
-  const initial = name.trim().charAt(0).toUpperCase() || "U";
   const settingsActive = pathname === "/settings";
 
   const closeMenu = useCallback((options?: { restoreFocus?: boolean }) => {
@@ -82,21 +104,7 @@ export function UserMenu({
         className="user-menu-trigger"
         ref={summaryRef}
       >
-        {user?.image ? (
-          <Image
-            alt=""
-            aria-hidden="true"
-            className="user-avatar fb-avatar"
-            src={user.image}
-            width={32}
-            height={32}
-            unoptimized
-          />
-        ) : (
-          <span className="fb-avatar" aria-hidden="true">
-            {initial}
-          </span>
-        )}
+        <AccountAvatar image={user?.image} key={user?.image ?? "account-avatar-fallback"} />
         {!compact ? (
           <span className="user-menu-copy">
             <UserName className="user-menu-name">{name}</UserName>

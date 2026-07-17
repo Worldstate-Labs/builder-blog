@@ -222,7 +222,7 @@ async function seedSourceCandidatesFromAdminLibrary() {
 
   const existingCandidates = await prisma.sourceCandidate.findMany({
     where: { sourceKey: { in: uniqueSeeds.map((seed) => seed.sourceKey) } },
-    select: { sourceKey: true, seededFrom: true },
+    select: { sourceKey: true, seededFrom: true, avatarDataUrl: true },
   });
   const existingByKey = new Map(
     existingCandidates.map((candidate) => [candidate.sourceKey, candidate]),
@@ -243,7 +243,7 @@ async function seedSourceCandidatesFromAdminLibrary() {
           fetchUrl: seed.fetchUrl,
           handle: seed.handle,
           avatarUrl: seed.avatarUrl,
-          avatarDataUrl: seed.avatarDataUrl,
+          avatarDataUrl: existing?.avatarDataUrl ?? seed.avatarDataUrl,
           seedBuilderId: seed.seedBuilderId,
           seededFrom: ADMIN_SOURCE_CANDIDATE_SEED,
         },
@@ -266,8 +266,16 @@ async function seedCuratedSourceCandidates(
   seededFrom: string,
 ) {
   const seeds = candidates.map((candidate) => seedFromCuratedCandidate(candidate, seededFrom));
+  const existingCandidates = await prisma.sourceCandidate.findMany({
+    where: { sourceKey: { in: seeds.map((seed) => seed.sourceKey) } },
+    select: { sourceKey: true, avatarDataUrl: true },
+  });
+  const existingByKey = new Map(
+    existingCandidates.map((candidate) => [candidate.sourceKey, candidate]),
+  );
   await Promise.all(
     seeds.map((seed) => {
+      const existing = existingByKey.get(seed.sourceKey);
       return prisma.sourceCandidate.upsert({
         where: { sourceKey: seed.sourceKey },
         update: {
@@ -277,7 +285,7 @@ async function seedCuratedSourceCandidates(
           fetchUrl: seed.fetchUrl,
           handle: seed.handle,
           avatarUrl: seed.avatarUrl,
-          avatarDataUrl: null,
+          avatarDataUrl: existing?.avatarDataUrl ?? seed.avatarDataUrl,
           seedBuilderId: null,
           seededFrom,
         },

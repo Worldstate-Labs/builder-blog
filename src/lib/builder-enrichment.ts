@@ -120,34 +120,85 @@ export async function enrichBuilderFromSource(
 export async function resolveAvatarDataUrl(
   avatarUrl: string | null | undefined,
 ): Promise<string | null> {
-  const safeUrl = toSafeAvatarUrl(avatarUrl);
+  const safeUrl = compactAvatarUrl(toSafeAvatarUrl(avatarUrl));
   if (!safeUrl) return null;
   const check = validatePublicHttpUrl(safeUrl);
   if (!check.ok) return null;
 
+  const downloadUrls = [safeUrl, faviconDownloadFallbackUrl(safeUrl)].filter(
+    (url): url is string => Boolean(url),
+  );
+  for (const downloadUrl of downloadUrls) {
+    if (!validatePublicHttpUrl(downloadUrl).ok) continue;
+    try {
+      const snapshot = await fetchAvatarDataUrl(downloadUrl);
+      if (snapshot) return snapshot;
+    } catch (error) {
+      console.warn("[builder-enrichment] avatar cache fetch failed", {
+        avatarUrl: downloadUrl,
+        error,
+      });
+    }
+  }
+  return null;
+}
+
+async function fetchAvatarDataUrl(avatarUrl: string) {
+  const response = await fetchWithTimeout(avatarUrl, {
+    headers: {
+      Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif,image/*;q=0.8",
+      "User-Agent": USER_AGENT,
+    },
+  });
+  if (!response.ok) return null;
+
+  const contentType = (response.headers.get("content-type") ?? "")
+    .split(";")[0]
+    ?.trim()
+    .toLowerCase();
+  if (!contentType?.startsWith("image/")) return null;
+
+  const contentLength = Number(response.headers.get("content-length") ?? "0");
+  if (contentLength > AVATAR_CACHE_MAX_BYTES) return null;
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > AVATAR_CACHE_MAX_BYTES) return null;
+  return `data:${contentType};base64,${bytes.toString("base64")}`;
+}
+
+export function compactAvatarUrl(avatarUrl: string | null): string | null {
+  if (!avatarUrl) return null;
   try {
-    const response = await fetchWithTimeout(safeUrl, {
-      headers: {
-        Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif,image/*;q=0.8",
-        "User-Agent": USER_AGENT,
-      },
-    });
-    if (!response.ok) return null;
+    const url = new URL(avatarUrl);
+    if (url.hostname === "yt3.googleusercontent.com") {
+      url.pathname = url.pathname.replace(
+        /=s\d+-c-k-c0x00ffffff-no-rj$/,
+        "=s160-c-k-c0x00ffffff-no-rj",
+      );
+    }
+    if (url.hostname === "pbs.twimg.com" && url.pathname.includes("/profile_images/")) {
+      url.pathname = url.pathname.replace(/([^/]+?)(\.(?:jpe?g|png|webp))$/i, (_, stem, ext) =>
+        `${stem.endsWith("_normal") ? stem : `${stem}_normal`}${ext}`,
+      );
+    }
+    if (url.hostname === "www.google.com" && url.pathname === "/s2/favicons") {
+      url.searchParams.set("sz", "64");
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
 
-    const contentType = (response.headers.get("content-type") ?? "")
-      .split(";")[0]
-      ?.trim()
-      .toLowerCase();
-    if (!contentType?.startsWith("image/")) return null;
-
-    const contentLength = Number(response.headers.get("content-length") ?? "0");
-    if (contentLength > AVATAR_CACHE_MAX_BYTES) return null;
-
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.byteLength === 0 || bytes.byteLength > AVATAR_CACHE_MAX_BYTES) return null;
-    return `data:${contentType};base64,${bytes.toString("base64")}`;
-  } catch (error) {
-    console.warn("[builder-enrichment] avatar cache fetch failed", { avatarUrl: safeUrl, error });
+export function faviconDownloadFallbackUrl(avatarUrl: string): string | null {
+  try {
+    const url = new URL(avatarUrl);
+    if (url.hostname !== "www.google.com" || url.pathname !== "/s2/favicons") return null;
+    const domain = url.searchParams.get("domain") ?? url.searchParams.get("domain_url");
+    if (!domain) return null;
+    const origin = domain.includes("://") ? new URL(domain) : new URL(`https://${domain}`);
+    return new URL("/favicon.ico", origin).toString();
+  } catch {
     return null;
   }
 }

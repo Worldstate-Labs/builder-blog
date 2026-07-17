@@ -164,8 +164,11 @@ test("personal builder POST + PATCH routes both run the probe + enrichment", () 
     // Probe failures must be caught defensively (a thrown probe should
     // not 500 the request).
     assert.match(source, /\.catch\(/);
-    assert.match(source, /const avatarUrl = enrichment\.avatarUrl \?\? null/);
-    assert.match(source, /resolveAvatarDataUrl\(avatarUrl\)/);
+    assert.match(
+      source,
+      /resolveSourceAvatar|const avatarUrl = enrichment\.avatarUrl \?\? null/,
+    );
+    assert.match(source, /resolveSourceAvatar|resolveAvatarDataUrl\(avatarUrl\)/);
   }
 });
 

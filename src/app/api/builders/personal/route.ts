@@ -25,6 +25,7 @@ import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 import { prisma } from "@/lib/prisma";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
 import { recordBackupSourceCandidateFromManualBuilder } from "@/lib/source-candidate-backup";
+import { resolveSourceAvatar } from "@/lib/source-avatar-persistence";
 
 const PersonalBuilderSchema = z.object({
   name: z.string().max(240).optional(),
@@ -144,8 +145,13 @@ export async function POST(request: Request) {
       parsed.data.sourceValue,
     ],
   });
-  const avatarUrl = enrichment.avatarUrl ?? null;
-  const avatarDataUrl = await resolveAvatarDataUrl(avatarUrl);
+  const avatar = await resolveSourceAvatar({
+    source: { ...input, fetchUrl: finalFetchUrl },
+    preferredAvatarUrl: enrichment.avatarUrl,
+    prismaClient: prisma,
+  });
+  const avatarUrl = avatar.avatarUrl;
+  const avatarDataUrl = avatar.avatarDataUrl ?? await resolveAvatarDataUrl(avatarUrl);
 
   const builder = await upsertBuilder({
     ownerUserId: session.user.id,

@@ -6,6 +6,9 @@ import { checkBodyContentQuality } from "@/lib/content-quality";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
 import { SkillBuilderSchema } from "@/lib/skill-contracts";
 import { prepareFeedItemStorage } from "@/lib/source-content-policy";
+import { resolveAvatarDataUrl } from "@/lib/builder-enrichment";
+import { resolveSourceAvatar } from "@/lib/source-avatar-persistence";
+import type { CandidateAvatarLookup } from "@/lib/source-avatar-persistence";
 
 export type BuilderFeedSyncInput = z.infer<typeof SkillBuilderSchema>;
 
@@ -39,7 +42,7 @@ type BuilderFeedSyncMode =
       allowedBuilderIds?: Set<string>;
     };
 
-type BuilderFeedSyncPrisma = {
+type BuilderFeedSyncPrisma = Partial<CandidateAvatarLookup> & {
   builder: {
     findFirst(args: unknown): Promise<BuilderFeedSyncBuilder | null>;
     update(args: { where: { id: string }; data: Record<string, unknown> }): Promise<unknown>;
@@ -152,6 +155,7 @@ export async function syncBuilderFeedItems({
     const builder = referencedBuilder.builder ?? await createPersonalBuilder({
       input,
       mode,
+      prisma,
       upsertBuilderFn: upsertBuilderFn ?? (await loadUpsertBuilderFn()),
     });
 
@@ -444,14 +448,24 @@ async function findExistingBuilderForSync(
 async function createPersonalBuilder({
   input,
   mode,
+  prisma,
   upsertBuilderFn,
 }: {
   input: BuilderFeedSyncInput;
   mode: BuilderFeedSyncMode;
+  prisma: BuilderFeedSyncPrisma;
   upsertBuilderFn: UpsertBuilderFn;
 }) {
   if (mode.type !== "personal") {
     throw builderFeedSyncError(`Cloud sync payload is missing builderId for source ${input.name}.`, 400);
+  }
+  const avatar = await resolveSourceAvatar({
+    source: input,
+    probeWhenMissing: true,
+    prismaClient: prisma.sourceCandidate ? prisma as CandidateAvatarLookup : undefined,
+  });
+  if (!avatar.avatarDataUrl) {
+    avatar.avatarDataUrl = await resolveAvatarDataUrl(avatar.avatarUrl);
   }
   return upsertBuilderFn({
     ownerUserId: mode.user.id,
@@ -462,6 +476,8 @@ async function createPersonalBuilder({
     handle: input.handle,
     sourceUrl: input.sourceUrl,
     fetchUrl: input.fetchUrl,
+    avatarUrl: avatar.avatarUrl,
+    avatarDataUrl: avatar.avatarDataUrl,
     bio: input.bio,
   });
 }

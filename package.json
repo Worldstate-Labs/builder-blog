@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "avatars:backfill": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-avatar-cache.ts",
     "skill": "node scripts/builder-digest.mjs",
     "test": "tsx --test tests/**/*.test.ts",
     "storybook": "npm --prefix storybook-tools run storybook --",
