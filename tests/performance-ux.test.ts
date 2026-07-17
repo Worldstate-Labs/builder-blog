@@ -5466,8 +5466,10 @@ test("library hub exposes share and multi-import flows", () => {
 });
 
 test("imported source library metadata", () => {
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
+  const globals = source("src/app/globals.css");
 
   assert.match(hubPage, /getSourceLibraryMetadataByOwnerIds/);
   assert.equal((hubPage.match(/getSourceLibraryMetadataByOwnerIds\(/g) ?? []).length, 1);
@@ -5512,6 +5514,56 @@ test("imported source library metadata", () => {
     hubImportForm,
     /const action = library\.owned \? null : displayAsImported && pending !== "import" \? \(/,
   );
+
+  assert.match(
+    buildersPage,
+    /import \{ SourceLibraryMetadata as SourceLibraryMetadataRow \} from "@\/components\/SourceLibraryMetadata"/,
+  );
+  assert.match(
+    buildersPage,
+    /import \{\s*getSourceLibraryMetadataByOwnerIds,\s*type SourceLibraryMetadata as SourceLibraryMetadataValue,\s*\} from "@\/lib\/source-library-metadata"/,
+  );
+  assert.equal((buildersPage.match(/getSourceLibraryMetadataByOwnerIds\(/g) ?? []).length, 1);
+  assert.match(
+    buildersPage,
+    /const importedLibraryOwnerUserIds = importedLibraries[\s\S]*map\(\(libraryImport\) => libraryImport\.hubEntry\.ownerUserId \?\? ""\)[\s\S]*filter\(Boolean\);/,
+  );
+  assert.match(
+    buildersPage,
+    /const importedLibraryMetadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds\(importedLibraryOwnerUserIds\);/,
+  );
+  assert.match(
+    buildersPage,
+    /metadata:\s*libraryImport\.hubEntry\.ownerUserId[\s\S]*importedLibraryMetadataByOwnerUserId\[libraryImport\.hubEntry\.ownerUserId\] \?\? null[\s\S]*: null,/,
+  );
+  assert.match(
+    buildersPage,
+    /<LibrarySection[\s\S]*importedMetadata=\{library\.metadata\}[\s\S]*action=\{[\s\S]*<LibraryImportRemoveButton/,
+  );
+  assert.match(
+    buildersPage,
+    /importedMetadata\?: SourceLibraryMetadataValue \| null;/,
+  );
+  assert.match(
+    buildersPage,
+    /const importedMetadataRow = importedMetadata \|\| action \? \([\s\S]*className="library-section-meta library-section-meta--imported"[\s\S]*className="library-section-imported-metadata"[\s\S]*importedMetadata \? <SourceLibraryMetadataRow metadata=\{importedMetadata\} \/> : null[\s\S]*\{action\}[\s\S]*\) : null;/,
+  );
+  assert.match(
+    buildersPage,
+    /<div className="library-section-summary-copy">[\s\S]*<h3 className="fb-section-heading">\{title\}<\/h3>[\s\S]*\{importedMetadataRow\}[\s\S]*<div className="library-section-copy">\{detail\}<\/div>/,
+  );
+
+  assert.match(globals, /\.hub-card-imported-meta-row\s*{[\s\S]*align-items:\s*flex-start/);
+  assert.match(globals, /\.hub-card-imported-meta-row\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.hub-card-imported-meta-row\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.hub-card-imported-meta-row\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.hub-card-imported-metadata\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.source-library-metadata\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.source-library-metadata\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
+  assert.match(globals, /\.source-library-metadata-item svg\s*{[\s\S]*flex:\s*0 0 auto/);
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {
@@ -5937,12 +5989,25 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.library-section-panel\[open\] > summary\.library-section-summary::after\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.doesNotMatch(css, /\.library-section-meta > \.fb-btn\s*{/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-summary-copy\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-summary-copy\s*{[\s\S]*grid-template-areas:\s*"title title"\s*"meta meta"\s*"toggle toggle"/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-meta--imported\s*{[\s\S]*grid-area:\s*meta/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-meta--imported\s*{[\s\S]*width:\s*100%/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-imported-metadata\s*{[\s\S]*min-width:\s*0/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-meta--imported \.import-remove-control\s*{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-copy:has\(.imported-library-collapsed-meta\)\s*{[\s\S]*grid-area:\s*toggle/);
+  assert.match(css, /\.library-section-panel-imported \.library-section-copy:has\(.imported-library-collapsed-meta\)\s*{[\s\S]*margin-top:\s*0/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-actions,[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*gap:\s*0\.58rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta \.import-remove-control\s*{[\s\S]*justify-self:\s*start/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge \.import-remove-control\s*{[\s\S]*justify-self:\s*end/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.hub-card-imported-meta-row\s*{[\s\S]*align-items:\s*stretch/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.hub-card-imported-meta-row \.fb-hub-card-actions\s*{[\s\S]*margin-inline-start:\s*auto/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-panel-imported \.library-section-meta--imported\s*{[\s\S]*align-items:\s*stretch/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-panel-imported \.library-section-meta--imported\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-panel-imported \.library-section-meta--imported \.import-remove-control\s*{[\s\S]*margin-inline-start:\s*auto/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad--reading > h2\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);

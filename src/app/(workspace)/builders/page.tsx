@@ -23,6 +23,7 @@ import {
   type CloudSubmissionSource,
 } from "@/components/SkillPromptActions";
 import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
+import { SourceLibraryMetadata as SourceLibraryMetadataRow } from "@/components/SourceLibraryMetadata";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourcesTabShell } from "@/components/SourcesTabShell";
 import { SourceSyncLogTabs } from "@/components/SourceSyncLogTabs";
@@ -56,6 +57,10 @@ import {
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { ensureSourceCandidateLibraryFromAdminSources } from "@/lib/source-candidate-library";
+import {
+  getSourceLibraryMetadataByOwnerIds,
+  type SourceLibraryMetadata as SourceLibraryMetadataValue,
+} from "@/lib/source-library-metadata";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 import { loadUserCloudFetchLog } from "@/lib/user-cloud-fetch-log-data";
 
@@ -386,6 +391,10 @@ async function loadSourceLibraryData(user: {
     )
     .map((entry) => entry.builder)
     .sort(builderSort);
+  const importedLibraryOwnerUserIds = importedLibraries
+    .map((libraryImport) => libraryImport.hubEntry.ownerUserId ?? "")
+    .filter(Boolean);
+  const importedLibraryMetadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds(importedLibraryOwnerUserIds);
   const importedLibrarySections = importedLibraries.map((libraryImport) => {
     const isCommunityLibrary =
       libraryImport.hubEntry.isFeatured ||
@@ -400,6 +409,9 @@ async function loadSourceLibraryData(user: {
         : libraryImport.hubEntry.owner?.name ||
           libraryImport.hubEntry.owner?.email ||
           "FollowBrief",
+      metadata: libraryImport.hubEntry.ownerUserId
+        ? importedLibraryMetadataByOwnerUserId[libraryImport.hubEntry.ownerUserId] ?? null
+        : null,
       builders: libraryImport.hubEntry.items
         .flatMap((item) => {
           const entry = activeEntryByBuilderId.get(item.builderId);
@@ -860,6 +872,7 @@ async function SourceLibrarySections({
             count={library.builders.length}
             showCount={false}
             indented
+            importedMetadata={library.metadata}
             summaryClassName="library-section-panel-imported"
             action={
               <LibraryImportRemoveButton
@@ -1004,6 +1017,7 @@ function LibrarySection({
   summaryClassName,
   showCount = true,
   action,
+  importedMetadata,
   children,
 }: {
   title: ReactNode;
@@ -1015,8 +1029,18 @@ function LibrarySection({
   summaryClassName?: string;
   showCount?: boolean;
   action?: ReactNode;
+  importedMetadata?: SourceLibraryMetadataValue | null;
   children: ReactNode;
 }) {
+  const importedMetadataRow = importedMetadata || action ? (
+    <div className="library-section-meta library-section-meta--imported">
+      <div className="library-section-imported-metadata">
+        {importedMetadata ? <SourceLibraryMetadataRow metadata={importedMetadata} /> : null}
+      </div>
+      {action}
+    </div>
+  ) : null;
+
   return (
     <details
       className={`library-section-panel${indented ? " library-section-panel-indented" : ""}${summaryClassName ? ` ${summaryClassName}` : ""}`}
@@ -1025,13 +1049,16 @@ function LibrarySection({
       <summary className="library-section-summary">
         <div className="library-section-summary-copy">
           <h3 className="fb-section-heading">{title}</h3>
+          {importedMetadataRow}
           <div className="library-section-copy">{detail}</div>
         </div>
-        <div className={`library-section-meta${badge ? "" : " library-section-meta--no-badge"}`}>
-          {badge ? <span className="fb-kind-pill">{badge}</span> : null}
-          {showCount ? <CountMeta label={count === 1 ? "source" : "sources"} value={count} /> : null}
-          {action}
-        </div>
+        {!importedMetadataRow ? (
+          <div className={`library-section-meta${badge ? "" : " library-section-meta--no-badge"}`}>
+            {badge ? <span className="fb-kind-pill">{badge}</span> : null}
+            {showCount ? <CountMeta label={count === 1 ? "source" : "sources"} value={count} /> : null}
+            {action}
+          </div>
+        ) : null}
       </summary>
       <div className="library-section-body">
         <SourceLibraryItemsArea>{children}</SourceLibraryItemsArea>

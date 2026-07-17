@@ -2842,10 +2842,7 @@ details:not([open]) > :not(summary) {
 
 .library-section-panel-imported > .library-section-summary {
   align-items: start;
-  grid-template-areas:
-    "title action"
-    "toggle toggle";
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .library-section-panel-imported > .library-section-summary::after {
@@ -2854,11 +2851,32 @@ details:not([open]) > :not(summary) {
 }
 
 .library-section-panel-imported .library-section-summary-copy {
-  display: contents;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-areas:
+    "title title"
+    "meta meta"
+    "toggle toggle";
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
 }
 
 .library-section-panel-imported .library-section-summary-copy > .fb-section-heading {
   grid-area: title;
+}
+
+.library-section-panel-imported .library-section-meta--imported {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  grid-area: meta;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.library-section-panel-imported .library-section-imported-metadata {
+  min-width: 0;
 }
 
 .library-section-panel-imported .library-section-copy:has(.imported-library-collapsed-meta) {
@@ -2867,7 +2885,7 @@ details:not([open]) > :not(summary) {
   gap: 0.75rem;
   grid-area: toggle;
   grid-template-columns: minmax(0, 1fr) auto;
-  margin-top: 0.85rem;
+  margin-top: 0;
   max-width: none;
 }
 
@@ -2907,11 +2925,9 @@ summary.library-section-summary::after {
   gap: 0.65rem;
 }
 
-.library-section-panel-imported .library-section-meta {
-  align-self: start;
-  grid-area: action;
-  grid-column: 2;
-  grid-row: 1;
+.library-section-panel-imported .library-section-meta--imported .import-remove-control {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 .library-section-body {
@@ -10262,6 +10278,46 @@ a.builder-library-name:hover {
   justify-content: flex-end;
 }
 
+.hub-card-imported-meta-row {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+}
+
+.hub-card-imported-metadata {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.source-library-metadata {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.85rem;
+  min-width: 0;
+}
+
+.source-library-metadata-item {
+  align-items: center;
+  color: var(--muted-strong);
+  display: inline-flex;
+  gap: 0.35rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.source-library-metadata-item span {
+  min-width: 0;
+}
+
+.source-library-metadata-item svg {
+  flex: 0 0 auto;
+  height: 0.9375rem;
+  width: 0.9375rem;
+}
+
 .hub-card-action-button:disabled {
   cursor: wait;
 }
@@ -14457,6 +14513,16 @@ body {
     justify-self: end;
   }
 
+  .library-section-panel-imported .library-section-meta--imported {
+    align-items: stretch;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .library-section-panel-imported .library-section-meta--imported .import-remove-control {
+    margin-inline-start: auto;
+  }
+
   .library-section-meta .library-visibility-toggle {
     justify-self: end;
     max-width: 100%;
@@ -14600,6 +14666,15 @@ body {
     justify-content: flex-start;
     max-width: 100%;
     width: 100%;
+  }
+
+  .hub-card-imported-meta-row {
+    align-items: stretch;
+  }
+
+  .hub-card-imported-meta-row .fb-hub-card-actions {
+    margin-inline-start: auto;
+    width: auto;
   }
 
   .digest-pipeline-card .fb-hub-card-head {
