@@ -218,12 +218,7 @@ function UserCloudFetchLogPanel({
         </dl>
       </div>
 
-      {cloudLog.sources.length === 0 ? (
-        <p className="cron-field-hint">
-          No FollowBrief fetching yet. Ask FollowBrief to fetch sources from your library to track
-          their status here.
-        </p>
-      ) : (
+      {cloudLog.sources.length > 0 ? (
         <ul className="cloud-source-list user-cloud-source-list">
           {cloudLog.sources.map((source) => {
             const isOpen = expanded === source.submissionId;
@@ -238,7 +233,7 @@ function UserCloudFetchLogPanel({
             );
           })}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }

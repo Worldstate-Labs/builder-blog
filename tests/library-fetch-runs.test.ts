@@ -1231,7 +1231,7 @@ test("source sync log tabs default to FollowBrief before Agent", () => {
   assert.match(tabs, /On time sources/);
   assert.match(tabs, /onTimeSourceLabel/);
   assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*FollowBrief sources[\s\S]*On time sources/);
-  assert.match(tabs, /No FollowBrief fetching yet/);
+  assert.doesNotMatch(tabs, /No FollowBrief fetching yet/);
   assert.match(sourceLogItem, /Latest FollowBrief fetch log/);
   assert.doesNotMatch(tabs, /No cloud fetch submissions yet|Submit sources to Cloud|Submitted sources|Latest cloud fetch log/);
   assert.match(tabs, /<FetchLogPanel/);
