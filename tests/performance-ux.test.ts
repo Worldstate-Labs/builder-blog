@@ -4306,11 +4306,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(cssRule(globals, ".library-section-panel-indented"), /margin-left/);
   assert.doesNotMatch(globals, /\.library-section-panel\[open\] \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.imported-library-collapsed-meta\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.library-section-panel-imported > \.library-section-summary\s*{[\s\S]*align-items:\s*start[\s\S]*grid-template-areas:[\s\S]*"title action"[\s\S]*"toggle toggle"[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.library-section-panel-imported > \.library-section-summary\s*{[\s\S]*align-items:\s*start[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.library-section-panel-imported > \.library-section-summary::after\s*{[\s\S]*content:\s*none[\s\S]*display:\s*none/);
-  assert.match(globals, /\.library-section-panel-imported \.library-section-summary-copy\s*{[\s\S]*display:\s*contents/);
+  assert.match(globals, /\.library-section-panel-imported \.library-section-summary-copy\s*{[\s\S]*display:\s*grid[\s\S]*grid-template-areas:[\s\S]*"title title"[\s\S]*"meta meta"[\s\S]*"toggle toggle"/);
   assert.match(globals, /\.library-section-panel-imported \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*grid[\s\S]*grid-area:\s*toggle[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.library-section-panel-imported \.library-section-meta\s*{[\s\S]*align-self:\s*start[\s\S]*grid-area:\s*action[\s\S]*grid-column:\s*2[\s\S]*grid-row:\s*1/);
   assert.match(globals, /\.imported-library-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
   assert.doesNotMatch(globals, /\.imported-library-count-row\s*{/);
   assert.match(globals, /\.imported-library-chevron\s*{[\s\S]*height:\s*1rem[\s\S]*justify-self:\s*end/);
