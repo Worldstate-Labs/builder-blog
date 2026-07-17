@@ -9,7 +9,7 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("Sources loading states mirror the loaded source and two-Brief surfaces", () => {
+test("Sources loading states mirror the loaded source and user-Brief surfaces", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const buildersLoading = source("src/app/(workspace)/builders/loading.tsx");
   const digestHeadlineSummary = source("src/components/DigestHeadlineSummary.tsx");
@@ -25,15 +25,16 @@ test("Sources loading states mirror the loaded source and two-Brief surfaces", (
   assert.match(buildersLoading, /className="your-library-panel library-section-panel"/);
   assert.match(buildersLoading, /className="source-section-skeleton-row"/);
 
-  assert.match(fallbackBlock, /Your AI Brief/);
-  assert.match(fallbackBlock, /FollowBrief AI Brief/);
+  assert.match(fallbackBlock, /className="own-digest-card"/);
+  assert.match(fallbackBlock, /Loading AI Brief controls/);
+  assert.doesNotMatch(fallbackBlock, /FollowBrief AI Brief/);
   assert.match(fallbackBlock, /digest-brief-list/);
   assert.equal((fallbackBlock.match(/<article/g) ?? []).length, 1);
   assert.doesNotMatch(fallbackBlock, /AI Brief collection|Imported AI Brief/);
   assert.doesNotMatch(fallbackBlock, /library-section-panel/);
 
   assert.match(digestPipelineCards, /function DigestPipelineInfoCard/);
-  assert.match(digestPipelineCards, /FollowBriefDigestPipelineCard/);
+  assert.doesNotMatch(digestPipelineCards, /FollowBriefDigestPipelineCard/);
   assert.match(digestPipelineCards, /OwnDigestPipelineCard/);
   assert.doesNotMatch(digestPipelineCards, /DigestPipelineTitleEditor|Import|Remove import|fetch\(/);
   assert.match(digestPipelineCards, /pipeline\.digestCount === 1 \? "issue" : "issues"/);

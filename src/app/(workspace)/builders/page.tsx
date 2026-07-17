@@ -5,11 +5,7 @@ import { Suspense, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { CountMeta, formatCount } from "@/components/Count";
-import {
-  FollowBriefDigestPipelineCard,
-  type FollowBriefDigestPipeline,
-  type OwnDigestPipeline,
-} from "@/components/DigestPipelineImportForm";
+import { type OwnDigestPipeline } from "@/components/DigestPipelineImportForm";
 import { EmptyState } from "@/components/EmptyState";
 import { FollowBriefLibraryIdentity } from "@/components/FollowBriefLibraryIdentity";
 import {
@@ -53,8 +49,6 @@ import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
   ensureAdminCommunityLibrary,
-  ensureAdminCommunityDigestPipeline,
-  findAdminCommunityDigestPipeline,
   personalSourceLibraryName,
   sharePersonalLibraryToHub,
   userImportableLibraryHubEntryWhere,
@@ -204,7 +198,6 @@ async function DigestSourcesSection({
         initialScheduledJobRuns={data.digestScheduledJobRuns}
         pipeline={data.ownDigestPipeline}
       />
-      <FollowBriefDigestPipelineCard pipeline={data.followBriefDigestPipeline} />
     </section>
   );
 }
@@ -217,12 +210,10 @@ function DigestSourcesFallback() {
       aria-busy="true"
     >
       <span className="sr-only">Loading AI Brief controls</span>
-      {["Your AI Brief", "FollowBrief AI Brief"].map((title) => (
-        <article className="own-digest-card" key={title} aria-label={`Loading ${title}`}>
-          <div className="source-sync-skeleton-line is-title" />
-          <div className="source-sync-skeleton-panel" />
-        </article>
-      ))}
+      <article className="own-digest-card" aria-label="Loading AI Brief controls">
+        <div className="source-sync-skeleton-line is-title" />
+        <div className="source-sync-skeleton-panel" />
+      </article>
     </section>
   );
 }
@@ -230,10 +221,6 @@ function DigestSourcesFallback() {
 async function loadDigestSourcesPageData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
-  if (isAdminEmail(session.user.email)) {
-    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
-  }
-  const followBriefPipelineShare = await findAdminCommunityDigestPipeline();
 
   const [
     rawTokens,
@@ -272,9 +259,8 @@ async function loadDigestSourcesPageData() {
     }),
   ]);
 
-  const followBriefOwnerUserId = followBriefPipelineShare?.ownerUserId ?? null;
   const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds(
-    [session.user.id, followBriefOwnerUserId].filter((id): id is string => Boolean(id)),
+    [session.user.id],
   );
   const ownDigestMetadata =
     digestMetadataByOwnerId.get(session.user.id) ?? emptyDigestPipelineMetadata();
@@ -282,15 +268,6 @@ async function loadDigestSourcesPageData() {
     title: "Your AI Brief",
     ...ownDigestMetadata,
   };
-  const followBriefDigestPipeline: FollowBriefDigestPipeline = {
-    title: "FollowBrief AI Brief",
-    ...(
-      (followBriefOwnerUserId
-        ? digestMetadataByOwnerId.get(followBriefOwnerUserId)
-        : null) ?? emptyDigestPipelineMetadata()
-    ),
-  };
-
   return {
     activeTokens: serializeAgentTokens(rawTokens),
     digestCronJob: serializeDigestCronJob(rawDigestCronJob),
@@ -298,7 +275,6 @@ async function loadDigestSourcesPageData() {
     digestJobRuns,
     digestRuns: rawDigestRuns,
     digestScheduledJobRuns,
-    followBriefDigestPipeline,
     ownDigestPipeline,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),

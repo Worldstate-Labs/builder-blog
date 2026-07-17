@@ -11,10 +11,6 @@ export type OwnDigestPipeline = DigestPipelineRuntimeMetadata & {
   title: "Your AI Brief";
 };
 
-export type FollowBriefDigestPipeline = DigestPipelineRuntimeMetadata & {
-  title: "FollowBrief AI Brief";
-};
-
 const HEADLINE_PREVIEW_LINES = 6;
 
 export function OwnDigestPipelineCard({
@@ -34,20 +30,6 @@ export function OwnDigestPipelineCard({
       className="own-digest-card"
       cronStatusControl={cronStatusControl}
       detailsSlot={children}
-      pipeline={pipeline}
-      title={pipeline.title}
-    />
-  );
-}
-
-export function FollowBriefDigestPipelineCard({
-  pipeline,
-}: {
-  pipeline: FollowBriefDigestPipeline;
-}) {
-  return (
-    <DigestPipelineInfoCard
-      className="fb-hub-card digest-pipeline-card followbrief-digest-card"
       pipeline={pipeline}
       title={pipeline.title}
     />

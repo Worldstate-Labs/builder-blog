@@ -360,7 +360,8 @@ test("non-admin users receive the FollowBrief source library and FollowBrief AI 
   assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(user\.id\)/);
   assert.doesNotMatch(buildersPage, /ensureDefaultCommunityDigestImport/);
-  assert.match(buildersPage, /findAdminCommunityDigestPipeline/);
+  assert.doesNotMatch(buildersPage, /findAdminCommunityDigestPipeline/);
+  assert.match(dashboardPage, /findAdminCommunityDigestPipeline/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.doesNotMatch(hubPage, /ensureDefaultCommunityDigestImport|digestPipeline/);
   assert.doesNotMatch(dashboardPage, /ensureDefaultCommunityDigestImport/);
