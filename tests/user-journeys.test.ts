@@ -681,7 +681,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(settingsFields, /export \{ SUMMARY_LANGUAGE_OPTIONS, languageOptions \}/);
   assert.doesNotMatch(settingsFields, /ORIGINAL_CONTENT_LANGUAGE_VALUE|ORIGINAL_CONTENT_LANGUAGE_LABEL/);
   assert.doesNotMatch(settingsFields, /Use \$\{ORIGINAL_CONTENT_LANGUAGE_LABEL/);
-  assert.match(languagePreference, /ORIGINAL_CONTENT_LANGUAGE_LABEL = "original"/);
+  assert.match(
+    languagePreference,
+    /export const ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original"/,
+  );
   assert.match(languagePreference, /LEGACY_ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original content language"/);
   // Account-wide summary language is wired end to end: dedicated save route,
   // schema field, and context override.

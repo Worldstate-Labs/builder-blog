@@ -197,7 +197,7 @@ test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", 
     }),
   );
 
-  assert.match(activeHtml, /aria-label="Frequency: Every day"/);
+  assert.match(activeHtml, /aria-label="Build frequency: Every day"/);
   assert.match(activeHtml, /aria-label="Language: 繁體中文"/);
   assert.equal(activeHtml.match(/role="group"/g)?.length ?? 0, 2);
   assert.match(activeHtml, /lucide-clock3/);
@@ -205,7 +205,7 @@ test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", 
   assert.equal(activeHtml.match(/aria-hidden="true"/g)?.length ?? 0, 2);
   assert.doesNotMatch(activeHtml, />Build frequency<|>Frequency<|>Language</);
 
-  assert.match(stoppedHtml, /aria-label="Frequency: Stopped"/);
+  assert.match(stoppedHtml, /aria-label="Build status: Stopped"/);
   assert.match(stoppedHtml, /aria-label="Language: 日本語"/);
   assert.equal(stoppedHtml.match(/role="group"/g)?.length ?? 0, 2);
   assert.match(stoppedHtml, /lucide-circle-stop/);

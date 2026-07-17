@@ -2,9 +2,8 @@ import { normalizeUiLocale } from "@/lib/ui-locales";
 
 export const DEFAULT_SUMMARY_LANGUAGE = "zh";
 export const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
-export const ORIGINAL_CONTENT_LANGUAGE_LABEL = "original";
+export const ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original";
 const LEGACY_ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original content language";
-const DISPLAY_ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original";
 
 const LEGACY_LANGUAGE_DISPLAY_NAMES = new Map<string, string>([
   ["zh", "Chinese"],
@@ -55,7 +54,7 @@ export function summaryLanguagesMatch(
 export function displayLanguagePreference(value: string | null | undefined) {
   const trimmed = String(value ?? "").trim();
   if (!trimmed || isOriginalContentLanguagePreference(trimmed)) {
-    return DISPLAY_ORIGINAL_CONTENT_LANGUAGE_LABEL;
+    return ORIGINAL_CONTENT_LANGUAGE_LABEL;
   }
   const legacyLabel = LEGACY_LANGUAGE_DISPLAY_NAMES.get(trimmed.toLowerCase());
   if (legacyLabel) return legacyLabel;

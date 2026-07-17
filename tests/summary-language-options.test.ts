@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  ORIGINAL_CONTENT_LANGUAGE_LABEL,
-  ORIGINAL_CONTENT_LANGUAGE_VALUE,
   displayLanguagePreference,
   summaryLanguagesMatch,
 } from "../src/lib/language-preference";
@@ -14,7 +12,7 @@ import {
 
 test("summary language options use source plus the supported UI locale codes", () => {
   assert.deepEqual(SUMMARY_LANGUAGE_OPTIONS, [
-    { value: ORIGINAL_CONTENT_LANGUAGE_VALUE, label: ORIGINAL_CONTENT_LANGUAGE_LABEL },
+    { value: "source", label: "Original" },
     { value: "en", label: "English" },
     { value: "zh-CN", label: "简体中文" },
     { value: "zh-TW", label: "繁體中文" },
@@ -25,6 +23,18 @@ test("summary language options use source plus the supported UI locale codes", (
 });
 
 test("language options append a saved legacy value without reintroducing it for new selections", () => {
+  assert.deepEqual(languageOptions("zh"), [
+    ...SUMMARY_LANGUAGE_OPTIONS,
+    { value: "zh", label: "Chinese" },
+  ]);
+  assert.deepEqual(languageOptions("original"), [
+    ...SUMMARY_LANGUAGE_OPTIONS,
+    { value: "original", label: "Original" },
+  ]);
+  assert.deepEqual(languageOptions("Original content language"), [
+    ...SUMMARY_LANGUAGE_OPTIONS,
+    { value: "Original content language", label: "Original" },
+  ]);
   assert.deepEqual(languageOptions("Français"), [
     ...SUMMARY_LANGUAGE_OPTIONS,
     { value: "Français", label: "Français" },
@@ -33,6 +43,7 @@ test("language options append a saved legacy value without reintroducing it for 
     ...SUMMARY_LANGUAGE_OPTIONS,
     { value: "Deutsch", label: "Deutsch" },
   ]);
+  assert.equal(languageOptions("source"), SUMMARY_LANGUAGE_OPTIONS);
   assert.equal(languageOptions("en"), SUMMARY_LANGUAGE_OPTIONS);
 });
 

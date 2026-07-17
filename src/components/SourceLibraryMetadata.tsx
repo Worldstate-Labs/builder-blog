@@ -7,11 +7,15 @@ export function SourceLibraryMetadata({
   metadata: SourceLibraryMetadataValue;
 }) {
   const CadenceIcon = metadata.cadenceState === "active" ? Clock3 : CircleStop;
+  const cadenceAriaLabel =
+    metadata.cadenceState === "active"
+      ? `Build frequency: ${metadata.cadenceLabel}`
+      : `Build status: ${metadata.cadenceLabel}`;
 
   return (
     <div className="source-library-metadata">
       <span
-        aria-label={`Frequency: ${metadata.cadenceLabel}`}
+        aria-label={cadenceAriaLabel}
         className="source-library-metadata-item"
         role="group"
       >

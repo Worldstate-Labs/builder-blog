@@ -1,6 +1,7 @@
 import {
   ORIGINAL_CONTENT_LANGUAGE_LABEL,
   ORIGINAL_CONTENT_LANGUAGE_VALUE,
+  displayLanguagePreference,
 } from "@/lib/language-preference";
 import { uiLocaleOptions } from "@/lib/ui-locales";
 
@@ -19,5 +20,8 @@ export function languageOptions(current: string): ReadonlyArray<SummaryLanguageO
   if (!current || SUMMARY_LANGUAGE_OPTIONS.some((option) => option.value === current)) {
     return SUMMARY_LANGUAGE_OPTIONS;
   }
-  return [...SUMMARY_LANGUAGE_OPTIONS, { value: current, label: current }];
+  return [
+    ...SUMMARY_LANGUAGE_OPTIONS,
+    { value: current, label: displayLanguagePreference(current) },
+  ];
 }
