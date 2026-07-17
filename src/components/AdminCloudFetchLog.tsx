@@ -814,7 +814,8 @@ export function AdminCloudFetchLog({
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
-    const cursor = leaseBatches[leaseBatches.length - 1]?.startedAt;
+    const lastBatch = leaseBatches[leaseBatches.length - 1];
+    const cursor = lastBatch?.startedAt;
     if (!cursor) {
       setHasMore(false);
       return;
@@ -822,8 +823,13 @@ export function AdminCloudFetchLog({
     setLoadingMore(true);
     setError(null);
     try {
+      // Composite keyset cursor: send the tiebreak id so equal-startedAt runs
+      // page through exactly once (no skip, no stall) — see the runs route.
+      const cursorQuery = lastBatch?.id
+        ? `before=${encodeURIComponent(cursor)}&beforeId=${encodeURIComponent(lastBatch.id)}`
+        : `before=${encodeURIComponent(cursor)}`;
       const res = await fetch(
-        `/api/admin/cloud-fetch/runs?before=${encodeURIComponent(cursor)}`,
+        `/api/admin/cloud-fetch/runs?${cursorQuery}`,
         { cache: "no-store", headers: { accept: "application/json" } },
       );
       const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;

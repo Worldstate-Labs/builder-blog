@@ -7,7 +7,18 @@ export type ScheduleTimingJob = {
 };
 
 export function usesRelativeIntervalSchedule(cronJob: ScheduleTimingJob): boolean {
-  if (/^(?:interval:\d+|anchor:.+)$/i.test(cronJob.schedule.trim())) return true;
+  const schedule = cronJob.schedule.trim();
+  // `interval:<seconds>` fires every N seconds from load (launchd StartInterval),
+  // so it is genuinely relative to the job start time.
+  if (/^interval:\d+$/i.test(schedule)) return true;
+  // `anchor:<cron>` fires at a fixed wall-clock time (cron / launchd
+  // StartCalendarInterval). Daily and weekly anchors must track wall-clock so a
+  // DST transition does not shift every run out of the grace window; sub-daily
+  // anchors (hourly and shorter) are DST-neutral and keep relative-interval
+  // alignment, where the wall-clock branches cannot honour the cron minute.
+  if (/^anchor:/i.test(schedule)) {
+    return cronJob.frequencyKey !== "daily" && cronJob.frequencyKey !== "weekly";
+  }
   return /^(darwin|macos)$/i.test(cronJob.platform?.trim() ?? "");
 }
 
@@ -36,6 +47,25 @@ export function firstExpectedSchedule(cronJob: ScheduleTimingJob): Date | null {
   return usesRelativeIntervalSchedule(cronJob) ? addScheduleInterval(started, cronJob) : started;
 }
 
+function parseCronSchedule(
+  schedule: string,
+): { minute: number; hour: number; weekday: number | null } | null {
+  const expression = schedule.trim().replace(/^anchor:\s*/i, "");
+  const fields = expression.split(/\s+/);
+  if (fields.length < 5) return null;
+  const minute = Number(fields[0]);
+  const hour = Number(fields[1]);
+  if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
+  const weekdayField = Number(fields[4]);
+  // cron weekday allows 0 and 7 for Sunday; normalise into Date#getDay() domain.
+  const weekday =
+    Number.isInteger(weekdayField) && weekdayField >= 0 && weekdayField <= 7
+      ? weekdayField % 7
+      : null;
+  return { minute, hour, weekday };
+}
+
 export function floorToExpectedSchedule(now: Date, cronJob: ScheduleTimingJob): Date {
   if (usesRelativeIntervalSchedule(cronJob)) {
     const startedAt = Date.parse(cronJob.startedAt);
@@ -62,14 +92,20 @@ export function floorToExpectedSchedule(now: Date, cronJob: ScheduleTimingJob): 
       value.setHours(Math.floor(value.getHours() / hours) * hours, 0, 0, 0);
       return value;
     }
-    case "daily":
-      value.setHours(8, 0, 0, 0);
+    case "daily": {
+      const target = parseCronSchedule(cronJob.schedule);
+      value.setHours(target?.hour ?? 8, target?.minute ?? 0, 0, 0);
       if (value.getTime() > now.getTime()) value.setDate(value.getDate() - 1);
       return value;
+    }
     case "weekly": {
-      value.setHours(8, 0, 0, 0);
-      const daysSinceMonday = (value.getDay() + 6) % 7;
-      value.setDate(value.getDate() - daysSinceMonday);
+      const target = parseCronSchedule(cronJob.schedule);
+      value.setHours(target?.hour ?? 8, target?.minute ?? 0, 0, 0);
+      // Default to Monday when the stored schedule is not a parseable cron,
+      // preserving the previous fixed-Monday alignment for legacy rows.
+      const targetWeekday = target?.weekday ?? 1;
+      const daysSinceTarget = (value.getDay() - targetWeekday + 7) % 7;
+      value.setDate(value.getDate() - daysSinceTarget);
       if (value.getTime() > now.getTime()) value.setDate(value.getDate() - 7);
       return value;
     }

@@ -322,6 +322,9 @@ test("cloud fetch heartbeat extends active leases for a running cloud run", asyn
       runId: "run_cloud_1",
       leaseOwner: "local-cloud-runner:test",
       status: "LEASED",
+      // Heartbeats only extend: rows whose lease already runs past the new
+      // expiry are left untouched so a long task's lease is never clawed back.
+      leaseExpiresAt: { lt: new Date("2026-06-27T12:15:00.000Z") },
     },
     data: {
       leaseExpiresAt: new Date("2026-06-27T12:15:00.000Z"),
@@ -556,17 +559,21 @@ test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders",
     async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
-      updateMany: async () => ({ count: 0 }),
+      // The claim is a status-guarded updateMany({ where: { id, status: QUEUED } });
+      // other updateMany calls (expiry requeue) carry no id and stay no-ops here.
+      updateMany: async (args: { where?: { id?: unknown } }) => {
+        if (args.where?.id) {
+          queueUpdates.push(args);
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
       findMany: async (args: { include?: unknown }) => {
         if (args.include) return [queuedItem];
         return [];
       },
       count: async () => 0,
       create: async () => ({}),
-      update: async (args: unknown) => {
-        queueUpdates.push(args);
-        return {};
-      },
     },
     cloudSourceTask: {
       findMany: async () => [],

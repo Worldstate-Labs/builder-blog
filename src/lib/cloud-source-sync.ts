@@ -1,5 +1,6 @@
 import { CloudFetchQueueStatus, CloudFetchRunStatus } from "@prisma/client";
 import { recomputeCloudFetchRun } from "@/lib/cloud-fetch-run-lifecycle";
+import { StaleWorkerWriteError } from "@/lib/reset-fence";
 import {
   nextCloudTaskFailureSchedule,
   nextCloudTaskSuccessSchedule,
@@ -54,7 +55,7 @@ type CloudSyncPrisma = {
     update(args: unknown): Promise<unknown>;
   };
   cloudFetchRunTask: {
-    update(args: unknown): Promise<unknown>;
+    updateMany(args: unknown): Promise<{ count: number }>;
     findMany(args: unknown): Promise<Array<{
       status: string;
       usageTokens?: number | null;
@@ -121,12 +122,17 @@ export async function applyCloudFetchTaskSyncResult(params: {
   const taskFailureReason = params.result.failureReason?.trim() || "cloud_sync_failed";
   const failureReason = params.result.status === "succeeded" ? null : taskFailureReason;
 
-  await params.prisma.cloudFetchRunTask.update({
+  // Guard the finalizing write on the task still being RUNNING. The caller's
+  // pre-check confirmed RUNNING, but under READ COMMITTED a concurrent
+  // finalizer (e.g. a lease-expiry sweep marking it FAILED) can commit between
+  // that check and this write; an unguarded update would resurrect the expired
+  // task back to SUCCEEDED and trigger an immediate duplicate re-fetch. If the
+  // status already moved on, this run's write is stale — surface it as 409.
+  const claimedRunTask = await params.prisma.cloudFetchRunTask.updateMany({
     where: {
-      runId_cloudSourceTaskId: {
-        runId: params.result.runId,
-        cloudSourceTaskId: params.result.cloudSourceTaskId,
-      },
+      runId: params.result.runId,
+      cloudSourceTaskId: params.result.cloudSourceTaskId,
+      status: CloudFetchRunStatus.RUNNING,
     },
     data: {
       status: runTaskStatus,
@@ -141,6 +147,7 @@ export async function applyCloudFetchTaskSyncResult(params: {
       details: params.result.details ?? {},
     },
   });
+  if (claimedRunTask.count === 0) throw new StaleWorkerWriteError();
 
   await params.prisma.cloudFetchQueueItem.updateMany({
     where: {

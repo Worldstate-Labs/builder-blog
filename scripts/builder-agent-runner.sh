@@ -1182,7 +1182,10 @@ export BUILDER_BLOG_FETCH_DAYS
 # anything else → no flag (normal incremental digest).
 BUILDER_BLOG_DIGEST_REGENERATE=""
 if [ "$INCOMING_DIGEST_REGENERATE_SET" = "1" ]; then
-  BUILDER_BLOG_DIGEST_REGENERATE="$INCOMING_DIGEST_REGENERATE"
+  case "$INCOMING_DIGEST_REGENERATE" in
+    1|--regenerate) BUILDER_BLOG_DIGEST_REGENERATE="--regenerate" ;;
+    *) BUILDER_BLOG_DIGEST_REGENERATE="" ;;
+  esac
 elif [ "$(read_pin regenerate)" = "1" ]; then
   BUILDER_BLOG_DIGEST_REGENERATE="--regenerate"
 fi
@@ -1549,6 +1552,7 @@ try {
   process.exit(0);
 }
 const now = Date.now();
+const oneDay = 24 * 60 * 60 * 1000;
 const retainedFailures = [];
 for (const entry of entries) {
   const dir = path.join(runsDir, entry.name);
@@ -1573,7 +1577,6 @@ for (const entry of entries) {
     continue;
   }
   const ageMs = now - stat.mtimeMs;
-  const oneDay = 24 * 60 * 60 * 1000;
   const sevenDays = 7 * oneDay;
   const threshold =
     status === "failed" || status === "timed_out" ? sevenDays :
@@ -1713,7 +1716,14 @@ verify_followbrief_pid() {
   [ -n "$_pid" ] || return 1
   kill -0 "$_pid" 2>/dev/null || return 1
   _args="$(ps -p "$_pid" -o command= 2>/dev/null || true)"
-  printf '%s' "$_args" | grep -q "BUILDER_BLOG_WORKER_MODE=1\|builder-agent-runner.sh\|codex exec\|claude -p\|hermes chat\|openclaw" || return 1
+  # The workerPid recorded in current.json is always the runner shell ($$),
+  # whose argv contains this script name (re-execs preserve it, and worker mode
+  # only sets BUILDER_BLOG_WORKER_MODE=1 as an env var, which never appears in
+  # `ps -o command=`). Matching the generic runtime commands (claude -p,
+  # openclaw, codex exec, hermes chat) here only produced false positives: a
+  # recycled PID belonging to the user's own interactive runtime got accepted
+  # and then killed/blocked. Anchor identity to this runner script alone.
+  printf '%s' "$_args" | grep -qF "builder-agent-runner.sh" || return 1
 }
 
 process_tree_pids() {
@@ -2083,7 +2093,15 @@ const intervalMs = intervalSeconds * 1000;
 // launchd/crontab cannot schedule seconds, but the anchor is precise to a
 // second. Allow the generated minute-level schedule to fire slightly before the
 // exact anchor+N*interval timestamp while preserving that exact expectedAt.
-const toleranceMs = Math.min(5 * 60 * 1000, Math.max(0, intervalMs / 4));
+// The installed daily/weekly schedule fires at a fixed LOCAL wall-clock time,
+// while the anchor+N*interval expectation is measured in fixed UTC intervals.
+// Across a DST transition the local schedule drifts up to an hour relative to
+// UTC, so for day-or-longer intervals allow just over an hour of tolerance to
+// absorb the spring-forward shift (otherwise slotIndex resolves to the prior,
+// already-fired slot and the day is silently skipped). Sub-day intervals keep
+// the minute-level slack.
+const maxToleranceMs = intervalMs >= 24 * 60 * 60 * 1000 ? 65 * 60 * 1000 : 5 * 60 * 1000;
+const toleranceMs = Math.min(maxToleranceMs, Math.max(0, intervalMs / 4));
 const elapsed = nowMs - anchorMs;
 if (elapsed + toleranceMs < intervalMs) process.exit(1);
 const slotIndex = Math.floor((elapsed + toleranceMs) / intervalMs);
@@ -2988,7 +3006,7 @@ run_digest_job() {
   job_run_update running "Preparing digest candidates." "prepare_started" --stage "prepare_candidates"
   _prepare_stderr="$JOB_TMP_DIR/digest-prepare.err"
   set +e
-  BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+  BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT:-}" \
   node "$AGENT_DIR/builder-digest.mjs" prepare ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
     > "$_context_file" 2> "$_prepare_stderr"
   _prepare_code="$?"
@@ -3060,7 +3078,7 @@ run_digest_job() {
   job_run_update running "Syncing digest to FollowBrief." "sync_started" --stage "save_to_followbrief"
   _sync_stderr="$JOB_TMP_DIR/digest-sync.err"
   set +e
-  BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+  BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT:-}" \
   node "$AGENT_DIR/builder-digest.mjs" sync \
     --file "$_digest_file" \
     --summary-file "$_headlines_file" \
@@ -3951,7 +3969,7 @@ run_library_job() {
       _expanded_result_file="$JOB_TMP_DIR/library-fetch-expanded.json"
       _expand_stderr="$JOB_TMP_DIR/library-expand-discovery.err"
       set +e
-      BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+      BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT:-}" \
       node "$AGENT_DIR/builder-digest.mjs" expand-discovery \
         --tasks "$_result_file" \
         --file "$_discovery_result_file" \

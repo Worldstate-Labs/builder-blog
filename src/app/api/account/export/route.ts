@@ -31,6 +31,13 @@ async function serializeSafeAccountExport(userId: string) {
     digestCronJob,
     sourceTypeConfigs,
     digestConfig,
+    digestedItems,
+    recommendationSnapshots,
+    channelPreferences,
+    libraryVisibilities,
+    builderPoolEntries,
+    cloudSourceSubmissions,
+    cronJobStatusEvents,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -201,6 +208,87 @@ async function serializeSafeAccountExport(userId: string) {
       orderBy: { sourceId: "asc" },
     }),
     prisma.userDigestConfig.findUnique({ where: { userId } }),
+    prisma.digestedItem.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        feedItemId: true,
+        entityId: true,
+        kind: true,
+        externalId: true,
+        digestId: true,
+        digestedAt: true,
+      },
+      orderBy: { digestedAt: "desc" },
+    }),
+    prisma.recommendationSnapshot.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        reason: true,
+        createdAt: true,
+        items: {
+          select: {
+            feedItemId: true,
+            rank: true,
+            score: true,
+            reasons: true,
+            createdAt: true,
+          },
+          orderBy: { rank: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.userChannelPreference.findMany({
+      where: { userId },
+      select: {
+        entityId: true,
+        primaryBuilderId: true,
+        pinnedByUser: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.userLibraryVisibility.findMany({
+      where: { userId },
+      select: {
+        hubEntryId: true,
+        hidden: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.builderPoolEntry.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        builderId: true,
+        origin: true,
+        removedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.cloudSourceSubmission.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        userBuilderId: true,
+        cloudBuilderId: true,
+        summaryLanguage: true,
+        frequency: true,
+        active: true,
+        submittedAt: true,
+        updatedAt: true,
+      },
+      orderBy: { submittedAt: "desc" },
+    }),
+    prisma.cronJobStatusEvent.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
   ]);
 
   return omitSecretFields({
@@ -227,6 +315,13 @@ async function serializeSafeAccountExport(userId: string) {
     digestCronJob,
     sourceTypeConfigs,
     digestConfig,
+    digestedItems,
+    recommendationSnapshots,
+    channelPreferences,
+    libraryVisibilities,
+    builderPoolEntries,
+    cloudSourceSubmissions,
+    recentCronJobStatusEvents: cronJobStatusEvents,
   });
 }
 

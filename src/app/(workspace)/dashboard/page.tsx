@@ -283,7 +283,7 @@ function DigestEmptyState({
       <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Briefs yet"
-        body="Wait for the owner to create an issue, or choose another collection."
+        body="FollowBrief hasn't published an AI Brief yet. Check back soon."
       />
     );
   }

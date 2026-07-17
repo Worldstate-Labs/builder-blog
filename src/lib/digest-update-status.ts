@@ -132,13 +132,18 @@ export function buildDigestCronStatus<Run extends DigestCronRunStatusInput>(
     const windowEnd = addScheduleInterval(expectedAt, cronJob);
     const expectedMs = expectedAt.getTime();
     const endMs = windowEnd.getTime();
+    // Keep adjacent slot windows disjoint. The trailing graceMs before the next
+    // expected slot belongs to that next slot (as an early fire), not to this
+    // one, so a single run can never be attributed to two windows and mask a
+    // missed or failed neighbour.
+    const matchEndMs = endMs - graceMs;
     const match = cronRuns.find(
-      ({ startedMs }) => startedMs >= expectedMs - graceMs && startedMs < endMs,
+      ({ startedMs }) => startedMs >= expectedMs - graceMs && startedMs < matchEndMs,
     )?.run ?? null;
     const jobRun = scheduledJobRuns.find((candidate) => {
       if (candidate.trigger !== "scheduled") return false;
       const candidateMs = Date.parse(candidate.expectedAt ?? candidate.startedAt);
-      return Number.isFinite(candidateMs) && candidateMs >= expectedMs - graceMs && candidateMs < endMs;
+      return Number.isFinite(candidateMs) && candidateMs >= expectedMs - graceMs && candidateMs < matchEndMs;
     }) ?? null;
     const runStatus = digestSlotStatusForRun(match, jobRun, nowMs);
     const status: CronSlotStatus = runStatus ?? (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { FeedItemKind } from "@prisma/client";
 import { getCurrentSession } from "@/lib/auth";
+import { isAdminCommunityDigestOwner } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { cleanStructuredDigestItems, type StructuredDigestItem } from "@/lib/structured-digest";
 
@@ -21,6 +22,9 @@ export async function GET(_request: Request, { params }: Params) {
       headlineSummary: true,
       items: true,
       userId: true,
+      user: {
+        select: { email: true },
+      },
     },
   });
 
@@ -28,7 +32,7 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Brief not found" }, { status: 404 });
   }
 
-  if (digest.userId !== session.user.id) {
+  if (digest.userId !== session.user.id && !isAdminCommunityDigestOwner(digest.user)) {
     const importedPipeline = await prisma.digestPipelineImport.findFirst({
       where: {
         userId: session.user.id,

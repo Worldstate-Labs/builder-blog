@@ -137,16 +137,21 @@ export async function getRecommendationTimeline({
   sortMode?: RecommendationSortMode;
 }) {
   const { prisma } = await import("@/lib/prisma");
-  const afterCursor =
-    sortMode === "recent"
-      ? await loadLatestSnapshotPublishedCursor({ prisma, sortMode, userId })
-      : null;
+  // The fresh timeline snapshot dedups against already-snapshotted and
+  // already-read items (snapshottedEntityKeys / readEntityKeys inside
+  // createRecommendationSnapshot), so it must NOT additionally filter by a
+  // monotonic max-publishedAt watermark. A watermark strands every unread
+  // post whose publishedAt sits below the newest snapshotted item — batch
+  // overflow (only `limit` of a large after-cursor batch get snapshotted, the
+  // rest fall into an unreachable gap) and late-fetched posts (synced with a
+  // publishedAt older than a cursor another source already advanced past).
+  // It also made unreadRemaining undercount. Membership dedup serves every
+  // unread post newest-first across visits without gaps.
   const created = await createRecommendationSnapshot({
     userId,
     limit: itemLimit,
     reason: "initial",
     sortMode,
-    afterCursor,
   });
   const normalizedSnapshotLimit = Math.max(1, Math.floor(snapshotLimit));
   const existingLimit = Math.max(
@@ -597,36 +602,6 @@ async function loadRecommendationSnapshots({
   });
 
   return snapshots.map((snapshot) => formatSnapshot(snapshot));
-}
-
-async function loadLatestSnapshotPublishedCursor({
-  prisma,
-  sortMode,
-  userId,
-}: {
-  prisma: PrismaClient;
-  sortMode: RecommendationSortMode;
-  userId: string;
-}): Promise<RecommendationPublishedCursor | null> {
-  const item = await prisma.feedItem.findFirst({
-    where: {
-      publishedAt: { not: null },
-      recommendationSnapshotItems: {
-        some: {
-          snapshot: snapshotWhere(userId, sortMode),
-        },
-      },
-    },
-    select: {
-      id: true,
-      publishedAt: true,
-    },
-    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-  });
-
-  return item?.publishedAt
-    ? { itemId: item.id, publishedAt: item.publishedAt }
-    : null;
 }
 
 function snapshotWhere(

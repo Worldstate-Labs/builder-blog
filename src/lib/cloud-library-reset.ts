@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { lockResetFenceForReset } from "@/lib/reset-fence";
 
 export type CloudLibraryResetSummary = {
   libraries: number;
@@ -17,6 +18,13 @@ export async function resetCloudLibraryGeneratedState(
 ): Promise<CloudLibraryResetSummary> {
   return client.$transaction(
     async (tx) => {
+      // Serialize against in-flight cloud workers: take FOR UPDATE on the
+      // global reset fence and advance lastResetAt before deleting generated
+      // state. Without this, a concurrent lease/sync transaction's uncommitted
+      // inserts (CloudFetchRun/RunTask/FeedItem) escape the deleteMany snapshot
+      // and survive the reset, and its later sync passes the worker fence check
+      // because lastResetAt was never advanced — silently undoing the reset.
+      await lockResetFenceForReset(tx);
       const libraries = await tx.cloudLanguageLibrary.findMany({
         select: {
           id: true,

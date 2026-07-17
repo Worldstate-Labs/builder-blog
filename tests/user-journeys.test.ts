@@ -468,6 +468,13 @@ test("library fetch candidates are recomputed from followed sources every run", 
   assert.match(contextRoute, /return fetchedItemCountForBuilder\(builder\) === 0/);
   assert.match(contextRoute, /libraryFetchBuilders: annotatedLibraryFetchBuilders/);
   assert.match(contextRoute, /libraryFetchSelection/);
+  // The subscriptions array must redact other users' internal ownerUserId,
+  // matching the libraryBuilders annotation, so a follower of an imported
+  // (HUB_IMPORT) source never receives the publisher's internal id.
+  assert.match(
+    contextRoute,
+    /\.map\(\(b\) => \(b\.ownerUserId === user\.id \? b : \{ \.\.\.b, ownerUserId: null \}\)\)/,
+  );
   assert.match(cli, /Array\.isArray\(context\.libraryFetchBuilders\)/);
   assert.match(cli, /return context\.libraryFetchBuilders/);
 });

@@ -44,6 +44,12 @@ export async function POST(request: Request) {
   }
 
   const taskIds = [...new Set(parsed.data.taskResults.map((taskResult) => taskResult.cloudSourceTaskId))];
+  if (taskIds.length !== parsed.data.taskResults.length) {
+    return NextResponse.json(
+      { error: "Task results cannot repeat the same cloudSourceTaskId." },
+      { status: 400 },
+    );
+  }
   let core;
   try {
     core = await prisma.$transaction(async (tx) => {

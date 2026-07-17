@@ -824,7 +824,10 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(recommendations, /snapshotReasonPrefix\(sortMode\)/);
   assert.match(recommendations, /subscription-recent:/);
   assert.match(recommendations, /rankRecommendationResults/);
-  assert.match(recommendations, /loadLatestSnapshotPublishedCursor/);
+  // The fresh timeline snapshot must not filter by a monotonic max-publishedAt
+  // watermark — that stranded batch-overflow and late-fetched posts. It relies
+  // on snapshot-membership dedup instead.
+  assert.doesNotMatch(recommendations, /loadLatestSnapshotPublishedCursor/);
   assert.match(recommendations, /sortMode === "recent"[\s\S]*publishedAt/);
   assert.match(recommendations, /id: \{ gt: afterCursor\.itemId \}/);
   assert.match(recommendations, /id: \{ lt: beforeCursor\.itemId \}/);

@@ -54,6 +54,27 @@ function isPrivateIPv4(ip: string): boolean {
   return false;
 }
 
+// Extract the embedded IPv4 from an IPv4-mapped IPv6 suffix (the part
+// after `::ffff:`) as dotted-decimal, or null when it is not a mapped
+// address. Node's URL constructor normalizes `::ffff:a.b.c.d` to the
+// compressed hex spelling (`::ffff:7f00:1`), so both forms must be
+// understood: the dotted-decimal tail as-is, and one or two 16-bit hex
+// words encoding the low 32 bits.
+function mappedIPv4(suffix: string): string | null {
+  if (suffix.includes(".")) {
+    return /^\d+\.\d+\.\d+\.\d+$/.test(suffix) ? suffix : null;
+  }
+  const words = suffix.split(":");
+  if (words.length > 2 || !words.every((w) => /^[0-9a-f]{1,4}$/.test(w))) {
+    return null;
+  }
+  const nums = words.map((w) => parseInt(w, 16));
+  const [high, low] = nums.length === 2 ? nums : [0, nums[0]];
+  return [(high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff, low & 0xff].join(
+    ".",
+  );
+}
+
 function isPrivateIPv6(ip: string): boolean {
   const lower = ip.toLowerCase().replace(/^\[|\]$/g, "");
   if (lower === "::1") return true;
@@ -64,9 +85,13 @@ function isPrivateIPv6(ip: string): boolean {
   if (/^fe[89ab][0-9a-f]:/.test(lower)) return true;
   // Multicast ff00::/8
   if (lower.startsWith("ff")) return true;
-  // IPv4-mapped IPv6 ::ffff:a.b.c.d — check the wrapped IPv4 too
-  const mapped = lower.match(/^::ffff:([0-9.]+)$/);
-  if (mapped && isPrivateIPv4(mapped[1])) return true;
+  // IPv4-mapped IPv6 (::ffff:a.b.c.d or its normalized ::ffff:7f00:1
+  // hex form) — check the wrapped IPv4 too.
+  const mapped = lower.match(/^::ffff:(.+)$/);
+  if (mapped) {
+    const embedded = mappedIPv4(mapped[1]);
+    if (embedded && isPrivateIPv4(embedded)) return true;
+  }
   return false;
 }
 

@@ -188,12 +188,7 @@ export function AddBuilderForm({
 
   // Display name is internal now: selected recommendations provide a
   // candidate name; otherwise fixed source types or source-specific parsing
-  // derive one at submit time.
-  const derivedName = useMemo(
-    () => deriveDisplayName(sourceType, debouncedValue),
-    [sourceType, debouncedValue],
-  );
-  const effectiveName = sourceValueIsFixed ? derivedName : nameTouched ? name : derivedName;
+  // derive one at submit time (see submitAdd, which reads the live value).
   const sourceCandidateQuery = resolvedSourceValue;
   const sourceCandidateSuggestions = useMemo(
     () =>
@@ -268,13 +263,24 @@ export function AddBuilderForm({
     setStatus("");
     setWarning("");
 
+    // Derive the display name from the live source value, not the 200ms-stale
+    // `debouncedValue` behind `effectiveName`. Otherwise a correction typed
+    // just before Enter (e.g. "x.com/alice" → "x.com/bob") is posted with a
+    // name derived from the previous value.
+    const liveDerivedName = deriveDisplayName(sourceType, resolvedSourceValue);
+    const nameToSubmit = sourceValueIsFixed
+      ? liveDerivedName
+      : nameTouched
+        ? name
+        : liveDerivedName;
+
     startTransition(async () => {
       try {
         const response = await fetch("/api/builders/personal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: effectiveName.trim(),
+            name: nameToSubmit.trim(),
             sourceType,
             sourceValue: resolvedSourceValue,
             ...(confirmedWarning ? { confirmedWarning: true } : {}),

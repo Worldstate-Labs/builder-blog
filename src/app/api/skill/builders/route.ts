@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     return tooManyRequestsResponse(r.retryAfterMs);
   }
 
-  const parsed = parseSkillBuilderSyncPayload(await request.json());
+  const parsed = parseSkillBuilderSyncPayload(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
@@ -210,10 +210,21 @@ async function builderSyncFailureResponse({
 }) {
   const message = builderSyncErrorMessage(error);
   console.error(`Builder sync failed after partial progress: ${message}`);
+  // The builder-sync upserts run inside a single all-or-nothing transaction, so
+  // reaching this failure path means every upsert was rolled back — nothing
+  // persisted. Any item the sync optimistically marked "synced" must be recorded
+  // as failed instead; otherwise patchFetchRunForBuilderSync writes a permanent
+  // "synced" that mergeOutcomeTask refuses to downgrade, leaving the fetch log
+  // claiming posts were synced that do not exist in the library.
+  const rolledBackItemResults: ItemResult[] = itemResults.map((result) =>
+    result.status === "synced"
+      ? { ...result, status: "failed", reason: result.reason ?? "sync_rolled_back" }
+      : result,
+  );
   const fetchRunPatch = await patchFetchRunForBuilderSync({
     userId,
     fetchRun,
-    itemResults,
+    itemResults: rolledBackItemResults,
     builders,
     taskOutcomes,
   });
@@ -226,7 +237,7 @@ async function builderSyncFailureResponse({
       skippedFeedItems: counters.skippedFeedItems,
       subscriptions: counters.subscriptions,
       force,
-      itemResults,
+      itemResults: rolledBackItemResults,
       fetchRunPatch,
       generatedAt: new Date().toISOString(),
     },

@@ -53,12 +53,11 @@ test("cloud sync marks a successful leased task and advances the next deadline w
   assert.equal(result.runStatus, "SUCCEEDED");
   assert.equal(result.builderId, "builder_1");
   assert.equal(result.summaryLanguage, "zh");
-  assert.deepEqual(prisma.cloudFetchRunTask.updateCalls[0], {
+  assert.deepEqual(prisma.cloudFetchRunTask.updateManyCalls[0], {
     where: {
-      runId_cloudSourceTaskId: {
-        runId: "run_1",
-        cloudSourceTaskId: "task_1",
-      },
+      runId: "run_1",
+      cloudSourceTaskId: "task_1",
+      status: "RUNNING",
     },
     data: {
       status: "SUCCEEDED",
@@ -158,7 +157,7 @@ test("cloud sync marks failures with backoff and keeps a mixed run partial", asy
     usageCostUsd: 0.2,
     details: {},
   });
-  assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.status, "FAILED");
+  assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.status, "FAILED");
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "FAILED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 2);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedTokenCost, 1200);
@@ -241,8 +240,8 @@ test("cloud sync keeps partial source results visible without failure backoff", 
     usageCostUsd: null,
     details: {},
   });
-  assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.status, "PARTIAL");
-  assert.equal(prisma.cloudFetchRunTask.updateCalls[0].data.failureReason, "worker_missing_result");
+  assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.status, "PARTIAL");
+  assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.failureReason, "worker_missing_result");
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "SUCCEEDED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.lastSuccessAt, now);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 0);
@@ -291,22 +290,24 @@ function fakeCloudSyncPrisma({
       },
     },
     cloudFetchRunTask: {
-      updateCalls: [] as Array<{
-        where: { runId_cloudSourceTaskId: { runId: string; cloudSourceTaskId: string } };
+      updateManyCalls: [] as Array<{
+        where: { runId: string; cloudSourceTaskId: string; status?: string };
         data: Record<string, unknown>;
       }>,
-      async update(args: {
-        where: { runId_cloudSourceTaskId: { runId: string; cloudSourceTaskId: string } };
+      async updateMany(args: {
+        where: { runId: string; cloudSourceTaskId: string; status?: string };
         data: Record<string, unknown>;
       }) {
-        this.updateCalls.push(args);
+        this.updateManyCalls.push(args);
         const row = mutableRunTasks.find(
           (runTask) =>
-            runTask.runId === args.where.runId_cloudSourceTaskId.runId &&
-            runTask.cloudSourceTaskId === args.where.runId_cloudSourceTaskId.cloudSourceTaskId,
+            runTask.runId === args.where.runId &&
+            runTask.cloudSourceTaskId === args.where.cloudSourceTaskId &&
+            (args.where.status === undefined || runTask.status === args.where.status),
         );
-        if (row) Object.assign(row, args.data);
-        return row;
+        if (!row) return { count: 0 };
+        Object.assign(row, args.data);
+        return { count: 1 };
       },
       async findMany(args: { where: { runId: string } }) {
         return mutableRunTasks.filter((runTask) => runTask.runId === args.where.runId);

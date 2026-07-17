@@ -20,14 +20,30 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const beforeParam = url.searchParams.get("before");
+  const beforeId = url.searchParams.get("beforeId");
   const before = beforeParam ? new Date(beforeParam) : null;
   if (beforeParam && (!before || Number.isNaN(before.getTime()))) {
     return NextResponse.json({ error: "Invalid before cursor." }, { status: 400 });
   }
 
   const rows = await prisma.cloudFetchRun.findMany({
-    where: before ? { startedAt: { lt: before } } : {},
-    orderBy: { startedAt: "desc" },
+    // Composite keyset cursor on (startedAt desc, id desc). startedAt is not
+    // unique, so a startedAt-only cursor either skips (`lt`) or stalls (`lte`)
+    // when a full page shares one millisecond. Pairing it with the tiebreak id
+    // — "older startedAt, or same startedAt with a smaller id" — advances past
+    // every sibling exactly once with no skip and no duplicate. Falls back to a
+    // plain `lt` only if a legacy caller omits beforeId.
+    where: before
+      ? beforeId
+        ? {
+            OR: [
+              { startedAt: { lt: before } },
+              { startedAt: before, id: { lt: beforeId } },
+            ],
+          }
+        : { startedAt: { lt: before } }
+      : {},
+    orderBy: [{ startedAt: "desc" }, { id: "desc" }],
     take: PAGE_SIZE + 1,
     include: {
       tasks: {

@@ -51,6 +51,20 @@ export const authOptions: NextAuthOptions = {
         maxAge: 60 * 15,
       },
     },
+    // Apple uses response_mode=form_post, so the callback arrives as a
+    // cross-site POST. A default SameSite=Lax callback-url cookie is not
+    // sent on that request, dropping the caller's callbackUrl. Relax it to
+    // SameSite=None (only when cookies are already Secure) so the intended
+    // post-login destination survives the Apple round-trip.
+    callbackUrl: {
+      name: `${secureAuthCookies ? "__Secure-" : ""}next-auth.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: secureAuthCookies ? "none" : "lax",
+        path: "/",
+        secure: secureAuthCookies,
+      },
+    },
   },
   providers: [
     GitHubProvider({

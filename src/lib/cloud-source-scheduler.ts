@@ -410,9 +410,16 @@ async function leaseCloudFetchTasksInTransaction(params: {
     },
   });
 
-  for (const { item, estimate } of selected) {
-    await prisma.cloudFetchQueueItem.update({
-      where: { id: item.id },
+  const claimed: typeof selected = [];
+  for (const entry of selected) {
+    const { item, estimate } = entry;
+    // Guard the claim on status: QUEUED so a concurrent lease transaction that
+    // already flipped this item to LEASED cannot be overwritten. Without the
+    // guard two runs could double-lease the same task (READ COMMITTED lets both
+    // snapshots see the same QUEUED row; the ResetFence FOR SHARE lock does not
+    // serialize workers against each other).
+    const claim = await prisma.cloudFetchQueueItem.updateMany({
+      where: { id: item.id, status: CloudFetchQueueStatus.QUEUED },
       data: {
         status: CloudFetchQueueStatus.LEASED,
         leasedAt: now,
@@ -422,6 +429,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
         attempts: { increment: 1 },
       },
     });
+    if (claim.count === 0) continue;
     await prisma.cloudFetchRunTask.create({
       data: {
         runId: run.id,
@@ -438,12 +446,27 @@ async function leaseCloudFetchTasksInTransaction(params: {
       where: { id: item.cloudSourceTaskId },
       data: { lastStartedAt: now, lastQueuedAt: now, lastRunId: run.id },
     });
+    claimed.push(entry);
+  }
+
+  // Every selected item lost its claim race: the run has nothing to do, so drop
+  // it (no run tasks reference it yet) and report empty.
+  if (claimed.length === 0) {
+    await prisma.cloudFetchRun.delete({ where: { id: run.id } });
+    return { status: "empty" as const, runId: null, tasks: [], budget };
+  }
+  // Keep tasksClaimed honest when some items were stolen by a concurrent lease.
+  if (claimed.length !== selected.length) {
+    await prisma.cloudFetchRun.update({
+      where: { id: run.id },
+      data: { tasksClaimed: claimed.length },
+    });
   }
 
   return {
     status: "ok" as const,
     runId: run.id,
-    tasks: selected.map(({ item, estimate }) => ({
+    tasks: claimed.map(({ item, estimate }) => ({
       cloudSourceTaskId: item.cloudSourceTaskId,
       builderId: item.cloudSourceTask.builderId,
       summaryLanguage: item.cloudSourceTask.summaryLanguage,
@@ -512,6 +535,10 @@ export async function heartbeatCloudFetchRun(params: {
   const where: Prisma.CloudFetchQueueItemWhereInput = {
     runId,
     status: CloudFetchQueueStatus.LEASED,
+    // Only ever extend a lease. A long task can hold an initial lease that runs
+    // past the plain TTL (see leaseCloudFetchTasksInTransaction); a heartbeat
+    // must never claw that window back below its current expiry.
+    leaseExpiresAt: { lt: leaseExpiresAt },
   };
   const leaseOwner = params.leaseOwner?.trim();
   if (leaseOwner) where.leaseOwner = leaseOwner;
@@ -522,17 +549,24 @@ export async function heartbeatCloudFetchRun(params: {
   const previousDetails = objectDetails(run.details);
   const previousHeartbeatCount =
     typeof previousDetails.heartbeatCount === "number" ? previousDetails.heartbeatCount : 0;
-  await prisma.cloudFetchRun.update({
-    where: { id: runId },
-    data: {
-      details: {
-        ...previousDetails,
-        heartbeatAt: now.toISOString(),
-        heartbeatCount: previousHeartbeatCount + 1,
-        leaseExpiresAt: leaseExpiresAt.toISOString(),
+  try {
+    await prisma.cloudFetchRun.update({
+      where: { id: runId },
+      data: {
+        details: {
+          ...previousDetails,
+          heartbeatAt: now.toISOString(),
+          heartbeatCount: previousHeartbeatCount + 1,
+          leaseExpiresAt: leaseExpiresAt.toISOString(),
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    // The run was reset/deleted between the read above and this write. Treat the
+    // heartbeat as a no-op rather than surfacing a 500 to the worker.
+    if (!isRecordNotFoundError(error)) throw error;
+    return { status: "empty" as const, runId, extendedLeases: 0, leaseExpiresAt: null };
+  }
   return {
     status: "ok" as const,
     runId,
@@ -923,6 +957,10 @@ function maxDate(...dates: Date[]) {
 
 function isUniqueConstraintError(error: unknown) {
   return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === "P2002");
+}
+
+function isRecordNotFoundError(error: unknown) {
+  return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === "P2025");
 }
 
 function objectDetails(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {

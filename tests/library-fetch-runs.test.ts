@@ -150,6 +150,13 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /"Cache-Control": "no-store, max-age=0"/);
   assert.match(route, /rows\.slice\(0, FETCH_RUN_PAGE_SIZE\)\.map\(serializeRun\)/);
   assert.doesNotMatch(route, /RUN_HISTORY_LIMIT = 25/);
+  // The denser AgentJobRun lists are paged down to the oldest visible fetch run
+  // (the cursor the client sends next), not capped independently at the page
+  // size, so runs that failed before writing a fetch-run row are not skipped
+  // when paging older history.
+  assert.match(route, /const runFloor = runs\.length > 0 \? rows\[runs\.length - 1\]\.startedAt : null/);
+  assert.match(route, /startedAt: \{ gte: runFloor/);
+  assert.match(route, /const visibleJobRuns = runFloor \? jobRuns : jobRuns\.slice\(0, FETCH_RUN_PAGE_SIZE\)/);
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
   assert.match(cronRoute, /z\.enum\(\["library-cron", "digest-cron"\]\)/);
   assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);
@@ -428,7 +435,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /stale_pid_next_schedule_arrived/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
-  assert.match(runner, /toleranceMs = Math\.min\(5 \* 60 \* 1000/);
+  assert.match(runner, /maxToleranceMs = intervalMs >= 24 \* 60 \* 60 \* 1000 \? 65 \* 60 \* 1000 : 5 \* 60 \* 1000/);
+  assert.match(runner, /toleranceMs = Math\.min\(maxToleranceMs/);
   assert.match(runner, /elapsed \+ toleranceMs < intervalMs/);
   assert.match(runner, /status replaced/);
   assert.match(runner, /status killed/);

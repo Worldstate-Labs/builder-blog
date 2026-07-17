@@ -261,7 +261,9 @@ export async function POST(request: Request) {
   }
 
   const frequencyKey = parsed.data.frequencyKey ?? "";
-  const frequency = cronFrequencies[frequencyKey];
+  const frequency = Object.prototype.hasOwnProperty.call(cronFrequencies, frequencyKey)
+    ? cronFrequencies[frequencyKey]
+    : undefined;
   if (!frequency || !parsed.data.schedule) {
     return NextResponse.json(
       { error: "Active cron jobs require a supported frequencyKey and schedule" },

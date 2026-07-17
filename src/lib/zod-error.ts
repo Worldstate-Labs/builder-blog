@@ -16,24 +16,22 @@ export function formatZodError(error: ZodError): string {
     const path = issue.path.length === 0 ? "<body>" : issue.path.join(".");
     let extra = "";
     const ic = issue as unknown as {
+      input?: unknown;
       received?: unknown;
       maximum?: number | bigint;
       minimum?: number | bigint;
     };
-    if (
-      issue.code === "too_big" &&
-      typeof ic.received === "string" &&
-      typeof ic.maximum === "number"
-    ) {
-      extra = ` (got ${ic.received.length})`;
-    } else if (
-      issue.code === "too_big" &&
-      Array.isArray(ic.received) &&
-      typeof ic.maximum === "number"
-    ) {
-      extra = ` (got ${ic.received.length})`;
-    } else if (issue.code === "too_big" && typeof ic.received === "number") {
-      extra = ` (got ${ic.received})`;
+    // Zod 4 exposes the offending value as `input` (present only when the
+    // schema was parsed with `reportInput`); earlier shapes used
+    // `received`. Support both so the size annotation renders whenever the
+    // value is available.
+    const received = ic.input ?? ic.received;
+    if (issue.code === "too_big" && typeof ic.maximum === "number") {
+      if (typeof received === "string" || Array.isArray(received)) {
+        extra = ` (got ${received.length})`;
+      } else if (typeof received === "number") {
+        extra = ` (got ${received})`;
+      }
     }
     return `${path}: ${issue.message}${extra}`;
   });

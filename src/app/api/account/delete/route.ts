@@ -17,15 +17,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ownedBuilders = await prisma.builder.findMany({
-    where: { ownerUserId: session.user.id },
-    select: { id: true },
-  });
-  const ownedBuilderIds = ownedBuilders.map((builder) => builder.id);
-
   await prisma.$transaction([
     prisma.feedItem.deleteMany({
-      where: { builderId: { in: ownedBuilderIds } },
+      where: { builder: { ownerUserId: session.user.id } },
     }),
     prisma.user.delete({
       where: { id: session.user.id },

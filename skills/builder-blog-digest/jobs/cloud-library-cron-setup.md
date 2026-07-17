@@ -64,6 +64,26 @@ console.log(`${base}_${hash}`);
 NODE
 }
 BASE_DIR="$AGENT_DIR/tmp/accounts/$(account_slug "$ACCT")"
+# The worker host launchd/systemd service in step 5 is machine-global (one
+# shared service name, unlike the account-scoped library/digest labels), but the
+# current.json records checked next are per-account. If that shared service is
+# already installed for a DIFFERENT account, installing here overwrites its
+# plist/unit and boots out its running host — so surface it through the same
+# replace-confirmation gate below instead of silently replacing it.
+for SHARED_DEF in \
+  "$HOME/Library/LaunchAgents/com.followbrief.cloud-library-host.plist" \
+  "$HOME/.config/systemd/user/followbrief-cloud-library-host.service"; do
+  [ -f "$SHARED_DEF" ] || continue
+  EXISTING_ACCT="$(sed -n 's/.*BUILDER_BLOG_ACCOUNT="\{0,1\}\([^" ]*\).*/\1/p' "$SHARED_DEF" | head -n 1)"
+  # Compare including the empty (default) account: the shared host may already
+  # belong to the default account while we install for a named one (or vice
+  # versa). Only "" == "" (default reinstalling over itself) is a no-op; any
+  # mismatch — empty vs named included — must go through the replace gate.
+  if [ "$EXISTING_ACCT" != "$ACCT" ]; then
+    echo "ACTIVE_CLOUD_WORKER account=${EXISTING_ACCT:-(default)} (machine-global worker host is installed for another account; installing here replaces it)"
+    exit 0
+  fi
+done
 node - "$BASE_DIR/cloud-library-host/current.json" "$BASE_DIR/cloud-library-cron/current.json" <<'NODE'
 const fs = require("node:fs");
 const { spawnSync } = require("node:child_process");

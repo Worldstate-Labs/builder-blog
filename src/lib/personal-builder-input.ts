@@ -351,8 +351,12 @@ function coerceToUrl(
   // Cheap host shape check before we throw at new URL() — must look
   // like at least one label + dot + TLD-ish suffix, optionally with
   // a path or query. This is what excludes bare words like "abc".
+  // Unicode letters/numbers so internationalized domains (IDN) survive the
+  // pre-check; new URL() below punycodes them (例え.jp → xn--r8jz45g.jp).
+  // Restricting to [A-Za-z0-9] here rejected every non-ASCII host before it
+  // ever reached the URL constructor.
   const looksLikeHost =
-    /^(?:https?:\/\/)?[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}(?:[\/:?#]|$)/i.test(trimmed);
+    /^(?:https?:\/\/)?[\p{L}\p{N}][\p{L}\p{N}.-]*\.[\p{L}]{2,}(?:[\/:?#]|$)/iu.test(trimmed);
   if (!looksLikeHost) return null;
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   let url: URL;

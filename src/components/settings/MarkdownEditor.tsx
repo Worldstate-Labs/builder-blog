@@ -249,6 +249,9 @@ export function MarkdownEditor({
     }
 
     if (event.key !== "Tab") return;
+    // Let Shift+Tab move focus backward out of the textarea (keyboard escape
+    // path per WCAG 2.1.2) instead of inserting spaces and corrupting content.
+    if (event.shiftKey) return;
     event.preventDefault();
     const textarea = event.currentTarget;
     const start = textarea.selectionStart;

@@ -47,13 +47,12 @@ export async function DELETE(_request: Request, { params }: Params) {
   // If this is the user's own builder (channel), drop it completely.
   if (ownedBuilder) {
     const entityId = ownedBuilder.entityId;
-    const feedItems = await prisma.feedItem.findMany({
-      where: { builderId },
-      select: { id: true },
-    });
-    const feedItemIds = feedItems.map((item) => item.id);
-    await prisma.$transaction([
-      prisma.feedItem.deleteMany({ where: { id: { in: feedItemIds } } }),
+    // Delete by builderId inside the transaction (not from a pre-computed id
+    // snapshot) so posts synced concurrently between here and the commit are
+    // removed too — FeedItem.builderId is onDelete: SetNull, so a stale
+    // snapshot would leave those rows orphaned with builderId=null forever.
+    const [deletedFeedItems] = await prisma.$transaction([
+      prisma.feedItem.deleteMany({ where: { builderId } }),
       prisma.builder.delete({ where: { id: builderId } }),
     ]);
 
@@ -71,7 +70,7 @@ export async function DELETE(_request: Request, { params }: Params) {
       builderId,
       removed: true,
       deletedBuilder: true,
-      deletedFeedItems: feedItemIds.length,
+      deletedFeedItems: deletedFeedItems.count,
     });
   }
 

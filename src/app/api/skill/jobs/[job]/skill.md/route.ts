@@ -430,7 +430,7 @@ export async function GET(request: Request, { params }: Params) {
       },
     });
 
-    if (!record || record.expiresAt < new Date()) {
+    if (!record || record.expiresAt < new Date() || record.agentToken.revokedAt) {
       return NextResponse.json({ error: "Exchange code invalid or expired" }, { status: 403 });
     }
 

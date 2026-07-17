@@ -77,12 +77,38 @@ export async function PATCH(request: Request, { params }: Params) {
         where: { userId: session.user.id, builderId },
       }),
     ];
+    // The preference is shared across every channel of the entity, so only
+    // rebind/clear it when it points at the channel being unfollowed —
+    // otherwise a pin the user set on a different, still-followed channel of
+    // the same entity would be silently wiped.
     if (entityId) {
-      writes.push(
-        prisma.userChannelPreference.deleteMany({
-          where: { userId: session.user.id, entityId },
-        }),
-      );
+      const pref = await prisma.userChannelPreference.findUnique({
+        where: { userId_entityId: { userId: session.user.id, entityId } },
+        select: { primaryBuilderId: true },
+      });
+      if (pref?.primaryBuilderId === builderId) {
+        // Fall back to another channel of this entity the user still follows,
+        // else drop the preference entirely.
+        const fallback = await prisma.subscription.findFirst({
+          where: {
+            userId: session.user.id,
+            builderId: { not: builderId },
+            builder: { entityId },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { builderId: true },
+        });
+        writes.push(
+          fallback
+            ? prisma.userChannelPreference.update({
+                where: { userId_entityId: { userId: session.user.id, entityId } },
+                data: { primaryBuilderId: fallback.builderId, pinnedByUser: false },
+              })
+            : prisma.userChannelPreference.deleteMany({
+                where: { userId: session.user.id, entityId },
+              }),
+        );
+      }
     }
     await Promise.all(writes);
   }

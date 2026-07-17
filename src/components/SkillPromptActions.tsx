@@ -748,6 +748,7 @@ export function SkillPromptActions({
           open={cronConfigOpen}
           context={context}
           cloudSubmissionSources={cloudSubmissionSources}
+          hasAccessKey={activeTokens.length > 0}
           summaryLanguage={summaryLanguage}
           digestMaxPostAgeDays={digestMaxPostAgeDays}
           onCancel={() => setCronConfigOpen(false)}
@@ -787,6 +788,7 @@ export function SkillPromptActions({
         context={context}
         canStopCloud={canStopCloud}
         canStopLocal={canStopLocal}
+        errorText={status?.kind === "error" ? status.text : null}
         schedule={activeSchedule}
         title={stopLabel}
         onCancel={() => setStopDialogOpen(false)}
@@ -809,6 +811,7 @@ function StopScheduleDialog({
   canStopCloud,
   canStopLocal,
   context,
+  errorText,
   schedule,
   title,
   onCancel,
@@ -818,6 +821,7 @@ function StopScheduleDialog({
   canStopCloud: boolean;
   canStopLocal: boolean;
   context: SkillPromptContext;
+  errorText: string | null;
   schedule: ActiveScheduleInfo | null;
   title: string;
   onCancel: () => void;
@@ -988,6 +992,12 @@ function StopScheduleDialog({
             )}
           </dl>
         </div>
+
+        {errorText ? (
+          <p className="cron-field-error" role="alert">
+            {errorText}
+          </p>
+        ) : null}
 
         <footer className="token-picker-footer">
           <button
@@ -1331,6 +1341,7 @@ function CronConfigDialog({
   open,
   context,
   cloudSubmissionSources,
+  hasAccessKey,
   summaryLanguage,
   digestMaxPostAgeDays,
   onCancel,
@@ -1340,6 +1351,7 @@ function CronConfigDialog({
   open: boolean;
   context: SkillPromptContext;
   cloudSubmissionSources: CloudSubmissionSource[];
+  hasAccessKey: boolean;
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
   onCancel: () => void;
@@ -1454,6 +1466,16 @@ function CronConfigDialog({
     setError(null);
     setCloudSubmitMessage(null);
     try {
+      // The local (non-cloud) path copies a token-scoped prompt, so it needs
+      // an access key. Surface this inside the still-open dialog rather than
+      // on the parent status region, which is hidden behind the modal (and
+      // replaced entirely by the static "Access key required" block when
+      // there are zero tokens).
+      if (!isCloudMode && !hasAccessKey) {
+        setError(missingAccessMessage);
+        setSubmitting(false);
+        return;
+      }
       if (cloudSelectionInvalid) {
         setError(`Select 1-${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before asking FollowBrief to fetch.`);
         setSubmitting(false);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   rateLimit,
@@ -90,22 +91,36 @@ export async function POST(request: Request) {
 
   // Single-use: delete the row outright so the raw mapping cannot be
   // re-exchanged or recovered from a DB dump.
-  await prisma.$transaction([
-    prisma.agentToken.update({
-      where: { id: record.agentToken.id },
-      data: {
-        lastUsedAt: new Date(),
-        lastIp:
-          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-          new URL(request.url).hostname,
-        ...(lastUserAgent ? { lastUserAgent } : {}),
-        ...(lastHostname ? { lastHostname } : {}),
-        ...(lastPlatform ? { lastPlatform } : {}),
-        ...(lastUser ? { lastUser } : {}),
-      },
-    }),
-    prisma.exchangeCode.delete({ where: { id: record.id } }),
-  ]);
+  try {
+    await prisma.$transaction([
+      prisma.agentToken.update({
+        where: { id: record.agentToken.id },
+        data: {
+          lastUsedAt: new Date(),
+          lastIp:
+            request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            new URL(request.url).hostname,
+          ...(lastUserAgent ? { lastUserAgent } : {}),
+          ...(lastHostname ? { lastHostname } : {}),
+          ...(lastPlatform ? { lastPlatform } : {}),
+          ...(lastUser ? { lastUser } : {}),
+        },
+      }),
+      prisma.exchangeCode.delete({ where: { id: record.id } }),
+    ]);
+  } catch (error) {
+    // A concurrent request already redeemed (and deleted) this code: the
+    // delete above fails with P2025 and the whole batch rolls back, so this
+    // request consumed nothing. Return the uniform invalid-code response
+    // rather than leaking a 500 and breaking the single-use contract.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return invalidCodeResponse();
+    }
+    throw error;
+  }
 
   const origin = new URL(request.url).origin;
 

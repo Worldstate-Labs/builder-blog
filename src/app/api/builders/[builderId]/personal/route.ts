@@ -23,6 +23,7 @@ import {
   type BuilderEnrichment,
   type ProbeOutcome,
 } from "@/lib/builder-enrichment";
+import { ensureBuilderEntity } from "@/lib/builder-entities";
 import { prisma } from "@/lib/prisma";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
@@ -222,6 +223,17 @@ export async function PATCH(request: Request, { params }: Params) {
       ? null
       : existing.avatarDataUrl;
 
+  // Rebind the channel to the BuilderEntity for the (possibly changed)
+  // canonical key, mirroring upsertBuilder. Without this an identity edit
+  // leaves the row pointing at the stale entity, so newly fetched content
+  // groups under the old identity in dedup, entity pages, and feed-items.
+  const entityId = await ensureBuilderEntity({
+    kind,
+    canonicalKey,
+    name: finalName,
+    handle: handle ?? null,
+  });
+
   try {
     const { updated, deletedFeedItems } = await prisma.$transaction(async (tx) => {
       const updated = await tx.builder.update({
@@ -239,6 +251,7 @@ export async function PATCH(request: Request, { params }: Params) {
           kind,
           canonicalKey,
           libraryKey,
+          entityId,
           ...(sourceIdentityChanged
             ? {
                 itemCount: 0,

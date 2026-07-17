@@ -290,12 +290,18 @@ export function BuilderEditDialog({
           setErrorSuggestId(body?.suggestId ?? null);
           return;
         }
-        if (body?.warning) setWarning(body.warning);
-        setOpen(false);
         // Server-fetched data on /builders is now stale — refresh
         // every route's RSC payload so the row picks up the new
         // name, sourceType, sourceUrl, etc.
         router.refresh();
+        // A soft warning (e.g. "updated unverified") is only visible inside
+        // the dialog body, so keep the dialog open when one is present rather
+        // than closing it on the next line and swallowing the message.
+        if (body?.warning) {
+          setWarning(body.warning);
+          return;
+        }
+        setOpen(false);
       } catch {
         setError("Could not save source.");
       }

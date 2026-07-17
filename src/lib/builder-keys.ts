@@ -4,6 +4,14 @@ export function normalizeHandle(handle: string) {
   return handle.trim().replace(/^@/, "").toLowerCase();
 }
 
+// The persisted canonicalKey/libraryKey form: the input fully lowercased.
+// This deliberately collapses path case (and everything else), so the
+// personal-source dedup path (canonicalPersonalSourceUrl) MUST also fold
+// path case — otherwise two URLs differing only by path case pass the dedup
+// check as distinct yet collide on this key, letting upsertBuilder silently
+// overwrite the earlier source. Changing this form would require a data
+// migration to rewrite every existing row's stored key, so keep it stable
+// and enforce consistency on the dedup side instead.
 export function canonicalBuilderKey(kind: BuilderKind, value: string) {
   return `${kind}:${value.trim().toLowerCase()}`;
 }

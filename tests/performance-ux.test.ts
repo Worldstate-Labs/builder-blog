@@ -1502,7 +1502,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(dashboardPage, /No AI Briefs yet/);
   assert.doesNotMatch(dashboardPage, /No AI Brief yet/);
-  assert.match(dashboardPage, /Wait for the owner to create an issue, or choose another collection\./);
+  assert.match(dashboardPage, /FollowBrief hasn't published an AI Brief yet\. Check back soon\./);
   assert.doesNotMatch(dashboardPage, /Wait for the owner to build an issue, or choose another collection\./);
   assert.doesNotMatch(dashboardPage, /No AI Brief archives yet|This AI Brief collection has no archives yet\./);
   assert.doesNotMatch(dashboardPage, /has not shared any archives yet/);

@@ -124,6 +124,13 @@ test("terminal agent job runs cannot be regressed by late runtime updates", () =
   assert.match(route, /finishedAt: existingRun\.finishedAt/);
   assert.match(route, /exitCode: existingRun\.exitCode/);
   assert.match(route, /signal: existingRun\.signal/);
+  // Conversely, a terminal record's summary/stage (the failure/timeout reason)
+  // must replace an earlier in-progress summary even though the runner posts it
+  // without a ranked stage — otherwise a failed run keeps showing stale
+  // mid-sync text instead of "Runtime exited with code N.".
+  assert.match(route, /const incomingTerminal = isTerminalAgentJobStatus\(parsed\.data\.status\)/);
+  assert.match(route, /if \(incomingTerminal\) return nextSummary;/);
+  assert.match(route, /if \(incomingTerminal\) return incomingStage;/);
 });
 
 test("library fetch job runs carry bounded live progress without schema churn", () => {

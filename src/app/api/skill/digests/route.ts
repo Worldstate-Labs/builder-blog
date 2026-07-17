@@ -184,8 +184,12 @@ async function syncDigest(request: Request) {
       });
     }
 
-    await tx.digestRun.update({
-      where: { id: digestRun.id },
+    // Atomic transition: only the request that still finds the run in
+    // "prepared" wins. Under READ COMMITTED a concurrent sync blocks on this
+    // row until we commit, then matches zero rows and rolls back — so two
+    // syncs of the same run can't both create a Digest.
+    const synced = await tx.digestRun.updateMany({
+      where: { id: digestRun.id, status: "prepared" },
       data: {
         status: "synced",
         syncedAt: now,
@@ -199,6 +203,7 @@ async function syncDigest(request: Request) {
         ),
       },
     });
+    if (synced.count === 0) throw new StaleWorkerWriteError();
 
     return createdDigest;
   }, DIGEST_SYNC_TRANSACTION_OPTIONS);

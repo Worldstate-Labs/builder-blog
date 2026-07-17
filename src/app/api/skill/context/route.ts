@@ -430,7 +430,11 @@ export async function GET(request: Request) {
     latestPersonalFetchedItems: Array.from(latestByEntity.values()),
     subscriptions: subscriptions
       .map((s) => s.builder)
-      .filter((b): b is NonNullable<typeof b> => Boolean(b)),
+      .filter((b): b is NonNullable<typeof b> => Boolean(b))
+      // Strip the original `ownerUserId` from rows the requester does not own,
+      // mirroring the libraryBuilders annotation above, so a follower of an
+      // imported (HUB_IMPORT) source never receives the publisher's internal id.
+      .map((b) => (b.ownerUserId === user.id ? b : { ...b, ownerUserId: null })),
     subscriptionEntities: subscriptions
       .map((s) => {
         const entity = s.builder?.entity ?? null;

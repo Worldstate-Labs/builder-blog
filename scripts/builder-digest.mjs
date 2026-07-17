@@ -1730,8 +1730,16 @@ async function prepare(args = []) {
     (regenerate ? "&regenerate=1" : "") +
     (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`) +
     (envJobRunId() ? `&jobRunId=${encodeURIComponent(envJobRunId())}` : "");
+  // The digest-intent context route is NOT a pure GET: each successful call
+  // inserts a "prepared" DigestRun row server-side. Retrying is therefore
+  // unsafe — a request that commits server-side but times out client-side would
+  // create a second DigestRun on retry, and only the retry's runId reaches the
+  // sync step, leaving the first row "prepared" forever (the exact pollution the
+  // intent split was added to prevent). Disable retries so a transient failure
+  // fails the run cleanly and the next schedule tick starts fresh.
   const context = await getJson(contextUrl, config.token, {
     label: "digest context",
+    retries: 0,
   });
   console.log(JSON.stringify(context, null, 2));
 }
@@ -5210,12 +5218,15 @@ function stripHtml(html) {
 }
 
 function decodeHtml(text) {
+  // Decode &amp; LAST: decoding it first would double-decode correctly escaped
+  // source text (e.g. the literal "&lt;script&gt;" arrives as "&amp;lt;script&amp;gt;"
+  // and must stay literal, not turn into "<script>").
   return String(text)
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, "\"")
-    .replace(/&#39;|&apos;/g, "'");
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, "&");
 }
 
 function normalizedDate(value) {

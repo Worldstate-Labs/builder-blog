@@ -94,7 +94,7 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
       orderBy: { digestedAt: "asc" },
     });
     const digestedEntityIds = [...new Set(digestedItems.map((item) => item.entityId.trim()).filter(Boolean))];
-    const buildersByEntityId = await buildersForEntities(digestedEntityIds);
+    const buildersByEntityId = await buildersForEntities(userId, digestedEntityIds);
 
     for (const item of digestedItems) {
       const itemEntityId = item.entityId.trim();
@@ -125,9 +125,9 @@ export async function digestSourceLinksForUser(userId: string, digestId?: string
   return [...byEntityId.values()];
 }
 
-async function buildersForEntities(entityIds: string[]) {
+async function buildersForEntities(ownerUserId: string, entityIds: string[]) {
   if (entityIds.length === 0) return new Map<string, DigestSourceBuilder>();
-  const builders = await builderRowsForEntities(entityIds);
+  const builders = await builderRowsForEntities(ownerUserId, entityIds);
   const byEntityId = new Map<string, DigestSourceBuilder>();
   for (const builder of builders) {
     if (!byEntityId.has(builder.entityId)) byEntityId.set(builder.entityId, builder);
@@ -135,9 +135,10 @@ async function buildersForEntities(entityIds: string[]) {
   return byEntityId;
 }
 
-async function builderRowsForEntities(entityIds: string[]) {
+async function builderRowsForEntities(ownerUserId: string, entityIds: string[]) {
   return prisma.builder.findMany({
     where: {
+      ownerUserId,
       entityId: { in: entityIds },
     },
     select: {

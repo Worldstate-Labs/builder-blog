@@ -62,7 +62,9 @@ const skillFiles = {
 
 export async function GET(_request: Request, { params }: Params) {
   const { file } = await params;
-  const asset = skillFiles[file as keyof typeof skillFiles];
+  const asset = Object.prototype.hasOwnProperty.call(skillFiles, file)
+    ? skillFiles[file as keyof typeof skillFiles]
+    : undefined;
   if (!asset) {
     return NextResponse.json({ error: "Skill file not found" }, { status: 404 });
   }

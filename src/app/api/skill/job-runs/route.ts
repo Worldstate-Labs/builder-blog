@@ -97,11 +97,18 @@ function stageRank(stage: unknown): number {
   return AGENT_JOB_STAGE_RANK[key] ?? 5;
 }
 
-function mergeAgentJobRunStage(current: unknown, incoming: unknown): string | null {
+function mergeAgentJobRunStage(
+  current: unknown,
+  incoming: unknown,
+  incomingTerminal = false,
+): string | null {
   const currentStage = compactText(current, 120);
   const incomingStage = compactText(incoming, 120);
   if (!incomingStage) return currentStage;
   if (!currentStage) return incomingStage;
+  // A terminal record's stage (e.g. "interrupted") is the final word even when
+  // it ranks below the last in-progress stage.
+  if (incomingTerminal) return incomingStage;
   return stageRank(incomingStage) >= stageRank(currentStage) ? incomingStage : currentStage;
 }
 
@@ -110,9 +117,14 @@ function mergeAgentJobRunSummary(
   currentSummary: string | null,
   incomingStage: unknown,
   incomingSummary: string | null,
+  incomingTerminal = false,
 ): string | null {
   const nextSummary = compactText(incomingSummary, MAX_SUMMARY_CHARS);
   if (!nextSummary) return currentSummary ?? null;
+  // A terminal record's summary (the failure/timeout/interruption reason) is the
+  // final word and must replace any earlier in-progress summary, even though the
+  // runner posts it without a ranked stage.
+  if (incomingTerminal) return nextSummary;
   if (!compactText(incomingStage, 120) && currentSummary) return currentSummary;
   if (stageRank(incomingStage) < stageRank(currentStage) && currentSummary) return currentSummary;
   return nextSummary;
@@ -424,12 +436,14 @@ export async function POST(request: Request) {
         throw new AgentJobWriteError("details payload too large; cap at 50 KB");
       }
 
-      const mergedStage = mergeAgentJobRunStage(existingRun?.stage, parsed.data.stage ?? null);
+      const incomingTerminal = isTerminalAgentJobStatus(parsed.data.status);
+      const mergedStage = mergeAgentJobRunStage(existingRun?.stage, parsed.data.stage ?? null, incomingTerminal);
       const mergedSummary = mergeAgentJobRunSummary(
         existingRun?.stage ?? null,
         existingRun?.summary ?? null,
         parsed.data.stage ?? null,
         parsed.data.summary ?? null,
+        incomingTerminal,
       );
       const incomingRunData = {
         status: parsed.data.status,

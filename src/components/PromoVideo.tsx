@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { Maximize } from "lucide-react";
 
 // Matches the landing page's mobile breakpoint in globals.css.
 const MOBILE_QUERY = "(max-width: 900px)";
 
+// The store never changes after mount, so subscribe is a no-op: the server and
+// the first (hydration) client render both read `false`, keeping markup in sync
+// and avoiding a hydration mismatch; the post-hydration render reads `true`.
+const noopSubscribe = () => () => {};
+const getHydrated = () => true;
+const getServerHydrated = () => false;
+
 export function PromoVideo() {
-  // Picked once at mount — swapping the src on resize would restart a
-  // playing film, so a mid-session viewport change keeps the first choice.
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const hydrated = useSyncExternalStore(noopSubscribe, getHydrated, getServerHydrated);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  useEffect(() => {
-    setIsMobile(window.matchMedia(MOBILE_QUERY).matches);
-  }, []);
-
-  if (isMobile === null) return null;
+  // Read the viewport once, after hydration. Swapping the src on resize would
+  // restart a playing film, so a mid-session viewport change keeps this choice.
+  if (!hydrated) return null;
+  const isMobile = window.matchMedia(MOBILE_QUERY).matches;
 
   const enterFullscreen = () => {
     const video = videoRef.current;

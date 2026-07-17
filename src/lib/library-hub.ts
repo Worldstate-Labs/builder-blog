@@ -174,8 +174,18 @@ export async function syncPersonalLibraryHubForUser(params: {
 }
 
 export async function unsharePersonalLibraryFromHub(userId: string) {
+  // Never hard-delete the featured community library. Deleting a
+  // LibraryHubEntry cascade-removes every user's LibraryImport and
+  // UserLibraryVisibility rows (schema onDelete: Cascade) — including the
+  // hidden:true opt-outs removeLibraryImportFromHub writes for users who
+  // explicitly removed the community library. ensureDefaultCommunityLibraryImport
+  // would then recreate the featured entry under a new id and, finding no
+  // visibility row, force re-import it into the pools of those opted-out users,
+  // silently destroying their curation choice and resetting import/view counts.
+  // A per-user "make private" toggle must not tear the shared community library
+  // out from under everyone; only personal (non-featured) shares are removable.
   const result = await prisma.libraryHubEntry.deleteMany({
-    where: { ownerUserId: userId },
+    where: { ownerUserId: userId, isFeatured: false },
   });
   return { removed: result.count };
 }

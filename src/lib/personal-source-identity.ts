@@ -17,7 +17,11 @@ export function canonicalPersonalSourceUrl(value?: string | null) {
     if ((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80")) {
       url.port = "";
     }
-    url.pathname = url.pathname.replace(/\/+$/g, "") || "/";
+    // Fold path case to match the persisted libraryKey (canonicalBuilderKey
+    // lowercases the whole value). Without this, `/@Alpha` and `/@alpha` pass
+    // dedup as distinct yet collide on the stored key, silently overwriting
+    // the earlier source.
+    url.pathname = url.pathname.toLowerCase().replace(/\/+$/g, "") || "/";
     url.searchParams.sort();
     return url.toString();
   } catch {
