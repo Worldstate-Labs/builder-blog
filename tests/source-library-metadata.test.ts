@@ -113,7 +113,7 @@ test("getSourceLibraryMetadataByOwnerIds dedupes ids and uses exactly two batch 
 
   const pending = getSourceLibraryMetadataByOwnerIds(
     ["owner-1", "owner-2", "owner-1", ""],
-    prisma,
+    prisma as never,
   );
 
   assert.equal(prisma.libraryCronJob.findManyCalls.length, 1);
@@ -169,7 +169,7 @@ test("getSourceLibraryMetadataByOwnerIds skips queries for empty owner ids", asy
         return [];
       },
     },
-  });
+  } as never);
 
   assert.equal(queried, false);
   assert.deepEqual(metadataByOwnerId, {});

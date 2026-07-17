@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
 export type SourceLibraryMetadata = {
@@ -20,22 +21,10 @@ type ResolveSourceLibraryMetadataInput = {
   feedPreference?: SourceLibraryFeedPreference | null;
 };
 
-type SourceLibraryCronJobRow = SourceLibraryCronJob & {
-  userId: string;
-};
-
-type SourceLibraryFeedPreferenceRow = SourceLibraryFeedPreference & {
-  userId: string;
-};
-
-type SourceLibraryMetadataPrisma = {
-  libraryCronJob: {
-    findMany(args: unknown): Promise<SourceLibraryCronJobRow[]>;
-  };
-  userFeedPreference: {
-    findMany(args: unknown): Promise<SourceLibraryFeedPreferenceRow[]>;
-  };
-};
+type SourceLibraryMetadataPrisma = Pick<
+  PrismaClient,
+  "libraryCronJob" | "userFeedPreference"
+>;
 
 export function resolveSourceLibraryMetadata({
   cronJob,
@@ -54,13 +43,13 @@ export function resolveSourceLibraryMetadata({
 export async function getSourceLibraryMetadataByOwnerIds(
   ownerUserIds: string[],
   prismaClient?: SourceLibraryMetadataPrisma,
-) {
+): Promise<Record<string, SourceLibraryMetadata>> {
   const uniqueOwnerIds = [...new Set(ownerUserIds.map((value) => value.trim()).filter(Boolean))];
   if (uniqueOwnerIds.length === 0) {
     return {};
   }
 
-  const prisma = prismaClient ?? (await getPrismaClient<SourceLibraryMetadataPrisma>());
+  const prisma = prismaClient ?? (await getPrismaClient());
   const [cronJobs, feedPreferences] = await Promise.all([
     prisma.libraryCronJob.findMany({
       where: { userId: { in: uniqueOwnerIds } },
@@ -90,7 +79,7 @@ export async function getSourceLibraryMetadataByOwnerIds(
   return Object.fromEntries(metadataByOwnerId);
 }
 
-async function getPrismaClient<T>(): Promise<T> {
+async function getPrismaClient(): Promise<SourceLibraryMetadataPrisma> {
   const { prisma } = await import("@/lib/prisma");
-  return prisma as unknown as T;
+  return prisma;
 }
