@@ -434,7 +434,8 @@ function HubCard({
   );
   const sourceToggleLabel = formatSourceToggleLabel(library.itemCount);
 
-  const action = library.owned ? null : imported && pending !== "import" ? (
+  const displayAsImported = imported || pending === "remove";
+  const action = library.owned ? null : displayAsImported && pending !== "import" ? (
     <button
       aria-busy={pending === "remove" && isPending}
       aria-label={`Remove imported source library ${library.name}`}
@@ -460,7 +461,7 @@ function HubCard({
       {pending === "import" ? "Importing" : "Import"}
     </button>
   );
-  const showImportedRow = imported && pending !== "import";
+  const showImportedRow = displayAsImported && pending !== "import";
   const headerAction = showImportedRow ? null : action;
   const importedActionRow = showImportedRow && action ? (
     <div className="hub-card-imported-meta-row">

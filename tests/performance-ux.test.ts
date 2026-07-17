@@ -5493,7 +5493,8 @@ test("imported source library metadata", () => {
     /import type \{ SourceLibraryMetadata \} from "@\/lib\/source-library-metadata"/,
   );
   assert.match(hubImportForm, /metadata:\s*SourceLibraryMetadata \| null;/);
-  assert.match(hubImportForm, /const showImportedRow = imported && pending !== "import";/);
+  assert.match(hubImportForm, /const displayAsImported = imported \|\| pending === "remove";/);
+  assert.match(hubImportForm, /const showImportedRow = displayAsImported && pending !== "import";/);
   assert.match(hubImportForm, /const headerAction = showImportedRow \? null : action;/);
   assert.match(
     hubImportForm,
@@ -5509,7 +5510,7 @@ test("imported source library metadata", () => {
   assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
   assert.match(
     hubImportForm,
-    /const action = library\.owned \? null : imported && pending !== "import" \? \(/,
+    /const action = library\.owned \? null : displayAsImported && pending !== "import" \? \(/,
   );
 });
 
