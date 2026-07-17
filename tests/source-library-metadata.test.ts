@@ -30,6 +30,18 @@ test("resolveSourceLibraryMetadata maps cron cadence and display language", asyn
 
   assert.deepEqual(
     resolveSourceLibraryMetadata({
+      cronJob: { status: "active", frequencyLabel: "Every 12 hours" },
+      feedPreference: { summaryLanguage: "en" },
+    }),
+    {
+      cadenceLabel: "Every 12 h",
+      cadenceState: "active",
+      languageLabel: "English",
+    },
+  );
+
+  assert.deepEqual(
+    resolveSourceLibraryMetadata({
       cronJob: { status: "active", frequencyLabel: "" },
       feedPreference: { summaryLanguage: "en" },
     }),

@@ -5558,11 +5558,53 @@ test("imported source library metadata", () => {
   assert.match(globals, /\.hub-card-imported-meta-row\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.hub-card-imported-metadata\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.source-library-metadata\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.source-library-metadata\s*{[\s\S]*flex-wrap:\s*wrap/);
-  assert.match(globals, /\.source-library-metadata-item\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.source-library-metadata-item\s*{[\s\S]*min-width:\s*0/);
-  assert.match(globals, /\.source-library-metadata-item\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
-  assert.match(globals, /\.source-library-metadata-item svg\s*{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(globals, /\.source-library-metadata\s*{[^}]*flex-wrap:\s*nowrap/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[^}]*display:\s*inline-flex/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[^}]*font-size:\s*0\.8125rem/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[^}]*min-width:\s*0/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[^}]*white-space:\s*nowrap/);
+  assert.match(globals, /\.source-library-metadata-item\s*{[^}]*color:\s*var\(--muted-strong\)/);
+  assert.match(globals, /\.source-library-metadata-item svg\s*{[^}]*flex:\s*0 0 auto/);
+  assert.match(
+    globals,
+    /\.hub-card-imported-meta-row\s*{[^}]*flex-wrap:\s*nowrap[^}]*margin-top:\s*0\.15rem/,
+  );
+  assert.match(
+    globals,
+    /\.library-section-panel-imported \.library-section-meta--imported\s*{[^}]*flex-wrap:\s*nowrap[^}]*margin-top:\s*0\.15rem/,
+  );
+  assert.match(
+    globals,
+    /\.imported-libraries-panel \.imported-library-stack\s*{[^}]*padding-inline:\s*0\.75rem/,
+  );
+  assert.match(
+    globals,
+    /\.imported-library-stack \.library-section-panel-indented\s*{[^}]*margin-inline:\s*0/,
+  );
+  assert.match(
+    globals,
+    /\.library-section-panel-imported > \.library-section-summary\s*{[^}]*padding-inline:\s*0\.875rem/,
+  );
+  assert.match(
+    globals,
+    /\.source-library-metadata-item\s*{[^}]*font-size:\s*0\.75rem/,
+  );
+  assert.match(
+    globals,
+    /@media \(max-width: 359px\)[\s\S]*\.source-library-metadata-item\s*{[^}]*font-size:\s*0\.6875rem/,
+  );
+  assert.match(
+    globals,
+    /@media \(max-width: 359px\)[\s\S]*\.library-section-panel-imported > \.library-section-summary\s*{[^}]*padding-inline:\s*0\.625rem/,
+  );
+  assert.match(
+    globals,
+    /@media \(max-width: 359px\)[\s\S]*\.hub-card-imported-meta-row \.hub-card-action-button,[\s\S]*\.library-section-meta--imported \.import-remove-button\s*{[^}]*font-size:\s*0\.75rem[^}]*padding-inline:\s*0\.5rem/,
+  );
+  assert.match(
+    globals,
+    /@media \(max-width: 359px\)[\s\S]*\.hub-card-imported-meta-row \.hub-card-action-button svg,[\s\S]*\.library-section-meta--imported \.import-remove-button svg\s*{[^}]*display:\s*none/,
+  );
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {

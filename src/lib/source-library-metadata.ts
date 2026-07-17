@@ -26,6 +26,10 @@ type SourceLibraryMetadataPrisma = Pick<
   "libraryCronJob" | "userFeedPreference"
 >;
 
+function compactCadenceLabel(value: string): string {
+  return value.replace(/^every\s+(\d+)\s+hours?$/i, "Every $1 h");
+}
+
 export function resolveSourceLibraryMetadata({
   cronJob,
   feedPreference,
@@ -34,7 +38,7 @@ export function resolveSourceLibraryMetadata({
   const isActive = cronJob?.status === "active" && frequencyLabel.length > 0;
 
   return {
-    cadenceLabel: isActive ? frequencyLabel : "Stopped",
+    cadenceLabel: isActive ? compactCadenceLabel(frequencyLabel) : "Stopped",
     cadenceState: isActive ? "active" : "stopped",
     languageLabel: displayLanguagePreference(feedPreference?.summaryLanguage),
   };
