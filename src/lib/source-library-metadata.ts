@@ -1,0 +1,93 @@
+import { displayLanguagePreference } from "@/lib/language-preference";
+
+export type SourceLibraryMetadata = {
+  cadenceLabel: string;
+  cadenceState: "active" | "stopped";
+  languageLabel: string;
+};
+
+type SourceLibraryCronJob = {
+  status: string;
+  frequencyLabel: string | null;
+};
+
+type SourceLibraryFeedPreference = {
+  summaryLanguage: string | null;
+};
+
+type ResolveSourceLibraryMetadataInput = {
+  cronJob?: SourceLibraryCronJob | null;
+  feedPreference?: SourceLibraryFeedPreference | null;
+};
+
+type SourceLibraryCronJobRow = SourceLibraryCronJob & {
+  userId: string;
+};
+
+type SourceLibraryFeedPreferenceRow = SourceLibraryFeedPreference & {
+  userId: string;
+};
+
+type SourceLibraryMetadataPrisma = {
+  libraryCronJob: {
+    findMany(args: unknown): Promise<SourceLibraryCronJobRow[]>;
+  };
+  userFeedPreference: {
+    findMany(args: unknown): Promise<SourceLibraryFeedPreferenceRow[]>;
+  };
+};
+
+export function resolveSourceLibraryMetadata({
+  cronJob,
+  feedPreference,
+}: ResolveSourceLibraryMetadataInput): SourceLibraryMetadata {
+  const isActive = cronJob?.status === "active";
+
+  return {
+    cadenceLabel: isActive ? cronJob.frequencyLabel?.trim() || "Scheduled" : "Stopped",
+    cadenceState: isActive ? "active" : "stopped",
+    languageLabel: displayLanguagePreference(feedPreference?.summaryLanguage),
+  };
+}
+
+export async function getSourceLibraryMetadataByOwnerIds(
+  ownerUserIds: string[],
+  prismaClient?: SourceLibraryMetadataPrisma,
+) {
+  const uniqueOwnerIds = [...new Set(ownerUserIds.map((value) => value.trim()).filter(Boolean))];
+  if (uniqueOwnerIds.length === 0) {
+    return new Map<string, SourceLibraryMetadata>();
+  }
+
+  const prisma = prismaClient ?? (await getPrismaClient<SourceLibraryMetadataPrisma>());
+  const [cronJobs, feedPreferences] = await Promise.all([
+    prisma.libraryCronJob.findMany({
+      where: { userId: { in: uniqueOwnerIds } },
+      select: { userId: true, status: true, frequencyLabel: true },
+    }),
+    prisma.userFeedPreference.findMany({
+      where: { userId: { in: uniqueOwnerIds } },
+      select: { userId: true, summaryLanguage: true },
+    }),
+  ]);
+
+  const cronJobByUserId = new Map(cronJobs.map((cronJob) => [cronJob.userId, cronJob]));
+  const feedPreferenceByUserId = new Map(
+    feedPreferences.map((feedPreference) => [feedPreference.userId, feedPreference]),
+  );
+
+  return new Map(
+    uniqueOwnerIds.map((ownerUserId) => [
+      ownerUserId,
+      resolveSourceLibraryMetadata({
+        cronJob: cronJobByUserId.get(ownerUserId) ?? null,
+        feedPreference: feedPreferenceByUserId.get(ownerUserId) ?? null,
+      }),
+    ]),
+  );
+}
+
+async function getPrismaClient<T>(): Promise<T> {
+  const { prisma } = await import("@/lib/prisma");
+  return prisma as unknown as T;
+}
