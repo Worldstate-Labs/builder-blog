@@ -4167,13 +4167,6 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "AI Brief 없음",
     es: "No hay AI Brief",
   },
-  "Import shared source libraries for AI Brief and Following.": {
-    "zh-CN": "导入共享信息源库，用于 AI Brief 和 Following。",
-    "zh-TW": "匯入共享資訊源庫，用於 AI Brief 和 Following。",
-    ja: "AI Brief と Following 用に共有ソースライブラリをインポートします。",
-    ko: "AI Brief와 Following에 사용할 공유 소스 라이브러리를 가져옵니다.",
-    es: "Importa bibliotecas de fuentes compartidas para AI Brief y Following.",
-  },
   "Import AI Brief collections shared by others.": {
     "zh-CN": "导入其他人分享的 AI Brief 集合。",
     "zh-TW": "匯入其他人分享的 AI Brief 集合。",

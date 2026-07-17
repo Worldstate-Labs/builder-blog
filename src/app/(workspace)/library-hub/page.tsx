@@ -118,16 +118,6 @@ function LibraryHubImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading source libraries</span>
-      <div className="library-hub-toolbar">
-        <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">Source libraries</h2>
-          <p className="hub-section-copy">
-            Import shared source libraries for AI Brief and Following.
-          </p>
-          <div className="library-hub-skeleton-line is-wide" />
-        </div>
-        <div className="library-hub-skeleton-pill" />
-      </div>
       <div className="hub-list-stack fb-hub-list">
         {Array.from({ length: 4 }, (_, index) => (
           <div className="fb-hub-card" key={index}>

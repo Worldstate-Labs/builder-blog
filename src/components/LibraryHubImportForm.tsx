@@ -19,9 +19,6 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { UserName } from "@/components/UserName";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
-const sourceLibraryImportDescription =
-  "Import shared source libraries for AI Brief and Following.";
-
 type HubLibraryBuilder = {
   id: string;
   entityId: string | null;
@@ -270,15 +267,6 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
   return (
     <section className="hub-import-section">
-      <div className="library-hub-toolbar">
-        <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">Source libraries</h2>
-          <p className="hub-section-copy">
-            {sourceLibraryImportDescription}
-          </p>
-        </div>
-      </div>
-
       {showFilters ? (
         <>
           <div
@@ -706,7 +694,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: sourceLibraryImportDescription,
+        description: "",
         emptyBody: "Try another source library filter.",
       };
   }

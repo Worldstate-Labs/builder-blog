@@ -10,14 +10,7 @@ export default function LibraryHubLoading() {
       />
       <div className="workspace-content-stack">
         <section aria-label="Loading source libraries">
-          <div className="library-hub-toolbar">
-            <div className="library-hub-toolbar-copy">
-              <span className="sr-only">Loading source libraries</span>
-              <div className="library-hub-skeleton-line is-title" />
-              <div className="library-hub-skeleton-line is-wide" />
-            </div>
-            <div className="library-hub-skeleton-pill" />
-          </div>
+          <span className="sr-only">Loading source libraries</span>
           <div className="hub-list-stack fb-hub-list">
             {Array.from({ length: 4 }, (_, index) => (
               <div className="fb-hub-card" key={index}>
