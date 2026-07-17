@@ -9,15 +9,17 @@ import {
   useTransition,
   type MouseEvent,
 } from "react";
-import { CheckCircle2, ChevronDown, Download } from "lucide-react";
+import { ChevronDown, Download, Trash2 } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { FollowBriefLibraryIdentity } from "@/components/FollowBriefLibraryIdentity";
 import { RelativeTime } from "@/components/RelativeTime";
+import { SourceLibraryMetadata as SourceLibraryMetadataRow } from "@/components/SourceLibraryMetadata";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { UserName } from "@/components/UserName";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
+import type { SourceLibraryMetadata } from "@/lib/source-library-metadata";
 
 type HubLibraryBuilder = {
   id: string;
@@ -48,6 +50,7 @@ export type HubLibrary = {
   isCommunity: boolean;
   name: string;
   description: string | null;
+  metadata: SourceLibraryMetadata | null;
   ownerUserId: string | null;
   importCount: number;
   viewCount: number;
@@ -435,14 +438,13 @@ function HubCard({
     <button
       aria-busy={pending === "remove" && isPending}
       aria-label={`Remove imported source library ${library.name}`}
-      aria-pressed={true}
       className="fb-btn light compact hub-card-action-button is-imported"
       disabled={isPending || pending !== null}
       onClick={() => onRemove(library.id)}
       type="button"
     >
-      <CheckCircle2 aria-hidden="true" />
-      {pending === "remove" ? "Removing" : "Imported"}
+      <Trash2 aria-hidden="true" />
+      Remove import
     </button>
   ) : (
     <button
@@ -458,6 +460,21 @@ function HubCard({
       {pending === "import" ? "Importing" : "Import"}
     </button>
   );
+  const headerAction = imported ? null : action;
+  const importedActionRow = imported && action ? (
+    <div className="hub-card-imported-meta-row">
+      <div className="hub-card-imported-metadata">
+        {library.metadata ? <SourceLibraryMetadataRow metadata={library.metadata} /> : null}
+      </div>
+      <div
+        aria-label={`Imported source library actions for ${library.name}`}
+        className="fb-hub-card-actions"
+        role="group"
+      >
+        {action}
+      </div>
+    </div>
+  ) : null;
 
   return (
     <article className="fb-hub-card">
@@ -474,16 +491,17 @@ function HubCard({
               )}
             </h3>
           </div>
-          {action ? (
+          {headerAction ? (
             <div
               aria-label={`Source library actions for ${library.name}`}
               className="fb-hub-card-actions"
               role="group"
             >
-              {action}
+              {headerAction}
             </div>
           ) : null}
         </div>
+        {importedActionRow}
       </div>
 
       {sourceGroups.length > 0 ? (

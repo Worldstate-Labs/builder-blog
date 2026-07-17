@@ -13,6 +13,7 @@ import {
   userImportableLibraryHubEntryWhere,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
+import { getSourceLibraryMetadataByOwnerIds } from "@/lib/source-library-metadata";
 
 type SourceLibraryHubPageData = Awaited<ReturnType<typeof loadSourceLibraryHubPageData>>;
 
@@ -78,6 +79,10 @@ async function loadSourceLibraryHubPageData() {
   await recordLibraryHubViews(libraries.map((library) => library.id));
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
+  const importedOwnerUserIds = libraries
+    .filter((library) => importedLibraryIds.has(library.id) && library.ownerUserId)
+    .map((library) => library.ownerUserId as string);
+  const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds(importedOwnerUserIds);
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
     const isCommunityLibrary = library.isFeatured || isAdminEmail(library.owner?.email);
     return {
@@ -97,6 +102,10 @@ async function loadSourceLibraryHubPageData() {
           lastFetchedAt: item.builder.lastFetchedAt?.toISOString() ?? null,
         },
       })),
+      metadata:
+        importedLibraryIds.has(library.id) && library.ownerUserId
+          ? metadataByOwnerUserId[library.ownerUserId] ?? null
+          : null,
       imported: importedLibraryIds.has(library.id),
       owned: library.ownerUserId === session.user.id,
     };

@@ -5308,11 +5308,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /imported=\{importedIds\.has\(library\.id\)\}/);
   assert.doesNotMatch(hubImportForm, /importedIds\.has\(library\.id\)\s*\|\|\s*library\.imported/);
   assert.doesNotMatch(hubImportForm, /hub-card-imported-status/);
-  assert.doesNotMatch(hubImportForm, /Trash2/);
+  assert.match(hubImportForm, /Trash2/);
   assert.match(hubImportForm, /className="fb-btn light compact hub-card-action-button is-imported"/);
-  assert.match(hubImportForm, /aria-pressed=\{true\}/);
   assert.match(hubImportForm, /aria-pressed=\{false\}/);
-  assert.match(hubImportForm, /\?\s*"Removing"\s*:\s*"Imported"/);
   assert.match(hubImportForm, />\s*Remove import\s*<\/button>/);
   assert.doesNotMatch(hubImportForm, />\s*Remove source library\s*<\/button>|Remove \$\{library\.name\} from imported source libraries/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
@@ -5465,6 +5463,49 @@ test("library hub exposes share and multi-import flows", () => {
     hubImportForm,
     /<CountRange>[\s\S]*Showing \{formatCount\(library\.items\.length\)\} of \{formatCount\(library\.itemCount\)\} sources/,
   );
+});
+
+test("imported source library metadata", () => {
+  const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
+  const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
+
+  assert.match(hubPage, /getSourceLibraryMetadataByOwnerIds/);
+  assert.equal((hubPage.match(/getSourceLibraryMetadataByOwnerIds\(/g) ?? []).length, 1);
+  assert.match(
+    hubPage,
+    /const importedOwnerUserIds = libraries[\s\S]*filter\(\(library\) => importedLibraryIds\.has\(library\.id\) && library\.ownerUserId\)[\s\S]*map\(\(library\) => library\.ownerUserId as string\)/,
+  );
+  assert.match(
+    hubPage,
+    /const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds\(importedOwnerUserIds\);/,
+  );
+  assert.match(
+    hubPage,
+    /metadata:\s*importedLibraryIds\.has\(library\.id\) && library\.ownerUserId[\s\S]*metadataByOwnerUserId\[library\.ownerUserId\] \?\? null[\s\S]*: null,/,
+  );
+
+  assert.match(
+    hubImportForm,
+    /import \{ SourceLibraryMetadata as SourceLibraryMetadataRow \} from "@\/components\/SourceLibraryMetadata"/,
+  );
+  assert.match(
+    hubImportForm,
+    /import type \{ SourceLibraryMetadata \} from "@\/lib\/source-library-metadata"/,
+  );
+  assert.match(hubImportForm, /metadata:\s*SourceLibraryMetadata \| null;/);
+  assert.match(hubImportForm, /const headerAction = imported \? null : action;/);
+  assert.match(
+    hubImportForm,
+    /const importedActionRow = imported && action \? \([\s\S]*className="hub-card-imported-meta-row"[\s\S]*className="hub-card-imported-metadata"[\s\S]*library\.metadata \? <SourceLibraryMetadataRow metadata=\{library\.metadata\} \/> : null[\s\S]*aria-label=\{`Imported source library actions for \$\{library\.name\}`\}[\s\S]*\{action\}[\s\S]*\) : null;/,
+  );
+  assert.match(
+    hubImportForm,
+    /<div className="fb-hub-card-head">[\s\S]*\{headerAction \? \([\s\S]*className="fb-hub-card-actions"[\s\S]*\{headerAction\}[\s\S]*\) : null\}[\s\S]*<\/div>[\s\S]*\{importedActionRow\}/,
+  );
+  assert.match(hubImportForm, /<Trash2 aria-hidden="true" \/>/);
+  assert.match(hubImportForm, />\s*Remove import\s*<\/button>/);
+  assert.match(hubImportForm, /aria-label=\{`Imported source library actions for \$\{library\.name\}`\}/);
+  assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {
