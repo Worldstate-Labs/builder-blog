@@ -41,10 +41,11 @@ export function resolveSourceLibraryMetadata({
   cronJob,
   feedPreference,
 }: ResolveSourceLibraryMetadataInput): SourceLibraryMetadata {
-  const isActive = cronJob?.status === "active";
+  const frequencyLabel = cronJob?.frequencyLabel?.trim() ?? "";
+  const isActive = cronJob?.status === "active" && frequencyLabel.length > 0;
 
   return {
-    cadenceLabel: isActive ? cronJob.frequencyLabel?.trim() || "Scheduled" : "Stopped",
+    cadenceLabel: isActive ? frequencyLabel : "Stopped",
     cadenceState: isActive ? "active" : "stopped",
     languageLabel: displayLanguagePreference(feedPreference?.summaryLanguage),
   };
@@ -56,7 +57,7 @@ export async function getSourceLibraryMetadataByOwnerIds(
 ) {
   const uniqueOwnerIds = [...new Set(ownerUserIds.map((value) => value.trim()).filter(Boolean))];
   if (uniqueOwnerIds.length === 0) {
-    return new Map<string, SourceLibraryMetadata>();
+    return {};
   }
 
   const prisma = prismaClient ?? (await getPrismaClient<SourceLibraryMetadataPrisma>());
@@ -76,7 +77,7 @@ export async function getSourceLibraryMetadataByOwnerIds(
     feedPreferences.map((feedPreference) => [feedPreference.userId, feedPreference]),
   );
 
-  return new Map(
+  const metadataByOwnerId = new Map(
     uniqueOwnerIds.map((ownerUserId) => [
       ownerUserId,
       resolveSourceLibraryMetadata({
@@ -85,6 +86,8 @@ export async function getSourceLibraryMetadataByOwnerIds(
       }),
     ]),
   );
+
+  return Object.fromEntries(metadataByOwnerId);
 }
 
 async function getPrismaClient<T>(): Promise<T> {

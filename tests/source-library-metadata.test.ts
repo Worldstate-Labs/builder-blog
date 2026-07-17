@@ -30,6 +30,30 @@ test("resolveSourceLibraryMetadata maps cron cadence and display language", asyn
 
   assert.deepEqual(
     resolveSourceLibraryMetadata({
+      cronJob: { status: "active", frequencyLabel: "" },
+      feedPreference: { summaryLanguage: "en" },
+    }),
+    {
+      cadenceLabel: "Stopped",
+      cadenceState: "stopped",
+      languageLabel: "English",
+    },
+  );
+
+  assert.deepEqual(
+    resolveSourceLibraryMetadata({
+      cronJob: { status: "active", frequencyLabel: "   " },
+      feedPreference: { summaryLanguage: "en" },
+    }),
+    {
+      cadenceLabel: "Stopped",
+      cadenceState: "stopped",
+      languageLabel: "English",
+    },
+  );
+
+  assert.deepEqual(
+    resolveSourceLibraryMetadata({
       cronJob: { status: "stopped", frequencyLabel: "Every hour" },
       feedPreference: { summaryLanguage: "ja" },
     }),
@@ -114,24 +138,18 @@ test("getSourceLibraryMetadataByOwnerIds dedupes ids and uses exactly two batch 
 
   const metadataByOwnerId = await pending;
 
-  assert.deepEqual([...metadataByOwnerId.entries()], [
-    [
-      "owner-1",
-      {
-        cadenceLabel: "Every day",
-        cadenceState: "active",
-        languageLabel: "繁體中文",
-      },
-    ],
-    [
-      "owner-2",
-      {
-        cadenceLabel: "Stopped",
-        cadenceState: "stopped",
-        languageLabel: "日本語",
-      },
-    ],
-  ]);
+  assert.deepEqual(metadataByOwnerId, {
+    "owner-1": {
+      cadenceLabel: "Every day",
+      cadenceState: "active",
+      languageLabel: "繁體中文",
+    },
+    "owner-2": {
+      cadenceLabel: "Stopped",
+      cadenceState: "stopped",
+      languageLabel: "日本語",
+    },
+  });
 });
 
 test("getSourceLibraryMetadataByOwnerIds skips queries for empty owner ids", async () => {
@@ -154,7 +172,7 @@ test("getSourceLibraryMetadataByOwnerIds skips queries for empty owner ids", asy
   });
 
   assert.equal(queried, false);
-  assert.equal(metadataByOwnerId.size, 0);
+  assert.deepEqual(metadataByOwnerId, {});
 });
 
 test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", async () => {
@@ -181,6 +199,7 @@ test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", 
 
   assert.match(activeHtml, /aria-label="Frequency: Every day"/);
   assert.match(activeHtml, /aria-label="Language: 繁體中文"/);
+  assert.equal(activeHtml.match(/role="group"/g)?.length ?? 0, 2);
   assert.match(activeHtml, /lucide-clock3/);
   assert.match(activeHtml, /lucide-languages/);
   assert.equal(activeHtml.match(/aria-hidden="true"/g)?.length ?? 0, 2);
@@ -188,6 +207,7 @@ test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", 
 
   assert.match(stoppedHtml, /aria-label="Frequency: Stopped"/);
   assert.match(stoppedHtml, /aria-label="Language: 日本語"/);
+  assert.equal(stoppedHtml.match(/role="group"/g)?.length ?? 0, 2);
   assert.match(stoppedHtml, /lucide-circle-stop/);
   assert.match(stoppedHtml, /lucide-languages/);
   assert.equal(stoppedHtml.match(/aria-hidden="true"/g)?.length ?? 0, 2);

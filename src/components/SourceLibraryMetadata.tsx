@@ -13,6 +13,7 @@ export function SourceLibraryMetadata({
       <span
         aria-label={`Frequency: ${metadata.cadenceLabel}`}
         className="source-library-metadata-item"
+        role="group"
       >
         <CadenceIcon aria-hidden="true" size={16} />
         <span>{metadata.cadenceLabel}</span>
@@ -20,6 +21,7 @@ export function SourceLibraryMetadata({
       <span
         aria-label={`Language: ${metadata.languageLabel}`}
         className="source-library-metadata-item"
+        role="group"
       >
         <Languages aria-hidden="true" size={16} />
         <span>{metadata.languageLabel}</span>
