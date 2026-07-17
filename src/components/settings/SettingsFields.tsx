@@ -6,6 +6,10 @@ import {
   ORIGINAL_CONTENT_LANGUAGE_LABEL,
   ORIGINAL_CONTENT_LANGUAGE_VALUE,
 } from "@/lib/language-preference";
+import {
+  languageOptions as buildLanguageOptions,
+  SUMMARY_LANGUAGE_OPTIONS as sharedSummaryLanguageOptions,
+} from "@/lib/summary-language-options";
 import { RelativeTime } from "@/components/RelativeTime";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
@@ -489,19 +493,18 @@ export function SaveStatus({
 }
 
 // Account-wide summary output languages — the same list the cron / copy-prompt
-// dialog offers, kept here as the single source of truth. Fixed-language values
-// are fed into prompts; `source` is interpreted by the job context/CLI as
-// "match the raw content or existing summary language".
-export const SUMMARY_LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: ORIGINAL_CONTENT_LANGUAGE_VALUE, label: ORIGINAL_CONTENT_LANGUAGE_LABEL },
-  { value: "zh", label: "中文 (Chinese)" },
-  { value: "English", label: "English" },
-  { value: "日本語", label: "日本語 (Japanese)" },
-  { value: "한국어", label: "한국어 (Korean)" },
-  { value: "Español", label: "Español (Spanish)" },
-  { value: "Français", label: "Français (French)" },
-  { value: "Deutsch", label: "Deutsch (German)" },
-];
+// dialog offers, sourced from the shared locale catalog so client consumers do
+// not have to pull the full i18n module into their graph.
+const summaryLanguageOriginalOption = {
+  value: ORIGINAL_CONTENT_LANGUAGE_VALUE,
+  label: ORIGINAL_CONTENT_LANGUAGE_LABEL,
+};
+
+export const SUMMARY_LANGUAGE_OPTIONS =
+  sharedSummaryLanguageOptions[0]?.value === summaryLanguageOriginalOption.value &&
+  sharedSummaryLanguageOptions[0]?.label === summaryLanguageOriginalOption.label
+    ? sharedSummaryLanguageOptions
+    : [summaryLanguageOriginalOption, ...sharedSummaryLanguageOptions.slice(1)];
 
 // Build select options for a language field, appending the current value as its
 // own option when it isn't one of the known choices (so a custom language a
@@ -509,10 +512,7 @@ export const SUMMARY_LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: str
 export function languageOptions(
   current: string,
 ): ReadonlyArray<{ value: string; label: string }> {
-  if (!current || SUMMARY_LANGUAGE_OPTIONS.some((o) => o.value === current)) {
-    return SUMMARY_LANGUAGE_OPTIONS;
-  }
-  return [...SUMMARY_LANGUAGE_OPTIONS, { value: current, label: current }];
+  return buildLanguageOptions(current);
 }
 
 // An ordered multi-select: pick from a fixed set of known choices, keep them in

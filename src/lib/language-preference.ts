@@ -1,7 +1,30 @@
+import { normalizeUiLocale } from "@/lib/ui-locales";
+
 export const DEFAULT_SUMMARY_LANGUAGE = "zh";
 export const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
 export const ORIGINAL_CONTENT_LANGUAGE_LABEL = "original";
 const LEGACY_ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original content language";
+const DISPLAY_ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original";
+
+const LEGACY_LANGUAGE_DISPLAY_NAMES = new Map<string, string>([
+  ["zh", "Chinese"],
+  ["chinese", "Chinese"],
+  ["english", "English"],
+  ["日本語", "日本語"],
+  ["한국어", "한국어"],
+  ["español", "Español"],
+  ["français", "Français"],
+  ["deutsch", "Deutsch"],
+]);
+
+const CANONICAL_LANGUAGE_DISPLAY_NAMES = new Map<string, string>([
+  ["en", "English"],
+  ["zh-CN", "简体中文"],
+  ["zh-TW", "繁體中文"],
+  ["ja", "日本語"],
+  ["ko", "한국어"],
+  ["es", "Español"],
+]);
 
 export function isOriginalContentLanguagePreference(value: string | null | undefined) {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -23,24 +46,34 @@ export function summaryLanguagesMatch(
   value: string | null | undefined,
   target: string | null | undefined,
 ) {
-  const rawValue = String(value ?? "").trim();
-  const rawTarget = String(target ?? "").trim();
-  if (!rawValue || !rawTarget) return false;
-  const normalizedValue = normalizeSummaryLanguagePreference(rawValue);
-  const normalizedTarget = normalizeSummaryLanguagePreference(rawTarget);
-  const valueIsOriginal = isOriginalContentLanguagePreference(normalizedValue);
-  const targetIsOriginal = isOriginalContentLanguagePreference(normalizedTarget);
-  if (valueIsOriginal || targetIsOriginal) return valueIsOriginal && targetIsOriginal;
-  return normalizedValue.toLowerCase() === normalizedTarget.toLowerCase();
+  const valueKey = summaryLanguageMatchKey(value);
+  const targetKey = summaryLanguageMatchKey(target);
+  if (!valueKey || !targetKey) return false;
+  return valueKey === targetKey;
 }
 
 export function displayLanguagePreference(value: string | null | undefined) {
-  const normalized = normalizeSummaryLanguagePreference(value);
-  if (isOriginalContentLanguagePreference(normalized)) return ORIGINAL_CONTENT_LANGUAGE_LABEL;
-  const lower = normalized.toLowerCase();
-  if (lower === ORIGINAL_CONTENT_LANGUAGE_LABEL.toLowerCase()) return ORIGINAL_CONTENT_LANGUAGE_LABEL;
-  if (lower === LEGACY_ORIGINAL_CONTENT_LANGUAGE_LABEL.toLowerCase()) return ORIGINAL_CONTENT_LANGUAGE_LABEL;
-  if (lower === "zh" || lower === "zh-cn" || lower === "chinese") return "Chinese";
-  if (lower === "en" || lower === "en-us" || lower === "english") return "English";
-  return normalized.toUpperCase();
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed || isOriginalContentLanguagePreference(trimmed)) {
+    return DISPLAY_ORIGINAL_CONTENT_LANGUAGE_LABEL;
+  }
+  const legacyLabel = LEGACY_LANGUAGE_DISPLAY_NAMES.get(trimmed.toLowerCase());
+  if (legacyLabel) return legacyLabel;
+  const canonicalLocale = normalizeUiLocale(trimmed);
+  if (canonicalLocale) return CANONICAL_LANGUAGE_DISPLAY_NAMES.get(canonicalLocale) ?? canonicalLocale;
+  return trimmed;
+}
+
+function summaryLanguageMatchKey(value: string | null | undefined) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "";
+  if (isOriginalContentLanguagePreference(trimmed)) return ORIGINAL_CONTENT_LANGUAGE_VALUE;
+  const legacyLabel = LEGACY_LANGUAGE_DISPLAY_NAMES.get(trimmed.toLowerCase());
+  if (legacyLabel === "Chinese") return "zh-CN";
+  if (legacyLabel === "English") return "en";
+  if (legacyLabel === "日本語") return "ja";
+  if (legacyLabel === "한국어") return "ko";
+  if (legacyLabel === "Español") return "es";
+  if (legacyLabel) return legacyLabel.toLowerCase();
+  return normalizeUiLocale(trimmed) ?? trimmed.toLowerCase();
 }
