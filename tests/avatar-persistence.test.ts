@@ -41,6 +41,8 @@ test("avatar snapshots request compact upstream images and can be backfilled", (
   assert.match(packageJson, /"avatars:backfill"/);
   assert.match(backfill, /avatarDataUrl:\s*null/);
   assert.match(backfill, /resolveAvatarDataUrl/);
+  assert.match(backfill, /builderKindForSourceType/);
+  assert.doesNotMatch(backfill, /avatarUrl:\s*\{\s*not:\s*null\s*\}/);
 });
 
 test("source avatar resolution reuses a matching candidate snapshot", async () => {

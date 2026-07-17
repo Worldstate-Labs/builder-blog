@@ -1,6 +1,7 @@
 import { prisma } from "../src/lib/prisma";
 import { resolveAvatarDataUrl } from "../src/lib/builder-enrichment";
 import { resolveSourceAvatar } from "../src/lib/source-avatar-persistence";
+import { builderKindForSourceType } from "../src/lib/source-registry";
 
 const batchSize = Math.max(1, Number(process.env.AVATAR_BACKFILL_BATCH_SIZE ?? "100"));
 const concurrency = 5;
@@ -11,20 +12,42 @@ async function inBatches<T>(rows: T[], work: (row: T) => Promise<void>) {
   }
 }
 
-async function backfillModel(
+type CandidateSource = {
+  id: string;
+  name: string;
+  sourceType: string;
+  sourceUrl: string | null;
+  fetchUrl: string | null;
+  handle: string | null;
+  avatarUrl: string | null;
+};
+
+async function backfillCandidates(
   label: string,
-  findMany: () => Promise<Array<{ id: string; avatarUrl: string | null }>>,
-  update: (id: string, avatarDataUrl: string) => Promise<unknown>,
+  findMany: () => Promise<CandidateSource[]>,
+  update: (
+    id: string,
+    avatarUrl: string | null,
+    avatarDataUrl: string | null,
+  ) => Promise<unknown>,
 ) {
   const rows = await findMany();
-  let updated = 0;
+  let resolved = 0;
   await inBatches(rows, async (row) => {
-    const avatarDataUrl = await resolveAvatarDataUrl(row.avatarUrl);
-    if (!avatarDataUrl) return;
-    await update(row.id, avatarDataUrl);
-    updated += 1;
+    const avatar = await resolveSourceAvatar({
+      source: {
+        ...row,
+        kind: builderKindForSourceType(row.sourceType),
+      },
+      preferredAvatarUrl: row.avatarUrl,
+      prismaClient: prisma,
+    });
+    const avatarDataUrl = avatar.avatarDataUrl ?? await resolveAvatarDataUrl(avatar.avatarUrl);
+    if (!avatar.avatarUrl && !avatarDataUrl) return;
+    await update(row.id, avatar.avatarUrl, avatarDataUrl);
+    resolved += 1;
   });
-  console.log(`${label}: cached ${updated}/${rows.length}`);
+  console.log(`${label}: resolved ${resolved}/${rows.length}`);
 }
 
 async function main() {
@@ -59,23 +82,45 @@ async function main() {
     updatedBuilders += 1;
   });
   console.log(`builders: cached ${updatedBuilders}/${builders.length}`);
-  await backfillModel(
+  await backfillCandidates(
     "source candidates",
     () => prisma.sourceCandidate.findMany({
-      where: { avatarUrl: { not: null }, avatarDataUrl: null },
-      select: { id: true, avatarUrl: true },
+      where: { avatarDataUrl: null },
+      select: {
+        id: true,
+        name: true,
+        sourceType: true,
+        sourceUrl: true,
+        fetchUrl: true,
+        handle: true,
+        avatarUrl: true,
+      },
       take: batchSize,
     }),
-    (id, avatarDataUrl) => prisma.sourceCandidate.update({ where: { id }, data: { avatarDataUrl } }),
+    (id, avatarUrl, avatarDataUrl) => prisma.sourceCandidate.update({
+      where: { id },
+      data: { avatarUrl, avatarDataUrl },
+    }),
   );
-  await backfillModel(
+  await backfillCandidates(
     "backup candidates",
     () => prisma.backupSourceCandidate.findMany({
-      where: { avatarUrl: { not: null }, avatarDataUrl: null },
-      select: { id: true, avatarUrl: true },
+      where: { avatarDataUrl: null },
+      select: {
+        id: true,
+        name: true,
+        sourceType: true,
+        sourceUrl: true,
+        fetchUrl: true,
+        handle: true,
+        avatarUrl: true,
+      },
       take: batchSize,
     }),
-    (id, avatarDataUrl) => prisma.backupSourceCandidate.update({ where: { id }, data: { avatarDataUrl } }),
+    (id, avatarUrl, avatarDataUrl) => prisma.backupSourceCandidate.update({
+      where: { id },
+      data: { avatarUrl, avatarDataUrl },
+    }),
   );
 }
 
