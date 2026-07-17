@@ -25,7 +25,10 @@ test("CLI uses one deterministic HTTP sync helper with timeout and retry policy"
   assert.match(cli, /label: "cron status sync"[\s\S]*retries: HTTP_SYNC_RETRY_DELAYS_MS\.length/);
   assert.match(cli, /label: "builder sync"[\s\S]*timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS[\s\S]*retries: 1/);
 
-  assert.match(cli, /label: "exchange code"[\s\S]*retries: 0/);
-  assert.match(cli, /label: "fetch log upload"[\s\S]*retries: 0/);
+  assert.match(cli, /label: "exchange code",\s*retries: 0/);
+  // The builders route hard-requires the fetch run id this upload returns, so
+  // it retries once — losing it to a transient failure would fail the whole
+  // sync, not just the fetch log.
+  assert.match(cli, /label: "fetch log upload",\s*retries: 1/);
   assert.match(cli, /label: "digest sync"[\s\S]*timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS[\s\S]*retries: 0/);
 });

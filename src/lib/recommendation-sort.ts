@@ -7,5 +7,7 @@ export type RecommendationSortMode = (typeof recommendationSortModes)[number];
 export function normalizeRecommendationSortMode(
   value: string | null | undefined,
 ): RecommendationSortMode {
-  return value === "recent" ? "recent" : defaultRecommendationSortMode;
+  return recommendationSortModes.includes(value as RecommendationSortMode)
+    ? (value as RecommendationSortMode)
+    : defaultRecommendationSortMode;
 }

@@ -430,7 +430,7 @@ async function loadSourceLibraryData(user: {
       ownSharedLibrary.description !== adminCommunityLibraryDescription ||
       ownSharedLibrary._count.items !== privateBuilders.length)
   ) {
-    const result = await ensureAdminCommunityLibrary(user.id);
+    const result = await ensureAdminCommunityLibrary(user.id, user.email);
     isPublicLibrary = result.isPublic;
   } else if (
     !user.isAdmin &&

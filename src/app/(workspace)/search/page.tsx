@@ -1682,7 +1682,7 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 function normalizePage(value: string) {
-  return Math.max(1, Number(value) || 1);
+  return Math.max(1, Math.floor(Number(value)) || 1);
 }
 
 function escapeRegExp(value: string) {

@@ -232,7 +232,18 @@ export async function stopUserCloudSourceSubmissions(params: {
   for (const summaryLanguage of new Set(
     activeSubmissions.map((submission) => submission.summaryLanguage),
   )) {
-    await syncHub(summaryLanguage, prisma);
+    // The stop already committed (submissions deactivated, tasks paused,
+    // queued fetches cancelled). A hub-sync failure — e.g. the language
+    // library was admin-disabled in the meantime — must not surface as an
+    // error for a stop that actually succeeded.
+    try {
+      await syncHub(summaryLanguage, prisma);
+    } catch (error) {
+      console.error(
+        `[cloud-source-library] hub sync failed for ${summaryLanguage} after stopping submissions`,
+        error,
+      );
+    }
   }
 
   return {
@@ -381,6 +392,18 @@ async function ensureCloudLanguageLibraryForSubmission(params: {
   summaryLanguage: string;
   prisma: PrismaClient;
 }) {
+  // A user submission may auto-create a missing language library, but it must
+  // never re-enable one an admin explicitly disabled.
+  const existing = await params.prisma.cloudLanguageLibrary.findUnique({
+    where: { summaryLanguage: params.summaryLanguage },
+    select: { enabled: true },
+  });
+  if (existing && !existing.enabled) {
+    throw new CloudSourceSubmissionError(
+      `Cloud source library is not configured for ${params.summaryLanguage}.`,
+      404,
+    );
+  }
   return upsertCloudLanguageLibraryWithSystemOwner({
     summaryLanguage: params.summaryLanguage,
     enabled: true,
@@ -541,7 +564,17 @@ export async function submitUserPrivateLibraryToCloud(params: {
     ...existingActive.map((submission) => submission.summaryLanguage),
   ]);
   for (const summaryLanguage of languagesToSync) {
-    await syncHub(summaryLanguage, prisma);
+    // The submission state is already committed above. A hub-sync failure —
+    // e.g. an old-language library was admin-disabled — must not turn a
+    // successful submission into an error response.
+    try {
+      await syncHub(summaryLanguage, prisma);
+    } catch (error) {
+      console.error(
+        `[cloud-source-library] hub sync failed for ${summaryLanguage} after cloud submission`,
+        error,
+      );
+    }
   }
   return {
     sourcesSubmitted: submissionSources.length,

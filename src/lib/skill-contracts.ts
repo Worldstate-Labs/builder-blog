@@ -134,9 +134,12 @@ export const SkillDigestSchema = z.object({
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),
   itemCount: z.number().int().min(0).max(10_000).default(0),
-  // Re-generate today's digest: when true the create route replaces this
-  // user's existing same-day digest(s) instead of stacking a duplicate. Set
-  // by the digest "override" toggle (forwarded as `--regenerate` by the CLI).
+  // Re-generate today's digest (the "override" toggle, forwarded as
+  // `--regenerate` by the CLI). Digests are always additive: the create route
+  // never replaces or deletes an existing same-day digest. The flag's only
+  // real effect happens at the prepare/context step, which re-includes posts
+  // already digested for this user as candidates (excludeDigestedForUserId
+  // becomes null); here it is carried for provenance only.
   regenerate: z.boolean().default(false),
   // Optional explicit marks remain available for internal callers, but normal
   // digest sync derives these from structured items so rendering and provenance

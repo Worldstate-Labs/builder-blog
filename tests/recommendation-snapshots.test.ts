@@ -747,7 +747,7 @@ test("recommendation snapshots request six posts at a time", () => {
   const followingSection = source("src/components/FollowingRecommendationSection.tsx");
   const recommendationSort = source("src/lib/recommendation-sort.ts");
   assert.match(recommendationSort, /defaultRecommendationSortMode = "recent"/);
-  assert.match(recommendationSort, /return value === "recent" \? "recent" : defaultRecommendationSortMode/);
+  assert.match(recommendationSort, /recommendationSortModes\.includes\(value as RecommendationSortMode\)/);
   assert.match(followingSection, /useState<RecommendationSortMode>\(defaultRecommendationSortMode\)/);
   assert.match(feed, /limit: "6"/);
   assert.match(feed, /sort: sortMode/);

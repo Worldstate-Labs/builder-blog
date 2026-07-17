@@ -216,7 +216,6 @@ export async function importLibrariesFromHub(params: {
         builderId: item.builderId,
         origin: BuilderPoolOrigin.HUB_IMPORT,
       });
-      builders += 1;
     }
 
     try {
@@ -227,6 +226,9 @@ export async function importLibrariesFromHub(params: {
         },
       });
       newImports += 1;
+      // Only count builders for a genuinely new import; a re-import merely
+      // refreshes pool membership and should not report added sources.
+      builders += library.items.length;
       await prisma.libraryHubEntry.update({
         where: { id: library.id },
         data: { importCount: { increment: 1 } },
@@ -447,7 +449,7 @@ export async function importDigestPipelineFromHub(params: {
   }
 }
 
-export async function findAdminCommunityDigestPipeline() {
+async function lookupAdminCommunityDigestPipeline() {
   return prisma.digestPipelineShare.findFirst({
     where: {
       isPublic: true,
@@ -460,8 +462,17 @@ export async function findAdminCommunityDigestPipeline() {
   });
 }
 
+export async function findAdminCommunityDigestPipeline() {
+  // Self-heal: without a public admin-owned share the FollowBrief AI Brief
+  // disappears app-wide (dashboard picker, user search). Provision the
+  // canonical share on demand — e.g. on a fresh database or after an
+  // ADMIN_EMAILS rotation — instead of relying on an earlier surface having
+  // created it.
+  return findOrCreateAdminCommunityDigestPipeline();
+}
+
 async function findOrCreateAdminCommunityDigestPipeline() {
-  const existing = await findAdminCommunityDigestPipeline();
+  const existing = await lookupAdminCommunityDigestPipeline();
   if (existing) return existing;
 
   const admin = await prisma.user.findFirst({
@@ -471,13 +482,15 @@ async function findOrCreateAdminCommunityDigestPipeline() {
   });
   if (!admin) return null;
 
-  return shareDigestPipelineToHub({
+  await shareDigestPipelineToHub({
     userId: admin.id,
     name: admin.name,
     email: admin.email,
     title: adminCommunityDigestTitle,
     description: adminCommunityDigestDescription,
   });
+  // Re-read through the lookup so callers always get the owner include.
+  return lookupAdminCommunityDigestPipeline();
 }
 
 export async function ensureDefaultCommunityDigestImport(userId: string) {

@@ -395,7 +395,14 @@ export function candidateSearchTerms(query: string, mode: SearchMode, limit = 12
   const queryTokens = tokenize(normalizedQuery);
   if (queryTokens.length === 0) return [normalizedQuery];
 
-  return [...buildWeightedTerms(queryTokens).keys()].slice(0, limit);
+  // Include raw (unstemmed) tokens alongside weighted stems so contains-based
+  // database prefilters still match documents that only carry the surface form
+  // (e.g. "libraries" stems to "library", which is not a substring).
+  const combinedTerms = new Set([
+    ...buildWeightedTerms(queryTokens).keys(),
+    ...rawTokenize(normalizedQuery),
+  ]);
+  return [...combinedTerms].slice(0, limit);
 }
 
 export function relatedSearchSuggestions(query: string, limit = 6) {
@@ -1174,8 +1181,10 @@ function buildSnippet(
   queryTokens: string[],
   exactTargets: string[] = [],
 ) {
-  const source = document.body || document.title;
-  const normalizedBody = normalizeText(document.body);
+  // Collapse whitespace the same way normalizeText does so match indexes
+  // computed on normalizedBody line up with slices taken from source.
+  const source = (document.body || document.title).replace(/\s+/g, " ").trim();
+  const normalizedBody = source.toLowerCase();
   const exactMatches = [...exactTargets, normalizedQuery]
     .filter((target) => target && !target.includes("*"))
     .map((target) => ({
@@ -1210,6 +1219,11 @@ function normalizeText(value: string) {
 function tokenize(value: string) {
   const matches = normalizeText(value).match(/[\p{L}\p{N}]+/gu) ?? [];
   return matches.map(stemToken).filter((token) => token && !stopWords.has(token));
+}
+
+function rawTokenize(value: string) {
+  const matches = normalizeText(value).match(/[\p{L}\p{N}]+/gu) ?? [];
+  return matches.filter((token) => token && !stopWords.has(token));
 }
 
 function stemToken(token: string) {

@@ -174,14 +174,28 @@ export function MarkdownEditor({
   }
 
   function restoreFromHistory() {
-    const previous = historyRef.current.pop();
+    const textarea = textareaRef.current;
+    const history = historyRef.current;
+    const previous = history[history.length - 1];
     if (!previous) {
-      const textarea = textareaRef.current;
       if (!textarea) return;
       textarea.focus();
       document.execCommand("undo");
       return;
     }
+    // Keep the value being replaced reachable: undoing again restores it, so
+    // text typed since the last toolbar action is never silently discarded.
+    historyRef.current =
+      previous.value === value
+        ? history.slice(0, -1)
+        : [
+            ...history.slice(0, -1),
+            {
+              value,
+              selectionStart: textarea?.selectionStart ?? 0,
+              selectionEnd: textarea?.selectionEnd ?? 0,
+            },
+          ];
     if (mode === "preview") setMode("edit");
     onChange(previous.value);
     focusSelection(previous.selectionStart, previous.selectionEnd);
@@ -243,6 +257,9 @@ export function MarkdownEditor({
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
+      // Without toolbar history there is nothing of ours to restore; let the
+      // browser's native undo handle plain typing instead of hijacking it.
+      if (historyRef.current.length === 0) return;
       event.preventDefault();
       restoreFromHistory();
       return;

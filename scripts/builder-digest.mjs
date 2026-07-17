@@ -2389,27 +2389,35 @@ async function emitFetchRunRecord(config, record) {
     },
   };
   try {
+    // The builders route refuses to persist posts without an existing fetch
+    // run (reset fence), so this upload is load-bearing for the whole sync,
+    // not just the fetch log. Retry once on transient failures: a rare
+    // duplicate log row (committed POST + lost response) is far cheaper than
+    // discarding every fetched post when sync later has no run id.
     const result = await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token, {
       label: "fetch log upload",
-      retries: 0,
+      retries: 1,
     });
     if (result?.id) {
       // Hand the run id to the later sync-builders step so it can attach
-      // per-post outcomes. Best-effort: if persisting fails, the run is still
-      // recorded — sync-builders just skips the per-post patch.
+      // per-post outcomes. The builders route hard-requires this id, so
+      // sync-builders fails fast with an actionable error when the file is
+      // missing instead of uploading a payload the server will 409.
       try {
         const runIdFile = libraryFetchRunIdFile();
         await mkdir(dirname(runIdFile), { recursive: true });
         await writeFile(runIdFile, String(result.id), "utf8");
-      } catch {
-        // ignore — non-fatal
+      } catch (persistError) {
+        const message = persistError instanceof Error ? persistError.message : String(persistError);
+        console.error(`Failed to persist fetch run id (sync-builders will refuse to run): ${message}`);
       }
     }
   } catch (uploadError) {
     const message = uploadError instanceof Error ? uploadError.message : String(uploadError);
-    // Upload failure is non-fatal: the CLI's primary contract (JSON
-    // output + downstream agent steps) must keep working even when
-    // the server is unreachable.
+    // Upload failure is non-fatal here: the CLI's primary contract (JSON
+    // output + downstream agent steps) must keep working even when the
+    // server is unreachable. The later sync-builders step will fail fast on
+    // the missing run id rather than losing posts to a server-side 409.
     console.error(`Failed to upload fetch log: ${message}`);
   }
 }
@@ -9222,8 +9230,10 @@ async function sync(args) {
     ? stringOrNull(await readFile(summaryFile, "utf8"))
     : stringOrNull(argValue(args, "--summary", structuredDigest?.headlineSummary ?? null));
 
-  // --regenerate ("re-generate today's digest"): the create route replaces
-  // this user's existing same-day digest instead of stacking a duplicate.
+  // --regenerate ("re-generate today's digest"): digests are always additive —
+  // the create route never replaces or deletes an existing same-day digest.
+  // The flag's real effect happened at `prepare`, which re-included
+  // already-digested posts as candidates; here it is forwarded for provenance.
   const regenerate = args.includes("--regenerate");
 
   // The candidate posts presented to this digest. Read them from the prepared
@@ -9480,11 +9490,20 @@ async function syncBuilders(args) {
   } catch {
     currentFetchRunId = "";
   }
-  const uploadPayload = prepareSyncPayloadForUpload(
-    currentFetchRunId
-      ? { ...payload, fetchRun: buildFetchRunSyncPatch(currentFetchRunId, plannedTasks) }
-      : payload,
-  );
+  if (!currentFetchRunId) {
+    // The builders route hard-requires an existing fetch run (reset fence) and
+    // responds 409 without persisting anything, so uploading without a run id
+    // would ship megabytes of posts only to have them discarded. Fail fast
+    // with an actionable error instead.
+    throw new Error(
+      "No fetch run id found for this sync (the fetch log upload failed or fetch-personal did not run). " +
+      "Re-run fetch-personal, then sync-builders again.",
+    );
+  }
+  const uploadPayload = prepareSyncPayloadForUpload({
+    ...payload,
+    fetchRun: buildFetchRunSyncPatch(currentFetchRunId, plannedTasks),
+  });
   const result = await postJson(`${config.appUrl}/api/skill/builders`, uploadPayload, config.token, {
     label: "builder sync",
     timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS,
@@ -10434,27 +10453,29 @@ async function patchFetchRunOutcomes(
       continue;
     }
     const agentFacts = agentOutcome
-      ? Object.fromEntries(
-          [
-            "title",
-            "url",
-            "bodyChars",
-            "bodyWords",
-            "headlineChars",
-            "headlineWords",
-            "summaryChars",
-            "summaryWords",
-            "completedStage",
-            "syncError",
-            "agentRuntime",
-            "agentModel",
-            "workerId",
-            "readMethod",
-            "summaryMethod",
-            "hubSharedReuse",
-          ]
-            .filter((key) => agentOutcome[key] !== undefined)
-            .map((key) => [key, agentOutcome[key]]),
+      ? sanitizeAgentOutcomeFacts(
+          Object.fromEntries(
+            [
+              "title",
+              "url",
+              "bodyChars",
+              "bodyWords",
+              "headlineChars",
+              "headlineWords",
+              "summaryChars",
+              "summaryWords",
+              "completedStage",
+              "syncError",
+              "agentRuntime",
+              "agentModel",
+              "workerId",
+              "readMethod",
+              "summaryMethod",
+              "hubSharedReuse",
+            ]
+              .filter((key) => agentOutcome[key] !== undefined)
+              .map((key) => [key, agentOutcome[key]]),
+          ),
         )
       : {};
     const sizes = { ...agentFacts, ...(sizesByTaskId.get(id) ?? {}) };
@@ -10591,6 +10612,34 @@ function isDetailsTooLargeError(error) {
 // Slim a per-post outcome to what the fetch log needs when details are near
 // the cap: drop the redundant plannedTask echo and free-form evidence, keep
 // the identity, status, sizes, and failure reason.
+// The fetch-log PATCH route validates every element of `taskOutcomes` with one
+// Zod schema and rejects the WHOLE array when a single field is invalid. Agent
+// workers author `url` and `completedStage` free-form, so drop values the
+// server schema would refuse (e.g. url: "unavailable", completedStage: "sync")
+// instead of letting one bad field 400 the entire patch and leave every task
+// stuck "pending" in the fetch log.
+export function sanitizeAgentOutcomeFacts(facts) {
+  return Object.fromEntries(
+    Object.entries(facts).filter(([key, value]) => {
+      if (value === null || value === undefined) return true;
+      if (key === "url") return isValidOutcomeUrl(value);
+      if (key === "completedStage") return value === "read" || value === "summarize";
+      return true;
+    }),
+  );
+}
+
+// Mirrors the PATCH route's `url: z.string().url().max(2048)` constraint.
+function isValidOutcomeUrl(value) {
+  if (typeof value !== "string" || value.length > 2048) return false;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function slimFetchRunOutcome(outcome) {
   if (!outcome || typeof outcome !== "object") return outcome;
   const slim = {};

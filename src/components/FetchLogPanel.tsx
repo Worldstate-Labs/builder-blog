@@ -1191,6 +1191,12 @@ export function FetchLogPanel({
           setError(body?.error ?? "Could not refresh. Try again.");
           return;
         }
+        if (body === null) {
+          // An ok response with an unparseable body is a transient transport
+          // glitch; keep the current timeline instead of reconciling against
+          // empty lists (which would wipe run history and loaded pages).
+          return;
+        }
         const bodyRuns = Array.isArray(body?.runs) ? body.runs : [];
         const bodyCronRuns = Array.isArray(body?.cronRuns) ? body.cronRuns : [];
         const bodyJobRuns = Array.isArray(body?.jobRuns) ? body.jobRuns : [];

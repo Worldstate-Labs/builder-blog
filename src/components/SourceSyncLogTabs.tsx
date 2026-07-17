@@ -69,6 +69,10 @@ export function SourceSyncLogTabs({
   const refreshCloudLog = useCallback(async () => {
     if (cloudRefreshInFlight.current) return;
     cloudRefreshInFlight.current = true;
+    // Capture the prop signature at request time. A router.refresh can deliver
+    // a fresher SSR prop while this poll is in flight; stamping the response
+    // with the request-time signature lets that fresher prop win at render.
+    const requestPropSignature = cloudPropSignatureRef.current;
     try {
       const response = await fetch("/api/cloud-library/fetch-log", {
         cache: "no-store",
@@ -80,7 +84,7 @@ export function SourceSyncLogTabs({
       if (nextSignature === liveCloudSignatureRef.current) return;
       liveCloudSignatureRef.current = nextSignature;
       setCloudState({
-        baseSignature: cloudPropSignatureRef.current,
+        baseSignature: requestPropSignature,
         log: nextLog,
       });
       requestWorkspaceRefresh("user-cloud-fetch-log");

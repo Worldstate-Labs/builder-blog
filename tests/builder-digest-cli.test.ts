@@ -3051,6 +3051,47 @@ test("fail-sync-slice preserves attempted item lifecycle evidence and concrete s
   assert.match(outcome.syncError, /publishedAt: Invalid input/);
 });
 
+test("fetch-log outcome sanitizer drops agent fields the server schema rejects", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  // One invalid url or completedStage 400s the ENTIRE taskOutcomes PATCH
+  // server-side, so agent-authored values that fail the route's Zod schema
+  // must be dropped before upload.
+  assert.deepEqual(
+    cli.sanitizeAgentOutcomeFacts({
+      title: "A post",
+      url: "unavailable",
+      completedStage: "sync",
+      summaryChars: 120,
+    }),
+    { title: "A post", summaryChars: 120 },
+  );
+
+  // Valid values and explicit nulls pass through untouched.
+  assert.deepEqual(
+    cli.sanitizeAgentOutcomeFacts({
+      url: "https://example.com/post",
+      completedStage: "summarize",
+      syncError: null,
+    }),
+    {
+      url: "https://example.com/post",
+      completedStage: "summarize",
+      syncError: null,
+    },
+  );
+  assert.deepEqual(
+    cli.sanitizeAgentOutcomeFacts({ completedStage: "read" }),
+    { completedStage: "read" },
+  );
+
+  // Oversized urls exceed the route's max(2048) and are dropped too.
+  assert.deepEqual(
+    cli.sanitizeAgentOutcomeFacts({ url: `https://example.com/${"x".repeat(2048)}` }),
+    {},
+  );
+});
+
 test("sync-builders treats explicit empty builders payload as a successful no-op", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-empty-builder-sync-"));
   const payloadFile = join(tmp, "library-agent-sync.json");

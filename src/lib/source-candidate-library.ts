@@ -175,12 +175,16 @@ export async function ensureSourceCandidateSeeded() {
   ) {
     return sourceCandidateSeedPromise;
   }
+  // Stamp before awaiting so concurrent callers (cold start included, where
+  // sourceCandidateSeededAt is still 0) reuse the in-flight promise instead of
+  // each launching their own full seed run.
+  sourceCandidateSeededAt = now;
   sourceCandidateSeedPromise = seedSourceCandidateLibrary().catch((error) => {
     sourceCandidateSeedPromise = null;
+    sourceCandidateSeededAt = 0;
     throw error;
   });
   await sourceCandidateSeedPromise;
-  sourceCandidateSeededAt = Date.now();
 }
 
 async function seedSourceCandidateLibrary() {

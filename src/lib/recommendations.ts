@@ -308,6 +308,7 @@ export async function createRecommendationSnapshot({
     prisma.recommendationSnapshotItem.findMany({
       where: { snapshot: snapshotWhere(userId, sortMode) },
       select: { feedItemId: true },
+      orderBy: { createdAt: "desc" },
       take: 5000,
     }),
   ]);
