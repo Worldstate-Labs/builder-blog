@@ -2,15 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
-import {
-  ORIGINAL_CONTENT_LANGUAGE_LABEL,
-  ORIGINAL_CONTENT_LANGUAGE_VALUE,
-} from "@/lib/language-preference";
-import {
-  languageOptions as buildLanguageOptions,
-  SUMMARY_LANGUAGE_OPTIONS as sharedSummaryLanguageOptions,
-} from "@/lib/summary-language-options";
 import { RelativeTime } from "@/components/RelativeTime";
+export { SUMMARY_LANGUAGE_OPTIONS, languageOptions } from "@/lib/summary-language-options";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
 export type SaveStatusState = { kind: SaveStatusKind; message?: string };
@@ -490,29 +483,6 @@ export function SaveStatus({
       {status.message ?? "Could not save changes."}
     </span>
   );
-}
-
-// Account-wide summary output languages — the same list the cron / copy-prompt
-// dialog offers, sourced from the shared locale catalog so client consumers do
-// not have to pull the full i18n module into their graph.
-const summaryLanguageOriginalOption = {
-  value: ORIGINAL_CONTENT_LANGUAGE_VALUE,
-  label: ORIGINAL_CONTENT_LANGUAGE_LABEL,
-};
-
-export const SUMMARY_LANGUAGE_OPTIONS =
-  sharedSummaryLanguageOptions[0]?.value === summaryLanguageOriginalOption.value &&
-  sharedSummaryLanguageOptions[0]?.label === summaryLanguageOriginalOption.label
-    ? sharedSummaryLanguageOptions
-    : [summaryLanguageOriginalOption, ...sharedSummaryLanguageOptions.slice(1)];
-
-// Build select options for a language field, appending the current value as its
-// own option when it isn't one of the known choices (so a custom language a
-// source was already configured with stays selectable rather than vanishing).
-export function languageOptions(
-  current: string,
-): ReadonlyArray<{ value: string; label: string }> {
-  return buildLanguageOptions(current);
 }
 
 // An ordered multi-select: pick from a fixed set of known choices, keep them in
