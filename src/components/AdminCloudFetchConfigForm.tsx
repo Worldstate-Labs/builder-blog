@@ -5,11 +5,11 @@ import {
   FieldNumber,
   FooterBar,
   Section,
-  SUMMARY_LANGUAGE_OPTIONS,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
 import { useCloudLibraryLiveSnapshot } from "@/components/AdminCloudLibraryLiveProvider";
 import type { CloudLanguageLibraryAdmin } from "@/lib/cloud-library-overview";
+import { displayLanguagePreference } from "@/lib/language-preference";
 
 export type AdminCloudFetchConfig = {
   tokenBudgetPerHour: number;
@@ -249,7 +249,7 @@ export function AdminCloudFetchConfigForm({
 }
 
 function languageLabel(value: string) {
-  return SUMMARY_LANGUAGE_OPTIONS.find((option) => option.value === value)?.label ?? value;
+  return displayLanguagePreference(value);
 }
 
 function configDraft(config: AdminCloudFetchConfig): ConfigDraft {

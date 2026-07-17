@@ -1142,6 +1142,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminCloudFetchConfig, /FieldNumber/);
   assert.doesNotMatch(adminCloudFetchConfig, /FieldText/);
   assert.match(adminCloudFetchConfig, /FooterBar/);
+  assert.match(adminCloudFetchConfig, /@\/lib\/language-preference/);
+  assert.match(adminCloudFetchConfig, /displayLanguagePreference\(value\)/);
+  assert.doesNotMatch(adminCloudFetchConfig, /SUMMARY_LANGUAGE_OPTIONS\.find\(\(option\) => option\.value === value\)\?\.label \?\? value/);
   assert.doesNotMatch(adminCloudFetchConfig, /className="fb-btn dark compact"/);
   assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
@@ -1297,6 +1300,30 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.user-menu-item\[data-active="true"\]\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(globals, /\.user-menu-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.user-menu-compact \.user-menu-popover\s*{[\s\S]*width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
+});
+
+test("admin cloud language surfaces share the display formatter", () => {
+  const adminCloudFetchConfig = source("src/components/AdminCloudFetchConfigForm.tsx");
+  const adminCloudLibraryExplorer = source("src/components/AdminCloudLibraryExplorer.tsx");
+  const adminCloudFetchLog = source("src/components/AdminCloudFetchLog.tsx");
+
+  for (const component of [
+    adminCloudFetchConfig,
+    adminCloudLibraryExplorer,
+    adminCloudFetchLog,
+  ]) {
+    assert.match(component, /@\/lib\/language-preference/);
+    assert.match(component, /displayLanguagePreference\(/);
+  }
+
+  assert.match(
+    adminCloudLibraryExplorer,
+    /cloud-library-group-lang">[\s\S]*displayLanguagePreference\(library\.summaryLanguage\)[\s\S]*<\/span>/,
+  );
+  assert.match(
+    adminCloudFetchLog,
+    /task\.sourceType \? ` · \$\{task\.sourceType\}` : ""[\s\S]*displayLanguagePreference\(task\.summaryLanguage\)/,
+  );
 });
 
 test("desktop shell uses centered top navigation and merged home feeds", () => {

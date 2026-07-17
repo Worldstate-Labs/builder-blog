@@ -19,6 +19,7 @@ import {
   LIVE_POLL_RUNNING_MS,
   requestWorkspaceRefresh,
 } from "@/lib/content-sync-events";
+import { displayLanguagePreference } from "@/lib/language-preference";
 import { formatUsageCost, formatUsageTokens, readUsageSummary, type UsageSummary } from "@/lib/usage-summary";
 import type {
   CloudFetchPostOutcome,
@@ -1031,7 +1032,8 @@ export function AdminCloudFetchLog({
                                 </span>
                                 <span className="cloud-fetch-log-task-name">
                                   {task.sourceName ?? task.builderId}
-                                  {task.sourceType ? ` · ${task.sourceType}` : ""} · {task.summaryLanguage}
+                                  {task.sourceType ? ` · ${task.sourceType}` : ""} ·{" "}
+                                  {displayLanguagePreference(task.summaryLanguage)}
                                 </span>
                                 <span className="cloud-fetch-log-task-counts">
                                   {formatPostOutcomeSummary({

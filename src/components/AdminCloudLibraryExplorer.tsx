@@ -10,6 +10,7 @@ import type {
   CloudLibraryOverview,
   CloudLibrarySource,
 } from "@/lib/cloud-library-overview";
+import { displayLanguagePreference } from "@/lib/language-preference";
 
 function statusTone(status: string): string {
   if (status === "ACTIVE") return "active";
@@ -83,7 +84,9 @@ export function AdminCloudLibraryExplorer({
       {libraries.map((library) => (
         <section key={library.id} className="cloud-library-group">
           <header className="cloud-library-group-head">
-            <span className="cloud-library-group-lang">{library.summaryLanguage}</span>
+            <span className="cloud-library-group-lang">
+              {displayLanguagePreference(library.summaryLanguage)}
+            </span>
             {library.ownerEmail ? (
               <span className="cloud-library-group-owner">{library.ownerEmail}</span>
             ) : null}
