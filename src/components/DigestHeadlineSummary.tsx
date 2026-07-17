@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronDown, Newspaper } from "lucide-react";
+import { ChevronDown, Layers3, Newspaper } from "lucide-react";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
 
@@ -152,15 +152,14 @@ type DigestHeadlineSourceItem = {
 
 function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
   if (item.sourceLinks.length > 1) {
-    const label = combinedHeadlineAvatarLabel(item.sourceLinks);
     return (
       <span
         aria-hidden="true"
         className="fb-src-icon digest-headline-avatar digest-headline-avatar-combo"
         title={item.sourceName}
       >
-        <span className="source-avatar-fallback source-avatar-fallback--compact">
-          {label}
+        <span className="source-avatar-fallback">
+          <Layers3 className="source-avatar-placeholder-icon" />
         </span>
       </span>
     );
@@ -180,14 +179,6 @@ function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
       }}
     />
   );
-}
-
-function combinedHeadlineAvatarLabel(sourceLinks: DigestSourceLink[]) {
-  const initials = sourceLinks
-    .map((link) => link.name.replace(/^@+/, "").trim().charAt(0).toUpperCase())
-    .filter(Boolean);
-  if (initials.length <= 2) return initials.join("+") || "?";
-  return `${initials.slice(0, 2).join("+")}+${initials.length - 2}`;
 }
 
 function parseHeadlineSourceSummaries(

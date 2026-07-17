@@ -8,8 +8,8 @@ const sampleAvatar =
   encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72'>
        <rect width='72' height='72' fill='#2f6df6'/>
-       <text x='50%' y='54%' font-size='34' fill='white' text-anchor='middle'
-             dominant-baseline='middle' font-family='sans-serif'>K</text>
+       <circle cx='36' cy='30' r='15' fill='white'/>
+       <path d='M14 72c2-17 10-25 22-25s20 8 22 25' fill='white'/>
      </svg>`,
   );
 
@@ -35,7 +35,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Monogram: Story = {
+export const Fallback: Story = {
   args: {
     source: source({ name: "Stratechery", avatarUrl: null, sourceUrl: null, fetchUrl: null }),
   },

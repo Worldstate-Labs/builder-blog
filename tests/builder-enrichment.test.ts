@@ -178,7 +178,7 @@ test("BuilderLibraryEventItem carries live and cached avatar fields", () => {
   assert.match(events, /avatarDataUrl\?:\s*string\s*\|\s*null/);
 });
 
-test("source avatar renders live avatar, cached DB avatar, then favicon/monogram", () => {
+test("source avatar renders cached DB avatar, live avatar, then favicon/icon", () => {
   const list = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
   const avatar = readFileSync("src/components/SourceAvatar.tsx", "utf8");
   const detailPage = readFileSync("src/app/(workspace)/builder/[entityId]/page.tsx", "utf8");
@@ -186,13 +186,13 @@ test("source avatar renders live avatar, cached DB avatar, then favicon/monogram
   assert.match(detailPage, /<SourceAvatar/);
   assert.match(avatar, /source\.avatarUrl/);
   assert.match(avatar, /source\.avatarDataUrl/);
-  assert.match(avatar, /function renderImageAvatar\(url: string\)/);
+  assert.match(avatar, /function renderImageAvatar\(url: string, eager = false\)/);
   assert.match(avatar, /className="source-avatar-fallback"/);
   assert.match(avatar, /return renderImageAvatar\(realAvatarUrl\)/);
-  assert.match(avatar, /return renderImageAvatar\(cachedAvatarUrl\)/);
+  assert.match(avatar, /return renderImageAvatar\(cachedAvatarUrl, true\)/);
   assert.match(avatar, /return renderImageAvatar\(faviconUrl\)/);
-  // The live-avatar branch must come before the cached DB snapshot,
-  // which must come before favicon fallback on both list and detail.
+  // The persisted snapshot avoids third-party latency on mobile. Live URLs and
+  // favicons remain progressively weaker fallbacks.
   const realIndex = avatar.search(/if \(realAvatarUrl/);
   const cachedIndex = avatar.search(/if \(cachedAvatarUrl/);
   const faviconIndex = avatar.search(/if \(faviconUrl/);
@@ -201,7 +201,9 @@ test("source avatar renders live avatar, cached DB avatar, then favicon/monogram
     "SourceAvatar should branch on realAvatarUrl, cachedAvatarUrl, and faviconUrl",
   );
   assert.ok(
-    realIndex < cachedIndex && cachedIndex < faviconIndex,
-    "avatar fallback order must be live URL, DB cache, favicon",
+    cachedIndex < realIndex && realIndex < faviconIndex,
+    "avatar fallback order must be DB cache, live URL, favicon",
   );
+  assert.match(avatar, /sourceIconFor\(source\.sourceType\)/);
+  assert.doesNotMatch(avatar, /avatarMonogram|monogram/);
 });

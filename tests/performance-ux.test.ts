@@ -2827,7 +2827,8 @@ test("dashboard digest tab owns the AI Brief selector", () => {
   assert.match(digestHeadlineSummary, /DigestHeadlineAvatar/);
   assert.match(digestHeadlineSummary, /className="digest-headline-avatar"[\s\S]*imageSize=\{24\}/);
   assert.match(digestHeadlineSummary, /sourceLinks\.length > 1/);
-  assert.match(digestHeadlineSummary, /source-avatar-fallback source-avatar-fallback--compact/);
+  assert.match(digestHeadlineSummary, /Layers3/);
+  assert.match(digestHeadlineSummary, /source-avatar-placeholder-icon/);
   assert.match(digestHeadlineSummary, /splitCombinedHeadlineSourceLabel/);
   assert.match(digestHeadlineSummary, /digest-headline-item-line/);
   assert.match(digestHeadlineSummary, /digest-headline-source-name/);
@@ -2843,7 +2844,7 @@ test("dashboard digest tab owns the AI Brief selector", () => {
   assert.match(globals, /\.digest-headline-title-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.fb-src-icon\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.fb-src-icon\s*{[\s\S]*overflow:\s*hidden/);
-  assert.match(globals, /\.source-avatar-fallback--compact\s*{[\s\S]*font-size:\s*0\.82em/);
+  assert.match(globals, /\.source-avatar-placeholder-icon\s*{[\s\S]*height:\s*55%/);
   assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*1\.5rem minmax\(0, 1fr\)/);
   assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{/);
   assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{[\s\S]*height:\s*1\.5rem/);

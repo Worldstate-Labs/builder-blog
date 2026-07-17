@@ -8804,9 +8804,10 @@ a.builder-library-name:hover {
   width: 100%;
 }
 
-.source-avatar-fallback--compact {
-  font-size: 0.82em;
-  letter-spacing: 0;
+.source-avatar-placeholder-icon {
+  height: 55%;
+  stroke-width: 1.8;
+  width: 55%;
 }
 
 .fb-src-name {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import { sourceIconFor } from "@/lib/source-icons";
 
 export type SourceAvatarSource = {
   avatarDataUrl?: string | null;
@@ -17,18 +18,6 @@ type SourceAvatarProps = {
   source: SourceAvatarSource;
   style?: CSSProperties;
 };
-
-function avatarMonogram(source: SourceAvatarSource): string {
-  // Strip a leading "@" so X handles like "@karpathy" render as "K"
-  // instead of "@", which was indistinguishable across rows.
-  const cleaned = source.name.replace(/^@+/, "").trim();
-  const first = cleaned.charAt(0) || source.name.charAt(0) || "?";
-  return first.toUpperCase();
-}
-
-function avatarLabelScaleClass(label: string): string {
-  return label.length > 1 ? " source-avatar-fallback--compact" : "";
-}
 
 function avatarFaviconUrl(source: SourceAvatarSource): string | null {
   // For X and YouTube every row shares the same platform host, so
@@ -51,11 +40,11 @@ export function SourceAvatar({
   source,
   style,
 }: SourceAvatarProps) {
-  const monogram = avatarMonogram(source);
   const realAvatarUrl = source.avatarUrl;
   const cachedAvatarUrl = source.avatarDataUrl ?? null;
   const faviconUrl = avatarFaviconUrl(source);
-  // Priority chain: live server-resolved photo -> cached DB snapshot -> host favicon -> monogram.
+  const FallbackIcon = sourceIconFor(source.sourceType);
+  // Prefer the persisted snapshot so third-party latency cannot hold the UI on a placeholder.
   const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
   const baseClassName = `fb-src-icon ${className}`.trim();
   const imageStyle: CSSProperties = {
@@ -81,11 +70,21 @@ export function SourceAvatar({
     });
   }
 
-  function renderImageAvatar(url: string) {
+  function renderFallbackAvatar() {
+    return (
+      <span className={baseClassName} style={style}>
+        <span className="source-avatar-fallback" aria-hidden="true">
+          <FallbackIcon className="source-avatar-placeholder-icon" />
+        </span>
+      </span>
+    );
+  }
+
+  function renderImageAvatar(url: string, eager = false) {
     return (
       <span className={baseClassName} style={frameStyle}>
         <span className="source-avatar-fallback" aria-hidden="true">
-          {monogram}
+          <FallbackIcon className="source-avatar-placeholder-icon" />
         </span>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -93,7 +92,7 @@ export function SourceAvatar({
           aria-hidden="true"
           height={imageSize}
           key={url}
-          loading="lazy"
+          loading={eager ? "eager" : "lazy"}
           onError={() => markFailed(url)}
           src={url}
           style={imageStyle}
@@ -103,26 +102,17 @@ export function SourceAvatar({
     );
   }
 
-  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
-    return renderImageAvatar(realAvatarUrl);
+  if (cachedAvatarUrl && !failedUrls.has(cachedAvatarUrl)) {
+    return renderImageAvatar(cachedAvatarUrl, true);
   }
 
-  if (cachedAvatarUrl && !failedUrls.has(cachedAvatarUrl)) {
-    return renderImageAvatar(cachedAvatarUrl);
+  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
+    return renderImageAvatar(realAvatarUrl);
   }
 
   if (faviconUrl && !failedUrls.has(faviconUrl)) {
     return renderImageAvatar(faviconUrl);
   }
 
-  return (
-    <span className={baseClassName} style={style}>
-      <span
-        aria-hidden="true"
-        className={`source-avatar-fallback${avatarLabelScaleClass(monogram)}`}
-      >
-        {monogram}
-      </span>
-    </span>
-  );
+  return renderFallbackAvatar();
 }
