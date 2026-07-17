@@ -449,13 +449,6 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "FollowBrief 소스",
     es: "Fuentes de FollowBrief",
   },
-  "No FollowBrief fetching yet. Ask FollowBrief to fetch sources from your library to track their status here.": {
-    "zh-CN": "FollowBrief 尚未抓取。让 FollowBrief 抓取你信息源库中的信息源，即可在这里跟踪状态。",
-    "zh-TW": "FollowBrief 尚未擷取。讓 FollowBrief 擷取你資訊源庫中的來源，即可在這裡追蹤狀態。",
-    ja: "FollowBrief の取得履歴はまだありません。ライブラリのソースを取得すると、ここで状態を確認できます。",
-    ko: "아직 FollowBrief 가져오기 기록이 없습니다. 라이브러리 소스를 가져오면 여기에서 상태를 추적할 수 있습니다.",
-    es: "FollowBrief aún no ha obtenido fuentes. Pídele que obtenga las de tu biblioteca para seguir aquí su estado.",
-  },
   "Fetching runtime": {
     "zh-CN": "抓取运行时",
     "zh-TW": "抓取執行環境",
@@ -2044,6 +2037,34 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "AI Brief",
     es: "AI Briefs",
   },
+  "Your AI Brief": {
+    "zh-CN": "你的 AI Brief",
+    "zh-TW": "你的 AI Brief",
+    ja: "あなたの AI Brief",
+    ko: "내 AI Brief",
+    es: "Tu AI Brief",
+  },
+  "FollowBrief AI Brief": {
+    "zh-CN": "FollowBrief AI Brief",
+    "zh-TW": "FollowBrief AI Brief",
+    ja: "FollowBrief AI Brief",
+    ko: "FollowBrief AI Brief",
+    es: "AI Brief de FollowBrief",
+  },
+  "FollowBrief AI Brief, read-only.": {
+    "zh-CN": "FollowBrief AI Brief，只读。",
+    "zh-TW": "FollowBrief AI Brief，唯讀。",
+    ja: "FollowBrief AI Brief（読み取り専用）。",
+    ko: "FollowBrief AI Brief, 읽기 전용.",
+    es: "FollowBrief AI Brief, solo lectura.",
+  },
+  "AI Brief and issue selection": {
+    "zh-CN": "AI Brief 和期数选择",
+    "zh-TW": "AI Brief 和期數選擇",
+    ja: "AI Brief と号の選択",
+    ko: "AI Brief 및 호 선택",
+    es: "Selección de AI Brief y edición",
+  },
   "No AI Briefs yet": {
     "zh-CN": "还没有 AI Brief",
     "zh-TW": "還沒有 AI Brief",
@@ -3290,12 +3311,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "페이지를 찾을 수 없습니다",
     es: "Página no encontrada",
   },
-  "This page is unavailable or outside your sources or AI Brief collections.": {
-    "zh-CN": "此页面不可用，或不在你的信息源 / AI Brief 集合中。",
-    "zh-TW": "此頁面不可用，或不在你的資訊源 / AI Brief 集合中。",
-    ja: "このページは利用できないか、あなたのソースまたは AI Brief コレクション外にあります。",
-    ko: "이 페이지는 사용할 수 없거나 사용자의 소스 또는 AI Brief 컬렉션 밖에 있습니다.",
-    es: "Esta página no está disponible o está fuera de tus fuentes o colecciones de AI Brief.",
+  "This page is unavailable or outside your sources or AI Briefs.": {
+    "zh-CN": "此页面不可用，或不在你的信息源 / AI Brief 中。",
+    "zh-TW": "此頁面不可用，或不在你的資訊源 / AI Brief 中。",
+    ja: "このページは利用できないか、あなたのソースまたは AI Brief 外にあります。",
+    ko: "이 페이지는 사용할 수 없거나 사용자의 소스 또는 AI Brief 밖에 있습니다.",
+    es: "Esta página no está disponible o está fuera de tus fuentes o AI Briefs.",
   },
   "Nothing to open here": {
     "zh-CN": "这里没有可打开的内容",

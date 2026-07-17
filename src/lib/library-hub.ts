@@ -10,9 +10,9 @@ import { prisma } from "@/lib/prisma";
 export const adminCommunityLibraryName = "Community source library";
 export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
-export const adminCommunityDigestTitle = "Community AI Brief";
+export const adminCommunityDigestTitle = "FollowBrief AI Brief";
 export const adminCommunityDigestDescription =
-  "Community AI Brief curated by FollowBrief.";
+  "The AI Brief curated by FollowBrief.";
 
 type LibraryHubPrisma = Pick<PrismaClient, "builder" | "libraryHubEntry" | "libraryHubItem">;
 
@@ -23,12 +23,8 @@ export function personalSourceLibraryName(owner: {
   return `${owner.name || owner.email || "Personal"} source library`;
 }
 
-export function digestPipelineTitle(owner: {
-  name?: string | null;
-  email?: string | null;
-}) {
-  const identity = owner.name || owner.email?.split("@")[0] || "Builder";
-  return `${identity}'s AI Brief`;
+export function digestPipelineTitle() {
+  return "Your AI Brief";
 }
 
 export function displayDigestPipelineTitle(title: string) {
@@ -46,7 +42,7 @@ export function displayDigestPipelineTitleForOwner(
   owner: { name?: string | null; email?: string | null } | null | undefined,
 ) {
   if (isAdminCommunityDigestOwner(owner)) return adminCommunityDigestTitle;
-  return displayDigestPipelineTitle(title || digestPipelineTitle(owner ?? {}));
+  return title ? displayDigestPipelineTitle(title) : "Your AI Brief";
 }
 
 export function digestPipelineOwnerLabel(
@@ -342,7 +338,7 @@ export async function shareDigestPipelineToHub(params: {
   });
   const title = isCommunityDigest
     ? adminCommunityDigestTitle
-    : params.title?.trim() || existing?.title || digestPipelineTitle(params);
+    : params.title?.trim() || existing?.title || digestPipelineTitle();
   const description = isCommunityDigest
     ? params.description?.trim() || adminCommunityDigestDescription
     : params.description?.trim() || null;
@@ -443,6 +439,9 @@ export async function findAdminCommunityDigestPipeline() {
     where: {
       isPublic: true,
       owner: { email: { in: adminEmails() } },
+    },
+    include: {
+      owner: { select: { name: true, email: true } },
     },
     orderBy: { updatedAt: "desc" },
   });

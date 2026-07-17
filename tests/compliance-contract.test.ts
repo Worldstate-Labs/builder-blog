@@ -52,8 +52,10 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(privacyContract, /Google|GitHub|Apple|X|YouTube|Product Hunt|OpenAI/);
   assert.match(privacyContract, /access|export|correct|delete/);
   assert.match(privacyContract, /retention|retain|delete/i);
-  assert.match(privacyContract, /Hub|shared source libraries|AI Brief collections/);
-  assert.match(privacyContract, /legalUpdatedDate = "July 7, 2026"/);
+  assert.match(privacyContract, /Hub|source librar/);
+  assert.doesNotMatch(privacyContract, /share source libraries or AI Brief collections|share a source library or AI Brief collection/);
+  assert.match(privacyContract, /Your AI Brief[^.]*not published to Hub/);
+  assert.match(privacyContract, /legalUpdatedDate = "July 16, 2026"/);
   assert.match(privacyContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
   assert.match(privacyContract, /legal@worldstatelabs\.com/);
   assert.doesNotMatch(privacyContract, /jie@worldstatelabs\.com/);
@@ -68,7 +70,6 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(privacyContract, /AI summaries and recommendations are assistive|not used to make legal, financial, employment, housing, credit, health, or insurance decisions/i);
   assert.match(privacyContract, /account export|account deletion|correct|object|restrict|portability/i);
   assert.match(privacyContract, /operational backups and security logs/i);
-  assert.match(privacyContract, /schedule status|update status|frequency labels/i);
   assert.match(privacyContract, /legal@worldstatelabs\.com/);
   assert.doesNotMatch(privacyContract, /only as long as needed/i);
 
@@ -76,7 +77,7 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(termsContract, /private, paywalled, access-controlled|durable raw retention|Source owners/i);
   assert.match(termsContract, /Local Agent|access key|AI Brief/);
   assert.match(termsContract, /Do not|must not/i);
-  assert.match(termsContract, /legalUpdatedDate = "July 7, 2026"/);
+  assert.match(termsContract, /legalUpdatedDate = "July 16, 2026"/);
   assert.match(termsContract, /Last updated:\s*\$\{legalUpdatedDate\}/);
   assert.match(termsContract, /legal@worldstatelabs\.com/);
   assert.doesNotMatch(termsContract, /jie@worldstatelabs\.com/);
@@ -85,7 +86,6 @@ test("public legal pages disclose privacy, terms, AI, third-party, sharing, and 
   assert.match(termsContract, /You are responsible for keeping your account, devices, Local Agent files, and access keys secure/i);
   assert.match(termsContract, /Do not use FollowBrief to scrape private areas|bypass paywalls|violate robots/i);
   assert.match(termsContract, /transcription or speech-to-text tools|local or hosted agent runtimes/i);
-  assert.match(termsContract, /schedule status|update status|frequency labels/i);
   assert.match(termsContract, /recent operational run logs/i);
   assert.match(termsContract, /No professional advice|AS IS|AS AVAILABLE|Limitation of liability/i);
   assert.match(termsContract, /suspend or terminate access/i);
@@ -197,13 +197,10 @@ test("official worker writes share the durable reset fence and reject stale runs
   assert.match(cloudSync, /CLOUD_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
 });
 
-test("sharing controls explain Hub visibility before publishing user content", () => {
-  const digestToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
+test("source library sharing explains Hub visibility before publishing", () => {
   const libraryToggle = source("src/components/LibraryVisibilityToggle.tsx");
 
-  assert.match(digestToggle, /Share AI Brief collection\?/);
-  assert.match(digestToggle, /latest AI Brief metadata|headline|Hub/i);
-  assert.match(digestToggle, /Continue sharing/);
+  assert.equal(existsSync(join(root, "src/components/DigestPipelineVisibilityToggle.tsx")), false);
   assert.match(libraryToggle, /Share source library\?/);
   assert.match(libraryToggle, /source names|source links|Hub/i);
   assert.match(libraryToggle, /Continue sharing/);

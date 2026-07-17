@@ -1,336 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CheckCircle2, Download } from "lucide-react";
-import Link from "next/link";
 import { CountMeta } from "@/components/Count";
 import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
-import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
-import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
-import { UserName } from "@/components/UserName";
 import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
-export type HubDigestPipeline = {
-  id: string;
-  title: string;
-  description: string | null;
-  ownerUserId: string;
-  ownerLabel: string;
-  importCount: number;
-  viewCount: number;
-  digestCount: number;
-  latestDigestAt: string | null;
-  imported: boolean;
-  owned: boolean;
-} & DigestPipelineRuntimeMetadata;
-
-export type OwnDigestPipeline = Pick<
-  HubDigestPipeline,
-  | "digestCount"
-  | "digestUpdateStatus"
-  | "frequencyLabel"
-  | "importCount"
-  | "latestDigestAt"
-  | "latestDigestHeadline"
-  | "latestDigestLanguage"
-  | "latestDigestSourceLinks"
-  | "scheduleStatus"
-  | "summaryLanguage"
-  | "title"
->;
-
-type DigestPipelinePreviewData = Pick<
-  HubDigestPipeline,
-  | "digestCount"
-  | "digestUpdateStatus"
-  | "frequencyLabel"
-  | "latestDigestAt"
-  | "latestDigestHeadline"
-  | "latestDigestLanguage"
-  | "latestDigestSourceLinks"
-  | "scheduleStatus"
-  | "summaryLanguage"
->;
-
-type DigestPipelineImportFormProps = {
-  mode?: "hub" | "imported";
-  panel?: boolean;
-  pipelines: HubDigestPipeline[];
+export type OwnDigestPipeline = DigestPipelineRuntimeMetadata & {
+  title: "Your AI Brief";
 };
 
-const HUB_DIGEST_HEADLINE_LINES = 6;
+export type FollowBriefDigestPipeline = DigestPipelineRuntimeMetadata & {
+  title: "FollowBrief AI Brief";
+};
 
-export function DigestPipelineImportForm({
-  mode = "hub",
-  panel = false,
-  pipelines,
-}: DigestPipelineImportFormProps) {
-  const sharedPipelines = useMemo(
-    () => pipelines.filter((pipeline) => !pipeline.owned),
-    [pipelines],
-  );
-  const importedSignature = useMemo(
-    () =>
-      sharedPipelines
-        .filter((pipeline) => pipeline.imported)
-        .map((pipeline) => pipeline.id)
-        .sort()
-        .join("|"),
-    [sharedPipelines],
-  );
-  const propImportedIds = useMemo(
-    () =>
-      new Set(
-        sharedPipelines
-          .filter((pipeline) => pipeline.imported)
-          .map((pipeline) => pipeline.id),
-      ),
-    [sharedPipelines],
-  );
-  const [importedState, setImportedState] = useState<{
-    ids: Set<string>;
-    key: string;
-  }>({
-    ids: propImportedIds,
-    key: importedSignature,
-  });
-  const importedIds =
-    importedState.key === importedSignature ? importedState.ids : propImportedIds;
-  const importedPipelines = sharedPipelines.filter((pipeline) =>
-    importedIds.has(pipeline.id),
-  );
-  const visiblePipelines = mode === "imported" ? importedPipelines : sharedPipelines;
-  const title =
-    mode === "imported" ? "Imported AI Brief collections" : "Shared AI Brief collections";
-  const description =
-    mode === "imported"
-      ? "Brief collections imported from Hub."
-      : "Import AI Brief collections shared by others.";
-  const emptyTitle =
-    mode === "imported"
-      ? "No imported AI Brief collections"
-      : "No shared AI Brief collections";
-  const emptyMessage =
-    mode === "imported"
-      ? "Import a collection from Hub."
-      : "No shared AI Brief collections yet.";
-
-  function setImportedIds(updater: (current: Set<string>) => Set<string>) {
-    setImportedState((current) => {
-      const currentIds =
-        current.key === importedSignature ? current.ids : propImportedIds;
-      return {
-        ids: updater(currentIds),
-        key: importedSignature,
-      };
-    });
-  }
-  const [pendingAction, setPendingAction] = useState<{
-    pipelineId: string;
-    type: "import" | "remove";
-  } | null>(null);
-  const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
-  const removeDialogRef = useRef<HTMLDialogElement>(null);
-  const [importPending, startImportTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const removeTarget = removeTargetId
-    ? pipelines.find((pipeline) => pipeline.id === removeTargetId) ?? null
-    : null;
-
-  useEffect(() => {
-    const dialog = removeDialogRef.current;
-    if (!dialog) return;
-    if (removeTarget) {
-      if (!dialog.open) dialog.showModal();
-      return;
-    }
-    if (dialog.open) dialog.close();
-  }, [removeTarget]);
-
-  function importPipeline(pipelineId: string) {
-    if (pendingAction) return;
-    const pipeline = pipelines.find((item) => item.id === pipelineId);
-    if (!pipeline || pipeline.owned || importedIds.has(pipelineId)) return;
-    setError(null);
-    setPendingAction({ pipelineId, type: "import" });
-    setImportedIds((current) => new Set([...current, pipelineId]));
-
-    startImportTransition(async () => {
-      try {
-        const response = await fetch("/api/digest-pipelines/imports", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pipelineId }),
-        });
-        if (!response.ok) throw new Error("Could not import AI Brief collection.");
-      } catch {
-        setImportedIds((current) => {
-          const next = new Set(current);
-          next.delete(pipelineId);
-          return next;
-        });
-        setError("Could not import AI Brief collection.");
-      } finally {
-        setPendingAction(null);
-      }
-    });
-  }
-
-  function requestRemoveImported(pipelineId: string) {
-    if (pendingAction) return;
-    const pipeline = pipelines.find((item) => item.id === pipelineId);
-    if (!pipeline || pipeline.owned || !importedIds.has(pipelineId)) return;
-    setError(null);
-    setRemoveTargetId(pipelineId);
-  }
-
-  function removeImported(pipelineId: string) {
-    if (pendingAction) return;
-    const pipeline = pipelines.find((item) => item.id === pipelineId);
-    if (!pipeline || pipeline.owned || !importedIds.has(pipelineId)) return;
-    setError(null);
-    setPendingAction({ pipelineId, type: "remove" });
-    setImportedIds((current) => {
-      const next = new Set(current);
-      next.delete(pipelineId);
-      return next;
-    });
-
-    startImportTransition(async () => {
-      try {
-        const response = await fetch(`/api/digest-pipelines/imports/${pipelineId}`, {
-          method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Could not remove imported AI Brief collection.");
-      } catch {
-        setImportedIds((current) => new Set([...current, pipelineId]));
-        setError("Could not remove imported AI Brief collection.");
-      } finally {
-        setPendingAction(null);
-      }
-    });
-  }
-
-  function closeRemoveDialog() {
-    if (removeDialogRef.current?.open) {
-      removeDialogRef.current.close();
-    }
-    setRemoveTargetId(null);
-  }
-
-  function handleRemoveDialogClose() {
-    setRemoveTargetId(null);
-  }
-
-  function confirmRemoveImported() {
-    if (!removeTargetId) return;
-    const pipelineId = removeTargetId;
-    closeRemoveDialog();
-    removeImported(pipelineId);
-  }
-
-  const body = (
-    <>
-      {error ? (
-        <p className="hub-form-error" role="status">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="hub-list-stack fb-hub-list">
-        {visiblePipelines.map((pipeline) => (
-          <DigestPipelineCard
-            imported={importedIds.has(pipeline.id)}
-            isPending={importPending || pendingAction !== null}
-            key={pipeline.id}
-            onImport={importPipeline}
-            onRemove={requestRemoveImported}
-            panel={panel}
-            pending={pendingAction?.pipelineId === pipeline.id ? pendingAction.type : null}
-            pipeline={pipeline}
-          />
-        ))}
-        {visiblePipelines.length === 0 ? (
-          <EmptyState
-            actions={
-              mode === "imported" ? (
-                <Link className="fb-btn light compact" href="/library-hub?tab=ai-digests">
-                  Browse AI Brief collections
-                </Link>
-              ) : null
-            }
-            body={emptyMessage}
-            className="hub-list-empty"
-            title={emptyTitle}
-          />
-        ) : null}
-      </div>
-    </>
-  );
-
-  return (
-    <section
-      className={panel ? "imported-digest-section imported-digest-panel library-section-panel" : undefined}
-    >
-      <div className={panel ? "imported-digest-head" : "library-hub-toolbar"}>
-        <div className={panel ? "imported-digest-copy" : "library-hub-toolbar-copy"}>
-          <h2 className="fb-section-heading">{title}</h2>
-          <p className={panel ? "library-section-copy" : "hub-section-copy"}>
-            {description}
-          </p>
-        </div>
-      </div>
-
-      {panel ? <div className="imported-digest-body">{body}</div> : body}
-
-      <dialog
-        aria-labelledby="hub-remove-ai-digest-title"
-        className="fb-dialog"
-        onClick={(event) => {
-          if (event.target === removeDialogRef.current) closeRemoveDialog();
-        }}
-        onClose={handleRemoveDialogClose}
-        ref={removeDialogRef}
-      >
-        {removeTarget ? (
-          <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading" id="hub-remove-ai-digest-title">
-              Remove imported AI Brief collection?
-            </h3>
-            <div className="settings-dialog-copy">
-              <p>
-                Removing <strong>{removeTarget.title}</strong> removes this collection
-                from AI Brief.
-              </p>
-              <p className="settings-dialog-warning">
-                You can import it again from Hub.
-              </p>
-            </div>
-            <div className="settings-dialog-actions">
-              <button
-                className="fb-btn light compact"
-                onClick={closeRemoveDialog}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className="fb-btn danger compact"
-                onClick={confirmRemoveImported}
-                type="button"
-              >
-                Remove import
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </dialog>
-    </section>
-  );
-}
+const HEADLINE_PREVIEW_LINES = 6;
 
 export function OwnDigestPipelineCard({
   beforePreview,
@@ -349,156 +34,47 @@ export function OwnDigestPipelineCard({
       className="own-digest-card"
       cronStatusControl={cronStatusControl}
       detailsSlot={children}
-      headerClassName="own-digest-card-head"
       pipeline={pipeline}
-      stats={
-        <>
-          <CountMeta
-            label={pipeline.digestCount === 1 ? "issue" : "issues"}
-            value={pipeline.digestCount}
-          />
-          <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-        </>
-      }
-      titleBlock={
-        <DigestPipelineTitleEditor
-          className="fb-hub-title"
-          headingId="sources-digest-title"
-          headingLevel={3}
-          initialTitle={pipeline.title}
-        />
-      }
+      title={pipeline.title}
     />
   );
 }
 
-function DigestPipelineCard({
-  imported,
-  isPending,
-  onImport,
-  onRemove,
-  panel,
-  pending,
+export function FollowBriefDigestPipelineCard({
   pipeline,
 }: {
-  imported: boolean;
-  isPending: boolean;
-  onImport: (id: string) => void;
-  onRemove: (id: string) => void;
-  panel: boolean;
-  pending: "import" | "remove" | null;
-  pipeline: HubDigestPipeline;
+  pipeline: FollowBriefDigestPipeline;
 }) {
-  const action = imported && pending !== "import" ? (
-    <button
-      aria-busy={pending === "remove" && isPending}
-      aria-label={`Remove imported AI Brief collection ${pipeline.title}`}
-      aria-pressed={true}
-      className="fb-btn light compact hub-card-action-button is-imported"
-      disabled={isPending || pending !== null}
-      onClick={() => onRemove(pipeline.id)}
-      type="button"
-    >
-      <CheckCircle2 aria-hidden="true" />
-      {pending === "remove" ? "Removing" : "Imported"}
-    </button>
-  ) : (
-    <button
-      aria-busy={pending === "import" && isPending}
-      aria-label={`Import AI Brief collection ${pipeline.title}`}
-      aria-pressed={false}
-      className="fb-btn dark compact hub-card-action-button"
-      disabled={isPending || pending !== null}
-      onClick={() => onImport(pipeline.id)}
-      type="button"
-    >
-      <Download aria-hidden="true" />
-      {pending === "import" ? "Importing" : "Import"}
-    </button>
-  );
   return (
     <DigestPipelineInfoCard
-      actionGroupLabel={`AI Brief collection actions for ${pipeline.title}`}
-      actions={action}
-      className={
-        panel
-          ? "fb-hub-card digest-pipeline-card is-sources-panel"
-          : "fb-hub-card digest-pipeline-card"
-      }
-      headerClassName="fb-hub-card-head"
+      className="fb-hub-card digest-pipeline-card followbrief-digest-card"
       pipeline={pipeline}
-      statsClassName="fb-hub-card-stats fb-hub-card-stats--with-owner"
-      stats={
-        <>
-          <CountMeta
-            label={pipeline.digestCount === 1 ? "issue" : "issues"}
-            value={pipeline.digestCount}
-          />
-          <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-          <span className="fb-hub-card-owner">
-            by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>
-          </span>
-        </>
-      }
-      titleBlock={
-        <div className="fb-hub-card-titleblock">
-          <h3 className="fb-hub-title">
-            {pipeline.title}
-          </h3>
-        </div>
-      }
+      title={pipeline.title}
     />
   );
 }
 
 function DigestPipelineInfoCard({
-  actionGroupLabel,
-  actions,
   beforePreview,
   className,
   cronStatusControl,
-  description,
   detailsSlot,
-  headerClassName,
   pipeline,
-  stats,
-  statsClassName = "fb-hub-card-stats",
-  titleBlock,
+  title,
 }: {
-  actionGroupLabel?: string;
-  actions?: ReactNode;
   beforePreview?: ReactNode;
   className: string;
   cronStatusControl?: ReactNode;
-  description?: ReactNode;
   detailsSlot?: ReactNode;
-  headerClassName: string;
-  pipeline: DigestPipelinePreviewData;
-  stats?: ReactNode;
-  statsClassName?: string;
-  titleBlock: ReactNode;
+  pipeline: DigestPipelineRuntimeMetadata;
+  title: string;
 }) {
   return (
     <article className={className}>
-      <div>
-        <div className={headerClassName}>
-          {titleBlock}
-          {actions ? (
-            <div
-              aria-label={actionGroupLabel}
-              className="fb-hub-card-actions"
-              role="group"
-            >
-              {actions}
-            </div>
-          ) : null}
+      <div className="fb-hub-card-head">
+        <div className="fb-hub-card-titleblock">
+          <h2 className="fb-hub-title">{title}</h2>
         </div>
-
-        {description ? (
-          <p className="fb-hub-card-desc">
-            {description}
-          </p>
-        ) : null}
       </div>
 
       {beforePreview}
@@ -509,22 +85,14 @@ function DigestPipelineInfoCard({
         pipeline={pipeline}
       />
 
-      {stats ? (
-        <div className={statsClassName}>
-          {stats}
-        </div>
-      ) : null}
+      <div className="fb-hub-card-stats">
+        <CountMeta
+          label={pipeline.digestCount === 1 ? "issue" : "issues"}
+          value={pipeline.digestCount}
+        />
+      </div>
     </article>
   );
-}
-
-function digestPipelineOwnerName(ownerLabel: string) {
-  const label = ownerLabel
-    .trim()
-    .replace(/^Shared by\s+/i, "")
-    .replace(/^Curated by\s+/i, "")
-    .replace(/[.。]+$/u, "");
-  return label || "a FollowBrief user";
 }
 
 export function DigestPipelinePreviewCard({
@@ -534,7 +102,7 @@ export function DigestPipelinePreviewCard({
 }: {
   cronStatusControl?: ReactNode;
   detailsSlot?: ReactNode;
-  pipeline: DigestPipelinePreviewData;
+  pipeline: DigestPipelineRuntimeMetadata;
 }) {
   const headline = pipeline.latestDigestHeadline?.trim();
 
@@ -546,7 +114,7 @@ export function DigestPipelinePreviewCard({
         <div>
           {headline ? (
             <DigestHeadlineSummary
-              collapsedLineCount={HUB_DIGEST_HEADLINE_LINES}
+              collapsedLineCount={HEADLINE_PREVIEW_LINES}
               sourceLinks={pipeline.latestDigestSourceLinks}
               text={headline}
             />
@@ -564,12 +132,14 @@ function DigestPipelineMetaGrid({
   pipeline,
 }: {
   cronStatusControl?: ReactNode;
-  pipeline: DigestPipelinePreviewData;
+  pipeline: DigestPipelineRuntimeMetadata;
 }) {
   const status = pipeline.digestUpdateStatus;
   const scheduleLanguage =
     pipeline.scheduleStatus === "active"
-      ? formatLanguage(pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh")
+      ? displayLanguagePreference(
+          pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh",
+        )
       : "N/A";
 
   return (
@@ -578,10 +148,7 @@ function DigestPipelineMetaGrid({
         label="Build frequency"
         value={pipeline.frequencyLabel ?? "Not scheduled"}
       />
-      <DigestPipelineMetaItem
-        label="Language"
-        value={scheduleLanguage}
-      />
+      <DigestPipelineMetaItem label="Language" value={scheduleLanguage} />
       <div className="fb-hub-digest-meta-item">
         <dt>Latest issue</dt>
         <dd>
@@ -606,21 +173,11 @@ function DigestPipelineMetaGrid({
   );
 }
 
-function DigestPipelineMetaItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function DigestPipelineMetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="fb-hub-digest-meta-item">
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
   );
-}
-
-function formatLanguage(value: string) {
-  return displayLanguagePreference(value);
 }

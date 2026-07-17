@@ -18,10 +18,9 @@ import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
 import {
-  digestPipelineOwnerLabel,
+  adminCommunityDigestTitle,
   displayDigestPipelineTitle,
-  displayDigestPipelineTitleForOwner,
-  ensureDefaultCommunityDigestImport,
+  findAdminCommunityDigestPipeline,
 } from "@/lib/library-hub";
 import { digestSourceLinksForUser, type DigestSourceLink } from "@/lib/digest-source-links";
 import { prisma } from "@/lib/prisma";
@@ -70,7 +69,6 @@ export default async function DashboardPage({
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
   const isAdmin = isAdminEmail(session.user.email);
-  await ensureDefaultCommunityDigestImport(userId);
   const params = await searchParams;
   const requestedTab = firstParam(params.tab);
   if (requestedTab === "subscription") redirect("/dashboard?tab=following");
@@ -127,26 +125,10 @@ async function AiDigestFeedSlot({
   pipelineId?: string;
   ownDigestReadiness: OwnDigestReadiness;
 }) {
-  const [importedDigestPipelines, ownPipelineShare] = await Promise.all([
-    prisma.digestPipelineImport.findMany({
-      where: { userId, pipeline: { isPublic: true } },
-      include: {
-        pipeline: {
-          include: {
-            owner: { select: { name: true, email: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.digestPipelineShare.findUnique({
-      where: { ownerUserId: userId },
-      select: { title: true },
-    }),
-  ]);
+  const followBriefPipeline = await findAdminCommunityDigestPipeline();
   const digestOwnerIds = [
     userId,
-    ...importedDigestPipelines.map(({ pipeline }) => pipeline.ownerUserId),
+    ...(followBriefPipeline ? [followBriefPipeline.ownerUserId] : []),
   ];
   const digestCounts = await prisma.digest.groupBy({
     by: ["userId"],
@@ -161,24 +143,25 @@ async function AiDigestFeedSlot({
       .filter((row) => row._count._all > 0)
       .map((row) => row.userId),
   );
-  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Brief");
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
       hasContent: hasDigestContentByOwnerId.has(userId),
       id: "own",
-      title: ownPipelineTitle,
-      ownerLabel: "Your AI Brief collection",
+      title: "Your AI Brief",
+      ownerLabel: "Your AI Brief",
       ownerUserId: userId,
       isOwnPipeline: true,
     },
-    ...importedDigestPipelines.map(({ pipeline }) => ({
-      hasContent: hasDigestContentByOwnerId.has(pipeline.ownerUserId),
-      id: pipeline.id,
-      title: displayDigestPipelineTitleForOwner(pipeline.title, pipeline.owner),
-      ownerLabel: digestPipelineOwnerLabel(pipeline.owner),
-      ownerUserId: pipeline.ownerUserId,
-      isOwnPipeline: false,
-    })),
+    ...(followBriefPipeline
+      ? [{
+          hasContent: hasDigestContentByOwnerId.has(followBriefPipeline.ownerUserId),
+          id: followBriefPipeline.id,
+          title: adminCommunityDigestTitle,
+          ownerLabel: "FollowBrief",
+          ownerUserId: followBriefPipeline.ownerUserId,
+          isOwnPipeline: false,
+        }]
+      : []),
   ].sort(compareDigestPipelinePriority);
   const selectedPipeline =
     digestPipelineOptions.find((pipeline) => pipeline.id === pipelineId) ??
@@ -222,6 +205,10 @@ function compareDigestPipelinePriority(a: DigestPipelineOption, b: DigestPipelin
   if (a.hasContent !== b.hasContent) return a.hasContent ? -1 : 1;
   if (a.isOwnPipeline !== b.isOwnPipeline) return a.isOwnPipeline ? -1 : 1;
   return 0;
+}
+
+function displayDigestTitle(title: string) {
+  return displayDigestPipelineTitle(title);
 }
 
 function AiDigestFeed({
@@ -276,7 +263,7 @@ function AiDigestFeed({
           </section>
 
           {isOwnPipeline ? null : (
-            <p className="sr-only">Imported AI Brief collection, read-only.</p>
+            <p className="sr-only">FollowBrief AI Brief, read-only.</p>
           )}
         </div>
       </section>
@@ -372,12 +359,12 @@ function DigestControlBar({
 }) {
   return (
     <section
-      aria-label="AI Brief collection and brief selection"
+      aria-label="AI Brief and issue selection"
       className="digest-control-bar"
     >
       <div className="digest-control-field">
         <span className="digest-control-label">
-          AI Brief collection
+          AI Brief
         </span>
         <DigestPipelineSelector
           options={options}
@@ -387,7 +374,7 @@ function DigestControlBar({
       </div>
       <div className="digest-control-field">
         <span className="digest-control-label">
-          AI Brief
+          Issue
         </span>
         {digestArchiveOptions.length > 0 ? (
           <div className="digest-control-picker">
@@ -439,9 +426,6 @@ function serializeDigestArchiveOption(
   };
 }
 
-function displayDigestTitle(title: string) {
-  return displayDigestPipelineTitle(title);
-}
 
 async function dashboardSourceReadinessForUser(
   userId: string,

@@ -2,7 +2,7 @@ import type { FeedItemKind, Prisma } from "@prisma/client";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import {
   displayDigestPipelineTitleForOwner,
-  ensureDefaultCommunityDigestImport,
+  findAdminCommunityDigestPipeline,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { ensureSourceCandidateSeeded } from "@/lib/source-candidate-library";
@@ -85,23 +85,13 @@ export async function searchUserLibrary({
         ).map((builder) => builder.canonicalKey),
       )
     : new Set<string>();
-  await ensureDefaultCommunityDigestImport(userId);
-  const importedDigestPipelines =
+  const followBriefPipeline =
     typeFilter && typeFilter !== "digest"
-      ? []
-      : await prisma.digestPipelineImport.findMany({
-          where: { userId, pipeline: { isPublic: true } },
-          include: {
-            pipeline: {
-              select: {
-                id: true,
-                title: true,
-                ownerUserId: true,
-                owner: { select: { name: true, email: true } },
-              },
-            },
-          },
-        });
+      ? null
+      : await findAdminCommunityDigestPipeline();
+  const importedDigestPipelines = followBriefPipeline
+    ? [{ pipeline: followBriefPipeline }]
+    : [];
   const digestOwnerToPipeline = new Map(
     importedDigestPipelines.map(({ pipeline }) => [pipeline.ownerUserId, pipeline]),
   );

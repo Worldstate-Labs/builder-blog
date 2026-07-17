@@ -6,11 +6,10 @@ import { ChevronDown } from "lucide-react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { CountMeta, formatCount } from "@/components/Count";
 import {
-  DigestPipelineImportForm,
-  type HubDigestPipeline,
+  FollowBriefDigestPipelineCard,
+  type FollowBriefDigestPipeline,
   type OwnDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
-import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 import {
   type LibraryCronJobStatus,
@@ -52,15 +51,10 @@ import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
 import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
-  digestPipelineTitle,
-  digestPipelineOwnerLabel,
-  displayDigestPipelineTitle,
-  displayDigestPipelineTitleForOwner,
   ensureAdminCommunityLibrary,
   ensureAdminCommunityDigestPipeline,
-  ensureDefaultCommunityDigestImport,
+  findAdminCommunityDigestPipeline,
   personalSourceLibraryName,
-  recordDigestPipelineHubViews,
   sharePersonalLibraryToHub,
   userImportableLibraryHubEntryWhere,
 } from "@/lib/library-hub";
@@ -189,85 +183,45 @@ async function DigestSourcesSection({
   const showStopDigestCron = data.digestCronJob?.status === "active";
 
   return (
-    <section className="digest-source-management">
-      <section
-        className="your-digest-section your-digest-panel library-section-panel"
-        aria-labelledby="sources-digest-section-title"
-      >
-        <div className="library-section-summary library-section-summary--static">
-          <div className="library-section-summary-copy">
-            <h2 id="sources-digest-section-title" className="fb-section-heading">
-              Your AI Brief collection
-            </h2>
-          </div>
-          <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
-        </div>
-
-        <div className="library-section-body">
-          <OwnDigestPipelineUpdatesCard
-            actions={
-              <SkillPromptActions
-                activeSchedule={data.digestCronJob}
-                compactOnly
-                context="digest"
-                digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-                showStop={showStopDigestCron}
-                summaryLanguage={data.summaryLanguage}
-                tokens={data.activeTokens}
-              />
-            }
-            initialCronJob={data.digestCronJob}
-            initialCronRuns={data.digestCronRuns}
-            initialJobRuns={data.digestJobRuns}
-            initialRuns={data.digestRuns}
-            initialScheduledJobRuns={data.digestScheduledJobRuns}
-            pipeline={data.ownDigestPipeline}
+    <section className="digest-source-management digest-brief-list">
+      <OwnDigestPipelineUpdatesCard
+        actions={
+          <SkillPromptActions
+            activeSchedule={data.digestCronJob}
+            compactOnly
+            context="digest"
+            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+            showStop={showStopDigestCron}
+            summaryLanguage={data.summaryLanguage}
+            tokens={data.activeTokens}
           />
-        </div>
-      </section>
-
-      <DigestPipelineImportForm mode="imported" panel pipelines={data.hubDigestPipelines} />
+        }
+        initialCronJob={data.digestCronJob}
+        initialCronRuns={data.digestCronRuns}
+        initialJobRuns={data.digestJobRuns}
+        initialRuns={data.digestRuns}
+        initialScheduledJobRuns={data.digestScheduledJobRuns}
+        pipeline={data.ownDigestPipeline}
+      />
+      <FollowBriefDigestPipelineCard pipeline={data.followBriefDigestPipeline} />
     </section>
   );
 }
 
 function DigestSourcesFallback() {
   return (
-    <section className="digest-source-management" aria-live="polite" aria-busy="true">
+    <section
+      className="digest-source-management digest-brief-list"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <span className="sr-only">Loading AI Brief controls</span>
-      <section
-        className="your-digest-section your-digest-panel library-section-panel"
-        aria-label="Loading your AI Brief collection"
-      >
-        <div className="library-section-summary library-section-summary--static">
-          <div className="library-section-summary-copy">
-            <h2 className="fb-section-heading">
-              Your AI Brief collection
-            </h2>
-            <div className="source-sync-skeleton-line" />
-          </div>
-          <div className="source-section-skeleton-chip" />
-        </div>
-        <div className="library-section-body">
+      {["Your AI Brief", "FollowBrief AI Brief"].map((title) => (
+        <article className="own-digest-card" key={title} aria-label={`Loading ${title}`}>
+          <div className="source-sync-skeleton-line is-title" />
           <div className="source-sync-skeleton-panel" />
-        </div>
-      </section>
-      <section
-        className="imported-digest-section imported-digest-panel library-section-panel"
-        aria-label="Loading imported AI Brief collections"
-      >
-        <div className="imported-digest-head">
-          <div className="imported-digest-copy">
-            <h2 className="fb-section-heading">
-              Imported AI Brief collections
-            </h2>
-            <div className="source-sync-skeleton-line" />
-          </div>
-        </div>
-        <div className="imported-digest-body">
-          <div className="source-sync-skeleton-panel" />
-        </div>
-      </section>
+        </article>
+      ))}
     </section>
   );
 }
@@ -277,9 +231,8 @@ async function loadDigestSourcesPageData() {
   if (!session?.user?.id) redirect("/login");
   if (isAdminEmail(session.user.email)) {
     await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
-  } else {
-    await ensureDefaultCommunityDigestImport(session.user.id);
   }
+  const followBriefPipelineShare = await findAdminCommunityDigestPipeline();
 
   const [
     rawTokens,
@@ -289,9 +242,6 @@ async function loadDigestSourcesPageData() {
     digestJobRuns,
     digestScheduledJobRuns,
     rawDigestCronJob,
-    ownPipelineShare,
-    digestPipelineShares,
-    digestPipelineImports,
   ] = await Promise.all([
     prisma.agentToken.findMany({
       where: { userId: session.user.id, revokedAt: null },
@@ -319,78 +269,26 @@ async function loadDigestSourcesPageData() {
     prisma.digestCronJob.findUnique({
       where: { userId: session.user.id },
     }),
-    prisma.digestPipelineShare.findUnique({
-      where: { ownerUserId: session.user.id },
-      select: {
-        importCount: true,
-        isPublic: true,
-        title: true,
-        viewCount: true,
-      },
-    }),
-    prisma.digestPipelineShare.findMany({
-      where: { isPublic: true },
-      include: {
-        owner: { select: { name: true, email: true } },
-        imports: {
-          where: { userId: session.user.id },
-          select: { userId: true },
-        },
-      },
-      orderBy: [{ importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
-    }),
-    prisma.digestPipelineImport.findMany({
-      where: { userId: session.user.id },
-      select: { pipelineId: true },
-    }),
   ]);
 
-  await recordDigestPipelineHubViews(
-    digestPipelineShares
-      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
-      .map((pipeline) => pipeline.id),
+  const followBriefOwnerUserId = followBriefPipelineShare?.ownerUserId ?? null;
+  const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds(
+    [session.user.id, followBriefOwnerUserId].filter((id): id is string => Boolean(id)),
   );
-
-  const importedDigestPipelineIds = new Set(
-    digestPipelineImports.map((item) => item.pipelineId),
-  );
-  const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds([
-    session.user.id,
-    ...digestPipelineShares.map((pipeline) => pipeline.ownerUserId),
-  ]);
   const ownDigestMetadata =
     digestMetadataByOwnerId.get(session.user.id) ?? emptyDigestPipelineMetadata();
   const ownDigestPipeline: OwnDigestPipeline = {
-    title: displayDigestPipelineTitle(
-      ownPipelineShare?.title ?? digestPipelineTitle(session.user),
-    ),
-    importCount: ownPipelineShare?.importCount ?? 0,
+    title: "Your AI Brief",
     ...ownDigestMetadata,
   };
-  const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
-    .map((pipeline) => {
-      const owned = pipeline.ownerUserId === session.user.id;
-      const owner = pipeline.owner;
-      const metadata =
-        digestMetadataByOwnerId.get(pipeline.ownerUserId) ?? emptyDigestPipelineMetadata();
-      return {
-        id: pipeline.id,
-        title: displayDigestPipelineTitleForOwner(
-          pipeline.title || digestPipelineTitle(owner),
-          owner,
-        ),
-        description: pipeline.description,
-        ownerUserId: pipeline.ownerUserId,
-        ownerLabel: digestPipelineOwnerLabel(owner, { owned }),
-        importCount: pipeline.importCount,
-        viewCount: pipeline.viewCount,
-        ...metadata,
-        imported:
-          importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
-        owned,
-      };
-    })
-    .sort((a, b) => Number(b.owned) - Number(a.owned));
+  const followBriefDigestPipeline: FollowBriefDigestPipeline = {
+    title: "FollowBrief AI Brief",
+    ...(
+      (followBriefOwnerUserId
+        ? digestMetadataByOwnerId.get(followBriefOwnerUserId)
+        : null) ?? emptyDigestPipelineMetadata()
+    ),
+  };
 
   return {
     activeTokens: serializeAgentTokens(rawTokens),
@@ -399,9 +297,8 @@ async function loadDigestSourcesPageData() {
     digestJobRuns,
     digestRuns: rawDigestRuns,
     digestScheduledJobRuns,
-    hubDigestPipelines,
+    followBriefDigestPipeline,
     ownDigestPipeline,
-    ownPipelineShared: ownPipelineShare?.isPublic === true,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
   };

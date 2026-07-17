@@ -4,7 +4,7 @@ export type LegalBlock = {
   copy: string;
 };
 
-export const legalUpdatedDate = "July 7, 2026";
+export const legalUpdatedDate = "July 16, 2026";
 export const legalContactEmail = "legal@worldstatelabs.com";
 
 export const privacyPageMeta = {
@@ -47,7 +47,7 @@ export const privacyBlocks: LegalBlock[] = [
   {
     id: "hub-sharing",
     title: "Hub sharing",
-    copy: "When you share source libraries or AI Brief collections to Hub, other users can see shared source names, source links, collection titles, headline metadata, latest brief timing, source-link metadata, descriptions, counts, owner display labels, imports, views, schedule status, update status, frequency labels, and public Hub activity. Private account data, access keys, OAuth tokens, raw crawled content, full transcripts, raw API objects, and private settings are not published to Hub.",
+    copy: "When you share a source library to Hub, other users can see its title, description, source names, source links, source counts, owner display label, import count, view count, and public Hub activity. Your AI Brief, private account data, access keys, OAuth tokens, raw crawled content, full transcripts, raw API objects, and private settings are not published to Hub.",
   },
   {
     id: "selling-advertising",
@@ -86,7 +86,7 @@ export const termsBlocks: LegalBlock[] = [
   {
     id: "use-of-service",
     title: "Use of the service",
-    copy: "FollowBrief helps you follow sources, fetch updates, summarize source material, build AI Briefs, sync cloud source libraries, search your own workspace, and import shared Hub collections. You must be able to form a binding contract to use FollowBrief. You are responsible for the sources you add, the prompts/settings you configure, the agent runtimes you run, and the way you use generated output.",
+    copy: "FollowBrief helps you follow sources, fetch updates, summarize source material, build AI Briefs, sync cloud source libraries, search your own workspace, and import shared source libraries from Hub. You must be able to form a binding contract to use FollowBrief. You are responsible for the sources you add, the prompts/settings you configure, the agent runtimes you run, and the way you use generated output.",
   },
   {
     id: "accounts-access-keys",
@@ -111,7 +111,7 @@ export const termsBlocks: LegalBlock[] = [
   {
     id: "hub-sharing",
     title: "Hub sharing",
-    copy: "If you share a source library or AI Brief collection to Hub, you grant FollowBrief permission to display the shared title, description, source names, source links, headline metadata, latest brief timing, source-link metadata, owner display label, import counts, view counts, schedule status, update status, frequency labels, and public collection activity to other users until you remove it. You must not share anything you do not have permission to publish.",
+    copy: "If you share a source library to Hub, you grant FollowBrief permission to display its title, description, source names, source links, source count, owner display label, import count, view count, and public Hub activity to other users until you remove it. You must not share anything you do not have permission to publish.",
   },
   {
     id: "acceptable-use",

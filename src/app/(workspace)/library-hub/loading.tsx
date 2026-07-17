@@ -3,44 +3,16 @@ import { PageHeader } from "@/components/PageHeader";
 
 export default function LibraryHubLoading() {
   return (
-    <div
-      aria-busy="true"
-      aria-live="polite"
-      className="page-pad hub-loading"
-    >
+    <div aria-busy="true" aria-live="polite" className="page-pad hub-loading">
       <PageHeader
         title={<I18nText id="workspace.hub" />}
         description={<I18nText id="workspace.hubDesc" />}
       />
-      <div className="workspace-content-stack workspace-content-stack--tabs-first">
-        <div className="workspace-top-tabs-row">
-          <div
-            aria-label="Hub tabs"
-            className="workspace-top-tabs fb-segmented-tabs hub-loading-tabs"
-            role="tablist"
-          >
-            {[
-              { id: "tabs.sourceLibraries" as const, selected: true },
-              { id: "tabs.aiDigestCollections" as const, selected: false },
-            ].map(({ id, selected }) => (
-              <span
-                aria-disabled="true"
-                aria-selected={selected}
-                className="fb-btn hub-loading-tab"
-                key={id}
-                role="tab"
-                tabIndex={-1}
-              >
-                <I18nText id={id} />
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <section aria-label="Loading Hub content">
+      <div className="workspace-content-stack">
+        <section aria-label="Loading source libraries">
           <div className="library-hub-toolbar">
             <div className="library-hub-toolbar-copy">
-              <span className="sr-only">Loading Hub content</span>
+              <span className="sr-only">Loading source libraries</span>
               <div className="library-hub-skeleton-line is-title" />
               <div className="library-hub-skeleton-line is-wide" />
             </div>

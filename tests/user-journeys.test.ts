@@ -331,7 +331,7 @@ test("personal YouTube sync cannot create a duplicate builder through handle met
   );
 });
 
-test("non-admin users default-import the admin community library and digest", () => {
+test("non-admin users receive the community source library and FollowBrief AI Brief", () => {
   const builderPool = readFileSync("src/lib/builder-pool.ts", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
   const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
@@ -356,12 +356,13 @@ test("non-admin users default-import the admin community library and digest", ()
   assert.match(libraryHub, /setLibraryHidden/);
   assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(user\.id\)/);
-  assert.match(buildersPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
+  assert.doesNotMatch(buildersPage, /ensureDefaultCommunityDigestImport/);
+  assert.match(buildersPage, /findAdminCommunityDigestPipeline/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
-  assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
-  assert.match(dashboardPage, /ensureDefaultCommunityDigestImport\(userId\)/);
-  assert.match(userSearch, /ensureDefaultCommunityDigestImport\(userId\)/);
-  assert.match(libraryHub, /adminCommunityDigestTitle = "Community AI Brief"/);
+  assert.doesNotMatch(hubPage, /ensureDefaultCommunityDigestImport|digestPipeline/);
+  assert.doesNotMatch(dashboardPage, /ensureDefaultCommunityDigestImport/);
+  assert.doesNotMatch(userSearch, /ensureDefaultCommunityDigestImport/);
+  assert.match(libraryHub, /adminCommunityDigestTitle = "FollowBrief AI Brief"/);
   assert.match(libraryHub, /findAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /findOrCreateAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /ensureDefaultCommunityDigestImport/);
@@ -2311,19 +2312,18 @@ test("search user path exact mode matches literal text across builders, feeds, a
   assert.match(results[0].snippet, /AGENT MEMORY/);
 });
 
-test("search user path includes imported digest pipeline digests", () => {
+test("search user path includes only the FollowBrief shared Brief", () => {
   const userSearch = readFileSync("src/lib/user-search.ts", "utf8");
 
-  assert.match(userSearch, /digestPipelineImport\.findMany/);
-  assert.match(userSearch, /pipeline:\s*\{/);
-  assert.match(userSearch, /isPublic:\s*true/);
+  assert.doesNotMatch(userSearch, /digestPipelineImport\.findMany/);
+  assert.match(userSearch, /findAdminCommunityDigestPipeline/);
+  assert.match(userSearch, /followBriefPipeline/);
   assert.match(userSearch, /importedDigestPipelines/);
   assert.match(userSearch, /digestOwnerToPipeline/);
   assert.match(userSearch, /userId:\s*\{\s*in:\s*digestOwnerIds\s*\}/);
   assert.match(userSearch, /pipeline=\$\{pipeline\.id\}&digest=\$\{digest\.id\}/);
   assert.match(userSearch, /tab=ai-digest&digest=\$\{digest\.id\}/);
   assert.doesNotMatch(userSearch, /dashboard\?tab=ai-digest[^`]*#\$\{digest\.id\}/);
-  assert.match(userSearch, /owner:\s*\{\s*select:\s*\{\s*name:\s*true,\s*email:\s*true\s*\}\s*\}/);
   assert.match(userSearch, /displayDigestPipelineTitleForOwner\(/);
 });
 

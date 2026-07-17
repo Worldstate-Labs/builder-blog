@@ -9,37 +9,18 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("hub page exposes Source libraries and AI Brief collections as subtabs", () => {
+test("Hub directly exposes source libraries without collection tabs", () => {
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
-  const tabShell = source("src/components/WorkspaceTabShell.tsx");
-  const topTabsView = source("src/components/WorkspaceTopTabsView.tsx");
+  const hubLoading = source("src/app/(workspace)/library-hub/loading.tsx");
 
-  assert.match(hubPage, /type LibraryHubTab = "source-library" \| "ai-digests"/);
-  assert.match(hubPage, /WorkspaceTabShell/);
-  assert.match(hubPage, /ariaLabel="Hub tabs"/);
-  assert.doesNotMatch(hubPage, /ariaLabel="Hub sections"/);
-  assert.match(tabShell, /WorkspaceTopTabsView/);
-  assert.match(tabShell, /setPending\(\{ from: selectedValue, value \}\)/);
-  assert.match(tabShell, /router\.push\(target\.href!\)/);
-  assert.match(topTabsView, /role="tablist"/);
-  assert.match(hubPage, /label:\s*<I18nText id="tabs\.sourceLibraries" \/>/);
-  assert.match(hubPage, /label:\s*<I18nText id="tabs\.aiDigestCollections" \/>/);
-  assert.doesNotMatch(hubPage, /label:\s*"AI Briefs"/);
-  assert.doesNotMatch(hubPage, /label:\s*"AI Briefs"/);
-  assert.doesNotMatch(hubPage, /label:\s*"Digests"/);
-  assert.match(hubPage, /label:\s*<I18nText id="tabs\.sourceLibraries" \/>[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
-  assert.match(hubPage, /label:\s*<I18nText id="tabs\.aiDigestCollections" \/>[\s\S]*href:\s*"\/library-hub\?tab=ai-digests"/);
-  assert.match(hubPage, /panelId:\s*"hub-panel-source-library"/);
-  assert.match(hubPage, /tabId:\s*"hub-tab-source-library"/);
-  assert.match(hubPage, /panelId:\s*"hub-panel-ai-digests"/);
-  assert.match(hubPage, /tabId:\s*"hub-tab-ai-digests"/);
-  assert.match(hubPage, /const selectedTabItem = selectedHubTabItem\(selectedTab\)/);
-  assert.match(hubPage, /aria-labelledby=\{selectedTabItem\.tabId\}/);
-  assert.match(hubPage, /id=\{selectedTabItem\.panelId\}/);
-  assert.match(hubPage, /role="tabpanel"/);
-  assert.match(hubPage, /selectedValue=\{selectedTab\}/);
-  assert.match(hubPage, /parseHubTab/);
-  assert.match(hubPage, /function selectedHubTabItem/);
-  assert.match(hubPage, /value === "ai-digests" \|\| value === "digests"/);
-  assert.match(hubPage, /return "ai-digests"/);
+  for (const value of [hubPage, hubLoading]) {
+    assert.doesNotMatch(value, /WorkspaceTabShell|WorkspaceTopTabs|role="tablist"/);
+    assert.doesNotMatch(value, /AI Brief collections|ai-digests|Hub tabs/);
+  }
+
+  assert.match(hubPage, /LibraryHubImportForm/);
+  assert.match(hubPage, /loadSourceLibraryHubPageData/);
+  assert.match(hubPage, /ensureDefaultCommunityLibraryImport/);
+  assert.doesNotMatch(hubPage, /DigestPipelineImportForm|digestPipelineShare|digestPipelineImport/);
+  assert.match(hubLoading, /Loading source libraries/);
 });
