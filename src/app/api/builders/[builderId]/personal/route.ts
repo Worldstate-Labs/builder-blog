@@ -174,7 +174,17 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
   const enrichment: BuilderEnrichment = resolution.enrichment ?? probe.enrichment;
-  const finalFetchUrl = probe.discoveredFetchUrl ?? input.fetchUrl ?? null;
+  // Whether the edit actually changes the source identity (type/handle/URL).
+  // editableSourceIdentityChanged ignores fetchUrl, so it is stable to compute
+  // before finalFetchUrl. A name-only edit leaves this false — in that case we
+  // must NOT null out a working fetchUrl/avatar the form did not resubmit.
+  const sourceIdentityChanged = editableSourceIdentityChanged(existing, {
+    sourceType: input.sourceType,
+    sourceUrl: input.sourceUrl ?? null,
+    handle: handle ?? null,
+  });
+  const finalFetchUrl =
+    probe.discoveredFetchUrl ?? input.fetchUrl ?? (sourceIdentityChanged ? null : existing.fetchUrl);
   const duplicateSource = await findConflictingPersonalSource({
     userId: session.user.id,
     sourceUrl: input.sourceUrl,
@@ -193,13 +203,11 @@ export async function PATCH(request: Request, { params }: Params) {
       parsed.data.sourceValue,
     ],
   });
+  // The displayed avatar (avatarDataUrl) is already preserved on a name-only
+  // edit by the unchanged branch below (existing.avatarDataUrl); do NOT reuse
+  // existing.avatarUrl here, or the block below would re-fetch it over the
+  // network and a transient upstream failure would wipe the cached image.
   const avatarUrl = enrichment.avatarUrl ?? null;
-  const sourceIdentityChanged = editableSourceIdentityChanged(existing, {
-    sourceType: input.sourceType,
-    sourceUrl: input.sourceUrl ?? null,
-    fetchUrl: finalFetchUrl,
-    handle: handle ?? null,
-  });
   const fetchedPostCount = sourceIdentityChanged
     ? await prisma.feedItem.count({ where: { builderId: existing.id } })
     : 0;

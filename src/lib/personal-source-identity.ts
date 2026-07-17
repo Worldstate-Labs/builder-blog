@@ -13,6 +13,14 @@ export function canonicalPersonalSourceUrl(value?: string | null) {
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     url.protocol = url.protocol.toLowerCase();
     url.hostname = url.hostname.toLowerCase();
+    // Collapse host aliases that address the same source so www/m/apex and
+    // YouTube's mobile/music subdomains dedup to one identity. Dedup-only —
+    // the persisted libraryKey (canonicalBuilderKey) is not affected, so this
+    // just makes the conflict check stricter, never changes stored keys.
+    url.hostname = url.hostname.replace(/^www\./, "");
+    if (/(^|\.)youtube\.com$/.test(url.hostname)) {
+      url.hostname = url.hostname.replace(/^(m|music)\./, "");
+    }
     url.hash = "";
     if ((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80")) {
       url.port = "";

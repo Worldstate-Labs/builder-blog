@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { formatZodError } from "@/lib/zod-error";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 
 const ChannelPreferenceSchema = z.object({
@@ -49,6 +50,14 @@ export async function PATCH(request: Request) {
       { error: "Source channel does not belong to this source" },
       { status: 400 },
     );
+  }
+
+  // Ownership gate (mirrors the sibling builder routes): only channels in the
+  // caller's active pool may be pinned, otherwise a user could write a channel
+  // preference for an entity outside their library.
+  const poolBuilderIds = await activePoolBuilderIds(session.user.id);
+  if (!poolBuilderIds.includes(builderId)) {
+    return NextResponse.json({ error: "Source channel is not in your library." }, { status: 404 });
   }
 
   await prisma.userChannelPreference.upsert({
