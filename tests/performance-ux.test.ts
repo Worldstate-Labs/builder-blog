@@ -5473,15 +5473,15 @@ test("imported source library metadata", () => {
   assert.equal((hubPage.match(/getSourceLibraryMetadataByOwnerIds\(/g) ?? []).length, 1);
   assert.match(
     hubPage,
-    /const importedOwnerUserIds = libraries[\s\S]*filter\(\(library\) => importedLibraryIds\.has\(library\.id\) && library\.ownerUserId\)[\s\S]*map\(\(library\) => library\.ownerUserId as string\)/,
+    /const ownerUserIds = libraries[\s\S]*filter\(\(library\) => library\.ownerUserId\)[\s\S]*map\(\(library\) => library\.ownerUserId as string\)/,
   );
   assert.match(
     hubPage,
-    /const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds\(importedOwnerUserIds\);/,
+    /const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds\(ownerUserIds\);/,
   );
   assert.match(
     hubPage,
-    /metadata:\s*importedLibraryIds\.has\(library\.id\) && library\.ownerUserId[\s\S]*metadataByOwnerUserId\[library\.ownerUserId\] \?\? null[\s\S]*: null,/,
+    /metadata:\s*library\.ownerUserId[\s\S]*metadataByOwnerUserId\[library\.ownerUserId\] \?\? null[\s\S]*: null,/,
   );
 
   assert.match(
@@ -5493,10 +5493,11 @@ test("imported source library metadata", () => {
     /import type \{ SourceLibraryMetadata \} from "@\/lib\/source-library-metadata"/,
   );
   assert.match(hubImportForm, /metadata:\s*SourceLibraryMetadata \| null;/);
-  assert.match(hubImportForm, /const headerAction = imported \? null : action;/);
+  assert.match(hubImportForm, /const showImportedRow = imported && pending !== "import";/);
+  assert.match(hubImportForm, /const headerAction = showImportedRow \? null : action;/);
   assert.match(
     hubImportForm,
-    /const importedActionRow = imported && action \? \([\s\S]*className="hub-card-imported-meta-row"[\s\S]*className="hub-card-imported-metadata"[\s\S]*library\.metadata \? <SourceLibraryMetadataRow metadata=\{library\.metadata\} \/> : null[\s\S]*aria-label=\{`Imported source library actions for \$\{library\.name\}`\}[\s\S]*\{action\}[\s\S]*\) : null;/,
+    /const importedActionRow = showImportedRow && action \? \([\s\S]*className="hub-card-imported-meta-row"[\s\S]*className="hub-card-imported-metadata"[\s\S]*library\.metadata \? <SourceLibraryMetadataRow metadata=\{library\.metadata\} \/> : null[\s\S]*aria-label=\{`Imported source library actions for \$\{library\.name\}`\}[\s\S]*\{action\}[\s\S]*\) : null;/,
   );
   assert.match(
     hubImportForm,
@@ -5506,6 +5507,10 @@ test("imported source library metadata", () => {
   assert.match(hubImportForm, />\s*Remove import\s*<\/button>/);
   assert.match(hubImportForm, /aria-label=\{`Imported source library actions for \$\{library\.name\}`\}/);
   assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
+  assert.match(
+    hubImportForm,
+    /const action = library\.owned \? null : imported && pending !== "import" \? \(/,
+  );
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {

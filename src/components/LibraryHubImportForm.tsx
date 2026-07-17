@@ -460,8 +460,9 @@ function HubCard({
       {pending === "import" ? "Importing" : "Import"}
     </button>
   );
-  const headerAction = imported ? null : action;
-  const importedActionRow = imported && action ? (
+  const showImportedRow = imported && pending !== "import";
+  const headerAction = showImportedRow ? null : action;
+  const importedActionRow = showImportedRow && action ? (
     <div className="hub-card-imported-meta-row">
       <div className="hub-card-imported-metadata">
         {library.metadata ? <SourceLibraryMetadataRow metadata={library.metadata} /> : null}

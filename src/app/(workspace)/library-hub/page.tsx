@@ -79,10 +79,10 @@ async function loadSourceLibraryHubPageData() {
   await recordLibraryHubViews(libraries.map((library) => library.id));
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
-  const importedOwnerUserIds = libraries
-    .filter((library) => importedLibraryIds.has(library.id) && library.ownerUserId)
+  const ownerUserIds = libraries
+    .filter((library) => library.ownerUserId)
     .map((library) => library.ownerUserId as string);
-  const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds(importedOwnerUserIds);
+  const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds(ownerUserIds);
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
     const isCommunityLibrary = library.isFeatured || isAdminEmail(library.owner?.email);
     return {
@@ -103,7 +103,7 @@ async function loadSourceLibraryHubPageData() {
         },
       })),
       metadata:
-        importedLibraryIds.has(library.id) && library.ownerUserId
+        library.ownerUserId
           ? metadataByOwnerUserId[library.ownerUserId] ?? null
           : null,
       imported: importedLibraryIds.has(library.id),
