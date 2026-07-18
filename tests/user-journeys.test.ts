@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { delimiter, join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import { BuilderKind, FeedItemKind } from "@prisma/client";
 import {
@@ -1713,6 +1723,49 @@ test("vercel migration wrapper retries Prisma advisory lock timeouts", () => {
   assert.match(migrate, /select pg_advisory_lock/);
   assert.match(migrate, /VERCEL_MIGRATE_MAX_ATTEMPTS/);
   assert.match(migrate, /Retrying \$\{attempt \+ 1\}\/\$\{MAX_ATTEMPTS\}/);
+});
+
+test("vercel migration wrapper outlasts six advisory lock timeouts", () => {
+  const fixtureDir = mkdtempSync(join(tmpdir(), "vercel-migrate-lock-"));
+  const counterPath = join(fixtureDir, "attempts");
+  const fakeNpxPath = join(fixtureDir, "npx");
+
+  try {
+    writeFileSync(
+      fakeNpxPath,
+      `#!/usr/bin/env node
+const { existsSync, readFileSync, writeFileSync } = require("node:fs");
+const counterPath = process.env.MIGRATE_TEST_COUNTER;
+const attempt = existsSync(counterPath)
+  ? Number(readFileSync(counterPath, "utf8")) + 1
+  : 1;
+writeFileSync(counterPath, String(attempt));
+if (attempt <= 6) {
+  console.error("Error: P1002");
+  console.error("Timed out trying to acquire a postgres advisory lock (SELECT pg_advisory_lock(72707369)).");
+  process.exit(1);
+}
+`,
+    );
+    chmodSync(fakeNpxPath, 0o755);
+
+    const result = spawnSync(process.execPath, ["scripts/vercel-migrate.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${fixtureDir}${delimiter}${process.env.PATH ?? ""}`,
+        MIGRATE_TEST_COUNTER: counterPath,
+        VERCEL_MIGRATE_MAX_ATTEMPTS: "",
+        VERCEL_MIGRATE_RETRY_DELAY_MS: "1",
+      },
+    });
+
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(readFileSync(counterPath, "utf8"), "7");
+  } finally {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  }
 });
 
 test("vercel migration wrapper blocks schema drift unless explicitly bypassed", () => {

@@ -30,7 +30,10 @@ const ADVISORY_LOCK_MARKERS = [
   "select pg_advisory_lock",
 ];
 
-const MAX_ATTEMPTS = positiveInt(process.env.VERCEL_MIGRATE_MAX_ATTEMPTS, 6);
+// Prisma's advisory-lock wait is fixed at 10 seconds per invocation. Twelve
+// attempts give overlapping Vercel deployments roughly three minutes to
+// finish their migration without disabling the lock or allowing schema drift.
+const MAX_ATTEMPTS = positiveInt(process.env.VERCEL_MIGRATE_MAX_ATTEMPTS, 12);
 const RETRY_DELAY_MS = positiveInt(process.env.VERCEL_MIGRATE_RETRY_DELAY_MS, 5000);
 const ALLOW_CONNECTIVITY_SKIP = process.env.VERCEL_MIGRATE_ALLOW_CONNECTIVITY_SKIP === "1";
 
