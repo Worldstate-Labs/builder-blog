@@ -76,7 +76,7 @@ A case is not passed when only a source-code regex test is green.
 | C06 | Source detail/posts | Correct entity/channel resolution, deduped posts, external source links |
 | C07 | Remove personal source | Personal builder/posts removed, preferences rebound, unrelated sources retained |
 | C08 | Import/remove Hub library | Reachability, pool origin, hidden state, import count, re-import behavior |
-| C09 | More than 20 sources | Cloud submit picker scrolls, selects at most 20, server rejects forged oversized IDs |
+| C09 | More than 30 sources | Cloud submit picker scrolls, selects at most 30, server rejects forged oversized IDs |
 
 ### D. Local Agent fetch chain (mandatory)
 
@@ -99,8 +99,8 @@ A case is not passed when only a source-code regex test is green.
 
 | ID | Journey | Required assertions |
 | --- | --- | --- |
-| E01 | Cloud submit <=20 | Submission/task/library rows created; immediate Stop UI; per-user deadline correct |
-| E02 | Cloud submit >20 | Scrollable source picker; selected IDs only; ownership and limit enforced server-side |
+| E01 | Cloud submit <=30 | Submission/task/library rows created; immediate Stop UI; per-user deadline correct |
+| E02 | Cloud submit >30 | Scrollable source picker; selected IDs only; ownership and limit enforced server-side |
 | E03 | Shared source demand | Effective frequency is fastest active demand; shared task deadline and user deadline remain distinct |
 | E04 | Queue materialization | Only ACTIVE tasks with active submitters; canonical cooldown, budget, release and urgency respected |
 | E05 | Lease | Exclusive QUEUED->LEASED transition; run/task rows and fetched keys correct |

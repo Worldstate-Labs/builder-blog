@@ -4,7 +4,7 @@ import { SkillBuilderSchema, SkillTaskOutcomeSchema } from "@/lib/skill-contract
 
 export type CloudFetchFrequencyInput = "day" | "week";
 export type CloudFetchFrequency = "DAILY" | "WEEKLY";
-export const CLOUD_SOURCE_SUBMISSION_LIMIT = 20;
+export const CLOUD_SOURCE_SUBMISSION_LIMIT = 30;
 
 export type CloudSourceSubmissionInput = {
   frequency: string;

@@ -26,7 +26,7 @@ test("cloud source submission route authenticates, normalizes input, and rate li
 });
 
 test("cloud source submission input limits selected source ids", () => {
-  assert.equal(CLOUD_SOURCE_SUBMISSION_LIMIT, 20);
+  assert.equal(CLOUD_SOURCE_SUBMISSION_LIMIT, 30);
   const input = normalizeCloudSourceSubmissionInput({
     frequency: "week",
     summaryLanguage: "zh",
@@ -34,6 +34,18 @@ test("cloud source submission input limits selected source ids", () => {
   });
 
   assert.deepEqual(input.builderIds, ["builder_1", "builder_2"]);
+  const maximumSelection = Array.from(
+    { length: CLOUD_SOURCE_SUBMISSION_LIMIT },
+    (_, index) => `maximum_${index}`,
+  );
+  assert.deepEqual(
+    normalizeCloudSourceSubmissionInput({
+      frequency: "day",
+      summaryLanguage: "en",
+      builderIds: maximumSelection,
+    }).builderIds,
+    maximumSelection,
+  );
   assert.throws(
     () =>
       normalizeCloudSourceSubmissionInput({
@@ -41,7 +53,7 @@ test("cloud source submission input limits selected source ids", () => {
         summaryLanguage: "zh",
         builderIds: Array.from({ length: CLOUD_SOURCE_SUBMISSION_LIMIT + 1 }, (_, index) => `b_${index}`),
       }),
-    /at most 20 sources/,
+    /at most 30 sources/,
   );
 });
 
