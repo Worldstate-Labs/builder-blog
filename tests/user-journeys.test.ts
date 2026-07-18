@@ -550,7 +550,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
   assert.match(skillPromptActions, /Fetch sources/);
   assert.doesNotMatch(skillPromptActions, /Update sources/);
-  assert.match(skillPromptActions, /Build AI Brief/);
+  assert.match(skillPromptActions, /cronLabel: "Build Your AI Brief"/);
+  assert.doesNotMatch(skillPromptActions, /cronLabel: "Build AI Brief"/);
   assert.doesNotMatch(skillPromptActions, /Build digest/);
   assert.match(skillPromptActions, /Stop fetching/);
   // Regression: a cloud submission must surface the Stop button immediately.

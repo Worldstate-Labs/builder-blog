@@ -31,7 +31,6 @@ export function OwnDigestPipelineCard({
       cronStatusControl={cronStatusControl}
       detailsSlot={children}
       pipeline={pipeline}
-      title={pipeline.title}
     />
   );
 }
@@ -42,23 +41,15 @@ function DigestPipelineInfoCard({
   cronStatusControl,
   detailsSlot,
   pipeline,
-  title,
 }: {
   beforePreview?: ReactNode;
   className: string;
   cronStatusControl?: ReactNode;
   detailsSlot?: ReactNode;
   pipeline: DigestPipelineRuntimeMetadata;
-  title: string;
 }) {
   return (
     <article className={className}>
-      <div className="fb-hub-card-head">
-        <div className="fb-hub-card-titleblock">
-          <h2 className="fb-hub-title">{title}</h2>
-        </div>
-      </div>
-
       {beforePreview}
 
       <DigestPipelinePreviewCard

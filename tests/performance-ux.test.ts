@@ -5376,6 +5376,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /"use client"/);
   assert.match(digestPipelineForm, /export function OwnDigestPipelineCard/);
   assert.doesNotMatch(digestPipelineForm, /export function FollowBriefDigestPipelineCard/);
+  assert.doesNotMatch(digestPipelineForm, /<h2 className="fb-hub-title">\{title\}<\/h2>/);
   assert.match(digestPipelineForm, /title: "Your AI Brief"/);
   assert.doesNotMatch(digestPipelineForm, /title: "FollowBrief AI Brief"/);
   assert.doesNotMatch(digestPipelineForm, /DigestPipelineTitleEditor|DigestPipelineVisibilityToggle|Import|Share to Hub|Keep private/);

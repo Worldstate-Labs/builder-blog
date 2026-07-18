@@ -6553,18 +6553,6 @@ summary.library-section-summary::after {
   padding: 1.125rem;
 }
 
-.own-digest-card-head {
-  min-width: 0;
-}
-
-.own-digest-card .fb-hub-title {
-  font-size: 1.0625rem;
-  font-weight: 820;
-  letter-spacing: 0;
-  line-height: 1.25;
-  margin: 0;
-}
-
 .own-digest-card .fb-hub-digest-preview {
   margin: 0;
 }
