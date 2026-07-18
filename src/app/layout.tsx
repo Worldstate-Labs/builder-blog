@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { cookies } from "next/headers";
+import { Analytics } from "@vercel/analytics/next";
 import { I18nProvider } from "@/components/I18nProvider";
 import {
   defaultUiLocale,
@@ -57,6 +58,7 @@ export default async function RootLayout({
       </head>
       <body className="fb-root-body">
         <I18nProvider initialLocale={initialLocale}>{children}</I18nProvider>
+        <Analytics />
       </body>
     </html>
   );
