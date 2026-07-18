@@ -630,6 +630,7 @@ async function loadFetchSyncData(user: {
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
     cloudSubmissionSources,
     cloudFetchLog,
+    userId: user.id,
   };
 }
 
@@ -783,6 +784,7 @@ async function FetchSyncSection({
           initialScheduledJobRuns={data.scheduledJobRuns}
           initialRuns={data.fetchRuns}
           summaryLanguage={data.summaryLanguage}
+          userId={data.userId}
         />
       </div>
     </section>

@@ -25,6 +25,7 @@ import {
   liveDataSignature,
   LIVE_POLL_IDLE_MS,
   LIVE_POLL_RUNNING_MS,
+  logRecordKeys,
   requestWorkspaceRefresh,
 } from "@/lib/content-sync-events";
 import { decodeHtmlEntities } from "@/lib/decode-entities";
@@ -1097,6 +1098,7 @@ export function FetchLogPanel({
   initialHasMoreHistory = false,
   actions,
   actionsPlacement = "end",
+  onLogRecordKeysChange,
   summaryLanguage,
 }: {
   initialRuns: LibraryFetchRunListItem[];
@@ -1107,6 +1109,7 @@ export function FetchLogPanel({
   initialHasMoreHistory?: boolean;
   actions?: ReactNode;
   actionsPlacement?: "start" | "end";
+  onLogRecordKeysChange?: (keys: string[]) => void;
   summaryLanguage?: string | null;
 }) {
   const [runs, setRuns] = useState(initialRuns);
@@ -1121,6 +1124,15 @@ export function FetchLogPanel({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<FetchLogRef | null>(null);
   const [liveLogSuppressStalled, setLiveLogSuppressStalled] = useState(false);
+  const currentLogRecordKeys = useMemo(
+    () => logRecordKeys([
+      ...runs.map((run) => `fetch:${run.id}`),
+      ...cronRuns.map((run) => `fetch:${run.id}`),
+      ...jobRuns.map((run) => `job:${run.id}`),
+      ...scheduledJobRuns.map((run) => `job:${run.id}`),
+    ]),
+    [cronRuns, jobRuns, runs, scheduledJobRuns],
+  );
   const cronStatus = useMemo(
     () => buildCronStatus(cronJob, cronRuns, scheduledJobRuns),
     [cronJob, cronRuns, scheduledJobRuns],
@@ -1163,6 +1175,9 @@ export function FetchLogPanel({
   useEffect(() => {
     cronJobRef.current = cronJob;
   }, [cronJob]);
+  useEffect(() => {
+    onLogRecordKeysChange?.(currentLogRecordKeys);
+  }, [currentLogRecordKeys, onLogRecordKeysChange]);
 
   const refresh = useCallback(() => {
     setError(null);

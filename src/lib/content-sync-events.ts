@@ -21,3 +21,12 @@ export function requestWorkspaceRefresh(source: string) {
 export function liveDataSignature(value: unknown): string {
   return JSON.stringify(value);
 }
+
+export function logRecordKeys(keys: string[]): string[] {
+  return Array.from(new Set(keys.filter(Boolean))).sort();
+}
+
+export function hasUnseenLogRecords(current: string[], seen: string[]): boolean {
+  const seenKeys = new Set(seen);
+  return current.some((key) => !seenKeys.has(key));
+}

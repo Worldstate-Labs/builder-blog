@@ -6582,6 +6582,21 @@ summary.library-section-summary::after {
   white-space: nowrap;
 }
 
+.source-sync-log-tab-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.source-sync-log-unread-dot {
+  background: var(--danger);
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--paper) 88%, transparent);
+  flex: 0 0 auto;
+  height: 0.45rem;
+  width: 0.45rem;
+}
+
 .source-fetch-overview {
   display: grid;
   gap: 0.9rem;
