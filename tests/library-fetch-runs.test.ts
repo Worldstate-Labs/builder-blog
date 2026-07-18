@@ -1255,6 +1255,22 @@ test("source sync log tabs default to FollowBrief before Agent", () => {
   assert.match(tabs, /RelativeTime/);
 });
 
+test("FollowBrief fetch log reveals sources after the first five", () => {
+  const tabs = source("src/components/SourceSyncLogTabs.tsx");
+
+  assert.match(tabs, /const USER_CLOUD_SOURCE_LIMIT = 5/);
+  assert.match(tabs, /const \[sourcesExpanded, setSourcesExpanded\] = useState\(false\)/);
+  assert.match(
+    tabs,
+    /const visibleSources = sourcesExpanded[\s\S]*cloudLog\.sources[\s\S]*cloudLog\.sources\.slice\(0, USER_CLOUD_SOURCE_LIMIT\)/,
+  );
+  assert.match(tabs, /visibleSources\.map\(\(source\) =>/);
+  assert.match(tabs, /aria-controls="user-cloud-source-list"/);
+  assert.match(tabs, /aria-expanded=\{sourcesExpanded\}/);
+  assert.match(tabs, /Collapse to the first 5 sources/);
+  assert.match(tabs, /sourcesExpanded \? "Show less" : "Show more"/);
+});
+
 test("builder feed recent posts show two posts before scrolling", () => {
   const feedItems = source("src/components/BuilderFeedItems.tsx");
   const recentPostsList = source("src/components/RecentPostsList.tsx");

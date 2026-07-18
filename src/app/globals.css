@@ -6640,6 +6640,15 @@ summary.library-section-summary::after {
   border-top: 1px solid var(--line);
 }
 
+.user-cloud-source-list-shell {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.user-cloud-source-list-toggle {
+  justify-self: start;
+}
+
 .user-cloud-source-detail {
   display: grid;
   gap: 0.35rem;

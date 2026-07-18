@@ -33,6 +33,8 @@ type LogReadMarkers = Record<SyncLogTab, string[]>;
 
 const logReadMarkerStoragePrefix = "followbrief:source-log-read-markers:";
 
+const USER_CLOUD_SOURCE_LIMIT = 5;
+
 export function SourceSyncLogTabs({
   cloudLog,
   initialCronJob,
@@ -276,9 +278,14 @@ function UserCloudFetchLogPanel({
   cloudLog: UserCloudFetchLogData;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const sourceLabel = cloudLog.submittedSourceCount === 1 ? "source" : "sources";
   const onTimeSourceCount = cloudLog.sources.filter((source) => source.deadlineStatus === "ON_TIME").length;
   const onTimeSourceLabel = onTimeSourceCount === 1 ? "source" : "sources";
+  const visibleSources = sourcesExpanded
+    ? cloudLog.sources
+    : cloudLog.sources.slice(0, USER_CLOUD_SOURCE_LIMIT);
+  const hiddenSourceCount = Math.max(0, cloudLog.sources.length - USER_CLOUD_SOURCE_LIMIT);
 
   return (
     <section className="fb-panel digest-updates-panel user-cloud-fetch-log">
@@ -304,20 +311,41 @@ function UserCloudFetchLogPanel({
       </div>
 
       {cloudLog.sources.length > 0 ? (
-        <ul className="cloud-source-list user-cloud-source-list">
-          {cloudLog.sources.map((source) => {
-            const isOpen = expanded === source.submissionId;
-            return (
-              <CloudSourceLogItem
-                key={source.submissionId}
-                isOpen={isOpen}
-                onToggle={() => setExpanded(isOpen ? null : source.submissionId)}
-                showSubmitters={false}
-                source={toUserCloudSourceLogItem(source)}
-              />
-            );
-          })}
-        </ul>
+        <div className="user-cloud-source-list-shell">
+          <ul
+            className="cloud-source-list user-cloud-source-list"
+            id="user-cloud-source-list"
+          >
+            {visibleSources.map((source) => {
+              const isOpen = expanded === source.submissionId;
+              return (
+                <CloudSourceLogItem
+                  key={source.submissionId}
+                  isOpen={isOpen}
+                  onToggle={() => setExpanded(isOpen ? null : source.submissionId)}
+                  showSubmitters={false}
+                  source={toUserCloudSourceLogItem(source)}
+                />
+              );
+            })}
+          </ul>
+          {hiddenSourceCount > 0 ? (
+            <button
+              aria-controls="user-cloud-source-list"
+              aria-expanded={sourcesExpanded}
+              aria-label={
+                sourcesExpanded
+                  ? "Collapse to the first 5 sources"
+                  : `Show ${hiddenSourceCount} more sources`
+              }
+              className="sync-panel-run-card-reveal user-cloud-source-list-toggle"
+              onClick={() => setSourcesExpanded((value) => !value)}
+              type="button"
+            >
+              {sourcesExpanded ? "Show less" : "Show more"}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );
