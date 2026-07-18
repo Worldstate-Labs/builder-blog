@@ -3176,6 +3176,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "줄이기",
     es: "Mostrar menos",
   },
+  "New logs": {
+    "zh-CN": "新日志",
+    "zh-TW": "新日誌",
+    ja: "新しいログ",
+    ko: "새 로그",
+    es: "Registros nuevos",
+  },
   "Untitled post": {
     "zh-CN": "无标题帖子",
     "zh-TW": "無標題貼文",
@@ -4947,6 +4954,20 @@ const templateTranslations: PhraseTemplate[] = [
         ja: `さらに ${count} 件のソースを表示`,
         ko: `소스 ${count}개 더 보기`,
         es: `Mostrar ${count} fuentes más`,
+      };
+      return values[locale];
+    },
+  },
+  {
+    pattern: /^Collapse to the first ([0-9,]+) sources?$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const count = match[1];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `收起到前 ${count} 个信息源`,
+        "zh-TW": `收合至前 ${count} 個資訊源`,
+        ja: `最初の${count}件のソースに折りたたむ`,
+        ko: `처음 ${count}개 소스로 접기`,
+        es: `Contraer a las primeras ${count} fuentes`,
       };
       return values[locale];
     },

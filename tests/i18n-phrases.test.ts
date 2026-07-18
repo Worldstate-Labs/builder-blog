@@ -38,6 +38,8 @@ test("Sources page UI phrases translate while product and source names stay stab
     ["Loading Favorites", "正在加载收藏"],
     ["No Favorites yet", "还没有收藏"],
     ["Show 9 more sources", "再显示 9 个信息源"],
+    ["Collapse to the first 5 sources", "收起到前 5 个信息源"],
+    ["New logs", "新日志"],
     ["Source libraries imported from Hub.", "从 Hub 导入的信息源库。"],
     ["No imported source libraries", "还没有导入的信息源库"],
     ["Import source libraries from Hub.", "从 Hub 导入信息源库。"],
