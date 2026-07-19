@@ -235,8 +235,6 @@ function nextCloudTaskRuntimeStats(params: {
   const actualDurationSeconds = positiveIntegerOrNull(params.actualDurationSeconds);
   const usageTokens = positiveIntegerOrNull(params.usageTokens);
   const syncedPosts = nonNegativeIntegerOrNull(params.syncedPosts);
-  const durationSampleCount =
-    params.task.durationSampleCount + (actualDurationSeconds == null ? 0 : 1);
   const tokenSampleCount = params.task.tokenSampleCount + (usageTokens == null ? 0 : 1);
   const postYieldSampleCount =
     params.task.postYieldSampleCount + (syncedPosts == null ? 0 : 1);
@@ -266,10 +264,11 @@ function nextCloudTaskRuntimeStats(params: {
           nextValue: syncedPosts,
         }),
       };
-  if (actualDurationSeconds == null) {
+  if (!params.succeeded || actualDurationSeconds == null) {
     return { successSampleCount, estimatedSuccessProbability, ...tokenStats, ...postYieldStats };
   }
 
+  const durationSampleCount = params.task.durationSampleCount + 1;
   const durationP50Seconds = movingAverage({
     previousAverage: params.task.durationP50Seconds,
     previousSamples: params.task.durationSampleCount,

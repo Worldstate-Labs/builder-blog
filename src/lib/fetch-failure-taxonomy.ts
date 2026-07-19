@@ -119,6 +119,22 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: false,
     contentFailure: true,
   },
+  workload_exceeds_max_budget: {
+    category: "content",
+    stage: "read",
+    userMessage: "This source exceeded the maximum supported extraction workload",
+    operatorMessage: "The planned extraction workload exceeded the supported four-hour execution ceiling, so the run stopped before attempting extraction.",
+    retryable: false,
+    contentFailure: true,
+  },
+  extraction_exceeds_shard_timeout: {
+    category: "content",
+    stage: "read",
+    userMessage: "This source could not finish extraction within the current shard budget",
+    operatorMessage: "The extraction plan could not safely complete within the shard's remaining execution budget, so the run stopped before starting extraction.",
+    retryable: true,
+    contentFailure: true,
+  },
   runtime_auth_failed: {
     category: "runtime",
     stage: "runtime",

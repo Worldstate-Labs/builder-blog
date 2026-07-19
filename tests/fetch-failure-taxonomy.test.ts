@@ -20,6 +20,8 @@ const REQUIRED_CODES = [
   "content_too_short",
   "content_validation_failed",
   "primary_content_unavailable",
+  "workload_exceeds_max_budget",
+  "extraction_exceeds_shard_timeout",
   "runtime_auth_failed",
   "runtime_timeout",
   "runtime_timeout_no_fetch_result",
@@ -86,6 +88,35 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
   assert.equal(isNotCompletedFailureReason("summary_missing"), false);
   assert.equal(isHiddenFailureReason("heartbeat"), true);
   assert.equal(isHiddenFailureReason("worker_backgrounded_tool"), false);
+});
+
+test("fetch failure taxonomy classifies budgeted extraction terminals as content-stage read outcomes", () => {
+  assert.deepEqual(fetchFailureInfo("workload_exceeds_max_budget"), {
+    code: "workload_exceeds_max_budget",
+    known: true,
+    category: "content",
+    stage: "read",
+    userMessage: "This source exceeded the maximum supported extraction workload",
+    operatorMessage: "The planned extraction workload exceeded the supported four-hour execution ceiling, so the run stopped before attempting extraction.",
+    retryable: false,
+    visibility: "user",
+    contentFailure: true,
+  });
+  assert.deepEqual(fetchFailureInfo("extraction_exceeds_shard_timeout"), {
+    code: "extraction_exceeds_shard_timeout",
+    known: true,
+    category: "content",
+    stage: "read",
+    userMessage: "This source could not finish extraction within the current shard budget",
+    operatorMessage: "The extraction plan could not safely complete within the shard's remaining execution budget, so the run stopped before starting extraction.",
+    retryable: true,
+    visibility: "user",
+    contentFailure: true,
+  });
+  assert.equal(isContentFailureReason("workload_exceeds_max_budget"), true);
+  assert.equal(isContentFailureReason("extraction_exceeds_shard_timeout"), true);
+  assert.equal(isNotCompletedFailureReason("workload_exceeds_max_budget"), false);
+  assert.equal(isNotCompletedFailureReason("extraction_exceeds_shard_timeout"), false);
 });
 
 test("FetchLogPanel uses the central failure taxonomy instead of local labels", async () => {

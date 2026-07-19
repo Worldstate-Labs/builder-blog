@@ -79,6 +79,11 @@ test("cloud sync marks a successful leased task and advances the next deadline w
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.tokenSampleCount, 1);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedPostYield, 3);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.postYieldSampleCount, 1);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationSampleCount, 1);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationP50Seconds, 420);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationP75Seconds, 420);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationP90Seconds, 420);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedDurationSeconds, 420);
   assert.equal((prisma.cloudSourceTask.updateCalls[0].data.mustSucceedBy as Date).toISOString(), "2026-06-28T10:00:00.000Z");
   assert.equal((prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(), "2026-06-28T08:00:00.000Z");
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.status, "SUCCEEDED");
@@ -98,11 +103,15 @@ test("cloud sync marks failures with backoff and keeps a mixed run partial", asy
       effectiveFrequency: "WEEKLY",
       consecutiveFailures: 1,
       durationSampleCount: 4,
+      durationP50Seconds: 500,
+      durationP75Seconds: 700,
+      durationP90Seconds: 900,
       estimatedTokenCost: 1000,
       tokenSampleCount: 4,
       estimatedPostYield: 2,
       postYieldSampleCount: 4,
       successSampleCount: 4,
+      estimatedSuccessProbability: 0.8,
     },
     runTasks: [
       {
@@ -158,12 +167,20 @@ test("cloud sync marks failures with backoff and keeps a mixed run partial", asy
     details: {},
   });
   assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.status, "FAILED");
+  assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.actualDurationSeconds, 900);
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "FAILED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 2);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.successSampleCount, 5);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedSuccessProbability, 0.64);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedTokenCost, 1200);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.tokenSampleCount, 5);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedPostYield, 1.8);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.postYieldSampleCount, 5);
+  assert.equal("durationSampleCount" in prisma.cloudSourceTask.updateCalls[0].data, false);
+  assert.equal("durationP50Seconds" in prisma.cloudSourceTask.updateCalls[0].data, false);
+  assert.equal("durationP75Seconds" in prisma.cloudSourceTask.updateCalls[0].data, false);
+  assert.equal("durationP90Seconds" in prisma.cloudSourceTask.updateCalls[0].data, false);
+  assert.equal("estimatedDurationSeconds" in prisma.cloudSourceTask.updateCalls[0].data, false);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.lastFailureReason, "summary_missing");
   assert.equal((prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(), "2026-06-27T11:00:00.000Z");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.circuitBreakerUntil, null);
@@ -344,12 +361,16 @@ function fakeCloudSyncPrisma({
     summaryLanguage: string;
     effectiveFrequency: "DAILY" | "WEEKLY";
     consecutiveFailures: number;
+    durationP50Seconds?: number | null;
+    durationP75Seconds?: number | null;
+    durationP90Seconds?: number | null;
     durationSampleCount: number;
     estimatedTokenCost?: number | null;
     tokenSampleCount: number;
     estimatedPostYield?: number | null;
     postYieldSampleCount: number;
     successSampleCount: number;
+    estimatedSuccessProbability?: number | null;
   };
   runTasks: Array<{
     runId: string;
