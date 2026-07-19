@@ -200,7 +200,10 @@ test("cloud sync keeps partial source results visible without failure backoff", 
       summaryLanguage: "en",
       effectiveFrequency: "DAILY",
       consecutiveFailures: 1,
-      durationSampleCount: 0,
+      durationP50Seconds: 120,
+      durationP75Seconds: 180,
+      durationP90Seconds: 240,
+      durationSampleCount: 2,
       estimatedTokenCost: null,
       tokenSampleCount: 0,
       estimatedPostYield: null,
@@ -240,6 +243,7 @@ test("cloud sync keeps partial source results visible without failure backoff", 
       plannedPosts: 2,
       syncedPosts: 1,
       failedPosts: 1,
+      actualDurationSeconds: 300,
       failureReason: "worker_missing_result",
     },
   });
@@ -251,17 +255,25 @@ test("cloud sync keeps partial source results visible without failure backoff", 
     plannedPosts: 2,
     syncedPosts: 1,
     failedPosts: 1,
-    actualDurationSeconds: null,
+    actualDurationSeconds: 300,
     failureReason: "worker_missing_result",
     usageTokens: null,
     usageCostUsd: null,
     details: {},
   });
   assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.status, "PARTIAL");
+  assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.actualDurationSeconds, 300);
   assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.failureReason, "worker_missing_result");
   assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "SUCCEEDED");
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.lastSuccessAt, now);
   assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 0);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationSampleCount, 3);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationP50Seconds, 180);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationP75Seconds, 220);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.durationP90Seconds, 260);
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.estimatedDurationSeconds, 220);
+  assert.equal((prisma.cloudSourceTask.updateCalls[0].data.mustSucceedBy as Date).toISOString(), "2026-06-28T10:00:00.000Z");
+  assert.equal((prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(), "2026-06-28T08:00:00.000Z");
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.status, "PARTIAL");
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksSucceeded, 1);
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksFailed, 1);
