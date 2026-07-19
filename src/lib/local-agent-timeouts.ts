@@ -31,7 +31,7 @@ export type CloudShardBudgetReason =
   | "capped_long_media_maximum";
 
 export type CloudShardExecutionBudgetInput = {
-  estimatedWorkSeconds: string | number | null | undefined;
+  estimatedWorkSeconds?: string | number | null | undefined;
   sourceType?: string | null;
   workloadClass?: CloudShardWorkloadClass | null;
 };

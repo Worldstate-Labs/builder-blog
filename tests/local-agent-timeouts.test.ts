@@ -21,14 +21,13 @@ test("local agent timeout policy is shared and clamps expected cron windows", ()
 });
 
 test("cloud shard execution budget enforces the 60 minute minimum for short estimates", () => {
-  assert.equal(
-    cloudShardExecutionBudget({ estimatedWorkSeconds: 10 * 60, sourceType: "blog" }).executionBudgetSeconds,
-    60 * 60,
-  );
-  assert.equal(
-    cloudShardExecutionBudget({ estimatedWorkSeconds: 30 * 60, sourceType: "blog" }).executionBudgetSeconds,
-    60 * 60,
-  );
+  const tenMinuteBudget = cloudShardExecutionBudget({ estimatedWorkSeconds: 10 * 60, sourceType: "blog" });
+  const thirtyMinuteBudget = cloudShardExecutionBudget({ estimatedWorkSeconds: 30 * 60, sourceType: "blog" });
+
+  assert.equal(tenMinuteBudget.executionBudgetSeconds, 60 * 60);
+  assert.equal(tenMinuteBudget.budgetReason, "minimum_budget");
+  assert.equal(thirtyMinuteBudget.executionBudgetSeconds, 60 * 60);
+  assert.equal(thirtyMinuteBudget.budgetReason, "minimum_budget");
 });
 
 test("cloud shard execution budget scales, adds allowance, and rounds to 5 minute increments", () => {
@@ -37,6 +36,7 @@ test("cloud shard execution budget scales, adds allowance, and rounds to 5 minut
   assert.equal(budget.estimatedWorkSeconds, 70 * 60);
   assert.equal(budget.executionBudgetSeconds, 115 * 60);
   assert.equal(budget.workloadClass, "standard");
+  assert.equal(budget.budgetReason, "scaled_and_rounded");
 });
 
 test("cloud shard execution budget caps standard workloads at 2 hours", () => {
@@ -44,6 +44,7 @@ test("cloud shard execution budget caps standard workloads at 2 hours", () => {
 
   assert.equal(budget.executionBudgetSeconds, 2 * 60 * 60);
   assert.equal(budget.workloadClass, "standard");
+  assert.equal(budget.budgetReason, "capped_standard_maximum");
 });
 
 test("cloud shard execution budget caps long-media workloads at 4 hours", () => {
@@ -58,6 +59,14 @@ test("cloud shard execution budget normalizes invalid estimates to deterministic
 
   assert.equal(budget.estimatedWorkSeconds, 0);
   assert.equal(budget.executionBudgetSeconds, 60 * 60);
+});
+
+test("cloud shard execution budget treats an omitted estimate as zero and still returns the minimum budget", () => {
+  const budget = cloudShardExecutionBudget({ sourceType: "blog" });
+
+  assert.equal(budget.estimatedWorkSeconds, 0);
+  assert.equal(budget.executionBudgetSeconds, 60 * 60);
+  assert.equal(budget.budgetReason, "minimum_budget");
 });
 
 test("cloud deadline state changes state only, not the computed execution budget", () => {
