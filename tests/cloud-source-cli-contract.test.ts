@@ -115,8 +115,13 @@ test("cloud fetch CLI contract keeps provisional execution plan metadata in both
 
 test("cloud fetch command is exposed and keeps worker-facing task shape", async () => {
   const cliSource = await readFile("scripts/builder-digest.mjs", "utf8");
+  const sharedBudgetSource = await readFile("scripts/cloud-shard-budget.mjs", "utf8");
 
   assert.match(cliSource, /fetch-cloud-library \[--limit 10\]/);
+  assert.match(cliSource, /from "\.\/cloud-shard-budget\.mjs"/);
+  assert.match(sharedBudgetSource, /export function normalizeCloudShardBudgetPolicy/);
+  assert.match(sharedBudgetSource, /export function cloudShardExecutionBudget/);
+  assert.match(sharedBudgetSource, /export function cloudDeadlineState/);
   assert.match(cliSource, /assign-fetch-tasks --tasks fetch-result\.json/);
   assert.match(cliSource, /merge-fetch-results --base fetch-result\.json/);
   assert.match(cliSource, /split-sync-slices --tasks fetch-result\.json[\s\S]*source\|task\|cloud-run/);
@@ -132,6 +137,19 @@ test("cloud fetch command is exposed and keeps worker-facing task shape", async 
   assert.match(cliSource, /personalFetchedItems: force \? \[\] : cloudFetchedItems/);
   assert.match(cliSource, /taskOutcomes: planned\.taskOutcomes/);
   assert.doesNotMatch(cliSource, /user private-library builders are selected by cloud command/);
+});
+
+test("shared cloud budget module is shipped through the skill file and bootstrap surfaces", async () => {
+  const fileRoute = await readFile("src/app/api/skill/files/[file]/route.ts", "utf8");
+  const bootstrapRoute = await readFile("src/app/api/skill/bootstrap/route.ts", "utf8");
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(fileRoute, /"cloud-shard-budget\.mjs"/);
+  assert.match(fileRoute, /path: "scripts\/cloud-shard-budget\.mjs"/);
+  assert.match(bootstrapRoute, /api\/skill\/files\/cloud-shard-budget\.mjs/);
+  assert.match(bootstrapRoute, /"\$AGENT_DIR\/cloud-shard-budget\.mjs"/);
+  assert.match(runner, /api\/skill\/files\/cloud-shard-budget\.mjs/);
+  assert.match(runner, /"\$AGENT_DIR\/cloud-shard-budget\.mjs"/);
 });
 
 test("cloud library runner reuses the library worker pipeline with cloud fetch and sync commands", async () => {

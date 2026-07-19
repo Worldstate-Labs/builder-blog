@@ -6,6 +6,12 @@ import {
   localAgentShardTimeoutSeconds,
   localAgentTimeoutSeconds,
 } from "../src/lib/local-agent-timeouts";
+import {
+  cloudDeadlineState as sharedCloudDeadlineState,
+  cloudShardExecutionBudget as sharedCloudShardExecutionBudget,
+  normalizeCloudShardBudgetPolicy,
+} from "../scripts/cloud-shard-budget.mjs";
+import timeoutPolicy from "../config/local-agent-timeouts.json";
 
 test("local agent timeout policy is shared and clamps expected cron windows", () => {
   assert.equal(localAgentTimeoutSeconds(60, "library-once"), "43200");
@@ -98,4 +104,30 @@ test("cloud deadline state changes state only, not the computed execution budget
     "missed",
   );
   assert.equal(budget.executionBudgetSeconds, 115 * 60);
+});
+
+test("server timeout wrapper stays behaviorally aligned with the shared cloud budget module", () => {
+  const sharedPolicy = normalizeCloudShardBudgetPolicy(timeoutPolicy.cloudShardBudget);
+  const inputs = [
+    { estimatedWorkSeconds: 0, sourceType: "blog" },
+    { estimatedWorkSeconds: 70 * 60, sourceType: "blog" },
+    { estimatedWorkSeconds: 20_000, sourceType: "podcast" },
+  ] as const;
+
+  for (const input of inputs) {
+    assert.deepEqual(
+      cloudShardExecutionBudget(input),
+      sharedCloudShardExecutionBudget(input, sharedPolicy),
+    );
+  }
+
+  const deadlineInput = {
+    now: new Date("2026-07-19T12:00:00.000Z"),
+    mustSucceedBy: new Date("2026-07-19T13:30:00.000Z"),
+    executionBudgetSeconds: 115 * 60,
+  } as const;
+  assert.equal(
+    cloudDeadlineState(deadlineInput),
+    sharedCloudDeadlineState(deadlineInput, sharedPolicy),
+  );
 });

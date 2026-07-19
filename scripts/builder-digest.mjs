@@ -6,6 +6,11 @@ import { basename, dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import {
+  cloudDeadlineState as sharedCloudDeadlineState,
+  cloudShardExecutionBudget as sharedCloudShardExecutionBudget,
+  normalizeCloudShardBudgetPolicy,
+} from "./cloud-shard-budget.mjs";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -272,15 +277,6 @@ const DEFAULT_MEDIA_ESTIMATION_POLICY = {
   audioPreparationRealtimeFactor: 0.15,
   fixedOverheadSeconds: 90,
 };
-const DEFAULT_CLOUD_SHARD_BUDGET_POLICY = {
-  minimumSeconds: 3_600,
-  standardMaximumSeconds: 7_200,
-  longMediaMaximumSeconds: 14_400,
-  safetyMultiplier: 1.5,
-  completionAllowanceSeconds: 600,
-  roundingSeconds: 300,
-  progressHeartbeatSeconds: 60,
-};
 let _installedLocalAgentTimeoutPolicy;
 
 function installedLocalAgentTimeoutPolicy() {
@@ -321,17 +317,6 @@ function nonNegativeIntegerValue(value, fallback = 0) {
 function positiveNumberValue(value, fallback) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback;
-}
-
-function positiveIntegerValue(value, fallback) {
-  const numericValue = nonNegativeIntegerValue(value, fallback);
-  return numericValue > 0 ? numericValue : fallback;
-}
-
-function roundUpToIncrement(value, increment) {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  if (!Number.isFinite(increment) || increment <= 0) return Math.ceil(value);
-  return Math.ceil(value / increment) * increment;
 }
 
 export function parseMediaDurationSeconds(value) {
@@ -387,31 +372,9 @@ function resolvedMediaEstimationPolicy(policy = null) {
 }
 
 function resolvedCloudShardBudgetPolicy(policy = null) {
-  const configured = policy?.cloudShardBudget ?? installedLocalAgentTimeoutPolicy()?.cloudShardBudget ?? {};
-  return {
-    minimumSeconds: positiveIntegerValue(configured.minimumSeconds, DEFAULT_CLOUD_SHARD_BUDGET_POLICY.minimumSeconds),
-    standardMaximumSeconds: positiveIntegerValue(
-      configured.standardMaximumSeconds,
-      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.standardMaximumSeconds,
-    ),
-    longMediaMaximumSeconds: positiveIntegerValue(
-      configured.longMediaMaximumSeconds,
-      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.longMediaMaximumSeconds,
-    ),
-    safetyMultiplier: positiveNumberValue(
-      configured.safetyMultiplier,
-      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.safetyMultiplier,
-    ),
-    completionAllowanceSeconds: nonNegativeIntegerValue(
-      configured.completionAllowanceSeconds,
-      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.completionAllowanceSeconds,
-    ),
-    roundingSeconds: positiveIntegerValue(configured.roundingSeconds, DEFAULT_CLOUD_SHARD_BUDGET_POLICY.roundingSeconds),
-    progressHeartbeatSeconds: nonNegativeIntegerValue(
-      configured.progressHeartbeatSeconds,
-      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.progressHeartbeatSeconds,
-    ),
-  };
+  return normalizeCloudShardBudgetPolicy(
+    policy?.cloudShardBudget ?? installedLocalAgentTimeoutPolicy()?.cloudShardBudget ?? {},
+  );
 }
 
 /**
@@ -444,21 +407,6 @@ export function estimateMediaWorkSeconds(input = {}, policy = null) {
   };
 }
 
-function cloudDeadlineStateForTask({
-  now,
-  mustSucceedBy,
-  executionBudgetSeconds,
-  policy = null,
-} = {}) {
-  const deadline = mustSucceedBy ? new Date(mustSucceedBy) : null;
-  if (!deadline || Number.isNaN(deadline.getTime())) return "on_time";
-  if (now.getTime() > deadline.getTime()) return "missed";
-  const budgetPolicy = resolvedCloudShardBudgetPolicy(policy);
-  const projectedCompletionAt =
-    now.getTime() + (nonNegativeIntegerValue(executionBudgetSeconds, 0) + budgetPolicy.progressHeartbeatSeconds) * 1000;
-  return projectedCompletionAt > deadline.getTime() ? "at_risk" : "on_time";
-}
-
 function plannedCloudWorkloadClass(task) {
   if (task?.workloadClass === "standard" || task?.workloadClass === "long_media") return task.workloadClass;
   const sourceType = String(task?.sourceType || task?.builderSync?.sourceType || "").trim().toLowerCase();
@@ -488,9 +436,10 @@ function plannedMediaDurationSeconds(task, metadata) {
 
 function finalizeCloudTaskExecutionPlan(task, metadata = {}, { now = new Date(), policy = null } = {}) {
   const budgetPolicy = resolvedCloudShardBudgetPolicy(policy);
-  const workloadClass = plannedCloudWorkloadClass(task);
+  const summaryOnlyReadyTask = task?.contentStatus === "ready";
+  const workloadClass = summaryOnlyReadyTask ? "standard" : plannedCloudWorkloadClass(task);
   const mediaDurationSeconds = plannedMediaDurationSeconds(task, metadata);
-  const mediaEstimate = mediaDurationSeconds != null
+  const mediaEstimate = !summaryOnlyReadyTask && mediaDurationSeconds != null
     ? estimateMediaWorkSeconds(
       {
         mediaDurationSeconds,
@@ -500,56 +449,45 @@ function finalizeCloudTaskExecutionPlan(task, metadata = {}, { now = new Date(),
       policy,
     )
     : null;
-  const estimatedWorkSeconds = mediaEstimate?.estimatedWorkSeconds ?? sourceEstimatedWorkSeconds(task, metadata);
+  const sourceEstimatedSeconds = sourceEstimatedWorkSeconds(task, metadata);
+  const deterministicReadyEstimate = summaryOnlyReadyTask
+    ? Math.max(300, Math.min(1800, Math.ceil(String(task?.item?.body ?? "").length / 20)))
+    : 0;
+  const estimatedWorkSeconds =
+    mediaEstimate?.estimatedWorkSeconds ??
+    (sourceEstimatedSeconds > 0 ? sourceEstimatedSeconds : deterministicReadyEstimate);
+  const budget = sharedCloudShardExecutionBudget(
+    {
+      estimatedWorkSeconds,
+      sourceType: summaryOnlyReadyTask ? "blog" : task?.sourceType,
+      workloadClass,
+    },
+    budgetPolicy,
+  );
   const estimateEvidence = mediaEstimate?.estimateEvidence ?? {
     backend: task?.estimateEvidence?.backend ?? metadata?.estimateEvidence?.backend ?? null,
     model: task?.estimateEvidence?.model ?? metadata?.estimateEvidence?.model ?? null,
-    mediaDurationSeconds: mediaDurationSeconds ?? null,
-    sourceEstimatedWorkSeconds: sourceEstimatedWorkSeconds(task, metadata),
+    mediaDurationSeconds: summaryOnlyReadyTask ? null : mediaDurationSeconds ?? null,
+    sourceEstimatedWorkSeconds: sourceEstimatedSeconds,
   };
-  const rawBudgetSeconds =
-    estimatedWorkSeconds * budgetPolicy.safetyMultiplier + budgetPolicy.completionAllowanceSeconds;
-  const roundedBudgetSeconds = roundUpToIncrement(rawBudgetSeconds, budgetPolicy.roundingSeconds);
-  const minimumAppliedBudgetSeconds = Math.max(
-    estimatedWorkSeconds,
-    budgetPolicy.minimumSeconds,
-    roundedBudgetSeconds,
-  );
-  const maximumBudgetSeconds =
-    workloadClass === "long_media"
-      ? budgetPolicy.longMediaMaximumSeconds
-      : budgetPolicy.standardMaximumSeconds;
-  const executionBudgetSeconds = Math.min(maximumBudgetSeconds, minimumAppliedBudgetSeconds);
-  let budgetReason = "scaled_and_rounded";
-  if (executionBudgetSeconds === budgetPolicy.minimumSeconds && executionBudgetSeconds > roundedBudgetSeconds) {
-    budgetReason = "minimum_budget";
-  } else if (executionBudgetSeconds === budgetPolicy.standardMaximumSeconds && workloadClass === "standard") {
-    budgetReason = "capped_standard_maximum";
-  } else if (
-    executionBudgetSeconds === budgetPolicy.longMediaMaximumSeconds &&
-    workloadClass === "long_media"
-  ) {
-    budgetReason = "capped_long_media_maximum";
-  }
-  const deadlineState = cloudDeadlineStateForTask({
+  const deadlineState = sharedCloudDeadlineState({
     now,
     mustSucceedBy: task?.mustSucceedBy ?? metadata?.mustSucceedBy ?? null,
-    executionBudgetSeconds,
-    policy,
-  });
+    executionBudgetSeconds: budget.executionBudgetSeconds,
+  }, budgetPolicy);
 
   const plannedTask = {
     ...task,
     ...(mediaDurationSeconds != null ? { mediaDurationSeconds } : {}),
-    estimatedWorkSeconds,
-    executionBudgetSeconds,
-    workloadClass,
-    budgetReason,
+    estimatedWorkSeconds: budget.estimatedWorkSeconds,
+    executionBudgetSeconds: budget.executionBudgetSeconds,
+    workloadClass: budget.workloadClass,
+    budgetReason: budget.budgetReason,
     deadlineState,
     estimateEvidence,
   };
 
-  if (workloadClass === "long_media" && estimatedWorkSeconds > budgetPolicy.longMediaMaximumSeconds) {
+  if (!summaryOnlyReadyTask && workloadClass === "long_media" && budget.estimatedWorkSeconds > budgetPolicy.longMediaMaximumSeconds) {
     return {
       plannedTask: null,
       taskOutcome: {
@@ -558,7 +496,7 @@ function finalizeCloudTaskExecutionPlan(task, metadata = {}, { now = new Date(),
         reason: "workload_exceeds_max_budget",
         plannedTask,
         evidence: {
-          uncappedEstimatedWorkSeconds: estimatedWorkSeconds,
+          uncappedEstimatedWorkSeconds: budget.estimatedWorkSeconds,
           mediaDurationSeconds: mediaDurationSeconds ?? null,
           backend: estimateEvidence.backend ?? null,
           model: estimateEvidence.model ?? null,

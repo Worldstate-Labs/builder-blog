@@ -1587,6 +1587,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /download_skill_file\(\)/);
   assert.match(runner, /mv "\$_tmp" "\$_dest"/);
   assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
+  assert.match(runner, /api\/skill\/files\/cloud-shard-budget\.mjs/);
   assert.match(runner, /api\/skill\/files\/local-agent-timeouts\.json/);
   assert.doesNotMatch(
     runner,
@@ -1606,6 +1607,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /builder-blog-library-discovery\.md/);
   assert.match(skillFileRoute, /builder-agent-runner\.sh/);
   assert.match(skillFileRoute, /builder-digest\.mjs/);
+  assert.match(skillFileRoute, /cloud-shard-budget\.mjs/);
   assert.match(skillFileRoute, /local-agent-timeouts\.json/);
   assert.match(skillJobFiles, /library-once/);
   assert.match(skillJobFiles, /digest-once/);
@@ -1617,6 +1619,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobAliasRoute, /rel="canonical"/);
   assert.doesNotMatch(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
+  assert.match(bootstrapRoute, /api\/skill\/files\/cloud-shard-budget\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-cloud-library-host\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);

@@ -7225,6 +7225,101 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
   }
 });
 
+test("cloud planning keeps long ready podcast tasks runnable with a standard summary-only budget", async () => {
+  const originalFetch = global.fetch;
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-ready-podcast=${Date.now()}`);
+  global.fetch = async (input: string | URL | Request) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url === "https://pod.example.com/ready-long.xml") {
+      return new Response(`
+        <rss><channel>
+          <item>
+            <title>Ready long audio</title>
+            <guid>ready-long-episode</guid>
+            <link>https://pod.example.com/ready-long-episode</link>
+            <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+            <description>${"Detailed show notes about model architecture, training, deployment, and product lessons. ".repeat(20)}</description>
+            <itunes:duration>05:30:00</itunes:duration>
+            <enclosure url="https://cdn.example.com/ready-long.mp3" type="audio/mpeg" />
+          </item>
+        </channel></rss>
+      `);
+    }
+    return new Response("missing", { status: 404 });
+  };
+
+  try {
+    const planned = await cli.buildFetchTasksForBuilders({
+      builders: [
+        {
+          id: "podcast_ready_long",
+          scope: "PERSONAL",
+          kind: "PODCAST",
+          sourceType: "podcast",
+          name: "Ready Long Podcast",
+          sourceUrl: "https://pod.example.com/ready-long.xml",
+          fetchUrl: "https://pod.example.com/ready-long.xml",
+        },
+      ],
+      context: {
+        language: "zh",
+        subscriptions: [],
+        personalFetchedItems: [],
+        latestPersonalFetchedItems: [],
+        sources: {
+          podcast: {
+            label: "Podcast",
+            contentQuality: {
+              minChars: 200,
+              minContentUnits: 35,
+            },
+            summaryPrompt: {
+              language: "zh",
+              body: "Summarize the supplied episode in Chinese.",
+              style: "podcast_or_video",
+            },
+          },
+        },
+      },
+      force: true,
+      limit: 1,
+      runStartedAt: new Date("2026-07-19T08:00:00.000Z"),
+      cloudTaskMetadataByBuilderId: new Map([
+        [
+          "podcast_ready_long",
+          {
+            cloudRunId: "cloud_run_1",
+            cloudSourceTaskId: "cloud_ready_long",
+            builderId: "podcast_ready_long",
+            summaryLanguage: "zh",
+            mustSucceedBy: "2026-07-19T11:30:00.000Z",
+            estimatedDurationSeconds: 19_800,
+            provisionalExecutionBudgetSeconds: 3600,
+          },
+        ],
+      ]),
+    });
+
+    assert.equal(planned.taskOutcomes.length, 0);
+    assert.equal(planned.fetchTasks.length, 1);
+    const task = planned.fetchTasks[0] as {
+      contentStatus: string;
+      mediaDurationSeconds: number | null;
+      workloadClass: string;
+      executionBudgetSeconds: number;
+      estimateEvidence: { mediaDurationSeconds: number | null };
+    };
+    assert.equal(task.contentStatus, "ready");
+    assert.equal(task.mediaDurationSeconds, 19_800);
+    assert.equal(task.workloadClass, "standard");
+    assert.equal(task.executionBudgetSeconds >= 3600, true);
+    assert.equal(task.executionBudgetSeconds <= 7200, true);
+    assert.equal(task.estimateEvidence.mediaDurationSeconds, null);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("cloud planning finalizes no-local-fetcher fallback tasks with source estimates and no fake media duration", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?cloud-no-fetcher=${Date.now()}`);
   const planned = await cli.buildFetchTasksForBuilders({

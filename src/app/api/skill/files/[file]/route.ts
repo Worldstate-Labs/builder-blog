@@ -50,6 +50,10 @@ const skillFiles = {
     path: "scripts/builder-digest.mjs",
     contentType: "text/javascript; charset=utf-8",
   },
+  "cloud-shard-budget.mjs": {
+    path: "scripts/cloud-shard-budget.mjs",
+    contentType: "text/javascript; charset=utf-8",
+  },
   "sources.json": {
     path: "config/sources.json",
     contentType: "application/json; charset=utf-8",

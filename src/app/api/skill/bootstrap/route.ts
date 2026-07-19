@@ -36,6 +36,7 @@ download_skill_file() {
 }
 
 download_skill_file "$APP_URL/api/skill/files/builder-digest.mjs" "$AGENT_DIR/builder-digest.mjs"
+download_skill_file "$APP_URL/api/skill/files/cloud-shard-budget.mjs" "$AGENT_DIR/cloud-shard-budget.mjs"
 download_skill_file "$APP_URL/api/skill/files/builder-agent-runner.sh" "$AGENT_DIR/builder-agent-runner.sh"
 download_skill_file "$APP_URL/api/skill/files/builder-blog-library-once.md" "$AGENT_DIR/jobs/library-once.md"
 download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-once.md" "$AGENT_DIR/jobs/digest-once.md"
