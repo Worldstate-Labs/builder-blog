@@ -524,26 +524,47 @@ async function leaseCloudFetchTasksInTransaction(params: {
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
 
+  await lockCloudFetchCanonicalsForTransaction(
+    prisma,
+    selected.map(({ item }) => item.cloudSourceTask.builder.canonicalKey),
+  );
+  const postLockCanonicalActivityPolicy = await loadCanonicalActivityPolicy({
+    prisma,
+    now,
+    config,
+  });
+  const claimableSelected = selected.filter(({ item }) =>
+    !postLockCanonicalActivityPolicy.blocksCandidate({
+      canonicalKey: item.cloudSourceTask.builder.canonicalKey,
+      cloudSourceTaskId: item.cloudSourceTaskId,
+    })
+  );
+  if (claimableSelected.length === 0) {
+    return { status: "empty" as const, runId: null, tasks: [], budget };
+  }
+
   const fetchedItemsByBuilderId = await loadFetchedItemsForCloudBuilders(
     prisma,
-    selected.map(({ item }) => item.cloudSourceTask.builderId),
+    claimableSelected.map(({ item }) => item.cloudSourceTask.builderId),
   );
   const initialLeaseSeconds = Math.max(
     config.leaseTtlMinutes * 60,
-    ...selected.map((entry) => entry.executionPlan.provisionalExecutionBudgetSeconds + 10 * 60),
+    ...claimableSelected.map(
+      (entry) => entry.executionPlan.provisionalExecutionBudgetSeconds + 10 * 60,
+    ),
   );
   const leaseExpiresAt = new Date(now.getTime() + initialLeaseSeconds * 1000);
   const run = await prisma.cloudFetchRun.create({
     data: {
       leaseOwner: params.leaseOwner,
       requestedLimit: params.limit,
-      tasksClaimed: selected.length,
+      tasksClaimed: claimableSelected.length,
       status: CloudFetchRunStatus.RUNNING,
     },
   });
 
-  const claimed: typeof selected = [];
-  for (const entry of selected) {
+  const claimed: typeof claimableSelected = [];
+  for (const entry of claimableSelected) {
     const { item, estimate, executionPlan } = entry;
     // Guard the claim on status: QUEUED so a concurrent lease transaction that
     // already flipped this item to LEASED cannot be overwritten. Without the
@@ -591,7 +612,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
     return { status: "empty" as const, runId: null, tasks: [], budget };
   }
   // Keep tasksClaimed honest when some items were stolen by a concurrent lease.
-  if (claimed.length !== selected.length) {
+  if (claimed.length !== claimableSelected.length) {
     await prisma.cloudFetchRun.update({
       where: { id: run.id },
       data: { tasksClaimed: claimed.length },
@@ -1098,6 +1119,19 @@ async function loadCanonicalActivityPolicy(params: {
       status: task.status,
     })),
   });
+}
+
+async function lockCloudFetchCanonicalsForTransaction(
+  prisma: CloudSchedulerDb,
+  canonicalKeys: Iterable<string>,
+) {
+  const orderedCanonicalKeys = [...new Set(canonicalKeys)].sort();
+  for (const canonicalKey of orderedCanonicalKeys) {
+    await prisma.$queryRawUnsafe(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      canonicalKey,
+    );
+  }
 }
 
 async function expireStaleCloudFetchLeases(params: { prisma: CloudSchedulerDb; now: Date }) {

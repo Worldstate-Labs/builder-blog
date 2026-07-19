@@ -687,6 +687,135 @@ test("leaseCloudFetchTasks does not emit a lone-failed DB exception for a canoni
   assert.deepEqual(allowedCanonicalActivityPairs(leaseFindCalls[0]?.where), []);
 });
 
+test("leaseCloudFetchTasks locks selected canonicals in stable order and rechecks activity before creating a run", async () => {
+  const canonicalA = "BLOG:https://example.com/advisory-a";
+  const canonicalZ = "BLOG:https://example.com/advisory-z";
+  const advisoryLockCalls: Array<{ query: string; values: unknown[] }> = [];
+  let runCreates = 0;
+  let claimAttempts = 0;
+
+  const queuedItem = (suffix: string, canonicalKey: string) => ({
+    id: `queue_advisory_${suffix}`,
+    cloudSourceTaskId: `cloud_task_advisory_${suffix}`,
+    mustSucceedBy: minutesFromNow(30),
+    createdAt: new Date(`2026-06-27T11:0${suffix === "z" ? "0" : "1"}:00.000Z`),
+    cloudSourceTask: {
+      id: `cloud_task_advisory_${suffix}`,
+      builderId: `cloud_builder_advisory_${suffix}`,
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 50_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: `cloud_builder_advisory_${suffix}`,
+        kind: "BLOG",
+        sourceType: "blog",
+        name: `Advisory ${suffix.toUpperCase()}`,
+        handle: null,
+        sourceUrl: `https://example.com/advisory-${suffix}.xml`,
+        fetchUrl: `https://example.com/advisory-${suffix}.xml`,
+        canonicalKey,
+      },
+    },
+  });
+  const queuedZ = queuedItem("z", canonicalZ);
+  const queuedA = queuedItem("a", canonicalA);
+
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string, ...values: unknown[]) {
+      if (query.includes("pg_advisory_xact_lock")) {
+        advisoryLockCalls.push({ query, values });
+      }
+      return resetFenceQuery(query);
+    },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 100_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 0,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => {
+        if (args.where?.id) {
+          claimAttempts += 1;
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        const serializedSelect = JSON.stringify(args.select ?? {});
+        if (
+          args.where?.status === CloudFetchQueueStatus.LEASED &&
+          serializedSelect.includes("canonicalKey")
+        ) {
+          return advisoryLockCalls.length > 0
+            ? [canonicalA, canonicalZ].map((canonicalKey) => ({
+                cloudSourceTask: { builder: { canonicalKey } },
+              }))
+            : [];
+        }
+        if (args.select) return [];
+        if (args.include) return [queuedZ, queuedA];
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => {
+        runCreates += 1;
+        return { id: "run_cloud_advisory_1", ...args.data };
+      },
+      update: async () => ({}),
+      delete: async () => ({}),
+    },
+    feedItem: { findMany: async () => [] },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    workerStartedAt: now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "empty");
+  assert.equal(runCreates, 0);
+  assert.equal(claimAttempts, 0);
+  assert.deepEqual(
+    advisoryLockCalls.map((call) => call.values),
+    [[canonicalA], [canonicalZ]],
+  );
+  for (const call of advisoryLockCalls) {
+    assert.match(call.query, /pg_advisory_xact_lock\(hashtextextended\(\$1, 0\)\)/);
+    assert.ok(!call.query.includes(canonicalA));
+    assert.ok(!call.query.includes(canonicalZ));
+  }
+});
+
 test("leaseCloudFetchTasks keeps a lone recent failed task leasable while blocking sibling canonicals in the DB predicate", async () => {
   const sharedCanonical = "BLOG:https://example.com/lone-failed";
   const leaseFindCalls: Array<{ where?: Record<string, unknown> }> = [];
