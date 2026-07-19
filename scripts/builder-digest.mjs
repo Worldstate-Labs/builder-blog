@@ -6628,6 +6628,35 @@ function shardGroupKey(task) {
   return domain ? `domain:${domain}` : sourceGroupKey(task);
 }
 
+const MIN_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS = 3_600;
+const MAX_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS = 14_400;
+
+function taskCloudBudgetIdentity(task) {
+  return Boolean(
+    task?.cloudRunId ||
+    task?.cloudSourceTaskId ||
+    task?.builderSync?.cloudRunId ||
+    task?.builderSync?.cloudSourceTaskId,
+  );
+}
+
+function validatedCloudShardExecutionBudgetSeconds(value, fallback = MIN_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS) {
+  const seconds = nonNegativeIntegerValue(value, 0);
+  if (
+    seconds >= MIN_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS &&
+    seconds <= MAX_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS
+  ) {
+    return seconds;
+  }
+  return fallback;
+}
+
+function shardExecutionBudgetSecondsForTasks(tasks = []) {
+  const firstTask = Array.isArray(tasks) ? tasks.find(Boolean) : null;
+  if (!taskCloudBudgetIdentity(firstTask)) return null;
+  return validatedCloudShardExecutionBudgetSeconds(firstTask?.executionBudgetSeconds);
+}
+
 export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
   const { assignments, userActionTasks, discoveryTasks } = planFetchQueueAssignments(fetchResult, {
     maxWorkers,
@@ -6769,6 +6798,9 @@ async function shardTasks(args) {
           status: "ok",
           shardIndex: index,
           shardCount: shards.length,
+          ...(shardExecutionBudgetSecondsForTasks(shardTasks) != null
+            ? { executionBudgetSeconds: shardExecutionBudgetSecondsForTasks(shardTasks) }
+            : {}),
           fetchTasks: shardTasks,
         },
         null,
@@ -6871,6 +6903,7 @@ async function assignFetchTasks(args) {
     }));
     const taskIds = shardTasks.map((task) => taskIdForSync(task));
     const assignedKeys = shardTasks.map((task) => taskKeyForSync(task));
+    const executionBudgetSeconds = shardExecutionBudgetSecondsForTasks(shardTasks);
     assignedIds.push(...taskIds);
     await writeFile(
       file,
@@ -6883,6 +6916,7 @@ async function assignFetchTasks(args) {
           workerId,
           assignmentId: shardName,
           groupKeys: assignment.groupKeys,
+          ...(executionBudgetSeconds != null ? { executionBudgetSeconds } : {}),
           fetchTasks: shardTasks,
         },
         null,
@@ -6931,6 +6965,12 @@ function normalizeShardPlan(plan) {
   const shard = String(plan.shard || plan.name || "").trim();
   if (!shard) return null;
   const firstTask = Array.isArray(plan.tasks) ? plan.tasks.find(Boolean) : null;
+  const cloudShard = taskCloudBudgetIdentity(firstTask) || taskCloudBudgetIdentity(plan);
+  const executionBudgetSeconds = cloudShard
+    ? validatedCloudShardExecutionBudgetSeconds(
+        plan.executionBudgetSeconds ?? firstTask?.executionBudgetSeconds,
+      )
+    : null;
   const workerId = String(plan.workerId || firstTask?.workerId || shard).trim();
   const resultFile = String(plan.resultFile || `${shard}-result.json`);
   const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
@@ -6963,6 +7003,8 @@ function normalizeShardPlan(plan) {
   return {
     shard,
     workerId,
+    cloudShard,
+    executionBudgetSeconds,
     resultFile,
     workerLogFile: String(plan.workerLogFile || `${shard}-worker.log`),
     workerLogTail: typeof plan.workerLogTail === "string" ? plan.workerLogTail : null,
@@ -7017,8 +7059,14 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
       title: task?.title || task?.url || null,
     };
   }
-  if (Number.isFinite(Number(options.shardTimeoutSeconds))) {
-    evidence.shardTimeoutSeconds = Number(options.shardTimeoutSeconds);
+  const shardTimeoutSeconds =
+    (taskCloudBudgetIdentity(task)
+      ? validatedCloudShardExecutionBudgetSeconds(task?.executionBudgetSeconds)
+      : null) ??
+    (shardPlan?.cloudShard ? shardPlan.executionBudgetSeconds : null) ??
+    (Number.isFinite(Number(options.shardTimeoutSeconds)) ? Number(options.shardTimeoutSeconds) : null);
+  if (Number.isFinite(Number(shardTimeoutSeconds))) {
+    evidence.shardTimeoutSeconds = Number(shardTimeoutSeconds);
   }
   return evidence;
 }

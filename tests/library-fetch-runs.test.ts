@@ -372,7 +372,10 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /Assigning \$_task_count fetch task\(s\)[\s\S]*_dynamic_queue_enabled=1[\s\S]*assign_dynamic_fetch_workers "\$MAX_PARALLEL_WORKERS"/);
   assert.doesNotMatch(runner, /node "\$AGENT_DIR\/builder-digest\.mjs" shard-tasks[\s\S]*--max-workers "\$MAX_PARALLEL_WORKERS"/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
-  assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
+  assert.match(runner, /shard_timeout_seconds_for_file\(\)/);
+  assert.match(runner, /_worker_timeout="\$\(shard_timeout_seconds_for_file "\$_worker_shard_file"\)"/);
+  assert.match(runner, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS="\$_worker_timeout"/);
+  assert.doesNotMatch(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id:[0-9]+/);
   assert.match(runner, /function resultFileHasTerminalProgress/);
   assert.match(runner, /requireTerminalProgress/);
   assert.match(runner, /agent_runtime_failure_summary\(\)/);

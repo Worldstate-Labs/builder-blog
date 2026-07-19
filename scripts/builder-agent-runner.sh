@@ -1312,6 +1312,7 @@ NODE
   case "$_job" in
     library-once|digest-once) printf '%s\n' "43200"; return 0 ;;
     library-cron) _max=$(( 120 * 60 )) ;;
+    cloud-library-cron) _max=$(( ( 4 * 60 * 60 ) + ( 15 * 60 ) )) ;;
     digest-cron) _max=$(( 45 * 60 )) ;;
     *) _max=$(( 45 * 60 )) ;;
   esac
@@ -1355,6 +1356,87 @@ NODE
     esac
   fi
   printf '%s\n' "$(( _whole * 3 / 4 ))"
+}
+
+shard_timeout_seconds_for_file() {
+  _stsff_file="${1:-}"
+  _stsff_fallback="${2:-${_shard_timeout:-$(shard_timeout_seconds "$(job_timeout_seconds)")}}"
+  [ -r "$_stsff_file" ] || {
+    printf '%s\n' "$_stsff_fallback"
+    return 0
+  }
+  if command -v node >/dev/null 2>&1; then
+    _stsff_computed="$(
+      node - "$_stsff_file" "$_stsff_fallback" <<'NODE' 2>/dev/null
+const fs = require("fs");
+const [file, fallbackArg] = process.argv.slice(2);
+const fallback = Number(fallbackArg);
+function asInt(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
+}
+function validCloudBudget(value) {
+  const seconds = asInt(value);
+  return seconds >= 3600 && seconds <= 14400 ? seconds : 0;
+}
+try {
+  const payload = JSON.parse(fs.readFileSync(file, "utf8"));
+  const tasks = Array.isArray(payload?.fetchTasks)
+    ? payload.fetchTasks
+    : Array.isArray(payload?.tasks)
+      ? payload.tasks
+      : [];
+  const firstTask = tasks.find(Boolean) || null;
+  const isCloud = Boolean(
+    payload?.cloudRunId ||
+    payload?.cloudSourceTaskId ||
+    firstTask?.cloudRunId ||
+    firstTask?.cloudSourceTaskId ||
+    firstTask?.builderSync?.cloudRunId ||
+    firstTask?.builderSync?.cloudSourceTaskId
+  );
+  if (isCloud) {
+    console.log(String(validCloudBudget(payload?.executionBudgetSeconds) || validCloudBudget(firstTask?.executionBudgetSeconds) || 3600));
+    process.exit(0);
+  }
+} catch {}
+console.log(String(Number.isFinite(fallback) && fallback > 0 ? Math.floor(fallback) : 0));
+NODE
+    )"
+    case "$_stsff_computed" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' "$_stsff_computed"; return 0 ;;
+    esac
+  fi
+  printf '%s\n' "$_stsff_fallback"
+}
+
+shard_is_cloud_file() {
+  _sicf_file="${1:-}"
+  [ -r "$_sicf_file" ] || return 1
+  node - "$_sicf_file" <<'NODE' >/dev/null 2>&1
+const fs = require("fs");
+try {
+  const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const tasks = Array.isArray(payload?.fetchTasks)
+    ? payload.fetchTasks
+    : Array.isArray(payload?.tasks)
+      ? payload.tasks
+      : [];
+  const firstTask = tasks.find(Boolean) || null;
+  const isCloud = Boolean(
+    payload?.cloudRunId ||
+    payload?.cloudSourceTaskId ||
+    firstTask?.cloudRunId ||
+    firstTask?.cloudSourceTaskId ||
+    firstTask?.builderSync?.cloudRunId ||
+    firstTask?.builderSync?.cloudSourceTaskId
+  );
+  process.exit(isCloud ? 0 : 1);
+} catch {
+  process.exit(1);
+}
+NODE
 }
 
 iso_now() {
@@ -3535,9 +3617,10 @@ worker_entry_lane() {
   _wel_entry="${1:-}"
   _wel_rest="${_wel_entry#*:}"
   _wel_after_started="${_wel_rest#*:}"
-  case "$_wel_after_started" in
-    *:*) printf '%s\n' "${_wel_after_started#*:}" ;;
-    *) printf '%s\n' "$_wel_after_started" ;;
+  _wel_after_name="${_wel_after_started#*:}"
+  case "$_wel_after_name" in
+    *:*) printf '%s\n' "${_wel_after_name%%:*}" ;;
+    *) printf '%s\n' "$_wel_after_name" ;;
   esac
 }
 
@@ -3546,6 +3629,17 @@ worker_entry_shard_name() {
   _wesn_rest="${_wesn_entry#*:}"
   _wesn_after_started="${_wesn_rest#*:}"
   printf '%s\n' "${_wesn_after_started%%:*}"
+}
+
+worker_entry_shard_file() {
+  _wesf_entry="${1:-}"
+  _wesf_rest="${_wesf_entry#*:}"
+  _wesf_after_started="${_wesf_rest#*:}"
+  _wesf_after_name="${_wesf_after_started#*:}"
+  case "$_wesf_after_name" in
+    *:*) printf '%s\n' "${_wesf_after_name#*:}" ;;
+    *) printf '%s\n' "" ;;
+  esac
 }
 
 worker_entry_reserves_lane() {
@@ -3831,6 +3925,7 @@ NODE
   if library_worker_was_started "$_slw_shard_name"; then
     return 0
   fi
+  _worker_timeout="$(shard_timeout_seconds_for_file "$_slw_shard_file")"
   _slw_checkpoint_dir="$_results_dir/$_slw_shard_name-checkpoints"
   _slw_agent_output_file="$_results_dir/$_slw_shard_name-agent-output.log"
   mkdir -p "$_slw_checkpoint_dir"
@@ -3838,7 +3933,7 @@ NODE
     BUILDER_BLOG_SHARD_FILE="$_slw_shard_file"
     BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_slw_shard_name-result.json"
     BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_slw_checkpoint_dir"
-    BUILDER_BLOG_SHARD_TIMEOUT_SECONDS="$_shard_timeout"
+    BUILDER_BLOG_SHARD_TIMEOUT_SECONDS="$_worker_timeout"
     BUILDER_BLOG_AGENT_OUTPUT_FILE="$_slw_agent_output_file"
     export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR BUILDER_BLOG_SHARD_TIMEOUT_SECONDS BUILDER_BLOG_AGENT_OUTPUT_FILE
     if [ "$PINNED_RUNTIME" = "openclaw" ]; then
@@ -3857,16 +3952,31 @@ NODE
     IS_CRON_JOB=1
     run_selected_runtime
   ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
-  _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
+  _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id:$_slw_shard_file"
   _started_shard_names="$_started_shard_names $_slw_shard_name"
   _started_worker_count=$(( _started_worker_count + 1 ))
   echo "Started worker $_slw_lane_id for $_slw_shard_name (pid $!)."
+}
+
+worker_fits_remaining_outer_window() {
+  _wfrow_shard_file="${1:-}"
+  [ "$_sync_command" = "sync-cloud-builders" ] || return 0
+  [ "${_cloud_persistent_host:-0}" -eq 0 ] || return 0
+  shard_is_cloud_file "$_wfrow_shard_file" || return 0
+  _wfrow_budget="$(shard_timeout_seconds_for_file "$_wfrow_shard_file")"
+  _wfrow_deadline="$(( ${_run_started_epoch_seconds:-$(date +%s)} + $(job_timeout_seconds) ))"
+  _wfrow_remaining="$(( _wfrow_deadline - $(date +%s) ))"
+  _wfrow_required="$(( _wfrow_budget + ${_cloud_refill_buffer:-0} ))"
+  [ "$_wfrow_remaining" -ge "$_wfrow_required" ]
 }
 
 start_pending_library_workers() {
   _started_worker_count=0
   for _splw_shard_file in "$_shards_dir"/shard-*.json; do
     [ -e "$_splw_shard_file" ] || continue
+    if ! worker_fits_remaining_outer_window "$_splw_shard_file"; then
+      continue
+    fi
     start_library_worker "$_splw_shard_file"
   done
 }
@@ -3880,6 +3990,9 @@ reset_cloud_refill_window() {
   _whole_timeout="$(job_timeout_seconds)"
   _shard_timeout="$(shard_timeout_seconds "$_whole_timeout")"
   _cloud_refill_buffer=300
+  if [ "$JOB_NAME" = "cloud-library-cron" ]; then
+    _cloud_refill_buffer=900
+  fi
   if [ "$_whole_timeout" -le 600 ]; then
     _cloud_refill_buffer=$(( _whole_timeout / 2 ))
   fi
@@ -4065,13 +4178,14 @@ run_library_job() {
   patch_current_fetch_plans
 
   reset_cloud_refill_window
+  _run_started_epoch_seconds="$(
+    node -e 'const date = new Date(process.env.BUILDER_BLOG_JOB_STARTED_AT || Date.now()); const seconds = Math.floor(date.getTime() / 1000); console.log(Number.isFinite(seconds) ? seconds : Math.floor(Date.now() / 1000));'
+  )"
   _worker_entries=""
   _skip_wait_pids=""
   _timed_out_worker_pids=""
   _started_shard_names=""
   _checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
-  _worker_no_progress_timeout="$(worker_no_progress_timeout_seconds "$_shard_timeout")"
-  _worker_stall_timeout="$(worker_stall_timeout_seconds "$_shard_timeout")"
   : > "$_checkpoint_synced_ids_file"
   job_run_update running "Running source fetch workers." "workers_started" --stage "run_fetch_workers"
   start_pending_library_workers
@@ -4086,6 +4200,13 @@ run_library_job() {
       _after_started="${_rest#*:}"
       _name="${_after_started%%:*}"
       _lane="$(worker_entry_lane "$_entry")"
+      _worker_shard_file="$(worker_entry_shard_file "$_entry")"
+      if [ -z "$_worker_shard_file" ]; then
+        _worker_shard_file="$_shards_dir/$_name.json"
+      fi
+      _worker_timeout="$(shard_timeout_seconds_for_file "$_worker_shard_file")"
+      _worker_no_progress_timeout="$(worker_no_progress_timeout_seconds "$_worker_timeout")"
+      _worker_stall_timeout="$(worker_stall_timeout_seconds "$_worker_timeout")"
       if kill -0 "$_pid" 2>/dev/null; then
         case " $_timed_out_worker_pids " in
           *" $_pid "*) continue ;;
@@ -4204,12 +4325,12 @@ run_library_job() {
                 --skipped-wait-pids "$_skip_wait_pids"
             fi
             _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
-          elif [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
-          echo "Worker $_lane ($_name) exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
-          write_worker_control_event "$_results_dir/$_name-worker.log" "worker_shard_timeout" "$_lane" "$_name" "Worker exceeded ${_shard_timeout}s before completing every task."
-          printf 'Worker %s (%s) exceeded %ss; terminating it (its tasks will be reported as failed).\n' "$_lane" "$_name" "$_shard_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
+          elif [ $(( _now - _started )) -ge "$_worker_timeout" ]; then
+          echo "Worker $_lane ($_name) exceeded ${_worker_timeout}s; terminating it (its tasks will be reported as failed)." >&2
+          write_worker_control_event "$_results_dir/$_name-worker.log" "worker_shard_timeout" "$_lane" "$_name" "Worker exceeded ${_worker_timeout}s before completing every task."
+          printf 'Worker %s (%s) exceeded %ss; terminating it (its tasks will be reported as failed).\n' "$_lane" "$_name" "$_worker_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
           job_run_update running "Worker $_lane exceeded timeout and will be terminated." "worker_shard_timeout" \
-            --timeout-seconds "$_shard_timeout" \
+            --timeout-seconds "$_worker_timeout" \
             --timeout-stage "worker_shard" \
             --timed-out-worker "$_name" \
             --timed-out-worker-lane "$_lane" \
@@ -4217,7 +4338,7 @@ run_library_job() {
             --termination "terminating"
           if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
             job_run_update running "Worker $_lane timed out and was terminated." "worker_shard_timeout" \
-              --timeout-seconds "$_shard_timeout" \
+              --timeout-seconds "$_worker_timeout" \
               --timeout-stage "worker_shard" \
               --timed-out-worker "$_name" \
               --timed-out-worker-lane "$_lane" \
@@ -4227,7 +4348,7 @@ run_library_job() {
             echo "Worker $_lane ($_name) pid $_pid was still alive after forced termination; continuing without waiting." >&2
             _skip_wait_pids="$_skip_wait_pids $_pid"
             job_run_update running "Worker $_lane timed out and did not exit after forced termination." "worker_shard_timeout" \
-              --timeout-seconds "$_shard_timeout" \
+              --timeout-seconds "$_worker_timeout" \
               --timeout-stage "worker_shard" \
               --timed-out-worker "$_name" \
               --timed-out-worker-lane "$_lane" \

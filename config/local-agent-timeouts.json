@@ -8,7 +8,7 @@
     "digest-once": 43200
   },
   "jobMaxSeconds": {
-    "cloud-library-cron": 7200,
+    "cloud-library-cron": 15300,
     "cloud-library-host": 7200,
     "library-cron": 7200,
     "digest-cron": 2700

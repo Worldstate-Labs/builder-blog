@@ -8,6 +8,217 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+test("assign-fetch-tasks stamps each cloud shard with its validated execution budget", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-shard-budgets-"));
+  try {
+    const tasksFile = join(dir, "fetch-result.json");
+    const outDir = join(dir, "shards");
+    await writeFile(
+      tasksFile,
+      `${JSON.stringify({
+        status: "ok",
+        fetchTasks: [
+          {
+            id: "cloud-long",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_long",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "podcast",
+            executionBudgetSeconds: 14_400,
+            builderSync: { builderId: "b1", sourceUrl: "https://long.example/feed.xml" },
+            item: { url: "https://long.example/posts/1" },
+          },
+          {
+            id: "cloud-standard",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_standard",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "blog",
+            executionBudgetSeconds: 3_600,
+            builderSync: { builderId: "b2", sourceUrl: "https://standard.example/feed.xml" },
+            item: { url: "https://standard.example/posts/1" },
+          },
+          {
+            id: "cloud-invalid",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_invalid",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "blog",
+            executionBudgetSeconds: 17_000,
+            builderSync: { builderId: "b3", sourceUrl: "https://invalid.example/feed.xml" },
+            item: { url: "https://invalid.example/posts/1" },
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+
+    const result = await execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "assign-fetch-tasks",
+        "--tasks",
+        tasksFile,
+        "--out-dir",
+        outDir,
+        "--max-workers",
+        "3",
+      ],
+      { cwd: process.cwd() },
+    );
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.shards.length, 3);
+
+    const shard0 = JSON.parse(await readFile(join(outDir, "shard-0.json"), "utf8"));
+    const shard1 = JSON.parse(await readFile(join(outDir, "shard-1.json"), "utf8"));
+    const shard2 = JSON.parse(await readFile(join(outDir, "shard-2.json"), "utf8"));
+
+    assert.equal(shard0.fetchTasks.length, 1);
+    assert.equal(shard1.fetchTasks.length, 1);
+    assert.equal(shard2.fetchTasks.length, 1);
+    assert.equal(shard0.executionBudgetSeconds, 14_400);
+    assert.equal(shard1.executionBudgetSeconds, 3_600);
+    assert.equal(shard2.executionBudgetSeconds, 3_600);
+    assert.equal(shard0.fetchTasks[0].executionBudgetSeconds, 14_400);
+    assert.equal(shard1.fetchTasks[0].executionBudgetSeconds, 3_600);
+    assert.equal(shard2.fetchTasks[0].executionBudgetSeconds, 17_000);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("merge-task-results prefers shard budgets over the shared timeout fallback when backfilling cloud failures", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-shard-backfill-budget-"));
+  try {
+    const tasksFile = join(dir, "fetch-result.json");
+    const resultsDir = join(dir, "results");
+    const shardsDir = join(dir, "shards");
+    const outFile = join(dir, "sync.json");
+    const tasksOutFile = join(dir, "merged-fetch-result.json");
+    await mkdir(resultsDir, { recursive: true });
+    await mkdir(shardsDir, { recursive: true });
+    await writeFile(
+      tasksFile,
+      `${JSON.stringify({
+        status: "ok",
+        fetchTasks: [
+          {
+            id: "cloud-long",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_long",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "podcast",
+            executionBudgetSeconds: 14_400,
+            builderSync: { builderId: "b1", sourceUrl: "https://long.example/feed.xml" },
+            item: { url: "https://long.example/posts/1" },
+          },
+          {
+            id: "cloud-fallback",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_fallback",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "blog",
+            builderSync: { builderId: "b2", sourceUrl: "https://fallback.example/feed.xml" },
+            item: { url: "https://fallback.example/posts/1" },
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      join(shardsDir, "shard-0.json"),
+      `${JSON.stringify({
+        status: "ok",
+        shardIndex: 0,
+        dynamicAssignment: true,
+        workerId: "worker-0",
+        executionBudgetSeconds: 14_400,
+        fetchTasks: [
+          {
+            id: "cloud-long",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_long",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "podcast",
+            executionBudgetSeconds: 14_400,
+            workerId: "worker-0",
+            builderSync: { builderId: "b1", sourceUrl: "https://long.example/feed.xml" },
+            item: { url: "https://long.example/posts/1" },
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      join(shardsDir, "shard-1.json"),
+      `${JSON.stringify({
+        status: "ok",
+        shardIndex: 1,
+        dynamicAssignment: true,
+        workerId: "worker-1",
+        fetchTasks: [
+          {
+            id: "cloud-fallback",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_fallback",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            sourceType: "blog",
+            workerId: "worker-1",
+            builderSync: { builderId: "b2", sourceUrl: "https://fallback.example/feed.xml" },
+            item: { url: "https://fallback.example/posts/1" },
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+
+    await execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "merge-task-results",
+        "--tasks",
+        tasksFile,
+        "--results-dir",
+        resultsDir,
+        "--tasks-out",
+        tasksOutFile,
+        "--out",
+        outFile,
+        "--shard-timeout-seconds",
+        "3600",
+      ],
+      { cwd: process.cwd(), env: { ...process.env, BUILDER_BLOG_DISABLE_WEB_SYNC: "1" } },
+    );
+
+    const merged = JSON.parse(await readFile(outFile, "utf8"));
+    const outcomesById = new Map<string, {
+      fetchTaskId: string;
+      evidence?: { shardTimeoutSeconds?: number };
+    }>(
+      (Array.isArray(merged.taskOutcomes) ? merged.taskOutcomes : []).map((outcome: {
+        fetchTaskId: string;
+        evidence?: { shardTimeoutSeconds?: number };
+      }) => [
+        outcome.fetchTaskId,
+        outcome,
+      ]),
+    );
+    assert.equal(outcomesById.get("cloud-long")?.evidence?.shardTimeoutSeconds, 14_400);
+    assert.equal(outcomesById.get("cloud-fallback")?.evidence?.shardTimeoutSeconds, 3_600);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud fetch planning stamps leased task metadata onto normal fetch tasks", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = cli.buildCloudFetchTaskForTest(
@@ -184,7 +395,8 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /_assigned_fetch_task_ids_file="\$JOB_TMP_DIR\/assigned-fetch-task-ids\.txt"/);
   assert.match(runner, /_active_fetch_group_keys_file="\$JOB_TMP_DIR\/active-fetch-group-keys\.txt"/);
   assert.match(runner, /for _wafg_entry in \$\{_worker_entries:-\}/);
-  assert.match(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id"/);
+  assert.match(runner, /shard_timeout_seconds_for_file\(\)/);
+  assert.match(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id:\$_slw_shard_file"/);
   assert.match(runner, /for _entry in \$\{_worker_entries:-\}/);
   assert.match(runner, /case " \$\{_timed_out_worker_pids:-\} " in/);
   assert.match(runner, />> "\$_results_dir\/\$_name-worker\.log"/);
@@ -472,7 +684,7 @@ test("cloud worker host does not reuse a lane whose previous shard exited incomp
 MAX_PARALLEL_WORKERS=3
 _shards_dir="${shardsDir}"
 _results_dir="${resultsDir}"
-_worker_entries="999999:1700000000:shard-2:worker-2"
+_worker_entries="999999:1700000000:shard-2:worker-2:${join(shardsDir, "shard-2.json")}"
 write_available_worker_ids "${availablePath}"
 `,
       "utf8",
