@@ -141,10 +141,15 @@ export async function applyCloudFetchTaskSyncResult(params: {
       },
     })
   )[0];
+  const existingRunTaskDetails = existingRunTask?.details;
   const mergedDetails = mergeCloudFetchRunTaskDetails(
-    existingRunTask?.details,
+    existingRunTaskDetails,
     params.result.details,
   );
+  const failureExecutionBudgetSeconds = conservativeCloudTaskFailureExecutionBudgetSeconds({
+    task,
+    existingDetails: existingRunTaskDetails,
+  });
 
   // Guard the finalizing write on the task still being RUNNING. The caller's
   // pre-check confirmed RUNNING, but under READ COMMITTED a concurrent
@@ -201,10 +206,7 @@ export async function applyCloudFetchTaskSyncResult(params: {
             failureCircuitBreakerThreshold: params.config.failureCircuitBreakerThreshold,
             failureReason: taskFailureReason,
             mustSucceedBy: task.mustSucceedBy ?? null,
-            executionBudgetSeconds: conservativeCloudTaskFailureExecutionBudgetSeconds({
-              task,
-              existingDetails: existingRunTask?.details,
-            }),
+            executionBudgetSeconds: failureExecutionBudgetSeconds,
           })),
       ...nextCloudTaskRuntimeStats({
         task,
