@@ -256,7 +256,7 @@ export function sourceConfigFor(builderOrSourceTypeId) {
     : normalizeSourceType(builderOrSourceTypeId?.sourceType) || sourceTypeIdForBuilder(builderOrSourceTypeId);
   return config.sources.find((s) => s.id === id) ?? config.sources.find((s) => s.id === "website");
 }
-const INSTALLED_LOCAL_AGENT_TIMEOUTS_PATH = join(
+const REPO_LOCAL_AGENT_TIMEOUTS_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
   "config",
@@ -285,12 +285,31 @@ let _installedLocalAgentTimeoutPolicy;
 
 function installedLocalAgentTimeoutPolicy() {
   if (_installedLocalAgentTimeoutPolicy !== undefined) return _installedLocalAgentTimeoutPolicy;
-  try {
-    _installedLocalAgentTimeoutPolicy = JSON.parse(readFileSync(INSTALLED_LOCAL_AGENT_TIMEOUTS_PATH, "utf8"));
-  } catch {
-    _installedLocalAgentTimeoutPolicy = null;
+  const installedPath = join(agentDir(), "local-agent-timeouts.json");
+  if (existsSync(installedPath)) {
+    try {
+      _installedLocalAgentTimeoutPolicy = JSON.parse(readFileSync(installedPath, "utf8"));
+      return _installedLocalAgentTimeoutPolicy;
+    } catch {
+      _installedLocalAgentTimeoutPolicy = null;
+      return _installedLocalAgentTimeoutPolicy;
+    }
   }
+  if (installedPath !== REPO_LOCAL_AGENT_TIMEOUTS_PATH && existsSync(REPO_LOCAL_AGENT_TIMEOUTS_PATH)) {
+    try {
+      _installedLocalAgentTimeoutPolicy = JSON.parse(readFileSync(REPO_LOCAL_AGENT_TIMEOUTS_PATH, "utf8"));
+      return _installedLocalAgentTimeoutPolicy;
+    } catch {
+      _installedLocalAgentTimeoutPolicy = null;
+      return _installedLocalAgentTimeoutPolicy;
+    }
+  }
+  _installedLocalAgentTimeoutPolicy = null;
   return _installedLocalAgentTimeoutPolicy;
+}
+
+export function resetInstalledLocalAgentTimeoutPolicyCacheForTest() {
+  _installedLocalAgentTimeoutPolicy = undefined;
 }
 
 function nonNegativeIntegerValue(value, fallback = 0) {
@@ -324,6 +343,8 @@ export function parseMediaDurationSeconds(value) {
   if (!/^\d{1,2}:\d{2}(?::\d{2})?$/.test(text)) return null;
   const parts = text.split(":").map((part) => Number(part));
   if (parts.some((part) => !Number.isFinite(part) || part < 0)) return null;
+  if (parts.length === 2 && (parts[0] >= 60 || parts[1] >= 60)) return null;
+  if (parts.length === 3 && (parts[1] >= 60 || parts[2] >= 60)) return null;
   if (parts.length === 2) return parts[0] * 60 + parts[1];
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   return null;
@@ -462,7 +483,6 @@ function plannedMediaDurationSeconds(task, metadata) {
     task?.item?.mediaDurationSeconds,
     task?.item?.rawJson?.mediaDurationSeconds,
     metadata?.mediaDurationSeconds,
-    metadata?.estimatedDurationSeconds,
   );
 }
 
@@ -551,6 +571,17 @@ function finalizeCloudTaskExecutionPlan(task, metadata = {}, { now = new Date(),
   }
 
   return { plannedTask, taskOutcome: null };
+}
+
+function finalizePlannedCloudTask(task, cloudMetadata, taskOutcomes, runStartedAt) {
+  if (!cloudMetadata) return task;
+  const cloudFetchTask = buildCloudFetchTask(task, cloudMetadata);
+  const planned = finalizeCloudTaskExecutionPlan(cloudFetchTask, cloudMetadata, { now: runStartedAt });
+  if (planned.taskOutcome) {
+    taskOutcomes.push(planned.taskOutcome);
+    return null;
+  }
+  return planned.plannedTask;
 }
 const DEFAULT_APP_URL = "https://followbrief.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
@@ -2207,9 +2238,10 @@ export async function buildFetchTasksForBuilders({
             commonFetchRules,
             commonSummaryRules,
           });
-          fetchTasks.push(cloudMetadata ? buildCloudFetchTask(task, cloudMetadata) : task);
-          if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
-          else builderStat.tasksGenerated += 1;
+          const plannedTask = finalizePlannedCloudTask(task, cloudMetadata, taskOutcomes, runStartedAt);
+          if (plannedTask) fetchTasks.push(plannedTask);
+          if (plannedTask && isCandidateDiscoveryFetchTask(plannedTask)) builderStat.discoveryTasksGenerated += 1;
+          else if (plannedTask) builderStat.tasksGenerated += 1;
           continue;
         }
         const filtered = filterFetchedItems(externalItems, {
@@ -2248,14 +2280,7 @@ export async function buildFetchTasksForBuilders({
           ...fetchTaskFromAgentTask(task, builderSync, languageSources, commonFetchRules, commonSummaryRules),
           fetchCutoff: builderCutoff?.toISOString() ?? null,
         };
-        if (!cloudMetadata) return fetchTask;
-        const cloudFetchTask = buildCloudFetchTask(fetchTask, cloudMetadata);
-        const planned = finalizeCloudTaskExecutionPlan(cloudFetchTask, cloudMetadata, { now: runStartedAt });
-        if (planned.taskOutcome) {
-          taskOutcomes.push(planned.taskOutcome);
-          return null;
-        }
-        return planned.plannedTask;
+        return finalizePlannedCloudTask(fetchTask, cloudMetadata, taskOutcomes, runStartedAt);
       });
       const runnableFetchTasks = fetchTasksFromAgentTasks.filter(Boolean);
       fetchTasks.push(...runnableFetchTasks);
@@ -2286,9 +2311,10 @@ export async function buildFetchTasksForBuilders({
         builderStat.error = message;
         errorCount += 1;
       }
-      fetchTasks.push(cloudMetadata ? buildCloudFetchTask(task, cloudMetadata) : task);
-      if (isCandidateDiscoveryFetchTask(task)) builderStat.discoveryTasksGenerated += 1;
-      else builderStat.tasksGenerated += 1;
+      const plannedTask = finalizePlannedCloudTask(task, cloudMetadata, taskOutcomes, runStartedAt);
+      if (plannedTask) fetchTasks.push(plannedTask);
+      if (plannedTask && isCandidateDiscoveryFetchTask(plannedTask)) builderStat.discoveryTasksGenerated += 1;
+      else if (plannedTask) builderStat.tasksGenerated += 1;
     } finally {
       if (onSourceProgress) await onSourceProgress(builderStat);
     }
@@ -2297,17 +2323,13 @@ export async function buildFetchTasksForBuilders({
   for (const builder of readyBuilders) {
     const builderSources = sourceConfigsForSummaryLanguage(sources, builder.summaryLanguage);
     const readyTasks = fetchTasksForReadyBuilders([builder], builderSources, commonSummaryRules)
-      .map((task) => {
-        const cloudMetadata = cloudTaskMetadataByBuilderId.get(task.builderId) ?? null;
-        if (!cloudMetadata) return task;
-        const cloudFetchTask = buildCloudFetchTask(task, cloudMetadata);
-        const planned = finalizeCloudTaskExecutionPlan(cloudFetchTask, cloudMetadata, { now: runStartedAt });
-        if (planned.taskOutcome) {
-          taskOutcomes.push(planned.taskOutcome);
-          return null;
-        }
-        return planned.plannedTask;
-      })
+      .map((task) =>
+        finalizePlannedCloudTask(
+          task,
+          cloudTaskMetadataByBuilderId.get(task.builderId) ?? null,
+          taskOutcomes,
+          runStartedAt,
+        ))
       .filter(Boolean);
     fetchTasks.push(...readyTasks);
   }

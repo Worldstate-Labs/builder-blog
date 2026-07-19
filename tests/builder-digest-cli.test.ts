@@ -2563,6 +2563,8 @@ test("media duration parsing normalizes podcast duration text and numeric forms"
   assert.equal(cli.parseMediaDurationSeconds(321), 321);
   assert.equal(cli.parseMediaDurationSeconds("07:45"), 465);
   assert.equal(cli.parseMediaDurationSeconds("01:02:03"), 3723);
+  assert.equal(cli.parseMediaDurationSeconds("01:60"), null);
+  assert.equal(cli.parseMediaDurationSeconds("01:02:60"), null);
   assert.equal(cli.parseMediaDurationSeconds("invalid"), null);
 
   const items = cli.parsePodcastFeedItems(
@@ -2594,6 +2596,45 @@ test("media duration parsing normalizes podcast duration text and numeric forms"
   assert.equal(items[0].mediaDurationSeconds, 3272);
   assert.equal(items[1].mediaDurationSeconds, 3723);
   assert.equal(items[2].mediaDurationSeconds, 321);
+});
+
+test("media work estimator prefers downloaded local-agent-timeouts policy from BUILDER_BLOG_AGENT_DIR", async () => {
+  const previousAgentDir = process.env.BUILDER_BLOG_AGENT_DIR;
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-policy-agent-dir-"));
+  process.env.BUILDER_BLOG_AGENT_DIR = tmp;
+  await writeFile(
+    join(tmp, "local-agent-timeouts.json"),
+    JSON.stringify({
+      mediaEstimation: {
+        conservativeFallbackAsrRealtimeFactor: 2.2,
+        backendAsrRealtimeFactors: {
+          faster_whisper: 0.8,
+        },
+        audioPreparationRealtimeFactor: 0.4,
+        fixedOverheadSeconds: 180,
+      },
+    }),
+    "utf8",
+  );
+
+  try {
+    const cli = await import("../scripts/builder-digest.mjs");
+    cli.resetInstalledLocalAgentTimeoutPolicyCacheForTest();
+    const estimate = cli.estimateMediaWorkSeconds({
+      mediaDurationSeconds: 1200,
+      backend: "faster_whisper",
+      model: "custom-large",
+    });
+    assert.equal(estimate.estimatedWorkSeconds, 1621);
+    assert.equal(estimate.estimateEvidence.asrRealtimeFactor, 0.8);
+    assert.equal(estimate.estimateEvidence.audioPreparationFactor, 0.4);
+    assert.equal(estimate.estimateEvidence.fixedOverheadSeconds, 180);
+  } finally {
+    if (previousAgentDir === undefined) delete process.env.BUILDER_BLOG_AGENT_DIR;
+    else process.env.BUILDER_BLOG_AGENT_DIR = previousAgentDir;
+    const cli = await import("../scripts/builder-digest.mjs");
+    cli.resetInstalledLocalAgentTimeoutPolicyCacheForTest();
+  }
 });
 
 test("media work estimator uses installed policy fallback defaults and backend overrides", async () => {
@@ -7179,6 +7220,151 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
     assert.equal(planned.taskOutcomes[0].evidence.maximumBudgetSeconds, 14400);
     assert.equal(planned.taskOutcomes[0].evidence.mediaDurationSeconds, 19800);
     assert.equal(planned.taskOutcomes[0].evidence.uncappedEstimatedWorkSeconds > 14400, true);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("cloud planning finalizes no-local-fetcher fallback tasks with source estimates and no fake media duration", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-no-fetcher=${Date.now()}`);
+  const planned = await cli.buildFetchTasksForBuilders({
+    builders: [
+      {
+        id: "builder_unknown_cloud",
+        scope: "PERSONAL",
+        kind: "BLOG",
+        sourceType: "unknown_cloud_source",
+        name: "Unknown Cloud Source",
+        sourceUrl: "https://example.com/unknown",
+        fetchUrl: "https://example.com/unknown",
+      },
+    ],
+    context: {
+      language: "zh",
+      subscriptions: [],
+      personalFetchedItems: [],
+      latestPersonalFetchedItems: [],
+      sources: {
+        unknown_cloud_source: {
+          label: "Unknown Cloud Source",
+          contentQuality: { minChars: 50, minContentUnits: 10 },
+          summaryPrompt: {
+            language: "zh",
+            body: "Summarize the supplied post in Chinese.",
+            style: "blog_or_document",
+          },
+          fetchPrompt: {
+            body: "Fetch the primary content from the supplied URL.",
+          },
+        },
+      },
+    },
+    force: true,
+    limit: 1,
+    runStartedAt: new Date("2026-07-19T08:00:00.000Z"),
+    cloudTaskMetadataByBuilderId: new Map([
+      [
+        "builder_unknown_cloud",
+        {
+          cloudRunId: "cloud_run_1",
+          cloudSourceTaskId: "cloud_unknown_1",
+          builderId: "builder_unknown_cloud",
+          summaryLanguage: "zh",
+          mustSucceedBy: "2026-07-19T11:30:00.000Z",
+          estimatedDurationSeconds: 4200,
+          provisionalExecutionBudgetSeconds: 3600,
+        },
+      ],
+    ]),
+  });
+
+  assert.equal(planned.taskOutcomes.length, 0);
+  assert.equal(planned.fetchTasks.length, 1);
+  const task = planned.fetchTasks[0] as {
+    agentWorkType: string;
+    estimatedWorkSeconds: number;
+    executionBudgetSeconds: number;
+    estimateEvidence: { mediaDurationSeconds: number | null; sourceEstimatedWorkSeconds: number };
+  };
+  assert.equal(task.agentWorkType, "fetch_builder_fallback");
+  assert.equal(task.estimatedWorkSeconds, 4200);
+  assert.equal(task.executionBudgetSeconds, 6900);
+  assert.equal(task.executionBudgetSeconds >= 3600, true);
+  assert.equal(task.estimateEvidence.mediaDurationSeconds, null);
+  assert.equal(task.estimateEvidence.sourceEstimatedWorkSeconds, 4200);
+});
+
+test("cloud planning finalizes caught fetcher failures with minimum budget and null media duration", async () => {
+  const originalFetch = global.fetch;
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-fetcher-error=${Date.now()}`);
+  global.fetch = async () => {
+    throw new Error("network down");
+  };
+
+  try {
+    const planned = await cli.buildFetchTasksForBuilders({
+      builders: [
+        {
+          id: "builder_website_cloud",
+          scope: "PERSONAL",
+          kind: "WEBSITE",
+          sourceType: "website",
+          name: "Broken Website",
+          sourceUrl: "https://example.com",
+          fetchUrl: "https://example.com",
+        },
+      ],
+      context: {
+        language: "zh",
+        subscriptions: [],
+        personalFetchedItems: [],
+        latestPersonalFetchedItems: [],
+        sources: {
+          website: {
+            label: "Website",
+            contentQuality: { minChars: 50, minContentUnits: 10 },
+            summaryPrompt: {
+              language: "zh",
+              body: "Summarize the supplied post in Chinese.",
+              style: "blog_or_document",
+            },
+            fetchPrompt: {
+              body: "Fetch the primary content from the supplied URL.",
+            },
+          },
+        },
+      },
+      force: true,
+      limit: 1,
+      runStartedAt: new Date("2026-07-19T08:00:00.000Z"),
+      cloudTaskMetadataByBuilderId: new Map([
+        [
+          "builder_website_cloud",
+          {
+            cloudRunId: "cloud_run_1",
+            cloudSourceTaskId: "cloud_website_1",
+            builderId: "builder_website_cloud",
+            summaryLanguage: "zh",
+            mustSucceedBy: "2026-07-19T11:30:00.000Z",
+            provisionalExecutionBudgetSeconds: 3600,
+          },
+        ],
+      ]),
+    });
+
+    assert.equal(planned.taskOutcomes.length, 0);
+    assert.equal(planned.fetchTasks.length, 1);
+    const task = planned.fetchTasks[0] as {
+      agentWorkType: string;
+      estimatedWorkSeconds: number;
+      executionBudgetSeconds: number;
+      estimateEvidence: { mediaDurationSeconds: number | null; sourceEstimatedWorkSeconds: number };
+    };
+    assert.equal(task.agentWorkType, "fetch_builder_fallback");
+    assert.equal(task.estimatedWorkSeconds, 0);
+    assert.equal(task.executionBudgetSeconds, 3600);
+    assert.equal(task.estimateEvidence.mediaDurationSeconds, null);
+    assert.equal(task.estimateEvidence.sourceEstimatedWorkSeconds, 0);
   } finally {
     global.fetch = originalFetch;
   }
