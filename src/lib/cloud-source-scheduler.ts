@@ -390,9 +390,10 @@ async function leaseCloudFetchTasksInTransaction(params: {
   ];
   let remainingTokens = budget.tokenBudget;
   let cursor: { id: string } | undefined;
+  const selectedCanonicalKeys = new Set<string>();
   while (selected.length < budget.limit && remainingTokens >= MIN_ESTIMATED_TOKENS) {
     const queuedItems = await prisma.cloudFetchQueueItem.findMany({
-      where: queuedLeaseItemsWhere(now, remainingTokens),
+      where: queuedLeaseItemsWhere(now, remainingTokens, selectedCanonicalKeys),
       orderBy: queuedItemsOrder,
       take: queuedItemsPageSize,
       ...(cursor ? { cursor, skip: 1 } : {}),
@@ -419,6 +420,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
 
     for (const item of queuedItems) {
       if (selected.length >= budget.limit) break;
+      if (selectedCanonicalKeys.has(item.cloudSourceTask.builder.canonicalKey)) continue;
       const estimate = estimatedDurationForTask(item.cloudSourceTask, config);
       const estimatedTokens = estimatedTokensForTask(item.cloudSourceTask);
       if (estimatedTokens > remainingTokens) continue;
@@ -429,6 +431,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
         estimatedDurationSeconds: estimate,
       });
       selected.push({ item, estimate, estimatedTokens, executionPlan });
+      selectedCanonicalKeys.add(item.cloudSourceTask.builder.canonicalKey);
       remainingTokens -= estimatedTokens;
       if (remainingTokens < MIN_ESTIMATED_TOKENS) break;
     }
@@ -1057,13 +1060,33 @@ function estimatedTokensForTask(task: {
   );
 }
 
-function queuedLeaseItemsWhere(now: Date, remainingTokens: number): Prisma.CloudFetchQueueItemWhereInput {
+function queuedLeaseItemsWhere(
+  now: Date,
+  remainingTokens: number,
+  excludedCanonicalKeys?: Set<string>,
+): Prisma.CloudFetchQueueItemWhereInput {
+  const excluded = [...(excludedCanonicalKeys ?? [])];
   return {
     status: CloudFetchQueueStatus.QUEUED,
     dueAt: { lte: now },
     cloudSourceTask: {
       is: cloudSourceTaskFitWhere(remainingTokens),
     },
+    ...(excluded.length > 0
+      ? {
+          NOT: {
+            cloudSourceTask: {
+              is: {
+                builder: {
+                  is: {
+                    canonicalKey: { in: excluded },
+                  },
+                },
+              },
+            },
+          },
+        }
+      : {}),
   };
 }
 

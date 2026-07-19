@@ -97,6 +97,26 @@ function hasInsensitiveUnknownSourceFallback(filters: Array<Record<string, unkno
   });
 }
 
+function excludedCanonicalKeys(where: Record<string, unknown> | undefined) {
+  const keys = new Set<string>();
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    const record = value as Record<string, unknown>;
+    const canonicalField = record.canonicalKey as
+      | { in?: string[]; notIn?: string[] }
+      | undefined;
+    for (const key of canonicalField?.in ?? []) keys.add(key);
+    for (const key of canonicalField?.notIn ?? []) keys.add(key);
+    for (const nested of Object.values(record)) visit(nested);
+  };
+  visit(where);
+  return [...keys];
+}
+
 test("scheduler pauses active tasks with no active submitters before queueing", async () => {
   const taskUpdates: unknown[] = [];
   const queueUpdates: unknown[] = [];
@@ -1067,6 +1087,231 @@ test("leaseCloudFetchTasks skips a very large over-budget prefix in the DB and l
   assert.ok(hasInsensitiveSourceType(fallbackFilters, "blog"));
   assert.ok(!hasInsensitiveSourceType(fallbackFilters, "podcast"));
   assert.ok(hasInsensitiveUnknownSourceFallback(fallbackFilters));
+});
+
+test("leaseCloudFetchTasks leases at most one queued item per canonical key and excludes selected canonicals on later pages", async () => {
+  const sharedCanonical = "BLOG:https://example.com/shared.xml";
+  const leaseFindCalls: Array<{
+    where?: Record<string, unknown>;
+    cursor?: { id: string };
+    orderBy?: unknown;
+    skip?: number;
+    take?: number;
+  }> = [];
+  const queueUpdates: Array<{ where?: { id?: string } }> = [];
+  const runTaskCreates: Array<{ data: { cloudSourceTaskId: string } }> = [];
+  const sharedQueuedItemA = {
+    id: "queue_shared_1",
+    cloudSourceTaskId: "cloud_task_shared_1",
+    mustSucceedBy: minutesFromNow(20),
+    createdAt: new Date("2026-06-27T11:00:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_shared_1",
+      builderId: "cloud_builder_shared_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_shared_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Shared A",
+        handle: null,
+        sourceUrl: "https://example.com/shared.xml",
+        fetchUrl: "https://example.com/shared.xml",
+        canonicalKey: sharedCanonical,
+      },
+    },
+  };
+  const sharedQueuedItemB = {
+    id: "queue_shared_2",
+    cloudSourceTaskId: "cloud_task_shared_2",
+    mustSucceedBy: minutesFromNow(21),
+    createdAt: new Date("2026-06-27T11:01:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_shared_2",
+      builderId: "cloud_builder_shared_2",
+      summaryLanguage: "zh",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_shared_2",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Shared B",
+        handle: null,
+        sourceUrl: "https://example.com/shared.xml?lang=zh",
+        fetchUrl: "https://example.com/shared.xml?lang=zh",
+        canonicalKey: sharedCanonical,
+      },
+    },
+  };
+  const sharedQueuedItemC = {
+    id: "queue_shared_3",
+    cloudSourceTaskId: "cloud_task_shared_3",
+    mustSucceedBy: minutesFromNow(22),
+    createdAt: new Date("2026-06-27T11:02:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_shared_3",
+      builderId: "cloud_builder_shared_3",
+      summaryLanguage: "ja",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_shared_3",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Shared C",
+        handle: null,
+        sourceUrl: "https://example.com/shared.xml?lang=ja",
+        fetchUrl: "https://example.com/shared.xml?lang=ja",
+        canonicalKey: sharedCanonical,
+      },
+    },
+  };
+  const uniqueQueuedItem = {
+    id: "queue_unique_1",
+    cloudSourceTaskId: "cloud_task_unique_1",
+    mustSucceedBy: minutesFromNow(23),
+    createdAt: new Date("2026-06-27T11:03:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_unique_1",
+      builderId: "cloud_builder_unique_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_unique_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Unique Later",
+        handle: null,
+        sourceUrl: "https://example.com/unique.xml",
+        fetchUrl: "https://example.com/unique.xml",
+        canonicalKey: "BLOG:https://example.com/unique.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 200_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 0,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => {
+        if (args.where?.id) {
+          queueUpdates.push(args);
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) return [];
+        if (!args.include) return [];
+        leaseFindCalls.push({
+          where: args.where,
+          cursor: args.cursor,
+          orderBy: args.orderBy,
+          skip: args.skip,
+          take: args.take,
+        });
+        if (!args.cursor) return [sharedQueuedItemA, sharedQueuedItemB];
+        if (args.cursor.id === "queue_shared_2") {
+          return excludedCanonicalKeys(args.where).includes(sharedCanonical)
+            ? [uniqueQueuedItem]
+            : [sharedQueuedItemC, uniqueQueuedItem];
+        }
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      create: async (args: { data: { cloudSourceTaskId: string } }) => {
+        runTaskCreates.push(args);
+        return {};
+      },
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_canonical_dedupe_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.runId, "run_cloud_canonical_dedupe_1");
+  assert.deepEqual(
+    result.tasks.map((task) => task.cloudSourceTaskId),
+    ["cloud_task_shared_1", "cloud_task_unique_1"],
+  );
+  assert.equal(queueUpdates.length, 2);
+  assert.deepEqual(
+    queueUpdates.map((update) => update.where?.id),
+    ["queue_shared_1", "queue_unique_1"],
+  );
+  assert.equal(runTaskCreates.length, 2);
+  assert.deepEqual(
+    runTaskCreates.map((create) => create.data.cloudSourceTaskId),
+    ["cloud_task_shared_1", "cloud_task_unique_1"],
+  );
+  assert.equal(leaseFindCalls.length, 2);
+  assert.equal(leaseFindCalls[0]?.cursor, undefined);
+  assert.equal(leaseFindCalls[0]?.skip, undefined);
+  assert.equal(leaseFindCalls[0]?.take, 2);
+  assert.deepEqual(leaseFindCalls[1]?.cursor, { id: "queue_shared_2" });
+  assert.equal(leaseFindCalls[1]?.skip, 1);
+  assert.equal(leaseFindCalls[1]?.take, 2);
+  assert.deepEqual(excludedCanonicalKeys(leaseFindCalls[0]?.where), []);
+  assert.deepEqual(excludedCanonicalKeys(leaseFindCalls[1]?.where), [sharedCanonical]);
 });
 
 test("leaseCloudFetchTasks matches stored estimates and null source-type priors in its fit predicate", async () => {
