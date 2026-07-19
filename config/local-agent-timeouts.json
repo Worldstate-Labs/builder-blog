@@ -13,6 +13,15 @@
     "library-cron": 7200,
     "digest-cron": 2700
   },
+  "cloudShardBudget": {
+    "minimumSeconds": 3600,
+    "standardMaximumSeconds": 7200,
+    "longMediaMaximumSeconds": 14400,
+    "safetyMultiplier": 1.5,
+    "completionAllowanceSeconds": 600,
+    "roundingSeconds": 300,
+    "progressHeartbeatSeconds": 60
+  },
   "shardFraction": {
     "numerator": 3,
     "denominator": 4
