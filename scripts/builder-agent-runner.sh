@@ -3058,14 +3058,15 @@ try {
   process.exit(2);
 }
 const tasks = Array.isArray(result.fetchTasks) ? result.fetchTasks : [];
-if (tasks.length > 0) process.exit(1);
+if (tasks.some((task) => task?.agentWorkType !== "candidate_discovery_fallback")) process.exit(1);
 const outcomes = Array.isArray(result.taskOutcomes) ? result.taskOutcomes : [];
 const hasSyncable = outcomes.some((outcome) => {
   const task = outcome?.plannedTask;
   if (!task || typeof task !== "object") return false;
-  const taskId = String(task?.id || outcome?.fetchTaskId || "").trim();
+  const outcomeTaskId = String(outcome?.fetchTaskId || "").trim();
+  const taskId = String(task?.id || "").trim();
   const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
-  return Boolean(taskId && cloudSourceTaskId);
+  return Boolean(taskId && taskId === outcomeTaskId && cloudSourceTaskId);
 });
 process.exit(hasSyncable ? 0 : 1);
 NODE

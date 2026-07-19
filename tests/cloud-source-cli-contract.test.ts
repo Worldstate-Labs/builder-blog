@@ -672,12 +672,16 @@ test("cloud planned-only outcome sync detects valid work and preserves failure c
   try {
     const valid = join(dir, "valid.json");
     const empty = join(dir, "empty.json");
+    const missingPlannedId = join(dir, "missing-planned-id.json");
+    const missingOutcomeId = join(dir, "missing-outcome-id.json");
+    const mismatchedId = join(dir, "mismatched-id.json");
+    const validSibling = join(dir, "valid-sibling.json");
     const invalid = join(dir, "invalid.json");
     const syncLog = join(dir, "sync.log");
     const checkPath = join(dir, "check.sh");
     await writeFile(valid, JSON.stringify({
       cloudRunId: "cloud_run_1",
-      fetchTasks: [],
+      fetchTasks: [{ id: "discovery_fallback", agentWorkType: "candidate_discovery_fallback" }],
       taskOutcomes: [{
         fetchTaskId: "task_failed",
         status: "failed",
@@ -686,6 +690,48 @@ test("cloud planned-only outcome sync detects valid work and preserves failure c
       }],
     }));
     await writeFile(empty, JSON.stringify({ cloudRunId: "cloud_run_2", fetchTasks: [], taskOutcomes: [] }));
+    await writeFile(missingPlannedId, JSON.stringify({
+      cloudRunId: "cloud_run_3",
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "task_failed",
+        status: "failed",
+        plannedTask: { cloudSourceTaskId: "source_1" },
+      }],
+    }));
+    await writeFile(missingOutcomeId, JSON.stringify({
+      cloudRunId: "cloud_run_4",
+      fetchTasks: [],
+      taskOutcomes: [{
+        status: "failed",
+        plannedTask: { id: "task_failed", cloudSourceTaskId: "source_1" },
+      }],
+    }));
+    await writeFile(mismatchedId, JSON.stringify({
+      cloudRunId: "cloud_run_5",
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "task_outcome",
+        status: "failed",
+        plannedTask: { id: "task_planned", cloudSourceTaskId: "source_1" },
+      }],
+    }));
+    await writeFile(validSibling, JSON.stringify({
+      cloudRunId: "cloud_run_6",
+      fetchTasks: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: "task_outcome",
+          status: "failed",
+          plannedTask: { id: "task_planned", cloudSourceTaskId: "source_1" },
+        },
+        {
+          fetchTaskId: "task_valid",
+          status: "failed",
+          plannedTask: { id: "task_valid", cloudSourceTaskId: "source_2" },
+        },
+      ],
+    }));
     await writeFile(invalid, "{");
     await writeFile(
       checkPath,
@@ -695,6 +741,7 @@ _sync_command=sync-cloud-builders
 AGENT_DIR="${dir}"
 SYNC_LOG="${syncLog}"
 SYNC_EXIT_CODE=0
+: > "$SYNC_LOG"
 append_cloud_run_id() { :; }
 cloud_fetch_heartbeat() { :; }
 node() {
@@ -706,6 +753,14 @@ sync_cloud_terminal_outcomes "${valid}" cloud_run_1
 [ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 21
 sync_cloud_terminal_outcomes "${empty}" cloud_run_2
 [ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 22
+sync_cloud_terminal_outcomes "${missingPlannedId}" cloud_run_3
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 27
+sync_cloud_terminal_outcomes "${missingOutcomeId}" cloud_run_4
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 28
+sync_cloud_terminal_outcomes "${mismatchedId}" cloud_run_5
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 29
+sync_cloud_terminal_outcomes "${validSibling}" cloud_run_6
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 30
 if sync_cloud_terminal_outcomes "${invalid}" cloud_run_3; then exit 23; else code="$?"; fi
 [ "$code" = "2" ] || exit 24
 SYNC_EXIT_CODE=17
