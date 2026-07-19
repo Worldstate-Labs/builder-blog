@@ -37,6 +37,66 @@ const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTa
   circuitBreakerUntil: overrides.circuitBreakerUntil,
 });
 
+type LeaseQueueFindManyArgs = {
+  where?: Record<string, unknown>;
+  cursor?: { id: string };
+  include?: unknown;
+  orderBy?: unknown;
+  select?: unknown;
+  skip?: number;
+  take?: number;
+};
+
+function leaseTokenFitClauses(where: Record<string, unknown> | undefined) {
+  const relation = where?.cloudSourceTask as
+    | {
+        is?: {
+          OR?: Array<Record<string, unknown>>;
+        };
+      }
+    | undefined;
+  return relation?.is?.OR ?? [];
+}
+
+function hasEstimatedTokenCeiling(where: Record<string, unknown> | undefined, ceiling: number) {
+  return leaseTokenFitClauses(where).some((clause) => {
+    const estimatedTokenCost = clause.estimatedTokenCost as { lte?: number } | null | undefined;
+    return estimatedTokenCost?.lte === ceiling;
+  });
+}
+
+function nullFallbackSourceFilters(where: Record<string, unknown> | undefined) {
+  const nullClause = leaseTokenFitClauses(where).find(
+    (clause) => clause.estimatedTokenCost === null,
+  ) as
+    | {
+        builder?: {
+          is?: {
+            OR?: Array<Record<string, unknown>>;
+          };
+        };
+      }
+    | undefined;
+  return nullClause?.builder?.is?.OR ?? [];
+}
+
+function hasInsensitiveSourceType(
+  filters: Array<Record<string, unknown>>,
+  sourceType: string,
+) {
+  return filters.some((filter) => {
+    const field = filter.sourceType as { equals?: string; mode?: string } | undefined;
+    return field?.equals === sourceType && field.mode === "insensitive";
+  });
+}
+
+function hasInsensitiveUnknownSourceFallback(filters: Array<Record<string, unknown>>) {
+  return filters.some((filter) => {
+    const field = filter.sourceType as { notIn?: string[]; mode?: string } | undefined;
+    return Array.isArray(field?.notIn) && field.mode === "insensitive";
+  });
+}
+
 test("scheduler pauses active tasks with no active submitters before queueing", async () => {
   const taskUpdates: unknown[] = [];
   const queueUpdates: unknown[] = [];
@@ -724,6 +784,373 @@ test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders",
   assert.equal(queueUpdates.length, 1);
   assert.equal(runTaskCreates.length, 1);
   assert.equal(sourceTaskUpdates.length, 1);
+});
+
+test("leaseCloudFetchTasks skips a very large over-budget prefix in the DB and leases a later fitting task", async () => {
+  const leaseFindCalls: Array<{
+    where?: Record<string, unknown>;
+    cursor?: { id: string };
+    orderBy?: unknown;
+    skip?: number;
+    take?: number;
+  }> = [];
+  const queueUpdates: Array<{ where?: { id?: string } }> = [];
+  const runTaskCreates: Array<{ data: { cloudSourceTaskId: string } }> = [];
+  const expensiveQueuedItem = {
+    id: "queue_expensive_1",
+    cloudSourceTaskId: "cloud_task_expensive_1",
+    mustSucceedBy: minutesFromNow(30),
+    createdAt: new Date("2026-06-27T11:00:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_expensive_1",
+      builderId: "cloud_builder_expensive_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 200_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_expensive_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Expensive Source",
+        handle: null,
+        sourceUrl: "https://example.com/expensive.xml",
+        fetchUrl: "https://example.com/expensive.xml",
+        canonicalKey: "BLOG:https://example.com/expensive.xml",
+      },
+    },
+  };
+  const cheapQueuedItem = {
+    id: "queue_cheap_1",
+    cloudSourceTaskId: "cloud_task_cheap_1",
+    mustSucceedBy: minutesFromNow(31),
+    createdAt: new Date("2026-06-27T11:01:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_cheap_1",
+      builderId: "cloud_builder_cheap_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_cheap_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Cheap Source",
+        handle: null,
+        sourceUrl: "https://example.com/cheap.xml",
+        fetchUrl: "https://example.com/cheap.xml",
+        canonicalKey: "BLOG:https://example.com/cheap.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 150_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 0,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => {
+        if (args.where?.id) {
+          queueUpdates.push(args);
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) return [];
+        if (!args.include) return [];
+        leaseFindCalls.push({
+          where: args.where,
+          cursor: args.cursor,
+          orderBy: args.orderBy,
+          skip: args.skip,
+          take: args.take,
+        });
+        return hasEstimatedTokenCeiling(args.where, 150_000) ? [cheapQueuedItem] : [expensiveQueuedItem];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      create: async (args: { data: { cloudSourceTaskId: string } }) => {
+        runTaskCreates.push(args);
+        return {};
+      },
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_paginated_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.runId, "run_cloud_paginated_1");
+  assert.equal(result.tasks.length, 1);
+  assert.equal(result.tasks[0].cloudSourceTaskId, "cloud_task_cheap_1");
+  assert.equal(queueUpdates.length, 1);
+  assert.equal(queueUpdates[0]?.where?.id, "queue_cheap_1");
+  assert.equal(runTaskCreates.length, 1);
+  assert.equal(runTaskCreates[0]?.data.cloudSourceTaskId, "cloud_task_cheap_1");
+  assert.equal(leaseFindCalls.length, 1);
+  assert.deepEqual(leaseFindCalls[0], {
+    where: leaseFindCalls[0]?.where,
+    cursor: undefined,
+    orderBy: [
+      { priorityScore: "desc" },
+      { mustSucceedBy: "asc" },
+      { createdAt: "asc" },
+      { id: "asc" },
+    ],
+    skip: undefined,
+    take: 1,
+  });
+  assert.ok(hasEstimatedTokenCeiling(leaseFindCalls[0]?.where, 150_000));
+  const fallbackFilters = nullFallbackSourceFilters(leaseFindCalls[0]?.where);
+  assert.ok(hasInsensitiveSourceType(fallbackFilters, "blog"));
+  assert.ok(!hasInsensitiveSourceType(fallbackFilters, "podcast"));
+  assert.ok(hasInsensitiveUnknownSourceFallback(fallbackFilters));
+});
+
+test("leaseCloudFetchTasks matches stored estimates and null source-type priors in its fit predicate", async () => {
+  const leaseFindCalls: Array<{
+    where?: Record<string, unknown>;
+    cursor?: { id: string };
+    orderBy?: unknown;
+    skip?: number;
+    take?: number;
+  }> = [];
+  const queueUpdates: Array<{ where?: { id?: string } }> = [];
+  const runTaskCreates: Array<{ data: { cloudSourceTaskId: string } }> = [];
+  const blogNullQueuedItem = {
+    id: "queue_blog_null_1",
+    cloudSourceTaskId: "cloud_task_blog_null_1",
+    mustSucceedBy: minutesFromNow(20),
+    createdAt: new Date("2026-06-27T11:00:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_blog_null_1",
+      builderId: "cloud_builder_blog_null_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: null,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_blog_null_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Blog Null Estimate",
+        handle: null,
+        sourceUrl: "https://example.com/blog-null.xml",
+        fetchUrl: "https://example.com/blog-null.xml",
+        canonicalKey: "BLOG:https://example.com/blog-null.xml",
+      },
+    },
+  };
+  const blogStoredHundredKItem = {
+    id: "queue_blog_100k_1",
+    cloudSourceTaskId: "cloud_task_blog_100k_1",
+    mustSucceedBy: minutesFromNow(21),
+    createdAt: new Date("2026-06-27T11:01:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_blog_100k_1",
+      builderId: "cloud_builder_blog_100k_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_blog_100k_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Blog Hundred K",
+        handle: null,
+        sourceUrl: "https://example.com/blog-100k.xml",
+        fetchUrl: "https://example.com/blog-100k.xml",
+        canonicalKey: "BLOG:https://example.com/blog-100k.xml",
+      },
+    },
+  };
+  const podcastStoredFortyKItem = {
+    id: "queue_podcast_40k_1",
+    cloudSourceTaskId: "cloud_task_podcast_40k_1",
+    mustSucceedBy: minutesFromNow(22),
+    createdAt: new Date("2026-06-27T11:02:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_podcast_40k_1",
+      builderId: "cloud_builder_podcast_40k_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 40_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_podcast_40k_1",
+        kind: "PODCAST",
+        sourceType: "podcast",
+        name: "Podcast Stored Forty K",
+        handle: null,
+        sourceUrl: "https://example.com/podcast-40k.xml",
+        fetchUrl: "https://example.com/podcast-40k.xml",
+        canonicalKey: "BLOG:https://example.com/podcast-40k.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 100_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 0,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => {
+        if (args.where?.id) {
+          queueUpdates.push(args);
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) return [];
+        if (!args.include) return [];
+        leaseFindCalls.push({
+          where: args.where,
+          cursor: args.cursor,
+          orderBy: args.orderBy,
+          skip: args.skip,
+          take: args.take,
+        });
+        if (!args.cursor && hasEstimatedTokenCeiling(args.where, 100_000)) {
+          return [blogNullQueuedItem, blogStoredHundredKItem];
+        }
+        if (args.cursor?.id === "queue_blog_100k_1" && hasEstimatedTokenCeiling(args.where, 40_000)) {
+          return [podcastStoredFortyKItem];
+        }
+        return [blogStoredHundredKItem];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      create: async (args: { data: { cloudSourceTaskId: string } }) => {
+        runTaskCreates.push(args);
+        return {};
+      },
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_fit_predicate_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.runId, "run_cloud_fit_predicate_1");
+  assert.deepEqual(
+    result.tasks.map((task) => task.cloudSourceTaskId),
+    ["cloud_task_blog_null_1", "cloud_task_podcast_40k_1"],
+  );
+  assert.equal(queueUpdates.length, 2);
+  assert.deepEqual(
+    queueUpdates.map((update) => update.where?.id),
+    ["queue_blog_null_1", "queue_podcast_40k_1"],
+  );
+  assert.equal(runTaskCreates.length, 2);
+  assert.deepEqual(
+    runTaskCreates.map((create) => create.data.cloudSourceTaskId),
+    ["cloud_task_blog_null_1", "cloud_task_podcast_40k_1"],
+  );
+  assert.equal(leaseFindCalls.length, 2);
+  assert.equal(leaseFindCalls[0]?.cursor, undefined);
+  assert.equal(leaseFindCalls[0]?.skip, undefined);
+  assert.equal(leaseFindCalls[0]?.take, 2);
+  assert.ok(hasEstimatedTokenCeiling(leaseFindCalls[0]?.where, 100_000));
+  const initialFallbackFilters = nullFallbackSourceFilters(leaseFindCalls[0]?.where);
+  assert.ok(hasInsensitiveSourceType(initialFallbackFilters, "blog"));
+  assert.ok(!hasInsensitiveSourceType(initialFallbackFilters, "podcast"));
+  assert.ok(hasInsensitiveUnknownSourceFallback(initialFallbackFilters));
+  assert.deepEqual(leaseFindCalls[1]?.cursor, { id: "queue_blog_100k_1" });
+  assert.equal(leaseFindCalls[1]?.skip, 1);
+  assert.equal(leaseFindCalls[1]?.take, 2);
+  assert.ok(hasEstimatedTokenCeiling(leaseFindCalls[1]?.where, 40_000));
+  const remainingFallbackFilters = nullFallbackSourceFilters(leaseFindCalls[1]?.where);
+  assert.ok(!hasInsensitiveSourceType(remainingFallbackFilters, "blog"));
+  assert.ok(!hasInsensitiveSourceType(remainingFallbackFilters, "podcast"));
+  assert.ok(!hasInsensitiveUnknownSourceFallback(remainingFallbackFilters));
 });
 
 test("leaseCloudFetchTasks includes provisional execution plans in leased tasks and extends the initial lease to cover them", async () => {

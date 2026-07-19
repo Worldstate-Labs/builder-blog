@@ -98,6 +98,8 @@ const SOURCE_TYPE_PRIORS: Record<string, {
   twitter: { durationP75Seconds: 300, successProbability: 0.82, estimatedTokenCost: 30_000, estimatedPostYield: 3 },
   auto: { durationP75Seconds: 900, successProbability: 0.8, estimatedTokenCost: 80_000, estimatedPostYield: 3 },
 };
+const SOURCE_TYPE_PRIOR_KEYS_EXCLUDING_AUTO = Object.keys(SOURCE_TYPE_PRIORS)
+  .filter((sourceType) => sourceType !== "auto");
 
 export function estimateCloudTaskRuntime(input: CloudTaskEstimateInput) {
   const prior = sourceTypePrior(input.sourceType);
@@ -355,45 +357,61 @@ async function leaseCloudFetchTasksInTransaction(params: {
     workerStartedAt: params.workerStartedAt,
   });
 
-  const queuedItems = await prisma.cloudFetchQueueItem.findMany({
-    where: { status: CloudFetchQueueStatus.QUEUED, dueAt: { lte: now } },
-    orderBy: [{ priorityScore: "desc" }, { mustSucceedBy: "asc" }, { createdAt: "asc" }],
-    take: Math.max(params.limit, budget.limit),
-    include: {
-      cloudSourceTask: {
-        include: {
-          builder: {
-            select: {
-              id: true,
-              kind: true,
-              sourceType: true,
-              name: true,
-              handle: true,
-              sourceUrl: true,
-              fetchUrl: true,
-              canonicalKey: true,
+  const selected = [];
+  const queuedItemsPageSize = Math.max(params.limit, budget.limit);
+  const queuedItemsOrder = [
+    { priorityScore: "desc" as const },
+    { mustSucceedBy: "asc" as const },
+    { createdAt: "asc" as const },
+    { id: "asc" as const },
+  ];
+  let remainingTokens = budget.tokenBudget;
+  let cursor: { id: string } | undefined;
+  while (selected.length < budget.limit && remainingTokens >= MIN_ESTIMATED_TOKENS) {
+    const queuedItems = await prisma.cloudFetchQueueItem.findMany({
+      where: queuedLeaseItemsWhere(now, remainingTokens),
+      orderBy: queuedItemsOrder,
+      take: queuedItemsPageSize,
+      ...(cursor ? { cursor, skip: 1 } : {}),
+      include: {
+        cloudSourceTask: {
+          include: {
+            builder: {
+              select: {
+                id: true,
+                kind: true,
+                sourceType: true,
+                name: true,
+                handle: true,
+                sourceUrl: true,
+                fetchUrl: true,
+                canonicalKey: true,
+              },
             },
           },
         },
       },
-    },
-  });
-
-  const selected = [];
-  let remainingTokens = budget.tokenBudget;
-  for (const item of queuedItems) {
-    if (selected.length >= budget.limit) break;
-    const estimate = estimatedDurationForTask(item.cloudSourceTask, config);
-    const estimatedTokens = estimatedTokensForTask(item.cloudSourceTask);
-    if (estimatedTokens > remainingTokens) continue;
-    const executionPlan = provisionalExecutionPlanForLease({
-      now,
-      mustSucceedBy: item.mustSucceedBy,
-      sourceType: item.cloudSourceTask.builder.sourceType,
-      estimatedDurationSeconds: estimate,
     });
-    selected.push({ item, estimate, estimatedTokens, executionPlan });
-    remainingTokens -= estimatedTokens;
+    if (queuedItems.length === 0) break;
+
+    for (const item of queuedItems) {
+      if (selected.length >= budget.limit) break;
+      const estimate = estimatedDurationForTask(item.cloudSourceTask, config);
+      const estimatedTokens = estimatedTokensForTask(item.cloudSourceTask);
+      if (estimatedTokens > remainingTokens) continue;
+      const executionPlan = provisionalExecutionPlanForLease({
+        now,
+        mustSucceedBy: item.mustSucceedBy,
+        sourceType: item.cloudSourceTask.builder.sourceType,
+        estimatedDurationSeconds: estimate,
+      });
+      selected.push({ item, estimate, estimatedTokens, executionPlan });
+      remainingTokens -= estimatedTokens;
+      if (remainingTokens < MIN_ESTIMATED_TOKENS) break;
+    }
+
+    if (queuedItems.length < queuedItemsPageSize) break;
+    cursor = { id: queuedItems[queuedItems.length - 1]!.id };
   }
 
   if (selected.length === 0) {
@@ -952,6 +970,52 @@ function estimatedTokensForTask(task: {
     MIN_ESTIMATED_TOKENS,
     task.estimatedTokenCost ?? sourceTypePrior(task.builder.sourceType).estimatedTokenCost,
   );
+}
+
+function queuedLeaseItemsWhere(now: Date, remainingTokens: number): Prisma.CloudFetchQueueItemWhereInput {
+  return {
+    status: CloudFetchQueueStatus.QUEUED,
+    dueAt: { lte: now },
+    cloudSourceTask: {
+      is: cloudSourceTaskFitWhere(remainingTokens),
+    },
+  };
+}
+
+function cloudSourceTaskFitWhere(remainingTokens: number): Prisma.CloudSourceTaskWhereInput {
+  const nullEstimateSourceTypeFilters = sourceTypeFallbackFiltersForBudget(remainingTokens);
+  return {
+    OR: [
+      { estimatedTokenCost: { lte: remainingTokens } },
+      ...(nullEstimateSourceTypeFilters.length > 0
+        ? [{
+            estimatedTokenCost: null,
+            builder: {
+              is: {
+                OR: nullEstimateSourceTypeFilters,
+              },
+            },
+          }]
+        : []),
+    ],
+  };
+}
+
+function sourceTypeFallbackFiltersForBudget(remainingTokens: number): Prisma.BuilderWhereInput[] {
+  const sourceTypeFilters: Prisma.BuilderWhereInput[] = SOURCE_TYPE_PRIOR_KEYS_EXCLUDING_AUTO
+    .filter((sourceType) => sourceTypePrior(sourceType).estimatedTokenCost <= remainingTokens)
+    .map((sourceType) => ({
+      sourceType: { equals: sourceType, mode: "insensitive" },
+    }));
+  if (SOURCE_TYPE_PRIORS.auto.estimatedTokenCost <= remainingTokens) {
+    sourceTypeFilters.push({
+      sourceType: {
+        notIn: SOURCE_TYPE_PRIOR_KEYS_EXCLUDING_AUTO,
+        mode: "insensitive",
+      },
+    });
+  }
+  return sourceTypeFilters;
 }
 
 function provisionalExecutionPlanForLease(params: {
