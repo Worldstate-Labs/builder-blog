@@ -224,17 +224,22 @@ test("cloud fetch plan patch payload validates grouped post budgets and rejects 
 
 test("admin cloud fetch plan route requires admin auth, stale-write protection, and merged execution plans", () => {
   const route = source("src/app/api/admin/cloud-fetch/plan/route.ts");
+  const syncRoute = source("src/app/api/admin/cloud-fetch/sync/route.ts");
 
   assert.match(route, /requireCloudFetchAdmin\(request\)/);
   assert.match(route, /parseCloudFetchPlanPatchPayload/);
   assert.match(route, /where: \{ id: parsed\.data\.runId, status: "RUNNING" \}/);
   assert.match(route, /lockResetFenceForWorker\(tx, run\.startedAt\)/);
-  assert.match(route, /cloudSourceTaskId: \{ in: taskIds \}/);
-  assert.match(route, /status: "RUNNING"/);
+  assert.match(route, /lockCloudFetchRunTaskRows\(tx, \{ runId: run\.id, cloudSourceTaskIds: taskIds \}\)/);
+  assert.match(route, /const runningTasks = await tx\.cloudFetchRunTask\.findMany/);
   assert.match(route, /mergeCloudFetchExecutionPlanDetails/);
   assert.match(route, /if \(error instanceof StaleWorkerWriteError\)/);
   assert.match(route, /status: error\.statusCode/);
   assert.match(route, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
+
+  assert.match(syncRoute, /lockResetFenceForWorker\(tx, run\.startedAt\)/);
+  assert.match(syncRoute, /lockCloudFetchRunTaskRows\(tx, \{ runId: run\.id, cloudSourceTaskIds: taskIds \}\)/);
+  assert.match(syncRoute, /const runningTasks = await tx\.cloudFetchRunTask\.findMany/);
 });
 
 test("admin cloud fetch sync route keeps skipped post outcomes out of source failure counts", () => {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { lockCloudFetchRunTaskRows } from "@/lib/cloud-fetch-run-task-lock";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
 import { mergeCloudFetchExecutionPlanDetails } from "@/lib/cloud-fetch-plan-details";
 import { parseCloudFetchPlanPatchPayload } from "@/lib/cloud-source-contracts";
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
       });
       if (!run) throw new StaleWorkerWriteError();
       await lockResetFenceForWorker(tx, run.startedAt);
+      await lockCloudFetchRunTaskRows(tx, { runId: run.id, cloudSourceTaskIds: taskIds });
 
       const runningTasks = await tx.cloudFetchRunTask.findMany({
         where: {
