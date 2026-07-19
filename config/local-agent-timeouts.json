@@ -22,6 +22,16 @@
     "roundingSeconds": 300,
     "progressHeartbeatSeconds": 60
   },
+  "mediaEstimation": {
+    "conservativeFallbackAsrRealtimeFactor": 1.25,
+    "backendAsrRealtimeFactors": {
+      "faster_whisper": 0.55,
+      "mlx_whisper": 0.45,
+      "whisper": 1
+    },
+    "audioPreparationRealtimeFactor": 0.15,
+    "fixedOverheadSeconds": 90
+  },
   "shardFraction": {
     "numerator": 3,
     "denominator": 4

@@ -256,6 +256,302 @@ export function sourceConfigFor(builderOrSourceTypeId) {
     : normalizeSourceType(builderOrSourceTypeId?.sourceType) || sourceTypeIdForBuilder(builderOrSourceTypeId);
   return config.sources.find((s) => s.id === id) ?? config.sources.find((s) => s.id === "website");
 }
+const INSTALLED_LOCAL_AGENT_TIMEOUTS_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "config",
+  "local-agent-timeouts.json",
+);
+const DEFAULT_MEDIA_ESTIMATION_POLICY = {
+  conservativeFallbackAsrRealtimeFactor: 1.25,
+  backendAsrRealtimeFactors: {
+    faster_whisper: 0.55,
+    mlx_whisper: 0.45,
+    whisper: 1,
+  },
+  audioPreparationRealtimeFactor: 0.15,
+  fixedOverheadSeconds: 90,
+};
+const DEFAULT_CLOUD_SHARD_BUDGET_POLICY = {
+  minimumSeconds: 3_600,
+  standardMaximumSeconds: 7_200,
+  longMediaMaximumSeconds: 14_400,
+  safetyMultiplier: 1.5,
+  completionAllowanceSeconds: 600,
+  roundingSeconds: 300,
+  progressHeartbeatSeconds: 60,
+};
+let _installedLocalAgentTimeoutPolicy;
+
+function installedLocalAgentTimeoutPolicy() {
+  if (_installedLocalAgentTimeoutPolicy !== undefined) return _installedLocalAgentTimeoutPolicy;
+  try {
+    _installedLocalAgentTimeoutPolicy = JSON.parse(readFileSync(INSTALLED_LOCAL_AGENT_TIMEOUTS_PATH, "utf8"));
+  } catch {
+    _installedLocalAgentTimeoutPolicy = null;
+  }
+  return _installedLocalAgentTimeoutPolicy;
+}
+
+function nonNegativeIntegerValue(value, fallback = 0) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < 0) return fallback;
+  return Math.floor(numericValue);
+}
+
+function positiveNumberValue(value, fallback) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback;
+}
+
+function positiveIntegerValue(value, fallback) {
+  const numericValue = nonNegativeIntegerValue(value, fallback);
+  return numericValue > 0 ? numericValue : fallback;
+}
+
+function roundUpToIncrement(value, increment) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  if (!Number.isFinite(increment) || increment <= 0) return Math.ceil(value);
+  return Math.ceil(value / increment) * increment;
+}
+
+export function parseMediaDurationSeconds(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return Math.floor(value);
+  const text = String(value).trim();
+  if (!text) return null;
+  if (/^\d+$/.test(text)) return Math.floor(Number(text));
+  if (!/^\d{1,2}:\d{2}(?::\d{2})?$/.test(text)) return null;
+  const parts = text.split(":").map((part) => Number(part));
+  if (parts.some((part) => !Number.isFinite(part) || part < 0)) return null;
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return null;
+}
+
+function firstMediaDurationSeconds(...candidates) {
+  for (const candidate of candidates) {
+    const parsed = parseMediaDurationSeconds(candidate);
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+function resolvedMediaEstimationPolicy(policy = null) {
+  const configured = policy?.mediaEstimation ?? installedLocalAgentTimeoutPolicy()?.mediaEstimation ?? {};
+  const backendAsrRealtimeFactors = Object.fromEntries(
+    Object.entries(configured.backendAsrRealtimeFactors ?? {}).flatMap(([backend, factor]) => {
+      const normalized = positiveNumberValue(factor, 0);
+      return normalized > 0 ? [[String(backend).trim(), normalized]] : [];
+    }),
+  );
+  return {
+    conservativeFallbackAsrRealtimeFactor: positiveNumberValue(
+      configured.conservativeFallbackAsrRealtimeFactor,
+      DEFAULT_MEDIA_ESTIMATION_POLICY.conservativeFallbackAsrRealtimeFactor,
+    ),
+    backendAsrRealtimeFactors: {
+      ...DEFAULT_MEDIA_ESTIMATION_POLICY.backendAsrRealtimeFactors,
+      ...backendAsrRealtimeFactors,
+    },
+    audioPreparationRealtimeFactor: positiveNumberValue(
+      configured.audioPreparationRealtimeFactor,
+      DEFAULT_MEDIA_ESTIMATION_POLICY.audioPreparationRealtimeFactor,
+    ),
+    fixedOverheadSeconds: nonNegativeIntegerValue(
+      configured.fixedOverheadSeconds,
+      DEFAULT_MEDIA_ESTIMATION_POLICY.fixedOverheadSeconds,
+    ),
+  };
+}
+
+function resolvedCloudShardBudgetPolicy(policy = null) {
+  const configured = policy?.cloudShardBudget ?? installedLocalAgentTimeoutPolicy()?.cloudShardBudget ?? {};
+  return {
+    minimumSeconds: positiveIntegerValue(configured.minimumSeconds, DEFAULT_CLOUD_SHARD_BUDGET_POLICY.minimumSeconds),
+    standardMaximumSeconds: positiveIntegerValue(
+      configured.standardMaximumSeconds,
+      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.standardMaximumSeconds,
+    ),
+    longMediaMaximumSeconds: positiveIntegerValue(
+      configured.longMediaMaximumSeconds,
+      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.longMediaMaximumSeconds,
+    ),
+    safetyMultiplier: positiveNumberValue(
+      configured.safetyMultiplier,
+      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.safetyMultiplier,
+    ),
+    completionAllowanceSeconds: nonNegativeIntegerValue(
+      configured.completionAllowanceSeconds,
+      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.completionAllowanceSeconds,
+    ),
+    roundingSeconds: positiveIntegerValue(configured.roundingSeconds, DEFAULT_CLOUD_SHARD_BUDGET_POLICY.roundingSeconds),
+    progressHeartbeatSeconds: nonNegativeIntegerValue(
+      configured.progressHeartbeatSeconds,
+      DEFAULT_CLOUD_SHARD_BUDGET_POLICY.progressHeartbeatSeconds,
+    ),
+  };
+}
+
+/**
+ * @param {{ mediaDurationSeconds?: number | null, backend?: string | null, model?: string | null }} [input]
+ * @param {any} [policy]
+ */
+export function estimateMediaWorkSeconds(input = {}, policy = null) {
+  const mediaDurationSeconds = nonNegativeIntegerValue(input.mediaDurationSeconds, 0);
+  const backend = String(input.backend || "fallback").trim() || "fallback";
+  const model = String(input.model || "").trim() || null;
+  const estimatePolicy = resolvedMediaEstimationPolicy(policy);
+  const asrRealtimeFactor =
+    estimatePolicy.backendAsrRealtimeFactors[backend] ??
+    estimatePolicy.conservativeFallbackAsrRealtimeFactor;
+  const audioPreparationFactor = estimatePolicy.audioPreparationRealtimeFactor;
+  const fixedOverheadSeconds = estimatePolicy.fixedOverheadSeconds;
+  const estimatedWorkSeconds = Math.ceil(
+    mediaDurationSeconds * (asrRealtimeFactor + audioPreparationFactor) + fixedOverheadSeconds,
+  );
+  return {
+    estimatedWorkSeconds,
+    estimateEvidence: {
+      backend,
+      model,
+      mediaDurationSeconds,
+      asrRealtimeFactor,
+      audioPreparationFactor,
+      fixedOverheadSeconds,
+    },
+  };
+}
+
+function cloudDeadlineStateForTask({
+  now,
+  mustSucceedBy,
+  executionBudgetSeconds,
+  policy = null,
+} = {}) {
+  const deadline = mustSucceedBy ? new Date(mustSucceedBy) : null;
+  if (!deadline || Number.isNaN(deadline.getTime())) return "on_time";
+  if (now.getTime() > deadline.getTime()) return "missed";
+  const budgetPolicy = resolvedCloudShardBudgetPolicy(policy);
+  const projectedCompletionAt =
+    now.getTime() + (nonNegativeIntegerValue(executionBudgetSeconds, 0) + budgetPolicy.progressHeartbeatSeconds) * 1000;
+  return projectedCompletionAt > deadline.getTime() ? "at_risk" : "on_time";
+}
+
+function plannedCloudWorkloadClass(task) {
+  if (task?.workloadClass === "standard" || task?.workloadClass === "long_media") return task.workloadClass;
+  const sourceType = String(task?.sourceType || task?.builderSync?.sourceType || "").trim().toLowerCase();
+  return sourceType === "podcast" || sourceType === "youtube" || sourceType === "video"
+    ? "long_media"
+    : "standard";
+}
+
+function sourceEstimatedWorkSeconds(task, metadata) {
+  return nonNegativeIntegerValue(
+    task?.estimatedWorkSeconds ??
+      metadata?.estimatedWorkSeconds ??
+      task?.estimatedDurationSeconds ??
+      metadata?.estimatedDurationSeconds,
+    0,
+  );
+}
+
+function plannedMediaDurationSeconds(task, metadata) {
+  return firstMediaDurationSeconds(
+    task?.mediaDurationSeconds,
+    task?.item?.mediaDurationSeconds,
+    task?.item?.rawJson?.mediaDurationSeconds,
+    metadata?.mediaDurationSeconds,
+    metadata?.estimatedDurationSeconds,
+  );
+}
+
+function finalizeCloudTaskExecutionPlan(task, metadata = {}, { now = new Date(), policy = null } = {}) {
+  const budgetPolicy = resolvedCloudShardBudgetPolicy(policy);
+  const workloadClass = plannedCloudWorkloadClass(task);
+  const mediaDurationSeconds = plannedMediaDurationSeconds(task, metadata);
+  const mediaEstimate = mediaDurationSeconds != null
+    ? estimateMediaWorkSeconds(
+      {
+        mediaDurationSeconds,
+        backend: task?.estimateEvidence?.backend ?? metadata?.estimateEvidence?.backend ?? "fallback",
+        model: task?.estimateEvidence?.model ?? metadata?.estimateEvidence?.model ?? null,
+      },
+      policy,
+    )
+    : null;
+  const estimatedWorkSeconds = mediaEstimate?.estimatedWorkSeconds ?? sourceEstimatedWorkSeconds(task, metadata);
+  const estimateEvidence = mediaEstimate?.estimateEvidence ?? {
+    backend: task?.estimateEvidence?.backend ?? metadata?.estimateEvidence?.backend ?? null,
+    model: task?.estimateEvidence?.model ?? metadata?.estimateEvidence?.model ?? null,
+    mediaDurationSeconds: mediaDurationSeconds ?? null,
+    sourceEstimatedWorkSeconds: sourceEstimatedWorkSeconds(task, metadata),
+  };
+  const rawBudgetSeconds =
+    estimatedWorkSeconds * budgetPolicy.safetyMultiplier + budgetPolicy.completionAllowanceSeconds;
+  const roundedBudgetSeconds = roundUpToIncrement(rawBudgetSeconds, budgetPolicy.roundingSeconds);
+  const minimumAppliedBudgetSeconds = Math.max(
+    estimatedWorkSeconds,
+    budgetPolicy.minimumSeconds,
+    roundedBudgetSeconds,
+  );
+  const maximumBudgetSeconds =
+    workloadClass === "long_media"
+      ? budgetPolicy.longMediaMaximumSeconds
+      : budgetPolicy.standardMaximumSeconds;
+  const executionBudgetSeconds = Math.min(maximumBudgetSeconds, minimumAppliedBudgetSeconds);
+  let budgetReason = "scaled_and_rounded";
+  if (executionBudgetSeconds === budgetPolicy.minimumSeconds && executionBudgetSeconds > roundedBudgetSeconds) {
+    budgetReason = "minimum_budget";
+  } else if (executionBudgetSeconds === budgetPolicy.standardMaximumSeconds && workloadClass === "standard") {
+    budgetReason = "capped_standard_maximum";
+  } else if (
+    executionBudgetSeconds === budgetPolicy.longMediaMaximumSeconds &&
+    workloadClass === "long_media"
+  ) {
+    budgetReason = "capped_long_media_maximum";
+  }
+  const deadlineState = cloudDeadlineStateForTask({
+    now,
+    mustSucceedBy: task?.mustSucceedBy ?? metadata?.mustSucceedBy ?? null,
+    executionBudgetSeconds,
+    policy,
+  });
+
+  const plannedTask = {
+    ...task,
+    ...(mediaDurationSeconds != null ? { mediaDurationSeconds } : {}),
+    estimatedWorkSeconds,
+    executionBudgetSeconds,
+    workloadClass,
+    budgetReason,
+    deadlineState,
+    estimateEvidence,
+  };
+
+  if (workloadClass === "long_media" && estimatedWorkSeconds > budgetPolicy.longMediaMaximumSeconds) {
+    return {
+      plannedTask: null,
+      taskOutcome: {
+        fetchTaskId: plannedTask.id || fetchTaskId(plannedTask),
+        status: "failed",
+        reason: "workload_exceeds_max_budget",
+        plannedTask,
+        evidence: {
+          uncappedEstimatedWorkSeconds: estimatedWorkSeconds,
+          mediaDurationSeconds: mediaDurationSeconds ?? null,
+          backend: estimateEvidence.backend ?? null,
+          model: estimateEvidence.model ?? null,
+          asrRealtimeFactor: estimateEvidence.asrRealtimeFactor ?? null,
+          audioPreparationFactor: estimateEvidence.audioPreparationFactor ?? null,
+          maximumBudgetSeconds: budgetPolicy.longMediaMaximumSeconds,
+        },
+      },
+    };
+  }
+
+  return { plannedTask, taskOutcome: null };
+}
 const DEFAULT_APP_URL = "https://followbrief.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
@@ -1794,11 +2090,17 @@ function buildCloudFetchTask(task, metadata) {
     cloudSourceTaskId: metadata?.cloudSourceTaskId ?? task?.cloudSourceTaskId ?? null,
     mustSucceedBy: metadata?.mustSucceedBy ?? task?.mustSucceedBy ?? null,
     estimatedDurationSeconds: metadata?.estimatedDurationSeconds ?? task?.estimatedDurationSeconds ?? null,
+    estimatedWorkSeconds: task?.estimatedWorkSeconds ?? metadata?.estimatedWorkSeconds ?? null,
     provisionalExecutionBudgetSeconds:
       metadata?.provisionalExecutionBudgetSeconds ?? task?.provisionalExecutionBudgetSeconds ?? null,
-    workloadClass: metadata?.workloadClass ?? task?.workloadClass ?? null,
-    budgetReason: metadata?.budgetReason ?? task?.budgetReason ?? null,
-    deadlineState: metadata?.deadlineState ?? task?.deadlineState ?? null,
+    executionBudgetSeconds: task?.executionBudgetSeconds ?? metadata?.executionBudgetSeconds ?? null,
+    workloadClass: task?.workloadClass ?? metadata?.workloadClass ?? null,
+    budgetReason: task?.budgetReason ?? metadata?.budgetReason ?? null,
+    deadlineState: task?.deadlineState ?? metadata?.deadlineState ?? null,
+    estimateEvidence: task?.estimateEvidence ?? metadata?.estimateEvidence ?? null,
+    mediaDurationSeconds: task?.mediaDurationSeconds ?? metadata?.mediaDurationSeconds ?? null,
+    captionAvailability: task?.captionAvailability ?? metadata?.captionAvailability ?? null,
+    plannedExtractionMethod: task?.plannedExtractionMethod ?? metadata?.plannedExtractionMethod ?? null,
     summaryLanguage,
     builderSync: {
       ...(task?.builderSync ?? {}),
@@ -1853,6 +2155,7 @@ export async function buildFetchTasksForBuilders({
   const fallbackCutoff = new Date(runStartedAt.getTime() - days * 24 * 60 * 60 * 1000);
   const readyBuilders = [];
   const fetchTasks = [];
+  const taskOutcomes = [];
   const builderStats = new Map();
   let errorCount = 0;
 
@@ -1945,11 +2248,19 @@ export async function buildFetchTasksForBuilders({
           ...fetchTaskFromAgentTask(task, builderSync, languageSources, commonFetchRules, commonSummaryRules),
           fetchCutoff: builderCutoff?.toISOString() ?? null,
         };
-        return cloudMetadata ? buildCloudFetchTask(fetchTask, cloudMetadata) : fetchTask;
+        if (!cloudMetadata) return fetchTask;
+        const cloudFetchTask = buildCloudFetchTask(fetchTask, cloudMetadata);
+        const planned = finalizeCloudTaskExecutionPlan(cloudFetchTask, cloudMetadata, { now: runStartedAt });
+        if (planned.taskOutcome) {
+          taskOutcomes.push(planned.taskOutcome);
+          return null;
+        }
+        return planned.plannedTask;
       });
-      fetchTasks.push(...fetchTasksFromAgentTasks);
-      builderStat.tasksGenerated += fetchTasksFromAgentTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
-      builderStat.discoveryTasksGenerated += fetchTasksFromAgentTasks.filter(isCandidateDiscoveryFetchTask).length;
+      const runnableFetchTasks = fetchTasksFromAgentTasks.filter(Boolean);
+      fetchTasks.push(...runnableFetchTasks);
+      builderStat.tasksGenerated += runnableFetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
+      builderStat.discoveryTasksGenerated += runnableFetchTasks.filter(isCandidateDiscoveryFetchTask).length;
       readyBuilders.push({
         ...builderSync,
         summaryLanguage,
@@ -1988,8 +2299,16 @@ export async function buildFetchTasksForBuilders({
     const readyTasks = fetchTasksForReadyBuilders([builder], builderSources, commonSummaryRules)
       .map((task) => {
         const cloudMetadata = cloudTaskMetadataByBuilderId.get(task.builderId) ?? null;
-        return cloudMetadata ? buildCloudFetchTask(task, cloudMetadata) : task;
-      });
+        if (!cloudMetadata) return task;
+        const cloudFetchTask = buildCloudFetchTask(task, cloudMetadata);
+        const planned = finalizeCloudTaskExecutionPlan(cloudFetchTask, cloudMetadata, { now: runStartedAt });
+        if (planned.taskOutcome) {
+          taskOutcomes.push(planned.taskOutcome);
+          return null;
+        }
+        return planned.plannedTask;
+      })
+      .filter(Boolean);
     fetchTasks.push(...readyTasks);
   }
 
@@ -2003,6 +2322,7 @@ export async function buildFetchTasksForBuilders({
   return {
     builders: readyBuilders,
     fetchTasks,
+    taskOutcomes,
     builderStats,
     errorCount,
     itemsFetched: readyBuilders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0),
@@ -2477,7 +2797,12 @@ export function fetchTasksForReadyBuilders(builders, sources = {}, commonSummary
         publishedAt: item.publishedAt ?? null,
         sourceName: item.sourceName ?? builder.name,
         body: String(item.body ?? "").slice(0, 12000),
+        ...(item.mediaDurationSeconds != null ? { mediaDurationSeconds: item.mediaDurationSeconds } : {}),
       },
+      ...(item.mediaDurationSeconds != null ? { mediaDurationSeconds: item.mediaDurationSeconds } : {}),
+      ...(item.captionAvailability ? { captionAvailability: item.captionAvailability } : {}),
+      ...(item.plannedExtractionMethod ? { plannedExtractionMethod: item.plannedExtractionMethod } : {}),
+      ...(item.estimateEvidence ? { estimateEvidence: item.estimateEvidence } : {}),
       summaryInstructions: singlePostSummaryInstructions(builder.sourceType, sources, commonSummaryRules),
       id: fetchTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
@@ -2973,6 +3298,12 @@ function fetchTaskFromAgentTask(
   // (e.g., x_token_missing) so the agent can surface them verbatim.
   if (task.agentMessage) out.agentMessage = task.agentMessage;
   if (task.agentHelpUrl) out.agentHelpUrl = task.agentHelpUrl;
+  if (task.mediaDurationSeconds != null) out.mediaDurationSeconds = task.mediaDurationSeconds;
+  if (task.captionAvailability) out.captionAvailability = task.captionAvailability;
+  if (task.plannedExtractionMethod) out.plannedExtractionMethod = task.plannedExtractionMethod;
+  if (task.estimateEvidence) out.estimateEvidence = task.estimateEvidence;
+  if (Array.isArray(task.youtubeExtractionAttempts)) out.youtubeExtractionAttempts = task.youtubeExtractionAttempts;
+  if (Array.isArray(task.podcastExtractionAttempts)) out.podcastExtractionAttempts = task.podcastExtractionAttempts;
   return out;
 }
 
@@ -3329,6 +3660,16 @@ async function fetchPersonalYouTubeBuilder(
       agentTasks.push(youtubeAgentTaskForVideo(builder, video, sources, {
         youtubeExtractionAttempts: transcriptResult.attempts || [],
         contentQuality: quality,
+        mediaDurationSeconds: transcriptResult.mediaDurationSeconds ?? null,
+        captionAvailability: transcriptResult.captionAvailability ?? "no_usable_captions",
+        plannedExtractionMethod: transcriptResult.plannedExtractionMethod ?? "audio_transcription",
+        estimateEvidence: transcriptResult.mediaDurationSeconds != null
+          ? estimateMediaWorkSeconds({
+            mediaDurationSeconds: transcriptResult.mediaDurationSeconds,
+            backend: "fallback",
+            model: null,
+          }).estimateEvidence
+          : null,
       }));
       continue;
     }
@@ -3340,6 +3681,9 @@ async function fetchPersonalYouTubeBuilder(
       url: video.url,
       publishedAt: video.publishedAt,
       sourceName: builder.name,
+      mediaDurationSeconds: transcriptResult.mediaDurationSeconds ?? null,
+      captionAvailability: transcriptResult.captionAvailability ?? "usable_captions",
+      plannedExtractionMethod: "captions",
       fetchTool: skillFetchTool(
         `${sourceDetail} + captions`,
         agentModel,
@@ -3356,6 +3700,8 @@ async function fetchPersonalYouTubeBuilder(
         inferredSourceLanguage: transcriptResult.inferredSourceLanguage,
         captionSelectionReason: transcriptResult.captionSelectionReason,
         youtubeExtractionAttempts: transcriptResult.attempts || [],
+        mediaDurationSeconds: transcriptResult.mediaDurationSeconds ?? null,
+        captionAvailability: transcriptResult.captionAvailability ?? "usable_captions",
         contentQuality: quality,
       },
     });
@@ -3587,7 +3933,19 @@ function youtubeAgentTaskForVideo(builder, video, sources = {}, extra = {}) {
     sourceType: "youtube",
     item,
     minimumContentQuality: youtubeMinimumContentQuality(sources),
+    mediaDurationSeconds: extra.mediaDurationSeconds ?? null,
+    captionAvailability: extra.captionAvailability ?? "no_usable_captions",
+    plannedExtractionMethod: extra.plannedExtractionMethod ?? "audio_transcription",
   };
+  if (task.mediaDurationSeconds != null) {
+    task.estimateEvidence = extra.estimateEvidence ?? estimateMediaWorkSeconds({
+      mediaDurationSeconds: task.mediaDurationSeconds,
+      backend: "fallback",
+      model: null,
+    }).estimateEvidence;
+  } else if (extra.estimateEvidence) {
+    task.estimateEvidence = extra.estimateEvidence;
+  }
   if (Array.isArray(extra.youtubeExtractionAttempts) && extra.youtubeExtractionAttempts.length > 0) {
     task.youtubeExtractionAttempts = extra.youtubeExtractionAttempts;
   }
@@ -3947,11 +4305,15 @@ async function fetchPersonalPodcastBuilder(
         publishedAt: item.publishedAt,
         sourceName: builder.name,
         fetchTool: skillFetchTool("podcast RSS feed", agentModel),
+        mediaDurationSeconds: item.mediaDurationSeconds ?? null,
+        captionAvailability: "not_applicable",
+        plannedExtractionMethod: "rss_show_notes",
         rawJson: {
           source: "personal-podcast",
           builderId: builder.id,
           builderName: builder.name,
           feedUrl,
+          mediaDurationSeconds: item.mediaDurationSeconds ?? null,
         },
       });
     } else {
@@ -4372,6 +4734,7 @@ function podcastAgentTaskForEpisode(builder, item, feedUrl, sources = {}) {
       enclosureType: item.enclosureType ?? null,
       enclosureLength: item.enclosureLength ?? null,
       itunesDuration: item.itunesDuration ?? null,
+      mediaDurationSeconds: item.mediaDurationSeconds ?? null,
       thinShowNotes: item.body || "",
     },
   };
@@ -4382,7 +4745,20 @@ function podcastAgentTaskForEpisode(builder, item, feedUrl, sources = {}) {
     sourceType: "podcast",
     item: taskItem,
     minimumContentQuality: genericMinimumContentQuality(sources, "podcast"),
+    mediaDurationSeconds: item.mediaDurationSeconds ?? null,
+    captionAvailability: "not_applicable",
+    plannedExtractionMethod: "audio_transcription",
+    podcastExtractionAttempts: [
+      { method: "rss-show-notes", status: "insufficient", reason: "show_notes_too_thin" },
+    ],
   };
+  if (item.mediaDurationSeconds != null) {
+    task.estimateEvidence = estimateMediaWorkSeconds({
+      mediaDurationSeconds: item.mediaDurationSeconds,
+      backend: "fallback",
+      model: null,
+    }).estimateEvidence;
+  }
   return { ...task, id: agentTaskId(task) };
 }
 
@@ -4424,6 +4800,7 @@ export function parsePodcastFeedItems(xml, feedUrl) {
         enclosureType,
         enclosureLength,
         itunesDuration: tagText(block, "itunes:duration") || null,
+        mediaDurationSeconds: parseMediaDurationSeconds(tagText(block, "itunes:duration") || null),
       };
     })
     // Keep episodes with at least an externalId + URL even if the body is
@@ -5513,38 +5890,63 @@ async function fetchYouTubePrimaryContent(video, {
   metadata = {},
 } = {}) {
   const attempts = [];
+  let mediaDurationSeconds = null;
   const ytdlp = await fetchYouTubeTranscriptWithYtDlp(video.url, {
     fetcher,
     commandRunner,
     metadata,
     attempts,
   });
-  if (ytdlp.text) return ytdlp;
+  mediaDurationSeconds = firstMediaDurationSeconds(mediaDurationSeconds, ytdlp.mediaDurationSeconds);
+  if (ytdlp.text) {
+    return {
+      ...ytdlp,
+      mediaDurationSeconds,
+      captionAvailability: "usable_captions",
+      plannedExtractionMethod: "captions",
+    };
+  }
 
   const watch = await fetchYouTubeTranscript(video.url, fetcher, metadata)
     .catch((error) => ({ text: "", error: errorMessage(error) }));
+  mediaDurationSeconds = firstMediaDurationSeconds(mediaDurationSeconds, watch.mediaDurationSeconds);
   attempts.push({
     method: "youtube-watch-captions",
     status: watch.text ? "ok" : "unavailable",
     reason: watch.text ? watch.captionSelectionReason || "caption_selected" : watch.error || "no_usable_caption_track",
     captionLanguageCode: watch.captionLanguageCode || null,
   });
-  if (watch.text) return { ...watch, attempts };
+  if (watch.text) {
+    return {
+      ...watch,
+      attempts,
+      mediaDurationSeconds,
+      captionAvailability: "usable_captions",
+      plannedExtractionMethod: "captions",
+    };
+  }
 
   const transcriptApi = await fetchYouTubeTranscriptApi(video.url, {
     commandRunner,
     metadata,
     attempts,
   });
-  if (transcriptApi.text) return transcriptApi;
+  if (transcriptApi.text) {
+    return {
+      ...transcriptApi,
+      mediaDurationSeconds,
+      captionAvailability: "usable_captions",
+      plannedExtractionMethod: "captions",
+    };
+  }
 
-  const localAsr = await fetchYouTubeLocalAsr(video.url, {
-    commandRunner,
+  return {
+    text: "",
     attempts,
-  });
-  if (localAsr.text) return localAsr;
-
-  return { text: "", attempts };
+    mediaDurationSeconds,
+    captionAvailability: "no_usable_captions",
+    plannedExtractionMethod: "audio_transcription",
+  };
 }
 
 async function fetchYouTubeTranscriptWithYtDlp(videoUrl, {
@@ -5571,10 +5973,15 @@ async function fetchYouTubeTranscriptWithYtDlp(videoUrl, {
     attempts.push({ method: "yt-dlp-captions", status: "failed", reason: `metadata_json_invalid:${errorMessage(error)}` });
     return { text: "" };
   }
+  const mediaDurationSeconds = firstMediaDurationSeconds(
+    data?.duration,
+    data?.duration_string,
+    data?.durationString,
+  );
   const tracks = ytDlpCaptionTracks(data);
   if (tracks.length === 0) {
     attempts.push({ method: "yt-dlp-captions", status: "unavailable", reason: "no_caption_tracks" });
-    return { text: "" };
+    return { text: "", mediaDurationSeconds };
   }
   const selection = preferredCaptionTrack(tracks, {
     title: metadata.title || data.title || "",
@@ -5587,7 +5994,7 @@ async function fetchYouTubeTranscriptWithYtDlp(videoUrl, {
       reason: "caption_source_language_uncertain",
       availableCaptionLanguages: [...new Set(tracks.map((track) => track.languageCode).filter(Boolean))],
     });
-    return { text: "" };
+    return { text: "", mediaDurationSeconds };
   }
   const text = await fetchYouTubeCaptionTrackText(selection.track, fetcher).catch(() => "");
   attempts.push({
@@ -5597,13 +6004,14 @@ async function fetchYouTubeTranscriptWithYtDlp(videoUrl, {
     captionLanguageCode: selection.track.languageCode || null,
     captionKind: selection.track.kind === "asr" ? "automatic" : "manual",
   });
-  if (!text) return { text: "" };
+  if (!text) return { text: "", mediaDurationSeconds };
   return {
     text,
     transcriptSource: "youtube-captions",
     captionLanguageCode: selection.track.languageCode || "",
     inferredSourceLanguage: selection.inferredSourceLanguage,
     captionSelectionReason: selection.reason,
+    mediaDurationSeconds,
     attempts,
   };
 }
@@ -5770,6 +6178,9 @@ except Exception as exc:
 `;
 }
 
+// Reserved for future worker-side audio transcription; personal-source planning
+// must not invoke this path during discovery.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function fetchYouTubeLocalAsr(videoUrl, {
   commandRunner = runTool,
   attempts = [],
@@ -5936,17 +6347,21 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = timedSourceFetch, meta
   });
   if (!response.ok) return { text: "" };
   const playerResponse = extractYouTubePlayerResponse(await response.text());
+  const mediaDurationSeconds = firstMediaDurationSeconds(
+    playerResponse?.videoDetails?.lengthSeconds,
+    playerResponse?.microformat?.playerMicroformatRenderer?.lengthSeconds,
+  );
   const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-  if (!Array.isArray(tracks) || tracks.length === 0) return { text: "" };
+  if (!Array.isArray(tracks) || tracks.length === 0) return { text: "", mediaDurationSeconds };
   const selection = preferredCaptionTrack(tracks, metadata);
-  if (!selection?.track?.baseUrl) return { text: "" };
+  if (!selection?.track?.baseUrl) return { text: "", mediaDurationSeconds };
   const track = selection.track;
   const captionResponse = await fetcher(withYouTubeCaptionFormat(track.baseUrl, "json3"), {
     headers: {
       "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
     },
   });
-  if (!captionResponse.ok) return { text: "" };
+  if (!captionResponse.ok) return { text: "", mediaDurationSeconds };
   const body = await captionResponse.text();
   const text = body.trim().startsWith("{") ? parseYouTubeJsonTranscript(body) : parseYouTubeXmlTranscript(body);
   return {
@@ -5955,6 +6370,7 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = timedSourceFetch, meta
     captionLanguageCode: track.languageCode || "",
     inferredSourceLanguage: selection.inferredSourceLanguage,
     captionSelectionReason: selection.reason,
+    mediaDurationSeconds,
   };
 }
 
@@ -9925,6 +10341,7 @@ async function fetchCloudLibrary(args) {
         localErrors: [],
         cloudSourceTasks: [],
         fetchTasks: [],
+        taskOutcomes: [],
         message: "Web sync disabled for smoke check; no cloud fetch tasks were leased.",
       },
       null,
@@ -9949,6 +10366,7 @@ async function fetchCloudLibrary(args) {
         summaryLanguage: null,
         cloudSourceTasks: [],
         fetchTasks: [],
+        taskOutcomes: [],
       },
       null,
       2,
@@ -9973,10 +10391,13 @@ async function fetchCloudLibrary(args) {
       summaryLanguage: task.summaryLanguage,
       mustSucceedBy: task.mustSucceedBy,
       estimatedDurationSeconds: task.estimatedDurationSeconds,
+      estimatedWorkSeconds: task.estimatedWorkSeconds,
       provisionalExecutionBudgetSeconds: task.provisionalExecutionBudgetSeconds,
+      executionBudgetSeconds: task.executionBudgetSeconds,
       workloadClass: task.workloadClass,
       budgetReason: task.budgetReason,
       deadlineState: task.deadlineState,
+      estimateEvidence: task.estimateEvidence,
     });
     return builder;
   });
@@ -10013,6 +10434,7 @@ async function fetchCloudLibrary(args) {
         fetchUrl: builder.fetchUrl,
       })),
       fetchTasks: planned.fetchTasks,
+      taskOutcomes: planned.taskOutcomes,
     },
     null,
     2,

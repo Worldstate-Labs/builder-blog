@@ -1487,6 +1487,118 @@ test("personal YouTube fetcher uses yt-dlp metadata captions before agent fallba
   assert.equal(result.items[0].rawJson.youtubeExtractionAttempts[0].status, "ok");
 });
 
+test("personal YouTube fetcher plans worker fallback without audio download or local ASR when captions are unavailable", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const commands: Array<{ command: string; args: string[] }> = [];
+
+  const result = await cli.fetchPersonalYouTubeBuilderForTest(
+    {
+      id: "builder_youtube_no_asr",
+      name: "No ASR During Planning",
+      sourceUrl: "https://www.youtube.com/@noasr",
+      fetchUrl: "https://www.youtube.com/@noasr",
+    },
+    {
+      cutoff: null,
+      limit: 1,
+      agentModel: "gpt-test",
+      fetchedItemKeys: new Set(),
+      sources: {
+        youtube: {
+          contentQuality: {
+            minChars: 80,
+            minContentUnits: 24,
+            minLocalDiversity: 0.25,
+            maxTimestampDensity: 0.1,
+          },
+        },
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push({ command, args: [...args] });
+        if (command === "yt-dlp" && args[0] === "--version") {
+          return { ok: true, code: 0, stdout: "2026.01.01", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp" && args.includes("-J")) {
+          return {
+            ok: true,
+            code: 0,
+            stdout: JSON.stringify({
+              title: "Planning-only fallback",
+              duration: 3660,
+              subtitles: {},
+              automatic_captions: {},
+            }),
+            stderr: "",
+            timedOut: false,
+          };
+        }
+        if (command === "python3" || command === "python") {
+          return {
+            ok: true,
+            code: 0,
+            stdout: JSON.stringify({ status: "unavailable", reason: "no_transcripts" }),
+            stderr: "",
+            timedOut: false,
+          };
+        }
+        if (["ffmpeg", "faster_whisper", "mlx_whisper", "whisper"].includes(command)) {
+          return { ok: true, code: 0, stdout: "available", stderr: "", timedOut: false };
+        }
+        return missingCommandRunner();
+      },
+      fetcher: async (url: string) => {
+        const href = String(url);
+        if (href === "https://www.youtube.com/@noasr") {
+          return new Response('<html>{"externalId":"UCnoasr000000000000000000"}</html>');
+        }
+        if (href.includes("/feeds/videos.xml")) {
+          return new Response(`
+            <feed>
+              <entry>
+                <yt:videoId>noasr001</yt:videoId>
+                <title>Planning-only fallback</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=noasr001" />
+                <published>2026-05-22T10:00:00Z</published>
+                <media:description>Short channel metadata only.</media:description>
+              </entry>
+            </feed>
+          `);
+        }
+        if (href === "https://www.youtube.com/watch?v=noasr001") {
+          return new Response("<html><script>var ytInitialPlayerResponse = {};</script></html>");
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.equal(result.items.length, 0);
+  assert.equal(result.agentTasks.length, 1);
+  const agentTask = result.agentTasks[0] as unknown as {
+    mediaDurationSeconds?: number;
+    captionAvailability?: string;
+    plannedExtractionMethod?: string;
+    estimateEvidence?: { mediaDurationSeconds?: number };
+    youtubeExtractionAttempts: { reason?: string }[];
+  };
+  assert.equal(agentTask.mediaDurationSeconds, 3660);
+  assert.equal(agentTask.captionAvailability, "no_usable_captions");
+  assert.equal(agentTask.plannedExtractionMethod, "audio_transcription");
+  assert.equal(agentTask.estimateEvidence?.mediaDurationSeconds, 3660);
+  assert.match(
+    agentTask.youtubeExtractionAttempts.map((attempt) => attempt.reason).join(" "),
+    /no_caption_tracks|no_transcripts/,
+  );
+  assert.equal(
+    commands.some(({ command }) => ["ffmpeg", "faster_whisper", "mlx_whisper", "whisper"].includes(command)),
+    false,
+  );
+  assert.equal(
+    commands.some(({ command, args }) => command === "yt-dlp" && args.includes("-f") && args.includes("ba")),
+    false,
+  );
+});
+
 test("personal YouTube fetcher falls back to agent when caption language is ambiguous", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const result = await cli.fetchPersonalYouTubeBuilderForTest(
@@ -2443,6 +2555,94 @@ test("personal podcast fetcher parses RSS episodes as podcast items", async () =
   assert.equal(items[0].kind, "PODCAST_EPISODE");
   assert.equal(items[0].externalId, "episode-42");
   assert.equal(items[0].url, "https://pod.example.com/42");
+});
+
+test("media duration parsing normalizes podcast duration text and numeric forms", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  assert.equal(cli.parseMediaDurationSeconds(321), 321);
+  assert.equal(cli.parseMediaDurationSeconds("07:45"), 465);
+  assert.equal(cli.parseMediaDurationSeconds("01:02:03"), 3723);
+  assert.equal(cli.parseMediaDurationSeconds("invalid"), null);
+
+  const items = cli.parsePodcastFeedItems(
+    `
+    <rss><channel>
+      <item>
+        <title>Episode A</title>
+        <guid>episode-a</guid>
+        <link>https://pod.example.com/a</link>
+        <itunes:duration>54:32</itunes:duration>
+      </item>
+      <item>
+        <title>Episode B</title>
+        <guid>episode-b</guid>
+        <link>https://pod.example.com/b</link>
+        <itunes:duration>01:02:03</itunes:duration>
+      </item>
+      <item>
+        <title>Episode C</title>
+        <guid>episode-c</guid>
+        <link>https://pod.example.com/c</link>
+        <itunes:duration>321</itunes:duration>
+      </item>
+    </channel></rss>
+    `,
+    "https://pod.example.com/feed.xml",
+  );
+
+  assert.equal(items[0].mediaDurationSeconds, 3272);
+  assert.equal(items[1].mediaDurationSeconds, 3723);
+  assert.equal(items[2].mediaDurationSeconds, 321);
+});
+
+test("media work estimator uses installed policy fallback defaults and backend overrides", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  const fallbackEstimate = cli.estimateMediaWorkSeconds(
+    {
+      mediaDurationSeconds: 1800,
+      backend: "unknown_backend",
+      model: "tiny",
+    },
+    {
+      mediaEstimation: {
+        backendAsrRealtimeFactors: {
+          faster_whisper: 0.45,
+        },
+      },
+    },
+  );
+  assert.equal(fallbackEstimate.estimatedWorkSeconds, 2610);
+  assert.equal(fallbackEstimate.estimateEvidence.backend, "unknown_backend");
+  assert.equal(fallbackEstimate.estimateEvidence.model, "tiny");
+  assert.equal(fallbackEstimate.estimateEvidence.asrRealtimeFactor, 1.25);
+  assert.equal(fallbackEstimate.estimateEvidence.audioPreparationFactor, 0.15);
+  assert.equal(fallbackEstimate.estimateEvidence.fixedOverheadSeconds, 90);
+
+  const backendEstimate = cli.estimateMediaWorkSeconds(
+    {
+      mediaDurationSeconds: 1800,
+      backend: "faster_whisper",
+      model: "large-v3",
+    },
+    {
+      mediaEstimation: {
+        conservativeFallbackAsrRealtimeFactor: 1.9,
+        backendAsrRealtimeFactors: {
+          faster_whisper: 0.55,
+        },
+        audioPreparationRealtimeFactor: 0.2,
+        fixedOverheadSeconds: 120,
+      },
+    },
+  );
+  assert.equal(backendEstimate.estimatedWorkSeconds, 1470);
+  assert.equal(backendEstimate.estimateEvidence.backend, "faster_whisper");
+  assert.equal(backendEstimate.estimateEvidence.model, "large-v3");
+  assert.equal(backendEstimate.estimateEvidence.asrRealtimeFactor, 0.55);
+  assert.equal(backendEstimate.estimateEvidence.audioPreparationFactor, 0.2);
+  assert.equal(backendEstimate.estimateEvidence.fixedOverheadSeconds, 120);
 });
 
 test("personal fetcher reports concrete fetching tool identity", async () => {
@@ -6845,6 +7045,143 @@ test("merge-task-results keeps zero-post cloud sources in final remaining tasks"
     remainingTasks.cloudSourceTasks.map((task: { cloudSourceTaskId: string }) => task.cloudSourceTaskId),
     ["source_without_posts"],
   );
+});
+
+test("cloud planning keeps final execution budgets on planned media tasks and converts over-cap work into planned outcomes", async () => {
+  const originalFetch = global.fetch;
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-media-plan=${Date.now()}`);
+  const builders = [
+    {
+      id: "podcast_short",
+      scope: "PERSONAL",
+      kind: "PODCAST",
+      sourceType: "podcast",
+      name: "Short Podcast",
+      sourceUrl: "https://pod.example.com/short.xml",
+      fetchUrl: "https://pod.example.com/short.xml",
+    },
+    {
+      id: "podcast_long",
+      scope: "PERSONAL",
+      kind: "PODCAST",
+      sourceType: "podcast",
+      name: "Very Long Podcast",
+      sourceUrl: "https://pod.example.com/long.xml",
+      fetchUrl: "https://pod.example.com/long.xml",
+    },
+  ];
+
+  global.fetch = async (input: string | URL | Request) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url === "https://pod.example.com/short.xml") {
+      return new Response(`
+        <rss><channel>
+          <item>
+            <title>Short audio</title>
+            <guid>short-episode</guid>
+            <link>https://pod.example.com/short-episode</link>
+            <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+            <description>Brief teaser only.</description>
+            <itunes:duration>45:00</itunes:duration>
+            <enclosure url="https://cdn.example.com/short.mp3" type="audio/mpeg" />
+          </item>
+        </channel></rss>
+      `);
+    }
+    if (url === "https://pod.example.com/long.xml") {
+      return new Response(`
+        <rss><channel>
+          <item>
+            <title>Long audio</title>
+            <guid>long-episode</guid>
+            <link>https://pod.example.com/long-episode</link>
+            <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+            <description>Brief teaser only.</description>
+            <itunes:duration>05:30:00</itunes:duration>
+            <enclosure url="https://cdn.example.com/long.mp3" type="audio/mpeg" />
+          </item>
+        </channel></rss>
+      `);
+    }
+    return new Response("missing", { status: 404 });
+  };
+
+  try {
+    const planned = await cli.buildFetchTasksForBuilders({
+      builders,
+      context: {
+        language: "zh",
+        subscriptions: [],
+        personalFetchedItems: [],
+        latestPersonalFetchedItems: [],
+        sources: {
+          podcast: {
+            label: "Podcast",
+            contentQuality: {
+              minChars: 200,
+              minContentUnits: 35,
+            },
+            summaryPrompt: {
+              language: "zh",
+              body: "Summarize the supplied episode in Chinese.",
+              style: "podcast_or_video",
+            },
+          },
+        },
+      },
+      force: true,
+      limit: 1,
+      runStartedAt: new Date("2026-07-19T08:00:00.000Z"),
+      cloudTaskMetadataByBuilderId: new Map([
+        [
+          "podcast_short",
+          {
+            cloudRunId: "cloud_run_1",
+            cloudSourceTaskId: "cloud_short",
+            builderId: "podcast_short",
+            summaryLanguage: "zh",
+            mustSucceedBy: "2026-07-19T09:30:00.000Z",
+            provisionalExecutionBudgetSeconds: 3600,
+          },
+        ],
+        [
+          "podcast_long",
+          {
+            cloudRunId: "cloud_run_1",
+            cloudSourceTaskId: "cloud_long",
+            builderId: "podcast_long",
+            summaryLanguage: "zh",
+            mustSucceedBy: "2026-07-19T09:30:00.000Z",
+            provisionalExecutionBudgetSeconds: 3600,
+          },
+        ],
+      ]),
+    });
+
+    const shortTask = planned.fetchTasks.find((task: { builderId: string }) => task.builderId === "podcast_short");
+    assert.equal(shortTask.mediaDurationSeconds, 2700);
+    assert.equal(shortTask.executionBudgetSeconds >= 3600, true);
+    assert.equal(shortTask.provisionalExecutionBudgetSeconds, 3600);
+    assert.equal(shortTask.workloadClass, "long_media");
+    assert.equal(shortTask.plannedExtractionMethod, "audio_transcription");
+    assert.equal(shortTask.estimateEvidence.mediaDurationSeconds, 2700);
+    assert.equal(shortTask.estimateEvidence.backend, "fallback");
+    assert.equal(shortTask.deadlineState, "at_risk");
+
+    assert.equal(
+      planned.fetchTasks.some((task: { builderId: string }) => task.builderId === "podcast_long"),
+      false,
+    );
+    assert.equal(planned.taskOutcomes.length, 1);
+    assert.equal(planned.taskOutcomes[0].status, "failed");
+    assert.equal(planned.taskOutcomes[0].reason, "workload_exceeds_max_budget");
+    assert.equal(planned.taskOutcomes[0].plannedTask.builderId, "podcast_long");
+    assert.equal(planned.taskOutcomes[0].evidence.maximumBudgetSeconds, 14400);
+    assert.equal(planned.taskOutcomes[0].evidence.mediaDurationSeconds, 19800);
+    assert.equal(planned.taskOutcomes[0].evidence.uncappedEstimatedWorkSeconds > 14400, true);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test("merge-task-results checkpoint exclusions keep repeated cloud task ids run-scoped", async () => {
