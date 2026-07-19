@@ -4,6 +4,8 @@ import { useMemo, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import {
+  deadlineRiskLabel,
+  formatCompactDurationSeconds,
   TaskRow,
   type FetchTaskLog,
   type FetchTaskProgress,
@@ -144,6 +146,24 @@ function CloudSourceLogDetail({
               <strong>Started</strong>
               <RelativeTime value={source.latestRunTask.startedAt} fallback="-" />
             </span>
+            {source.latestRunTask.provisionalExecutionBudgetSeconds != null ? (
+              <span>
+                <strong>Initial budget</strong>
+                {formatCompactDurationSeconds(source.latestRunTask.provisionalExecutionBudgetSeconds) ?? "-"}
+              </span>
+            ) : null}
+            {source.latestRunTask.deadlineState ? (
+              <span>
+                <strong>Deadline risk</strong>
+                {deadlineRiskLabel(source.latestRunTask.deadlineState) ?? source.latestRunTask.deadlineState}
+              </span>
+            ) : null}
+            {source.latestRunTask.mustSucceedBy ? (
+              <span>
+                <strong>Must succeed by</strong>
+                <RelativeTime value={source.latestRunTask.mustSucceedBy} fallback={source.latestRunTask.mustSucceedBy} />
+              </span>
+            ) : null}
           </div>
           {mappedPosts.length > 0 ? (
             <ul className="sync-panel-run-card-candidate-list">
@@ -411,5 +431,14 @@ function postToFetchTaskLog(
     summaryMethod: post.summaryMethod,
     hubSharedReuse: post.hubSharedReuse,
     workerId: post.workerId,
+    estimatedWorkSeconds: post.estimatedWorkSeconds,
+    executionBudgetSeconds: post.executionBudgetSeconds,
+    workloadClass: post.workloadClass,
+    budgetReason: post.budgetReason,
+    deadlineState: post.deadlineState,
+    mediaDurationSeconds: post.mediaDurationSeconds,
+    plannedExtractionMethod: post.plannedExtractionMethod,
+    mustSucceedBy: post.mustSucceedBy,
+    estimateEvidence: post.estimateEvidence,
   };
 }

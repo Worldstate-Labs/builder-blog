@@ -27,6 +27,15 @@ export type CloudFetchPostOutcome = {
   summaryMethod: string | null;
   hubSharedReuse: Record<string, unknown> | null;
   workerId: string | null;
+  estimatedWorkSeconds: number | null;
+  executionBudgetSeconds: number | null;
+  workloadClass: string | null;
+  budgetReason: string | null;
+  deadlineState: string | null;
+  mediaDurationSeconds: number | null;
+  plannedExtractionMethod: string | null;
+  mustSucceedBy: string | null;
+  estimateEvidence: Record<string, unknown> | null;
 };
 
 export type CloudFetchWorkerUsage = {
@@ -113,6 +122,11 @@ export type CloudFetchRunLogTask = {
   pendingPosts: number;
   durationMs: number | null;
   estimatedDurationSeconds: number | null;
+  mustSucceedBy: string | null;
+  provisionalExecutionBudgetSeconds: number | null;
+  workloadClass: string | null;
+  budgetReason: string | null;
+  deadlineState: string | null;
   successProbability: number | null;
   usageTokens: number | null;
   usageCostUsd: number | null;
@@ -389,6 +403,7 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
         ? Math.max(0, task.finishedAt.getTime() - task.startedAt.getTime())
         : null;
   const details = record(task.details);
+  const executionPlan = parseTaskExecutionPlan(task.details);
   const posts = parseCloudTaskPosts(task.details);
   const outcomeSummary = deriveCloudFetchOutcomeSummary({
     status: task.status,
@@ -413,7 +428,12 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
     skippedPosts: outcomeSummary.skippedPosts,
     pendingPosts: outcomeSummary.pendingPosts,
     durationMs,
-    estimatedDurationSeconds: task.estimatedDurationSeconds ?? null,
+    estimatedDurationSeconds: executionPlan.estimatedDurationSeconds ?? task.estimatedDurationSeconds ?? null,
+    mustSucceedBy: executionPlan.mustSucceedBy,
+    provisionalExecutionBudgetSeconds: executionPlan.provisionalExecutionBudgetSeconds,
+    workloadClass: executionPlan.workloadClass,
+    budgetReason: executionPlan.budgetReason,
+    deadlineState: executionPlan.deadlineState,
     successProbability: task.successProbabilitySnapshot ?? null,
     usageTokens: task.usageTokens ?? null,
     usageCostUsd: task.usageCostUsd == null ? null : Number(task.usageCostUsd),
@@ -428,10 +448,8 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
 // (same shape the per-user fetch log uses). Read defensively so a missing or
 // differently-shaped details blob just yields no per-post rows.
 function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
-  const detailsRecord =
-    details && typeof details === "object" && !Array.isArray(details)
-      ? (details as Record<string, unknown>)
-      : null;
+  const detailsRecord = record(details);
+  const planPosts = executionPlanPosts(detailsRecord?.executionPlan);
   const raw = detailsRecord
     ? Array.isArray(detailsRecord.fetchTasks)
       ? detailsRecord.fetchTasks
@@ -439,35 +457,168 @@ function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
         ? detailsRecord.posts
         : []
     : [];
-  const posts: CloudFetchPostOutcome[] = [];
+  const postsById = new Map<string, CloudFetchPostOutcome>();
+  const anonymousPosts: CloudFetchPostOutcome[] = [];
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const p = item as Record<string, unknown>;
     const rawJson = record(p.rawJson ?? p.raw_json);
-    posts.push({
-      id: str(p.id ?? p.fetchTaskId ?? p.fetch_task_id ?? rawJson?.fetchTaskId),
-      title: str(p.title),
-      url: str(p.url),
-      contentStatus: str(p.contentStatus ?? p.content_status),
-      agentWorkType: str(p.agentWorkType ?? p.agent_work_type),
-      status: str(p.status),
-      failureReason: str(p.failureReason ?? p.failure_reason),
-      fetchTool: str(p.fetchTool ?? p.fetch_tool),
-      agentRuntime: str(p.agentRuntime ?? p.agent_runtime),
-      model: str(p.agentModel ?? p.model),
-      bodyChars: num(p.bodyChars ?? p.body_chars),
-      bodyWords: num(p.bodyWords ?? p.body_words),
-      headlineChars: num(p.headlineChars ?? p.headline_chars),
-      headlineWords: num(p.headlineWords ?? p.headline_words),
-      summaryChars: num(p.summaryChars ?? p.summary_chars),
-      summaryWords: num(p.summaryWords ?? p.summary_words),
-      readMethod: str(p.readMethod ?? p.read_method),
-      summaryMethod: str(p.summaryMethod ?? p.summary_method),
-      hubSharedReuse: record(p.hubSharedReuse ?? p.hub_shared_reuse ?? rawJson?.hubSharedReuse),
-      workerId: str(p.workerId ?? p.worker_id),
+    const id = str(p.id ?? p.fetchTaskId ?? p.fetch_task_id ?? rawJson?.fetchTaskId);
+    const post = applyExecutionPlanPostFallback(
+      {
+        id,
+        title: str(p.title),
+        url: str(p.url),
+        contentStatus: str(p.contentStatus ?? p.content_status),
+        agentWorkType: str(p.agentWorkType ?? p.agent_work_type),
+        status: str(p.status),
+        failureReason: str(p.failureReason ?? p.failure_reason),
+        fetchTool: str(p.fetchTool ?? p.fetch_tool),
+        agentRuntime: str(p.agentRuntime ?? p.agent_runtime),
+        model: str(p.agentModel ?? p.model),
+        bodyChars: num(p.bodyChars ?? p.body_chars),
+        bodyWords: num(p.bodyWords ?? p.body_words),
+        headlineChars: num(p.headlineChars ?? p.headline_chars),
+        headlineWords: num(p.headlineWords ?? p.headline_words),
+        summaryChars: num(p.summaryChars ?? p.summary_chars),
+        summaryWords: num(p.summaryWords ?? p.summary_words),
+        readMethod: str(p.readMethod ?? p.read_method),
+        summaryMethod: str(p.summaryMethod ?? p.summary_method),
+        hubSharedReuse: record(p.hubSharedReuse ?? p.hub_shared_reuse ?? rawJson?.hubSharedReuse),
+        workerId: str(p.workerId ?? p.worker_id),
+        estimatedWorkSeconds: num(p.estimatedWorkSeconds ?? p.estimated_work_seconds),
+        executionBudgetSeconds: num(p.executionBudgetSeconds ?? p.execution_budget_seconds),
+        workloadClass: str(p.workloadClass ?? p.workload_class),
+        budgetReason: str(p.budgetReason ?? p.budget_reason),
+        deadlineState: str(p.deadlineState ?? p.deadline_state),
+        mediaDurationSeconds: num(p.mediaDurationSeconds ?? p.media_duration_seconds),
+        plannedExtractionMethod: str(p.plannedExtractionMethod ?? p.planned_extraction_method),
+        mustSucceedBy: iso(p.mustSucceedBy ?? p.must_succeed_by),
+        estimateEvidence: record(p.estimateEvidence ?? p.estimate_evidence),
+      },
+      id ? planPosts.get(id) : null,
+    );
+    if (post.id) {
+      postsById.set(post.id, post);
+    } else {
+      anonymousPosts.push(post);
+    }
+  }
+
+  for (const [postTaskId, planPost] of planPosts) {
+    if (postsById.has(postTaskId)) continue;
+    postsById.set(postTaskId, applyExecutionPlanPostFallback(emptyCloudPost(postTaskId), planPost));
+  }
+
+  return [...postsById.values(), ...anonymousPosts];
+}
+
+type ParsedExecutionPlan = {
+  mustSucceedBy: string | null;
+  estimatedDurationSeconds: number | null;
+  provisionalExecutionBudgetSeconds: number | null;
+  workloadClass: string | null;
+  budgetReason: string | null;
+  deadlineState: string | null;
+};
+
+type ParsedExecutionPlanPost = {
+  estimatedWorkSeconds: number | null;
+  executionBudgetSeconds: number | null;
+  workloadClass: string | null;
+  budgetReason: string | null;
+  deadlineState: string | null;
+  mediaDurationSeconds: number | null;
+  plannedExtractionMethod: string | null;
+  mustSucceedBy: string | null;
+  estimateEvidence: Record<string, unknown> | null;
+};
+
+function parseTaskExecutionPlan(details: unknown): ParsedExecutionPlan {
+  const plan = record(record(details)?.executionPlan);
+  return {
+    mustSucceedBy: iso(plan?.mustSucceedBy),
+    estimatedDurationSeconds: num(plan?.estimatedDurationSeconds),
+    provisionalExecutionBudgetSeconds: num(plan?.provisionalExecutionBudgetSeconds),
+    workloadClass: str(plan?.workloadClass),
+    budgetReason: str(plan?.budgetReason),
+    deadlineState: str(plan?.deadlineState),
+  };
+}
+
+function executionPlanPosts(value: unknown): Map<string, ParsedExecutionPlanPost> {
+  const posts = record(record(value)?.posts);
+  const parsed = new Map<string, ParsedExecutionPlanPost>();
+  if (!posts) return parsed;
+  for (const [postTaskId, rawPost] of Object.entries(posts)) {
+    const post = record(rawPost);
+    if (!postTaskId || !post) continue;
+    parsed.set(postTaskId, {
+      estimatedWorkSeconds: num(post.estimatedWorkSeconds),
+      executionBudgetSeconds: num(post.executionBudgetSeconds),
+      workloadClass: str(post.workloadClass),
+      budgetReason: str(post.budgetReason),
+      deadlineState: str(post.deadlineState),
+      mediaDurationSeconds: num(post.mediaDurationSeconds),
+      plannedExtractionMethod: str(post.plannedExtractionMethod),
+      mustSucceedBy: iso(post.mustSucceedBy),
+      estimateEvidence: record(post.estimateEvidence),
     });
   }
-  return posts;
+  return parsed;
+}
+
+function emptyCloudPost(id: string): CloudFetchPostOutcome {
+  return {
+    id,
+    title: null,
+    url: null,
+    contentStatus: null,
+    agentWorkType: null,
+    status: null,
+    failureReason: null,
+    fetchTool: null,
+    agentRuntime: null,
+    model: null,
+    bodyChars: null,
+    bodyWords: null,
+    headlineChars: null,
+    headlineWords: null,
+    summaryChars: null,
+    summaryWords: null,
+    readMethod: null,
+    summaryMethod: null,
+    hubSharedReuse: null,
+    workerId: null,
+    estimatedWorkSeconds: null,
+    executionBudgetSeconds: null,
+    workloadClass: null,
+    budgetReason: null,
+    deadlineState: null,
+    mediaDurationSeconds: null,
+    plannedExtractionMethod: null,
+    mustSucceedBy: null,
+    estimateEvidence: null,
+  };
+}
+
+function applyExecutionPlanPostFallback(
+  post: CloudFetchPostOutcome,
+  planPost: ParsedExecutionPlanPost | null | undefined,
+): CloudFetchPostOutcome {
+  if (!planPost) return post;
+  return {
+    ...post,
+    estimatedWorkSeconds: post.estimatedWorkSeconds ?? planPost.estimatedWorkSeconds,
+    executionBudgetSeconds: post.executionBudgetSeconds ?? planPost.executionBudgetSeconds,
+    workloadClass: post.workloadClass ?? planPost.workloadClass,
+    budgetReason: post.budgetReason ?? planPost.budgetReason,
+    deadlineState: post.deadlineState ?? planPost.deadlineState,
+    mediaDurationSeconds: post.mediaDurationSeconds ?? planPost.mediaDurationSeconds,
+    plannedExtractionMethod: post.plannedExtractionMethod ?? planPost.plannedExtractionMethod,
+    mustSucceedBy: post.mustSucceedBy ?? planPost.mustSucceedBy,
+    estimateEvidence: post.estimateEvidence ?? planPost.estimateEvidence,
+  };
 }
 
 function parseCloudWorkerUsages(details: unknown): CloudFetchWorkerUsage[] {

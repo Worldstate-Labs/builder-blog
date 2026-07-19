@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { TaskRow, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
+import { TaskRow, deadlineRiskLabel, formatCompactDurationSeconds, type FetchTaskLog, type FetchTaskProgress } from "@/components/FetchLogPanel";
 import { RelativeTime } from "@/components/RelativeTime";
 import {
   contentSyncStateChanged,
@@ -109,8 +109,7 @@ function formatPercent(value: number | null): string {
 }
 
 function formatSeconds(value: number | null): string {
-  if (value == null) return "-";
-  return formatDuration(value * 1000);
+  return formatCompactDurationSeconds(value) ?? "-";
 }
 
 function pluralize(value: number, singular: string, plural = `${singular}s`): string {
@@ -348,6 +347,15 @@ function postToFetchTaskLog(
     summaryMethod: post.summaryMethod,
     hubSharedReuse: post.hubSharedReuse,
     workerId: post.workerId,
+    estimatedWorkSeconds: post.estimatedWorkSeconds,
+    executionBudgetSeconds: post.executionBudgetSeconds,
+    workloadClass: post.workloadClass,
+    budgetReason: post.budgetReason,
+    deadlineState: post.deadlineState,
+    mediaDurationSeconds: post.mediaDurationSeconds,
+    plannedExtractionMethod: post.plannedExtractionMethod,
+    mustSucceedBy: post.mustSucceedBy,
+    estimateEvidence: post.estimateEvidence,
   };
 }
 
@@ -1060,13 +1068,31 @@ export function AdminCloudFetchLog({
                                       <RelativeTime value={task.finishedAt} fallback="Still running" />
                                     </span>
                                     <span>
-                                      <strong>Estimated</strong>
+                                      <strong>Historical estimate</strong>
                                       {formatSeconds(task.estimatedDurationSeconds)}
                                     </span>
                                     <span>
-                                      <strong>P(success)</strong>
+                                      <strong>Historical P(success)</strong>
                                       {formatPercent(task.successProbability)}
                                     </span>
+                                    {task.provisionalExecutionBudgetSeconds != null ? (
+                                      <span>
+                                        <strong>Initial budget</strong>
+                                        {formatSeconds(task.provisionalExecutionBudgetSeconds)}
+                                      </span>
+                                    ) : null}
+                                    {task.deadlineState ? (
+                                      <span>
+                                        <strong>Deadline risk</strong>
+                                        {deadlineRiskLabel(task.deadlineState) ?? task.deadlineState}
+                                      </span>
+                                    ) : null}
+                                    {task.mustSucceedBy ? (
+                                      <span>
+                                        <strong>Must succeed by</strong>
+                                        <RelativeTime value={task.mustSucceedBy} fallback={task.mustSucceedBy} />
+                                      </span>
+                                    ) : null}
                                   </div>
                                   {hasPosts ? (
                                     <ul className="sync-panel-run-card-candidate-list">

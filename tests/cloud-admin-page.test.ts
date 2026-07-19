@@ -162,10 +162,17 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /function skippedReasonSummary/);
   assert.match(log, /skippedReasonLabel/);
   assert.match(log, /Completed \/ planned/);
+  assert.match(log, /Initial budget/);
+  assert.match(log, /Deadline risk/);
+  assert.match(log, /Must succeed by/);
+  assert.match(log, /Historical estimate/);
+  assert.match(log, /Historical P\(success\)/);
   assert.match(log, /workerHost\.hostname,\s*runtimeLabel\(workerHost\),/);
   assert.doesNotMatch(log, /workerHost\.platform,/);
   assert.doesNotMatch(log, /claimed\s*\{/);
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
+  assert.doesNotMatch(log, /<strong>Estimated<\/strong>/);
+  assert.doesNotMatch(log, /<strong>P\(success\)<\/strong>/);
 });
 
 test("offline worker host presents its retained summary as historical", () => {
@@ -226,6 +233,15 @@ test("cloud source lifecycle does not treat a running zero-count task as no-post
   assert.match(sourceLogItem, /const noPosts = task\.noGeneratedFetchTasks \|\| \(!running && task\.plannedPosts === 0\)/);
   assert.match(sourceLogItem, /stillAwaitingPostResults \? "Waiting for results"/);
   assert.match(sourceLogItem, /function postOutcomeSummary\(task: CloudFetchRunLogTask\) \{[\s\S]*return "Waiting for results"/);
+});
+
+test("cloud source detail reuses source-level budget and deadline facts without exposing internal budget reason copy", () => {
+  const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
+
+  assert.match(sourceLogItem, /Initial budget/);
+  assert.match(sourceLogItem, /Deadline risk/);
+  assert.match(sourceLogItem, /Must succeed by/);
+  assert.doesNotMatch(sourceLogItem, /Budget reason/);
 });
 
 test("cloud worker host uses a distinct jobType so it never leaks into a personal fetch log", () => {

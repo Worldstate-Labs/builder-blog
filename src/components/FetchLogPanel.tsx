@@ -144,6 +144,15 @@ export type FetchTaskLog = {
   // Per-task evidence for a skipped (no-content) outcome, e.g.
   // { meanVolumeDb: -91, hasCaptions: false }.
   evidence?: Record<string, unknown> | null;
+  estimatedWorkSeconds?: number | null;
+  executionBudgetSeconds?: number | null;
+  workloadClass?: string | null;
+  budgetReason?: string | null;
+  deadlineState?: string | null;
+  mediaDurationSeconds?: number | null;
+  plannedExtractionMethod?: string | null;
+  mustSucceedBy?: string | null;
+  estimateEvidence?: Record<string, unknown> | null;
   usage?: unknown;
   tokenUsage?: unknown;
   token_usage?: unknown;
@@ -335,6 +344,47 @@ function formatDuration(ms: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainSeconds = Math.round(seconds - minutes * 60);
   return `${minutes}m ${remainSeconds}s`;
+}
+
+export function formatCompactDurationSeconds(value: number | null | undefined): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  const totalSeconds = Math.round(value);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (seconds > 0 && hours === 0) parts.push(`${seconds}s`);
+  if (parts.length === 0) parts.push("0s");
+  return parts.slice(0, 2).join(" ");
+}
+
+export function workloadLabel(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value === "long_media") return "Long media";
+  if (value === "standard") return "Standard";
+  return value.replace(/_/g, " ");
+}
+
+export function deadlineRiskLabel(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value === "on_time") return "On time";
+  if (value === "at_risk") return "At risk";
+  if (value === "missed") return "Missed";
+  return value.replace(/_/g, " ");
+}
+
+export function plannedMethodEvidenceText(task: Pick<FetchTaskLog, "plannedExtractionMethod" | "mediaDurationSeconds" | "estimateEvidence">): string | null {
+  const parts: string[] = [];
+  if (task.plannedExtractionMethod) parts.push(task.plannedExtractionMethod.replace(/_/g, " "));
+  const mediaDuration = formatCompactDurationSeconds(task.mediaDurationSeconds);
+  if (mediaDuration) parts.push(`${mediaDuration} media`);
+  const backend = displayText(
+    typeof task.estimateEvidence?.backend === "string" ? task.estimateEvidence.backend : null,
+  );
+  if (backend) parts.push(backend.replace(/_/g, " "));
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function statusStyle(status: string): {
@@ -3619,6 +3669,11 @@ export function TaskRow({
   const liveSummarySize = taskSizeText(liveTask?.summaryChars, liveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
   const summaryMethod = displayText(task.summaryMethod) || null;
+  const workEstimate = formatCompactDurationSeconds(task.estimatedWorkSeconds);
+  const executionBudget = formatCompactDurationSeconds(task.executionBudgetSeconds);
+  const plannedWorkload = workloadLabel(task.workloadClass);
+  const deadlineRisk = deadlineRiskLabel(task.deadlineState);
+  const plannedMethodEvidence = plannedMethodEvidenceText(task);
   const bannerBlurb =
     banner.tone === "fail"
       ? failureReasonText(task) ?? displayText(work.blurb)
@@ -3676,9 +3731,23 @@ export function TaskRow({
       label: "Planned",
       outcome: isDiscovery ? "Discovery task" : "Post task",
       tone: "ok",
-      children: task.contentStatus ? (
+      children: task.contentStatus ||
+        workEstimate ||
+        executionBudget ||
+        plannedWorkload ||
+        deadlineRisk ||
+        task.mustSucceedBy ||
+        plannedMethodEvidence ? (
         <dl className="sync-panel-task-fact-list">
-          <FactRow label="Content status" value={<span>{task.contentStatus.replace(/_/g, " ")}</span>} />
+          {task.contentStatus ? (
+            <FactRow label="Content status" value={<span>{task.contentStatus.replace(/_/g, " ")}</span>} />
+          ) : null}
+          {workEstimate ? <FactRow label="Work estimate" value={<span>{workEstimate}</span>} /> : null}
+          {executionBudget ? <FactRow label="Execution budget" value={<span>{executionBudget}</span>} /> : null}
+          {plannedWorkload ? <FactRow label="Workload" value={<span>{plannedWorkload}</span>} /> : null}
+          {deadlineRisk ? <FactRow label="Deadline risk" value={<span>{deadlineRisk}</span>} /> : null}
+          {task.mustSucceedBy ? <FactRow label="Must succeed by" value={<RelativeTime value={task.mustSucceedBy} fallback={task.mustSucceedBy} />} /> : null}
+          {plannedMethodEvidence ? <FactRow label="Method / evidence" value={<span>{plannedMethodEvidence}</span>} /> : null}
         </dl>
       ) : undefined,
     },

@@ -111,6 +111,15 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
     summaryMethod: "Copied matching-language summary from a Hub-shared post",
     hubSharedReuse: { bodyReused: true, summaryReused: true },
     workerId: "worker-0",
+    estimatedWorkSeconds: null,
+    executionBudgetSeconds: null,
+    workloadClass: null,
+    budgetReason: null,
+    deadlineState: null,
+    mediaDurationSeconds: null,
+    plannedExtractionMethod: null,
+    mustSucceedBy: null,
+    estimateEvidence: null,
   });
   assert.deepEqual(task.workerUsages, [
     {
@@ -256,6 +265,187 @@ test("serializeCloudFetchRun handles a still-running run with no tasks or usage"
   assert.equal(result.plannedPosts, 0);
   assert.equal(result.usageCostUsd, null);
   assert.deepEqual(result.tasks, []);
+});
+
+test("serializeCloudFetchRun overlays execution plan fields onto source and post outcomes", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    tasks: [
+      {
+        id: "rt_plan",
+        builderId: "cb_plan",
+        summaryLanguage: "en",
+        status: "FAILED",
+        plannedPosts: 2,
+        syncedPosts: 0,
+        failedPosts: 2,
+        actualDurationSeconds: 900,
+        failureReason: "timeout",
+        estimatedDurationSeconds: 4200,
+        details: {
+          executionPlan: {
+            mustSucceedBy: "2026-07-19T16:00:00.000Z",
+            estimatedDurationSeconds: 3900,
+            provisionalExecutionBudgetSeconds: 5400,
+            workloadClass: "standard",
+            budgetReason: "minimum_budget",
+            deadlineState: "at_risk",
+            posts: {
+              post_1: {
+                postTaskId: "post_1",
+                estimatedWorkSeconds: 2700,
+                executionBudgetSeconds: 3600,
+                workloadClass: "long_media",
+                budgetReason: "capped_long_media_maximum",
+                deadlineState: "missed",
+                mediaDurationSeconds: 1800,
+                plannedExtractionMethod: "audio_transcription",
+                mustSucceedBy: "2026-07-19T16:00:00.000Z",
+                estimateEvidence: { backend: "faster_whisper", mediaDurationSeconds: 1800 },
+              },
+              post_2: {
+                postTaskId: "post_2",
+                estimatedWorkSeconds: 300,
+                executionBudgetSeconds: 3600,
+                workloadClass: "standard",
+                budgetReason: "minimum_budget",
+                deadlineState: "on_time",
+              },
+            },
+          },
+          fetchTasks: [
+            {
+              id: "post_1",
+              title: "Planned timeout post",
+              status: "failed",
+              failureReason: "timeout",
+            },
+            {
+              id: "post_2",
+              title: "Already finalized budget",
+              status: "failed",
+              estimatedWorkSeconds: 1200,
+              executionBudgetSeconds: 1800,
+              workloadClass: "standard",
+              budgetReason: "scaled_and_rounded",
+              deadlineState: "at_risk",
+            },
+          ],
+        },
+        builder: { name: "Execution Plan Feed", sourceType: "podcast" },
+      },
+    ],
+  });
+
+  const task = result.tasks[0];
+  assert.equal(task.mustSucceedBy, "2026-07-19T16:00:00.000Z");
+  assert.equal(task.estimatedDurationSeconds, 3900);
+  assert.equal(task.provisionalExecutionBudgetSeconds, 5400);
+  assert.equal(task.workloadClass, "standard");
+  assert.equal(task.budgetReason, "minimum_budget");
+  assert.equal(task.deadlineState, "at_risk");
+
+  assert.deepEqual(task.posts[0], {
+    id: "post_1",
+    title: "Planned timeout post",
+    url: null,
+    contentStatus: null,
+    agentWorkType: null,
+    status: "failed",
+    failureReason: "timeout",
+    fetchTool: null,
+    agentRuntime: null,
+    model: null,
+    bodyChars: null,
+    bodyWords: null,
+    headlineChars: null,
+    headlineWords: null,
+    summaryChars: null,
+    summaryWords: null,
+    readMethod: null,
+    summaryMethod: null,
+    hubSharedReuse: null,
+    workerId: null,
+    estimatedWorkSeconds: 2700,
+    executionBudgetSeconds: 3600,
+    workloadClass: "long_media",
+    budgetReason: "capped_long_media_maximum",
+    deadlineState: "missed",
+    mediaDurationSeconds: 1800,
+    plannedExtractionMethod: "audio_transcription",
+    mustSucceedBy: "2026-07-19T16:00:00.000Z",
+    estimateEvidence: { backend: "faster_whisper", mediaDurationSeconds: 1800 },
+  });
+
+  assert.equal(task.posts[1]?.estimatedWorkSeconds, 1200);
+  assert.equal(task.posts[1]?.executionBudgetSeconds, 1800);
+  assert.equal(task.posts[1]?.budgetReason, "scaled_and_rounded");
+  assert.equal(task.posts[1]?.deadlineState, "at_risk");
+});
+
+test("serializeCloudFetchRun tolerates malformed and legacy details while preserving plan-only fallback fields", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    tasks: [
+      {
+        id: "rt_legacy",
+        builderId: "cb_legacy",
+        summaryLanguage: "en",
+        status: "FAILED",
+        plannedPosts: 1,
+        syncedPosts: 0,
+        failedPosts: 1,
+        actualDurationSeconds: null,
+        failureReason: "timeout",
+        estimatedDurationSeconds: null,
+        details: {
+          executionPlan: {
+            mustSucceedBy: "2026-07-19T16:00:00.000Z",
+            estimatedDurationSeconds: 1800,
+            provisionalExecutionBudgetSeconds: 3600,
+            workloadClass: "standard",
+            budgetReason: "minimum_budget",
+            deadlineState: "missed",
+            posts: {
+              legacy_post: {
+                postTaskId: "legacy_post",
+                estimatedWorkSeconds: 1200,
+                executionBudgetSeconds: 3600,
+                workloadClass: "standard",
+                budgetReason: "minimum_budget",
+                deadlineState: "missed",
+                plannedExtractionMethod: "captions",
+                estimateEvidence: { backend: "fallback" },
+              },
+            },
+          },
+          fetchTasks: [{ id: "legacy_post", status: "failed", failureReason: "timeout", rawJson: "broken" }],
+          workerUsages: ["bad"],
+        },
+        builder: { name: "Legacy Feed", sourceType: "video" },
+      },
+      {
+        id: "rt_bad",
+        builderId: "cb_bad",
+        summaryLanguage: "en",
+        status: "SUCCEEDED",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        actualDurationSeconds: 1,
+        failureReason: null,
+        details: "legacy-string-details",
+        builder: null,
+      },
+    ],
+  });
+
+  assert.equal(result.tasks[0]?.posts[0]?.executionBudgetSeconds, 3600);
+  assert.equal(result.tasks[0]?.posts[0]?.plannedExtractionMethod, "captions");
+  assert.deepEqual(result.tasks[0]?.posts[0]?.estimateEvidence, { backend: "fallback" });
+  assert.deepEqual(result.tasks[0]?.workerUsages, []);
+  assert.deepEqual(result.tasks[1]?.posts, []);
+  assert.equal(result.tasks[1]?.provisionalExecutionBudgetSeconds, null);
 });
 
 test("serializeCloudFetchRun exposes source tasks that generated no post tasks", () => {
