@@ -739,12 +739,35 @@ export function nextCloudTaskFailureSchedule(params: {
   retryBaseMinutes: number;
   failureCircuitBreakerThreshold: number;
   failureReason: string;
+  mustSucceedBy?: Date | null;
+  executionBudgetSeconds?: number | null;
 }) {
   const consecutiveFailures = params.previousConsecutiveFailures + 1;
   const backoffExponent = Math.min(consecutiveFailures - 1, 5);
   const backoffMinutes = params.retryBaseMinutes * 2 ** backoffExponent;
-  const nextAttemptAt = new Date(params.now.getTime() + backoffMinutes * MINUTE_MS);
+  const naturalNextAttemptAt = new Date(params.now.getTime() + backoffMinutes * MINUTE_MS);
   const breakerTripped = consecutiveFailures >= params.failureCircuitBreakerThreshold;
+  let nextAttemptAt = naturalNextAttemptAt;
+  if (
+    !breakerTripped &&
+    params.mustSucceedBy &&
+    typeof params.executionBudgetSeconds === "number" &&
+    Number.isFinite(params.executionBudgetSeconds) &&
+    params.executionBudgetSeconds > 0
+  ) {
+    const latestFeasibleStart = new Date(
+      params.mustSucceedBy.getTime() - params.executionBudgetSeconds * 1000,
+    );
+    const earliestAllowedRetry = new Date(
+      params.now.getTime() + params.retryBaseMinutes * MINUTE_MS,
+    );
+    if (
+      naturalNextAttemptAt.getTime() > latestFeasibleStart.getTime() &&
+      latestFeasibleStart.getTime() >= earliestAllowedRetry.getTime()
+    ) {
+      nextAttemptAt = latestFeasibleStart;
+    }
+  }
   return {
     lastFailureAt: params.now,
     lastFailureReason: params.failureReason,

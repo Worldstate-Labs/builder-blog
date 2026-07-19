@@ -363,6 +363,84 @@ test("cloud sync merges final details without dropping an existing execution pla
   assert.deepEqual(result.sourceTaskResult.details, prisma.cloudFetchRunTask.updateManyCalls[0].data.details);
 });
 
+test("cloud sync caps failure retry using the largest execution-plan shard budget", async () => {
+  const now = new Date("2026-07-19T10:00:00.000Z");
+  const prisma = fakeCloudSyncPrisma({
+    task: {
+      id: "task_4",
+      builderId: "builder_4",
+      summaryLanguage: "en",
+      effectiveFrequency: "DAILY",
+      consecutiveFailures: 2,
+      mustSucceedBy: new Date("2026-07-19T15:00:00.000Z"),
+      estimatedDurationSeconds: 900,
+      builderSourceType: "blog",
+      durationSampleCount: 0,
+      estimatedTokenCost: null,
+      tokenSampleCount: 0,
+      estimatedPostYield: null,
+      postYieldSampleCount: 0,
+      successSampleCount: 0,
+    },
+    runTasks: [
+      {
+        runId: "run_4",
+        cloudSourceTaskId: "task_4",
+        status: "RUNNING",
+        usageTokens: null,
+        usageCostUsd: null,
+        details: {
+          executionPlan: {
+            mustSucceedBy: "2026-07-19T15:00:00.000Z",
+            provisionalExecutionBudgetSeconds: 5_400,
+            posts: {
+              post_1: {
+                postTaskId: "post_1",
+                executionBudgetSeconds: 3_600,
+              },
+              post_2: {
+                postTaskId: "post_2",
+                executionBudgetSeconds: 14_400,
+              },
+            },
+          },
+        },
+      },
+    ],
+  });
+
+  await applyCloudFetchTaskSyncResult({
+    prisma,
+    now,
+    config: {
+      schedulingLeadMinutes: 120,
+      retryBaseMinutes: 30,
+      failureCircuitBreakerThreshold: 5,
+    },
+    result: {
+      runId: "run_4",
+      cloudSourceTaskId: "task_4",
+      status: "failed",
+      plannedPosts: 2,
+      syncedPosts: 0,
+      failedPosts: 2,
+      actualDurationSeconds: 800,
+      failureReason: "summary_missing",
+      details: {
+        // Worker-reported details are not trusted to redefine the server-side
+        // execution plan used to schedule retries.
+        executionPlan: { provisionalExecutionBudgetSeconds: 86_400 },
+      },
+    },
+  });
+
+  assert.equal(
+    (prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(),
+    "2026-07-19T11:00:00.000Z",
+  );
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.circuitBreakerUntil, null);
+});
+
 function fakeCloudSyncPrisma({
   task,
   runTasks,
@@ -373,6 +451,9 @@ function fakeCloudSyncPrisma({
     summaryLanguage: string;
     effectiveFrequency: "DAILY" | "WEEKLY";
     consecutiveFailures: number;
+    mustSucceedBy?: Date | null;
+    estimatedDurationSeconds?: number | null;
+    builderSourceType?: string;
     durationP50Seconds?: number | null;
     durationP75Seconds?: number | null;
     durationP90Seconds?: number | null;
@@ -400,7 +481,12 @@ function fakeCloudSyncPrisma({
       updateCalls: [] as Array<{ where: { id: string }; data: Record<string, unknown> }>,
       async findUnique(args: unknown) {
         this.findUniqueCalls.push(args);
-        return task;
+        return {
+          ...task,
+          mustSucceedBy: task.mustSucceedBy ?? null,
+          estimatedDurationSeconds: task.estimatedDurationSeconds ?? null,
+          builder: { sourceType: task.builderSourceType ?? "blog" },
+        };
       },
       async update(args: { where: { id: string }; data: Record<string, unknown> }) {
         this.updateCalls.push(args);

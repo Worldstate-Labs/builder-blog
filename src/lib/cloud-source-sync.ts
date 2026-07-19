@@ -1,6 +1,7 @@
 import { CloudFetchQueueStatus, CloudFetchRunStatus } from "@prisma/client";
 import { recomputeCloudFetchRun } from "@/lib/cloud-fetch-run-lifecycle";
 import { mergeCloudFetchRunTaskDetails } from "@/lib/cloud-fetch-plan-details";
+import { cloudShardExecutionBudget } from "@/lib/local-agent-timeouts";
 import { StaleWorkerWriteError } from "@/lib/reset-fence";
 import {
   nextCloudTaskFailureSchedule,
@@ -35,6 +36,11 @@ type CloudSyncTaskRow = {
   summaryLanguage: string;
   effectiveFrequency: CloudFetchFrequencyKey;
   consecutiveFailures: number;
+  mustSucceedBy?: Date | null;
+  estimatedDurationSeconds?: number | null;
+  builder?: {
+    sourceType: string;
+  };
   durationP50Seconds?: number | null;
   durationP75Seconds?: number | null;
   durationP90Seconds?: number | null;
@@ -98,6 +104,9 @@ export async function applyCloudFetchTaskSyncResult(params: {
       builderId: true,
       summaryLanguage: true,
       consecutiveFailures: true,
+      mustSucceedBy: true,
+      estimatedDurationSeconds: true,
+      builder: { select: { sourceType: true } },
       durationP50Seconds: true,
       durationP75Seconds: true,
       durationP90Seconds: true,
@@ -191,6 +200,11 @@ export async function applyCloudFetchTaskSyncResult(params: {
             retryBaseMinutes: params.config.retryBaseMinutes,
             failureCircuitBreakerThreshold: params.config.failureCircuitBreakerThreshold,
             failureReason: taskFailureReason,
+            mustSucceedBy: task.mustSucceedBy ?? null,
+            executionBudgetSeconds: conservativeCloudTaskFailureExecutionBudgetSeconds({
+              task,
+              existingDetails: existingRunTask?.details,
+            }),
           })),
       ...nextCloudTaskRuntimeStats({
         task,
@@ -223,6 +237,27 @@ export async function applyCloudFetchTaskSyncResult(params: {
     builderId: task.builderId,
     summaryLanguage: task.summaryLanguage,
   };
+}
+
+function conservativeCloudTaskFailureExecutionBudgetSeconds(params: {
+  task: Pick<CloudSyncTaskRow, "estimatedDurationSeconds" | "builder">;
+  existingDetails: unknown;
+}) {
+  const executionPlan = record(record(params.existingDetails)?.executionPlan);
+  const planBudgets = [
+    positiveIntegerOrNull(executionPlan?.provisionalExecutionBudgetSeconds),
+    positiveIntegerOrNull(executionPlan?.executionBudgetSeconds),
+    ...Object.values(record(executionPlan?.posts) ?? {}).map((post) =>
+      positiveIntegerOrNull(record(post)?.executionBudgetSeconds),
+    ),
+  ].filter((value): value is number => value != null);
+
+  const fallbackBudgetSeconds = cloudShardExecutionBudget({
+    estimatedWorkSeconds: params.task.estimatedDurationSeconds,
+    sourceType: params.task.builder?.sourceType,
+  }).executionBudgetSeconds;
+
+  return Math.max(fallbackBudgetSeconds, ...planBudgets);
 }
 
 function nextCloudTaskRuntimeStats(params: {
@@ -349,4 +384,10 @@ function movingAverageRatio(params: {
 function positiveIntegerOrNull(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
   return Math.round(value);
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }

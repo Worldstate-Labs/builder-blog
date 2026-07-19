@@ -1216,6 +1216,52 @@ test("failed task update applies exponential backoff and circuit breaker thresho
   assert.equal(update.circuitBreakerReason, "source unavailable");
 });
 
+test("failed task update caps retry to the latest feasible pre-deadline start when slack remains", () => {
+  const update = nextCloudTaskFailureSchedule({
+    now,
+    previousConsecutiveFailures: 2,
+    retryBaseMinutes: 30,
+    failureCircuitBreakerThreshold: 5,
+    failureReason: "source unavailable",
+    mustSucceedBy: new Date("2026-06-27T17:00:00.000Z"),
+    executionBudgetSeconds: 4 * 60 * 60,
+  });
+
+  assert.equal(update.consecutiveFailures, 3);
+  assert.equal(update.nextAttemptAt.toISOString(), "2026-06-27T13:00:00.000Z");
+  assert.equal(update.circuitBreakerUntil, null);
+});
+
+test("failed task update keeps natural backoff when the deadline would require bypassing the minimum retry floor", () => {
+  const update = nextCloudTaskFailureSchedule({
+    now,
+    previousConsecutiveFailures: 2,
+    retryBaseMinutes: 30,
+    failureCircuitBreakerThreshold: 5,
+    failureReason: "source unavailable",
+    mustSucceedBy: new Date("2026-06-27T10:45:00.000Z"),
+    executionBudgetSeconds: 30 * 60,
+  });
+
+  assert.equal(update.nextAttemptAt.toISOString(), "2026-06-27T14:00:00.000Z");
+  assert.equal(update.circuitBreakerUntil, null);
+});
+
+test("failed task update never bypasses a tripped circuit breaker to rescue a deadline", () => {
+  const update = nextCloudTaskFailureSchedule({
+    now,
+    previousConsecutiveFailures: 4,
+    retryBaseMinutes: 30,
+    failureCircuitBreakerThreshold: 5,
+    failureReason: "source unavailable",
+    mustSucceedBy: new Date("2026-06-27T17:00:00.000Z"),
+    executionBudgetSeconds: 4 * 60 * 60,
+  });
+
+  assert.equal(update.nextAttemptAt.toISOString(), "2026-06-27T20:00:00.000Z");
+  assert.equal(update.circuitBreakerUntil?.toISOString(), "2026-06-28T20:00:00.000Z");
+});
+
 test("cloud fetch heartbeat extends active leases for a running cloud run", async () => {
   const queueUpdates: unknown[] = [];
   const runUpdates: unknown[] = [];
