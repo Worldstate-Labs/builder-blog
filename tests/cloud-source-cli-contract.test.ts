@@ -398,7 +398,8 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /shard_timeout_seconds_for_file\(\)/);
   assert.match(runner, /set_initial_worker_window_deadline\(\)/);
   assert.match(runner, /current_outer_deadline_epoch_seconds\(\)/);
-  assert.match(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id:\$_slw_shard_file"/);
+  assert.match(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id"/);
+  assert.doesNotMatch(runner, /_worker_entries=.*_slw_shard_file/);
   assert.match(runner, /for _entry in \$\{_worker_entries:-\}/);
   assert.match(runner, /case " \$\{_timed_out_worker_pids:-\} " in/);
   assert.match(runner, />> "\$_results_dir\/\$_name-worker\.log"/);
@@ -808,7 +809,7 @@ test("cloud worker host does not reuse a lane whose previous shard exited incomp
 MAX_PARALLEL_WORKERS=3
 _shards_dir="${shardsDir}"
 _results_dir="${resultsDir}"
-_worker_entries="999999:1700000000:shard-2:worker-2:${join(shardsDir, "shard-2.json")}"
+_worker_entries="999999:1700000000:shard-2:worker-2"
 write_available_worker_ids "${availablePath}"
 `,
       "utf8",
@@ -821,6 +822,89 @@ write_available_worker_ids "${availablePath}"
     assert.doesNotMatch(available, /worker-2/);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud worker entry parsing and budget lookup ignore spaces and colons in JOB_TMP_DIR", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("shard_timeout_seconds() {");
+  const end = runner.indexOf("\nfetch_more_cloud_sources() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const baseDir = await mkdtemp(join(tmpdir(), "fb-worker-entry-path-safe-"));
+  const dir = join(baseDir, "tmp dir:with spaces");
+  try {
+    const agentDir = join(dir, "agent");
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    const shardPath = join(shardsDir, "shard-9.json");
+    await mkdir(agentDir, { recursive: true });
+    await mkdir(resultsDir, { recursive: true });
+    await writeFile(
+      join(agentDir, "local-agent-timeouts.json"),
+      JSON.stringify({
+        defaultIntervalMinutes: 60,
+        baseMultiplierSecondsPerMinute: 48,
+        minSeconds: 1200,
+        defaultMaxSeconds: 2700,
+        jobDefaultSeconds: {
+          "cloud-library-cron": 15_300,
+        },
+        jobMaxSeconds: {
+          "cloud-library-cron": 15_300,
+        },
+        shardFraction: {
+          numerator: 3,
+          denominator: 4,
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      shardPath,
+      JSON.stringify({
+        executionBudgetSeconds: 14_400,
+        cloudRunId: "run_1",
+        cloudSourceTaskId: "source_1",
+        fetchTasks: [
+          {
+            id: "cloud-1",
+            workerId: "worker-2",
+            executionBudgetSeconds: 14_400,
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_1",
+          },
+        ],
+      }),
+      "utf8",
+    );
+    const checkPath = join(baseDir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+AGENT_DIR="${agentDir}"
+JOB_NAME=cloud-library-cron
+JOB_TMP_DIR="${dir}"
+_sync_command=sync-cloud-builders
+_cloud_persistent_host=0
+_shards_dir="${shardsDir}"
+_results_dir="${resultsDir}"
+_worker_entries="999999:1700000000:shard-9:worker-2"
+${runner.slice(start, end)}
+lane="$(worker_entry_lane "$_worker_entries")"
+name="$(worker_entry_shard_name "$_worker_entries")"
+timeout="$(shard_timeout_seconds_for_file "$_shards_dir/$name.json" 5400)"
+[ "$lane" = "worker-2" ] || exit 21
+[ "$name" = "shard-9" ] || exit 22
+[ "$timeout" = "14400" ] || exit 23
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(baseDir, { recursive: true, force: true });
   }
 });
 

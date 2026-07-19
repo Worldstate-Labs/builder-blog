@@ -3685,10 +3685,9 @@ worker_entry_lane() {
   _wel_entry="${1:-}"
   _wel_rest="${_wel_entry#*:}"
   _wel_after_started="${_wel_rest#*:}"
-  _wel_after_name="${_wel_after_started#*:}"
-  case "$_wel_after_name" in
-    *:*) printf '%s\n' "${_wel_after_name%%:*}" ;;
-    *) printf '%s\n' "$_wel_after_name" ;;
+  case "$_wel_after_started" in
+    *:*) printf '%s\n' "${_wel_after_started#*:}" ;;
+    *) printf '%s\n' "$_wel_after_started" ;;
   esac
 }
 
@@ -3697,17 +3696,6 @@ worker_entry_shard_name() {
   _wesn_rest="${_wesn_entry#*:}"
   _wesn_after_started="${_wesn_rest#*:}"
   printf '%s\n' "${_wesn_after_started%%:*}"
-}
-
-worker_entry_shard_file() {
-  _wesf_entry="${1:-}"
-  _wesf_rest="${_wesf_entry#*:}"
-  _wesf_after_started="${_wesf_rest#*:}"
-  _wesf_after_name="${_wesf_after_started#*:}"
-  case "$_wesf_after_name" in
-    *:*) printf '%s\n' "${_wesf_after_name#*:}" ;;
-    *) printf '%s\n' "" ;;
-  esac
 }
 
 worker_entry_reserves_lane() {
@@ -4020,7 +4008,7 @@ NODE
     IS_CRON_JOB=1
     run_selected_runtime
   ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
-  _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id:$_slw_shard_file"
+  _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
   _started_shard_names="$_started_shard_names $_slw_shard_name"
   _started_worker_count=$(( _started_worker_count + 1 ))
   echo "Started worker $_slw_lane_id for $_slw_shard_name (pid $!)."
@@ -4273,10 +4261,7 @@ run_library_job() {
       _after_started="${_rest#*:}"
       _name="${_after_started%%:*}"
       _lane="$(worker_entry_lane "$_entry")"
-      _worker_shard_file="$(worker_entry_shard_file "$_entry")"
-      if [ -z "$_worker_shard_file" ]; then
-        _worker_shard_file="$_shards_dir/$_name.json"
-      fi
+      _worker_shard_file="$_shards_dir/$_name.json"
       _worker_timeout="$(shard_timeout_seconds_for_file "$_worker_shard_file")"
       _worker_no_progress_timeout="$(worker_no_progress_timeout_seconds "$_worker_timeout")"
       _worker_stall_timeout="$(worker_stall_timeout_seconds "$_worker_timeout")"
