@@ -3057,8 +3057,14 @@ try {
 } catch {
   process.exit(2);
 }
-const tasks = Array.isArray(result.fetchTasks) ? result.fetchTasks : [];
+const hasFetchTasksArray = Array.isArray(result.fetchTasks);
+const tasks = hasFetchTasksArray ? result.fetchTasks : [];
 if (tasks.some((task) => task?.agentWorkType !== "candidate_discovery_fallback")) process.exit(1);
+const cloudSourceTasks = Array.isArray(result.cloudSourceTasks) ? result.cloudSourceTasks : [];
+const zeroPostLease = hasFetchTasksArray && tasks.length === 0 && Array.isArray(result.cloudSourceTasks) && cloudSourceTasks.some((task) => {
+  const cloudSourceTaskId = String(task?.cloudSourceTaskId || "").trim();
+  return Boolean(cloudSourceTaskId);
+});
 const outcomes = Array.isArray(result.taskOutcomes) ? result.taskOutcomes : [];
 const hasSyncable = outcomes.some((outcome) => {
   const task = outcome?.plannedTask;
@@ -3068,7 +3074,7 @@ const hasSyncable = outcomes.some((outcome) => {
   const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
   return Boolean(taskId && taskId === outcomeTaskId && cloudSourceTaskId);
 });
-process.exit(hasSyncable ? 0 : 1);
+process.exit(hasSyncable || zeroPostLease ? 0 : 1);
 NODE
   then
     :

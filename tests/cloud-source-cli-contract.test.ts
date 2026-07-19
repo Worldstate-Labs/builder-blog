@@ -672,6 +672,10 @@ test("cloud planned-only outcome sync detects valid work and preserves failure c
   try {
     const valid = join(dir, "valid.json");
     const empty = join(dir, "empty.json");
+    const zeroPostLease = join(dir, "zero-post-lease.json");
+    const malformedZeroPostLease = join(dir, "malformed-zero-post-lease.json");
+    const discoveryOnly = join(dir, "discovery-only.json");
+    const mixedBatch = join(dir, "mixed-batch.json");
     const missingPlannedId = join(dir, "missing-planned-id.json");
     const missingOutcomeId = join(dir, "missing-outcome-id.json");
     const mismatchedId = join(dir, "mismatched-id.json");
@@ -690,6 +694,38 @@ test("cloud planned-only outcome sync detects valid work and preserves failure c
       }],
     }));
     await writeFile(empty, JSON.stringify({ cloudRunId: "cloud_run_2", fetchTasks: [], taskOutcomes: [] }));
+    await writeFile(zeroPostLease, JSON.stringify({
+      cloudRunId: "cloud_run_zero",
+      fetchTasks: [],
+      taskOutcomes: [],
+      cloudSourceTasks: [
+        { cloudRunId: "cloud_run_zero", cloudSourceTaskId: "source_zero", builderId: "builder_zero" },
+      ],
+    }));
+    await writeFile(malformedZeroPostLease, JSON.stringify({
+      cloudRunId: "cloud_run_malformed",
+      fetchTasks: null,
+      taskOutcomes: [],
+      cloudSourceTasks: [
+        { cloudRunId: "cloud_run_malformed", cloudSourceTaskId: "source_malformed", builderId: "builder_malformed" },
+      ],
+    }));
+    await writeFile(discoveryOnly, JSON.stringify({
+      cloudRunId: "cloud_run_discovery",
+      fetchTasks: [{ id: "discover_1", agentWorkType: "candidate_discovery_fallback" }],
+      taskOutcomes: [],
+      cloudSourceTasks: [
+        { cloudRunId: "cloud_run_discovery", cloudSourceTaskId: "source_discovery", builderId: "builder_discovery" },
+      ],
+    }));
+    await writeFile(mixedBatch, JSON.stringify({
+      cloudRunId: "cloud_run_mixed",
+      fetchTasks: [{ id: "fetch_1", agentWorkType: "fetch_post", cloudSourceTaskId: "source_mixed" }],
+      taskOutcomes: [],
+      cloudSourceTasks: [
+        { cloudRunId: "cloud_run_mixed", cloudSourceTaskId: "source_mixed", builderId: "builder_mixed" },
+      ],
+    }));
     await writeFile(missingPlannedId, JSON.stringify({
       cloudRunId: "cloud_run_3",
       fetchTasks: [],
@@ -753,14 +789,22 @@ sync_cloud_terminal_outcomes "${valid}" cloud_run_1
 [ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 21
 sync_cloud_terminal_outcomes "${empty}" cloud_run_2
 [ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 22
+sync_cloud_terminal_outcomes "${zeroPostLease}" cloud_run_zero
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 31
+sync_cloud_terminal_outcomes "${malformedZeroPostLease}" cloud_run_malformed
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 34
+sync_cloud_terminal_outcomes "${discoveryOnly}" cloud_run_discovery
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 32
+sync_cloud_terminal_outcomes "${mixedBatch}" cloud_run_mixed
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 33
 sync_cloud_terminal_outcomes "${missingPlannedId}" cloud_run_3
-[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 27
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 27
 sync_cloud_terminal_outcomes "${missingOutcomeId}" cloud_run_4
-[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 28
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 28
 sync_cloud_terminal_outcomes "${mismatchedId}" cloud_run_5
-[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 29
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 29
 sync_cloud_terminal_outcomes "${validSibling}" cloud_run_6
-[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "2" ] || exit 30
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "3" ] || exit 30
 if sync_cloud_terminal_outcomes "${invalid}" cloud_run_3; then exit 23; else code="$?"; fi
 [ "$code" = "2" ] || exit 24
 SYNC_EXIT_CODE=17
