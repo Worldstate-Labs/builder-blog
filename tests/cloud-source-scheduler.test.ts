@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   cancelQueuedCloudFetchForTasks,
+  createCanonicalActivityPolicy,
   estimateCloudTaskRuntime,
   heartbeatCloudFetchRun,
   leaseCloudFetchTasks,
@@ -317,6 +318,77 @@ test("planner excludes circuit-broken and active canonical source tasks", () => 
   assert.equal(plan.debug.skipped["same-source"]?.reason, "canonical_active");
 });
 
+test("canonical activity policy allows a lone same-task failed run but blocks sibling tasks on that canonical", () => {
+  const canonicalKey = "BLOG:https://example.com/shared";
+  const policy = createCanonicalActivityPolicy({
+    recentRuns: [
+      {
+        canonicalKey,
+        cloudSourceTaskId: "task_failed",
+        status: "FAILED",
+      },
+    ],
+  });
+
+  assert.equal(
+    policy.blocksCandidate({ canonicalKey, cloudSourceTaskId: "task_failed" }),
+    false,
+  );
+  assert.equal(
+    policy.blocksCandidate({ canonicalKey, cloudSourceTaskId: "task_sibling" }),
+    true,
+  );
+});
+
+test("canonical activity policy blocks same-task running, succeeded, and partial runs", () => {
+  const canonicalKey = "BLOG:https://example.com/recent";
+
+  for (const status of ["RUNNING", "SUCCEEDED", "PARTIAL"] as const) {
+    const policy = createCanonicalActivityPolicy({
+      recentRuns: [
+        {
+          canonicalKey,
+          cloudSourceTaskId: "task_recent",
+          status,
+        },
+      ],
+    });
+
+    assert.equal(
+      policy.blocksCandidate({ canonicalKey, cloudSourceTaskId: "task_recent" }),
+      true,
+      `${status} should block the same task`,
+    );
+  }
+});
+
+test("canonical activity policy blocks all candidates once multiple failed task ids exist on one canonical", () => {
+  const canonicalKey = "BLOG:https://example.com/shared-failures";
+  const policy = createCanonicalActivityPolicy({
+    recentRuns: [
+      {
+        canonicalKey,
+        cloudSourceTaskId: "task_failed_a",
+        status: "FAILED",
+      },
+      {
+        canonicalKey,
+        cloudSourceTaskId: "task_failed_b",
+        status: "FAILED",
+      },
+    ],
+  });
+
+  assert.equal(
+    policy.blocksCandidate({ canonicalKey, cloudSourceTaskId: "task_failed_a" }),
+    true,
+  );
+  assert.equal(
+    policy.blocksCandidate({ canonicalKey, cloudSourceTaskId: "task_failed_b" }),
+    true,
+  );
+});
+
 test("planner selects at most one due task per canonical key and defers siblings as canonical_selected", () => {
   const sharedCanonical = "BLOG:https://example.com/shared";
   const plan = planCloudFetchWindow({
@@ -625,6 +697,173 @@ test("leaseCloudFetchTasks skips lease batch history when nothing is due", async
   assert.equal(result.runId, null);
   assert.deepEqual(result.tasks, []);
   assert.equal(createdRuns.length, 0);
+});
+
+test("materializeDueCloudFetchQueue allows same-task failed reruns but blocks sibling, success, and partial recent runs", async () => {
+  const queueCreates: Array<{ data: { cloudSourceTaskId: string } }> = [];
+  const taskUpdates: unknown[] = [];
+  const sharedCanonical = "BLOG:https://example.com/shared.xml";
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudSourceTask: {
+      findMany: async () => [
+        {
+          id: "task_failed_same",
+          builderId: "builder_failed_same",
+          effectiveFrequency: "DAILY",
+          lastSuccessAt: null,
+          mustSucceedBy: null,
+          nextAttemptAt: null,
+          estimatedDurationSeconds: null,
+          estimatedTokenCost: null,
+          estimatedPostYield: null,
+          estimatedSuccessProbability: null,
+          durationP75Seconds: null,
+          durationP90Seconds: null,
+          durationSampleCount: 0,
+          successSampleCount: 0,
+          consecutiveDeferrals: 0,
+          consecutiveFailures: 1,
+          circuitBreakerUntil: null,
+          lastDeferredAt: null,
+          builder: {
+            id: "builder_failed_same",
+            canonicalKey: sharedCanonical,
+            sourceType: "blog",
+          },
+        },
+        {
+          id: "task_failed_sibling",
+          builderId: "builder_failed_sibling",
+          effectiveFrequency: "DAILY",
+          lastSuccessAt: null,
+          mustSucceedBy: null,
+          nextAttemptAt: null,
+          estimatedDurationSeconds: null,
+          estimatedTokenCost: null,
+          estimatedPostYield: null,
+          estimatedSuccessProbability: null,
+          durationP75Seconds: null,
+          durationP90Seconds: null,
+          durationSampleCount: 0,
+          successSampleCount: 0,
+          consecutiveDeferrals: 0,
+          consecutiveFailures: 0,
+          circuitBreakerUntil: null,
+          lastDeferredAt: null,
+          builder: {
+            id: "builder_failed_sibling",
+            canonicalKey: sharedCanonical,
+            sourceType: "blog",
+          },
+        },
+        {
+          id: "task_success",
+          builderId: "builder_success",
+          effectiveFrequency: "DAILY",
+          lastSuccessAt: null,
+          mustSucceedBy: null,
+          nextAttemptAt: null,
+          estimatedDurationSeconds: null,
+          estimatedTokenCost: null,
+          estimatedPostYield: null,
+          estimatedSuccessProbability: null,
+          durationP75Seconds: null,
+          durationP90Seconds: null,
+          durationSampleCount: 0,
+          successSampleCount: 0,
+          consecutiveDeferrals: 0,
+          consecutiveFailures: 0,
+          circuitBreakerUntil: null,
+          lastDeferredAt: null,
+          builder: {
+            id: "builder_success",
+            canonicalKey: "BLOG:https://example.com/success.xml",
+            sourceType: "blog",
+          },
+        },
+        {
+          id: "task_partial",
+          builderId: "builder_partial",
+          effectiveFrequency: "DAILY",
+          lastSuccessAt: null,
+          mustSucceedBy: null,
+          nextAttemptAt: null,
+          estimatedDurationSeconds: null,
+          estimatedTokenCost: null,
+          estimatedPostYield: null,
+          estimatedSuccessProbability: null,
+          durationP75Seconds: null,
+          durationP90Seconds: null,
+          durationSampleCount: 0,
+          successSampleCount: 0,
+          consecutiveDeferrals: 0,
+          consecutiveFailures: 0,
+          circuitBreakerUntil: null,
+          lastDeferredAt: null,
+          builder: {
+            id: "builder_partial",
+            canonicalKey: "BLOG:https://example.com/partial.xml",
+            sourceType: "blog",
+          },
+        },
+      ],
+      updateMany: async (args: unknown) => {
+        taskUpdates.push(args);
+        return { count: 0 };
+      },
+    },
+    cloudFetchQueueItem: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      create: async (args: { data: { cloudSourceTaskId: string } }) => {
+        queueCreates.push(args);
+        return {};
+      },
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [
+        {
+          cloudSourceTaskId: "task_failed_same",
+          status: "FAILED",
+          builder: { canonicalKey: sharedCanonical },
+        },
+        {
+          cloudSourceTaskId: "task_success",
+          status: "SUCCEEDED",
+          builder: { canonicalKey: "BLOG:https://example.com/success.xml" },
+        },
+        {
+          cloudSourceTaskId: "task_partial",
+          status: "PARTIAL",
+          builder: { canonicalKey: "BLOG:https://example.com/partial.xml" },
+        },
+      ],
+    },
+    cloudSourceSubmission: {
+      groupBy: async () => [
+        { cloudBuilderId: "builder_failed_same", _count: { _all: 1 } },
+        { cloudBuilderId: "builder_failed_sibling", _count: { _all: 1 } },
+        { cloudBuilderId: "builder_success", _count: { _all: 1 } },
+        { cloudBuilderId: "builder_partial", _count: { _all: 1 } },
+      ],
+    },
+  };
+
+  const result = await materializeDueCloudFetchQueue({
+    prisma: prisma as never,
+    now,
+    limit: 10,
+  });
+
+  assert.equal(result.queued, 1);
+  assert.deepEqual(
+    queueCreates.map((item) => item.data.cloudSourceTaskId),
+    ["task_failed_same"],
+  );
+  assert.equal(taskUpdates.length, 0);
 });
 
 test("leaseCloudFetchTasks marks expired leased run tasks failed before requeueing", async () => {

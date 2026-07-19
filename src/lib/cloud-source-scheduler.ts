@@ -48,6 +48,15 @@ export type CloudTaskEstimateInput = {
 
 export type CloudFetchFrequencyKey = "DAILY" | "WEEKLY";
 
+type CanonicalActivityCandidate = {
+  canonicalKey: string;
+  cloudSourceTaskId: string;
+};
+
+type CanonicalActivityRecentRun = CanonicalActivityCandidate & {
+  status: CloudFetchRunStatus;
+};
+
 type CloudFetchConfigShape = CloudSchedulerConfig & {
   leaseTtlMinutes: number;
   schedulingLeadMinutes: number;
@@ -121,6 +130,33 @@ export function estimateCloudTaskRuntime(input: CloudTaskEstimateInput) {
       input.successSampleCount > 0 && input.estimatedSuccessProbability != null
         ? clamp(input.estimatedSuccessProbability, 0.05, 0.99)
         : prior.successProbability,
+  };
+}
+
+export function createCanonicalActivityPolicy(params: {
+  activeLeaseCanonicalKeys?: Iterable<string>;
+  recentRuns?: Iterable<CanonicalActivityRecentRun>;
+}) {
+  const activeCanonicalKeys = new Set(params.activeLeaseCanonicalKeys ?? []);
+  const recentRunsByCanonical = new Map<string, CanonicalActivityRecentRun[]>();
+
+  for (const run of params.recentRuns ?? []) {
+    const runs = recentRunsByCanonical.get(run.canonicalKey) ?? [];
+    runs.push(run);
+    recentRunsByCanonical.set(run.canonicalKey, runs);
+  }
+
+  return {
+    activeCanonicalKeys,
+    blocksCandidate(candidate: CanonicalActivityCandidate) {
+      if (activeCanonicalKeys.has(candidate.canonicalKey)) return true;
+      const recentRuns = recentRunsByCanonical.get(candidate.canonicalKey) ?? [];
+      return recentRuns.some(
+        (run) =>
+          run.cloudSourceTaskId !== candidate.cloudSourceTaskId ||
+          run.status !== CloudFetchRunStatus.FAILED,
+      );
+    },
   };
 }
 
@@ -881,7 +917,7 @@ async function loadEligibleCloudTasks(params: {
     select: { cloudSourceTaskId: true },
   });
   const activeQueuedTaskIds = new Set(activeQueueItems.map((item) => item.cloudSourceTaskId));
-  const activeCanonicalKeys = await loadActiveCanonicalKeys(params);
+  const canonicalActivityPolicy = await loadCanonicalActivityPolicy(params);
   const activeSubmissionCounts = await loadActiveSubmissionCounts(
     params.prisma,
     tasks.map((task) => task.builderId),
@@ -901,12 +937,16 @@ async function loadEligibleCloudTasks(params: {
   }
 
   return {
-    activeCanonicalKeys,
+    activeCanonicalKeys: canonicalActivityPolicy.activeCanonicalKeys,
     tasks: tasks
       .filter(
         (task) =>
           !activeQueuedTaskIds.has(task.id) &&
-          (activeSubmissionCounts.get(task.builderId) ?? 0) > 0,
+          (activeSubmissionCounts.get(task.builderId) ?? 0) > 0 &&
+          !canonicalActivityPolicy.blocksCandidate({
+            canonicalKey: task.builder.canonicalKey,
+            cloudSourceTaskId: task.id,
+          }),
       )
       .map((task) => {
         const mustSucceedBy = task.mustSucceedBy ?? taskDeadline(task.effectiveFrequency, task.lastSuccessAt ?? params.now);
@@ -955,7 +995,7 @@ async function loadActiveSubmissionCounts(prisma: CloudSchedulerDb, builderIds: 
   return new Map(grouped.map((row) => [row.cloudBuilderId, row._count._all]));
 }
 
-async function loadActiveCanonicalKeys(params: {
+async function loadCanonicalActivityPolicy(params: {
   prisma: CloudSchedulerDb;
   now: Date;
   config: CloudFetchConfigShape;
@@ -973,14 +1013,24 @@ async function loadActiveCanonicalKeys(params: {
     params.config.canonicalCooldownMinutes > 0
       ? params.prisma.cloudFetchRunTask.findMany({
           where: { startedAt: { gte: cooldownStartedAt } },
-          select: { builder: { select: { canonicalKey: true } } },
+          select: {
+            cloudSourceTaskId: true,
+            status: true,
+            builder: { select: { canonicalKey: true } },
+          },
         })
       : Promise.resolve([]),
   ]);
-  return new Set([
-    ...activeLeases.map((item) => item.cloudSourceTask.builder.canonicalKey),
-    ...recentRuns.map((task) => task.builder.canonicalKey),
-  ]);
+  return createCanonicalActivityPolicy({
+    activeLeaseCanonicalKeys: activeLeases.map(
+      (item) => item.cloudSourceTask.builder.canonicalKey,
+    ),
+    recentRuns: recentRuns.map((task) => ({
+      canonicalKey: task.builder.canonicalKey,
+      cloudSourceTaskId: task.cloudSourceTaskId,
+      status: task.status,
+    })),
+  });
 }
 
 async function expireStaleCloudFetchLeases(params: { prisma: CloudSchedulerDb; now: Date }) {
