@@ -16,6 +16,7 @@ import { formatCount } from "@/components/Count";
 import { RelativeTime } from "@/components/RelativeTime";
 import { localizedRelativeTime } from "@/lib/relative-time";
 import { EmptyState } from "@/components/EmptyState";
+import { useI18n } from "@/components/I18nProvider";
 import { useHydrated } from "@/components/ThemeToggle";
 import { RunUsageSummary } from "@/components/RunUsageSummary";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
@@ -37,6 +38,8 @@ import {
   isNotCompletedFailureReason,
 } from "@/lib/fetch-failure-taxonomy";
 import { displayLanguagePreference } from "@/lib/language-preference";
+import { translateUiPhrase } from "@/lib/i18n-phrases";
+import type { UiLocale } from "@/lib/i18n";
 import { canonicalFetchTaskId } from "@/lib/fetch-task-id";
 import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
 import {
@@ -375,15 +378,53 @@ export function deadlineRiskLabel(value: string | null | undefined): string | nu
   return value.replace(/_/g, " ");
 }
 
-export function plannedMethodEvidenceText(task: Pick<FetchTaskLog, "plannedExtractionMethod" | "mediaDurationSeconds" | "estimateEvidence">): string | null {
+function plannedExtractionMethodLabel(value: string): string {
+  if (value === "audio_transcription") return "Audio transcription";
+  if (value === "captions") return "Captions";
+  if (value === "rss_show_notes") return "RSS show notes";
+  if (value === "youtube_transcript") return "YouTube transcript";
+  return value.replace(/_/g, " ");
+}
+
+function estimateBackendLabel(value: string): string {
+  if (value === "fallback") return "Fallback estimate";
+  if (value === "faster_whisper" || value === "faster-whisper") return "Faster Whisper";
+  if (value === "mlx-whisper") return "MLX Whisper";
+  if (value === "whisper-cli") return "Whisper CLI";
+  if (value === "unknown_backend") return "Unknown backend";
+  return value.replace(/_/g, " ");
+}
+
+function localizedExecutionPhrase(locale: UiLocale, phrase: string): string {
+  return translateUiPhrase(locale, phrase) ?? phrase;
+}
+
+function mediaDurationEvidenceText(locale: UiLocale, duration: string): string {
+  const values: Record<UiLocale, string> = {
+    en: `${duration} media`,
+    "zh-CN": `${duration} 媒体时长`,
+    "zh-TW": `${duration} 媒體時長`,
+    ja: `メディア時間 ${duration}`,
+    ko: `미디어 길이 ${duration}`,
+    es: `${duration} de contenido`,
+  };
+  return values[locale];
+}
+
+export function plannedMethodEvidenceText(
+  task: Pick<FetchTaskLog, "plannedExtractionMethod" | "mediaDurationSeconds" | "estimateEvidence">,
+  locale: UiLocale = "en",
+): string | null {
   const parts: string[] = [];
-  if (task.plannedExtractionMethod) parts.push(task.plannedExtractionMethod.replace(/_/g, " "));
+  if (task.plannedExtractionMethod) {
+    parts.push(localizedExecutionPhrase(locale, plannedExtractionMethodLabel(task.plannedExtractionMethod)));
+  }
   const mediaDuration = formatCompactDurationSeconds(task.mediaDurationSeconds);
-  if (mediaDuration) parts.push(`${mediaDuration} media`);
+  if (mediaDuration) parts.push(mediaDurationEvidenceText(locale, mediaDuration));
   const backend = displayText(
     typeof task.estimateEvidence?.backend === "string" ? task.estimateEvidence.backend : null,
   );
-  if (backend) parts.push(backend.replace(/_/g, " "));
+  if (backend) parts.push(localizedExecutionPhrase(locale, estimateBackendLabel(backend)));
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -3634,6 +3675,7 @@ export function TaskRow({
   liveTasks: Map<string, FetchTaskProgress>;
   task: FetchTaskLog;
 }) {
+  const { locale } = useI18n();
   const hydrated = useHydrated();
   const work = describeWork(task);
   const isDiscovery = isCandidateDiscoveryTask(task);
@@ -3673,7 +3715,7 @@ export function TaskRow({
   const executionBudget = formatCompactDurationSeconds(task.executionBudgetSeconds);
   const plannedWorkload = workloadLabel(task.workloadClass);
   const deadlineRisk = deadlineRiskLabel(task.deadlineState);
-  const plannedMethodEvidence = plannedMethodEvidenceText(task);
+  const plannedMethodEvidence = plannedMethodEvidenceText(task, locale);
   const bannerBlurb =
     banner.tone === "fail"
       ? failureReasonText(task) ?? displayText(work.blurb)

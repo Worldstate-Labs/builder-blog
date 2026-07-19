@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { TaskRow } from "../src/components/FetchLogPanel";
+import { I18nProvider } from "../src/components/I18nProvider";
 
 test("shared TaskRow planned facts render execution budget and deadline labels for cloud post tasks", () => {
   const task = {
@@ -43,4 +44,21 @@ test("shared TaskRow planned facts render execution budget and deadline labels f
   assert.match(html, /Method \/ evidence/);
   assert.match(html, /audio transcription/i);
   assert.match(html, /1h media/);
+
+  const localizedHtml = renderToStaticMarkup(
+    createElement(
+      I18nProvider,
+      { initialLocale: "zh-CN" } as never,
+      createElement(TaskRow, {
+        groupTasks: [task] as never[],
+        liveTask: null,
+        liveTasks: new Map(),
+        task: task as never,
+      }),
+    ),
+  );
+  assert.match(localizedHtml, /音频转写/);
+  assert.match(localizedHtml, /1h 媒体时长/);
+  assert.match(localizedHtml, /Faster Whisper/);
+  assert.doesNotMatch(localizedHtml, /audio transcription/i);
 });
