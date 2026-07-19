@@ -175,27 +175,43 @@ export function planCloudFetchWindow(params: {
     params.requestedLimit,
     params.config.starvationReserveRatio,
   );
+  const selectedTaskIds = new Set<string>();
+  const selectedCanonicalKeys = new Set<string>();
   const starvationTasks = due
     .filter((task) => task.consecutiveDeferrals > 0)
-    .sort(compareStarvation)
-    .slice(0, reservedStarvationCount);
-  const reservedTaskIds = new Set(starvationTasks.map((task) => task.id));
+    .sort(compareStarvation);
   for (const task of starvationTasks) {
+    if (currentBucket.tasks.length >= reservedStarvationCount) break;
+    if (selectedCanonicalKeys.has(task.canonicalKey)) continue;
     currentBucket.tasks.push({ task, score: scoreTask(task, params.now), lane: "starvation" });
+    selectedTaskIds.add(task.id);
+    selectedCanonicalKeys.add(task.canonicalKey);
   }
 
   // Fill the remaining request budget by score, highest value/urgency first.
   const rest = due
-    .filter((task) => !reservedTaskIds.has(task.id))
-    .sort((a, b) => scoreTask(b, params.now) - scoreTask(a, params.now));
+    .sort((a, b) => compareTaskScoreDescending(a, b, params.now));
   for (const task of rest) {
+    if (selectedTaskIds.has(task.id)) continue;
+    if (selectedCanonicalKeys.has(task.canonicalKey)) continue;
     currentBucket.tasks.push({
       task,
       score: scoreTask(task, params.now),
       lane: task.consecutiveFailures > 0 ? "retry" : "normal",
     });
+    selectedTaskIds.add(task.id);
+    selectedCanonicalKeys.add(task.canonicalKey);
   }
   evictOverCapacity(currentBucket, params.config, params.requestedLimit, debug);
+  backfillAfterEviction(
+    currentBucket,
+    due,
+    params.now,
+    reservedStarvationCount,
+    params.config,
+    params.requestedLimit,
+    debug,
+  );
 
   for (const item of currentBucket.tasks) {
     debug.selected[item.task.id] = {
@@ -206,10 +222,17 @@ export function planCloudFetchWindow(params: {
   }
   // Due tasks that lost the current-hour budget competition are deferred so they
   // gain aging/starvation priority on the next poll.
-  const selectedIds = new Set(currentBucket.tasks.map((item) => item.task.id));
+  const finalSelectedIds = new Set(currentBucket.tasks.map((item) => item.task.id));
+  const finalSelectedCanonicalKeys = new Set(
+    currentBucket.tasks.map((item) => item.task.canonicalKey),
+  );
   for (const task of due) {
-    if (!selectedIds.has(task.id)) {
-      debug.deferred[task.id] = debug.deferred[task.id] ?? { reason: "hour_budget_full" };
+    if (!finalSelectedIds.has(task.id)) {
+      debug.deferred[task.id] = debug.deferred[task.id] ?? {
+        reason: finalSelectedCanonicalKeys.has(task.canonicalKey)
+          ? "canonical_selected"
+          : "hour_budget_full",
+      };
     }
   }
 
@@ -667,6 +690,57 @@ function evictOverCapacity(
   }
 }
 
+function backfillAfterEviction(
+  bucket: BucketPlan,
+  due: CloudSchedulerTaskInput[],
+  now: Date,
+  reservedStarvationCount: number,
+  config: CloudSchedulerConfig,
+  requestedLimit: number,
+  debug: { skipped: Record<string, PlanDebugRecord> },
+) {
+  const starvationCandidates = due
+    .filter((task) => task.consecutiveDeferrals > 0)
+    .sort(compareStarvation);
+  const scoreCandidates = due
+    .slice()
+    .sort((a, b) => compareTaskScoreDescending(a, b, now));
+
+  const tryAddCandidate = (
+    task: CloudSchedulerTaskInput,
+    lane: BucketTask["lane"],
+  ) => {
+    const selectedIds = new Set(bucket.tasks.map((item) => item.task.id));
+    const selectedCanonicalKeys = new Set(bucket.tasks.map((item) => item.task.canonicalKey));
+    if (selectedIds.has(task.id)) return false;
+    if (selectedCanonicalKeys.has(task.canonicalKey)) return false;
+    if (bucket.tasks.length >= requestedLimit) return false;
+    if (totalEstimatedTokens(bucket.tasks) + task.estimatedTokenCost > config.tokenBudgetPerHour) {
+      return false;
+    }
+    bucket.tasks.push({ task, score: scoreTask(task, now), lane });
+    delete debug.skipped[task.id];
+    return true;
+  };
+
+  let starvationSelectedCount = bucket.tasks.filter((item) => item.lane === "starvation").length;
+  if (starvationSelectedCount < reservedStarvationCount) {
+    for (const task of starvationCandidates) {
+      if (starvationSelectedCount >= reservedStarvationCount) break;
+      if (tryAddCandidate(task, "starvation")) {
+        starvationSelectedCount += 1;
+      }
+    }
+  }
+
+  for (const task of scoreCandidates) {
+    tryAddCandidate(
+      task,
+      task.consecutiveFailures > 0 ? "retry" : "normal",
+    );
+  }
+}
+
 function lowestScoreIndex(tasks: BucketTask[]) {
   const firstNormalIndex = tasks.findIndex((item) => item.lane !== "starvation");
   let index = firstNormalIndex >= 0 ? firstNormalIndex : 0;
@@ -720,7 +794,18 @@ function compareStarvation(a: CloudSchedulerTaskInput, b: CloudSchedulerTaskInpu
   }
   const aDeferred = a.lastDeferredAt?.getTime() ?? Number.POSITIVE_INFINITY;
   const bDeferred = b.lastDeferredAt?.getTime() ?? Number.POSITIVE_INFINITY;
-  return aDeferred - bDeferred;
+  if (aDeferred !== bDeferred) return aDeferred - bDeferred;
+  return a.id.localeCompare(b.id);
+}
+
+function compareTaskScoreDescending(
+  a: CloudSchedulerTaskInput,
+  b: CloudSchedulerTaskInput,
+  now: Date,
+) {
+  const scoreDelta = scoreTask(b, now) - scoreTask(a, now);
+  if (scoreDelta !== 0) return scoreDelta;
+  return a.id.localeCompare(b.id);
 }
 
 function compareBucketTasksForExecution(a: BucketTask, b: BucketTask) {

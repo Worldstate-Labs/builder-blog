@@ -297,6 +297,126 @@ test("planner excludes circuit-broken and active canonical source tasks", () => 
   assert.equal(plan.debug.skipped["same-source"]?.reason, "canonical_active");
 });
 
+test("planner selects at most one due task per canonical key and defers siblings as canonical_selected", () => {
+  const sharedCanonical = "BLOG:https://example.com/shared";
+  const plan = planCloudFetchWindow({
+    now,
+    requestedLimit: 4,
+    config: {
+      tokenBudgetPerHour: 500_000,
+      starvationReserveRatio: 0,
+    },
+    tasks: [
+      baseTask({
+        id: "shared-normal",
+        canonicalKey: sharedCanonical,
+        estimatedPostYield: 6,
+        estimatedSuccessProbability: 0.95,
+      }),
+      baseTask({
+        id: "shared-retry",
+        canonicalKey: sharedCanonical,
+        consecutiveFailures: 1,
+        estimatedPostYield: 1,
+        estimatedSuccessProbability: 0.5,
+      }),
+      baseTask({ id: "other-a" }),
+      baseTask({ id: "other-b" }),
+    ],
+  });
+
+  assert.deepEqual(plan.currentHourTaskIds.sort(), ["other-a", "other-b", "shared-normal"]);
+  assert.equal(plan.debug.selected["shared-normal"]?.lane, "normal");
+  assert.equal(plan.debug.deferred["shared-retry"]?.reason, "canonical_selected");
+});
+
+test("starvation reserve fills unique canonical slots before normal lane selection", () => {
+  const sharedCanonical = "BLOG:https://example.com/starved-shared";
+  const plan = planCloudFetchWindow({
+    now,
+    requestedLimit: 4,
+    config: {
+      tokenBudgetPerHour: 400_000,
+      starvationReserveRatio: 0.5,
+    },
+    tasks: [
+      baseTask({
+        id: "shared-starved-1",
+        canonicalKey: sharedCanonical,
+        consecutiveDeferrals: 10,
+        lastDeferredAt: minutesFromNow(-300),
+      }),
+      baseTask({
+        id: "shared-starved-2",
+        canonicalKey: sharedCanonical,
+        consecutiveDeferrals: 9,
+        lastDeferredAt: minutesFromNow(-290),
+      }),
+      baseTask({
+        id: "unique-starved",
+        canonicalKey: "BLOG:https://example.com/starved-unique",
+        consecutiveDeferrals: 8,
+        lastDeferredAt: minutesFromNow(-280),
+      }),
+      baseTask({
+        id: "normal-a",
+        canonicalKey: "BLOG:https://example.com/normal-a",
+      }),
+      baseTask({
+        id: "normal-b",
+        canonicalKey: "BLOG:https://example.com/normal-b",
+      }),
+    ],
+  });
+
+  assert.ok(plan.currentHourTaskIds.includes("shared-starved-1"));
+  assert.ok(plan.currentHourTaskIds.includes("unique-starved"));
+  assert.ok(plan.currentHourTaskIds.includes("normal-a"));
+  assert.ok(plan.currentHourTaskIds.includes("normal-b"));
+  assert.equal(plan.debug.selected["shared-starved-1"]?.lane, "starvation");
+  assert.equal(plan.debug.selected["unique-starved"]?.lane, "starvation");
+  assert.equal(plan.debug.deferred["shared-starved-2"]?.reason, "canonical_selected");
+});
+
+test("planner backfills freed capacity after eviction with an unrepresented canonical candidate", () => {
+  const sharedCanonical = "BLOG:https://example.com/shared-eviction";
+  const plan = planCloudFetchWindow({
+    now,
+    requestedLimit: 2,
+    config: {
+      tokenBudgetPerHour: 100_000,
+      starvationReserveRatio: 0.5,
+    },
+    tasks: [
+      baseTask({
+        id: "shared-starved-expensive",
+        canonicalKey: sharedCanonical,
+        estimatedTokenCost: 150_000,
+        consecutiveDeferrals: 10,
+        lastDeferredAt: minutesFromNow(-300),
+      }),
+      baseTask({
+        id: "shared-cheap",
+        canonicalKey: sharedCanonical,
+        estimatedTokenCost: 50_000,
+        estimatedPostYield: 6,
+        estimatedSuccessProbability: 0.95,
+      }),
+      baseTask({
+        id: "other-cheap",
+        canonicalKey: "BLOG:https://example.com/other-cheap",
+        estimatedTokenCost: 50_000,
+        estimatedPostYield: 5,
+        estimatedSuccessProbability: 0.9,
+      }),
+    ],
+  });
+
+  assert.deepEqual(plan.currentHourTaskIds.sort(), ["other-cheap", "shared-cheap"]);
+  assert.equal(plan.debug.selected["shared-cheap"]?.lane, "normal");
+  assert.equal(plan.debug.deferred["shared-starved-expensive"]?.reason, "canonical_selected");
+});
+
 test("runtime estimate uses conservative source priors while history is sparse", () => {
   const estimate = estimateCloudTaskRuntime({
     sourceType: "podcast",
