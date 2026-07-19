@@ -21,10 +21,10 @@ type CloudFetchRunAggregatePrisma = {
 type CloudFetchRunLifecyclePrisma = CloudFetchRunAggregatePrisma & {
   cloudFetchQueueItem: {
     findMany(args: unknown): Promise<Array<{ runId: string | null; cloudSourceTaskId: string }>>;
-    updateMany(args: unknown): Promise<unknown>;
+    updateMany(args: unknown): Promise<{ count: number }>;
   };
   cloudFetchRunTask: CloudFetchRunAggregatePrisma["cloudFetchRunTask"] & {
-    updateMany(args: unknown): Promise<unknown>;
+    updateMany(args: unknown): Promise<{ count: number }>;
   };
 };
 
@@ -41,22 +41,11 @@ export async function expireLeasedCloudFetchRuns(params: {
     select: { runId: true, cloudSourceTaskId: true },
   });
 
-  await params.prisma.cloudFetchQueueItem.updateMany({
-    where: { status: CloudFetchQueueStatus.LEASED, leaseExpiresAt: { lt: params.now } },
-    data: {
-      status: CloudFetchQueueStatus.QUEUED,
-      leasedAt: null,
-      leaseExpiresAt: null,
-      leaseOwner: null,
-      runId: null,
-    },
-  });
-
   const expiredRunIds = new Set<string>();
+  let expiredLeases = 0;
   for (const item of expiredItems) {
     if (!item.runId) continue;
-    expiredRunIds.add(item.runId);
-    await params.prisma.cloudFetchRunTask.updateMany({
+    const expiredTask = await params.prisma.cloudFetchRunTask.updateMany({
       where: {
         runId: item.runId,
         cloudSourceTaskId: item.cloudSourceTaskId,
@@ -68,6 +57,25 @@ export async function expireLeasedCloudFetchRuns(params: {
         failureReason: "cloud_lease_expired",
       },
     });
+    if (expiredTask.count !== 1) continue;
+    const requeuedItem = await params.prisma.cloudFetchQueueItem.updateMany({
+      where: {
+        runId: item.runId,
+        cloudSourceTaskId: item.cloudSourceTaskId,
+        status: CloudFetchQueueStatus.LEASED,
+        leaseExpiresAt: { lt: params.now },
+      },
+      data: {
+        status: CloudFetchQueueStatus.QUEUED,
+        leasedAt: null,
+        leaseExpiresAt: null,
+        leaseOwner: null,
+        runId: null,
+      },
+    });
+    if (requeuedItem.count !== 1) continue;
+    expiredLeases += 1;
+    expiredRunIds.add(item.runId);
   }
 
   for (const runId of expiredRunIds) {
@@ -75,7 +83,7 @@ export async function expireLeasedCloudFetchRuns(params: {
   }
 
   return {
-    expiredLeases: expiredItems.length,
+    expiredLeases,
     expiredRuns: expiredRunIds.size,
   };
 }

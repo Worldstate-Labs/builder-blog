@@ -294,6 +294,33 @@ test("cloud fetch plan patch payload safely skips missing cloud plan context", a
   );
 });
 
+test("cloud fetch plan patch command retries bounded failures instead of silent best-effort", async () => {
+  const cliSource = await readFile("scripts/builder-digest.mjs", "utf8");
+
+  assert.match(
+    cliSource,
+    /label: "cloud fetch plan patch",[\s\S]*retries: 2/,
+  );
+  assert.match(cliSource, /throw error;/);
+});
+
+test("cloud library runner reports cloud plan patch failures instead of swallowing them silently", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("patch_current_fetch_plans() {");
+  const end = runner.indexOf("\nlibrary_worker_was_started() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const patchFunction = runner.slice(start, end);
+
+  assert.match(runner, /patch_current_fetch_plans\(\)/);
+  assert.match(runner, /cloud_plan_patch_failed/);
+  assert.match(runner, /Failed to patch cloud execution plans/);
+  assert.doesNotMatch(
+    patchFunction,
+    /patch-cloud-fetch-plan[\s\S]*\|\| true/,
+  );
+});
+
 test("cloud worker host keeps its job heartbeat fresh while fetch workers run", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
 

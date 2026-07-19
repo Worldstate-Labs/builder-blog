@@ -430,6 +430,7 @@ test("leaseCloudFetchTasks skips lease batch history when nothing is due", async
 test("leaseCloudFetchTasks marks expired leased run tasks failed before requeueing", async () => {
   const queueUpdates: unknown[] = [];
   const runTaskUpdates: unknown[] = [];
+  const events: string[] = [];
   const runUpdates: unknown[] = [];
   const prisma = {
     async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
@@ -437,6 +438,7 @@ test("leaseCloudFetchTasks marks expired leased run tasks failed before requeuei
     cloudFetchConfig: { findUnique: async () => null },
     cloudFetchQueueItem: {
       updateMany: async (args: unknown) => {
+        events.push("queue");
         queueUpdates.push(args);
         return { count: 1 };
       },
@@ -462,6 +464,7 @@ test("leaseCloudFetchTasks marks expired leased run tasks failed before requeuei
     },
     cloudFetchRunTask: {
       updateMany: async (args: unknown) => {
+        events.push("runTask");
         runTaskUpdates.push(args);
         return { count: 1 };
       },
@@ -519,7 +522,90 @@ test("leaseCloudFetchTasks marks expired leased run tasks failed before requeuei
       finishedAt: now,
     },
   });
+  assert.deepEqual(events, ["runTask", "queue"]);
   assert.equal(queueUpdates.length, 1);
+  assert.deepEqual(queueUpdates[0], {
+    where: {
+      runId: "run_expired_1",
+      cloudSourceTaskId: "cloud_task_1",
+      status: "LEASED",
+      leaseExpiresAt: { lt: now },
+    },
+    data: {
+      status: "QUEUED",
+      leasedAt: null,
+      leaseExpiresAt: null,
+      leaseOwner: null,
+      runId: null,
+    },
+  });
+});
+
+test("leaseCloudFetchTasks does not requeue an expired lease after the run task already finalized", async () => {
+  const queueUpdates: unknown[] = [];
+  const runTaskUpdates: unknown[] = [];
+  const runUpdates: unknown[] = [];
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudFetchQueueItem: {
+      updateMany: async (args: unknown) => {
+        queueUpdates.push(args);
+        return { count: 1 };
+      },
+      findMany: async (args: { where?: Record<string, unknown>; include?: unknown; select?: unknown }) => {
+        if (
+          args.where?.status === "LEASED" &&
+          args.where?.leaseExpiresAt &&
+          args.select &&
+          "runId" in (args.select as Record<string, unknown>)
+        ) {
+          return [{ runId: "run_expired_2", cloudSourceTaskId: "cloud_task_2" }];
+        }
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+      update: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      updateMany: async (args: unknown) => {
+        runTaskUpdates.push(args);
+        return { count: 0 };
+      },
+      findMany: async () => [],
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_new_2",
+        ...args.data,
+      }),
+      update: async (args: unknown) => {
+        runUpdates.push(args);
+        return {};
+      },
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "empty");
+  assert.equal(runTaskUpdates.length, 1);
+  assert.equal(queueUpdates.length, 0);
+  assert.equal(runUpdates.length, 0);
 });
 
 test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders", async () => {

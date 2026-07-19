@@ -3660,8 +3660,14 @@ patch_current_fetch_plans() {
     --tasks "$_result_file" \
     --results-dir "$_results_dir" || true
   if [ "$_sync_command" = "sync-cloud-builders" ]; then
-    node "$AGENT_DIR/builder-digest.mjs" patch-cloud-fetch-plan \
-      --tasks "$_result_file" || true
+    if ! node "$AGENT_DIR/builder-digest.mjs" patch-cloud-fetch-plan \
+      --tasks "$_result_file"; then
+      _pcfp_code="$?"
+      echo "Failed to patch cloud execution plans; continuing local work after bounded retries." >&2
+      job_run_update running "Failed to patch cloud execution plans; continuing local work after bounded retries." "cloud_plan_patch_failed" \
+        --stage "patch_cloud_execution_plan" \
+        --exit-code "$_pcfp_code"
+    fi
   fi
 }
 

@@ -9880,12 +9880,24 @@ async function patchCloudFetchPlan(args) {
       `${config.appUrl}/api/admin/cloud-fetch/plan`,
       patchPayload,
       config.token,
-      { label: "cloud fetch plan patch" },
+      { label: "cloud fetch plan patch", retries: 2 },
     );
   } catch (error) {
     patchStatus = "failed";
     errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`Failed to patch cloud fetch plan: ${errorMessage}`);
+    console.log(JSON.stringify(
+      {
+        status: patchStatus,
+        runId: cloudRunId,
+        sourcePlans: patchPayload.plans.length,
+        postPlans: patchPayload.plans.reduce((sum, plan) => sum + plan.posts.length, 0),
+        error: errorMessage,
+      },
+      null,
+      2,
+    ));
+    throw error;
   }
 
   console.log(JSON.stringify(
