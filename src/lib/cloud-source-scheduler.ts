@@ -57,6 +57,11 @@ type CanonicalActivityRecentRun = CanonicalActivityCandidate & {
   status: CloudFetchRunStatus;
 };
 
+type CanonicalActivitySummary = {
+  blockedCanonicalKeys: Set<string>;
+  failedOnlyCandidates: CanonicalActivityCandidate[];
+};
+
 type CloudFetchConfigShape = CloudSchedulerConfig & {
   leaseTtlMinutes: number;
   schedulingLeadMinutes: number;
@@ -146,16 +151,44 @@ export function createCanonicalActivityPolicy(params: {
     recentRunsByCanonical.set(run.canonicalKey, runs);
   }
 
+  const blockedCanonicalKeys = new Set(activeCanonicalKeys);
+  const failedOnlyCandidates: CanonicalActivityCandidate[] = [];
+  for (const [canonicalKey, recentRuns] of recentRunsByCanonical) {
+    if (blockedCanonicalKeys.has(canonicalKey)) continue;
+    let hasNonFailedRun = false;
+    const failedTaskIds = new Set<string>();
+    for (const run of recentRuns) {
+      if (run.status === CloudFetchRunStatus.FAILED) {
+        failedTaskIds.add(run.cloudSourceTaskId);
+        continue;
+      }
+      hasNonFailedRun = true;
+    }
+    if (hasNonFailedRun || failedTaskIds.size > 1) {
+      blockedCanonicalKeys.add(canonicalKey);
+      continue;
+    }
+    if (failedTaskIds.size === 1) {
+      failedOnlyCandidates.push({
+        canonicalKey,
+        cloudSourceTaskId: [...failedTaskIds][0]!,
+      });
+    }
+  }
+  const failedOnlyTaskIdByCanonical = new Map(
+    failedOnlyCandidates.map((candidate) => [candidate.canonicalKey, candidate.cloudSourceTaskId]),
+  );
+
   return {
     activeCanonicalKeys,
+    summary: {
+      blockedCanonicalKeys,
+      failedOnlyCandidates,
+    } satisfies CanonicalActivitySummary,
     blocksCandidate(candidate: CanonicalActivityCandidate) {
-      if (activeCanonicalKeys.has(candidate.canonicalKey)) return true;
-      const recentRuns = recentRunsByCanonical.get(candidate.canonicalKey) ?? [];
-      return recentRuns.some(
-        (run) =>
-          run.cloudSourceTaskId !== candidate.cloudSourceTaskId ||
-          run.status !== CloudFetchRunStatus.FAILED,
-      );
+      if (blockedCanonicalKeys.has(candidate.canonicalKey)) return true;
+      const failedOnlyTaskId = failedOnlyTaskIdByCanonical.get(candidate.canonicalKey);
+      return failedOnlyTaskId != null && failedOnlyTaskId !== candidate.cloudSourceTaskId;
     },
   };
 }
@@ -415,6 +448,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
     tokenBudgetRemaining: budget.tokenBudget,
     workerStartedAt: params.workerStartedAt,
   });
+  const canonicalActivityPolicy = await loadCanonicalActivityPolicy({ prisma, now, config });
 
   const selected = [];
   const queuedItemsPageSize = Math.max(params.limit, budget.limit);
@@ -429,7 +463,12 @@ async function leaseCloudFetchTasksInTransaction(params: {
   const selectedCanonicalKeys = new Set<string>();
   while (selected.length < budget.limit && remainingTokens >= MIN_ESTIMATED_TOKENS) {
     const queuedItems = await prisma.cloudFetchQueueItem.findMany({
-      where: queuedLeaseItemsWhere(now, remainingTokens, selectedCanonicalKeys),
+      where: queuedLeaseItemsWhere(
+        now,
+        remainingTokens,
+        selectedCanonicalKeys,
+        canonicalActivityPolicy.summary,
+      ),
       orderBy: queuedItemsOrder,
       take: queuedItemsPageSize,
       ...(cursor ? { cursor, skip: 1 } : {}),
@@ -456,7 +495,12 @@ async function leaseCloudFetchTasksInTransaction(params: {
 
     for (const item of queuedItems) {
       if (selected.length >= budget.limit) break;
-      if (selectedCanonicalKeys.has(item.cloudSourceTask.builder.canonicalKey)) continue;
+      const candidate = {
+        canonicalKey: item.cloudSourceTask.builder.canonicalKey,
+        cloudSourceTaskId: item.cloudSourceTaskId,
+      };
+      if (selectedCanonicalKeys.has(candidate.canonicalKey)) continue;
+      if (canonicalActivityPolicy.blocksCandidate(candidate)) continue;
       const estimate = estimatedDurationForTask(item.cloudSourceTask, config);
       const estimatedTokens = estimatedTokensForTask(item.cloudSourceTask);
       if (estimatedTokens > remainingTokens) continue;
@@ -1114,13 +1158,17 @@ function queuedLeaseItemsWhere(
   now: Date,
   remainingTokens: number,
   excludedCanonicalKeys?: Set<string>,
+  canonicalActivitySummary?: CanonicalActivitySummary,
 ): Prisma.CloudFetchQueueItemWhereInput {
   const excluded = [...(excludedCanonicalKeys ?? [])];
   return {
     status: CloudFetchQueueStatus.QUEUED,
     dueAt: { lte: now },
     cloudSourceTask: {
-      is: cloudSourceTaskFitWhere(remainingTokens),
+      is: {
+        ...cloudSourceTaskFitWhere(remainingTokens),
+        ...canonicalActivityTaskWhere(canonicalActivitySummary),
+      },
     },
     ...(excluded.length > 0
       ? {
@@ -1137,6 +1185,46 @@ function queuedLeaseItemsWhere(
           },
         }
       : {}),
+  };
+}
+
+function canonicalActivityTaskWhere(
+  canonicalActivitySummary?: CanonicalActivitySummary,
+): Prisma.CloudSourceTaskWhereInput {
+  if (!canonicalActivitySummary) return {};
+  const blockedCanonicalKeys = [...canonicalActivitySummary.blockedCanonicalKeys];
+  const failedOnlyCandidates = canonicalActivitySummary.failedOnlyCandidates;
+  if (blockedCanonicalKeys.length === 0 && failedOnlyCandidates.length === 0) return {};
+
+  const excludedCanonicalKeys = [
+    ...new Set([
+      ...blockedCanonicalKeys,
+      ...failedOnlyCandidates.map((candidate) => candidate.canonicalKey),
+    ]),
+  ];
+
+  return {
+    AND: [
+      {
+        OR: [
+          ...failedOnlyCandidates.map((candidate) => ({
+            id: candidate.cloudSourceTaskId,
+            builder: {
+              is: {
+                canonicalKey: candidate.canonicalKey,
+              },
+            },
+          })),
+          {
+            builder: {
+              is: {
+                canonicalKey: { notIn: excludedCanonicalKeys },
+              },
+            },
+          },
+        ],
+      },
+    ],
   };
 }
 

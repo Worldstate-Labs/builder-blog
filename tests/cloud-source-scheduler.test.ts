@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { CloudFetchQueueStatus } from "@prisma/client";
 
 import {
   cancelQueuedCloudFetchForTasks,
@@ -116,6 +117,29 @@ function excludedCanonicalKeys(where: Record<string, unknown> | undefined) {
   };
   visit(where);
   return [...keys];
+}
+
+function allowedCanonicalActivityPairs(where: Record<string, unknown> | undefined) {
+  const relation = where?.cloudSourceTask as
+    | {
+        is?: {
+          AND?: Array<Record<string, unknown>>;
+        };
+      }
+    | undefined;
+  const pairs: Array<{ canonicalKey: string; cloudSourceTaskId: string }> = [];
+  for (const clause of relation?.is?.AND ?? []) {
+    const options = clause.OR;
+    if (!Array.isArray(options)) continue;
+    for (const option of options) {
+      const cloudSourceTaskId = typeof option.id === "string" ? option.id : null;
+      const canonicalKey = option.builder?.is?.canonicalKey;
+      if (cloudSourceTaskId && typeof canonicalKey === "string") {
+        pairs.push({ canonicalKey, cloudSourceTaskId });
+      }
+    }
+  }
+  return pairs;
 }
 
 test("scheduler pauses active tasks with no active submitters before queueing", async () => {
@@ -388,6 +412,644 @@ test("canonical activity policy blocks all candidates once multiple failed task 
     true,
   );
 });
+
+test("canonical activity policy keeps an active lease canonical globally blocked even when a lone failed run exists", () => {
+  const canonicalKey = "BLOG:https://example.com/active-plus-failed";
+  const policy = createCanonicalActivityPolicy({
+    activeLeaseCanonicalKeys: [canonicalKey],
+    recentRuns: [
+      {
+        canonicalKey,
+        cloudSourceTaskId: "task_failed",
+        status: "FAILED",
+      },
+    ],
+  });
+
+  assert.ok(policy.summary.blockedCanonicalKeys.has(canonicalKey));
+  assert.deepEqual(policy.summary.failedOnlyCandidates, []);
+  assert.equal(
+    policy.blocksCandidate({ canonicalKey, cloudSourceTaskId: "task_failed" }),
+    true,
+  );
+});
+
+test("leaseCloudFetchTasks excludes canonicals with an existing active lease in its DB predicate", async () => {
+  const blockedCanonical = "BLOG:https://example.com/already-leased";
+  const leaseFindCalls: Array<{ where?: Record<string, unknown> }> = [];
+  const blockedQueuedItem = {
+    id: "queue_blocked_active_1",
+    cloudSourceTaskId: "cloud_task_blocked_active_1",
+    mustSucceedBy: minutesFromNow(20),
+    createdAt: new Date("2026-06-27T11:00:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_blocked_active_1",
+      builderId: "cloud_builder_blocked_active_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_blocked_active_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Blocked Active",
+        handle: null,
+        sourceUrl: "https://example.com/already-leased.xml",
+        fetchUrl: "https://example.com/already-leased.xml",
+        canonicalKey: blockedCanonical,
+      },
+    },
+  };
+  const eligibleQueuedItem = {
+    id: "queue_eligible_after_active_1",
+    cloudSourceTaskId: "cloud_task_eligible_after_active_1",
+    mustSucceedBy: minutesFromNow(21),
+    createdAt: new Date("2026-06-27T11:01:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_eligible_after_active_1",
+      builderId: "cloud_builder_eligible_after_active_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_eligible_after_active_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Eligible After Active",
+        handle: null,
+        sourceUrl: "https://example.com/eligible-after-active.xml",
+        fetchUrl: "https://example.com/eligible-after-active.xml",
+        canonicalKey: "BLOG:https://example.com/eligible-after-active.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 200_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 60,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => ({ count: args.where?.id ? 1 : 0 }),
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) {
+          if (args.where?.status === CloudFetchQueueStatus.LEASED) {
+            return [
+              {
+                cloudSourceTask: {
+                  estimatedTokenCost: 100_000,
+                  builder: {
+                    canonicalKey: blockedCanonical,
+                    sourceType: "blog",
+                  },
+                },
+              },
+            ];
+          }
+          return [];
+        }
+        if (!args.include) return [];
+        leaseFindCalls.push({ where: args.where });
+        return excludedCanonicalKeys(args.where).includes(blockedCanonical)
+          ? [eligibleQueuedItem]
+          : [blockedQueuedItem];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_active_lease_filter_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(
+    result.tasks.map((task) => task.cloudSourceTaskId),
+    ["cloud_task_eligible_after_active_1"],
+  );
+  assert.deepEqual(excludedCanonicalKeys(leaseFindCalls[0]?.where), [blockedCanonical]);
+});
+
+test("leaseCloudFetchTasks does not emit a lone-failed DB exception for a canonical that still has an active lease", async () => {
+  const blockedCanonical = "BLOG:https://example.com/active-and-failed";
+  const leaseFindCalls: Array<{ where?: Record<string, unknown> }> = [];
+  const eligibleQueuedItem = {
+    id: "queue_eligible_after_active_failed_1",
+    cloudSourceTaskId: "cloud_task_eligible_after_active_failed_1",
+    mustSucceedBy: minutesFromNow(21),
+    createdAt: new Date("2026-06-27T11:01:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_eligible_after_active_failed_1",
+      builderId: "cloud_builder_eligible_after_active_failed_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_eligible_after_active_failed_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Eligible After Active Failed",
+        handle: null,
+        sourceUrl: "https://example.com/eligible-after-active-failed.xml",
+        fetchUrl: "https://example.com/eligible-after-active-failed.xml",
+        canonicalKey: "BLOG:https://example.com/eligible-after-active-failed.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 200_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 60,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => ({ count: args.where?.id ? 1 : 0 }),
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) {
+          if (args.where?.status === CloudFetchQueueStatus.LEASED) {
+            return [
+              {
+                cloudSourceTask: {
+                  estimatedTokenCost: 100_000,
+                  builder: {
+                    canonicalKey: blockedCanonical,
+                    sourceType: "blog",
+                  },
+                },
+              },
+            ];
+          }
+          return [];
+        }
+        if (!args.include) return [];
+        leaseFindCalls.push({ where: args.where });
+        return [eligibleQueuedItem];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [
+        {
+          cloudSourceTaskId: "cloud_task_retry_anchor_1",
+          status: "FAILED",
+          builder: { canonicalKey: blockedCanonical },
+        },
+      ],
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_active_failed_filter_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(
+    result.tasks.map((task) => task.cloudSourceTaskId),
+    ["cloud_task_eligible_after_active_failed_1"],
+  );
+  assert.deepEqual(excludedCanonicalKeys(leaseFindCalls[0]?.where), [blockedCanonical]);
+  assert.deepEqual(allowedCanonicalActivityPairs(leaseFindCalls[0]?.where), []);
+});
+
+test("leaseCloudFetchTasks keeps a lone recent failed task leasable while blocking sibling canonicals in the DB predicate", async () => {
+  const sharedCanonical = "BLOG:https://example.com/lone-failed";
+  const leaseFindCalls: Array<{ where?: Record<string, unknown> }> = [];
+  const sameTaskQueuedItem = {
+    id: "queue_same_failed_1",
+    cloudSourceTaskId: "cloud_task_same_failed_1",
+    mustSucceedBy: minutesFromNow(20),
+    createdAt: new Date("2026-06-27T11:00:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_same_failed_1",
+      builderId: "cloud_builder_same_failed_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_same_failed_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Same Failed",
+        handle: null,
+        sourceUrl: "https://example.com/lone-failed.xml",
+        fetchUrl: "https://example.com/lone-failed.xml",
+        canonicalKey: sharedCanonical,
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 200_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 60,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => ({ count: args.where?.id ? 1 : 0 }),
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) return [];
+        if (!args.include) return [];
+        leaseFindCalls.push({ where: args.where });
+        return [sameTaskQueuedItem];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [
+        {
+          cloudSourceTaskId: "cloud_task_same_failed_1",
+          status: "FAILED",
+          builder: { canonicalKey: sharedCanonical },
+        },
+      ],
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_same_failed_filter_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(
+    result.tasks.map((task) => task.cloudSourceTaskId),
+    ["cloud_task_same_failed_1"],
+  );
+  assert.deepEqual(allowedCanonicalActivityPairs(leaseFindCalls[0]?.where), [
+    {
+      canonicalKey: sharedCanonical,
+      cloudSourceTaskId: "cloud_task_same_failed_1",
+    },
+  ]);
+});
+
+test("leaseCloudFetchTasks blocks sibling queued rows after a recent failed run on the same canonical", async () => {
+  const sharedCanonical = "BLOG:https://example.com/retry-only";
+  const leaseFindCalls: Array<{ where?: Record<string, unknown> }> = [];
+  const siblingQueuedItem = {
+    id: "queue_failed_sibling_1",
+    cloudSourceTaskId: "cloud_task_failed_sibling_1",
+    mustSucceedBy: minutesFromNow(20),
+    createdAt: new Date("2026-06-27T11:00:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_failed_sibling_1",
+      builderId: "cloud_builder_failed_sibling_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_failed_sibling_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Failed Sibling",
+        handle: null,
+        sourceUrl: "https://example.com/retry-only.xml?alt=sibling",
+        fetchUrl: "https://example.com/retry-only.xml?alt=sibling",
+        canonicalKey: sharedCanonical,
+      },
+    },
+  };
+  const eligibleQueuedItem = {
+    id: "queue_failed_unique_1",
+    cloudSourceTaskId: "cloud_task_failed_unique_1",
+    mustSucceedBy: minutesFromNow(21),
+    createdAt: new Date("2026-06-27T11:01:00.000Z"),
+    cloudSourceTask: {
+      id: "cloud_task_failed_unique_1",
+      builderId: "cloud_builder_failed_unique_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 600,
+      estimatedTokenCost: 100_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_failed_unique_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Eligible Unique",
+        handle: null,
+        sourceUrl: "https://example.com/failed-unique.xml",
+        fetchUrl: "https://example.com/failed-unique.xml",
+        canonicalKey: "BLOG:https://example.com/failed-unique.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: {
+      findUnique: async () => ({
+        tokenBudgetPerHour: 200_000,
+        starvationReserveRatio: 0,
+        leaseTtlMinutes: 60,
+        schedulingLeadMinutes: 120,
+        retryBaseMinutes: 30,
+        failureCircuitBreakerThreshold: 5,
+        canonicalCooldownMinutes: 60,
+        durationColdStartBufferRatio: 0.5,
+      }),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: string } }) => ({ count: args.where?.id ? 1 : 0 }),
+      findMany: async (args: LeaseQueueFindManyArgs) => {
+        if (args.select) return [];
+        if (!args.include) return [];
+        leaseFindCalls.push({ where: args.where });
+        return excludedCanonicalKeys(args.where).includes(sharedCanonical)
+          ? [eligibleQueuedItem]
+          : [siblingQueuedItem];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [
+        {
+          cloudSourceTaskId: "cloud_task_retry_anchor_1",
+          status: "FAILED",
+          builder: { canonicalKey: sharedCanonical },
+        },
+      ],
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_failed_sibling_filter_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(
+    result.tasks.map((task) => task.cloudSourceTaskId),
+    ["cloud_task_failed_unique_1"],
+  );
+  assert.ok(excludedCanonicalKeys(leaseFindCalls[0]?.where).includes(sharedCanonical));
+});
+
+for (const recentStatus of ["SUCCEEDED", "PARTIAL"] as const) {
+  test(`leaseCloudFetchTasks blocks a recent ${recentStatus} task on the same canonical`, async () => {
+    const sharedCanonical = `BLOG:https://example.com/recent-${recentStatus.toLowerCase()}`;
+    const leaseFindCalls: Array<{ where?: Record<string, unknown> }> = [];
+    const blockedQueuedItem = {
+      id: `queue_${recentStatus.toLowerCase()}_blocked_1`,
+      cloudSourceTaskId: `cloud_task_${recentStatus.toLowerCase()}_blocked_1`,
+      mustSucceedBy: minutesFromNow(20),
+      createdAt: new Date("2026-06-27T11:00:00.000Z"),
+      cloudSourceTask: {
+        id: `cloud_task_${recentStatus.toLowerCase()}_blocked_1`,
+        builderId: `cloud_builder_${recentStatus.toLowerCase()}_blocked_1`,
+        summaryLanguage: "en",
+        estimatedDurationSeconds: 600,
+        estimatedTokenCost: 100_000,
+        durationP75Seconds: null,
+        durationP90Seconds: null,
+        durationSampleCount: 0,
+        successSampleCount: 0,
+        estimatedSuccessProbability: 0.9,
+        builder: {
+          id: `cloud_builder_${recentStatus.toLowerCase()}_blocked_1`,
+          kind: "BLOG",
+          sourceType: "blog",
+          name: `Blocked ${recentStatus}`,
+          handle: null,
+          sourceUrl: `https://example.com/recent-${recentStatus.toLowerCase()}.xml`,
+          fetchUrl: `https://example.com/recent-${recentStatus.toLowerCase()}.xml`,
+          canonicalKey: sharedCanonical,
+        },
+      },
+    };
+    const eligibleQueuedItem = {
+      id: `queue_${recentStatus.toLowerCase()}_eligible_1`,
+      cloudSourceTaskId: `cloud_task_${recentStatus.toLowerCase()}_eligible_1`,
+      mustSucceedBy: minutesFromNow(21),
+      createdAt: new Date("2026-06-27T11:01:00.000Z"),
+      cloudSourceTask: {
+        id: `cloud_task_${recentStatus.toLowerCase()}_eligible_1`,
+        builderId: `cloud_builder_${recentStatus.toLowerCase()}_eligible_1`,
+        summaryLanguage: "en",
+        estimatedDurationSeconds: 600,
+        estimatedTokenCost: 100_000,
+        durationP75Seconds: null,
+        durationP90Seconds: null,
+        durationSampleCount: 0,
+        successSampleCount: 0,
+        estimatedSuccessProbability: 0.9,
+        builder: {
+          id: `cloud_builder_${recentStatus.toLowerCase()}_eligible_1`,
+          kind: "BLOG",
+          sourceType: "blog",
+          name: `Eligible ${recentStatus}`,
+          handle: null,
+          sourceUrl: `https://example.com/eligible-${recentStatus.toLowerCase()}.xml`,
+          fetchUrl: `https://example.com/eligible-${recentStatus.toLowerCase()}.xml`,
+          canonicalKey: `BLOG:https://example.com/eligible-${recentStatus.toLowerCase()}.xml`,
+        },
+      },
+    };
+    const prisma = {
+      async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+      async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+      cloudFetchConfig: {
+        findUnique: async () => ({
+          tokenBudgetPerHour: 200_000,
+          starvationReserveRatio: 0,
+          leaseTtlMinutes: 60,
+          schedulingLeadMinutes: 120,
+          retryBaseMinutes: 30,
+          failureCircuitBreakerThreshold: 5,
+          canonicalCooldownMinutes: 60,
+          durationColdStartBufferRatio: 0.5,
+        }),
+      },
+      cloudFetchQueueItem: {
+        updateMany: async (args: { where?: { id?: string } }) => ({ count: args.where?.id ? 1 : 0 }),
+        findMany: async (args: LeaseQueueFindManyArgs) => {
+          if (args.select) return [];
+          if (!args.include) return [];
+          leaseFindCalls.push({ where: args.where });
+          return excludedCanonicalKeys(args.where).includes(sharedCanonical)
+            ? [eligibleQueuedItem]
+            : [blockedQueuedItem];
+        },
+        count: async () => 0,
+        create: async () => ({}),
+      },
+      cloudSourceTask: {
+        findMany: async () => [],
+        updateMany: async () => ({ count: 0 }),
+        update: async () => ({}),
+      },
+      cloudFetchRunTask: {
+        findMany: async () => [
+          {
+            cloudSourceTaskId: `cloud_task_${recentStatus.toLowerCase()}_blocked_1`,
+            status: recentStatus,
+            builder: { canonicalKey: sharedCanonical },
+          },
+        ],
+        create: async () => ({}),
+      },
+      cloudSourceSubmission: { groupBy: async () => [] },
+      cloudFetchRun: {
+        create: async (args: { data: Record<string, unknown> }) => ({
+          id: `run_cloud_recent_${recentStatus.toLowerCase()}_filter_1`,
+          ...args.data,
+        }),
+      },
+      feedItem: {
+        findMany: async () => [],
+      },
+    };
+
+    const result = await leaseCloudFetchTasks({
+      prisma: prisma as never,
+      now,
+      limit: 1,
+      leaseOwner: "local-cloud-runner:test",
+    });
+
+    assert.equal(result.status, "ok");
+    assert.deepEqual(
+      result.tasks.map((task) => task.cloudSourceTaskId),
+      [`cloud_task_${recentStatus.toLowerCase()}_eligible_1`],
+    );
+    assert.ok(excludedCanonicalKeys(leaseFindCalls[0]?.where).includes(sharedCanonical));
+  });
+}
 
 test("planner selects at most one due task per canonical key and defers siblings as canonical_selected", () => {
   const sharedCanonical = "BLOG:https://example.com/shared";
