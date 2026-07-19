@@ -25,6 +25,11 @@ combined payload, repairs validation failures if needed, and syncs it with
   downloads, transcription, browser work, and extraction must run in the
   foreground and finish before you exit. A task is not complete until you have
   written its sync item or terminal `taskOutcomes` entry.
+- For supported YouTube/podcast long-media transcription, use the deterministic
+  helper
+  `node "$BUILDER_BLOG_AGENT_DIR/builder-digest.mjs" extract-long-media --fetch-task-id "$FETCH_TASK_ID"`.
+  Do not hand-roll yt-dlp, ffmpeg, whisper, or fixed-timeout shell commands
+  for those tasks, and do not wrap them in your own background loops.
 
 Agent discretion boundary: use the exact shard paths and JSON shapes specified
 below. The shard file can be hundreds of KB because it includes all task bodies
@@ -145,7 +150,8 @@ result file survives):
   with time left to write checkpoints and the result file, do not keep trying.
   Write a terminal `taskOutcomes` entry for that fetchTaskId instead, with
   status `failed`, reason `extraction_exceeds_shard_timeout`, and evidence that
-  includes the duration/speed estimate and attempted methods.
+  includes estimatedWorkSeconds/executionBudgetSeconds, media duration,
+  duration/speed estimates, and attempted methods.
 - If several fetch tasks point at the same unavailable or too-expensive source
   item, write one terminal outcome per fetchTaskId. Do not leave duplicate
   tasks uncovered just because they share the same URL or video ID.

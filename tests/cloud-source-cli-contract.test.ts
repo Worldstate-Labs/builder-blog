@@ -669,6 +669,64 @@ test("cloud worker host keeps its job heartbeat fresh while fetch workers run", 
   assert.match(runner, /_last_job_run_heartbeat="\$_now"/);
 });
 
+test("cloud worker launch exports an immutable shard start epoch for each worker", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("start_library_worker() {");
+  const end = runner.indexOf("\nworker_fits_remaining_outer_window() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-start-epoch-"));
+  try {
+    const resultsDir = join(dir, "results");
+    const shardPath = join(dir, "shard-0.json");
+    const checkPath = join(dir, "check.sh");
+    await mkdir(resultsDir, { recursive: true });
+    await writeFile(
+      shardPath,
+      JSON.stringify({
+        fetchTasks: [{ id: "task-1" }],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+library_worker_was_started() { return 1; }
+shard_timeout_seconds_for_file() { printf '%s\\n' 900; }
+run_selected_runtime() {
+  printf '%s\\n' "$BUILDER_BLOG_SHARD_STARTED_AT_EPOCH" > "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/started-at.txt"
+  if ( BUILDER_BLOG_SHARD_STARTED_AT_EPOCH=1 ) 2>/dev/null; then
+    printf 'mutable\\n' > "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/immutability.txt"
+  else
+    printf 'readonly\\n' > "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/immutability.txt"
+  fi
+}
+_results_dir="${resultsDir}"
+AGENT_DIR="${dir}"
+ACCOUNT_SLUG=test-account
+JOB_NAME=cloud-library-cron
+PINNED_RUNTIME=codex
+_worker_entries=
+_started_shard_names=
+_started_worker_count=0
+start_library_worker "${shardPath}"
+sleep 1
+checkpoint_dir="${resultsDir}/shard-0-checkpoints"
+[ -s "$checkpoint_dir/started-at.txt" ]
+grep -E '^[0-9]+$' "$checkpoint_dir/started-at.txt" >/dev/null
+[ "$(cat "$checkpoint_dir/immutability.txt")" = "readonly" ]
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud worker usage refresh never patches validation-failed task outcomes", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
 
@@ -1320,6 +1378,11 @@ test("library worker prompt forbids background task work", async () => {
   assert.match(prompt, /Long[\s\S]*transcription[\s\S]*must run in the[\s\S]*foreground/);
   assert.match(prompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
   assert.match(prompt, /extraction_exceeds_shard_timeout/);
+  assert.match(prompt, /extract-long-media/);
+  assert.match(prompt, /Do not hand-roll yt-dlp, ffmpeg, whisper, or fixed-timeout shell commands/);
+  assert.match(prompt, /estimatedWorkSeconds\/executionBudgetSeconds/);
+  assert.match(prompt, /media duration/);
+  assert.match(prompt, /attempted methods/);
   assert.doesNotMatch(prompt, /cat "\$BUILDER_BLOG_SHARD_FILE"/);
   assert.match(prompt, /compact task queue/);
   assert.match(prompt, /process one task at a time/);

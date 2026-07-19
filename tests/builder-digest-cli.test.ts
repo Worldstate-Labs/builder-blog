@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const missingCommandRunner = async () => ({
   ok: false,
   code: null,
@@ -2684,6 +2685,290 @@ test("media work estimator uses installed policy fallback defaults and backend o
   assert.equal(backendEstimate.estimateEvidence.asrRealtimeFactor, 0.55);
   assert.equal(backendEstimate.estimateEvidence.audioPreparationFactor, 0.2);
   assert.equal(backendEstimate.estimateEvidence.fixedOverheadSeconds, 120);
+});
+
+test("remaining shard execution budget helper keeps a 600-second finalization reserve", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?remaining-budget=${Date.now()}`);
+
+  assert.equal(
+    cli.remainingShardExecutionBudgetSecondsForTest({
+      shardStartedAtEpoch: 1_000,
+      shardTimeoutSeconds: 3_600,
+      nowEpochSeconds: 1_500,
+    }),
+    2_500,
+  );
+  assert.equal(
+    cli.remainingShardExecutionBudgetSecondsForTest({
+      shardStartedAtEpoch: 1_000,
+      shardTimeoutSeconds: 3_600,
+      nowEpochSeconds: 4_100,
+    }),
+    0,
+  );
+  assert.equal(
+    cli.remainingShardExecutionBudgetSecondsForTest({
+      shardStartedAtEpoch: Number.NaN,
+      shardTimeoutSeconds: -10,
+      nowEpochSeconds: 1_500,
+    }),
+    0,
+  );
+});
+
+test("extract-long-media refuses to spawn long tools when the estimated work cannot fit inside remaining shard budget", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-budget-"));
+  try {
+    const fakeBin = join(dir, "bin");
+    const checkpointsDir = join(dir, "checkpoints");
+    const progressDir = join(checkpointsDir, "progress");
+    const shardFile = join(dir, "shard.json");
+    const markerFile = join(dir, "spawned.txt");
+    const progressFile = join(progressDir, "05fa6b84dab653fd0288a7230277c32384bd8a8b2e3f1f1be0616d0535eca0c6.json");
+    await mkdir(fakeBin, { recursive: true });
+    await mkdir(progressDir, { recursive: true });
+    await writeFile(
+      join(fakeBin, "yt-dlp"),
+      `#!/bin/sh
+printf 'spawned\\n' >> "${markerFile}"
+exit 99
+`,
+      "utf8",
+    );
+    await execFileAsync("chmod", ["+x", join(fakeBin, "yt-dlp")]);
+    await writeFile(
+      shardFile,
+      JSON.stringify({
+        fetchTasks: [
+          {
+            id: "yt-task",
+            sourceType: "youtube",
+            mediaDurationSeconds: 5400,
+            estimatedWorkSeconds: 1500,
+            executionBudgetSeconds: 1800,
+            item: { title: "Long video", url: "https://youtube.com/watch?v=abc123xyz00" },
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      ["scripts/builder-digest.mjs", "extract-long-media", "--fetch-task-id", "yt-task"],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PATH: `${fakeBin}:${process.env.PATH || ""}`,
+          BUILDER_BLOG_SHARD_FILE: shardFile,
+          BUILDER_BLOG_SHARD_CHECKPOINT_DIR: checkpointsDir,
+          BUILDER_BLOG_SHARD_TIMEOUT_SECONDS: "1800",
+          BUILDER_BLOG_SHARD_STARTED_AT_EPOCH: "1000",
+          BUILDER_BLOG_LONG_MEDIA_NOW_EPOCH: "1600",
+        },
+      },
+    );
+
+    const parsed = JSON.parse(stdout);
+    assert.equal(parsed.status, "failed");
+    assert.equal(parsed.reason, "extraction_exceeds_shard_timeout");
+    await assert.rejects(readFile(markerFile, "utf8"));
+    const progress = JSON.parse(await readFile(progressFile, "utf8"));
+    assert.equal(progress.status, "failed");
+  } finally {
+    await execFileAsync("rm", ["-rf", dir]);
+  }
+});
+
+test("extract-long-media helper stops before ffmpeg once budget expires after download", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?post-download-budget=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-post-download-"));
+  const attempts: Array<{ method: string; status: string; reason: string }> = [];
+  const commands: string[] = [];
+  const budgetMs = [6_000, 0];
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
+      attempts,
+      longToolTimeoutMsResolver: () => budgetMs.shift() ?? 0,
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push(`${command} ${args.join(" ")}`.trim());
+        if (args[0] === "--version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp") {
+          const templateIndex = args.indexOf("-o");
+          const template = templateIndex >= 0 ? args[templateIndex + 1] : join(dir, "audio.%(ext)s");
+          await writeFile(template.replace("%(ext)s", "mp3"), "audio", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        throw new Error(`unexpected command: ${command}`);
+      },
+    });
+
+    assert.equal(result.reason, "extraction_exceeds_shard_timeout");
+    assert.deepEqual(
+      attempts.map((attempt) => [attempt.method, attempt.status, attempt.reason]),
+      [["local-asr", "failed", "extraction_exceeds_shard_timeout"]],
+    );
+    assert.deepEqual(commands.slice(0, 3), [
+      "yt-dlp --version",
+      "ffmpeg --version",
+      commands[2],
+    ]);
+    assert.equal(commands[2].startsWith("yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K -o "), true);
+    assert.equal(commands.some((command) => command.startsWith("ffmpeg -y ")), false);
+  } finally {
+    await execFileAsync("rm", ["-rf", dir]);
+  }
+});
+
+test("extract-long-media heartbeats the task progress file while long media tools run and stops after completion", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-heartbeat-"));
+  try {
+    const fakeBin = join(dir, "bin");
+    const checkpointsDir = join(dir, "checkpoints");
+    const progressDir = join(checkpointsDir, "progress");
+    const shardFile = join(dir, "shard.json");
+    await mkdir(fakeBin, { recursive: true });
+    await mkdir(progressDir, { recursive: true });
+    await writeFile(
+      join(fakeBin, "yt-dlp"),
+      `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  printf '2026.07.01\\n'
+  exit 0
+fi
+out=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then
+    out="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+sleep 2
+printf 'audio' > "$(printf '%s' "$out" | sed 's/%(ext)s/mp3/')"
+`,
+      "utf8",
+    );
+    await writeFile(
+      join(fakeBin, "ffmpeg"),
+      `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  printf 'ffmpeg version test\\n'
+  exit 0
+fi
+sleep 2
+output=""
+for arg in "$@"; do output="$arg"; done
+printf 'wav' > "$output"
+`,
+      "utf8",
+    );
+    await writeFile(
+      join(fakeBin, "python3"),
+      `#!/bin/sh
+sleep 2
+printf '{"text":"transcribed words from local audio","reason":"faster_whisper_transcribed"}\\n'
+`,
+      "utf8",
+    );
+    await execFileAsync("chmod", ["+x", join(fakeBin, "yt-dlp")]);
+    await execFileAsync("chmod", ["+x", join(fakeBin, "ffmpeg")]);
+    await execFileAsync("chmod", ["+x", join(fakeBin, "python3")]);
+    await writeFile(
+      shardFile,
+      JSON.stringify({
+        fetchTasks: [
+          {
+            id: "podcast-task",
+            sourceType: "podcast",
+            mediaDurationSeconds: 1200,
+            estimatedWorkSeconds: 1200,
+            executionBudgetSeconds: 3600,
+            item: {
+              title: "Podcast episode",
+              url: "https://pod.example.com/episode-1",
+              rawJson: {
+                enclosureUrl: "https://cdn.example.com/episode-1.mp3",
+                mediaDurationSeconds: 1200,
+              },
+            },
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    const progressFile = join(progressDir, "3611da937157f042f18e890124cc4b26b81046c54e7afc4d17049d6f7ddecf22.json");
+    const child = spawn(
+      process.execPath,
+      ["scripts/builder-digest.mjs", "extract-long-media", "--fetch-task-id", "podcast-task"],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PATH: `${fakeBin}:${process.env.PATH || ""}`,
+          BUILDER_BLOG_SHARD_FILE: shardFile,
+          BUILDER_BLOG_SHARD_CHECKPOINT_DIR: checkpointsDir,
+          BUILDER_BLOG_SHARD_TIMEOUT_SECONDS: "3600",
+          BUILDER_BLOG_SHARD_STARTED_AT_EPOCH: String(Math.floor(Date.now() / 1000)),
+          BUILDER_BLOG_LONG_MEDIA_HEARTBEAT_SECONDS: "1",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => { stdout += String(chunk); });
+    child.stderr.on("data", (chunk) => { stderr += String(chunk); });
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        await stat(progressFile);
+        break;
+      } catch {
+        await sleep(250);
+      }
+    }
+    const observedMtimes = [(await stat(progressFile)).mtimeMs];
+    const heartbeatDeadline = Date.now() + 6_000;
+    while (observedMtimes.length < 3 && Date.now() < heartbeatDeadline) {
+      await sleep(400);
+      const nextMtime = (await stat(progressFile)).mtimeMs;
+      if (nextMtime > observedMtimes[observedMtimes.length - 1]) observedMtimes.push(nextMtime);
+    }
+    assert.equal(observedMtimes.length >= 3, true);
+
+    const exitCode: number = await new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (code) => resolve(code ?? 0));
+    });
+    assert.equal(exitCode, 0, stderr);
+
+    const parsed = JSON.parse(stdout);
+    assert.equal(parsed.status, "ok");
+    assert.equal(parsed.fetchTaskId, "podcast-task");
+    assert.equal(parsed.transcriptSource, "local-speech-to-text");
+    assert.equal(parsed.executionBudgetSeconds, 3600);
+    assert.equal(parsed.estimatedWorkSeconds, 1200);
+    assert.deepEqual(
+      parsed.attemptedMethods.map((attempt: { method: string; status: string }) => [attempt.method, attempt.status]),
+      [["local-asr", "ok"]],
+    );
+    const progress = JSON.parse(await readFile(progressFile, "utf8"));
+    assert.equal(progress.status, "summarizing");
+    assert.equal(progress.phase, "summarize");
+
+    const final = await stat(progressFile);
+    await sleep(1300);
+    const after = await stat(progressFile);
+    assert.equal(after.mtimeMs, final.mtimeMs);
+  } finally {
+    await execFileAsync("rm", ["-rf", dir]);
+  }
 });
 
 test("personal fetcher reports concrete fetching tool identity", async () => {

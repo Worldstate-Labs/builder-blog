@@ -446,6 +446,113 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /\*\-cron\)/);
 });
 
+test("OpenClaw worker timeout follows shard timeout while preflight keeps its own safe timeout fallback", async () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const openclawRunner = shellFunction(runner, "run_with_openclaw_unattended");
+  const openclawPreflight = shellFunction(runner, "run_openclaw_library_preflight");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-openclaw-timeout-"));
+  const promptFile = join(dir, "prompt.md");
+  const scriptFile = join(dir, "check.sh");
+  const argsFile = join(dir, "openclaw-args.txt");
+  const preflightFile = join(dir, "preflight-timeout.txt");
+  writeFileSync(promptFile, "Return ok.\n", "utf8");
+  writeFileSync(
+    scriptFile,
+    `set -eu
+${openclawRunner}
+${openclawPreflight}
+job_timeout_seconds() { printf '%s\\n' 999; }
+sync_openclaw_timeout_config() { :; }
+agent_output_file() { printf '%s\\n' "${dir}/agent-output.json"; }
+agent_usage_file() { printf '%s\\n' "${dir}/agent-usage.json"; }
+structured_usage_enabled() { return 1; }
+capture_runtime_usage() { :; }
+agent_output_has_timeout() { return 1; }
+agent_output_has_openclaw_capacity_failure() { return 1; }
+digest_output_completed() { return 0; }
+openclaw_default_session_id() { printf '%s\\n' default-session; }
+openclaw_capacity_attempts() { printf '%s\\n' 1; }
+openclaw_capacity_retry_delay_seconds() { printf '%s\\n' 0; }
+openclaw_model_candidates() { return 0; }
+openclaw() {
+  printf '%s\\n' "$*" > "${argsFile}"
+  printf '{"status":"ok"}\\n' > "${dir}/agent-output.json"
+}
+PROMPT_FILE="${promptFile}"
+BUILDER_BLOG_SHARD_TIMEOUT_SECONDS=321
+BUILDER_BLOG_LIBRARY_AGENT_STAGE=worker
+_timeout=
+run_with_openclaw_unattended >/dev/null 2>&1
+grep -- '--timeout 321' "${argsFile}" >/dev/null
+BUILDER_BLOG_SHARD_TIMEOUT_SECONDS=invalid
+_timeout=
+run_with_openclaw_unattended >/dev/null 2>&1
+grep -- '--timeout 999' "${argsFile}" >/dev/null
+run_selected_runtime() {
+  printf '%s\\n' "$_timeout" > "${preflightFile}"
+  LAST_AGENT_OUTPUT_FILE="${dir}/preflight-output.json"
+  printf '{"followbriefRuntimePreflight":"ok","runtimeReady":true}\\n' > "$LAST_AGENT_OUTPUT_FILE"
+  return 0
+}
+agent_output_has_openclaw_preflight_marker() { return 0; }
+agent_output_has_openclaw_auth_failure() { return 1; }
+openclaw_auth_failure_summary() { return 0; }
+job_run_update() { :; }
+JOB_TMP_DIR="${dir}"
+ACCOUNT_SLUG=test-account
+JOB_NAME=library-cron
+IS_CRON_JOB=0
+PINNED_RUNTIME=openclaw
+_timeout=777
+unset BUILDER_BLOG_SHARD_TIMEOUT_SECONDS
+BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS=invalid
+run_openclaw_library_preflight >/dev/null 2>&1
+[ "$(cat "${preflightFile}")" = "120" ]
+[ "$_timeout" = "777" ]
+`,
+    "utf8",
+  );
+
+  assert.doesNotThrow(() => {
+    execFileSync("sh", [scriptFile], { stdio: "pipe" });
+  });
+});
+
+test("OpenClaw preflight timeout reports the validated preflight timeout after restoring the previous runtime timeout", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const openclawPreflight = shellFunction(runner, "run_openclaw_library_preflight");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-openclaw-preflight-timeout-"));
+  const scriptFile = join(dir, "check.sh");
+  const logFile = join(dir, "timeout-log.txt");
+  writeFileSync(
+    scriptFile,
+    `set -eu
+${openclawPreflight}
+run_selected_runtime() { return 124; }
+agent_output_has_openclaw_preflight_marker() { return 1; }
+agent_output_has_openclaw_auth_failure() { return 1; }
+openclaw_auth_failure_summary() { return 0; }
+job_run_update() { printf '%s\\n' "$*" > "${logFile}"; }
+JOB_TMP_DIR="${dir}"
+ACCOUNT_SLUG=test-account
+JOB_NAME=library-cron
+PROMPT_FILE="${join(dir, "prompt.md")}"
+IS_CRON_JOB=0
+PINNED_RUNTIME=openclaw
+_timeout=777
+BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS=invalid
+run_openclaw_library_preflight >/dev/null 2>&1 || [ "$?" = 124 ]
+[ "$_timeout" = "777" ]
+grep -- '--timeout-seconds 120' "${logFile}" >/dev/null
+`,
+    "utf8",
+  );
+
+  assert.doesNotThrow(() => {
+    execFileSync("sh", [scriptFile], { stdio: "pipe" });
+  });
+});
+
 test("OpenClaw preflight marker detection accepts JSON-wrapped assistant text", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   const detector = shellFunction(runner, "agent_output_has_openclaw_preflight_marker");

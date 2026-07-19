@@ -165,6 +165,8 @@ const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
 const DEFAULT_SOURCE_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS = 120_000;
 const DEFAULT_YOUTUBE_ASR_TIMEOUT_MS = 45 * 60 * 1000;
+const SHARD_FINALIZATION_ALLOWANCE_SECONDS = 600;
+const DEFAULT_LONG_MEDIA_HEARTBEAT_SECONDS = 60;
 
 let _sourcesConfig = null;
 
@@ -314,9 +316,51 @@ function nonNegativeIntegerValue(value, fallback = 0) {
   return Math.floor(numericValue);
 }
 
+function positiveIntegerOrNull(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return null;
+  return Math.floor(numericValue);
+}
+
 function positiveNumberValue(value, fallback) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback;
+}
+
+function shardStartedAtEpochFromEnv() {
+  return positiveIntegerOrNull(process.env.BUILDER_BLOG_SHARD_STARTED_AT_EPOCH);
+}
+
+function shardTimeoutSecondsFromEnv() {
+  return positiveIntegerOrNull(process.env.BUILDER_BLOG_SHARD_TIMEOUT_SECONDS);
+}
+
+function longMediaNowEpochSeconds() {
+  return positiveIntegerOrNull(process.env.BUILDER_BLOG_LONG_MEDIA_NOW_EPOCH) ?? Math.floor(Date.now() / 1000);
+}
+
+function longMediaHeartbeatIntervalMs() {
+  const seconds = positiveIntegerOrNull(process.env.BUILDER_BLOG_LONG_MEDIA_HEARTBEAT_SECONDS);
+  const clampedSeconds = seconds == null
+    ? DEFAULT_LONG_MEDIA_HEARTBEAT_SECONDS
+    : Math.min(DEFAULT_LONG_MEDIA_HEARTBEAT_SECONDS, Math.max(1, seconds));
+  return clampedSeconds * 1000;
+}
+
+function remainingShardExecutionBudgetSeconds({
+  shardStartedAtEpoch = shardStartedAtEpochFromEnv(),
+  shardTimeoutSeconds = shardTimeoutSecondsFromEnv(),
+  nowEpochSeconds = longMediaNowEpochSeconds(),
+} = {}) {
+  const startedAt = positiveIntegerOrNull(shardStartedAtEpoch);
+  const timeoutSeconds = positiveIntegerOrNull(shardTimeoutSeconds);
+  const nowSeconds = positiveIntegerOrNull(nowEpochSeconds);
+  if (startedAt == null || timeoutSeconds == null || nowSeconds == null) return 0;
+  return Math.max(0, startedAt + timeoutSeconds - nowSeconds - SHARD_FINALIZATION_ALLOWANCE_SECONDS);
+}
+
+export function remainingShardExecutionBudgetSecondsForTest(options = {}) {
+  return remainingShardExecutionBudgetSeconds(options);
 }
 
 export function parseMediaDurationSeconds(value) {
@@ -549,6 +593,7 @@ function usage() {
   assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ [--assigned-only] [--complete-sources-only] --out library-agent-sync.json
+  extract-long-media --fetch-task-id <id>
   split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task|cloud-run]
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
@@ -3279,6 +3324,39 @@ export function fetchTaskId(task) {
     .join(":");
 }
 
+function shardProgressFileForTask(fetchTaskIdValue) {
+  const checkpointDir = process.env.BUILDER_BLOG_SHARD_CHECKPOINT_DIR?.trim();
+  if (!checkpointDir) return null;
+  const hash = createHash("sha256").update(String(fetchTaskIdValue || "")).digest("hex");
+  return join(checkpointDir, "progress", `${hash}.json`);
+}
+
+async function writeLongMediaProgressHeartbeat(fetchTaskIdValue, task, overrides = {}) {
+  const progressFile = shardProgressFileForTask(fetchTaskIdValue);
+  if (!progressFile) return null;
+  await mkdir(dirname(progressFile), { recursive: true });
+  let existing = {};
+  try {
+    existing = JSON.parse(await readFile(progressFile, "utf8"));
+  } catch {}
+  const next = {
+    fetchTaskId: String(fetchTaskIdValue || existing.fetchTaskId || ""),
+    status: overrides.status ?? existing.status ?? "reading",
+    phase: overrides.phase ?? existing.phase ?? "read",
+    message: overrides.message ?? existing.message ?? "Long media extraction running.",
+    updatedAt: new Date().toISOString(),
+    title: overrides.title ?? existing.title ?? task?.item?.title ?? null,
+    builder: overrides.builder ?? existing.builder ?? task?.builder ?? task?.builderSync?.name ?? null,
+    sourceType: overrides.sourceType ?? existing.sourceType ?? task?.sourceType ?? null,
+    bodyChars: overrides.bodyChars ?? existing.bodyChars ?? (typeof task?.item?.body === "string" ? task.item.body.length : 0),
+    ...(overrides.summaryChars != null || existing.summaryChars != null
+      ? { summaryChars: overrides.summaryChars ?? existing.summaryChars }
+      : {}),
+  };
+  await writeFile(progressFile, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  return progressFile;
+}
+
 // Fallback extraction guidance used only when an older server does not provide
 // an admin-editable common fetch prompt in the skill context.
 export const DEFAULT_FETCH_GUIDANCE = [
@@ -5038,9 +5116,21 @@ function terminateToolChild(child, signal) {
   } catch {}
 }
 
+function normalizedToolHeartbeat(heartbeat) {
+  if (!heartbeat || typeof heartbeat.onHeartbeat !== "function") return null;
+  const intervalMs = Number(heartbeat.intervalMs);
+  return {
+    onHeartbeat: heartbeat.onHeartbeat,
+    intervalMs: Number.isFinite(intervalMs) && intervalMs > 0
+      ? Math.min(longMediaHeartbeatIntervalMs(), Math.max(250, Math.floor(intervalMs)))
+      : longMediaHeartbeatIntervalMs(),
+  };
+}
+
 function runTool(command, args = [], options = {}) {
   const timeoutMs = options.timeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_TOOL_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS);
   const killGraceMs = envToolTimeoutMs("BUILDER_BLOG_TOOL_KILL_GRACE_MS", 5_000);
+  const heartbeat = normalizedToolHeartbeat(options.heartbeat);
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -5052,16 +5142,27 @@ function runTool(command, args = [], options = {}) {
     const stderr = [];
     let timedOut = false;
     let killTimer = null;
+    let heartbeatTimer = null;
+    const clearTimers = () => {
+      clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+    };
     const timer = setTimeout(() => {
       timedOut = true;
       terminateToolChild(child, "SIGTERM");
       killTimer = setTimeout(() => terminateToolChild(child, "SIGKILL"), killGraceMs);
     }, timeoutMs);
+    if (heartbeat) {
+      heartbeatTimer = setInterval(() => {
+        Promise.resolve(heartbeat.onHeartbeat()).catch(() => {});
+      }, heartbeat.intervalMs);
+      if (typeof heartbeatTimer.unref === "function") heartbeatTimer.unref();
+    }
     child.stdout.on("data", (chunk) => stdout.push(chunk));
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on("error", (error) => {
-      clearTimeout(timer);
-      if (killTimer) clearTimeout(killTimer);
+      clearTimers();
       resolve({
         ok: false,
         code: null,
@@ -5071,8 +5172,7 @@ function runTool(command, args = [], options = {}) {
       });
     });
     child.on("close", (code) => {
-      clearTimeout(timer);
-      if (killTimer) clearTimeout(killTimer);
+      clearTimers();
       resolve({
         ok: code === 0 && !timedOut,
         code,
@@ -6139,12 +6239,13 @@ except Exception as exc:
 `;
 }
 
-// Reserved for future worker-side audio transcription; personal-source planning
+// Reserved for worker-side long-media transcription; personal-source planning
 // must not invoke this path during discovery.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function fetchYouTubeLocalAsr(videoUrl, {
   commandRunner = runTool,
   attempts = [],
+  longToolTimeoutMsResolver = null,
+  heartbeat = null,
 } = {}) {
   if (!(await commandExists("yt-dlp", commandRunner))) {
     attempts.push({ method: "local-asr", status: "skipped", reason: "yt-dlp_missing" });
@@ -6159,11 +6260,31 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   await mkdir(asrRoot, { recursive: true });
   const workDir = await mkdtemp(join(asrRoot, "run-"));
   try {
+    const longToolOptions = (envName, fallback) => {
+      const resolvedTimeoutValue = typeof longToolTimeoutMsResolver === "function"
+        ? Number(longToolTimeoutMsResolver())
+        : Number.NaN;
+      if (Number.isFinite(resolvedTimeoutValue) && resolvedTimeoutValue <= 0) return null;
+      const resolvedTimeoutMs = Number.isFinite(resolvedTimeoutValue)
+        ? Math.max(1_000, Math.floor(resolvedTimeoutValue))
+        : null;
+      const timeoutMs = resolvedTimeoutMs ?? envToolTimeoutMs(envName, fallback);
+      if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return null;
+      return heartbeat ? { timeoutMs, heartbeat } : { timeoutMs };
+    };
     const rawTemplate = join(workDir, "audio.%(ext)s");
+    const downloadOptions = longToolOptions(
+      "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
+      DEFAULT_YOUTUBE_ASR_TIMEOUT_MS,
+    );
+    if (!downloadOptions) {
+      attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+      return { text: "", reason: "extraction_exceeds_shard_timeout" };
+    }
     const download = await commandRunner(
       "yt-dlp",
       ["-f", "ba", "-x", "--audio-format", "mp3", "--audio-quality", "64K", "-o", rawTemplate, videoUrl],
-      { timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS) },
+      downloadOptions,
     );
     if (!download.ok) {
       attempts.push({ method: "local-asr", status: "failed", reason: `audio_download:${commandFailureReason(download)}` });
@@ -6176,17 +6297,28 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       return { text: "" };
     }
     const monoAudio = join(workDir, "audio-mono.wav");
-    const convert = await commandRunner("ffmpeg", ["-y", "-i", audioFile, "-ac", "1", "-ar", "16000", monoAudio], {
-      timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_AUDIO_CONVERT_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS),
-    });
+    const convertOptions = longToolOptions(
+      "BUILDER_BLOG_YOUTUBE_AUDIO_CONVERT_TIMEOUT_MS",
+      DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS,
+    );
+    if (!convertOptions) {
+      attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+      return { text: "", reason: "extraction_exceeds_shard_timeout" };
+    }
+    const convert = await commandRunner("ffmpeg", ["-y", "-i", audioFile, "-ac", "1", "-ar", "16000", monoAudio], convertOptions);
     if (!convert.ok) {
       attempts.push({ method: "local-asr", status: "failed", reason: `audio_convert:${commandFailureReason(convert)}` });
       return { text: "" };
     }
 
-    const asr = await transcribeLocalAudio(monoAudio, workDir, commandRunner);
-    attempts.push({ method: "local-asr", status: asr.text ? "ok" : "skipped", reason: asr.reason, backend: asr.backend || null });
-    if (!asr.text) return { text: "" };
+    const asr = await transcribeLocalAudio(monoAudio, workDir, commandRunner, { longToolTimeoutMsResolver, heartbeat });
+    attempts.push({
+      method: "local-asr",
+      status: asr.text ? "ok" : (asr.reason === "extraction_exceeds_shard_timeout" ? "failed" : "skipped"),
+      reason: asr.reason,
+      backend: asr.backend || null,
+    });
+    if (!asr.text) return { text: "", reason: asr.reason };
     return {
       text: cleanTranscriptText(asr.text),
       transcriptSource: "local-speech-to-text",
@@ -6200,19 +6332,41 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   }
 }
 
-async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool) {
-  const faster = await transcribeWithPythonModule("faster_whisper", audioFile, commandRunner);
-  if (faster.text) return { ...faster, backend: "faster-whisper" };
+export function fetchYouTubeLocalAsrForTest(videoUrl, options) {
+  return fetchYouTubeLocalAsr(videoUrl, options);
+}
 
-  const mlx = await transcribeWithPythonModule("mlx_whisper", audioFile, commandRunner);
+async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool, options = {}) {
+  const faster = await transcribeWithPythonModule("faster_whisper", audioFile, commandRunner, options);
+  if (faster.text) return { ...faster, backend: "faster-whisper" };
+  if (faster.reason === "extraction_exceeds_shard_timeout") return faster;
+
+  const mlx = await transcribeWithPythonModule("mlx_whisper", audioFile, commandRunner, options);
   if (mlx.text) return { ...mlx, backend: "mlx-whisper" };
+  if (mlx.reason === "extraction_exceeds_shard_timeout") return mlx;
 
   if (await commandExists("whisper", commandRunner)) {
     const model = process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
+    const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
+      ? Number(options.longToolTimeoutMsResolver())
+      : Number.NaN;
+    if (Number.isFinite(resolvedTimeoutValue) && resolvedTimeoutValue <= 0) {
+      return { text: "", reason: "extraction_exceeds_shard_timeout" };
+    }
+    const resolvedTimeoutMs = Number.isFinite(resolvedTimeoutValue)
+      ? Math.max(1_000, Math.floor(resolvedTimeoutValue))
+      : null;
     const result = await commandRunner(
       "whisper",
       [audioFile, "--model", model, "--output_format", "txt", "--output_dir", workDir, "--fp16", "False"],
-      { timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS) },
+      options.heartbeat
+        ? {
+          timeoutMs: resolvedTimeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
+          heartbeat: options.heartbeat,
+        }
+        : {
+          timeoutMs: resolvedTimeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
+        },
     );
     if (result.ok) {
       const txtFiles = (await readdir(workDir)).filter((file) => file.endsWith(".txt"));
@@ -6226,13 +6380,23 @@ async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool)
   return { text: "", reason: faster.reason || mlx.reason || "asr_backend_missing" };
 }
 
-async function transcribeWithPythonModule(moduleName, audioFile, commandRunner = runTool) {
+async function transcribeWithPythonModule(moduleName, audioFile, commandRunner = runTool, options = {}) {
   const script = moduleName === "faster_whisper"
     ? fasterWhisperPythonScript()
     : mlxWhisperPythonScript();
   for (const python of ["python3", "python"]) {
+    const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
+      ? Number(options.longToolTimeoutMsResolver())
+      : Number.NaN;
+    if (Number.isFinite(resolvedTimeoutValue) && resolvedTimeoutValue <= 0) {
+      return { text: "", reason: "extraction_exceeds_shard_timeout" };
+    }
+    const resolvedTimeoutMs = Number.isFinite(resolvedTimeoutValue)
+      ? Math.max(1_000, Math.floor(resolvedTimeoutValue))
+      : null;
     const result = await commandRunner(python, ["-c", script, audioFile], {
-      timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
+      timeoutMs: resolvedTimeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
+      ...(options.heartbeat ? { heartbeat: options.heartbeat } : {}),
     });
     if (!result.ok) {
       const reason = commandFailureReason(result);
@@ -6278,6 +6442,141 @@ print(json.dumps({"text": result.get("text", "")}, ensure_ascii=False))
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "");
+}
+
+function longMediaSourceUrl(task) {
+  const sourceType = String(task?.sourceType || "").trim().toLowerCase();
+  if (sourceType === "youtube" || sourceType === "video") return task?.item?.url || null;
+  if (sourceType === "podcast") {
+    return task?.item?.rawJson?.enclosureUrl || task?.item?.url || null;
+  }
+  return null;
+}
+
+function longMediaMetadata(task) {
+  const mediaDurationSeconds = plannedMediaDurationSeconds(task, null);
+  const estimatedWorkSeconds = nonNegativeIntegerValue(
+    task?.estimatedWorkSeconds ??
+      (mediaDurationSeconds != null
+        ? estimateMediaWorkSeconds({
+          mediaDurationSeconds,
+          backend: task?.estimateEvidence?.backend ?? "fallback",
+          model: task?.estimateEvidence?.model ?? null,
+        }).estimatedWorkSeconds
+        : 0),
+    0,
+  );
+  return {
+    mediaDurationSeconds,
+    estimatedWorkSeconds,
+    executionBudgetSeconds: nonNegativeIntegerValue(
+      task?.executionBudgetSeconds ?? shardTimeoutSecondsFromEnv(),
+      0,
+    ),
+  };
+}
+
+async function readShardTaskForLongMedia(fetchTaskIdValue) {
+  const shardFile = process.env.BUILDER_BLOG_SHARD_FILE?.trim();
+  if (!shardFile) throw new Error("Missing BUILDER_BLOG_SHARD_FILE for extract-long-media.");
+  const shard = JSON.parse(await readFile(shardFile, "utf8"));
+  const tasks = Array.isArray(shard.fetchTasks) ? shard.fetchTasks : [];
+  const task = tasks.find((candidate, index) =>
+    candidate?.id === fetchTaskIdValue || String(index) === String(fetchTaskIdValue)
+  );
+  if (!task) throw new Error(`Fetch task not found in shard: ${fetchTaskIdValue}`);
+  return task;
+}
+
+async function extractLongMedia(args) {
+  const requestedTaskId = argValue(args, "--fetch-task-id", null);
+  if (!requestedTaskId) throw new Error("Missing --fetch-task-id for extract-long-media.");
+
+  const task = await readShardTaskForLongMedia(requestedTaskId);
+  const sourceType = String(task?.sourceType || "").trim().toLowerCase();
+  const mediaUrl = longMediaSourceUrl(task);
+  const { mediaDurationSeconds, estimatedWorkSeconds, executionBudgetSeconds } = longMediaMetadata(task);
+  const remainingBudgetSeconds = remainingShardExecutionBudgetSeconds();
+  const basePayload = {
+    fetchTaskId: requestedTaskId,
+    sourceType,
+    mediaUrl,
+    mediaDurationSeconds,
+    estimatedWorkSeconds,
+    executionBudgetSeconds,
+    remainingBudgetSeconds,
+  };
+
+  await writeLongMediaProgressHeartbeat(requestedTaskId, task, {
+    status: "reading",
+    phase: "read",
+    message: "Long media extraction running.",
+  });
+
+  if (!mediaUrl || !["youtube", "video", "podcast"].includes(sourceType)) {
+    await writeLongMediaProgressHeartbeat(requestedTaskId, task, {
+      status: "failed",
+      phase: "completed",
+      message: "Long media helper could not resolve a supported media URL.",
+    });
+    console.log(JSON.stringify({
+      status: "failed",
+      reason: "unsupported_long_media_source",
+      attemptedMethods: [],
+      ...basePayload,
+    }, null, 2));
+    return;
+  }
+
+  if (remainingBudgetSeconds <= 0 || (estimatedWorkSeconds > 0 && estimatedWorkSeconds > remainingBudgetSeconds)) {
+    await writeLongMediaProgressHeartbeat(requestedTaskId, task, {
+      status: "failed",
+      phase: "completed",
+      message: "Long media helper refused to start because the shard budget is too small.",
+    });
+    console.log(JSON.stringify({
+      status: "failed",
+      reason: "extraction_exceeds_shard_timeout",
+      attemptedMethods: [],
+      ...basePayload,
+    }, null, 2));
+    return;
+  }
+
+  const attempts = [];
+  const heartbeat = {
+    intervalMs: longMediaHeartbeatIntervalMs(),
+    onHeartbeat: () => writeLongMediaProgressHeartbeat(requestedTaskId, task, {
+      status: "reading",
+      phase: "read",
+      message: "Long media extraction still running.",
+    }),
+  };
+  const result = await fetchYouTubeLocalAsr(mediaUrl, {
+    commandRunner: runTool,
+    attempts,
+    longToolTimeoutMsResolver: () => remainingShardExecutionBudgetSeconds() * 1000,
+    heartbeat,
+  });
+  await writeLongMediaProgressHeartbeat(requestedTaskId, task, result.text
+    ? {
+      status: "summarizing",
+      phase: "summarize",
+      message: "Long media extraction finished; summarize the transcript next.",
+    }
+    : {
+      status: "failed",
+      phase: "completed",
+      message: "Long media extraction failed within the shard budget.",
+    });
+  console.log(JSON.stringify({
+    status: result.text ? "ok" : "failed",
+    reason: result.text ? null : result.reason || "local_transcription_failed",
+    transcriptSource: result.transcriptSource || null,
+    text: result.text || "",
+    attemptedMethods: attempts,
+    ...basePayload,
+  }, null, 2));
 }
 
 function commandFailureReason(result) {
@@ -11877,6 +12176,7 @@ async function main() {
   else if (command === "merge-fetch-results") await mergeFetchResultsCommand(args);
   else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
+  else if (command === "extract-long-media") await extractLongMedia(args);
   else if (command === "append-fetch-run-terminal-task-ids") await appendFetchRunTerminalTaskIds(args);
   else if (command === "split-sync-slices") await splitSyncSlices(args);
   else if (command === "fail-sync-slice") await failSyncSlice(args);

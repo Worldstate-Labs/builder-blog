@@ -189,6 +189,7 @@ authoritative, and do not search for the shard assignment or result path.
 - Shard result file: $_ocp_result_file
 - Shard checkpoint directory: $_ocp_checkpoint_dir
 - Shard timeout seconds: $_ocp_timeout_seconds
+- Shard started-at epoch: ${BUILDER_BLOG_SHARD_STARTED_AT_EPOCH:-unknown}
 - Agent directory: $AGENT_DIR
 - Account: ${BUILDER_BLOG_ACCOUNT:-default}
 
@@ -211,6 +212,7 @@ export BUILDER_BLOG_SHARD_FILE=$(shell_quote "$_ocp_shard_file")
 export BUILDER_BLOG_SHARD_RESULT=$(shell_quote "$_ocp_result_file")
 export BUILDER_BLOG_SHARD_CHECKPOINT_DIR=$(shell_quote "$_ocp_checkpoint_dir")
 export BUILDER_BLOG_SHARD_TIMEOUT_SECONDS=$(shell_quote "$_ocp_timeout_seconds")
+export BUILDER_BLOG_SHARD_STARTED_AT_EPOCH=$(shell_quote "${BUILDER_BLOG_SHARD_STARTED_AT_EPOCH:-}")
 \`\`\`
 
 Original task instructions:
@@ -586,6 +588,15 @@ run_with_openclaw_unattended() {
   # workers can still set OPENCLAW_SESSION_ID when they need shard-specific
   # sessions.
   _openclaw_timeout="${_timeout:-$(job_timeout_seconds)}"
+  if [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" = "worker" ]; then
+    case "${BUILDER_BLOG_SHARD_TIMEOUT_SECONDS:-}" in
+      ''|*[!0-9]*|0) ;;
+      *) _openclaw_timeout="${BUILDER_BLOG_SHARD_TIMEOUT_SECONDS}" ;;
+    esac
+  fi
+  case "$_openclaw_timeout" in
+    ''|*[!0-9]*|0) _openclaw_timeout="$(job_timeout_seconds)" ;;
+  esac
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
   _openclaw_usage="$(agent_usage_file openclaw)"
@@ -3075,12 +3086,16 @@ EOF
   _olp_previous_is_cron="$IS_CRON_JOB"
   _olp_previous_session="${OPENCLAW_SESSION_ID:-}"
   _olp_previous_timeout="${_timeout:-}"
+  _olp_effective_timeout="${BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS:-120}"
 
   PROMPT_FILE="$_olp_prompt"
   BUILDER_BLOG_LIBRARY_AGENT_STAGE=runtime_preflight
   IS_CRON_JOB=1
   OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-preflight' "$ACCOUNT_SLUG" "$JOB_NAME" "${BUILDER_BLOG_JOB_RUN_ID:-$$}" | tr -c 'a-zA-Z0-9_.@+-' '_')"
-  _timeout="${BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS:-120}"
+  case "$_olp_effective_timeout" in
+    ''|*[!0-9]*|0) _olp_effective_timeout=120 ;;
+  esac
+  _timeout="$_olp_effective_timeout"
   export BUILDER_BLOG_LIBRARY_AGENT_STAGE OPENCLAW_SESSION_ID
 
   echo "Running OpenClaw runtime preflight before FollowBrief fetch workers."
@@ -3118,7 +3133,7 @@ EOF
   if [ "$_olp_code" -eq 124 ]; then
     job_run_update timed_out "OpenClaw preflight timed out before fetch workers started." "runtime_preflight_timeout" \
       --stage "runtime_preflight" \
-      --timeout-seconds "${BUILDER_BLOG_OPENCLAW_PREFLIGHT_TIMEOUT_SECONDS:-120}" \
+      --timeout-seconds "$_olp_effective_timeout" \
       --timeout-stage "runtime_preflight"
     return 124
   fi
@@ -3990,8 +4005,10 @@ NODE
     BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_slw_shard_name-result.json"
     BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_slw_checkpoint_dir"
     BUILDER_BLOG_SHARD_TIMEOUT_SECONDS="$_worker_timeout"
+    BUILDER_BLOG_SHARD_STARTED_AT_EPOCH="$(date +%s)"
     BUILDER_BLOG_AGENT_OUTPUT_FILE="$_slw_agent_output_file"
-    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR BUILDER_BLOG_SHARD_TIMEOUT_SECONDS BUILDER_BLOG_AGENT_OUTPUT_FILE
+    readonly BUILDER_BLOG_SHARD_STARTED_AT_EPOCH
+    export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR BUILDER_BLOG_SHARD_TIMEOUT_SECONDS BUILDER_BLOG_SHARD_STARTED_AT_EPOCH BUILDER_BLOG_AGENT_OUTPUT_FILE
     if [ "$PINNED_RUNTIME" = "openclaw" ]; then
       OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_slw_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
       export OPENCLAW_SESSION_ID
