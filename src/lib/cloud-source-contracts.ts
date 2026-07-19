@@ -105,6 +105,65 @@ const CloudFetchSyncPayloadSchema = z.object({
   taskResults: z.array(CloudFetchSyncTaskResultSchema).min(1).max(500),
 });
 
+const CloudFetchPlanPostSchema = z.object({
+  postTaskId: z.string().min(1).max(500),
+  estimatedWorkSeconds: z.number().int().min(0).max(7 * 24 * 60 * 60),
+  executionBudgetSeconds: z.number().int().min(60 * 60).max(4 * 60 * 60),
+  workloadClass: z.enum(["standard", "long_media"]),
+  budgetReason: z.enum([
+    "minimum_budget",
+    "scaled_and_rounded",
+    "capped_standard_maximum",
+    "capped_long_media_maximum",
+  ]),
+  deadlineState: z.enum(["on_time", "at_risk", "missed"]),
+  mediaDurationSeconds: z.number().int().min(0).max(7 * 24 * 60 * 60).nullable().optional(),
+  estimateEvidence: z.record(z.string(), z.unknown()).nullable().optional(),
+  captionAvailability: z.string().trim().min(1).max(120).nullable().optional(),
+  plannedExtractionMethod: z.string().trim().min(1).max(160).nullable().optional(),
+  mustSucceedBy: z.string().datetime({ offset: true }).max(40).nullable().optional(),
+});
+
+const CloudFetchPlanGroupSchema = z.object({
+  cloudSourceTaskId: z.string().min(1).max(64),
+  posts: z.array(CloudFetchPlanPostSchema).min(1).max(500),
+}).superRefine((group, ctx) => {
+  const seenPostIds = new Set<string>();
+  for (const post of group.posts) {
+    if (seenPostIds.has(post.postTaskId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["posts"],
+        message: "Task plans cannot repeat the same postTaskId within a cloud source task.",
+      });
+      break;
+    }
+    seenPostIds.add(post.postTaskId);
+  }
+});
+
+const CloudFetchPlanPatchPayloadSchema = z.object({
+  runId: z.string().min(1).max(64),
+  plans: z.array(CloudFetchPlanGroupSchema).min(1).max(500),
+}).superRefine((payload, ctx) => {
+  const seenSourceTaskIds = new Set<string>();
+  for (const plan of payload.plans) {
+    if (seenSourceTaskIds.has(plan.cloudSourceTaskId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["plans"],
+        message: "Task plans cannot repeat the same cloudSourceTaskId.",
+      });
+      break;
+    }
+    seenSourceTaskIds.add(plan.cloudSourceTaskId);
+  }
+});
+
 export function parseCloudFetchSyncPayload(payload: unknown) {
   return CloudFetchSyncPayloadSchema.safeParse(payload);
+}
+
+export function parseCloudFetchPlanPatchPayload(payload: unknown) {
+  return CloudFetchPlanPatchPayloadSchema.safeParse(payload);
 }

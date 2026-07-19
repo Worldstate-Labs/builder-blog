@@ -3655,6 +3655,16 @@ fetch_more_cloud_sources() {
   _dynamic_queue_drained=0
 }
 
+patch_current_fetch_plans() {
+  node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
+    --tasks "$_result_file" \
+    --results-dir "$_results_dir" || true
+  if [ "$_sync_command" = "sync-cloud-builders" ]; then
+    node "$AGENT_DIR/builder-digest.mjs" patch-cloud-fetch-plan \
+      --tasks "$_result_file" || true
+  fi
+}
+
 library_worker_was_started() {
   _lwws_name="${1:-}"
   case " $_started_shard_names " in
@@ -4009,9 +4019,7 @@ run_library_job() {
     fi
     if [ "$_cloud_persistent_host" -eq 1 ]; then
       echo "No cloud source work available yet. Worker host will wait and ask again."
-      node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-        --tasks "$_result_file" \
-        --results-dir "$_results_dir" || true
+      patch_current_fetch_plans
       reset_cloud_refill_window
       while [ "$_task_count" -eq 0 ]; do
         job_run_update running "Worker host idle; waiting before asking cloud for more sources." "worker_host_idle" \
@@ -4029,9 +4037,7 @@ run_library_job() {
       _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
     else
       echo "No source updates to sync. Planned 0 post tasks."
-      node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-        --tasks "$_result_file" \
-        --results-dir "$_results_dir" || true
+      patch_current_fetch_plans
       job_run_update succeeded "No update. Planned 0 post tasks." "no_update" \
         --stage "no_update"
       return 0
@@ -4050,9 +4056,7 @@ run_library_job() {
   : > "$_assigned_fetch_task_ids_file"
   assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
 
-  node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-    --tasks "$_result_file" \
-    --results-dir "$_results_dir" || true
+  patch_current_fetch_plans
 
   reset_cloud_refill_window
   _worker_entries=""
@@ -4241,9 +4245,7 @@ run_library_job() {
           assign_dynamic_fetch_workers "$_free_slots"
           start_pending_library_workers
           if [ "${_started_worker_count:-0}" -gt 0 ]; then
-            node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-              --tasks "$_result_file" \
-              --results-dir "$_results_dir" || true
+            patch_current_fetch_plans
             _alive=$(( _alive + _started_worker_count ))
           fi
         fi
@@ -4254,9 +4256,7 @@ run_library_job() {
             assign_dynamic_fetch_workers "$_free_slots"
             start_pending_library_workers
             if [ "${_started_worker_count:-0}" -gt 0 ]; then
-              node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-                --tasks "$_result_file" \
-                --results-dir "$_results_dir" || true
+              patch_current_fetch_plans
               _alive=$(( _alive + _started_worker_count ))
             fi
           fi
@@ -4296,9 +4296,7 @@ run_library_job() {
           assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
           start_pending_library_workers
           if [ "${_started_worker_count:-0}" -gt 0 ]; then
-            node "$AGENT_DIR/builder-digest.mjs" patch-fetch-run-plan \
-              --tasks "$_result_file" \
-              --results-dir "$_results_dir" || true
+            patch_current_fetch_plans
           fi
         fi
         continue

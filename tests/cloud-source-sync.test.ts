@@ -250,6 +250,90 @@ test("cloud sync keeps partial source results visible without failure backoff", 
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.tasksFailed, 1);
 });
 
+test("cloud sync merges final details without dropping an existing execution plan", async () => {
+  const now = new Date("2026-07-19T10:00:00.000Z");
+  const prisma = fakeCloudSyncPrisma({
+    task: {
+      id: "task_3",
+      builderId: "builder_3",
+      summaryLanguage: "en",
+      effectiveFrequency: "DAILY",
+      consecutiveFailures: 0,
+      durationSampleCount: 0,
+      estimatedTokenCost: null,
+      tokenSampleCount: 0,
+      estimatedPostYield: null,
+      postYieldSampleCount: 0,
+      successSampleCount: 0,
+    },
+    runTasks: [
+      {
+        runId: "run_3",
+        cloudSourceTaskId: "task_3",
+        status: "RUNNING",
+        usageTokens: null,
+        usageCostUsd: null,
+        details: {
+          executionPlan: {
+            mustSucceedBy: "2026-07-19T14:00:00.000Z",
+            sourceWindow: "daily",
+            posts: {
+              post_1: {
+                postTaskId: "post_1",
+                executionBudgetSeconds: 3600,
+                budgetReason: "minimum_budget",
+              },
+            },
+          },
+          retainedMarker: true,
+        },
+      },
+    ],
+  });
+
+  const result = await applyCloudFetchTaskSyncResult({
+    prisma,
+    now,
+    config: {
+      schedulingLeadMinutes: 120,
+      retryBaseMinutes: 30,
+      failureCircuitBreakerThreshold: 3,
+    },
+    result: {
+      runId: "run_3",
+      cloudSourceTaskId: "task_3",
+      status: "succeeded",
+      plannedPosts: 1,
+      syncedPosts: 1,
+      failedPosts: 0,
+      details: {
+        fetchTaskIds: ["post_1"],
+        posts: [{ postTaskId: "post_1", status: "synced" }],
+        workerUsages: [{ workerId: "worker-1", taskIds: ["post_1"] }],
+      },
+    },
+  });
+
+  assert.deepEqual(prisma.cloudFetchRunTask.updateManyCalls[0].data.details, {
+    executionPlan: {
+      mustSucceedBy: "2026-07-19T14:00:00.000Z",
+      sourceWindow: "daily",
+      posts: {
+        post_1: {
+          postTaskId: "post_1",
+          executionBudgetSeconds: 3600,
+          budgetReason: "minimum_budget",
+        },
+      },
+    },
+    retainedMarker: true,
+    fetchTaskIds: ["post_1"],
+    posts: [{ postTaskId: "post_1", status: "synced" }],
+    workerUsages: [{ workerId: "worker-1", taskIds: ["post_1"] }],
+  });
+  assert.deepEqual(result.sourceTaskResult.details, prisma.cloudFetchRunTask.updateManyCalls[0].data.details);
+});
+
 function fakeCloudSyncPrisma({
   task,
   runTasks,
@@ -273,6 +357,7 @@ function fakeCloudSyncPrisma({
     status: string;
     usageTokens: number | null;
     usageCostUsd: number | null;
+    details?: Record<string, unknown>;
   }>;
 }) {
   const mutableRunTasks = runTasks.map((runTask) => ({ ...runTask }));

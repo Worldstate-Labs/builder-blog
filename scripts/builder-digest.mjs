@@ -544,6 +544,7 @@ function usage() {
   fetch-personal [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
   expand-discovery --tasks fetch-result.json --file discovery-result.json [--out expanded-fetch-result.json]
   patch-fetch-run-plan --tasks fetch-result.json
+  patch-cloud-fetch-plan --tasks fetch-result.json
   shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
   assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
@@ -9787,6 +9788,119 @@ export function fetchRunPlanPatchPayload(plannedTasks) {
   return Array.isArray(plannedTasks) && plannedTasks.length > 0 ? { plannedTasks } : null;
 }
 
+function cloudPlanPostPatch(task) {
+  const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+  const postTaskId = String(task?.id || fetchTaskId(task) || "").trim();
+  if (!cloudSourceTaskId || !postTaskId) return null;
+  return {
+    cloudSourceTaskId,
+    post: {
+      postTaskId,
+      estimatedWorkSeconds: nonNegativeIntegerValue(task?.estimatedWorkSeconds, 0),
+      executionBudgetSeconds: nonNegativeIntegerValue(task?.executionBudgetSeconds, 0),
+      workloadClass: task?.workloadClass ?? null,
+      budgetReason: task?.budgetReason ?? null,
+      deadlineState: task?.deadlineState ?? null,
+      ...(task?.mediaDurationSeconds != null ? { mediaDurationSeconds: task.mediaDurationSeconds } : {}),
+      ...(task?.estimateEvidence ? { estimateEvidence: task.estimateEvidence } : {}),
+      ...(task?.captionAvailability ? { captionAvailability: task.captionAvailability } : {}),
+      ...(task?.plannedExtractionMethod ? { plannedExtractionMethod: task.plannedExtractionMethod } : {}),
+      ...(task?.mustSucceedBy ? { mustSucceedBy: task.mustSucceedBy } : {}),
+    },
+  };
+}
+
+export function buildCloudFetchPlanPatchPayload(fetchResult = {}) {
+  const runId = String(fetchResult?.cloudRunId || "").trim();
+  if (!runId) return null;
+
+  const grouped = new Map();
+  const addTask = (task) => {
+    if (!task || isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) return;
+    const patch = cloudPlanPostPatch(task);
+    if (
+      !patch ||
+      !patch.post.executionBudgetSeconds ||
+      !patch.post.workloadClass ||
+      !patch.post.budgetReason ||
+      !patch.post.deadlineState
+    ) {
+      return;
+    }
+    const posts = grouped.get(patch.cloudSourceTaskId) ?? new Map();
+    posts.set(patch.post.postTaskId, patch.post);
+    grouped.set(patch.cloudSourceTaskId, posts);
+  };
+
+  for (const task of Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : []) {
+    addTask(task);
+  }
+  for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
+    if (outcome?.plannedTask && typeof outcome.plannedTask === "object") {
+      addTask(outcome.plannedTask);
+    }
+  }
+
+  const plans = [...grouped.entries()].map(([cloudSourceTaskId, posts]) => ({
+    cloudSourceTaskId,
+    posts: [...posts.values()],
+  }));
+  return plans.length > 0 ? { runId, plans } : null;
+}
+
+export function buildCloudFetchPlanPatchPayloadForTest(fetchResult) {
+  return buildCloudFetchPlanPatchPayload(fetchResult);
+}
+
+async function patchCloudFetchPlan(args) {
+  const config = await readConfig();
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify({ status: "skipped", webSyncDisabled: true }, null, 2));
+    return;
+  }
+  requireLoggedIn(config);
+
+  const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const cloudRunId = String(fetchResult?.cloudRunId || "").trim();
+  const patchPayload = buildCloudFetchPlanPatchPayload(fetchResult);
+  if (!cloudRunId) {
+    console.log(JSON.stringify({ status: "skipped", reason: "cloud_run_id_missing", postPlans: 0 }, null, 2));
+    return;
+  }
+  if (!patchPayload) {
+    console.log(JSON.stringify({ status: "skipped", runId: cloudRunId, reason: "no_cloud_plans", postPlans: 0 }, null, 2));
+    return;
+  }
+
+  let patchStatus = "ok";
+  let errorMessage = null;
+  try {
+    await postJson(
+      `${config.appUrl}/api/admin/cloud-fetch/plan`,
+      patchPayload,
+      config.token,
+      { label: "cloud fetch plan patch" },
+    );
+  } catch (error) {
+    patchStatus = "failed";
+    errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to patch cloud fetch plan: ${errorMessage}`);
+  }
+
+  console.log(JSON.stringify(
+    {
+      status: patchStatus,
+      runId: cloudRunId,
+      sourcePlans: patchPayload.plans.length,
+      postPlans: patchPayload.plans.reduce((sum, plan) => sum + plan.posts.length, 0),
+      ...(errorMessage ? { error: errorMessage } : {}),
+    },
+    null,
+    2,
+  ));
+}
+
 async function syncBuilders(args) {
   const config = await readConfig();
   requireLoggedIn(config);
@@ -11697,6 +11811,7 @@ async function main() {
   else if (command === "fetch-personal") await fetchPersonal(args);
   else if (command === "expand-discovery") await expandDiscovery(args);
   else if (command === "patch-fetch-run-plan") await patchFetchRunPlan(args);
+  else if (command === "patch-cloud-fetch-plan") await patchCloudFetchPlan(args);
   else if (command === "shard-tasks") await shardTasks(args);
   else if (command === "assign-fetch-tasks") await assignFetchTasks(args);
   else if (command === "merge-fetch-results") await mergeFetchResultsCommand(args);

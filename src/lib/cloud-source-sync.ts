@@ -1,5 +1,6 @@
 import { CloudFetchQueueStatus, CloudFetchRunStatus } from "@prisma/client";
 import { recomputeCloudFetchRun } from "@/lib/cloud-fetch-run-lifecycle";
+import { mergeCloudFetchRunTaskDetails } from "@/lib/cloud-fetch-plan-details";
 import { StaleWorkerWriteError } from "@/lib/reset-fence";
 import {
   nextCloudTaskFailureSchedule,
@@ -57,9 +58,11 @@ type CloudSyncPrisma = {
   cloudFetchRunTask: {
     updateMany(args: unknown): Promise<{ count: number }>;
     findMany(args: unknown): Promise<Array<{
+      cloudSourceTaskId: string;
       status: string;
       usageTokens?: number | null;
       usageCostUsd?: number | string | { toString(): string } | null;
+      details?: unknown;
     }>>;
   };
   cloudFetchQueueItem: {
@@ -121,6 +124,18 @@ export async function applyCloudFetchTaskSyncResult(params: {
   const queueStatus = succeeded ? CloudFetchQueueStatus.SUCCEEDED : CloudFetchQueueStatus.FAILED;
   const taskFailureReason = params.result.failureReason?.trim() || "cloud_sync_failed";
   const failureReason = params.result.status === "succeeded" ? null : taskFailureReason;
+  const existingRunTask = (
+    await params.prisma.cloudFetchRunTask.findMany({
+      where: {
+        runId: params.result.runId,
+        cloudSourceTaskId: params.result.cloudSourceTaskId,
+      },
+    })
+  )[0];
+  const mergedDetails = mergeCloudFetchRunTaskDetails(
+    existingRunTask?.details,
+    params.result.details,
+  );
 
   // Guard the finalizing write on the task still being RUNNING. The caller's
   // pre-check confirmed RUNNING, but under READ COMMITTED a concurrent
@@ -144,7 +159,7 @@ export async function applyCloudFetchTaskSyncResult(params: {
       failureReason,
       usageTokens: params.result.usageTokens ?? null,
       usageCostUsd: params.result.usageCostUsd ?? null,
-      details: params.result.details ?? {},
+      details: mergedDetails,
     },
   });
   if (claimedRunTask.count === 0) throw new StaleWorkerWriteError();
@@ -203,7 +218,7 @@ export async function applyCloudFetchTaskSyncResult(params: {
       failureReason,
       usageTokens: params.result.usageTokens ?? null,
       usageCostUsd: params.result.usageCostUsd ?? null,
-      details: params.result.details ?? {},
+      details: mergedDetails,
     },
     builderId: task.builderId,
     summaryLanguage: task.summaryLanguage,

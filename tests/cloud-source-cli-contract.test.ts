@@ -170,6 +170,7 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /_crl_value=100/);
   assert.match(runner, /_crl_value" -gt 1000/);
   assert.match(runner, /merge-fetch-results/);
+  assert.match(runner, /patch-cloud-fetch-plan/);
   assert.match(runner, /SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-run"/);
   assert.match(
     runner,
@@ -197,6 +198,100 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result\.json "cloud library host"/);
   assert.match(runner, /builder-blog-cloud-library-host\.md" "\$AGENT_DIR\/jobs\/cloud-library-host\.md"/);
   assert.doesNotMatch(runner, /BUILDER_BLOG_CLOUD_HOST_CHILD/);
+});
+
+test("cloud fetch plan patch payload groups cloud tasks by source and ignores personal tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.buildCloudFetchPlanPatchPayloadForTest({
+    cloudRunId: "cloud_run_1",
+    fetchTasks: [
+      {
+        id: "cloud_post_1",
+        cloudSourceTaskId: "source_a",
+        estimatedWorkSeconds: 4_200,
+        executionBudgetSeconds: 6_900,
+        workloadClass: "standard",
+        budgetReason: "scaled_and_rounded",
+        deadlineState: "at_risk",
+        mustSucceedBy: "2026-07-19T13:30:00.000Z",
+        mediaDurationSeconds: 2_700,
+        captionAvailability: "usable_captions",
+        plannedExtractionMethod: "captions",
+        estimateEvidence: { backend: "fallback", mediaDurationSeconds: 2_700 },
+      },
+      {
+        id: "cloud_post_2",
+        builderId: "personal_only",
+        estimatedWorkSeconds: 600,
+        executionBudgetSeconds: 3_600,
+        workloadClass: "standard",
+        budgetReason: "minimum_budget",
+        deadlineState: "on_time",
+      },
+    ],
+    taskOutcomes: [
+      {
+        fetchTaskId: "cloud_post_3",
+        plannedTask: {
+          id: "cloud_post_3",
+          cloudSourceTaskId: "source_a",
+          estimatedWorkSeconds: 8_000,
+          executionBudgetSeconds: 14_400,
+          workloadClass: "long_media",
+          budgetReason: "capped_long_media_maximum",
+          deadlineState: "missed",
+          estimateEvidence: { backend: "faster_whisper", mediaDurationSeconds: 19_800 },
+        },
+      },
+    ],
+  });
+
+  assert.deepEqual(payload, {
+    runId: "cloud_run_1",
+    plans: [
+      {
+        cloudSourceTaskId: "source_a",
+        posts: [
+          {
+            postTaskId: "cloud_post_1",
+            estimatedWorkSeconds: 4_200,
+            executionBudgetSeconds: 6_900,
+            workloadClass: "standard",
+            budgetReason: "scaled_and_rounded",
+            deadlineState: "at_risk",
+            mustSucceedBy: "2026-07-19T13:30:00.000Z",
+            mediaDurationSeconds: 2_700,
+            captionAvailability: "usable_captions",
+            plannedExtractionMethod: "captions",
+            estimateEvidence: { backend: "fallback", mediaDurationSeconds: 2_700 },
+          },
+          {
+            postTaskId: "cloud_post_3",
+            estimatedWorkSeconds: 8_000,
+            executionBudgetSeconds: 14_400,
+            workloadClass: "long_media",
+            budgetReason: "capped_long_media_maximum",
+            deadlineState: "missed",
+            estimateEvidence: { backend: "faster_whisper", mediaDurationSeconds: 19_800 },
+          },
+        ],
+      },
+    ],
+  });
+});
+
+test("cloud fetch plan patch payload safely skips missing cloud plan context", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  assert.equal(cli.buildCloudFetchPlanPatchPayloadForTest({ fetchTasks: [], taskOutcomes: [] }), null);
+  assert.equal(
+    cli.buildCloudFetchPlanPatchPayloadForTest({
+      cloudRunId: "cloud_run_1",
+      fetchTasks: [{ id: "personal", estimatedWorkSeconds: 100 }],
+      taskOutcomes: [],
+    }),
+    null,
+  );
 });
 
 test("cloud worker host keeps its job heartbeat fresh while fetch workers run", async () => {

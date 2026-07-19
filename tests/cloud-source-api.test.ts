@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   CLOUD_SOURCE_SUBMISSION_LIMIT,
   normalizeCloudSourceSubmissionInput,
+  parseCloudFetchPlanPatchPayload,
 } from "../src/lib/cloud-source-contracts";
 
 const root = process.cwd();
@@ -144,6 +145,96 @@ test("admin cloud fetch sync route uses admin auth and cloud sync status helper"
   assert.match(syncRoute, /feedSync/);
   assert.match(syncRoute, /loadCloudFetchSyncConfig/);
   assert.match(syncRoute, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
+});
+
+test("cloud fetch plan patch payload validates grouped post budgets and rejects duplicates", () => {
+  const parsed = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [
+      {
+        cloudSourceTaskId: "source_1",
+        posts: [
+          {
+            postTaskId: "post_1",
+            estimatedWorkSeconds: 3_000,
+            executionBudgetSeconds: 3_600,
+            workloadClass: "standard",
+            budgetReason: "minimum_budget",
+            deadlineState: "on_time",
+            mustSucceedBy: "2026-07-19T16:00:00.000Z",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(parsed.success, true);
+  if (!parsed.success) return;
+  assert.equal(parsed.data.runId, "run_1");
+  assert.equal(parsed.data.plans[0]?.posts[0]?.postTaskId, "post_1");
+
+  const duplicate = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [
+      {
+        cloudSourceTaskId: "source_1",
+        posts: [
+          {
+            postTaskId: "post_1",
+            estimatedWorkSeconds: 3_000,
+            executionBudgetSeconds: 3_600,
+            workloadClass: "standard",
+            budgetReason: "minimum_budget",
+            deadlineState: "on_time",
+          },
+          {
+            postTaskId: "post_1",
+            estimatedWorkSeconds: 3_100,
+            executionBudgetSeconds: 3_600,
+            workloadClass: "standard",
+            budgetReason: "minimum_budget",
+            deadlineState: "at_risk",
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(duplicate.success, false);
+
+  const invalidBudget = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [
+      {
+        cloudSourceTaskId: "source_1",
+        posts: [
+          {
+            postTaskId: "post_1",
+            estimatedWorkSeconds: 100,
+            executionBudgetSeconds: 3_599,
+            workloadClass: "standard",
+            budgetReason: "minimum_budget",
+            deadlineState: "on_time",
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(invalidBudget.success, false);
+});
+
+test("admin cloud fetch plan route requires admin auth, stale-write protection, and merged execution plans", () => {
+  const route = source("src/app/api/admin/cloud-fetch/plan/route.ts");
+
+  assert.match(route, /requireCloudFetchAdmin\(request\)/);
+  assert.match(route, /parseCloudFetchPlanPatchPayload/);
+  assert.match(route, /where: \{ id: parsed\.data\.runId, status: "RUNNING" \}/);
+  assert.match(route, /lockResetFenceForWorker\(tx, run\.startedAt\)/);
+  assert.match(route, /cloudSourceTaskId: \{ in: taskIds \}/);
+  assert.match(route, /status: "RUNNING"/);
+  assert.match(route, /mergeCloudFetchExecutionPlanDetails/);
+  assert.match(route, /if \(error instanceof StaleWorkerWriteError\)/);
+  assert.match(route, /status: error\.statusCode/);
+  assert.match(route, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
 });
 
 test("admin cloud fetch sync route keeps skipped post outcomes out of source failure counts", () => {
