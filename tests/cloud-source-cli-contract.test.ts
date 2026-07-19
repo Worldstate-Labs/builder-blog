@@ -396,6 +396,8 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /_active_fetch_group_keys_file="\$JOB_TMP_DIR\/active-fetch-group-keys\.txt"/);
   assert.match(runner, /for _wafg_entry in \$\{_worker_entries:-\}/);
   assert.match(runner, /shard_timeout_seconds_for_file\(\)/);
+  assert.match(runner, /set_initial_worker_window_deadline\(\)/);
+  assert.match(runner, /current_outer_deadline_epoch_seconds\(\)/);
   assert.match(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id:\$_slw_shard_file"/);
   assert.match(runner, /for _entry in \$\{_worker_entries:-\}/);
   assert.match(runner, /case " \$\{_timed_out_worker_pids:-\} " in/);
@@ -410,6 +412,128 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result\.json "cloud library host"/);
   assert.match(runner, /builder-blog-cloud-library-host\.md" "\$AGENT_DIR\/jobs\/cloud-library-host\.md"/);
   assert.doesNotMatch(runner, /BUILDER_BLOG_CLOUD_HOST_CHILD/);
+});
+
+test("cloud-library-cron fixes the worker window deadline after planning so the initial 4h shard gets the full buffer", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("timeout_seconds_for_job() {");
+  const end = runner.indexOf("\nrun_library_job() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-worker-window-"));
+  try {
+    const fakeBin = join(dir, "bin");
+    const agentDir = join(dir, "agent");
+    const tmpDir = join(dir, "tmp");
+    const shardPath = join(dir, "shard.json");
+    await mkdir(fakeBin, { recursive: true });
+    await mkdir(agentDir, { recursive: true });
+    await mkdir(tmpDir, { recursive: true });
+    await writeFile(
+      join(agentDir, "local-agent-timeouts.json"),
+      JSON.stringify({
+        defaultIntervalMinutes: 60,
+        baseMultiplierSecondsPerMinute: 48,
+        minSeconds: 1200,
+        defaultMaxSeconds: 2700,
+        jobDefaultSeconds: {
+          "cloud-library-cron": 15_300,
+        },
+        jobMaxSeconds: {
+          "cloud-library-cron": 15_300,
+          "cloud-library-host": 7_200,
+        },
+        shardFraction: {
+          numerator: 3,
+          denominator: 4,
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      shardPath,
+      JSON.stringify({
+        executionBudgetSeconds: 14_400,
+        cloudRunId: "run_1",
+        cloudSourceTaskId: "source_1",
+        fetchTasks: [
+          {
+            id: "cloud-1",
+            executionBudgetSeconds: 14_400,
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_1",
+          },
+        ],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(fakeBin, "date"),
+      `#!/bin/sh
+if [ "$1" = "+%s" ]; then
+  printf '%s\\n' "\${FAKE_NOW:?}"
+  exit 0
+fi
+exec /bin/date "$@"
+`,
+      "utf8",
+    );
+    await execFileAsync("chmod", ["+x", join(fakeBin, "date")]);
+
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+JOB_NAME=cloud-library-cron
+AGENT_DIR="${agentDir}"
+JOB_TMP_DIR="${tmpDir}"
+RESOLVED_INTERVAL_MINUTES=60
+_sync_command=sync-cloud-builders
+_cloud_persistent_host=0
+_run_started_epoch_seconds=0
+${runner.slice(start, end)}
+_whole_timeout="$(job_timeout_seconds)"
+_shard_timeout="$(shard_timeout_seconds "$_whole_timeout")"
+before="$(current_outer_deadline_epoch_seconds)"
+export FAKE_NOW=1000
+set_initial_worker_window_deadline
+after="$(current_outer_deadline_epoch_seconds)"
+reset_cloud_refill_window
+stop_at_first="$_cloud_refill_stop_at"
+fit_initial=0
+if worker_fits_remaining_outer_window "${shardPath}"; then
+  fit_initial=1
+fi
+export FAKE_NOW=1001
+fit_late=0
+if worker_fits_remaining_outer_window "${shardPath}"; then
+  fit_late=1
+fi
+reset_cloud_refill_window
+stop_at_second="$_cloud_refill_stop_at"
+deadline_file="$(worker_window_deadline_epoch_file)"
+deadline_value="$(cat "$deadline_file")"
+[ "$before" = "15300" ] || exit 11
+[ "$after" = "16300" ] || exit 12
+[ "$deadline_value" = "16300" ] || exit 13
+[ "$fit_initial" = "1" ] || exit 14
+[ "$fit_late" = "0" ] || exit 15
+[ "$stop_at_first" = "15400" ] || exit 16
+[ "$stop_at_second" = "15400" ] || exit 17
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${fakeBin}:${process.env.PATH}`,
+      },
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("cloud fetch plan patch payload groups cloud tasks by source and ignores personal tasks", async () => {

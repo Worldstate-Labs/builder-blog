@@ -5,7 +5,8 @@
   "defaultMaxSeconds": 2700,
   "jobDefaultSeconds": {
     "library-once": 43200,
-    "digest-once": 43200
+    "digest-once": 43200,
+    "cloud-library-cron": 15300
   },
   "jobMaxSeconds": {
     "cloud-library-cron": 15300,

@@ -274,6 +274,9 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /status killed/);
   assert.match(runner, /HEARTBEAT_INTERVAL_SECONDS=60/);
   assert.match(runner, /timeout_seconds_for_job/);
+  assert.match(runner, /worker_window_deadline_epoch_file\(\)/);
+  assert.match(runner, /current_outer_deadline_epoch_seconds\(\)/);
+  assert.match(runner, /_deadline_epoch="\$\(current_outer_deadline_epoch_seconds\)"/);
   assert.match(runner, /library-cron\)[\s\S]*120 \* 60/);
   assert.match(runner, /digest-cron\)[\s\S]*45 \* 60/);
   assert.match(runner, /20 \* 60/);

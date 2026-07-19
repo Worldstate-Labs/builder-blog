@@ -1439,6 +1439,70 @@ try {
 NODE
 }
 
+worker_window_deadline_epoch_file() {
+  printf '%s\n' "$JOB_TMP_DIR/cloud-library-worker-window-deadline-epoch"
+}
+
+job_started_epoch_seconds() {
+  case "${_run_started_epoch_seconds:-}" in
+    ''|*[!0-9]*) ;;
+    *) printf '%s\n' "$_run_started_epoch_seconds"; return 0 ;;
+  esac
+  _jses_started_at="${BUILDER_BLOG_JOB_STARTED_AT:-}"
+  if [ -n "$_jses_started_at" ] && command -v node >/dev/null 2>&1; then
+    _jses_epoch="$(
+      node - "$_jses_started_at" <<'NODE' 2>/dev/null
+const startedAt = process.argv[2];
+const date = new Date(startedAt);
+const epoch = Math.floor(date.getTime() / 1000);
+console.log(Number.isFinite(epoch) ? String(epoch) : "0");
+NODE
+    )"
+    case "$_jses_epoch" in
+      ''|*[!0-9]*) ;;
+      *)
+        _run_started_epoch_seconds="$_jses_epoch"
+        printf '%s\n' "$_run_started_epoch_seconds"
+        return 0
+        ;;
+    esac
+  fi
+  _run_started_epoch_seconds="$(date +%s)"
+  printf '%s\n' "$_run_started_epoch_seconds"
+}
+
+current_outer_deadline_epoch_seconds() {
+  if [ "$JOB_NAME" = "cloud-library-cron" ] && [ "${_cloud_persistent_host:-0}" -eq 0 ]; then
+    _codes_file="$(worker_window_deadline_epoch_file)"
+    if [ -r "$_codes_file" ]; then
+      _codes_value="$(cat "$_codes_file" 2>/dev/null || true)"
+      case "$_codes_value" in
+        ''|*[!0-9]*) ;;
+        *) printf '%s\n' "$_codes_value"; return 0 ;;
+      esac
+    fi
+  fi
+  _codes_started="$(job_started_epoch_seconds)"
+  _codes_timeout="$(job_timeout_seconds)"
+  printf '%s\n' "$(( _codes_started + _codes_timeout ))"
+}
+
+set_initial_worker_window_deadline() {
+  [ "$JOB_NAME" = "cloud-library-cron" ] || return 0
+  [ "${_cloud_persistent_host:-0}" -eq 0 ] || return 0
+  _siwwd_file="$(worker_window_deadline_epoch_file)"
+  if [ -r "$_siwwd_file" ]; then
+    _siwwd_existing="$(cat "$_siwwd_file" 2>/dev/null || true)"
+    case "$_siwwd_existing" in
+      ''|*[!0-9]*) ;;
+      *) return 0 ;;
+    esac
+  fi
+  _siwwd_now="$(date +%s)"
+  _siwwd_timeout="$(job_timeout_seconds)"
+  printf '%s\n' "$(( _siwwd_now + _siwwd_timeout ))" > "$_siwwd_file"
+}
+
 iso_now() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
@@ -2734,6 +2798,7 @@ run_with_job_tracking() {
     "$JOB_TMP_DIR"/hermes-agent-output.* 2>/dev/null || true
   export BUILDER_BLOG_WORKER_PID="$$"
   export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
+  _run_started_epoch_seconds="$(job_started_epoch_seconds)"
   if [ "$_trigger" = "scheduled" ]; then
     BUILDER_BLOG_RUN_SOURCE=cron
   else
@@ -2744,14 +2809,17 @@ run_with_job_tracking() {
   if ! job_run_update starting "Runtime job accepted by local runner." "runtime_job_started"; then
     return 1
   fi
-  _timeout="$(job_timeout_seconds)"
   job_run_update running "Runtime agent started." "runtime_agent_started"
   run_job_payload &
   RUNTIME_PID="$!"
   _elapsed=0
   _status="succeeded"
   while kill -0 "$RUNTIME_PID" 2>/dev/null; do
-    if [ "$_elapsed" -ge "$_timeout" ]; then
+    _deadline_epoch="$(current_outer_deadline_epoch_seconds)"
+    _timeout="$(( _deadline_epoch - _run_started_epoch_seconds ))"
+    if [ "$_timeout" -lt 0 ]; then _timeout=0; fi
+    _now_epoch="$(date +%s)"
+    if [ "$_now_epoch" -ge "$_deadline_epoch" ]; then
       _status="timed_out"
       job_run_update running "Runtime exceeded timeout and will be terminated." "timeout_seconds_for_job" \
         --timeout-seconds "$_timeout" \
@@ -3964,7 +4032,7 @@ worker_fits_remaining_outer_window() {
   [ "${_cloud_persistent_host:-0}" -eq 0 ] || return 0
   shard_is_cloud_file "$_wfrow_shard_file" || return 0
   _wfrow_budget="$(shard_timeout_seconds_for_file "$_wfrow_shard_file")"
-  _wfrow_deadline="$(( ${_run_started_epoch_seconds:-$(date +%s)} + $(job_timeout_seconds) ))"
+  _wfrow_deadline="$(current_outer_deadline_epoch_seconds)"
   _wfrow_remaining="$(( _wfrow_deadline - $(date +%s) ))"
   _wfrow_required="$(( _wfrow_budget + ${_cloud_refill_buffer:-0} ))"
   [ "$_wfrow_remaining" -ge "$_wfrow_required" ]
@@ -3996,7 +4064,11 @@ reset_cloud_refill_window() {
   if [ "$_whole_timeout" -le 600 ]; then
     _cloud_refill_buffer=$(( _whole_timeout / 2 ))
   fi
-  _cloud_refill_stop_at=$(( $(date +%s) + _whole_timeout - _cloud_refill_buffer ))
+  if [ "$JOB_NAME" = "cloud-library-cron" ] && [ "${_cloud_persistent_host:-0}" -eq 0 ]; then
+    _cloud_refill_stop_at=$(( $(current_outer_deadline_epoch_seconds) - _cloud_refill_buffer ))
+  else
+    _cloud_refill_stop_at=$(( $(date +%s) + _whole_timeout - _cloud_refill_buffer ))
+  fi
 }
 
 run_library_job() {
@@ -4176,6 +4248,7 @@ run_library_job() {
   assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
 
   patch_current_fetch_plans
+  set_initial_worker_window_deadline
 
   reset_cloud_refill_window
   _run_started_epoch_seconds="$(
