@@ -10412,6 +10412,10 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
   const readySummary = task?.contentStatus === "ready"
     ? textStats(item.summary)
     : { chars: count(task?.summaryChars), words: count(task?.summaryWords) };
+  const estimatedWorkSeconds = count(task?.estimatedWorkSeconds);
+  const executionBudgetSeconds = count(task?.executionBudgetSeconds);
+  const mediaDurationSeconds = count(task?.mediaDurationSeconds);
+  const estimateEvidence = nonEmptyObjectRecord(task?.estimateEvidence);
   return {
     id: text(task?.id || fetchTaskId(task)),
     title: text(task?.title ?? item.title ?? syncItem?.title),
@@ -10433,6 +10437,15 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
     summaryMethod: text(task?.summaryMethod ?? rawJson.summaryMethod ?? syncedRawJson.summaryMethod),
     hubSharedReuse: nonEmptyObjectRecord(rawJson.hubSharedReuse) ?? nonEmptyObjectRecord(syncedRawJson.hubSharedReuse),
     workerId: text(task?.workerId ?? outcome?.workerId ?? syncedRawJson.workerId),
+    ...(estimatedWorkSeconds != null ? { estimatedWorkSeconds } : {}),
+    ...(executionBudgetSeconds != null ? { executionBudgetSeconds } : {}),
+    ...(text(task?.workloadClass) ? { workloadClass: text(task.workloadClass) } : {}),
+    ...(text(task?.budgetReason) ? { budgetReason: text(task.budgetReason) } : {}),
+    ...(text(task?.deadlineState) ? { deadlineState: text(task.deadlineState) } : {}),
+    ...(mediaDurationSeconds != null ? { mediaDurationSeconds } : {}),
+    ...(text(task?.plannedExtractionMethod) ? { plannedExtractionMethod: text(task.plannedExtractionMethod) } : {}),
+    ...(text(task?.mustSucceedBy) ? { mustSucceedBy: text(task.mustSucceedBy) } : {}),
+    ...(estimateEvidence ? { estimateEvidence } : {}),
   };
 }
 
@@ -10649,6 +10662,37 @@ export function prepareCloudSyncPayloadForUpload(payload, cloudRunId, plannedTas
   };
 }
 
+function plannedTaskOutcomeForCloudSync(outcome) {
+  const task = outcome?.plannedTask;
+  if (!task || typeof task !== "object") return null;
+  const outcomeTaskId = String(outcome?.fetchTaskId || "").trim();
+  const taskId = String(task?.id || "").trim();
+  const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+  if (!taskId || taskId !== outcomeTaskId || !cloudSourceTaskId) return null;
+  return task;
+}
+
+function combinedCloudSyncPlannedTasks(rawPlannedTasks = [], plannedTaskOutcomes = []) {
+  const plannedTasksById = new Map();
+  for (const task of Array.isArray(rawPlannedTasks) ? rawPlannedTasks : []) {
+    const taskId = String(task?.id || fetchTaskId(task) || "").trim();
+    if (!taskId || plannedTasksById.has(taskId)) continue;
+    plannedTasksById.set(taskId, task);
+  }
+  for (const outcome of Array.isArray(plannedTaskOutcomes) ? plannedTaskOutcomes : []) {
+    const task = plannedTaskOutcomeForCloudSync(outcome);
+    if (!task) continue;
+    const taskId = String(task?.id || fetchTaskId(task) || "").trim();
+    if (plannedTasksById.has(taskId)) continue;
+    plannedTasksById.set(taskId, task);
+  }
+  return [...plannedTasksById.values()];
+}
+
+export function mergePlannedTasksForCloudSyncForTest(rawPlannedTasks = [], plannedTaskOutcomes = []) {
+  return combinedCloudSyncPlannedTasks(rawPlannedTasks, plannedTaskOutcomes);
+}
+
 async function syncCloudBuilders(args) {
   const config = await readConfig();
   requireLoggedIn(config);
@@ -10663,6 +10707,7 @@ async function syncCloudBuilders(args) {
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
   const {
     plannedTasks: rawPlannedTasks,
+    plannedTaskOutcomes,
     cloudSourceTasks: rawCloudSourceTasks,
     summaryLanguage,
   } = await readPlannedFetchResult(tasksFile);
@@ -10670,7 +10715,8 @@ async function syncCloudBuilders(args) {
   const shardWorkerIds = resultsDir
     ? shardWorkerIdByTaskId(await readShardPlans(resultsDir))
     : new Map();
-  const plannedTasks = rawPlannedTasks.map((task) => taskWithShardWorkerId(task, shardWorkerIds));
+  const plannedTasks = combinedCloudSyncPlannedTasks(rawPlannedTasks, plannedTaskOutcomes)
+    .map((task) => taskWithShardWorkerId(task, shardWorkerIds));
   const workerUsages = await readShardWorkerUsages(resultsDir, plannedTasks);
   if (workerUsages.length > 0) rawPayload.workerUsages = workerUsages;
   rawPayload.summaryLanguage ??= summaryLanguage ?? null;

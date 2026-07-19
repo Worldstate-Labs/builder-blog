@@ -3922,6 +3922,118 @@ test("cloud sync task results include leased sources that generated no post task
   assert.equal(payload.taskResults[1].details.noGeneratedFetchTasks, true);
 });
 
+test("cloud sync task results include planned-only failed outcomes and keep explicit planned tasks authoritative", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?planned-only-cloud-sync=${Date.now()}`);
+  const mergedPlannedTasks = cli.mergePlannedTasksForCloudSyncForTest(
+    [
+      {
+        id: "task_live",
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "source_live",
+        builder: "Live source",
+        builderId: "builder_live",
+        sourceType: "podcast",
+        item: { kind: "PODCAST_EPISODE", externalId: "episode-live", url: "https://example.com/live" },
+      },
+    ],
+    [
+      {
+        fetchTaskId: "task_failed",
+        status: "failed",
+        reason: "workload_exceeds_max_budget",
+        plannedTask: {
+          id: "task_failed",
+          cloudRunId: "cloud_run_1",
+          cloudSourceTaskId: "source_failed",
+          builder: "Long source",
+          builderId: "builder_long",
+          sourceType: "youtube",
+          title: "4h interview",
+          url: "https://youtube.com/watch?v=toolong",
+          executionBudgetSeconds: 14_400,
+          estimatedWorkSeconds: 18_900,
+          workloadClass: "long_media",
+          deadlineState: "missed",
+          item: { kind: "VIDEO", externalId: "video-too-long", url: "https://youtube.com/watch?v=toolong" },
+        },
+      },
+      {
+        fetchTaskId: "task_live",
+        status: "failed",
+        reason: "workload_exceeds_max_budget",
+        plannedTask: {
+          id: "task_live",
+          cloudRunId: "cloud_run_1",
+          cloudSourceTaskId: "source_wrong",
+          builder: "Wrong source",
+          builderId: "builder_wrong",
+          sourceType: "youtube",
+          item: { kind: "VIDEO", externalId: "episode-live", url: "https://example.com/wrong" },
+        },
+      },
+      {
+        fetchTaskId: "task_malformed",
+        status: "failed",
+        reason: "workload_exceeds_max_budget",
+        plannedTask: {
+          cloudRunId: "cloud_run_1",
+          cloudSourceTaskId: "source_missing_id",
+        },
+      },
+    ],
+  );
+
+  assert.deepEqual(
+    mergedPlannedTasks.map((task: { id: string; cloudSourceTaskId: string }) => [task.id, task.cloudSourceTaskId]),
+    [
+      ["task_live", "source_live"],
+      ["task_failed", "source_failed"],
+    ],
+  );
+
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [],
+      taskOutcomes: [
+        { fetchTaskId: "task_live", status: "failed", reason: "worker_missing_result" },
+        { fetchTaskId: "task_failed", status: "failed", reason: "workload_exceeds_max_budget" },
+      ],
+    },
+    "cloud_run_1",
+    mergedPlannedTasks,
+  );
+
+  assert.deepEqual(
+    payload.taskResults.map((result: { cloudSourceTaskId: string; status: string; failedPosts: number; failureReason?: string }) => ({
+      cloudSourceTaskId: result.cloudSourceTaskId,
+      status: result.status,
+      failedPosts: result.failedPosts,
+      failureReason: result.failureReason ?? null,
+    })),
+    [
+      {
+        cloudSourceTaskId: "source_live",
+        status: "failed",
+        failedPosts: 1,
+        failureReason: "worker_missing_result",
+      },
+      {
+        cloudSourceTaskId: "source_failed",
+        status: "failed",
+        failedPosts: 1,
+        failureReason: "workload_exceeds_max_budget",
+      },
+    ],
+  );
+  const failedPost = payload.taskResults.find(
+    (result: { cloudSourceTaskId: string }) => result.cloudSourceTaskId === "source_failed",
+  ).details.posts[0];
+  assert.equal(failedPost.estimatedWorkSeconds, 18_900);
+  assert.equal(failedPost.executionBudgetSeconds, 14_400);
+  assert.equal(failedPost.workloadClass, "long_media");
+  assert.equal(failedPost.deadlineState, "missed");
+});
+
 test("cloud sync task results mark mixed synced and failed posts partial", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const plannedTasks = [

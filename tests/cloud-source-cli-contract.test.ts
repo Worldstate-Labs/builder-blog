@@ -394,6 +394,9 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /cloud_fetch_heartbeat_all\(\)/);
   assert.match(runner, /_assigned_fetch_task_ids_file="\$JOB_TMP_DIR\/assigned-fetch-task-ids\.txt"/);
   assert.match(runner, /_active_fetch_group_keys_file="\$JOB_TMP_DIR\/active-fetch-group-keys\.txt"/);
+  assert.match(runner, /sync_cloud_terminal_outcomes\(\)/);
+  assert.match(runner, /sync_cloud_terminal_outcomes "\$_result_file" "\$_cloud_run_id"/);
+  assert.match(runner, /sync_cloud_terminal_outcomes "\$_fmcs_file" "\$_fmcs_run_id"/);
   assert.match(runner, /for _wafg_entry in \$\{_worker_entries:-\}/);
   assert.match(runner, /shard_timeout_seconds_for_file\(\)/);
   assert.match(runner, /set_initial_worker_window_deadline\(\)/);
@@ -656,6 +659,379 @@ test("cloud library runner reports cloud plan patch failures instead of swallowi
     patchFunction,
     /patch-cloud-fetch-plan[\s\S]*\|\| true/,
   );
+});
+
+test("cloud planned-only outcome sync detects valid work and preserves failure codes", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf("\ncloud_run_id_from_result() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-planned-only-helper-"));
+  try {
+    const valid = join(dir, "valid.json");
+    const empty = join(dir, "empty.json");
+    const invalid = join(dir, "invalid.json");
+    const syncLog = join(dir, "sync.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(valid, JSON.stringify({
+      cloudRunId: "cloud_run_1",
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "task_failed",
+        status: "failed",
+        reason: "workload_exceeds_max_budget",
+        plannedTask: { id: "task_failed", cloudSourceTaskId: "source_1" },
+      }],
+    }));
+    await writeFile(empty, JSON.stringify({ cloudRunId: "cloud_run_2", fetchTasks: [], taskOutcomes: [] }));
+    await writeFile(invalid, "{");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+_sync_command=sync-cloud-builders
+AGENT_DIR="${dir}"
+SYNC_LOG="${syncLog}"
+SYNC_EXIT_CODE=0
+append_cloud_run_id() { :; }
+cloud_fetch_heartbeat() { :; }
+node() {
+  if [ "$1" = "-" ]; then command node "$@"; return "$?"; fi
+  printf '%s\\n' "$*" >> "$SYNC_LOG"
+  return "$SYNC_EXIT_CODE"
+}
+sync_cloud_terminal_outcomes "${valid}" cloud_run_1
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 21
+sync_cloud_terminal_outcomes "${empty}" cloud_run_2
+[ "$(grep -c 'sync-cloud-builders' "${syncLog}")" = "1" ] || exit 22
+if sync_cloud_terminal_outcomes "${invalid}" cloud_run_3; then exit 23; else code="$?"; fi
+[ "$code" = "2" ] || exit 24
+SYNC_EXIT_CODE=17
+if sync_cloud_terminal_outcomes "${valid}" cloud_run_1; then exit 25; else code="$?"; fi
+[ "$code" = "17" ] || exit 26
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud library runner syncs planned-only zero-task outcomes once before returning no_update", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-zero-task-sync-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    const syncLog = join(dir, "sync.log");
+    const updatesLog = join(dir, "updates.log");
+    const fakeResult = JSON.stringify({
+      cloudRunId: "cloud_run_1",
+      fetchTasks: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: "task_failed",
+          status: "failed",
+          reason: "workload_exceeds_max_budget",
+          plannedTask: {
+            id: "task_failed",
+            cloudRunId: "cloud_run_1",
+            cloudSourceTaskId: "source_1",
+          },
+        },
+      ],
+    });
+    await writeFile(
+      checkPath,
+      `set -eu
+SYNC_LOG="${syncLog}"
+UPDATES_LOG="${updatesLog}"
+${runner.slice(start, end)}
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+cloud_refill_limit() { printf '100\\n'; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+run_openclaw_library_preflight() { return 0; }
+job_run_update() { printf '%s\\n' "$*" >> "$UPDATES_LOG"; }
+cloud_run_id_from_result() { printf 'cloud_run_1\\n'; }
+append_cloud_run_id() { :; }
+cloud_fetch_heartbeat() { :; }
+library_has_discovery_tasks() { return 1; }
+library_fetch_task_count() { printf '0\\n'; }
+patch_current_fetch_plans() { printf 'patch\\n' >> "$UPDATES_LOG"; }
+reset_cloud_refill_window() { :; }
+sync_cloud_terminal_outcomes() {
+  printf '%s\\n' "$1" >> "$SYNC_LOG"
+  printf 'sync\\n' >> "$UPDATES_LOG"
+  return 0
+}
+node() { printf '%s\\n' '${fakeResult}'; }
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+MAX_PARALLEL_WORKERS=1
+PINNED_RUNTIME=codex
+ACCOUNT_SLUG=test-account
+JOB_NAME=cloud-library-cron
+BUILDER_BLOG_FETCH_DAYS=30
+BUILDER_BLOG_FETCH_FORCE=
+BUILDER_BLOG_CLOUD_PERSISTENT_HOST=0
+run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library"
+[ "$(grep -c . "$SYNC_LOG")" = "1" ] || exit 21
+patch_line="$(grep -n '^patch$' "$UPDATES_LOG" | cut -d: -f1)"
+sync_line="$(grep -n '^sync$' "$UPDATES_LOG" | cut -d: -f1)"
+[ -n "$patch_line" ] && [ -n "$sync_line" ] && [ "$patch_line" -lt "$sync_line" ] || exit 22
+grep "no_update" "$UPDATES_LOG" >/dev/null
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud library runner skips planned-only sync when zero-task result has no syncable outcomes", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-zero-task-idle-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    const syncLog = join(dir, "sync.log");
+    await writeFile(
+      checkPath,
+      `set -eu
+SYNC_LOG="${syncLog}"
+${runner.slice(start, end)}
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+cloud_refill_limit() { printf '100\\n'; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+run_openclaw_library_preflight() { return 0; }
+job_run_update() { :; }
+cloud_run_id_from_result() { printf 'cloud_run_1\\n'; }
+append_cloud_run_id() { :; }
+cloud_fetch_heartbeat() { :; }
+library_has_discovery_tasks() { return 1; }
+library_fetch_task_count() { printf '0\\n'; }
+patch_current_fetch_plans() { :; }
+reset_cloud_refill_window() { :; }
+sync_cloud_terminal_outcomes() { return 0; }
+node() { printf '%s\\n' '{"cloudRunId":"cloud_run_1","fetchTasks":[],"taskOutcomes":[{"fetchTaskId":"task_failed","status":"failed"}]}'; }
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+MAX_PARALLEL_WORKERS=1
+PINNED_RUNTIME=codex
+ACCOUNT_SLUG=test-account
+JOB_NAME=cloud-library-cron
+BUILDER_BLOG_FETCH_DAYS=30
+BUILDER_BLOG_FETCH_FORCE=
+BUILDER_BLOG_CLOUD_PERSISTENT_HOST=0
+run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library"
+[ ! -e "$SYNC_LOG" ] || [ ! -s "$SYNC_LOG" ]
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud library runner surfaces planned-only sync failure in zero-task runs", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-zero-task-sync-fail-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+cloud_refill_limit() { printf '100\\n'; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+run_openclaw_library_preflight() { return 0; }
+job_run_update() { :; }
+cloud_run_id_from_result() { printf 'cloud_run_1\\n'; }
+append_cloud_run_id() { :; }
+cloud_fetch_heartbeat() { :; }
+library_has_discovery_tasks() { return 1; }
+library_fetch_task_count() { printf '0\\n'; }
+patch_current_fetch_plans() { :; }
+reset_cloud_refill_window() { :; }
+sync_cloud_terminal_outcomes() { return 17; }
+node() { printf '%s\\n' '{"cloudRunId":"cloud_run_1","fetchTasks":[],"taskOutcomes":[{"fetchTaskId":"task_failed","status":"failed","plannedTask":{"id":"task_failed","cloudSourceTaskId":"source_1"}}]}'; }
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+MAX_PARALLEL_WORKERS=1
+PINNED_RUNTIME=codex
+ACCOUNT_SLUG=test-account
+JOB_NAME=cloud-library-cron
+BUILDER_BLOG_FETCH_DAYS=30
+BUILDER_BLOG_FETCH_FORCE=
+BUILDER_BLOG_CLOUD_PERSISTENT_HOST=0
+run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library"
+`,
+      "utf8",
+    );
+
+    await assert.rejects(
+      execFileAsync("sh", [checkPath]),
+      (error: NodeJS.ErrnoException & { code?: number }) => error.code === 17,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud refill syncs planned-only outcomes once and replaces stale zero-task state before later executable work", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf("\npatch_current_fetch_plans() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-refill-planned-only-"));
+  try {
+    const resultFile = join(dir, "cloud-fetch-result.json");
+    const syncLog = join(dir, "sync.log");
+    const fakeNode = join(dir, "fake-node.sh");
+    const sequenceDir = join(dir, "sequence");
+    await mkdir(sequenceDir, { recursive: true });
+    await writeFile(
+      resultFile,
+      JSON.stringify({
+        cloudRunId: "cloud_run_initial",
+        fetchTasks: [],
+        taskOutcomes: [
+          {
+            fetchTaskId: "initial_failed",
+            status: "failed",
+            reason: "workload_exceeds_max_budget",
+            plannedTask: { id: "initial_failed", cloudRunId: "cloud_run_initial", cloudSourceTaskId: "source_initial" },
+          },
+        ],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(sequenceDir, "1.json"),
+      JSON.stringify({
+        cloudRunId: "cloud_run_refill_planned",
+        fetchTasks: [],
+        taskOutcomes: [
+          {
+            fetchTaskId: "refill_failed",
+            status: "failed",
+            reason: "workload_exceeds_max_budget",
+            plannedTask: { id: "refill_failed", cloudRunId: "cloud_run_refill_planned", cloudSourceTaskId: "source_refill" },
+          },
+        ],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(sequenceDir, "2.json"),
+      JSON.stringify({
+        cloudRunId: "cloud_run_refill_ready",
+        fetchTasks: [
+          { id: "ready_task", cloudRunId: "cloud_run_refill_ready", cloudSourceTaskId: "source_ready" },
+        ],
+        taskOutcomes: [],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      fakeNode,
+      `#!/bin/sh
+set -eu
+command="$2"
+case "$command" in
+  fetch-cloud-library)
+    count_file="${dir}/fetch-count.txt"
+    count=0
+    if [ -f "$count_file" ]; then count="$(cat "$count_file")"; fi
+    count=$((count + 1))
+    printf '%s' "$count" > "$count_file"
+    cat "${sequenceDir}/$count.json"
+    ;;
+  merge-fetch-results)
+    echo "unexpected merge" >&2
+    exit 41
+    ;;
+  sync-cloud-builders)
+    printf '%s\\n' "$*" >> "${syncLog}"
+    ;;
+  *)
+    echo "unexpected command: $command" >&2
+    exit 42
+    ;;
+esac
+`,
+      "utf8",
+    );
+    await execFileAsync("chmod", ["+x", fakeNode]);
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+job_run_update() { :; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+append_cloud_run_id() { :; }
+cloud_fetch_heartbeat() { :; }
+cloud_run_id_from_result() {
+  command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(payload.cloudRunId||""));' "$1"
+  printf '\\n'
+}
+library_fetch_task_count() {
+  command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(Array.isArray(payload.fetchTasks)?payload.fetchTasks.length:0));' "$1"
+  printf '\\n'
+}
+sync_cloud_terminal_outcomes() { printf '%s\\n' "$1" >> "${syncLog}"; }
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+_sync_command=sync-cloud-builders
+_cloud_refill_exhausted=0
+_cloud_refill_count=0
+_cloud_refill_limit=10
+_cloud_refill_stop_at=9999999999
+_dynamic_queue_drained=1
+_result_file="${resultFile}"
+PATH="${dir}:$PATH"
+node() { "${fakeNode}" "$@"; }
+fetch_more_cloud_sources
+[ "$(grep -c . "${syncLog}")" = "1" ] || exit 51
+_cloud_refill_exhausted=0
+fetch_more_cloud_sources
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if((payload.taskOutcomes||[]).length!==0) process.exit(61); if((payload.fetchTasks||[]).length!==1) process.exit(62); if(payload.fetchTasks[0].id!=="ready_task") process.exit(63);' "${resultFile}"
+[ "$(grep -c . "${syncLog}")" = "1" ] || exit 52
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("cloud worker host keeps its job heartbeat fresh while fetch workers run", async () => {

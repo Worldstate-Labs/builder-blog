@@ -3044,6 +3044,57 @@ console.log(tasks.filter((task) => task?.agentWorkType !== "candidate_discovery_
 NODE
 }
 
+sync_cloud_terminal_outcomes() {
+  _scto_file="${1:-}"
+  [ "$_sync_command" = "sync-cloud-builders" ] || return 0
+  [ -n "$_scto_file" ] || return 0
+  if node - "$_scto_file" <<'NODE' >/dev/null 2>&1
+const fs = require("fs");
+const file = process.argv[2];
+let result;
+try {
+  result = JSON.parse(fs.readFileSync(file, "utf8"));
+} catch {
+  process.exit(2);
+}
+const tasks = Array.isArray(result.fetchTasks) ? result.fetchTasks : [];
+if (tasks.length > 0) process.exit(1);
+const outcomes = Array.isArray(result.taskOutcomes) ? result.taskOutcomes : [];
+const hasSyncable = outcomes.some((outcome) => {
+  const task = outcome?.plannedTask;
+  if (!task || typeof task !== "object") return false;
+  const taskId = String(task?.id || outcome?.fetchTaskId || "").trim();
+  const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+  return Boolean(taskId && cloudSourceTaskId);
+});
+process.exit(hasSyncable ? 0 : 1);
+NODE
+  then
+    :
+  else
+    _scto_check_code="$?"
+    case "$_scto_check_code" in
+      1) return 0 ;;
+      *) return "$_scto_check_code" ;;
+    esac
+  fi
+  _scto_cloud_run_id="${2:-}"
+  if [ -z "$_scto_cloud_run_id" ]; then
+    _scto_cloud_run_id="$(cloud_run_id_from_result "$_scto_file")"
+  fi
+  if [ -z "$_scto_cloud_run_id" ]; then
+    echo "Cloud source planning produced syncable terminal outcomes without a cloudRunId." >&2
+    return 65
+  fi
+  echo "Cloud source planning produced terminal outcomes without fetch tasks; syncing them now."
+  append_cloud_run_id "$_scto_cloud_run_id"
+  cloud_fetch_heartbeat "$_scto_cloud_run_id"
+  node "$AGENT_DIR/builder-digest.mjs" sync-cloud-builders \
+    --file "$_scto_file" \
+    --tasks "$_scto_file" \
+    --cloud-run-id "$_scto_cloud_run_id"
+}
+
 cloud_run_id_from_result() {
   _crifr_file="$1"
   node - "$_crifr_file" <<'NODE'
@@ -3804,19 +3855,36 @@ fetch_more_cloud_sources() {
   cat "$_fmcs_file"
   _fmcs_task_count="$(library_fetch_task_count "$_fmcs_file")" || _fmcs_task_count=0
   case "$_fmcs_task_count" in ''|*[!0-9]*) _fmcs_task_count=0 ;; esac
+  _fmcs_run_id="$(cloud_run_id_from_result "$_fmcs_file")"
   if [ "$_fmcs_task_count" -eq 0 ]; then
+    if sync_cloud_terminal_outcomes "$_fmcs_file" "$_fmcs_run_id"; then
+      :
+    else
+      _scto_code="$?"
+      echo "Cloud source refill produced terminal outcomes but sync failed." >&2
+      job_run_update failed "Cloud source refill outcomes could not be synced." "cloud_terminal_outcome_sync_failed" \
+        --stage "sync_cloud_terminal_outcomes" \
+        --exit-code "$_scto_code"
+      _cloud_refill_exhausted=1
+      return "$_scto_code"
+    fi
     _cloud_refill_exhausted=1
     return 0
   fi
-  _fmcs_run_id="$(cloud_run_id_from_result "$_fmcs_file")"
   append_cloud_run_id "$_fmcs_run_id"
   cloud_fetch_heartbeat "$_fmcs_run_id"
-  _fmcs_merged="$JOB_TMP_DIR/cloud-fetch-merged-$_cloud_refill_count.json"
-  node "$AGENT_DIR/builder-digest.mjs" merge-fetch-results \
-    --base "$_result_file" \
-    --next "$_fmcs_file" \
-    --out "$_fmcs_merged"
-  mv "$_fmcs_merged" "$_result_file"
+  _existing_task_count="$(library_fetch_task_count "$_result_file")" || _existing_task_count=0
+  case "$_existing_task_count" in ''|*[!0-9]*) _existing_task_count=0 ;; esac
+  if [ "$_existing_task_count" -eq 0 ]; then
+    cp "$_fmcs_file" "$_result_file"
+  else
+    _fmcs_merged="$JOB_TMP_DIR/cloud-fetch-merged-$_cloud_refill_count.json"
+    node "$AGENT_DIR/builder-digest.mjs" merge-fetch-results \
+      --base "$_result_file" \
+      --next "$_fmcs_file" \
+      --out "$_fmcs_merged"
+    mv "$_fmcs_merged" "$_result_file"
+  fi
   _dynamic_queue_drained=0
 }
 
@@ -4213,9 +4281,18 @@ run_library_job() {
         --stage "expand_discovery"
       return 65
     fi
+    patch_current_fetch_plans
+    if sync_cloud_terminal_outcomes "$_result_file" "$_cloud_run_id"; then
+      :
+    else
+      _scto_code="$?"
+      job_run_update failed "Cloud task outcomes could not be synced." "cloud_terminal_outcome_sync_failed" \
+        --stage "sync_cloud_terminal_outcomes" \
+        --exit-code "$_scto_code"
+      return "$_scto_code"
+    fi
     if [ "$_cloud_persistent_host" -eq 1 ]; then
       echo "No cloud source work available yet. Worker host will wait and ask again."
-      patch_current_fetch_plans
       reset_cloud_refill_window
       while [ "$_task_count" -eq 0 ]; do
         job_run_update running "Worker host idle; waiting before asking cloud for more sources." "worker_host_idle" \
@@ -4226,14 +4303,13 @@ run_library_job() {
         reset_cloud_refill_window
         job_run_update running "Worker host requesting cloud sources." "worker_host_polling" \
           --stage "requesting_cloud_sources"
-        fetch_more_cloud_sources
+        if fetch_more_cloud_sources; then :; else return "$?"; fi
         _task_count="$(library_fetch_task_count "$_result_file")" || _task_count=0
         case "$_task_count" in ''|*[!0-9]*) _task_count=0 ;; esac
       done
       _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
     else
       echo "No source updates to sync. Planned 0 post tasks."
-      patch_current_fetch_plans
       job_run_update succeeded "No update. Planned 0 post tasks." "no_update" \
         --stage "no_update"
       return 0
@@ -4453,7 +4529,7 @@ run_library_job() {
         fi
         _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
         if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
-          fetch_more_cloud_sources
+          if fetch_more_cloud_sources; then :; else return "$?"; fi
           if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
             assign_dynamic_fetch_workers "$_free_slots"
             start_pending_library_workers
@@ -4493,7 +4569,7 @@ run_library_job() {
         reset_cloud_refill_window
         job_run_update running "Worker host requesting cloud sources." "worker_host_polling" \
           --stage "requesting_cloud_sources"
-        fetch_more_cloud_sources
+        if fetch_more_cloud_sources; then :; else return "$?"; fi
         if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
           assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
           start_pending_library_workers

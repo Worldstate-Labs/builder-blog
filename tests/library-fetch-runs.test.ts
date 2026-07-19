@@ -245,7 +245,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /const workerId = compactProgressText\(task\.workerId, 80\) \?\? previous\.workerId \?\? null/);
   assert.match(cli, /const workerUsages = await readShardWorkerUsages\(argValue\(args, "--results-dir", null\), plannedTasks\)/);
   assert.match(cli, /const resultsDir = argValue\(args, "--results-dir", null\)/);
-  assert.match(cli, /rawPlannedTasks\.map\(\(task\) => taskWithShardWorkerId\(task, shardWorkerIds\)\)/);
+  assert.match(cli, /combinedCloudSyncPlannedTasks\(rawPlannedTasks, plannedTaskOutcomes\)/);
+  assert.match(cli, /\.map\(\(task\) => taskWithShardWorkerId\(task, shardWorkerIds\)\)/);
   assert.match(cli, /const shardPlans = await readShardPlans\(resultsDir\)/);
   assert.match(cli, /fetchRunPlannedTaskPatches\(fetchResult, \{ shardPlans \}\)/);
   assert.match(cli, /async function emitCheckpointProgress[\s\S]*const workerUsages = await readShardWorkerUsages\(resultsDir, planned\)/);
