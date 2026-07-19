@@ -5143,10 +5143,29 @@ function runTool(command, args = [], options = {}) {
     let timedOut = false;
     let killTimer = null;
     let heartbeatTimer = null;
+    let heartbeatInFlight = null;
+    let finalizing = false;
     const clearTimers = () => {
       clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
       if (heartbeatTimer) clearInterval(heartbeatTimer);
+    };
+    const runHeartbeat = () => {
+      if (!heartbeat || finalizing || heartbeatInFlight) return;
+      const pendingHeartbeat = Promise.resolve()
+        .then(() => heartbeat.onHeartbeat())
+        .catch(() => {})
+        .finally(() => {
+          if (heartbeatInFlight === pendingHeartbeat) heartbeatInFlight = null;
+        });
+      heartbeatInFlight = pendingHeartbeat;
+    };
+    const finalize = async (result) => {
+      if (finalizing) return;
+      finalizing = true;
+      clearTimers();
+      if (heartbeatInFlight) await heartbeatInFlight;
+      resolve(result);
     };
     const timer = setTimeout(() => {
       timedOut = true;
@@ -5154,16 +5173,13 @@ function runTool(command, args = [], options = {}) {
       killTimer = setTimeout(() => terminateToolChild(child, "SIGKILL"), killGraceMs);
     }, timeoutMs);
     if (heartbeat) {
-      heartbeatTimer = setInterval(() => {
-        Promise.resolve(heartbeat.onHeartbeat()).catch(() => {});
-      }, heartbeat.intervalMs);
+      heartbeatTimer = setInterval(runHeartbeat, heartbeat.intervalMs);
       if (typeof heartbeatTimer.unref === "function") heartbeatTimer.unref();
     }
     child.stdout.on("data", (chunk) => stdout.push(chunk));
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on("error", (error) => {
-      clearTimers();
-      resolve({
+      void finalize({
         ok: false,
         code: null,
         stdout: "",
@@ -5172,8 +5188,7 @@ function runTool(command, args = [], options = {}) {
       });
     });
     child.on("close", (code) => {
-      clearTimers();
-      resolve({
+      void finalize({
         ok: code === 0 && !timedOut,
         code,
         stdout: Buffer.concat(stdout).toString("utf8"),
@@ -5184,8 +5199,19 @@ function runTool(command, args = [], options = {}) {
   });
 }
 
-async function commandExists(command, commandRunner = runTool) {
-  const result = await commandRunner(command, ["--version"], { timeoutMs: 10_000 });
+export function runToolForTest(command, args = [], options = {}) {
+  return runTool(command, args, options);
+}
+
+async function commandExists(command, commandRunner = runTool, { timeoutMsResolver = null } = {}) {
+  const resolvedTimeoutValue = typeof timeoutMsResolver === "function"
+    ? Number(timeoutMsResolver())
+    : Number.NaN;
+  if (Number.isFinite(resolvedTimeoutValue) && resolvedTimeoutValue <= 0) return null;
+  const timeoutMs = Number.isFinite(resolvedTimeoutValue)
+    ? Math.min(10_000, Math.max(1, Math.floor(resolvedTimeoutValue)))
+    : 10_000;
+  const result = await commandRunner(command, ["--version"], { timeoutMs });
   return result.ok || (typeof result.stdout === "string" && result.stdout.trim().length > 0);
 }
 
@@ -6247,11 +6273,22 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   longToolTimeoutMsResolver = null,
   heartbeat = null,
 } = {}) {
-  if (!(await commandExists("yt-dlp", commandRunner))) {
+  const probeOptions = { timeoutMsResolver: longToolTimeoutMsResolver };
+  const ytDlpAvailable = await commandExists("yt-dlp", commandRunner, probeOptions);
+  if (ytDlpAvailable == null) {
+    attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+    return { text: "", reason: "extraction_exceeds_shard_timeout" };
+  }
+  if (!ytDlpAvailable) {
     attempts.push({ method: "local-asr", status: "skipped", reason: "yt-dlp_missing" });
     return { text: "" };
   }
-  if (!(await commandExists("ffmpeg", commandRunner))) {
+  const ffmpegAvailable = await commandExists("ffmpeg", commandRunner, probeOptions);
+  if (ffmpegAvailable == null) {
+    attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+    return { text: "", reason: "extraction_exceeds_shard_timeout" };
+  }
+  if (!ffmpegAvailable) {
     attempts.push({ method: "local-asr", status: "skipped", reason: "ffmpeg_missing" });
     return { text: "" };
   }
@@ -6345,7 +6382,11 @@ async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool,
   if (mlx.text) return { ...mlx, backend: "mlx-whisper" };
   if (mlx.reason === "extraction_exceeds_shard_timeout") return mlx;
 
-  if (await commandExists("whisper", commandRunner)) {
+  const whisperAvailable = await commandExists("whisper", commandRunner, {
+    timeoutMsResolver: options.longToolTimeoutMsResolver,
+  });
+  if (whisperAvailable == null) return { text: "", reason: "extraction_exceeds_shard_timeout" };
+  if (whisperAvailable) {
     const model = process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
     const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
       ? Number(options.longToolTimeoutMsResolver())
@@ -6385,6 +6426,11 @@ async function transcribeWithPythonModule(moduleName, audioFile, commandRunner =
     ? fasterWhisperPythonScript()
     : mlxWhisperPythonScript();
   for (const python of ["python3", "python"]) {
+    const pythonAvailable = await commandExists(python, commandRunner, {
+      timeoutMsResolver: options.longToolTimeoutMsResolver,
+    });
+    if (pythonAvailable == null) return { text: "", reason: "extraction_exceeds_shard_timeout" };
+    if (!pythonAvailable) continue;
     const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
       ? Number(options.longToolTimeoutMsResolver())
       : Number.NaN;

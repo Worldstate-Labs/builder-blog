@@ -2781,18 +2781,96 @@ exit 99
   }
 });
 
+test("long-media extraction refuses to spawn its first availability probe after the shard budget expires", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?probe-budget-exhausted=${Date.now()}`);
+  const commands: string[] = [];
+  const attempts: Array<{ method: string; status: string; reason: string }> = [];
+
+  const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
+    attempts,
+    longToolTimeoutMsResolver: () => 0,
+    commandRunner: async (command: string, args: string[]) => {
+      commands.push(`${command} ${args.join(" ")}`.trim());
+      return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+    },
+  });
+
+  assert.equal(result.reason, "extraction_exceeds_shard_timeout");
+  assert.deepEqual(commands, []);
+  assert.deepEqual(
+    attempts.map((attempt) => [attempt.method, attempt.status, attempt.reason]),
+    [["local-asr", "failed", "extraction_exceeds_shard_timeout"]],
+  );
+});
+
+test("long-media availability probes cap their timeout to the remaining shard budget and probe maximum", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?probe-budget-cap=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-probe-cap-"));
+  const commands: Array<{ command: string; args: string[]; timeoutMs: number }> = [];
+  const budgetMs = [25_000, 8_000, 25_000, 25_000, 7_000, 25_000, 6_000, 25_000, 5_000];
+  try {
+    await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
+      longToolTimeoutMsResolver: () => budgetMs.shift() ?? 0,
+      commandRunner: async (command: string, args: string[], options: { timeoutMs: number }) => {
+        commands.push({ command, args, timeoutMs: options.timeoutMs });
+        if (args[0] === "--version") {
+          return command === "whisper"
+            ? { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false }
+            : { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp") {
+          const template = args[args.indexOf("-o") + 1] || join(dir, "audio.%(ext)s");
+          await writeFile(template.replace("%(ext)s", "mp3"), "audio", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command === "ffmpeg") {
+          await writeFile(args[args.length - 1], "wav", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command === "python3" && args[0] === "-c") {
+          return {
+            ok: false,
+            code: 1,
+            stdout: "",
+            stderr: "ModuleNotFoundError: requested ASR module is unavailable",
+            timedOut: false,
+          };
+        }
+        throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    const probes = commands.filter(({ args }) => args[0] === "--version");
+    assert.deepEqual(
+      probes.map(({ command, timeoutMs }) => [command, timeoutMs]),
+      [
+        ["yt-dlp", 10_000],
+        ["ffmpeg", 8_000],
+        ["python3", 7_000],
+        ["python3", 6_000],
+        ["whisper", 5_000],
+      ],
+    );
+    assert.deepEqual(budgetMs, []);
+  } finally {
+    await execFileAsync("rm", ["-rf", dir]);
+  }
+});
+
 test("extract-long-media helper stops before ffmpeg once budget expires after download", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?post-download-budget=${Date.now()}`);
   const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-post-download-"));
   const attempts: Array<{ method: string; status: string; reason: string }> = [];
   const commands: string[] = [];
-  const budgetMs = [6_000, 0];
+  const timeouts: number[] = [];
+  const budgetMs = [15_000, 8_000, 6_000, 0];
   try {
     const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
       attempts,
       longToolTimeoutMsResolver: () => budgetMs.shift() ?? 0,
-      commandRunner: async (command: string, args: string[]) => {
+      commandRunner: async (command: string, args: string[], options: { timeoutMs: number }) => {
         commands.push(`${command} ${args.join(" ")}`.trim());
+        timeouts.push(options.timeoutMs);
         if (args[0] === "--version") {
           return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
         }
@@ -2816,9 +2894,103 @@ test("extract-long-media helper stops before ffmpeg once budget expires after do
       "ffmpeg --version",
       commands[2],
     ]);
+    assert.deepEqual(timeouts, [10_000, 8_000, 6_000]);
     assert.equal(commands[2].startsWith("yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K -o "), true);
     assert.equal(commands.some((command) => command.startsWith("ffmpeg -y ")), false);
   } finally {
+    await execFileAsync("rm", ["-rf", dir]);
+  }
+});
+
+test("runTool serializes heartbeats and drains a delayed heartbeat before terminal progress", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?serialized-heartbeat=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-run-tool-heartbeat-order-"));
+  const exitGate = join(dir, "exit-gate");
+  const exitedMarker = join(dir, "exited");
+  const events: string[] = [];
+  let activeCallbacks = 0;
+  let maxActiveCallbacks = 0;
+  let heartbeatCalls = 0;
+  let activeCallbacksAtToolResolution = -1;
+  let progressStatus = "reading";
+  let heartbeatStartedResolve: (() => void) | null = null;
+  let heartbeatReleaseResolve: () => void = () => {};
+  const heartbeatStarted = new Promise<void>((resolve) => { heartbeatStartedResolve = resolve; });
+  const heartbeatRelease = new Promise<void>((resolve) => { heartbeatReleaseResolve = resolve; });
+  try {
+    const childScript = `
+const { existsSync, writeFileSync } = require("node:fs");
+const [exitGate, exitedMarker] = process.argv.slice(1);
+process.on("exit", () => writeFileSync(exitedMarker, "exited"));
+setInterval(() => {
+  if (existsSync(exitGate)) process.exit(0);
+}, 5);
+`;
+    const caller = cli.runToolForTest(process.execPath, ["-e", childScript, exitGate, exitedMarker], {
+      timeoutMs: 5_000,
+      heartbeat: {
+        intervalMs: 250,
+        onHeartbeat: async () => {
+          heartbeatCalls += 1;
+          activeCallbacks += 1;
+          maxActiveCallbacks = Math.max(maxActiveCallbacks, activeCallbacks);
+          events.push("heartbeat-started");
+          heartbeatStartedResolve?.();
+          await heartbeatRelease;
+          progressStatus = "reading";
+          events.push("heartbeat-finished");
+          activeCallbacks -= 1;
+        },
+      },
+    }).then((result: { ok: boolean }) => {
+      activeCallbacksAtToolResolution = activeCallbacks;
+      events.push("tool-resolved");
+      progressStatus = "terminal";
+      events.push("terminal-written");
+      return result;
+    });
+
+    await heartbeatStarted;
+    await sleep(300);
+    await writeFile(exitGate, "exit", "utf8");
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try {
+        await stat(exitedMarker);
+        break;
+      } catch {
+        await sleep(10);
+      }
+    }
+    await sleep(50);
+    const resolvedBeforeHeartbeatRelease = events.includes("tool-resolved");
+
+    heartbeatReleaseResolve();
+    const result = await caller;
+    assert.equal(result.ok, true);
+    const heartbeatCallsAtResolution = heartbeatCalls;
+    await sleep(300);
+
+    assert.deepEqual({
+      resolvedBeforeHeartbeatRelease,
+      heartbeatCalls,
+      heartbeatCallsAtResolution,
+      activeCallbacks,
+      activeCallbacksAtToolResolution,
+      maxActiveCallbacks,
+      progressStatus,
+      events,
+    }, {
+      resolvedBeforeHeartbeatRelease: false,
+      heartbeatCalls: 1,
+      heartbeatCallsAtResolution: 1,
+      activeCallbacks: 0,
+      activeCallbacksAtToolResolution: 0,
+      maxActiveCallbacks: 1,
+      progressStatus: "terminal",
+      events: ["heartbeat-started", "heartbeat-finished", "tool-resolved", "terminal-written"],
+    });
+  } finally {
+    heartbeatReleaseResolve();
     await execFileAsync("rm", ["-rf", dir]);
   }
 });
