@@ -1792,6 +1792,13 @@ function buildCloudFetchTask(task, metadata) {
     ...task,
     cloudRunId: metadata?.cloudRunId ?? task?.cloudRunId ?? null,
     cloudSourceTaskId: metadata?.cloudSourceTaskId ?? task?.cloudSourceTaskId ?? null,
+    mustSucceedBy: metadata?.mustSucceedBy ?? task?.mustSucceedBy ?? null,
+    estimatedDurationSeconds: metadata?.estimatedDurationSeconds ?? task?.estimatedDurationSeconds ?? null,
+    provisionalExecutionBudgetSeconds:
+      metadata?.provisionalExecutionBudgetSeconds ?? task?.provisionalExecutionBudgetSeconds ?? null,
+    workloadClass: metadata?.workloadClass ?? task?.workloadClass ?? null,
+    budgetReason: metadata?.budgetReason ?? task?.budgetReason ?? null,
+    deadlineState: metadata?.deadlineState ?? task?.deadlineState ?? null,
     summaryLanguage,
     builderSync: {
       ...(task?.builderSync ?? {}),
@@ -9964,6 +9971,12 @@ async function fetchCloudLibrary(args) {
       cloudSourceTaskId: task.cloudSourceTaskId,
       builderId: builder.id,
       summaryLanguage: task.summaryLanguage,
+      mustSucceedBy: task.mustSucceedBy,
+      estimatedDurationSeconds: task.estimatedDurationSeconds,
+      provisionalExecutionBudgetSeconds: task.provisionalExecutionBudgetSeconds,
+      workloadClass: task.workloadClass,
+      budgetReason: task.budgetReason,
+      deadlineState: task.deadlineState,
     });
     return builder;
   });

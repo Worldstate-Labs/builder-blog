@@ -640,6 +640,114 @@ test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders",
   assert.equal(sourceTaskUpdates.length, 1);
 });
 
+test("leaseCloudFetchTasks includes provisional execution plans in leased tasks and extends the initial lease to cover them", async () => {
+  const queueUpdates: Array<{ data: { leaseExpiresAt: Date } }> = [];
+  const runTaskCreates: Array<{ data: { details?: { executionPlan?: Record<string, unknown> } } }> = [];
+  const queuedItem = {
+    id: "queue_plan_1",
+    cloudSourceTaskId: "cloud_task_plan_1",
+    mustSucceedBy: minutesFromNow(90),
+    cloudSourceTask: {
+      id: "cloud_task_plan_1",
+      builderId: "cloud_builder_plan_1",
+      summaryLanguage: "en",
+      estimatedDurationSeconds: 70 * 60,
+      estimatedTokenCost: 50_000,
+      durationP75Seconds: null,
+      durationP90Seconds: null,
+      durationSampleCount: 0,
+      successSampleCount: 0,
+      estimatedSuccessProbability: 0.9,
+      builder: {
+        id: "cloud_builder_plan_1",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Planned Source",
+        handle: null,
+        sourceUrl: "https://example.com/planned.xml",
+        fetchUrl: "https://example.com/planned.xml",
+        canonicalKey: "BLOG:https://example.com/planned.xml",
+      },
+    },
+  };
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string) { return resetFenceQuery(query); },
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where?: { id?: unknown }; data: { leaseExpiresAt: Date } }) => {
+        if (args.where?.id) {
+          queueUpdates.push(args);
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
+      findMany: async (args: { include?: unknown }) => {
+        if (args.include) return [queuedItem];
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+      create: async (args: { data: { details?: { executionPlan?: Record<string, unknown> } } }) => {
+        runTaskCreates.push(args);
+        return {};
+      },
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    cloudFetchRun: {
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_cloud_plan_1",
+        ...args.data,
+      }),
+    },
+    feedItem: {
+      findMany: async () => [],
+    },
+  };
+
+  const result = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 1,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.runId, "run_cloud_plan_1");
+  assert.equal(result.tasks.length, 1);
+  assert.deepEqual(result.tasks[0], {
+    cloudSourceTaskId: "cloud_task_plan_1",
+    builderId: "cloud_builder_plan_1",
+    summaryLanguage: "en",
+    mustSucceedBy: "2026-06-27T13:30:00.000Z",
+    estimatedDurationSeconds: 4_200,
+    provisionalExecutionBudgetSeconds: 6_900,
+    workloadClass: "standard",
+    budgetReason: "scaled_and_rounded",
+    deadlineState: "at_risk",
+    source: queuedItem.cloudSourceTask.builder,
+    fetchedItems: [],
+  });
+  assert.equal(queueUpdates.length, 1);
+  assert.equal(queueUpdates[0]?.data.leaseExpiresAt.toISOString(), "2026-06-27T14:05:00.000Z");
+  assert.deepEqual(runTaskCreates[0]?.data.details?.executionPlan, {
+    mustSucceedBy: "2026-06-27T13:30:00.000Z",
+    estimatedDurationSeconds: 4_200,
+    provisionalExecutionBudgetSeconds: 6_900,
+    workloadClass: "standard",
+    budgetReason: "scaled_and_rounded",
+    deadlineState: "at_risk",
+  });
+});
+
 const generousConfig = {
   tokenBudgetPerHour: 1_000_000,
   starvationReserveRatio: 0,

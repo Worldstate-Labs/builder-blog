@@ -1,6 +1,11 @@
 import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { z } from "zod";
 import { SkillBuilderSchema, SkillTaskOutcomeSchema } from "@/lib/skill-contracts";
+import type {
+  CloudDeadlineState,
+  CloudShardBudgetReason,
+  CloudShardWorkloadClass,
+} from "@/lib/local-agent-timeouts";
 
 export type CloudFetchFrequencyInput = "day" | "week";
 export type CloudFetchFrequency = "DAILY" | "WEEKLY";
@@ -16,6 +21,15 @@ export type NormalizedCloudSourceSubmission = {
   frequency: CloudFetchFrequency;
   summaryLanguage: string;
   builderIds?: string[];
+};
+
+export type CloudFetchExecutionPlan = {
+  mustSucceedBy: string;
+  estimatedDurationSeconds: number;
+  provisionalExecutionBudgetSeconds: number;
+  workloadClass: CloudShardWorkloadClass;
+  budgetReason: CloudShardBudgetReason;
+  deadlineState: CloudDeadlineState;
 };
 
 export function normalizeCloudFetchFrequencyInput(value: string): CloudFetchFrequency {

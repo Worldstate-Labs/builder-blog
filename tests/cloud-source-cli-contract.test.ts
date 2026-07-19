@@ -38,17 +38,53 @@ test("cloud fetch planning stamps leased task metadata onto normal fetch tasks",
       cloudRunId: "cloud_run_1",
       cloudSourceTaskId: "cloud_task_1",
       summaryLanguage: "zh",
+      mustSucceedBy: "2026-06-27T13:30:00.000Z",
+      estimatedDurationSeconds: 4_200,
+      provisionalExecutionBudgetSeconds: 6_900,
+      workloadClass: "standard",
+      budgetReason: "scaled_and_rounded",
+      deadlineState: "at_risk",
     },
   );
 
   assert.equal(task.cloudRunId, "cloud_run_1");
   assert.equal(task.cloudSourceTaskId, "cloud_task_1");
   assert.equal(task.summaryLanguage, "zh");
+  assert.equal(task.mustSucceedBy, "2026-06-27T13:30:00.000Z");
+  assert.equal(task.estimatedDurationSeconds, 4_200);
+  assert.equal(task.provisionalExecutionBudgetSeconds, 6_900);
+  assert.equal(task.workloadClass, "standard");
+  assert.equal(task.budgetReason, "scaled_and_rounded");
+  assert.equal(task.deadlineState, "at_risk");
   assert.equal(task.builderSync.cloudSourceTaskId, "cloud_task_1");
   assert.equal(task.builderSync.builderId, "cloud_builder_zh");
   assert.equal(task.summaryInstructions.language, "zh");
   assert.match(task.summaryInstructions.prompt, /Chinese|zh|中文/);
   assert.equal(task.type, "fetch_post");
+});
+
+test("cloud fetch CLI contract keeps provisional execution plan metadata in both the lease map and planned tasks", async () => {
+  const cliSource = await readFile("scripts/builder-digest.mjs", "utf8");
+
+  for (const field of [
+    "mustSucceedBy",
+    "estimatedDurationSeconds",
+    "provisionalExecutionBudgetSeconds",
+    "workloadClass",
+    "budgetReason",
+    "deadlineState",
+  ]) {
+    assert.match(
+      cliSource,
+      new RegExp(`cloudTaskMetadataByBuilderId\\.set\\(builder\\.id, \\{[\\s\\S]*${field}: task\\.${field}`),
+    );
+    assert.match(
+      cliSource,
+      new RegExp(
+        `function buildCloudFetchTask\\(task, metadata\\) \\{[\\s\\S]*${field}:[\\s\\S]*metadata\\?\\.${field}[\\s\\S]*\\?\\?[\\s\\S]*task\\?\\.${field}`,
+      ),
+    );
+  }
 });
 
 test("cloud fetch command is exposed and keeps worker-facing task shape", async () => {

@@ -6,6 +6,8 @@ import {
   type PrismaClient,
 } from "@prisma/client";
 import { expireLeasedCloudFetchRuns } from "@/lib/cloud-fetch-run-lifecycle";
+import type { CloudFetchExecutionPlan } from "@/lib/cloud-source-contracts";
+import { cloudDeadlineState, cloudShardExecutionBudget } from "@/lib/local-agent-timeouts";
 import { databaseClockNow, lockResetFenceForWorker } from "@/lib/reset-fence";
 
 type CloudSchedulerDb = Prisma.TransactionClient;
@@ -384,7 +386,13 @@ async function leaseCloudFetchTasksInTransaction(params: {
     const estimate = estimatedDurationForTask(item.cloudSourceTask, config);
     const estimatedTokens = estimatedTokensForTask(item.cloudSourceTask);
     if (estimatedTokens > remainingTokens) continue;
-    selected.push({ item, estimate, estimatedTokens });
+    const executionPlan = provisionalExecutionPlanForLease({
+      now,
+      mustSucceedBy: item.mustSucceedBy,
+      sourceType: item.cloudSourceTask.builder.sourceType,
+      estimatedDurationSeconds: estimate,
+    });
+    selected.push({ item, estimate, estimatedTokens, executionPlan });
     remainingTokens -= estimatedTokens;
   }
 
@@ -396,11 +404,11 @@ async function leaseCloudFetchTasksInTransaction(params: {
     prisma,
     selected.map(({ item }) => item.cloudSourceTask.builderId),
   );
-  const maxEstimatedDuration = Math.max(...selected.map((entry) => entry.estimate));
-  const leaseExpiresAt = new Date(
-    now.getTime() +
-      Math.max(config.leaseTtlMinutes, Math.ceil(maxEstimatedDuration / 60) + 10) * MINUTE_MS,
+  const initialLeaseSeconds = Math.max(
+    config.leaseTtlMinutes * 60,
+    ...selected.map((entry) => entry.executionPlan.provisionalExecutionBudgetSeconds + 10 * 60),
   );
+  const leaseExpiresAt = new Date(now.getTime() + initialLeaseSeconds * 1000);
   const run = await prisma.cloudFetchRun.create({
     data: {
       leaseOwner: params.leaseOwner,
@@ -412,7 +420,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
 
   const claimed: typeof selected = [];
   for (const entry of selected) {
-    const { item, estimate } = entry;
+    const { item, estimate, executionPlan } = entry;
     // Guard the claim on status: QUEUED so a concurrent lease transaction that
     // already flipped this item to LEASED cannot be overwritten. Without the
     // guard two runs could double-lease the same task (READ COMMITTED lets both
@@ -440,6 +448,9 @@ async function leaseCloudFetchTasksInTransaction(params: {
         startedAt: now,
         estimatedDurationSeconds: estimate,
         successProbabilitySnapshot: item.cloudSourceTask.estimatedSuccessProbability,
+        details: {
+          executionPlan,
+        },
       },
     });
     await prisma.cloudSourceTask.update({
@@ -466,11 +477,16 @@ async function leaseCloudFetchTasksInTransaction(params: {
   return {
     status: "ok" as const,
     runId: run.id,
-    tasks: claimed.map(({ item, estimate }) => ({
+    tasks: claimed.map(({ item, estimate, executionPlan }) => ({
       cloudSourceTaskId: item.cloudSourceTaskId,
       builderId: item.cloudSourceTask.builderId,
       summaryLanguage: item.cloudSourceTask.summaryLanguage,
+      mustSucceedBy: executionPlan.mustSucceedBy,
       estimatedDurationSeconds: estimate,
+      provisionalExecutionBudgetSeconds: executionPlan.provisionalExecutionBudgetSeconds,
+      workloadClass: executionPlan.workloadClass,
+      budgetReason: executionPlan.budgetReason,
+      deadlineState: executionPlan.deadlineState,
       source: item.cloudSourceTask.builder,
       fetchedItems: fetchedItemsByBuilderId.get(item.cloudSourceTask.builderId) ?? [],
     })),
@@ -936,6 +952,30 @@ function estimatedTokensForTask(task: {
     MIN_ESTIMATED_TOKENS,
     task.estimatedTokenCost ?? sourceTypePrior(task.builder.sourceType).estimatedTokenCost,
   );
+}
+
+function provisionalExecutionPlanForLease(params: {
+  now: Date;
+  mustSucceedBy: Date;
+  sourceType: string;
+  estimatedDurationSeconds: number;
+}): CloudFetchExecutionPlan {
+  const budget = cloudShardExecutionBudget({
+    estimatedWorkSeconds: params.estimatedDurationSeconds,
+    sourceType: params.sourceType,
+  });
+  return {
+    mustSucceedBy: params.mustSucceedBy.toISOString(),
+    estimatedDurationSeconds: params.estimatedDurationSeconds,
+    provisionalExecutionBudgetSeconds: budget.executionBudgetSeconds,
+    workloadClass: budget.workloadClass,
+    budgetReason: budget.budgetReason,
+    deadlineState: cloudDeadlineState({
+      now: params.now,
+      mustSucceedBy: params.mustSucceedBy,
+      executionBudgetSeconds: budget.executionBudgetSeconds,
+    }),
+  };
 }
 
 function sourceTypePrior(sourceType: string) {
