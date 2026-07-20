@@ -269,9 +269,15 @@ test("cloud worker host uses a distinct jobType so it never leaks into a persona
 
   // ...while the personal fetch log stays on library-fetch (excludes cloud rounds).
   const personalFetchRuns = source("src/app/api/skill/fetch-runs/route.ts");
-  assert.match(personalFetchRuns, /getAgentJobRuns\(userId, "library-fetch"/);
+  assert.match(personalFetchRuns, /loadFetchRunHistoryAgentJobs\(/);
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
-  assert.match(buildersPage, /getAgentJobRuns\(user\.id, "library-fetch"/);
+  assert.match(buildersPage, /loadFetchRunHistoryAgentJobs\(/);
+  const agentJobRuns = source("src/lib/agent-job-runs.ts");
+  assert.match(agentJobRuns, /jobType: "library-fetch"/);
+  assert.match(
+    agentJobRuns,
+    /scheduleJob: "library-cron",\s*trigger: "scheduled"/,
+  );
 });
 
 test("runner and CLI tag cloud rounds with the cloud-library-fetch jobType", () => {

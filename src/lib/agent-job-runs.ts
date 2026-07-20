@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { AgentJobRun, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type AgentJobRunListItem = {
@@ -52,6 +52,24 @@ type FinalizeFetchRunHistoryAgentJobPageArgs<T> = {
   scheduledJobRuns: T[];
   moreJobRuns: boolean;
   moreScheduledJobRuns: boolean;
+};
+
+export type FetchRunHistoryAgentJobQuery = {
+  findMany: (args: {
+    where: Prisma.AgentJobRunWhereInput;
+    orderBy: Prisma.AgentJobRunFindManyArgs["orderBy"];
+    take?: number;
+  }) => Promise<AgentJobRun[]>;
+  findFirst: (args: {
+    where: Prisma.AgentJobRunWhereInput;
+    select: { id: true };
+  }) => Promise<{ id: string } | null>;
+};
+
+type LoadFetchRunHistoryAgentJobsArgs = BuildFetchRunHistoryAgentJobQueryPlanArgs & {
+  userId: string;
+  querySize: number;
+  query?: FetchRunHistoryAgentJobQuery;
 };
 
 function normalizedLinkedInstanceIds(linkedInstanceIds: string[]) {
@@ -170,6 +188,109 @@ export function finalizeFetchRunHistoryAgentJobPage<T>({
   return {
     visibleJobRuns,
     visibleScheduledJobRuns,
+    hasMore,
+  };
+}
+
+const defaultFetchRunHistoryAgentJobQuery: FetchRunHistoryAgentJobQuery = {
+  findMany: (args) => prisma.agentJobRun.findMany(args),
+  findFirst: (args) => prisma.agentJobRun.findFirst(args),
+};
+
+export async function loadFetchRunHistoryAgentJobs({
+  userId,
+  rows,
+  cronRows,
+  before,
+  pageSize,
+  querySize,
+  query = defaultFetchRunHistoryAgentJobQuery,
+}: LoadFetchRunHistoryAgentJobsArgs) {
+  const {
+    runFloor,
+    regularJobRunWhere,
+    scheduledJobRunWhere,
+  } = buildFetchRunHistoryAgentJobQueryPlan({
+    rows,
+    cronRows,
+    before,
+    pageSize,
+  });
+
+  // Fetch-run cursors drive the client pagination. Keep every runtime down to
+  // the visible fetch-run floor, plus explicitly linked runtimes that started
+  // earlier, so advancing that cursor cannot skip runtime-only failures.
+  const [jobRunRows, scheduledJobRunRows, olderJobRun, olderScheduledJobRun] = await Promise.all([
+    query.findMany({
+      where: {
+        userId,
+        jobType: "library-fetch",
+        ...(regularJobRunWhere ?? (before ? { startedAt: { lt: before } } : {})),
+      },
+      orderBy: { startedAt: "desc" },
+      ...(!runFloor ? { take: querySize } : {}),
+    }),
+    query.findMany({
+      where: {
+        userId,
+        scheduleJob: "library-cron",
+        trigger: "scheduled",
+        ...(scheduledJobRunWhere ?? (before
+          ? {
+              OR: [
+                { expectedAt: { lt: before } },
+                { expectedAt: null, startedAt: { lt: before } },
+              ],
+            }
+          : {})),
+      },
+      orderBy: [{ expectedAt: "desc" }, { startedAt: "desc" }],
+      ...(!runFloor ? { take: querySize } : {}),
+    }),
+    runFloor
+      ? query.findFirst({
+          where: {
+            userId,
+            jobType: "library-fetch",
+            startedAt: { lt: runFloor },
+          },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    runFloor
+      ? query.findFirst({
+          where: {
+            userId,
+            scheduleJob: "library-cron",
+            trigger: "scheduled",
+            OR: [
+              { expectedAt: { lt: runFloor } },
+              { expectedAt: null, startedAt: { lt: runFloor } },
+            ],
+          },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const {
+    visibleJobRuns,
+    visibleScheduledJobRuns,
+    hasMore,
+  } = finalizeFetchRunHistoryAgentJobPage({
+    runFloor,
+    rowCount: rows.length,
+    cronRowCount: cronRows.length,
+    pageSize,
+    jobRuns: jobRunRows.map(serializeAgentJobRun),
+    scheduledJobRuns: scheduledJobRunRows.map(serializeAgentJobRun),
+    moreJobRuns: olderJobRun !== null,
+    moreScheduledJobRuns: olderScheduledJobRun !== null,
+  });
+
+  return {
+    jobRuns: visibleJobRuns,
+    scheduledJobRuns: visibleScheduledJobRuns,
     hasMore,
   };
 }

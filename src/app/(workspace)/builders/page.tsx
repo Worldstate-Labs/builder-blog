@@ -37,6 +37,7 @@ import {
 import {
   getAgentJobRuns,
   getScheduledAgentJobRuns,
+  loadFetchRunHistoryAgentJobs,
   type AgentJobRunListItem,
 } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
@@ -479,8 +480,6 @@ async function loadFetchSyncData(user: {
     rawFetchRuns,
     rawCronRuns,
     rawLibraryCronJob,
-    jobRuns,
-    scheduledJobRuns,
     feedPreference,
     rawCloudSubmissionSources,
     cloudFetchLog,
@@ -513,8 +512,6 @@ async function loadFetchSyncData(user: {
     prisma.libraryCronJob.findUnique({
       where: { userId: user.id },
     }),
-    getAgentJobRuns(user.id, "library-fetch", FETCH_RUN_QUERY_SIZE),
-    getScheduledAgentJobRuns(user.id, "library-cron", FETCH_RUN_QUERY_SIZE),
     prisma.userFeedPreference.findUnique({
       where: { userId: user.id },
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
@@ -544,6 +541,18 @@ async function loadFetchSyncData(user: {
     }),
     loadUserCloudFetchLog(user.id),
   ]);
+  const {
+    jobRuns,
+    scheduledJobRuns,
+    hasMore: hasMoreFetchHistory,
+  } = await loadFetchRunHistoryAgentJobs({
+    userId: user.id,
+    rows: rawFetchRuns,
+    cronRows: rawCronRuns,
+    before: null,
+    pageSize: FETCH_RUN_PAGE_SIZE,
+    querySize: FETCH_RUN_QUERY_SIZE,
+  });
   const activeTokens = serializeAgentTokens(rawTokens);
   const cloudSubmissionSources: CloudSubmissionSource[] = rawCloudSubmissionSources.map(
     ({ builder }) => ({
@@ -595,10 +604,6 @@ async function loadFetchSyncData(user: {
     summary: run.summary,
     details: run.details,
   }));
-  const hasMoreFetchHistory =
-    rawFetchRuns.length > FETCH_RUN_PAGE_SIZE ||
-    jobRuns.length > FETCH_RUN_PAGE_SIZE ||
-    scheduledJobRuns.length > FETCH_RUN_PAGE_SIZE;
   const libraryCronJob: LibraryCronJobStatus | null = rawLibraryCronJob
     ? {
         id: rawLibraryCronJob.id,
@@ -622,9 +627,9 @@ async function loadFetchSyncData(user: {
     cronRuns,
     fetchRuns,
     hasMoreFetchHistory,
-    jobRuns: jobRuns.slice(0, FETCH_RUN_PAGE_SIZE),
+    jobRuns,
     libraryCronJob,
-    scheduledJobRuns: scheduledJobRuns.slice(0, FETCH_RUN_PAGE_SIZE),
+    scheduledJobRuns,
     isAdmin: user.isAdmin,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),

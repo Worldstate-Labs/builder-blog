@@ -11,6 +11,44 @@ async function loadAgentJobRunsModule() {
   return import("../src/lib/agent-job-runs");
 }
 
+function agentJobRunFixture({
+  instanceId,
+  startedAt,
+  expectedAt = null,
+  scheduleJob = null,
+}: {
+  instanceId: string;
+  startedAt: Date;
+  expectedAt?: Date | null;
+  scheduleJob?: string | null;
+}) {
+  return {
+    id: `row-${instanceId}`,
+    userId: "account-1",
+    jobType: "library-fetch",
+    trigger: scheduleJob ? "scheduled" : "one_time",
+    scheduleJob,
+    instanceId,
+    expectedAt,
+    startedAt,
+    heartbeatAt: null,
+    finishedAt: startedAt,
+    status: "succeeded",
+    exitCode: 0,
+    signal: null,
+    runtime: "codex",
+    runnerPid: null,
+    workerPid: null,
+    hostname: null,
+    platform: null,
+    stage: "completed",
+    summary: null,
+    details: {},
+    createdAt: startedAt,
+    updatedAt: startedAt,
+  };
+}
+
 test("Prisma schema stores local agent job runs separately from business logs", () => {
   const schema = source("prisma/schema.prisma");
 
@@ -297,6 +335,206 @@ test("fetch history page finalizer preserves unsliced floor windows and existing
       hasMore: true,
     },
   );
+});
+
+test("shared fetch history loader keeps linked older runtimes and account-scoped floor queries", async () => {
+  const { loadFetchRunHistoryAgentJobs } = await loadAgentJobRunsModule();
+  assert.equal(typeof loadFetchRunHistoryAgentJobs, "function");
+
+  const before = new Date("2026-07-20T12:00:00.000Z");
+  const newer = new Date("2026-07-20T11:00:00.000Z");
+  const floor = new Date("2026-07-20T09:00:00.000Z");
+  const linkedOlder = new Date("2026-07-20T08:00:00.000Z");
+  const manyCalls: unknown[] = [];
+  const firstCalls: unknown[] = [];
+
+  const result = await loadFetchRunHistoryAgentJobs({
+    userId: "account-1",
+    rows: [
+      { startedAt: newer, jobRunId: "linked-regular" },
+      { startedAt: floor, jobRunId: "linked-scheduled" },
+    ],
+    cronRows: [
+      { startedAt: floor, jobRunId: "linked-scheduled" },
+    ],
+    before,
+    pageSize: 2,
+    querySize: 3,
+    query: {
+      findMany: async (args) => {
+        manyCalls.push(args);
+        if ("scheduleJob" in args.where) {
+          return [
+            agentJobRunFixture({
+              instanceId: "scheduled-window",
+              startedAt: floor,
+              expectedAt: floor,
+              scheduleJob: "library-cron",
+            }),
+            agentJobRunFixture({
+              instanceId: "linked-scheduled",
+              startedAt: linkedOlder,
+              expectedAt: linkedOlder,
+              scheduleJob: "library-cron",
+            }),
+          ];
+        }
+        return [
+          agentJobRunFixture({ instanceId: "window-unlinked", startedAt: newer }),
+          agentJobRunFixture({ instanceId: "linked-regular", startedAt: linkedOlder }),
+        ];
+      },
+      findFirst: async (args) => {
+        firstCalls.push(args);
+        return "scheduleJob" in args.where ? { id: "older-scheduled" } : null;
+      },
+    },
+  });
+
+  assert.deepEqual(
+    result.jobRuns.map((run) => run.instanceId),
+    ["window-unlinked", "linked-regular"],
+  );
+  assert.deepEqual(
+    result.scheduledJobRuns.map((run) => run.instanceId),
+    ["scheduled-window", "linked-scheduled"],
+  );
+  assert.equal(result.jobRuns[1].startedAt, linkedOlder.toISOString());
+  assert.equal(result.scheduledJobRuns[1].expectedAt, linkedOlder.toISOString());
+  assert.equal(result.hasMore, true);
+  assert.deepEqual(manyCalls, [
+    {
+      where: {
+        userId: "account-1",
+        jobType: "library-fetch",
+        AND: [
+          { startedAt: { lt: before } },
+          {
+            OR: [
+              { startedAt: { gte: floor } },
+              { instanceId: { in: ["linked-regular", "linked-scheduled"] } },
+            ],
+          },
+        ],
+      },
+      orderBy: { startedAt: "desc" },
+    },
+    {
+      where: {
+        userId: "account-1",
+        scheduleJob: "library-cron",
+        trigger: "scheduled",
+        AND: [
+          {
+            OR: [
+              { expectedAt: { lt: before } },
+              { expectedAt: null, startedAt: { lt: before } },
+            ],
+          },
+          {
+            OR: [
+              { expectedAt: { gte: floor } },
+              { expectedAt: null, startedAt: { gte: floor } },
+              { instanceId: { in: ["linked-regular", "linked-scheduled"] } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ expectedAt: "desc" }, { startedAt: "desc" }],
+    },
+  ]);
+  assert.deepEqual(firstCalls, [
+    {
+      where: {
+        userId: "account-1",
+        jobType: "library-fetch",
+        startedAt: { lt: floor },
+      },
+      select: { id: true },
+    },
+    {
+      where: {
+        userId: "account-1",
+        scheduleJob: "library-cron",
+        trigger: "scheduled",
+        OR: [
+          { expectedAt: { lt: floor } },
+          { expectedAt: null, startedAt: { lt: floor } },
+        ],
+      },
+      select: { id: true },
+    },
+  ]);
+});
+
+test("shared fetch history loader falls back to count-capped cursor paging without a fetch floor", async () => {
+  const { loadFetchRunHistoryAgentJobs } = await loadAgentJobRunsModule();
+  assert.equal(typeof loadFetchRunHistoryAgentJobs, "function");
+
+  const before = new Date("2026-07-20T12:00:00.000Z");
+  const regularRuns = [
+    agentJobRunFixture({ instanceId: "regular-1", startedAt: new Date("2026-07-20T11:00:00.000Z") }),
+    agentJobRunFixture({ instanceId: "regular-2", startedAt: new Date("2026-07-20T10:00:00.000Z") }),
+    agentJobRunFixture({ instanceId: "regular-3", startedAt: new Date("2026-07-20T09:00:00.000Z") }),
+  ];
+  const scheduledRuns = regularRuns.map((run) => ({
+    ...run,
+    id: `scheduled-${run.id}`,
+    instanceId: `scheduled-${run.instanceId}`,
+    trigger: "scheduled",
+    scheduleJob: "library-cron",
+    expectedAt: run.startedAt,
+  }));
+  const manyCalls: unknown[] = [];
+
+  const result = await loadFetchRunHistoryAgentJobs({
+    userId: "account-2",
+    rows: [],
+    cronRows: [],
+    before,
+    pageSize: 2,
+    querySize: 3,
+    query: {
+      findMany: async (args) => {
+        manyCalls.push(args);
+        return "scheduleJob" in args.where ? scheduledRuns : regularRuns;
+      },
+      findFirst: async () => {
+        assert.fail("fallback paging must not query older-floor flags");
+      },
+    },
+  });
+
+  assert.deepEqual(result.jobRuns.map((run) => run.instanceId), ["regular-1", "regular-2"]);
+  assert.deepEqual(
+    result.scheduledJobRuns.map((run) => run.instanceId),
+    ["scheduled-regular-1", "scheduled-regular-2"],
+  );
+  assert.equal(result.hasMore, true);
+  assert.deepEqual(manyCalls, [
+    {
+      where: {
+        userId: "account-2",
+        jobType: "library-fetch",
+        startedAt: { lt: before },
+      },
+      orderBy: { startedAt: "desc" },
+      take: 3,
+    },
+    {
+      where: {
+        userId: "account-2",
+        scheduleJob: "library-cron",
+        trigger: "scheduled",
+        OR: [
+          { expectedAt: { lt: before } },
+          { expectedAt: null, startedAt: { lt: before } },
+        ],
+      },
+      orderBy: [{ expectedAt: "desc" }, { startedAt: "desc" }],
+      take: 3,
+    },
+  ]);
 });
 
 test("terminal agent job runs cannot be regressed by late runtime updates", () => {
@@ -625,6 +863,7 @@ test("web status uses scheduled job instances while history can show one-time ru
   const digestPanel = source("src/components/DigestLogPanel.tsx");
   const fetchRoute = source("src/app/api/skill/fetch-runs/route.ts");
   const digestRoute = source("src/app/api/digest-runs/route.ts");
+  const agentJobRuns = source("src/lib/agent-job-runs.ts");
   const scheduledWindowUi = source("src/lib/scheduled-window-ui.ts");
 
   for (const panel of [fetchPanel, digestPanel]) {
@@ -646,7 +885,8 @@ test("web status uses scheduled job instances while history can show one-time ru
 
   assert.match(fetchRoute, /jobRuns/);
   assert.match(fetchRoute, /scheduledJobRuns/);
-  assert.match(fetchRoute, /agentJobRun\.findMany/);
+  assert.match(fetchRoute, /loadFetchRunHistoryAgentJobs/);
+  assert.match(agentJobRuns, /agentJobRun\.findMany/);
   assert.match(digestRoute, /jobRuns/);
   assert.match(digestRoute, /scheduledJobRuns/);
   assert.match(digestRoute, /agentJobRun\.findMany/);

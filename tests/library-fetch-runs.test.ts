@@ -86,6 +86,7 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
 
 test("skill fetch-runs route validates payload size and gates auth on user or bearer", () => {
   const route = source("src/app/api/skill/fetch-runs/route.ts");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const patchRoute = source("src/app/api/skill/fetch-runs/[id]/route.ts");
   const mergeHelper = source("src/lib/fetch-run-details.ts");
   const cronRoute = source("src/app/api/skill/cron-jobs/route.ts");
@@ -156,11 +157,20 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   // when paging older history.
   assert.match(
     route,
-    /buildFetchRunHistoryAgentJobQueryPlan\(\{[\s\S]*rows,\s*cronRows,\s*before,\s*pageSize: FETCH_RUN_PAGE_SIZE/,
+    /loadFetchRunHistoryAgentJobs\(\{[\s\S]*userId,\s*rows,\s*cronRows,\s*before,\s*pageSize: FETCH_RUN_PAGE_SIZE,\s*querySize: FETCH_RUN_QUERY_SIZE/,
   );
-  assert.match(route, /regularJobRunWhere/);
-  assert.match(route, /scheduledJobRunWhere/);
-  assert.match(route, /finalizeFetchRunHistoryAgentJobPage\(/);
+  assert.match(
+    buildersPage,
+    /loadFetchRunHistoryAgentJobs\(\{[\s\S]*userId: user\.id,\s*rows: rawFetchRuns,\s*cronRows: rawCronRuns,\s*before: null,\s*pageSize: FETCH_RUN_PAGE_SIZE,\s*querySize: FETCH_RUN_QUERY_SIZE/,
+  );
+  assert.doesNotMatch(route, /buildFetchRunHistoryAgentJobQueryPlan\(/);
+  assert.doesNotMatch(route, /finalizeFetchRunHistoryAgentJobPage\(/);
+  assert.doesNotMatch(buildersPage, /getAgentJobRuns\(user\.id, "library-fetch"/);
+  assert.doesNotMatch(buildersPage, /getScheduledAgentJobRuns\(user\.id, "library-cron"/);
+  assert.doesNotMatch(buildersPage, /jobRuns\.slice\(0, FETCH_RUN_PAGE_SIZE\)/);
+  assert.doesNotMatch(buildersPage, /scheduledJobRuns\.slice\(0, FETCH_RUN_PAGE_SIZE\)/);
+  assert.doesNotMatch(buildersPage, /jobRuns\.length > FETCH_RUN_PAGE_SIZE/);
+  assert.doesNotMatch(buildersPage, /scheduledJobRuns\.length > FETCH_RUN_PAGE_SIZE/);
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
   assert.match(cronRoute, /z\.enum\(\["library-cron", "digest-cron"\]\)/);
   assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);
