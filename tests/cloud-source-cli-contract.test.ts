@@ -1890,8 +1890,18 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(actions, /cloud-run-parallel-workers/);
   assert.doesNotMatch(actions, /params\.set\("cloudLimit"/);
   assert.doesNotMatch(actions, /params\.set\("postLimit"/);
-  assert.match(actions, /params\.set\("days"/);
-  assert.match(actions, /params\.set\("parallel"/);
+  assert.match(actions, /\/api\/settings\/tokens\/\$\{tokenId\}\/prompt-links/);
+  assert.match(actions, /JSON\.stringify\(\{ job, options \}/);
+  assert.match(actions, /const options: PromptLinkBody\["options"\] = \{ runtime \}/);
+  assert.match(actions, /options\.fetchDays = fetchDaysValue/);
+  assert.match(actions, /options\.parallelWorkers = parallelWorkersValue/);
+  assert.match(actions, /Open \$\{url\} and follow the instructions\./);
+  assert.doesNotMatch(actions, /exchange-code/);
+  assert.doesNotMatch(actions, /URLSearchParams/);
+  assert.doesNotMatch(actions, /Read \$\{url\} and follow the instructions\./);
+  assert.doesNotMatch(actions, /params\.set\("days"/);
+  assert.doesNotMatch(actions, /params\.set\("parallel"/);
+  assert.doesNotMatch(actions, /params\.set\("runtime"/);
 
   assert.doesNotMatch(route, /boundedIntegerParam\(url\.searchParams, "cloudLimit", 10, 1, 100\)/);
   assert.match(route, /boundedIntegerParam\(url\.searchParams, "postLimit", 3, 1, 20\)/);

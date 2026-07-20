@@ -95,14 +95,21 @@ test("copy-prompt jobs for cloud worker host setup and stop are whitelisted", ()
   assert.doesNotMatch(jobs, /"cloud-library-once":/);
 });
 
-test("cloud run actions component copies worker host and stop prompts via exchange codes", () => {
+test("cloud run actions component copies worker host and stop prompts via short prompt links", () => {
   const actions = source("src/components/AdminCloudFetchRunActions.tsx");
 
   assert.match(actions, /cloud-library-cron-setup/);
   assert.match(actions, /cloud-library-cron-stop/);
   assert.doesNotMatch(actions, /cloud-library-once/);
-  assert.match(actions, /exchange-code/);
-  assert.match(actions, /\/api\/skill\/jobs\//);
+  assert.match(actions, /\/api\/settings\/tokens\/\$\{tokenId\}\/prompt-links/);
+  assert.match(actions, /JSON\.stringify\(\{ job, options \}/);
+  assert.match(actions, /options:\s*\{/);
+  assert.match(actions, /body:\s*JSON\.stringify/);
+  assert.match(actions, /body\?\.url/);
+  assert.match(actions, /Open \$\{url\} and follow the instructions\./);
+  assert.doesNotMatch(actions, /exchange-code/);
+  assert.doesNotMatch(actions, /\/api\/skill\/jobs\//);
+  assert.doesNotMatch(actions, /URLSearchParams/);
   assert.doesNotMatch(actions, /cloud-run-cloud-limit/);
   assert.doesNotMatch(actions, /cloud-run-post-limit/);
   assert.match(actions, /cloud-run-fetch-days/);
@@ -111,9 +118,11 @@ test("cloud run actions component copies worker host and stop prompts via exchan
   assert.match(actions, /const PARALLEL_WORKERS_MAX = 20/);
   assert.doesNotMatch(actions, /params\.set\("cloudLimit"/);
   assert.doesNotMatch(actions, /params\.set\("postLimit"/);
-  assert.match(actions, /params\.set\("days"/);
-  assert.match(actions, /params\.set\("parallel"/);
+  assert.doesNotMatch(actions, /params\.set\("days"/);
+  assert.doesNotMatch(actions, /params\.set\("parallel"/);
   assert.doesNotMatch(actions, /params\.set\("freq"/);
+  assert.match(actions, /options\.fetchDays = fetchDaysValue/);
+  assert.match(actions, /options\.parallelWorkers = parallelWorkersValue/);
 });
 
 test("cloud run actions expose host settings without a cadence selector", () => {
