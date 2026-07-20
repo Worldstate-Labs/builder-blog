@@ -2808,12 +2808,13 @@ test("long-media availability probes cap their timeout to the remaining shard bu
   const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-probe-cap-"));
   const commands: Array<{ command: string; args: string[]; timeoutMs: number }> = [];
   const budgetMs = [25_000, 8_000, 25_000, 25_000, 7_000, 25_000, 6_000, 25_000, 5_000];
+  const cwdProbeArtifact = join(process.cwd(), "-version");
   try {
     await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
       longToolTimeoutMsResolver: () => budgetMs.shift() ?? 0,
       commandRunner: async (command: string, args: string[], options: { timeoutMs: number }) => {
         commands.push({ command, args, timeoutMs: options.timeoutMs });
-        if (args[0] === "--version") {
+        if (args[0] === "--version" || (command === "ffmpeg" && args[0] === "-version")) {
           return command === "whisper"
             ? { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false }
             : { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
@@ -2824,6 +2825,7 @@ test("long-media availability probes cap their timeout to the remaining shard bu
           return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
         }
         if (command === "ffmpeg") {
+          assert.notEqual(args[args.length - 1], "-version");
           await writeFile(args[args.length - 1], "wav", "utf8");
           return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
         }
@@ -2852,6 +2854,7 @@ test("long-media availability probes cap their timeout to the remaining shard bu
       ],
     );
     assert.deepEqual(budgetMs, []);
+    await assert.rejects(stat(cwdProbeArtifact), /ENOENT/);
   } finally {
     await execFileAsync("rm", ["-rf", dir]);
   }
@@ -3116,11 +3119,11 @@ printf 'audio' > "$(printf '%s' "$out" | sed 's/%(ext)s/mp3/')"
     await writeFile(
       join(fakeBin, "ffmpeg"),
       `#!/bin/sh
-if [ "$1" = "--version" ]; then
-  printf 'ffmpeg version test\\n'
-  exit 0
-fi
-sleep 2
+	if [ "$1" = "--version" ] || [ "$1" = "-version" ]; then
+	  printf 'ffmpeg version test\\n'
+	  exit 0
+	fi
+	sleep 2
 output=""
 for arg in "$@"; do output="$arg"; done
 printf 'wav' > "$output"
