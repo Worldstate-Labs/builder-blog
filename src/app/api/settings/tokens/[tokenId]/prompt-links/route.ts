@@ -10,8 +10,12 @@ import {
 } from "@/lib/agent-prompt-links";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ tokenId: string }> };
+const DEFAULT_PUBLIC_ORIGIN = "https://followbrief.worldstatelabs.com";
+const PROMPT_LINK_LIMIT = 20;
+const PROMPT_LINK_WINDOW_MS = 10 * 60 * 1000;
 
 type SessionLike = {
   user?: {
@@ -54,11 +58,29 @@ export type PromptLinkHandlerDeps = {
   parseOptions(job: ExposedPromptJob, input: unknown): AgentPromptRenderOptions;
   createExchangeCode(): string;
   createPromptLinkToken(): string;
+  publicOrigin: string;
+  rateLimit(key: string): { ok: boolean; remaining: number; retryAfterMs: number };
   now(): Date;
   prisma: {
     $transaction<T>(callback: (tx: TransactionClient) => Promise<T>): Promise<T>;
   };
 };
+
+function normalizeOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function resolvePublicOrigin(): string {
+  return (
+    normalizeOrigin(process.env.APP_BASE_URL ?? "") ??
+    normalizeOrigin(process.env.NEXTAUTH_URL ?? "") ??
+    DEFAULT_PUBLIC_ORIGIN
+  );
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -102,6 +124,11 @@ export function createPromptLinkHandler(deps: PromptLinkHandlerDeps) {
     }
 
     const { tokenId } = await params;
+    const limit = deps.rateLimit(`prompt-link:${session.user.id}:${tokenId}`);
+    if (!limit.ok) {
+      return tooManyRequestsResponse(limit.retryAfterMs);
+    }
+
     const token = await deps.findToken(tokenId);
     if (!token || token.userId !== session.user.id || token.revokedAt) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -144,7 +171,7 @@ export function createPromptLinkHandler(deps: PromptLinkHandlerDeps) {
     });
 
     return NextResponse.json({
-      url: new URL(`/p/${rawToken}`, request.url).toString(),
+      url: new URL(`/p/${rawToken}`, deps.publicOrigin).toString(),
       expiresAt: expiresAt.toISOString(),
     });
   };
@@ -163,6 +190,14 @@ const defaultDeps: PromptLinkHandlerDeps = {
     return `bb_ec_${randomBytes(16).toString("base64url")}`;
   },
   createPromptLinkToken: createAgentPromptLinkToken,
+  publicOrigin: resolvePublicOrigin(),
+  rateLimit(key) {
+    return rateLimit({
+      key,
+      limit: PROMPT_LINK_LIMIT,
+      windowMs: PROMPT_LINK_WINDOW_MS,
+    });
+  },
   now() {
     return new Date();
   },
