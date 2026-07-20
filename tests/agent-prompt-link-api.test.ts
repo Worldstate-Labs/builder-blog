@@ -1,21 +1,89 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AGENT_PROMPT_LINK_PRIVACY_HEADERS,
   AGENT_PROMPT_LINK_TTL_MS,
   hashAgentPromptLinkToken,
+  parseAgentPromptLinkOptions,
+  type AgentPromptRenderOptions,
+  type ExposedPromptJob,
 } from "../src/lib/agent-prompt-links";
 import type { PromptLinkHandlerDeps } from "../src/app/api/settings/tokens/[tokenId]/prompt-links/route";
+import type { NormalizedAgentPromptRenderOptions } from "../src/lib/agent-prompt-renderer";
 
 const ROUTE_MODULE_PATH = "../src/app/api/settings/tokens/[tokenId]/prompt-links/route";
+const READ_ROUTE_MODULE_PATH = "../src/app/p/[token]/route";
+const INVALID_PROMPT_LINK_MESSAGE =
+  "This FollowBrief prompt link is invalid or expired. Return to FollowBrief and copy a new prompt.";
 
 async function loadRouteModule() {
   process.env.DATABASE_URL ??= "postgres://followbrief:followbrief@127.0.0.1:5432/followbrief";
   return import(ROUTE_MODULE_PATH);
 }
 
+async function loadReadRouteModule() {
+  process.env.DATABASE_URL ??= "postgres://followbrief:followbrief@127.0.0.1:5432/followbrief";
+  return import(READ_ROUTE_MODULE_PATH);
+}
+
 type HandlerDeps = PromptLinkHandlerDeps;
 type ParseJob = Parameters<HandlerDeps["parseOptions"]>[0];
 type ParseInput = Parameters<HandlerDeps["parseOptions"]>[1];
+type PromptLinkReadRecord = {
+  job: string;
+  options: unknown;
+  expiresAt: Date;
+  exchangeCode:
+    | {
+        code: string;
+        usedAt: Date | null;
+        expiresAt: Date;
+        agentToken:
+          | {
+              revokedAt: Date | null;
+              user: {
+                email: string | null;
+                id: string;
+              };
+            }
+          | null;
+      }
+    | null;
+};
+type PromptLinkReadDeps = {
+  hashToken(token: string): string;
+  findPromptLinkByHash(hash: string): Promise<PromptLinkReadRecord | null>;
+  parseOptions(job: ExposedPromptJob, input: unknown): AgentPromptRenderOptions;
+  renderPrompt(input: {
+    origin: string;
+    job: ExposedPromptJob;
+    options: NormalizedAgentPromptRenderOptions;
+    exchange: {
+      code: string;
+      accountEmail: string;
+      accountUserId: string;
+    };
+  }): Promise<string>;
+  now(): Date;
+};
+type PromptLinkReadHarness = {
+  observed: {
+    hashCalls: string[];
+    findCalls: string[];
+    parseCalls: Array<{ job: ExposedPromptJob; input: unknown }>;
+    renderCalls: Array<{
+      origin: string;
+      job: ExposedPromptJob;
+      options: NormalizedAgentPromptRenderOptions;
+      exchange: {
+        code: string;
+        accountEmail: string;
+        accountUserId: string;
+      };
+    }>;
+  };
+};
+type PromptLinkReadTestDeps = PromptLinkReadDeps & PromptLinkReadHarness;
 type TransactionHarness = {
   prisma: HandlerDeps["prisma"];
   committed: {
@@ -41,6 +109,14 @@ function makeRequest(body: BodyInit, url = "https://followbrief.example/api/sett
     headers: { "content-type": "application/json" },
     body,
   });
+}
+
+function makePromptLinkRequest(
+  token: string,
+  method: "GET" | "HEAD" = "GET",
+  origin = "https://prompt-host.example",
+) {
+  return new Request(`${origin}/p/${token}`, { method });
 }
 
 function successSession() {
@@ -114,11 +190,103 @@ function createDeps(overrides: Partial<HandlerDeps> = {}): TestDeps {
   } as TestDeps;
 }
 
+function createPromptLinkReadRecord(
+  overrides: Partial<PromptLinkReadRecord> = {},
+): PromptLinkReadRecord {
+  return {
+    job: "library-cron-setup",
+    options: {
+      runtime: "openclaw",
+      frequency: "weekly",
+      force: true,
+      fetchDays: 11,
+      parallelWorkers: 3,
+    },
+    expiresAt: new Date("2026-07-20T12:10:00.000Z"),
+    exchangeCode: {
+      code: "bb_ec_prompt_link_read_exchange",
+      usedAt: null,
+      expiresAt: new Date("2026-07-20T12:10:00.000Z"),
+      agentToken: {
+        revokedAt: null,
+        user: {
+          email: "reader@example.com",
+          id: "user_prompt_reader",
+        },
+      },
+    },
+    ...overrides,
+  };
+}
+
+function createPromptLinkReadDeps(
+  overrides: Partial<PromptLinkReadDeps> = {},
+): PromptLinkReadTestDeps {
+  const record = createPromptLinkReadRecord();
+  const observed: PromptLinkReadHarness["observed"] = {
+    hashCalls: [],
+    findCalls: [],
+    parseCalls: [],
+    renderCalls: [],
+  };
+
+  return {
+    observed,
+    hashToken(token: string) {
+      observed.hashCalls.push(token);
+      return `hashed:${token}`;
+    },
+    async findPromptLinkByHash(hash: string) {
+      observed.findCalls.push(hash);
+      return record;
+    },
+    parseOptions(job: ExposedPromptJob, input: unknown) {
+      observed.parseCalls.push({ job, input });
+      return parseAgentPromptLinkOptions(job, input);
+    },
+    async renderPrompt(input) {
+      observed.renderCalls.push(input);
+      return `# Prompt for ${input.exchange.accountEmail}\nOrigin: ${input.origin}\n`;
+    },
+    now() {
+      return new Date("2026-07-20T12:00:00.000Z");
+    },
+    ...overrides,
+  };
+}
+
+async function assertPromptLinkPrivacyHeaders(response: Response) {
+  for (const [name, value] of Object.entries(AGENT_PROMPT_LINK_PRIVACY_HEADERS)) {
+    assert.equal(response.headers.get(name), value);
+  }
+}
+
+async function assertInvalidPromptLinkResponse(
+  response: Response,
+  method: "GET" | "HEAD",
+) {
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
+  await assertPromptLinkPrivacyHeaders(response);
+  assert.equal(
+    await response.text(),
+    method === "HEAD" ? "" : INVALID_PROMPT_LINK_MESSAGE,
+  );
+}
+
 test("route module exports the POST handler factory and route handler", async () => {
   const routeModule = await loadRouteModule();
 
   assert.equal(typeof routeModule.createPromptLinkHandler, "function");
   assert.equal(typeof routeModule.POST, "function");
+});
+
+test("prompt-link read route exports a handler factory plus GET and HEAD handlers", async () => {
+  const routeModule = await loadReadRouteModule();
+
+  assert.equal(typeof routeModule.createPromptLinkReadHandlers, "function");
+  assert.equal(typeof routeModule.GET, "function");
+  assert.equal(typeof routeModule.HEAD, "function");
 });
 
 test("POST returns 401 when the caller is not authenticated", async () => {
@@ -372,4 +540,228 @@ test("POST bubbles unexpected transaction failures and commits neither record", 
     exchangeCodes: [],
     promptLinks: [],
   });
+});
+
+test("GET rejects malformed prompt-link tokens with a uniform 404 before hashing or lookup", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+  const deps = createPromptLinkReadDeps();
+
+  const response = await createPromptLinkReadHandlers(deps).GET(
+    makePromptLinkRequest("not_a_valid_prompt_link"),
+    { params: Promise.resolve({ token: "not_a_valid_prompt_link" }) },
+  );
+
+  await assertInvalidPromptLinkResponse(response, "GET");
+  assert.deepEqual(deps.observed.hashCalls, []);
+  assert.deepEqual(deps.observed.findCalls, []);
+  assert.deepEqual(deps.observed.parseCalls, []);
+  assert.deepEqual(deps.observed.renderCalls, []);
+});
+
+test("GET returns the same uniform 404 for missing, expired, missing exchange, redeemed exchange, and revoked token records", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+
+  const baseExchange = createPromptLinkReadRecord().exchangeCode!;
+  const revokedAgentToken = baseExchange.agentToken!;
+  const cases: Array<PromptLinkReadRecord | null> = [
+    null,
+    createPromptLinkReadRecord({
+      expiresAt: new Date("2026-07-20T11:59:59.000Z"),
+    }),
+    createPromptLinkReadRecord({ exchangeCode: null }),
+    createPromptLinkReadRecord({
+      exchangeCode: {
+        ...baseExchange,
+        usedAt: new Date("2026-07-20T12:01:00.000Z"),
+      },
+    }),
+    createPromptLinkReadRecord({
+      exchangeCode: {
+        ...baseExchange,
+        expiresAt: new Date("2026-07-20T11:59:59.000Z"),
+      },
+    }),
+    createPromptLinkReadRecord({
+      exchangeCode: {
+        ...baseExchange,
+        agentToken: {
+          ...revokedAgentToken,
+          revokedAt: new Date("2026-07-20T12:01:00.000Z"),
+        },
+      },
+    }),
+  ];
+
+  for (const record of cases) {
+    const deps = createPromptLinkReadDeps();
+    deps.findPromptLinkByHash = async (hash: string) => {
+      deps.observed.findCalls.push(hash);
+      return record;
+    };
+
+    const response = await createPromptLinkReadHandlers(deps).GET(
+      makePromptLinkRequest("fbp_valid_prompt_link_token_123456"),
+      { params: Promise.resolve({ token: "fbp_valid_prompt_link_token_123456" }) },
+    );
+
+    await assertInvalidPromptLinkResponse(response, "GET");
+    assert.equal(deps.observed.hashCalls.length, 1);
+    assert.equal(deps.observed.findCalls.length, 1);
+    assert.deepEqual(deps.observed.renderCalls, []);
+  }
+});
+
+test("GET revalidates persisted job and options through the parser and returns the same 404 for malformed stored data", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+
+  const invalidPersistedCases = [
+    createPromptLinkReadRecord({ job: "not-an-exposed-job" }),
+    createPromptLinkReadRecord({
+      options: { runtime: "gpt5" },
+    }),
+  ];
+
+  for (const record of invalidPersistedCases) {
+    const deps = createPromptLinkReadDeps();
+    deps.findPromptLinkByHash = async (hash: string) => {
+      deps.observed.findCalls.push(hash);
+      return record;
+    };
+
+    const response = await createPromptLinkReadHandlers(deps).GET(
+      makePromptLinkRequest("fbp_valid_prompt_link_token_123456"),
+      { params: Promise.resolve({ token: "fbp_valid_prompt_link_token_123456" }) },
+    );
+
+    await assertInvalidPromptLinkResponse(response, "GET");
+    assert.equal(deps.observed.parseCalls.length, 1);
+    assert.deepEqual(deps.observed.renderCalls, []);
+  }
+});
+
+test("GET returns rendered markdown directly, keeps the link reusable, and passes validated exchange plus trusted origin to the renderer", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+  const deps = createPromptLinkReadDeps();
+
+  const getOnce = () =>
+    createPromptLinkReadHandlers(deps).GET(
+      makePromptLinkRequest(
+        "fbp_valid_prompt_link_token_123456",
+        "GET",
+        "https://prompt-host.example",
+      ),
+      { params: Promise.resolve({ token: "fbp_valid_prompt_link_token_123456" }) },
+    );
+
+  const first = await getOnce();
+  const second = await getOnce();
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(first.headers.get("content-type"), "text/markdown; charset=utf-8");
+  assert.equal(first.headers.get("location"), null);
+  await assertPromptLinkPrivacyHeaders(first);
+  await assertPromptLinkPrivacyHeaders(second);
+  assert.equal(
+    await first.text(),
+    "# Prompt for reader@example.com\nOrigin: https://prompt-host.example\n",
+  );
+  assert.equal(
+    await second.text(),
+    "# Prompt for reader@example.com\nOrigin: https://prompt-host.example\n",
+  );
+
+  assert.deepEqual(deps.observed.parseCalls, [
+    {
+      job: "library-cron-setup",
+      input: {
+        runtime: "openclaw",
+        frequency: "weekly",
+        force: true,
+        fetchDays: 11,
+        parallelWorkers: 3,
+      },
+    },
+    {
+      job: "library-cron-setup",
+      input: {
+        runtime: "openclaw",
+        frequency: "weekly",
+        force: true,
+        fetchDays: 11,
+        parallelWorkers: 3,
+      },
+    },
+  ]);
+  assert.deepEqual(deps.observed.renderCalls, [
+    {
+      origin: "https://prompt-host.example",
+      job: "library-cron-setup",
+      options: {
+        runtime: "openclaw",
+        frequency: "weekly",
+        force: true,
+        fetchDays: 11,
+        parallelWorkers: 3,
+        fetchLimit: 3,
+      },
+      exchange: {
+        code: "bb_ec_prompt_link_read_exchange",
+        accountEmail: "reader@example.com",
+        accountUserId: "user_prompt_reader",
+      },
+    },
+    {
+      origin: "https://prompt-host.example",
+      job: "library-cron-setup",
+      options: {
+        runtime: "openclaw",
+        frequency: "weekly",
+        force: true,
+        fetchDays: 11,
+        parallelWorkers: 3,
+        fetchLimit: 3,
+      },
+      exchange: {
+        code: "bb_ec_prompt_link_read_exchange",
+        accountEmail: "reader@example.com",
+        accountUserId: "user_prompt_reader",
+      },
+    },
+  ]);
+});
+
+test("HEAD returns the same validation and privacy headers with an empty body and skips rendering", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+  const deps = createPromptLinkReadDeps();
+
+  const response = await createPromptLinkReadHandlers(deps).HEAD(
+    makePromptLinkRequest("fbp_valid_prompt_link_token_123456", "HEAD"),
+    { params: Promise.resolve({ token: "fbp_valid_prompt_link_token_123456" }) },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "text/markdown; charset=utf-8");
+  await assertPromptLinkPrivacyHeaders(response);
+  assert.equal(await response.text(), "");
+  assert.equal(deps.observed.parseCalls.length, 1);
+  assert.deepEqual(deps.observed.renderCalls, []);
+});
+
+test("HEAD returns the same uniform invalid response metadata without rendering", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+  const deps = createPromptLinkReadDeps();
+  deps.findPromptLinkByHash = async (hash: string) => {
+    deps.observed.findCalls.push(hash);
+    return null;
+  };
+
+  const response = await createPromptLinkReadHandlers(deps).HEAD(
+    makePromptLinkRequest("fbp_valid_prompt_link_token_123456", "HEAD"),
+    { params: Promise.resolve({ token: "fbp_valid_prompt_link_token_123456" }) },
+  );
+
+  await assertInvalidPromptLinkResponse(response, "HEAD");
+  assert.equal(deps.observed.parseCalls.length, 0);
+  assert.deepEqual(deps.observed.renderCalls, []);
 });
