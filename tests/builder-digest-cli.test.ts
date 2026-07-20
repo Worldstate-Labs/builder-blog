@@ -2840,7 +2840,7 @@ test("long-media availability probes cap their timeout to the remaining shard bu
       },
     });
 
-    const probes = commands.filter(({ args }) => args[0] === "--version");
+    const probes = commands.filter(({ args }) => args[0] === "--version" || args[0] === "-version");
     assert.deepEqual(
       probes.map(({ command, timeoutMs }) => [command, timeoutMs]),
       [
@@ -2852,6 +2852,94 @@ test("long-media availability probes cap their timeout to the remaining shard bu
       ],
     );
     assert.deepEqual(budgetMs, []);
+  } finally {
+    await execFileAsync("rm", ["-rf", dir]);
+  }
+});
+
+test("extract-long-media probes ffmpeg with -version so local ASR continues when --version fails", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?ffmpeg-probe-version-flag=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-ffmpeg-probe-"));
+  const successCommands: string[] = [];
+  const successAttempts: Array<{ method: string; status: string; reason: string }> = [];
+  const missingAttempts: Array<{ method: string; status: string; reason: string }> = [];
+
+  try {
+    const success = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
+      attempts: successAttempts,
+      longToolTimeoutMsResolver: () => 25_000,
+      commandRunner: async (command: string, args: string[]) => {
+        successCommands.push(`${command} ${args.join(" ")}`.trim());
+        if (command === "yt-dlp" && args[0] === "--version") {
+          return { ok: true, code: 0, stdout: "yt-dlp 2026.01.01\n", stderr: "", timedOut: false };
+        }
+        if (command === "ffmpeg" && args[0] === "--version") {
+          return { ok: false, code: 1, stdout: "", stderr: "Unrecognized option '-version-style-test'.", timedOut: false };
+        }
+        if (command === "ffmpeg" && args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "ffmpeg version n7.0\n", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp") {
+          const templateIndex = args.indexOf("-o");
+          const template = templateIndex >= 0 ? args[templateIndex + 1] : join(dir, "audio.%(ext)s");
+          await writeFile(template.replace("%(ext)s", "mp3"), "audio", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command === "ffmpeg" && args[0] === "-y") {
+          await writeFile(args[args.length - 1], "wav", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command === "python3" && args[0] === "--version") {
+          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+        }
+        if (command === "python" && args[0] === "--version") {
+          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+        }
+        if (command === "whisper" && args[0] === "--version") {
+          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+        }
+        throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(success.text, "");
+    assert.equal(success.reason, "python_missing");
+    assert.deepEqual(
+      successAttempts.map((attempt) => [attempt.method, attempt.status, attempt.reason]),
+      [["local-asr", "skipped", "python_missing"]],
+    );
+    assert.deepEqual(successCommands.slice(0, 5), [
+      "yt-dlp --version",
+      "ffmpeg -version",
+      successCommands[2],
+      successCommands[3],
+      "python3 --version",
+    ]);
+    assert.equal(successCommands[2].startsWith("yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K -o "), true);
+    assert.equal(successCommands[3].startsWith("ffmpeg -y -i "), true);
+    assert.equal(successCommands.includes("ffmpeg --version"), false);
+    assert.equal(successCommands.includes("whisper --version"), true);
+
+    const missing = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
+      attempts: missingAttempts,
+      longToolTimeoutMsResolver: () => 25_000,
+      commandRunner: async (command: string, args: string[]) => {
+        if (command === "yt-dlp" && args[0] === "--version") {
+          return { ok: true, code: 0, stdout: "yt-dlp 2026.01.01\n", stderr: "", timedOut: false };
+        }
+        if (command === "ffmpeg" && args[0] === "-version") {
+          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+        }
+        throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(missing.text, "");
+    assert.equal(missing.reason, undefined);
+    assert.deepEqual(
+      missingAttempts.map((attempt) => [attempt.method, attempt.status, attempt.reason]),
+      [["local-asr", "skipped", "ffmpeg_missing"]],
+    );
   } finally {
     await execFileAsync("rm", ["-rf", dir]);
   }
@@ -2871,7 +2959,7 @@ test("extract-long-media helper stops before ffmpeg once budget expires after do
       commandRunner: async (command: string, args: string[], options: { timeoutMs: number }) => {
         commands.push(`${command} ${args.join(" ")}`.trim());
         timeouts.push(options.timeoutMs);
-        if (args[0] === "--version") {
+        if (args[0] === "--version" || args[0] === "-version") {
           return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
         }
         if (command === "yt-dlp") {
@@ -2891,7 +2979,7 @@ test("extract-long-media helper stops before ffmpeg once budget expires after do
     );
     assert.deepEqual(commands.slice(0, 3), [
       "yt-dlp --version",
-      "ffmpeg --version",
+      "ffmpeg -version",
       commands[2],
     ]);
     assert.deepEqual(timeouts, [10_000, 8_000, 6_000]);

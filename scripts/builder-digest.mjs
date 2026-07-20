@@ -5203,7 +5203,7 @@ export function runToolForTest(command, args = [], options = {}) {
   return runTool(command, args, options);
 }
 
-async function commandExists(command, commandRunner = runTool, { timeoutMsResolver = null } = {}) {
+async function commandExists(command, commandRunner = runTool, { timeoutMsResolver = null, versionArgs = ["--version"] } = {}) {
   const resolvedTimeoutValue = typeof timeoutMsResolver === "function"
     ? Number(timeoutMsResolver())
     : Number.NaN;
@@ -5211,7 +5211,7 @@ async function commandExists(command, commandRunner = runTool, { timeoutMsResolv
   const timeoutMs = Number.isFinite(resolvedTimeoutValue)
     ? Math.min(10_000, Math.max(1, Math.floor(resolvedTimeoutValue)))
     : 10_000;
-  const result = await commandRunner(command, ["--version"], { timeoutMs });
+  const result = await commandRunner(command, versionArgs, { timeoutMs });
   return result.ok || (typeof result.stdout === "string" && result.stdout.trim().length > 0);
 }
 
@@ -6283,7 +6283,7 @@ async function fetchYouTubeLocalAsr(videoUrl, {
     attempts.push({ method: "local-asr", status: "skipped", reason: "yt-dlp_missing" });
     return { text: "" };
   }
-  const ffmpegAvailable = await commandExists("ffmpeg", commandRunner, probeOptions);
+  const ffmpegAvailable = await commandExists("ffmpeg", commandRunner, { ...probeOptions, versionArgs: ["-version"] });
   if (ffmpegAvailable == null) {
     attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
     return { text: "", reason: "extraction_exceeds_shard_timeout" };
