@@ -1001,6 +1001,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
+  assert.match(skillPromptActions, /\/api\/settings\/tokens\/\$\{tokenId\}\/prompt-links/);
+  assert.match(skillPromptActions, /buildPromptLinkBody/);
+  assert.match(skillPromptActions, /body:\s*JSON\.stringify\(body\)/);
+  assert.match(skillPromptActions, /Open \$\{url\} and follow the instructions\./);
+  assert.doesNotMatch(skillPromptActions, /exchange-code/);
+  assert.doesNotMatch(skillPromptActions, /URLSearchParams/);
+  assert.doesNotMatch(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
+  assert.doesNotMatch(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
   assert.match(skillPromptActions, /Parallel tasks/);
   assert.match(skillPromptActions, /const DEFAULT_PARALLEL_WORKERS = 10;/);
   assert.match(skillPromptActions, /const MAX_PARALLEL_WORKERS = 20;/);

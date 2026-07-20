@@ -597,8 +597,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
-  assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
-  assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
+  assert.match(skillPromptActions, /\/api\/settings\/tokens\/\$\{tokenId\}\/prompt-links/);
+  assert.match(skillPromptActions, /JSON\.stringify\(body\)/);
+  assert.match(skillPromptActions, /buildPromptLinkBody/);
+  assert.match(skillPromptActions, /body:\s*JSON\.stringify/);
+  assert.match(skillPromptActions, /responseBody\?\.url/);
+  assert.match(skillPromptActions, /Open \$\{url\} and follow the instructions\./);
+  assert.doesNotMatch(skillPromptActions, /exchange-code/);
+  assert.doesNotMatch(skillPromptActions, /URLSearchParams/);
+  assert.doesNotMatch(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
+  assert.doesNotMatch(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
   // The single job dialog includes one-time as the first frequency option;
   // one-time and recurring selections both pick runtime; recurring selections
   // also pass cadence.
@@ -611,8 +619,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /pickedFreq === "once"/);
   assert.match(skillPromptActions, /target: "once"/);
   assert.match(skillPromptActions, /runtime: pickedRuntime/);
-  assert.match(skillPromptActions, /params\.set\("runtime"/);
-  assert.match(skillPromptActions, /params\.set\("freq"/);
+  assert.match(skillPromptActions, /runtime:\s*extras\.cron\?\.runtime \?\? extras\.runtime/);
+  assert.match(skillPromptActions, /frequency:\s*extras\.cron\?\.freq/);
   assert.match(skillPromptActions, /Frequency/);
   // The override toggle adds ?force=1 only for one-time prompts; cron schedules
   // keep normal incremental boundaries.
@@ -630,12 +638,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Reuse past AI Brief posts|Reuse posts from AI Briefs|Include posts already used in AI Briefs|Include posts already used in AI Brief archives|Include posts already used in AI Briefs/);
   assert.doesNotMatch(skillPromptActions, /Include already included posts/);
   assert.match(skillPromptActions, /overrideFetched/);
-  assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
+  assert.match(skillPromptActions, /force:\s*Boolean\(extras\.cron\?\.overrideFetched \?\? extras\.force\)/);
   // One-time runs now share the schedule dialog instead of a separate button/dialog.
   assert.doesNotMatch(skillPromptActions, /<OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
   assert.match(skillPromptActions, /continueOnceCopy\([\s\S]*selection\.runtime[\s\S]*parallelWorkers/);
-  assert.match(skillPromptActions, /\(context === "library" \|\| context === "digest"\)[\s\S]*params\.set\("parallel", String\(extras\.cron\?\.parallelWorkers \?\? extras\.parallelWorkers\)\)/);
+  assert.match(skillPromptActions, /options\.parallelWorkers = extras\.cron\?\.parallelWorkers \?\? extras\.parallelWorkers/);
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
@@ -657,7 +665,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Lookback window \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Max post age \(days\)|Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
-  assert.match(skillPromptActions, /params\.set\("days", String\(extras\.fetchDays\)\)/);
+  assert.match(skillPromptActions, /options\.fetchDays = extras\.fetchDays/);
   assert.match(skillPromptActions, /Number\.isInteger\(numeric\)/);
   assert.match(skillPromptActions, /numeric < 1 \|\| numeric > MAX_PROMPT_WINDOW_DAYS/);
   assert.doesNotMatch(skillPromptActions, /Math\.min\(MAX_PROMPT_WINDOW_DAYS, Math\.max\(1/);

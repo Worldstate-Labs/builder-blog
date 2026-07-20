@@ -20,6 +20,7 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { useHydrated } from "@/components/ThemeToggle";
 import { CLOUD_SOURCE_SUBMISSION_LIMIT } from "@/lib/cloud-source-contracts";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
+import type { AgentPromptRenderOptions, ExposedPromptJob } from "@/lib/agent-prompt-links";
 import { sourceLabelForType } from "@/lib/source-display";
 
 type SkillPromptContext = "library" | "digest";
@@ -83,6 +84,10 @@ type CopyExtras = {
   force: boolean;
   fetchDays: number;
   parallelWorkers: number;
+};
+type PromptLinkBody = {
+  job: ExposedPromptJob;
+  options: AgentPromptRenderOptions;
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
 export type ActiveScheduleInfo = {
@@ -347,10 +352,10 @@ const PROMPT_CONFIG = {
     title: string;
     onceLabel: string;
     cronLabel: string;
-    onceJob: string;
-    cronJob: string;
-    stopJob?: string;
-    stopLabel?: string;
+    onceJob: ExposedPromptJob;
+    cronJob: ExposedPromptJob;
+    stopJob: ExposedPromptJob;
+    stopLabel: string;
   }
 >;
 
@@ -420,14 +425,38 @@ export function SkillPromptActions({
   // render. Holds the cron config (cron flow) and/or the once force toggle.
   const pendingExtrasRef = useRef<CopyExtras | null>(null);
 
-  async function fetchExchangeCode(tokenId: string): Promise<string | null> {
+  function buildPromptLinkBody(
+    target: Exclude<CopyTarget, "stop">,
+    extras: CopyExtras,
+  ): PromptLinkBody | null {
+    const job = (target === "once" ? config.onceJob : config.cronJob) as ExposedPromptJob;
+    const options: AgentPromptRenderOptions = {
+      runtime: extras.cron?.runtime ?? extras.runtime,
+      frequency: extras.cron?.freq,
+      force: Boolean(extras.cron?.overrideFetched ?? extras.force),
+    };
+    if (context === "library") {
+      options.fetchDays = extras.fetchDays;
+    }
+    if (context === "library" || context === "digest") {
+      options.parallelWorkers = extras.cron?.parallelWorkers ?? extras.parallelWorkers;
+    }
+    return { job, options };
+  }
+
+  async function createPromptLink(
+    tokenId: string,
+    body: PromptLinkBody,
+  ): Promise<string | null> {
     try {
-      const response = await fetch(`/api/settings/tokens/${tokenId}/exchange-code`, {
+      const response = await fetch(`/api/settings/tokens/${tokenId}/prompt-links`, {
         method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
       });
       if (!response.ok) return null;
-      const body = await response.json().catch(() => null);
-      return body?.code ?? null;
+      const responseBody = await response.json().catch(() => null);
+      return typeof responseBody?.url === "string" ? responseBody.url : null;
     } catch {
       return null;
     }
@@ -435,35 +464,13 @@ export function SkillPromptActions({
 
   function buildCommand(
     target: CopyTarget,
-    exchangeCode: string,
+    url: string,
     extras: CopyExtras,
   ): string {
-    const origin = window.location.origin;
-    const job =
-      target === "once"
-        ? config.onceJob
-        : target === "cron"
-          ? config.cronJob
-          : stopJob;
-    if (!job) return "";
-    const params = new URLSearchParams({ ec: exchangeCode });
-    if (target === "once" || target === "cron") {
-      params.set("runtime", extras.cron?.runtime ?? extras.runtime);
-    }
-    if (extras.cron) {
-      params.set("freq", extras.cron.freq);
-    }
-    if (extras.cron?.overrideFetched || extras.force) {
-      params.set("force", "1");
-    }
-    if (context === "library" && (target === "once" || target === "cron")) {
-      params.set("days", String(extras.fetchDays));
-    }
-    if ((context === "library" || context === "digest") && (target === "once" || target === "cron")) {
-      params.set("parallel", String(extras.cron?.parallelWorkers ?? extras.parallelWorkers));
-    }
-    const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
-    return `Read ${promptUrl} and follow the instructions.`;
+    if (target === "stop") return "";
+    const body = buildPromptLinkBody(target, extras);
+    if (!body) return "";
+    return `Open ${url} and follow the instructions.`;
   }
 
   function markPromptCopied(target: CopyTarget) {
@@ -493,9 +500,14 @@ export function SkillPromptActions({
     tokenId: string,
     extras: CopyExtras,
   ) {
-    const code = await fetchExchangeCode(tokenId);
-    if (!code) throw new Error("Could not prepare a secure setup code");
-    const command = buildCommand(target, code, extras);
+    if (target === "stop") {
+      throw new Error("Could not prepare a Local Agent prompt");
+    }
+    const body = buildPromptLinkBody(target, extras);
+    if (!body) throw new Error("Could not prepare a Local Agent prompt");
+    const url = await createPromptLink(tokenId, body);
+    if (!url) throw new Error("Could not prepare a secure prompt link");
+    const command = buildCommand(target, url, extras);
     if (!command) throw new Error("Could not prepare a Local Agent prompt");
     return command;
   }

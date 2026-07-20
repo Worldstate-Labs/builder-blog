@@ -6,8 +6,17 @@ import { Copy } from "lucide-react";
 type ActiveToken = { id: string; name: string | null };
 const CLOUD_WORKER_HOST_JOB = "cloud-library-cron-setup";
 const CLOUD_WORKER_STOP_JOB = "cloud-library-cron-stop";
+type PromptJob = typeof CLOUD_WORKER_HOST_JOB | typeof CLOUD_WORKER_STOP_JOB;
 type Runtime = "claude" | "codex" | "hermes" | "openclaw";
 type PromptAction = "host" | "stop";
+type PromptLinkBody = {
+  job: PromptJob;
+  options: {
+    runtime: Runtime;
+    fetchDays?: number;
+    parallelWorkers?: number;
+  };
+};
 
 const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "codex", label: "Codex" },
@@ -33,12 +42,12 @@ async function copyText(text: string): Promise<boolean> {
   return false;
 }
 
-function normalizeNumberParam(value: string, fallback: number, min: number, max: number): string | null {
+function normalizeNumberParam(value: string, fallback: number, min: number, max: number): number | null {
   const trimmed = value.trim();
   const numeric = trimmed === "" ? fallback : Number(trimmed);
   if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) return null;
   if (numeric < min || numeric > max) return null;
-  return String(numeric);
+  return numeric;
 }
 
 function NumberField({
@@ -88,39 +97,42 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
       setStatus({ kind: "error", text: "Create an agent access key first (Access keys in Settings)." });
       return;
     }
-    const params = new URLSearchParams({ runtime });
     const job = action === "host" ? CLOUD_WORKER_HOST_JOB : CLOUD_WORKER_STOP_JOB;
+    const options: PromptLinkBody["options"] = { runtime };
     if (action === "host") {
-      const daysParam = normalizeNumberParam(fetchDays, FETCH_DAYS_DEFAULT, 1, FETCH_DAYS_MAX);
-      const parallelParam = normalizeNumberParam(
+      const fetchDaysValue = normalizeNumberParam(fetchDays, FETCH_DAYS_DEFAULT, 1, FETCH_DAYS_MAX);
+      const parallelWorkersValue = normalizeNumberParam(
         parallelWorkers,
         PARALLEL_WORKERS_DEFAULT,
         1,
         PARALLEL_WORKERS_MAX,
       );
-      if (!daysParam || !parallelParam) {
+      if (!fetchDaysValue || !parallelWorkersValue) {
         setStatus({
           kind: "error",
           text: "Use whole numbers in range: days 1-90, workers 1-20.",
         });
         return;
       }
-      params.set("days", daysParam);
-      params.set("parallel", parallelParam);
+      options.fetchDays = fetchDaysValue;
+      options.parallelWorkers = parallelWorkersValue;
     }
     setBusyAction(action);
     setStatus(null);
     setManual(null);
     try {
-      const res = await fetch(`/api/settings/tokens/${tokenId}/exchange-code`, { method: "POST" });
+      const res = await fetch(`/api/settings/tokens/${tokenId}/prompt-links`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ job, options } satisfies PromptLinkBody),
+      });
       const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.code) {
-        setStatus({ kind: "error", text: "Could not prepare a secure setup code. Try again." });
+      const url = typeof body?.url === "string" ? body.url : null;
+      if (!res.ok || !url) {
+        setStatus({ kind: "error", text: "Could not prepare a secure prompt link. Try again." });
         return;
       }
-      params.set("ec", body.code);
-      const url = `${window.location.origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
-      const command = `Read ${url} and follow the instructions.`;
+      const command = `Open ${url} and follow the instructions.`;
       if (await copyText(command)) {
         setStatus({ kind: "info", text: "Copied. Valid for 10 minutes. Send it to your local agent." });
       } else {
