@@ -418,6 +418,20 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.doesNotMatch(runner, /BUILDER_BLOG_CLOUD_HOST_CHILD/);
 });
 
+test("cloud library runner emits bounded summaries instead of full fetch and assignment artifacts", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(runner, /print_compact_json_artifact_summary\(\)/);
+  assert.match(runner, /print_compact_json_artifact_summary "fetch_sources" "\$_result_file"/);
+  assert.match(runner, /print_compact_json_artifact_summary "expand_discovery" "\$_result_file"/);
+  assert.match(
+    runner,
+    /phase=assign_fetch_tasks status=%s round=%s assignedWorkers=%s pendingWork=%s artifact=%s\\n/,
+  );
+  assert.doesNotMatch(runner, /cat "\$_result_file"/);
+  assert.doesNotMatch(runner, /cat "\$_adfw_out"/);
+});
+
 test("cloud-library-cron fixes the worker window deadline after planning so the initial 4h shard gets the full buffer", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("timeout_seconds_for_job() {");

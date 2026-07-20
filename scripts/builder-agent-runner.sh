@@ -3132,6 +3132,50 @@ NODE
     --cloud-run-id "$_scto_cloud_run_id"
 }
 
+print_compact_json_artifact_summary() {
+  _pcjas_phase="$1"
+  _pcjas_file="$2"
+  node - "$_pcjas_phase" "$_pcjas_file" <<'NODE'
+const fs = require("fs");
+const phase = String(process.argv[2] || "unknown").trim() || "unknown";
+const file = String(process.argv[3] || "");
+const MAX_BYTES = 1900;
+function clampLine(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (Buffer.byteLength(text, "utf8") <= MAX_BYTES) return text;
+  let out = "";
+  for (const char of text) {
+    if (Buffer.byteLength(`${out}${char}...`, "utf8") > MAX_BYTES) break;
+    out += char;
+  }
+  return `${out}...`;
+};
+function summaryLine(status, counts) {
+  const parts = [`phase=${phase}`, `status=${status}`];
+  for (const [key, value] of counts) parts.push(`${key}=${value}`);
+  parts.push(`artifact=${file || "-"}`);
+  return clampLine(parts.join(" "));
+};
+try {
+  const payload = JSON.parse(fs.readFileSync(file, "utf8"));
+  const tasks = Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [];
+  let postTasks = 0;
+  let discoveryTasks = 0;
+  for (const task of tasks) {
+    if (task?.agentWorkType === "candidate_discovery_fallback") discoveryTasks += 1;
+    else postTasks += 1;
+  }
+  const cloudSourceTasks = Array.isArray(payload.cloudSourceTasks) ? payload.cloudSourceTasks.length : 0;
+  const taskOutcomes = Array.isArray(payload.taskOutcomes) ? payload.taskOutcomes.length : 0;
+  const status = typeof payload?.status === "string" && payload.status.trim() ? payload.status.trim() : "ok";
+  process.stdout.write(`${summaryLine(status, [["postTasks", postTasks], ["discoveryTasks", discoveryTasks], ["cloudSourceTasks", cloudSourceTasks], ["taskOutcomes", taskOutcomes]])}\n`);
+} catch (error) {
+  const status = error && typeof error === "object" && error.code === "ENOENT" ? "missing" : "invalid_json";
+  process.stdout.write(`${summaryLine(status, [])}\n`);
+}
+NODE
+}
+
 cloud_run_id_from_result() {
   _crifr_file="$1"
   node - "$_crifr_file" <<'NODE'
@@ -3760,23 +3804,29 @@ assign_dynamic_fetch_workers() {
     --worker-ids-file "$_adfw_worker_ids_file" \
     --assigned-task-ids-file "$_assigned_fetch_task_ids_file" \
     --active-group-keys-file "$_active_fetch_group_keys_file" > "$_adfw_out"
-  cat "$_adfw_out"
   _adfw_counts="$(node - "$_adfw_out" <<'NODE'
 const fs = require("fs");
+const file = process.argv[2];
 try {
-  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const result = JSON.parse(fs.readFileSync(file, "utf8"));
+  const status = typeof result?.status === "string" && result.status.trim() ? result.status.trim() : "ok";
   const assigned = Array.isArray(result.shards) ? result.shards.length : 0;
   const pending = Number(result.pendingTasks || 0) + Number(result.blockedTasks || 0);
-  console.log(`${assigned} ${pending}`);
-} catch {
-  console.log("0 0");
+  console.log(`${status} ${assigned} ${pending}`);
+} catch (error) {
+  const status = error && typeof error === "object" && error.code === "ENOENT" ? "missing" : "invalid_json";
+  console.log(`${status} 0 0`);
 }
 NODE
 )"
-  _adfw_assigned="${_adfw_counts%% *}"
-  _adfw_pending="${_adfw_counts#* }"
+  set -- $_adfw_counts
+  _adfw_status="${1:-invalid_json}"
+  _adfw_assigned="${2:-0}"
+  _adfw_pending="${3:-0}"
   case "$_adfw_assigned" in ''|*[!0-9]*) _adfw_assigned=0 ;; esac
   case "$_adfw_pending" in ''|*[!0-9]*) _adfw_pending=0 ;; esac
+  printf 'phase=assign_fetch_tasks status=%s round=%s assignedWorkers=%s pendingWork=%s artifact=%s\n' \
+    "$_adfw_status" "$_dynamic_assignment_count" "$_adfw_assigned" "$_adfw_pending" "$_adfw_out"
   if [ "$_adfw_pending" -eq 0 ]; then
     _dynamic_queue_drained=1
   else
@@ -4240,7 +4290,7 @@ run_library_job() {
       --exit-code "$_fetch_code"
     return "$_fetch_code"
   fi
-  cat "$_result_file"
+  print_compact_json_artifact_summary "fetch_sources" "$_result_file"
   if [ "$_sync_command" = "sync-cloud-builders" ]; then
     _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
     if [ -n "$_cloud_run_id" ]; then
@@ -4288,11 +4338,10 @@ run_library_job() {
         --out "$_expanded_result_file" > "$JOB_TMP_DIR/library-expand-discovery.out" 2> "$_expand_stderr"
       _expand_code="$?"
       set -e
-      [ ! -s "$JOB_TMP_DIR/library-expand-discovery.out" ] || cat "$JOB_TMP_DIR/library-expand-discovery.out"
       [ ! -s "$_expand_stderr" ] || cat "$_expand_stderr" >&2
       if [ "$_expand_code" -eq 0 ]; then
         mv "$_expanded_result_file" "$_result_file"
-        cat "$_result_file"
+        print_compact_json_artifact_summary "expand_discovery" "$_result_file"
       else
         echo "Discovery expansion failed; un-expanded discovery entries will be left out of post-task sync." >&2
         _discovery_failed=1

@@ -303,6 +303,104 @@ test("builder sync endpoint durably patches fetch-run outcomes server-side", () 
   assert.doesNotMatch(buildersRoute, /itemResults:\s*\[\]/);
 });
 
+test("compact fetch artifact summary stays one-line, bounded, and leaves the JSON artifact unchanged", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const summary = shellFunction(runner, "print_compact_json_artifact_summary");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-fetch-artifact-summary-"));
+  const artifactFile = join(dir, "library-fetch-result.json");
+  const scriptFile = join(dir, "summary.sh");
+  const secretBody = "body-marker-should-never-print ".repeat(200);
+  const hiddenUrl = "https://private.example.com/posts/hidden";
+  writeFileSync(
+    artifactFile,
+    JSON.stringify({
+      status: "ok",
+      cloudRunId: "cloud_run_123",
+      cloudSourceTasks: [{ cloudSourceTaskId: "cloud-task-1" }],
+      taskOutcomes: [{ fetchTaskId: "task-1", status: "planned" }],
+      fetchTasks: [
+        {
+          id: "task-1",
+          agentWorkType: "fetch_post",
+          body: secretBody,
+          item: { url: hiddenUrl },
+        },
+        {
+          id: "task-2",
+          agentWorkType: "candidate_discovery_fallback",
+          body: secretBody,
+          item: { url: `${hiddenUrl}/discovery` },
+        },
+      ],
+    }),
+    "utf8",
+  );
+  const before = readFileSync(artifactFile);
+  writeFileSync(
+    scriptFile,
+    `set -eu
+${summary}
+print_compact_json_artifact_summary "fetch_sources" "$1"
+`,
+    "utf8",
+  );
+
+  const stdout = execFileSync("sh", [scriptFile, artifactFile], {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  const line = stdout.trimEnd();
+
+  assert.equal(line.split("\n").length, 1);
+  assert.ok(Buffer.byteLength(line, "utf8") < 2048, `summary was ${Buffer.byteLength(line, "utf8")} bytes`);
+  assert.match(line, /phase=fetch_sources/);
+  assert.match(line, /status=ok/);
+  assert.match(line, /postTasks=1/);
+  assert.match(line, /discoveryTasks=1/);
+  assert.match(line, /cloudSourceTasks=1/);
+  assert.match(line, /taskOutcomes=1/);
+  assert.match(line, new RegExp(`artifact=${artifactFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  assert.doesNotMatch(line, /private\.example\.com/);
+  assert.doesNotMatch(line, /body-marker-should-never-print/);
+  assert.deepEqual(readFileSync(artifactFile), before);
+});
+
+test("compact fetch artifact summary reports missing and malformed JSON with bounded one-line statuses", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const summary = shellFunction(runner, "print_compact_json_artifact_summary");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-fetch-artifact-summary-errors-"));
+  const malformedFile = join(dir, "malformed.json");
+  const missingFile = join(dir, "missing.json");
+  const scriptFile = join(dir, "summary-errors.sh");
+  writeFileSync(malformedFile, '{"status":"ok","fetchTasks":[', "utf8");
+  writeFileSync(
+    scriptFile,
+    `set -eu
+${summary}
+print_compact_json_artifact_summary "fetch_sources" "$1"
+print_compact_json_artifact_summary "fetch_sources" "$2"
+`,
+    "utf8",
+  );
+
+  const stdout = execFileSync("sh", [scriptFile, malformedFile, missingFile], {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  const lines = stdout.trimEnd().split("\n");
+
+  assert.equal(lines.length, 2);
+  for (const line of lines) {
+    assert.ok(Buffer.byteLength(line, "utf8") < 2048, `summary was ${Buffer.byteLength(line, "utf8")} bytes`);
+    assert.equal(line.split("\n").length, 1);
+    assert.match(line, /phase=fetch_sources/);
+  }
+  assert.match(lines[0], /status=invalid_json/);
+  assert.match(lines[0], new RegExp(`artifact=${malformedFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  assert.match(lines[1], /status=missing/);
+  assert.match(lines[1], new RegExp(`artifact=${missingFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+});
+
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   const openclawPreflight = shellFunction(runner, "run_openclaw_library_preflight");
