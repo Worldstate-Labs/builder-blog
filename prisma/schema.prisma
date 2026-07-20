@@ -865,15 +865,27 @@ model AgentToken {
 }
 
 model ExchangeCode {
-  id           String     @id @default(cuid())
-  code         String     @unique
-  agentTokenId String
-  expiresAt    DateTime
-  usedAt       DateTime?
-  createdAt    DateTime   @default(now())
-  agentToken   AgentToken @relation(fields: [agentTokenId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  code            String           @unique
+  agentTokenId    String
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime         @default(now())
+  agentToken      AgentToken       @relation(fields: [agentTokenId], references: [id], onDelete: Cascade)
+  agentPromptLink AgentPromptLink?
 
   @@index([agentTokenId])
+}
+
+model AgentPromptLink {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique
+  exchangeCodeId String       @unique
+  job            String
+  options        Json
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  exchangeCode   ExchangeCode @relation(fields: [exchangeCodeId], references: [id], onDelete: Cascade)
 }
 
 /// Admin-editable per-source-type configuration. The code-bound fields
