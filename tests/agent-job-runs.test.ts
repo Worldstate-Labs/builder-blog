@@ -483,8 +483,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /library-fetch-result\.json/);
   assert.match(runner, /shards\/shard-\*\.json/);
   assert.match(runner, /shards\/results\/shard-\*-result\.json/);
-  assert.match(runner, /_fltr_recovery_dir="\$JOB_TMP_DIR\/debug\/recovery"/);
-  assert.match(runner, /_fltr_result_file="\$_fltr_recovery_dir\/library-fetch-result\.json"/);
+  assert.match(runner, /_flir_recovery_dir="\$JOB_TMP_DIR\/debug\/recovery"/);
+  assert.match(runner, /_flir_result_file="\$_flir_recovery_dir\/library-fetch-result\.json"/);
   assert.match(runner, /flush_remaining_library_results\(\)/);
   assert.match(runner, /_frlr_sync_failures="\$\{_sps_failures:-1\}"/);
   assert.doesNotMatch(
@@ -497,6 +497,11 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /completed-checkpoint-synced-task-ids\.txt/);
   assert.match(runner, /merge-task-results[\s\S]*--completed-only/);
   assert.match(runner, /Best-effort syncing \$_scc_count completed library task/);
+  assert.match(runner, /flush_library_interrupted_results\(\)/);
+  assert.match(
+    runner,
+    /finalize_library_timeout_results\(\)[\s\S]*flush_library_interrupted_results "runtime-timeout" "runtime_timeout"/,
+  );
   assert.match(runner, /finalize_library_timeout_results\(\)/);
   assert.match(runner, /runtime_timeout_flush_started/);
   assert.match(runner, /job_run_update running "Runtime timed out; syncing terminal library results\." "runtime_timeout_flush_started"/);
@@ -505,12 +510,18 @@ test("runner supervises cron workers instead of skipping active old instances", 
     runner,
     /tracked_job_signal_cleanup\(\)[\s\S]*terminate_process_tree "\$RUNTIME_PID" TERM 10 \|\| true\s+wait "\$RUNTIME_PID" 2>\/dev\/null \|\| true[\s\S]*cleanup_job_tmp_dir killed/,
   );
+  assert.match(
+    runner,
+    /tracked_job_signal_cleanup\(\)[\s\S]*TRACKED_JOB_FINALIZED=1[\s\S]*trap '' TERM INT[\s\S]*clear_current_file "\$BUILDER_BLOG_CURRENT_FILE" "\$\{BUILDER_BLOG_JOB_RUN_ID:-\}"[\s\S]*library-once\|library-cron\)[\s\S]*flush_library_interrupted_results "runtime-interrupted" "runtime_interrupted"/,
+  );
+  assert.match(runner, /runner_interrupted_flush_finished/);
+  assert.match(runner, /runner_interrupted_flush_failed/);
   assert.match(runner, /job_run_update running "Runtime exceeded timeout and will be terminated\." "timeout_seconds_for_job"/);
   assert.match(runner, /job_run_update running "Runtime timed out; cleanup started\." "timeout_seconds_for_job"/);
   assert.doesNotMatch(runner, /job_run_update timed_out "Runtime exceeded timeout and will be terminated\." "timeout_seconds_for_job"/);
-  assert.match(runner, /mkdir -p "\$_fltr_results_dir"/);
-  assert.doesNotMatch(runner, /\[ -d "\$_fltr_results_dir" \] \|\| return 0/);
-  assert.match(runner, /flush_remaining_library_results "\$_fltr_result_file"/);
+  assert.match(runner, /mkdir -p "\$_flir_results_dir"/);
+  assert.doesNotMatch(runner, /\[ -d "\$_flir_results_dir" \] \|\| return 0/);
+  assert.match(runner, /flush_remaining_library_results "\$_flir_result_file"/);
   assert.match(runner, /"runtime-timeout" "runtime_timeout"/);
   assert.match(runner, /--default-missing-reason \$_frlr_missing_reason/);
   assert.match(runner, /_frlr_sync_command="\$\{SYNC_BUILDERS_COMMAND:-\}"/);

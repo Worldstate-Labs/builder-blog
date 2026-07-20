@@ -143,6 +143,14 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: true,
     notCompleted: true,
   },
+  runtime_interrupted: {
+    category: "runtime",
+    stage: "runtime",
+    userMessage: "Local Agent stopped before this post reached a terminal result",
+    operatorMessage: "The local runtime stopped before this post reached a terminal fetch outcome.",
+    retryable: true,
+    notCompleted: true,
+  },
   runtime_timeout: {
     category: "runtime",
     stage: "runtime",

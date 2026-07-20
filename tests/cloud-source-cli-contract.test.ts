@@ -819,6 +819,243 @@ if sync_cloud_terminal_outcomes "${valid}" cloud_run_1; then exit 25; else code=
   }
 });
 
+test("library interruption helper returns 2 without a fetch plan and does not start sync work", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("flush_library_interrupted_results() {");
+  const end = runner.indexOf("\nfinalize_library_timeout_results() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-interrupted-helper-no-plan-"));
+  try {
+    const logPath = join(dir, "calls.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+CALL_LOG="${logPath}"
+${runner.slice(start, end)}
+sync_completed_checkpoints() { printf 'checkpoint\\n' >> "$CALL_LOG"; }
+flush_remaining_library_results() { printf 'flush\\n' >> "$CALL_LOG"; return 0; }
+JOB_TMP_DIR="${dir}"
+mkdir -p "$JOB_TMP_DIR"
+if flush_library_interrupted_results runtime-interrupted runtime_interrupted; then
+  exit 21
+else
+  code="$?"
+fi
+[ "$code" = "2" ] || exit 22
+[ ! -e "$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt" ] || exit 23
+[ ! -d "$JOB_TMP_DIR/shards/results" ] || exit 24
+[ ! -e "$CALL_LOG" ] || [ ! -s "$CALL_LOG" ]
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("timeout finalization still checkpoint-syncs before the remaining flush and preserves timeout labels", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const helperStart = runner.indexOf("flush_library_interrupted_results() {");
+  const helperEnd = runner.indexOf("\nfinalize_library_timeout_results() {", helperStart);
+  const timeoutStart = runner.indexOf("finalize_library_timeout_results() {");
+  const timeoutEnd = runner.indexOf("\nrun_with_job_tracking() {", timeoutStart);
+  assert.notEqual(helperStart, -1);
+  assert.notEqual(helperEnd, -1);
+  assert.notEqual(timeoutStart, -1);
+  assert.notEqual(timeoutEnd, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-timeout-finalizer-"));
+  try {
+    const logPath = join(dir, "calls.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      join(dir, "library-fetch-result.json"),
+      JSON.stringify({ status: "ok", fetchTasks: [{ id: "task-a" }] }),
+      "utf8",
+    );
+    await writeFile(
+      checkPath,
+      `set -eu
+CALL_LOG="${logPath}"
+${runner.slice(helperStart, helperEnd)}
+${runner.slice(timeoutStart, timeoutEnd)}
+job_run_update() { printf 'update|%s|%s|%s|%s\\n' "$1" "$2" "$3" "\${*:4}" >> "$CALL_LOG"; }
+sync_completed_checkpoints() { printf 'checkpoint|%s|%s|%s\\n' "$1" "$2" "$3" >> "$CALL_LOG"; }
+flush_remaining_library_results() { printf 'flush|%s|%s|%s|%s|%s|%s\\n' "$1" "$2" "$3" "$4" "$5" "$6" >> "$CALL_LOG"; return 0; }
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+JOB_NAME=library-cron
+JOB_TMP_DIR="${dir}"
+mkdir -p "$JOB_TMP_DIR/shards/results"
+finalize_library_timeout_results
+[ -e "$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt" ] || exit 21
+started_line="$(grep -n 'runtime_timeout_flush_started' "$CALL_LOG" | cut -d: -f1)"
+checkpoint_line="$(grep -n '^checkpoint|' "$CALL_LOG" | cut -d: -f1)"
+flush_line="$(grep -n '^flush|' "$CALL_LOG" | cut -d: -f1)"
+finished_line="$(grep -n 'runtime_timeout_flush_finished' "$CALL_LOG" | cut -d: -f1)"
+[ -n "$started_line" ] && [ -n "$checkpoint_line" ] && [ -n "$flush_line" ] && [ -n "$finished_line" ] || exit 22
+[ "$started_line" -lt "$checkpoint_line" ] || exit 23
+[ "$checkpoint_line" -lt "$flush_line" ] || exit 24
+[ "$flush_line" -lt "$finished_line" ] || exit 25
+grep '^flush|.*/library-fetch-result.json|.*/shards/results|.*/completed-checkpoint-synced-task-ids.txt|3600|runtime-timeout|runtime_timeout$' "$CALL_LOG" >/dev/null || exit 26
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("library signal cleanup clears the current marker before updates and cannot re-enter", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const helperStart = runner.indexOf("flush_library_interrupted_results() {");
+  const helperEnd = runner.indexOf("\nfinalize_library_timeout_results() {", helperStart);
+  const cleanupStart = runner.indexOf("tracked_job_signal_cleanup() {");
+  const cleanupEnd = runner.indexOf("\naggregate_runtime_usage_files() {", cleanupStart);
+  assert.notEqual(helperStart, -1);
+  assert.notEqual(helperEnd, -1);
+  assert.notEqual(cleanupStart, -1);
+  assert.notEqual(cleanupEnd, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-runtime-interrupted-cleanup-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(helperStart, helperEnd)}
+TRACKED_JOB_FINALIZED=0
+${runner.slice(cleanupStart, cleanupEnd)}
+run_case() {
+  FLUSH_CODE="$1"
+  EXPECT_SECOND_REASON="$2"
+  CASE_LOG="${dir}/case-$1.log"
+  CURRENT_FILE="${dir}/current-$1.json"
+  CLEAR_MARKER="${dir}/clear-$1.marker"
+  printf '{"instanceId":"run-$1"}\\n' > "$CURRENT_FILE"
+  terminate_process_tree() { printf 'terminate\\n' >> "$CASE_LOG"; return 0; }
+  terminate_job_tmp_processes() { printf 'tmp-stop\\n' >> "$CASE_LOG"; return 0; }
+  aggregate_runtime_usage_files() { printf 'aggregate\\n' >> "$CASE_LOG"; return 0; }
+  job_run_update() { printf 'update|%s|%s|%s|%s\\n' "$1" "$2" "$3" "\${*:4}" >> "$CASE_LOG"; return 0; }
+  cleanup_job_tmp_dir() { printf 'cleanup|%s|%s\\n' "$1" "$2" >> "$CASE_LOG"; return 0; }
+  clear_current_file() {
+    rm -f "$1"
+    printf 'clear\\n' >> "$CASE_LOG"
+    : > "$CLEAR_MARKER"
+    sleep 1
+    printf 'clear-resume\\n' >> "$CASE_LOG"
+  }
+  flush_library_interrupted_results() {
+    [ "$1" = "runtime-interrupted" ] || exit 41
+    [ "$2" = "runtime_interrupted" ] || exit 42
+    [ ! -e "$CURRENT_FILE" ] || exit 43
+    printf 'finalizer|%s|%s\\n' "$1" "$2" >> "$CASE_LOG"
+    return "$FLUSH_CODE"
+  }
+  JOB_NAME=library-cron
+  BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+  BUILDER_BLOG_JOB_RUN_ID="run-$1"
+  TRACKED_JOB_FINALIZED=0
+  ( tracked_job_signal_cleanup TERM ) &
+  cleanup_pid="$!"
+  _wait_count=0
+  while [ ! -e "$CLEAR_MARKER" ]; do
+    _wait_count=$(( _wait_count + 1 ))
+    [ "$_wait_count" -lt 50 ] || exit 44
+    sleep 0.1
+  done
+  kill -TERM "$cleanup_pid"
+  kill -INT "$cleanup_pid"
+  if wait "$cleanup_pid"; then
+    exit 45
+  else
+    code="$?"
+  fi
+  [ "$code" = "130" ] || exit 45
+  clear_line="$(grep -n '^clear$' "$CASE_LOG" | cut -d: -f1)"
+  update_line="$(grep -n '^update|killed|Runtime interrupted before normal cleanup completed\\.|runner_interrupted|' "$CASE_LOG" | cut -d: -f1)"
+  [ -n "$clear_line" ] && [ -n "$update_line" ] && [ "$clear_line" -lt "$update_line" ] || exit 46
+  [ "$(grep -c '^clear$' "$CASE_LOG")" = "1" ] || exit 47
+  [ "$(grep -c '^clear-resume$' "$CASE_LOG")" = "1" ] || exit 48
+  [ "$(grep -c '^update|killed|Runtime interrupted before normal cleanup completed\\.|runner_interrupted|' "$CASE_LOG")" = "1" ] || exit 49
+  grep '^finalizer|runtime-interrupted|runtime_interrupted$' "$CASE_LOG" >/dev/null || exit 50
+  [ "$(grep -c '^finalizer|' "$CASE_LOG")" = "1" ] || exit 51
+  [ "$(grep -c '^cleanup|' "$CASE_LOG")" = "1" ] || exit 52
+  case "$EXPECT_SECOND_REASON" in
+    none)
+      [ "$(grep -c 'runner_interrupted_flush_' "$CASE_LOG" || true)" = "0" ] || exit 53
+      ;;
+    *)
+      [ "$(grep -c "^update|killed|.*|$EXPECT_SECOND_REASON|" "$CASE_LOG")" = "1" ] || exit 54
+      ;;
+  esac
+}
+run_case 0 runner_interrupted_flush_finished
+run_case 2 none
+run_case 17 runner_interrupted_flush_failed
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("digest signal cleanup keeps runner_interrupted and does not invoke the library finalizer", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const cleanupStart = runner.indexOf("tracked_job_signal_cleanup() {");
+  const cleanupEnd = runner.indexOf("\naggregate_runtime_usage_files() {", cleanupStart);
+  assert.notEqual(cleanupStart, -1);
+  assert.notEqual(cleanupEnd, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-digest-interrupted-cleanup-"));
+  try {
+    const logPath = join(dir, "calls.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+TRACKED_JOB_FINALIZED=0
+${runner.slice(cleanupStart, cleanupEnd)}
+terminate_process_tree() { :; }
+terminate_job_tmp_processes() { :; }
+aggregate_runtime_usage_files() { :; }
+job_run_update() { printf 'update|%s|%s|%s|%s\\n' "$1" "$2" "$3" "\${*:4}" >> "${logPath}"; return 0; }
+cleanup_job_tmp_dir() { printf 'cleanup|%s|%s\\n' "$1" "$2" >> "${logPath}"; return 0; }
+clear_current_file() { printf 'clear\\n' >> "${logPath}"; }
+flush_library_interrupted_results() { printf 'finalizer\\n' >> "${logPath}"; return 0; }
+JOB_NAME=digest-cron
+BUILDER_BLOG_CURRENT_FILE="${join(dir, "current.json")}"
+BUILDER_BLOG_JOB_RUN_ID="digest-run"
+TRACKED_JOB_FINALIZED=0
+if ( tracked_job_signal_cleanup INT ); then
+  exit 21
+else
+  code="$?"
+fi
+[ "$code" = "130" ] || exit 22
+grep '^update|killed|Runtime interrupted before normal cleanup completed\\.|runner_interrupted|' "${logPath}" >/dev/null || exit 23
+grep '^cleanup|killed|runner_interrupted$' "${logPath}" >/dev/null || exit 24
+[ "$(grep -c '^finalizer$' "${logPath}" || true)" = "0" ] || exit 25
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud library runner syncs planned-only zero-task outcomes once before returning no_update", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("sync_cloud_terminal_outcomes() {");

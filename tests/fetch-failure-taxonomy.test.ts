@@ -23,6 +23,7 @@ const REQUIRED_CODES = [
   "workload_exceeds_max_budget",
   "extraction_exceeds_shard_timeout",
   "runtime_auth_failed",
+  "runtime_interrupted",
   "runtime_timeout",
   "runtime_timeout_no_fetch_result",
   "runtime_timeout_flush_failed",
@@ -59,6 +60,7 @@ test("fetch failure taxonomy covers known CLI and sync failure codes", () => {
 
 test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", () => {
   assert.equal(fetchFailureMessage("worker_backgrounded_tool"), "Local Agent started a background tool before this post finished");
+  assert.equal(fetchFailureMessage("runtime_interrupted"), "Local Agent stopped before this post reached a terminal result");
   assert.equal(fetchFailureMessage("runtime_timeout"), "Local Agent runtime timed out before this post finished");
   assert.equal(
     fetchFailureMessage("runtime_timeout_flush_finished"),
@@ -80,6 +82,7 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
   assert.equal(isContentFailureReason("content_missing"), true);
   assert.equal(isContentFailureReason("worker_missing_result"), false);
   assert.equal(isNotCompletedFailureReason("worker_no_progress_timeout"), true);
+  assert.equal(isNotCompletedFailureReason("runtime_interrupted"), true);
   assert.equal(isNotCompletedFailureReason("runtime_timeout"), true);
   assert.equal(isNotCompletedFailureReason("runtime_timeout_flush_finished"), true);
   assert.equal(isNotCompletedFailureReason("worker_stalled_timeout"), true);
@@ -117,6 +120,20 @@ test("fetch failure taxonomy classifies budgeted extraction terminals as content
   assert.equal(isContentFailureReason("extraction_exceeds_shard_timeout"), true);
   assert.equal(isNotCompletedFailureReason("workload_exceeds_max_budget"), false);
   assert.equal(isNotCompletedFailureReason("extraction_exceeds_shard_timeout"), false);
+});
+
+test("fetch failure taxonomy classifies interrupted runtime terminals as retryable runtime-stage outcomes", () => {
+  assert.deepEqual(fetchFailureInfo("runtime_interrupted"), {
+    code: "runtime_interrupted",
+    known: true,
+    category: "runtime",
+    stage: "runtime",
+    userMessage: "Local Agent stopped before this post reached a terminal result",
+    operatorMessage: "The local runtime stopped before this post reached a terminal fetch outcome.",
+    retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
 });
 
 test("FetchLogPanel uses the central failure taxonomy instead of local labels", async () => {

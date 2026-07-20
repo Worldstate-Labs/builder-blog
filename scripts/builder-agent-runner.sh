@@ -1776,19 +1776,39 @@ tracked_job_signal_cleanup() {
   _signal="${1:-TERM}"
   [ "$TRACKED_JOB_FINALIZED" = "0" ] || exit 130
   TRACKED_JOB_FINALIZED=1
+  trap '' TERM INT
   if [ -n "${RUNTIME_PID:-}" ]; then
     terminate_process_tree "$RUNTIME_PID" TERM 10 || true
     wait "$RUNTIME_PID" 2>/dev/null || true
   fi
   terminate_job_tmp_processes TERM 3 || true
   aggregate_runtime_usage_files || true
-  job_run_update killed "Runtime interrupted before normal cleanup completed." "runner_interrupted" \
-    --stage "interrupted" \
-    --signal "$_signal" || true
-  cleanup_job_tmp_dir killed "runner_interrupted" || true
+  _cleanup_reason="runner_interrupted"
   if [ -n "${BUILDER_BLOG_CURRENT_FILE:-}" ]; then
     clear_current_file "$BUILDER_BLOG_CURRENT_FILE" "${BUILDER_BLOG_JOB_RUN_ID:-}" || true
   fi
+  job_run_update killed "Runtime interrupted before normal cleanup completed." "runner_interrupted" \
+    --stage "interrupted" \
+    --signal "$_signal" || true
+  case "$JOB_NAME" in
+    library-once|library-cron)
+      if flush_library_interrupted_results "runtime-interrupted" "runtime_interrupted"; then
+        _cleanup_reason="runner_interrupted_flush_finished"
+        job_run_update killed "Runtime interruption cleanup synced terminal library worker results." "runner_interrupted_flush_finished" \
+          --stage "sync_to_followbrief" \
+          --signal "$_signal" || true
+      else
+        _flush_code="$?"
+        if [ "$_flush_code" -ne 2 ]; then
+          _cleanup_reason="runner_interrupted_flush_failed"
+          job_run_update killed "Runtime interruption cleanup could not sync every terminal library worker result." "runner_interrupted_flush_failed" \
+            --stage "merge_results" \
+            --signal "$_signal" || true
+        fi
+      fi
+      ;;
+  esac
+  cleanup_job_tmp_dir killed "$_cleanup_reason" || true
   exit 130
 }
 
@@ -2747,36 +2767,46 @@ run_cloud_worker_host() {
   return "$_code"
 }
 
+flush_library_interrupted_results() {
+  _flir_label="$1"
+  _flir_missing_reason="$2"
+  _flir_result_file="$JOB_TMP_DIR/library-fetch-result.json"
+  _flir_results_dir="$JOB_TMP_DIR/shards/results"
+  _flir_checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
+  _flir_recovery_dir="$JOB_TMP_DIR/debug/recovery"
+  if [ ! -s "$_flir_result_file" ] && [ -s "$_flir_recovery_dir/library-fetch-result.json" ]; then
+    _flir_result_file="$_flir_recovery_dir/library-fetch-result.json"
+    _flir_results_dir="$_flir_recovery_dir/shards/results"
+    _flir_checkpoint_synced_ids_file="$_flir_recovery_dir/completed-checkpoint-synced-task-ids.txt"
+  fi
+  if [ ! -s "$_flir_result_file" ]; then
+    return 2
+  fi
+  mkdir -p "$_flir_results_dir"
+  [ -s "$_flir_checkpoint_synced_ids_file" ] || : > "$_flir_checkpoint_synced_ids_file"
+  _flir_shard_timeout="$(shard_timeout_seconds "$(job_timeout_seconds)")"
+  sync_completed_checkpoints "$_flir_result_file" "$_flir_results_dir" "$_flir_checkpoint_synced_ids_file" || true
+  flush_remaining_library_results "$_flir_result_file" "$_flir_results_dir" "$_flir_checkpoint_synced_ids_file" "$_flir_shard_timeout" "$_flir_label" "$_flir_missing_reason"
+}
+
 finalize_library_timeout_results() {
   case "$JOB_NAME" in
     library-once|library-cron) ;;
     *) return 0 ;;
   esac
-
-  _fltr_result_file="$JOB_TMP_DIR/library-fetch-result.json"
-  _fltr_results_dir="$JOB_TMP_DIR/shards/results"
-  _fltr_checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
-  _fltr_recovery_dir="$JOB_TMP_DIR/debug/recovery"
-  if [ ! -s "$_fltr_result_file" ] && [ -s "$_fltr_recovery_dir/library-fetch-result.json" ]; then
-    _fltr_result_file="$_fltr_recovery_dir/library-fetch-result.json"
-    _fltr_results_dir="$_fltr_recovery_dir/shards/results"
-    _fltr_checkpoint_synced_ids_file="$_fltr_recovery_dir/completed-checkpoint-synced-task-ids.txt"
-  fi
-  if [ ! -s "$_fltr_result_file" ]; then
-    job_run_update timed_out "Runtime timed out before source fetch planning completed." "runtime_timeout_no_fetch_result" \
-      --stage "fetch_sources" \
-      --timeout-stage "runtime" || true
-    return 0
-  fi
-  mkdir -p "$_fltr_results_dir"
-  [ -s "$_fltr_checkpoint_synced_ids_file" ] || : > "$_fltr_checkpoint_synced_ids_file"
-  _fltr_shard_timeout="$(shard_timeout_seconds "$(job_timeout_seconds)")"
-
   job_run_update running "Runtime timed out; syncing terminal library results." "runtime_timeout_flush_started" \
     --stage "merge_results" \
     --timeout-stage "runtime" || true
-  sync_completed_checkpoints "$_fltr_result_file" "$_fltr_results_dir" "$_fltr_checkpoint_synced_ids_file" || true
-  if ! flush_remaining_library_results "$_fltr_result_file" "$_fltr_results_dir" "$_fltr_checkpoint_synced_ids_file" "$_fltr_shard_timeout" "runtime-timeout" "runtime_timeout"; then
+  if flush_library_interrupted_results "runtime-timeout" "runtime_timeout"; then
+    :
+  else
+    _fltr_code="$?"
+    if [ "$_fltr_code" -eq 2 ]; then
+      job_run_update timed_out "Runtime timed out before source fetch planning completed." "runtime_timeout_no_fetch_result" \
+        --stage "fetch_sources" \
+        --timeout-stage "runtime" || true
+      return 0
+    fi
     job_run_update timed_out "Runtime timed out and remaining library worker results could not be fully synced." "runtime_timeout_flush_failed" \
       --stage "merge_results" \
       --timeout-stage "runtime" || true
