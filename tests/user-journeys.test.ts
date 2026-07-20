@@ -1070,6 +1070,7 @@ test("web app serves the agent skill and setup command", () => {
     "_fetch-task-discovery.md",
     "_fetch-task-core.md",
     "_fetch-task-syncing.md",
+    "_digest-task-contract.md",
     "local-agent-timeouts.json",
   ]) {
     assert.ok(
@@ -1079,6 +1080,16 @@ test("web app serves the agent skill and setup command", () => {
     assert.ok(
       tracingForJobsRoute.includes(fragment),
       `jobs-route tracing is missing ${fragment}`,
+    );
+  }
+  const registeredSkillFilePaths = [
+    ...skillFileRoute.matchAll(/path: "([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.ok(registeredSkillFilePaths.length >= 10, "expected skillFiles to parse");
+  for (const file of registeredSkillFilePaths) {
+    assert.ok(
+      tracingForFilesRoute.includes(`"./${file}"`),
+      `next.config.ts outputFileTracingIncludes for the files route is missing ${file} — that asset will 500 (ENOENT) on Vercel`,
     );
   }
   // Every job the [job]/skill.md route can serve must be in its tracing list,

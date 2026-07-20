@@ -66,6 +66,8 @@ const nextConfig: NextConfig = {
     "/api/skill/files/[file]": [
       "./scripts/builder-digest.mjs",
       "./scripts/builder-agent-runner.sh",
+      "./scripts/cloud-shard-budget.mjs",
+      "./config/sources.json",
       "./config/local-agent-timeouts.json",
       "./skills/builder-blog-digest/jobs/library-once.md",
       "./skills/builder-blog-digest/jobs/digest-once.md",
