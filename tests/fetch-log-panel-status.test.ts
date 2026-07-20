@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { I18nProvider } from "../src/components/I18nProvider";
 import {
+  TaskRow,
   buildFetchTimeline,
   fetchCronFrequencyLabel,
   fetchDetailsForTaskDisplay,
@@ -45,6 +49,34 @@ function waitingFetchSlot() {
     run: null,
     jobRun: null,
   };
+}
+
+function renderTaskRow(
+  task: Record<string, unknown>,
+  {
+    groupTasks = [task],
+    liveTask = null,
+    locale,
+    parentCanProgress = true,
+  }: {
+    groupTasks?: Array<Record<string, unknown>>;
+    liveTask?: Record<string, unknown> | null;
+    locale?: "en" | "zh-CN" | "zh-TW" | "ja" | "ko" | "es";
+    parentCanProgress?: boolean;
+  } = {},
+) {
+  const row = createElement(TaskRow, {
+    groupTasks: groupTasks as never[],
+    liveTask: liveTask as never,
+    liveTasks: new Map(),
+    parentCanProgress,
+    task: task as never,
+  });
+  return renderToStaticMarkup(
+    locale && locale !== "en"
+      ? createElement(I18nProvider, { initialLocale: locale } as never, row)
+      : row,
+  );
 }
 
 function runningFetchJobRun(): AgentJobRunListItem {
@@ -1415,6 +1447,268 @@ test("planned ready tasks do not look like active summarizing work before worker
       },
     ),
     { label: "summarizing", tone: "warn" },
+  );
+});
+
+test("unfinished task pills fall back to neutral not completed when the parent cannot progress", () => {
+  const expected = { label: "not completed", tone: "idle" };
+
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:pending",
+      status: "pending",
+    }, null, false),
+    expected,
+  );
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:fetched",
+      status: "fetched",
+      contentStatus: "ready",
+      bodyChars: 1200,
+    }, null, false),
+    expected,
+  );
+  assert.deepEqual(
+    taskStatusPill(
+      {
+        id: "fetch_post:source:reading",
+        status: "pending",
+      },
+      {
+        id: "fetch_post:source:reading",
+        status: "reading",
+        phase: "read",
+        workerId: "worker-1",
+      },
+      false,
+    ),
+    expected,
+  );
+  assert.deepEqual(
+    taskStatusPill(
+      {
+        id: "fetch_post:source:summarizing",
+        status: "pending",
+        contentStatus: "ready",
+        bodyChars: 1200,
+      },
+      {
+        id: "fetch_post:source:summarizing",
+        status: "summarizing",
+        phase: "summarize",
+        workerId: "worker-2",
+      },
+      false,
+    ),
+    expected,
+  );
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:summary-ready",
+      status: "pending",
+      contentStatus: "ready",
+      bodyChars: 1200,
+      summaryChars: 180,
+      headlineChars: 44,
+      completedStage: "summarize",
+    }, null, false),
+    expected,
+  );
+});
+
+test("unfinished task UI renders exact Not completed copy when the parent cannot progress", () => {
+  const html = renderTaskRow(
+    {
+      id: "fetch_post:source:summary-ready",
+      title: "Terminal parent",
+      status: "pending",
+      contentStatus: "ready",
+      bodyChars: 1200,
+      summaryChars: 180,
+      headlineChars: 44,
+      completedStage: "summarize",
+    },
+    { parentCanProgress: false },
+  );
+
+  assert.match(html, />Not completed</);
+  assert.match(html, /<div class="sync-panel-task-banner is-idle">Not completed<\/div>/);
+  assert.doesNotMatch(html, />syncing</);
+  assert.doesNotMatch(html, />Waiting to summarize</);
+});
+
+test("terminal-incapable tasks suppress live progress artifacts when falling back to Not completed", () => {
+  const html = renderTaskRow(
+    {
+      id: "fetch_post:source:reading",
+      title: "Interrupted run",
+      status: "pending",
+      contentStatus: "ready",
+      bodyChars: 1200,
+    },
+    {
+      liveTask: {
+        id: "fetch_post:source:reading",
+        status: "reading",
+        phase: "read",
+        workerId: "worker-1",
+        message: "still reading",
+      },
+      parentCanProgress: false,
+    },
+  );
+
+  assert.match(html, />Not completed</);
+  assert.match(html, /<div class="sync-panel-task-banner is-idle">Not completed<\/div>/);
+  assert.doesNotMatch(html, /Local Agent reading/);
+  assert.doesNotMatch(html, /still reading/);
+  assert.doesNotMatch(html, /sync-panel-task-banner-blurb/);
+});
+
+test("terminal-incapable not-completed fallback localizes rendered copy", () => {
+  const html = renderTaskRow(
+    {
+      id: "fetch_post:source:localized",
+      title: "Localized interrupted run",
+      status: "pending",
+    },
+    {
+      locale: "zh-CN",
+      parentCanProgress: false,
+    },
+  );
+
+  assert.match(html, />未完成</);
+  assert.doesNotMatch(html, />Not completed</);
+});
+
+test("terminal-incapable discovery tasks do not revive discovery success or syncing copy", () => {
+  const discoveryTask = {
+    id: "candidate_discovery:source:product_hunt_top_products",
+    title: "Product Hunt discovery",
+    status: "pending",
+    agentWorkType: "candidate_discovery_fallback",
+  };
+  const siblingPostTask = {
+    id: "fetch_post:product_hunt:workclaw",
+    title: "#1 WorkClaw",
+    status: "pending",
+    contentStatus: "ready",
+    bodyChars: 1200,
+  };
+
+  const html = renderTaskRow(discoveryTask, {
+    groupTasks: [discoveryTask, siblingPostTask],
+    parentCanProgress: false,
+  });
+
+  assert.match(html, />Not completed</);
+  assert.match(html, /<div class="sync-panel-task-banner is-idle">Not completed<\/div>/);
+  assert.doesNotMatch(html, /Candidates discovered/);
+  assert.doesNotMatch(html, />syncing</);
+  assert.doesNotMatch(html, />Discovered</);
+  assert.doesNotMatch(html, />Expanded</);
+  assert.doesNotMatch(html, /Waiting on posts/);
+});
+
+test("synced summarized post tasks keep the Read & summarized banner copy", () => {
+  const html = renderTaskRow(
+    {
+      id: "fetch_post:source:synced-summary",
+      title: "Synced summary",
+      status: "synced",
+      contentStatus: "ready",
+      bodyChars: 1200,
+      summaryChars: 180,
+      headlineChars: 44,
+      completedStage: "summarize",
+    },
+    { parentCanProgress: false },
+  );
+
+  assert.match(html, /<div class="sync-panel-task-banner is-ok">Read &amp; summarized<\/div>/);
+  assert.doesNotMatch(html, /<div class="sync-panel-task-banner is-ok">Synced<\/div>/);
+  assert.doesNotMatch(html, /Not completed/);
+});
+
+test("synced summary-translation tasks keep the Summarized banner copy", () => {
+  const html = renderTaskRow(
+    {
+      id: "fetch_post:source:synced-translation",
+      title: "Translated summary",
+      status: "synced",
+      agentWorkType: "translate_summary_only",
+      contentStatus: "ready",
+      summaryChars: 180,
+      headlineChars: 44,
+      completedStage: "summarize",
+    },
+    { parentCanProgress: false },
+  );
+
+  assert.match(
+    html,
+    /<div class="sync-panel-task-banner is-ok">Summarized<span class="sync-panel-task-banner-blurb">: The Local Agent translates an existing Hub summary without fetching the source again\.<\/span><\/div>/,
+  );
+  assert.doesNotMatch(html, /<div class="sync-panel-task-banner is-ok">Synced<\/div>/);
+  assert.doesNotMatch(html, /Not completed/);
+});
+
+test("terminal and action task labels still win when the parent cannot progress", () => {
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:synced",
+      status: "synced",
+    }, null, false),
+    { label: "synced", tone: "ok" },
+  );
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:skipped",
+      status: "skipped",
+    }, null, false),
+    { label: "skipped", tone: "idle" },
+  );
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:failed",
+      status: "failed",
+    }, null, false),
+    { label: "failed", tone: "fail" },
+  );
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:action",
+      status: "action_needed",
+    }, null, false),
+    { label: "action", tone: "fail" },
+  );
+});
+
+test("active parents keep live queued and reading labels for partial runs", () => {
+  assert.deepEqual(
+    taskStatusPill({
+      id: "fetch_post:source:queued",
+      status: "pending",
+    }, null, true),
+    { label: "queued", tone: "idle" },
+  );
+  assert.deepEqual(
+    taskStatusPill(
+      {
+        id: "fetch_post:source:reading",
+        status: "pending",
+      },
+      {
+        id: "fetch_post:source:reading",
+        status: "reading",
+        phase: "read",
+        workerId: "worker-1",
+      },
+      true,
+    ),
+    { label: "reading", tone: "warn" },
   );
 });
 

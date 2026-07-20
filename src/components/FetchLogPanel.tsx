@@ -399,6 +399,9 @@ function localizedExecutionPhrase(locale: UiLocale, phrase: string): string {
   return translateUiPhrase(locale, phrase) ?? phrase;
 }
 
+const NOT_COMPLETED_LABEL = "Not completed";
+const NOT_COMPLETED_PILL_LABEL = NOT_COMPLETED_LABEL.toLowerCase();
+
 function mediaDurationEvidenceText(locale: UiLocale, duration: string): string {
   const values: Record<UiLocale, string> = {
     en: `${duration} media`,
@@ -2192,10 +2195,12 @@ function RunCardTaskDetails({
   assignmentMayStillBePending,
   details,
   liveProgress,
+  parentCanProgress,
 }: {
   assignmentMayStillBePending: boolean;
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
+  parentCanProgress: boolean;
 }) {
   const displayDetails = fetchDetailsForTaskDisplay(details, liveProgress);
   const postTaskCount = Array.isArray(displayDetails.fetchTasks)
@@ -2217,6 +2222,7 @@ function RunCardTaskDetails({
           assignmentMayStillBePending={assignmentMayStillBePending}
           details={displayDetails}
           liveProgress={liveProgress}
+          parentCanProgress={parentCanProgress}
         />
       </div>
     </details>
@@ -2446,6 +2452,7 @@ function JobRunCard({
           assignmentMayStillBePending={isActiveJobRun(jobRun)}
           details={{}}
           liveProgress={liveProgress}
+          parentCanProgress={isActiveJobRun(jobRun)}
         />
       ) : null}
       {statusDetails.length > 0 ? (
@@ -2567,6 +2574,7 @@ function RunCard({
         assignmentMayStillBePending={inflight}
         details={details}
         liveProgress={liveProgress}
+        parentCanProgress={inflight}
       />
     </article>
   );
@@ -2907,10 +2915,12 @@ function DetailsBody({
   assignmentMayStillBePending,
   details,
   liveProgress,
+  parentCanProgress,
 }: {
   assignmentMayStillBePending: boolean;
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
+  parentCanProgress: boolean;
 }) {
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
@@ -2978,6 +2988,7 @@ function DetailsBody({
                                     groupTasks={group.tasks}
                                     liveTask={task.id ? liveTasks.get(canonicalFetchTaskId(task.id)) ?? null : null}
                                     liveTasks={liveTasks}
+                                    parentCanProgress={parentCanProgress}
                                     task={task}
                                   />
                                 ))}
@@ -3373,6 +3384,7 @@ export function fetchTaskLifecycleOutcomes(
 export function taskStatusPill(
   task: FetchTaskLog,
   liveTask?: FetchTaskProgress | null,
+  parentCanProgress = true,
 ): { label: string; tone: Tone } {
   const liveStatus = String(liveTask?.status ?? "").toLowerCase();
   const livePhase = String(liveTask?.phase ?? "").toLowerCase();
@@ -3382,6 +3394,7 @@ export function taskStatusPill(
     if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
       return { label: "action", tone: "fail" };
     }
+    if (!parentCanProgress) return { label: NOT_COMPLETED_PILL_LABEL, tone: "idle" };
     return { label: "discovering", tone: "warn" };
   }
   if (task.status === "synced" || liveStatus === "synced") return { label: "synced", tone: "ok" };
@@ -3390,6 +3403,7 @@ export function taskStatusPill(
   if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
     return { label: "action", tone: "fail" };
   }
+  if (!parentCanProgress) return { label: NOT_COMPLETED_PILL_LABEL, tone: "idle" };
   if (isSummaryTranslationTask(task)) {
     if (liveStatus === "summarizing" || livePhase === "summarize") {
       return { label: "summarizing", tone: "warn" };
@@ -3409,6 +3423,7 @@ export function taskStatusPill(
 function statusBanner(
   task: FetchTaskLog,
   liveTask?: FetchTaskProgress | null,
+  parentCanProgress = true,
 ): { label: string; tone: Tone } {
   if (isCandidateDiscoveryTask(task)) {
     if (task.status === "synced") return { label: "Candidates discovered", tone: "ok" };
@@ -3416,6 +3431,7 @@ function statusBanner(
     if (task.status === "action_needed" || isBlocked(task)) {
       return { label: "Action needed", tone: "fail" };
     }
+    if (!parentCanProgress) return { label: NOT_COMPLETED_LABEL, tone: "idle" };
     return { label: "Awaiting discovery", tone: "warn" };
   }
   // A deliberate, evidence-backed skip (no primary content) is a clean terminal
@@ -3424,13 +3440,19 @@ function statusBanner(
   if (task.status === "failed" && fetchFailureInfo(task.failureReason).stage === "sync") {
     return { label: "Sync failed", tone: "fail" };
   }
+  if (task.status === "synced") {
+    if (isSummaryTranslationTask(task) && isSummarized(task)) return { label: "Summarized", tone: "ok" };
+    if (isSummarized(task)) return { label: "Read & summarized", tone: "ok" };
+    return { label: "Synced", tone: "ok" };
+  }
+  if (task.status === "failed") return { label: "Failed", tone: "fail" };
+  if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
+  if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
+  if (!parentCanProgress) return { label: NOT_COMPLETED_LABEL, tone: "idle" };
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
   if (isSummaryTranslationTask(task) && isSummarized(task)) return { label: "Summarized", tone: "ok" };
   if (isSummarized(task)) return { label: "Read & summarized", tone: "ok" };
-  if (task.status === "failed") return { label: "Failed", tone: "fail" };
-  if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
-  if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
   if (!hasSummarizeInputSignal(task, liveTask)) {
     const status = String(liveTask?.status ?? "").toLowerCase();
     const phase = String(liveTask?.phase ?? "").toLowerCase();
@@ -3668,11 +3690,13 @@ export function TaskRow({
   groupTasks,
   liveTask,
   liveTasks,
+  parentCanProgress = true,
   task,
 }: {
   groupTasks: FetchTaskLog[];
   liveTask?: FetchTaskProgress | null;
   liveTasks: Map<string, FetchTaskProgress>;
+  parentCanProgress?: boolean;
   task: FetchTaskLog;
 }) {
   const { locale } = useI18n();
@@ -3682,33 +3706,48 @@ export function TaskRow({
   const discoveryState = isDiscovery
     ? discoveryTaskState({ groupTasks, liveTask, liveTasks, task })
     : null;
-  const lifecycle = fetchTaskLifecycleOutcomes(task, liveTask);
+  const baseBanner = statusBanner(task, liveTask, parentCanProgress);
+  const basePill = taskStatusPill(task, liveTask, parentCanProgress);
+  const useNeutralNotCompletedPresentation =
+    basePill.label === NOT_COMPLETED_PILL_LABEL && baseBanner.label === NOT_COMPLETED_LABEL;
+  const displayLiveTask = useNeutralNotCompletedPresentation ? null : liveTask;
+  const lifecycle = fetchTaskLifecycleOutcomes(task, displayLiveTask);
   const failureStage = lifecycle.failureStage;
   const fetchRes = discoveryState?.expanded
+    && !useNeutralNotCompletedPresentation
     ? { label: "Discovered", tone: "ok" as Tone }
     : lifecycle.read;
   const sumRes = discoveryState?.expanded
+    && !useNeutralNotCompletedPresentation
     ? { label: "Expanded", tone: "ok" as Tone }
     : lifecycle.summarize;
   const banner = discoveryState?.expanded
+    && !useNeutralNotCompletedPresentation
     ? { label: "Candidates discovered", tone: "ok" as Tone }
-    : statusBanner(task, liveTask);
-  const readDone = hasReadSignal(task, liveTask);
-  const liveLabel = liveTaskLabel(liveTask);
-  const liveTone = liveTaskTone(liveTask);
+    : baseBanner;
+  const readDone = hasReadSignal(task, displayLiveTask);
+  const liveLabel = liveTaskLabel(displayLiveTask);
+  const liveTone = liveTaskTone(displayLiveTask);
   const pill = discoveryState?.expanded
+    && !useNeutralNotCompletedPresentation
     ? discoveryState.synced
       ? { label: "synced", tone: "ok" as Tone }
       : { label: "syncing", tone: "warn" as Tone }
-    : taskStatusPill(task, liveTask);
+    : basePill;
+  const pillLabel = pill.label === NOT_COMPLETED_PILL_LABEL
+    ? localizedExecutionPhrase(locale, NOT_COMPLETED_LABEL)
+    : pill.label;
+  const bannerLabel = banner.label === NOT_COMPLETED_LABEL
+    ? localizedExecutionPhrase(locale, NOT_COMPLETED_LABEL)
+    : banner.label;
 
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = taskSizeText(task.bodyChars, task.bodyWords);
   const headlineSize = taskSizeText(task.headlineChars, task.headlineWords);
   const summarySize = taskSizeText(task.summaryChars, task.summaryWords);
-  const liveBodySize = taskSizeText(liveTask?.bodyChars, liveTask?.bodyWords);
-  const liveHeadlineSize = taskSizeText(liveTask?.headlineChars, liveTask?.headlineWords);
-  const liveSummarySize = taskSizeText(liveTask?.summaryChars, liveTask?.summaryWords);
+  const liveBodySize = taskSizeText(displayLiveTask?.bodyChars, displayLiveTask?.bodyWords);
+  const liveHeadlineSize = taskSizeText(displayLiveTask?.headlineChars, displayLiveTask?.headlineWords);
+  const liveSummarySize = taskSizeText(displayLiveTask?.summaryChars, displayLiveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
   const summaryMethod = displayText(task.summaryMethod) || null;
   const workEstimate = formatCompactDurationSeconds(task.estimatedWorkSeconds);
@@ -3716,7 +3755,9 @@ export function TaskRow({
   const plannedWorkload = workloadLabel(task.workloadClass);
   const deadlineRisk = deadlineRiskLabel(task.deadlineState);
   const plannedMethodEvidence = plannedMethodEvidenceText(task, locale);
-  const bannerBlurb =
+  const bannerBlurb = useNeutralNotCompletedPresentation
+    ? null
+    :
     banner.tone === "fail"
       ? failureReasonText(task) ?? displayText(work.blurb)
       : displayText(work.blurb);
@@ -3729,8 +3770,9 @@ export function TaskRow({
   const shardSummary = shardSummaryText(task);
   const discoveryExpansion = discoveryState?.expansionText ?? discoveryExpansionText(task.evidence);
   const syncOutcome = discoveryState?.synced
+    && !useNeutralNotCompletedPresentation
     ? { label: "Synced", tone: "ok" as Tone }
-    : discoveryState?.expanded
+    : discoveryState?.expanded && !useNeutralNotCompletedPresentation
       ? { label: "Waiting on posts", tone: "warn" as Tone }
       : lifecycle.sync;
   const hasReadDetail =
@@ -3757,15 +3799,15 @@ export function TaskRow({
     workerWatchdog ||
     shardSummary;
   const syncStatusText = (() => {
-    if (discoveryState?.synced) {
+    if (discoveryState?.synced && !useNeutralNotCompletedPresentation) {
       return discoveryState.postTaskCount > 0
         ? `${formatCount(discoveryState.syncedPostTaskCount)} post task${discoveryState.syncedPostTaskCount === 1 ? "" : "s"} synced`
         : "synced";
     }
-    if (discoveryState?.expanded) {
+    if (discoveryState?.expanded && !useNeutralNotCompletedPresentation) {
       return `${formatCount(discoveryState.syncedPostTaskCount)} of ${formatCount(discoveryState.postTaskCount)} post tasks synced`;
     }
-    return task.status?.replace(/_/g, " ") ?? liveTask?.status?.replace(/_/g, " ") ?? "Pending";
+    return task.status?.replace(/_/g, " ") ?? displayLiveTask?.status?.replace(/_/g, " ") ?? "Pending";
   })();
   const lifecycleSteps: LifecycleStep[] = [
     {
@@ -3958,12 +4000,12 @@ export function TaskRow({
               value={<span className={syncOutcome.tone === "fail" ? "sync-panel-task-danger" : "sync-panel-task-muted"}>{failureReasonText(task)}</span>}
             />
           ) : null}
-          {liveTask?.message ? <FactRow label="Latest event" value={<span>{displayText(liveTask.message)}</span>} /> : null}
-          {liveTask?.workerId ? <FactRow label="Local Agent" value={<span>{displayText(liveTask.workerId)}</span>} /> : null}
-          {liveTask?.updatedAt ? (
+          {displayLiveTask?.message ? <FactRow label="Latest event" value={<span>{displayText(displayLiveTask.message)}</span>} /> : null}
+          {displayLiveTask?.workerId ? <FactRow label="Local Agent" value={<span>{displayText(displayLiveTask.workerId)}</span>} /> : null}
+          {displayLiveTask?.updatedAt ? (
             <FactRow
               label="Updated"
-              value={<span>{hydrated ? formatRelative(liveTask.updatedAt) : formatAbsolute(liveTask.updatedAt)}</span>}
+              value={<span>{hydrated ? formatRelative(displayLiveTask.updatedAt) : formatAbsolute(displayLiveTask.updatedAt)}</span>}
             />
           ) : null}
         </dl>
@@ -3982,7 +4024,7 @@ export function TaskRow({
           <span
             className={`sync-panel-task-status-pill is-${pill.tone}`}
           >
-            {pill.label}
+            {pillLabel}
           </span>
           <span className="sync-panel-task-title">
             {displayText(task.title ?? task.url, "Untitled task")}
@@ -3993,7 +4035,7 @@ export function TaskRow({
           <div
             className={`sync-panel-task-banner is-${banner.tone}`}
           >
-            {banner.label}
+            {bannerLabel}
             {bannerBlurb ? (
               <span className="sync-panel-task-banner-blurb">: {bannerBlurb}</span>
             ) : null}

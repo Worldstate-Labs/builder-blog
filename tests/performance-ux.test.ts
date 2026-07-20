@@ -2410,7 +2410,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /return \{ label: "syncing", tone: "warn" \}/);
   assert.match(fetchLogPanel, /return \{ label: "discovering", tone: "warn" \}/);
   assert.doesNotMatch(fetchLogPanel, /task\.contentStatus === "ready"\) return "ready"/);
-  assert.match(fetchLogPanel, /statusBanner\(task, liveTask\)/);
+  assert.match(fetchLogPanel, /statusBanner\(task, liveTask, parentCanProgress\)/);
   assert.match(fetchLogPanel, /Waiting for Local Agent/);
   assert.match(fetchLogPanel, /Read has not completed yet, so summary has not started\./);
   assert.match(fetchLogPanel, /\$\{countNoun\(unfinished, "planned post"\)\} did not finish before sync finished\./);

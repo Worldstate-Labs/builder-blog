@@ -214,6 +214,14 @@ test("Favorites tab and home copy are localized by locale keys", () => {
   );
 });
 
+test("Not completed phrase translations cover every supported non-English locale", () => {
+  assert.equal(translateUiPhrase("zh-CN", "Not completed"), "未完成");
+  assert.equal(translateUiPhrase("zh-TW", "Not completed"), "未完成");
+  assert.equal(translateUiPhrase("ja", "Not completed"), "未完了");
+  assert.equal(translateUiPhrase("ko", "Not completed"), "완료되지 않음");
+  assert.equal(translateUiPhrase("es", "Not completed"), "No completado");
+});
+
 function initializerText(node: ts.StringLiteralLike) {
   return node.text;
 }

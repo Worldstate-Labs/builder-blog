@@ -851,6 +851,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /Schedule stopped[\s\S]{0,120}Local Agent prompt/);
   assert.match(panel, /Needs Local Agent/);
   assert.match(panel, /taskStatusPill/);
+  assert.match(panel, /parentCanProgress/);
+  assert.match(panel, /const NOT_COMPLETED_LABEL = "Not completed"/);
+  assert.match(panel, /const NOT_COMPLETED_PILL_LABEL = NOT_COMPLETED_LABEL\.toLowerCase\(\)/);
+  assert.match(panel, /if \(!parentCanProgress\) return \{ label: NOT_COMPLETED_PILL_LABEL, tone: "idle" \}/);
   assert.match(panel, /return \{ label: "summarizing", tone: "warn" \}/);
   assert.match(panel, /return \{ label: "reading", tone: "warn" \}/);
   assert.match(panel, /return \{ label: "ready", tone: "idle" \}/);
@@ -868,7 +872,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /label: "translating"/);
   assert.match(panel, /label: isDiscovery \? "Expand" : "Summarize"/);
   assert.match(panel, /function hasReadSignal/);
-  assert.match(panel, /statusBanner\(task, liveTask\)/);
+  assert.match(panel, /statusBanner\(task, liveTask, parentCanProgress\)/);
+  assert.match(panel, /if \(!parentCanProgress\) return \{ label: NOT_COMPLETED_LABEL, tone: "idle" \}/);
   assert.match(panel, /Waiting for Local Agent/);
   assert.match(panel, /Read has not completed yet, so summary has not started\./);
   assert.match(panel, /Discovery task lifecycle/);
@@ -926,10 +931,13 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-diagnostics\s*{/);
   assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-verdict-text\s*{/);
   assert.match(panel, /function RunCardTaskDetails/);
+  assert.match(panel, /parentCanProgress: boolean;/);
+  assert.match(panel, /<DetailsBody[\s\S]*parentCanProgress=\{parentCanProgress\}/);
   assert.match(panel, /function fetchDetailsForTaskDisplay/);
   assert.match(panel, /const displayDetails = fetchDetailsForTaskDisplay\(details, liveProgress\)/);
-  assert.match(panel, /function JobRunCard[\s\S]*<RunCardTaskDetails[\s\S]*details=\{\{\}\}[\s\S]*liveProgress=\{liveProgress\}[\s\S]*\/>/);
-  assert.match(panel, /function RunCard[\s\S]*<RunCardTaskDetails[\s\S]*details=\{details\}[\s\S]*liveProgress=\{liveProgress\}[\s\S]*\/>/);
+  assert.match(panel, /function JobRunCard[\s\S]*<RunCardTaskDetails[\s\S]*details=\{\{\}\}[\s\S]*liveProgress=\{liveProgress\}[\s\S]*parentCanProgress=\{isActiveJobRun\(jobRun\)\}[\s\S]*\/>/);
+  assert.match(panel, /function RunCard[\s\S]*<RunCardTaskDetails[\s\S]*details=\{details\}[\s\S]*liveProgress=\{liveProgress\}[\s\S]*parentCanProgress=\{inflight\}[\s\S]*\/>/);
+  assert.match(panel, /<TaskRow[\s\S]*parentCanProgress=\{parentCanProgress\}/);
   assert.match(panel, /liveProgressPostTasks\(liveProgress\)/);
   assert.doesNotMatch(panel, /className="sync-panel-run-card-funnel"/);
   assert.doesNotMatch(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
