@@ -499,6 +499,8 @@ test("web app serves the agent skill and setup command", () => {
   const runner = readFileSync("scripts/builder-agent-runner.sh", "utf8");
   const skillFileRoute = readFileSync("src/app/api/skill/files/[file]/route.ts", "utf8");
   const skillJobRoute = readFileSync("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
+  const skillPromptRenderer = readFileSync("src/lib/agent-prompt-renderer.ts", "utf8");
+  const skillPromptSurface = `${skillJobRoute}\n${skillPromptRenderer}`;
   const skillJobAliasRoute = readFileSync("src/app/api/skill/jobs/[job]/route.ts", "utf8");
   const skillJobFiles = readFileSync("src/lib/skill-job-files.ts", "utf8");
   const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
@@ -511,17 +513,17 @@ test("web app serves the agent skill and setup command", () => {
   const digestCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron-setup.md", "utf8");
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
 
-  assert.match(skillJobRoute, /"your Local Agent"/);
-  assert.doesNotMatch(skillJobRoute, /"your local agent"/);
-  assert.match(skillJobRoute, /insertExchangeAfterInstallStep/);
-  assert.match(skillJobRoute, /1a\. Exchange the one-time setup code/);
-  assert.match(skillJobRoute, /after installing the skill/);
-  assert.doesNotMatch(skillJobRoute, /before step 1/);
-  assert.match(skillJobRoute, /If this command fails, stop/);
-  assert.match(skillJobRoute, /buildExistingCronWarning/);
-  assert.match(skillJobRoute, /serverActiveCron/);
-  assert.match(skillJobRoute, /FollowBrief web currently records an active/);
-  assert.match(skillJobRoute, /Treat this as an existing schedule even if this machine/);
+  assert.match(skillPromptRenderer, /"your Local Agent"/);
+  assert.doesNotMatch(skillPromptRenderer, /"your local agent"/);
+  assert.match(skillPromptRenderer, /insertExchangeAfterInstallStep/);
+  assert.match(skillPromptRenderer, /1a\. Exchange the one-time setup code/);
+  assert.match(skillPromptRenderer, /after installing the skill/);
+  assert.doesNotMatch(skillPromptRenderer, /before step 1/);
+  assert.match(skillPromptRenderer, /If this command fails, stop/);
+  assert.match(skillPromptRenderer, /buildExistingCronWarning/);
+  assert.match(skillPromptRenderer, /serverActiveCron/);
+  assert.match(skillPromptRenderer, /FollowBrief web currently records an active/);
+  assert.match(skillPromptRenderer, /Treat this as an existing schedule even if this machine/);
   assert.doesNotMatch(settingsPanel, /Copy setup command/);
   // The bootstrap curl block was intentionally removed from
   // AgentTokenPanel — users now copy the setup prompt from
@@ -716,12 +718,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillJobRoute, /every day|every week/);
   assert.doesNotMatch(skillJobRoute, /every 30 minutes|every hour|every 12 hours|every 3 hours|every 6 hours/);
   assert.doesNotMatch(skillJobRoute, /"30m"|"3h"|"6h"|"12h"/);
-  assert.match(skillJobRoute, /new Set\(\["claude", "codex", "hermes", "openclaw"\]\)/);
-  assert.match(skillJobRoute, /hermes: "Hermes"/);
+  assert.match(skillJobRoute, /new Set\(\["claude", "codex", "hermes", "openclaw"\](?: as const)?\)/);
+  assert.match(skillPromptSurface, /hermes: "Hermes"/);
   assert.match(skillPromptActions, /id: "hermes"/);
   assert.match(skillPromptActions, /label: "Hermes"/);
   assert.doesNotMatch(`${skillJobRoute}\n${skillPromptActions}`, /Gemini CLI|id: "gemini"|gemini: "Gemini CLI"/);
-  assert.match(skillJobRoute, /openclaw: "OpenClaw"/);
+  assert.match(skillPromptSurface, /openclaw: "OpenClaw"/);
   assert.match(skillPromptActions, /id: "openclaw"/);
   assert.match(skillPromptActions, /label: "OpenClaw"/);
   assert.match(skillPromptActions, /Hourly/);
@@ -734,63 +736,64 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /Number\.isInteger\(parallelRaw\)/);
   assert.match(skillJobRoute, /const parallelDefault = 10/);
   assert.match(skillJobRoute, /const parallelMax = 20/);
-  assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
-  assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
-  assert.doesNotMatch(skillJobRoute, /\{\{CLOUD_FETCH_LIMIT\}\}/);
-  assert.match(skillJobRoute, /\{\{FETCH_LIMIT\}\}/);
-  assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
-  assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
-  assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
-  assert.match(skillJobRoute, /localAgentTimeoutSeconds/);
-  assert.match(skillJobRoute, /cronTimeoutJob/);
-  assert.match(skillJobRoute, /openClawSetupTimeoutSeconds/);
-  assert.match(skillJobRoute, /job === "library-cron-setup"[\s\S]*\? "library-cron"/);
-  assert.match(skillJobRoute, /job === "digest-cron-setup"[\s\S]*\? "digest-cron"/);
-  assert.match(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
-  assert.doesNotMatch(skillJobRoute, /localAgentTimeoutSeconds\(cronInterval, job\)/);
-  assert.match(skillJobRoute, /buildOpenClawInitialRunBootstrap/);
-  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawChild/);
-  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawParent/);
-  assert.match(skillJobRoute, /adaptSetupContinuationForUnattendedChild/);
-  assert.match(skillJobRoute, /content\.slice\(markerIndex\)\.trimStart\(\)/);
-  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawChild\(job, contentWithExchange\)/);
-  assert.match(skillJobRoute, /sliceSetupPromptForOpenClawParent\(job, contentWithExchange, openClawSetupBootstrap\)/);
-  assert.match(skillJobRoute, /Queue the OpenClaw initial run/);
+  assert.match(skillPromptRenderer, /\{\{FETCH_DAYS\}\}/);
+  assert.match(skillPromptRenderer, /\{\{PARALLEL_WORKERS\}\}/);
+  assert.doesNotMatch(skillPromptRenderer, /\{\{CLOUD_FETCH_LIMIT\}\}/);
+  assert.match(skillPromptRenderer, /\{\{FETCH_LIMIT\}\}/);
+  assert.match(skillPromptRenderer, /\{\{CRON_FREQUENCY_KEY\}\}/);
+  assert.match(skillPromptRenderer, /\{\{CRON_FREQUENCY_LABEL\}\}/);
+  assert.match(skillPromptRenderer, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
+  assert.match(skillPromptRenderer, /localAgentTimeoutSeconds/);
+  assert.match(skillPromptRenderer, /cronTimeoutJob/);
+  assert.match(skillPromptRenderer, /openClawSetupTimeoutSeconds/);
+  assert.match(skillPromptRenderer, /job === "library-cron-setup"[\s\S]*\? "library-cron"/);
+  assert.match(skillPromptRenderer, /job === "digest-cron-setup"[\s\S]*\? "digest-cron"/);
+  assert.match(skillPromptRenderer, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
+  assert.doesNotMatch(skillPromptRenderer, /localAgentTimeoutSeconds\(cronInterval, job\)/);
+  assert.match(skillPromptRenderer, /buildOpenClawInitialRunBootstrap/);
+  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawChild/);
+  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawParent/);
+  assert.match(skillPromptRenderer, /adaptSetupContinuationForUnattendedChild/);
+  assert.match(skillPromptRenderer, /content\.slice\(markerIndex\)\.trimStart\(\)/);
+  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawChild\(job, contentWithExchange\)/);
+  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawParent\(job, contentWithExchange, openClawSetupBootstrap\)/);
+  assert.match(skillPromptRenderer, /Queue the OpenClaw initial run/);
   assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("setup_account"\)/);
-  assert.match(skillJobRoute, /!openClawSetupChild/);
-  assert.match(skillJobRoute, /withOpenClawSetupChildParams\(request\.url, accountEmail\)/);
-  assert.match(skillJobRoute, /searchParams\.delete\("ec"\)/);
-  assert.match(skillJobRoute, /searchParams\.set\("setup_account", email\)/);
+  assert.match(skillPromptRenderer, /options\.runtime === "openclaw" && !openClawChild && isCronSetupJob/);
+  assert.match(skillPromptRenderer, /buildOpenClawChildSetupUrl/);
+  assert.match(skillPromptRenderer, /new URL\(`\/api\/skill\/jobs\/\$\{job\}\/skill\.md`, origin\)/);
+  assert.match(skillPromptRenderer, /searchParams\.set\("setup_account", accountEmail\)/);
+  assert.doesNotMatch(skillPromptRenderer, /searchParams\.delete\("ec"\)/);
   assert.match(skillJobRoute, /openClawSetupChild[\s\S]*Setup account missing or invalid/);
-  assert.match(skillJobRoute, /OPENCLAW_CHILD_SETUP_PROMPT_URL/);
-  assert.match(skillJobRoute, /openclaw cron add/);
-  assert.match(skillJobRoute, /--session isolated/);
-  assert.match(skillJobRoute, /--light-context/);
-  assert.match(skillJobRoute, /--timeout-seconds \\"\$OPENCLAW_SETUP_TIMEOUT_SECONDS\\"/);
-  assert.match(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
-  assert.match(skillJobRoute, /Run this queued FollowBrief setup continuation/);
-  assert.match(skillJobRoute, /numbering continues from the[\s\S]*user-facing setup prompt/);
-  assert.match(skillJobRoute, /This child job is[\s\S]*unattended and must not wait for confirmation/);
-  assert.match(skillJobRoute, /openClawSetupChild[\s\S]*sliceSetupPromptForOpenClawChild/);
-  assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*sliceSetupPromptForOpenClawParent/);
-  assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
-  assert.doesNotMatch(skillJobRoute, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
-  assert.doesNotMatch(skillJobRoute, /nohup openclaw agent/);
-  assert.match(skillJobRoute, /openClawSetupBootstrap[\s\S]*exchangeBlock[\s\S]*content/);
-  assert.doesNotMatch(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
+  assert.match(skillPromptRenderer, /OPENCLAW_CHILD_SETUP_PROMPT_URL/);
+  assert.match(skillPromptRenderer, /openclaw cron add/);
+  assert.match(skillPromptRenderer, /--session isolated/);
+  assert.match(skillPromptRenderer, /--light-context/);
+  assert.match(skillPromptRenderer, /--timeout-seconds \\"\$OPENCLAW_SETUP_TIMEOUT_SECONDS\\"/);
+  assert.match(skillPromptRenderer, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.match(skillPromptRenderer, /Run this queued FollowBrief setup continuation/);
+  assert.match(skillPromptRenderer, /numbering continues from the[\s\S]*user-facing setup prompt/);
+  assert.match(skillPromptRenderer, /This child job is[\s\S]*unattended and must not wait for confirmation/);
+  assert.match(skillPromptRenderer, /openClawChild && isCronSetupJob[\s\S]*sliceSetupPromptForOpenClawChild/);
+  assert.match(skillPromptRenderer, /openClawSetupBootstrap[\s\S]*sliceSetupPromptForOpenClawParent/);
+  assert.doesNotMatch(skillPromptRenderer, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
+  assert.doesNotMatch(skillPromptRenderer, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
+  assert.doesNotMatch(skillPromptRenderer, /nohup openclaw agent/);
+  assert.match(skillPromptRenderer, /openClawSetupBootstrap[\s\S]*exchangeBlock[\s\S]*content/);
+  assert.doesNotMatch(skillPromptRenderer, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
   // macOS scheduling uses a launchd LaunchAgent with anchor-aligned
   // StartCalendarInterval entries instead of a forever one-minute tick.
   assert.doesNotMatch(skillJobRoute, /<key>StartInterval<\/key>/);
   assert.doesNotMatch(skillJobRoute, /<integer>60<\/integer>/);
-  assert.match(skillJobRoute, /\{\{CRON_INTERVAL_SECONDS\}\}/);
+  assert.match(skillPromptRenderer, /\{\{CRON_INTERVAL_SECONDS\}\}/);
   assert.doesNotMatch(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
   // Forced re-fetch toggle: ?force=1 → {{FETCH_FORCE}} substituted to 1.
   assert.match(skillJobRoute, /searchParams\.get\("force"\)/);
-  assert.match(skillJobRoute, /\{\{FETCH_FORCE\}\}/);
+  assert.match(skillPromptRenderer, /\{\{FETCH_FORCE\}\}/);
   // {{FETCH_FLAG}} bakes the one-time override choice into the runner env; the
   // files route neutralizes it to "" for the cached prompt copy.
-  assert.match(skillJobRoute, /\{\{FETCH_FLAG\}\}/);
+  assert.match(skillPromptRenderer, /\{\{FETCH_FLAG\}\}/);
   assert.match(skillFileRoute, /\{\{FETCH_FLAG\}\}/);
   assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillFileRoute, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
@@ -856,8 +859,8 @@ test("web app serves the agent skill and setup command", () => {
   // Digest "re-generate today's digest": the same ?force=1 channel drives
   // digest-specific placeholders. The once command bakes --regenerate inline;
   // the cron flow pins it to disk and the runner re-exports it.
-  assert.match(skillJobRoute, /\{\{DIGEST_REGENERATE\}\}/);
-  assert.match(skillJobRoute, /\{\{DIGEST_REGENERATE_FLAG\}\}/);
+  assert.match(skillPromptRenderer, /\{\{DIGEST_REGENERATE\}\}/);
+  assert.match(skillPromptRenderer, /\{\{DIGEST_REGENERATE_FLAG\}\}/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_DIGEST_REGENERATE="\$\{BUILDER_BLOG_DIGEST_REGENERATE-\{\{DIGEST_REGENERATE_FLAG\}\}\}"/);
   assert.doesNotMatch(digestCronPrompt, /BUILDER_BLOG_DIGEST_REGENERATE/);
   assert.match(digestCronSetupPrompt, /\{\{DIGEST_REGENERATE\}\}/);
@@ -1053,7 +1056,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryWorkerExpanded, /Do not add new sources, URLs, or feed items/);
   // Both routes expand includes.
   assert.match(skillFileRoute, /expandSkillIncludes/);
-  assert.match(skillJobRoute, /expandSkillIncludes/);
+  assert.match(skillPromptRenderer, /expandSkillIncludes/);
   // The shared fragment is read at runtime via readFile, so it MUST be in
   // outputFileTracingIncludes for both routes that expand includes — else
   // Vercel's serverless bundle omits it and the routes 500. (This class of
@@ -1173,7 +1176,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
   assert.ok(
-    skillJobRoute.includes("([ \\t]*)"),
+    skillPromptRenderer.includes("([ \\t]*)"),
     "skill job account injection must preserve indentation for nested job-run-update commands",
   );
   {
@@ -1469,7 +1472,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /JSON\.parse\(fs\.readFileSync\(policyPath, "utf8"\)\)/);
   assert.match(runner, /Compatibility fallback/);
   assert.match(runner, /run_runtime_smoke_check\(\)[\s\S]*_timeout="\$\(job_timeout_seconds\)"/);
-  assert.match(skillJobRoute, /\{\{CRON_INTERVAL_MINUTES\}\}/);
+  assert.match(skillPromptRenderer, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
   assert.match(runner, /codex exec[\s\S]*--skip-git-repo-check/);
   assert.match(runner, /claude -p/);
