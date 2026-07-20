@@ -24,11 +24,16 @@ type TransactionHarness = {
   };
   observed: {
     transactionCalls: number;
+    findTokenCalls: number;
     exchangeCreates: Array<Record<string, unknown>>;
     promptLinkCreates: Array<Record<string, unknown>>;
   };
 };
-type TestDeps = HandlerDeps & TransactionHarness;
+type TestDeps = HandlerDeps &
+  TransactionHarness & {
+    publicOrigin: string;
+    rateLimit: () => { ok: boolean; remaining: number; retryAfterMs: number };
+  };
 
 function makeRequest(body: BodyInit, url = "https://followbrief.example/api/settings/tokens/token_123/prompt-links") {
   return new Request(url, {
@@ -49,6 +54,7 @@ function createTransactionHarness(): TransactionHarness {
   };
   const observed = {
     transactionCalls: 0,
+    findTokenCalls: 0,
     exchangeCreates: [] as Array<Record<string, unknown>>,
     promptLinkCreates: [] as Array<Record<string, unknown>>,
   };
@@ -94,13 +100,18 @@ function createDeps(overrides: Partial<HandlerDeps> = {}): TestDeps {
   return {
     ...transaction,
     getCurrentSession: async () => successSession(),
-    findToken: async () => ({ userId: "user_123", revokedAt: null }),
+    findToken: async () => {
+      transaction.observed.findTokenCalls += 1;
+      return { userId: "user_123", revokedAt: null };
+    },
     parseOptions: () => ({}),
     createExchangeCode: () => "bb_ec_test_exchange_code",
     createPromptLinkToken: () => "fbp_test_prompt_link_token_1234567890",
     now: () => new Date("2026-07-20T12:00:00.000Z"),
+    publicOrigin: "https://followbrief.example",
+    rateLimit: () => ({ ok: true, remaining: 19, retryAfterMs: 0 }),
     ...overrides,
-  };
+  } as TestDeps;
 }
 
 test("route module exports the POST handler factory and route handler", async () => {
@@ -123,6 +134,25 @@ test("POST returns 401 when the caller is not authenticated", async () => {
 
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: "Unauthorized" });
+  assert.equal(deps.observed.findTokenCalls, 0);
+  assert.equal(deps.observed.transactionCalls, 0);
+});
+
+test("POST rate limits authenticated prompt-link creation before token lookup or writes", async () => {
+  const { createPromptLinkHandler } = await loadRouteModule();
+  const deps = createDeps({
+    rateLimit: () => ({ ok: false, remaining: 0, retryAfterMs: 2500 }),
+  });
+
+  const response = await createPromptLinkHandler(deps)(
+    makeRequest(JSON.stringify({ job: "library-once", options: {} })),
+    { params: Promise.resolve({ tokenId: "token_123" }) },
+  );
+
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "3");
+  assert.deepEqual(await response.json(), { error: "Too many requests" });
+  assert.equal(deps.observed.findTokenCalls, 0);
   assert.equal(deps.observed.transactionCalls, 0);
 });
 
@@ -263,6 +293,26 @@ test("POST creates an exchange code and hashed prompt link atomically with one s
     exchangeCodes: [exchangeCreate],
     promptLinks: [promptLinkCreate],
   });
+});
+
+test("POST always returns the prompt URL on the trusted public origin instead of reflecting a hostile request origin", async () => {
+  const { createPromptLinkHandler } = await loadRouteModule();
+  const deps = createDeps({
+    publicOrigin: "https://followbrief.example",
+  });
+
+  const response = await createPromptLinkHandler(deps)(
+    makeRequest(
+      JSON.stringify({ job: "library-once", options: {} }),
+      "https://evil.example/api/settings/tokens/token_123/prompt-links",
+    ),
+    { params: Promise.resolve({ tokenId: "token_123" }) },
+  );
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as Record<string, string>;
+  assert.equal(body.url, "https://followbrief.example/p/fbp_test_prompt_link_token_1234567890");
+  assert.notEqual(body.url, "https://evil.example/p/fbp_test_prompt_link_token_1234567890");
 });
 
 test("POST lets the authenticated route path choose the access key and rejects body attempts to override it", async () => {
