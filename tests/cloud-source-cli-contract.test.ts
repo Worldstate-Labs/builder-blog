@@ -1868,6 +1868,7 @@ test("library worker prompt forbids background task work", async () => {
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
   const actions = await readFile("src/components/AdminCloudFetchRunActions.tsx", "utf8");
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
+  const renderer = await readFile("src/lib/agent-prompt-renderer.ts", "utf8");
   const fileRoute = await readFile("src/app/api/skill/files/[file]/route.ts", "utf8");
   const bootstrapRoute = await readFile("src/app/api/skill/bootstrap/route.ts", "utf8");
   const jobFiles = await readFile("src/lib/skill-job-files.ts", "utf8");
@@ -1896,8 +1897,8 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(route, /boundedIntegerParam\(url\.searchParams, "postLimit", 3, 1, 20\)/);
   assert.match(route, /const parallelDefault = 10/);
   assert.match(route, /const parallelMax = 20/);
-  assert.doesNotMatch(route, /\{\{CLOUD_FETCH_LIMIT\}\}/);
-  assert.match(route, /\{\{FETCH_LIMIT\}\}/);
+  assert.doesNotMatch(renderer, /\{\{CLOUD_FETCH_LIMIT\}\}/);
+  assert.match(renderer, /\{\{FETCH_LIMIT\}\}/);
   assert.match(fileRoute, /builder-blog-cloud-library-host\.md/);
   assert.match(fileRoute, /skills\/builder-blog-digest\/jobs\/cloud-library-host\.md/);
   assert.match(fileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
