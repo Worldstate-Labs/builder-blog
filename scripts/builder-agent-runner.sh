@@ -3137,11 +3137,23 @@ print_compact_json_artifact_summary() {
   _pcjas_file="$2"
   node - "$_pcjas_phase" "$_pcjas_file" <<'NODE'
 const fs = require("fs");
-const phase = String(process.argv[2] || "unknown").trim() || "unknown";
-const file = String(process.argv[3] || "");
+const ANSI_OSC_RE = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g;
+const ANSI_CSI_RE = /[\u001B\u009B][[\]()#;?]*(?:(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~])/g;
+const CONTROL_RE = /[\u0000-\u001F\u007F]+/g;
 const MAX_BYTES = 1900;
+function sanitizeField(value, fallback = "") {
+  const text = String(value ?? fallback)
+    .replace(ANSI_OSC_RE, "")
+    .replace(ANSI_CSI_RE, "")
+    .replace(CONTROL_RE, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text || fallback;
+};
+const phase = sanitizeField(process.argv[2], "unknown");
+const file = String(process.argv[3] || "");
 function clampLine(value) {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
+  const text = sanitizeField(value, "-");
   if (Buffer.byteLength(text, "utf8") <= MAX_BYTES) return text;
   let out = "";
   for (const char of text) {
@@ -3150,14 +3162,24 @@ function clampLine(value) {
   }
   return `${out}...`;
 };
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+};
 function summaryLine(status, counts) {
-  const parts = [`phase=${phase}`, `status=${status}`];
-  for (const [key, value] of counts) parts.push(`${key}=${value}`);
-  parts.push(`artifact=${file || "-"}`);
+  const parts = [
+    `phase=${phase}`,
+    `status=${sanitizeField(status, "unknown")}`,
+  ];
+  for (const [key, value] of counts) parts.push(`${sanitizeField(key, "field")}=${sanitizeField(value, "0")}`);
+  parts.push(`artifact=${sanitizeField(file, "-")}`);
   return clampLine(parts.join(" "));
 };
 try {
   const payload = JSON.parse(fs.readFileSync(file, "utf8"));
+  if (!isPlainObject(payload)) {
+    process.stdout.write(`${summaryLine("invalid_shape", [])}\n`);
+    process.exit(0);
+  }
   const tasks = Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [];
   let postTasks = 0;
   let discoveryTasks = 0;

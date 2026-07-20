@@ -401,6 +401,102 @@ print_compact_json_artifact_summary "fetch_sources" "$2"
   assert.match(lines[1], new RegExp(`artifact=${missingFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
 });
 
+test("compact fetch artifact summary rejects valid JSON that is not a plain object", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const summary = shellFunction(runner, "print_compact_json_artifact_summary");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-fetch-artifact-summary-shapes-"));
+  const scriptFile = join(dir, "summary-shapes.sh");
+  const cases = [
+    { name: "array", value: [] },
+    { name: "string", value: "hello" },
+    { name: "number", value: 42 },
+    { name: "boolean", value: true },
+    { name: "null", value: null },
+  ];
+  writeFileSync(
+    scriptFile,
+    `set -eu
+${summary}
+for artifact in "$@"; do
+  print_compact_json_artifact_summary "fetch_sources" "$artifact"
+done
+`,
+    "utf8",
+  );
+
+  const artifactFiles = cases.map(({ name, value }) => {
+    const artifactFile = join(dir, `${name}.json`);
+    writeFileSync(artifactFile, JSON.stringify(value), "utf8");
+    return artifactFile;
+  });
+
+  const stdout = execFileSync("sh", [scriptFile, ...artifactFiles], {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  const lines = stdout.trimEnd().split("\n");
+
+  assert.equal(lines.length, cases.length);
+  for (const [index, line] of lines.entries()) {
+    assert.ok(Buffer.byteLength(line, "utf8") < 2048, `summary was ${Buffer.byteLength(line, "utf8")} bytes`);
+    assert.equal(line.split("\n").length, 1);
+    assert.match(line, /phase=fetch_sources/);
+    assert.match(line, /status=invalid_shape/);
+    assert.match(line, new RegExp(`artifact=${artifactFiles[index].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+});
+
+test("compact fetch artifact summary strips ANSI and control bytes from every interpolated field", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const summary = shellFunction(runner, "print_compact_json_artifact_summary");
+  const dir = mkdtempSync(join(tmpdir(), "followbrief-fetch-artifact-summary-sanitize-"));
+  const artifactFile = join(dir, "artifact-\u001b[31mred\u007f.json");
+  const scriptFile = join(dir, "summary-sanitize.sh");
+  writeFileSync(
+    artifactFile,
+    JSON.stringify({
+      status: "\u001b[31mwarn\u0007",
+      fetchTasks: [
+        {
+          id: "task-1",
+          agentWorkType: "fetch_post",
+          body: "body-marker-should-never-print",
+          item: { url: "https://private.example.com/posts/hidden" },
+        },
+      ],
+    }),
+    "utf8",
+  );
+  writeFileSync(
+    scriptFile,
+    `set -eu
+${summary}
+print_compact_json_artifact_summary "$(printf '\\033[31mfetch_sources\\a')" "$1"
+`,
+    "utf8",
+  );
+
+  const stdout = execFileSync("sh", [scriptFile, artifactFile], {
+    encoding: "buffer",
+    stdio: "pipe",
+  });
+  const line = stdout.subarray(0, -1).toString("utf8");
+
+  assert.equal(stdout.at(-1), 0x0a);
+  assert.ok(stdout.length < 2048, `summary was ${stdout.length} bytes`);
+  assert.equal(line.split("\n").length, 1);
+  for (const byte of stdout.subarray(0, -1)) {
+    assert.ok(byte >= 0x20, `unexpected control byte 0x${byte.toString(16)}`);
+    assert.notEqual(byte, 0x7f);
+  }
+  assert.match(line, /phase=fetch_sources/);
+  assert.match(line, /status=warn/);
+  assert.match(line, /artifact=.*artifact-red\.json/);
+  assert.doesNotMatch(line, /\x1b|\[31m|\u0007|\u007f/);
+  assert.doesNotMatch(line, /private\.example\.com/);
+  assert.doesNotMatch(line, /body-marker-should-never-print/);
+});
+
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   const openclawPreflight = shellFunction(runner, "run_openclaw_library_preflight");
