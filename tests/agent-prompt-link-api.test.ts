@@ -8,7 +8,13 @@ import {
   type AgentPromptRenderOptions,
   type ExposedPromptJob,
 } from "../src/lib/agent-prompt-links";
-import type { PromptLinkHandlerDeps } from "../src/app/api/settings/tokens/[tokenId]/prompt-links/route";
+import {
+  createPromptLinkHandler,
+  createPromptLinkReadHandlers,
+} from "../src/lib/agent-prompt-link-handlers";
+import type {
+  PromptLinkHandlerDeps,
+} from "../src/lib/agent-prompt-link-handlers";
 import type { NormalizedAgentPromptRenderOptions } from "../src/lib/agent-prompt-renderer";
 
 const ROUTE_MODULE_PATH = "../src/app/api/settings/tokens/[tokenId]/prompt-links/route";
@@ -281,17 +287,17 @@ async function assertInvalidPromptLinkResponse(
   );
 }
 
-test("route module exports the POST handler factory and route handler", async () => {
+test("route module exports only the POST route handler; handler factory lives in shared module", async () => {
   const routeModule = await loadRouteModule();
 
-  assert.equal(typeof routeModule.createPromptLinkHandler, "function");
+  assert.equal(typeof createPromptLinkHandler, "function");
   assert.equal(typeof routeModule.POST, "function");
 });
 
 test("prompt-link read route exports a handler factory plus GET and HEAD handlers", async () => {
   const routeModule = await loadReadRouteModule();
 
-  assert.equal(typeof routeModule.createPromptLinkReadHandlers, "function");
+  assert.equal(typeof createPromptLinkReadHandlers, "function");
   assert.equal(typeof routeModule.GET, "function");
   assert.equal(typeof routeModule.HEAD, "function");
 });
@@ -323,7 +329,6 @@ test("shared public-origin resolver prefers APP_BASE_URL, falls back to NEXTAUTH
 });
 
 test("POST returns 401 when the caller is not authenticated", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
   const deps = createDeps({
     getCurrentSession: async () => null,
   });
@@ -340,7 +345,6 @@ test("POST returns 401 when the caller is not authenticated", async () => {
 });
 
 test("POST rate limits authenticated prompt-link creation before token lookup or writes", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
   const deps = createDeps({
     rateLimit: () => ({ ok: false, remaining: 0, retryAfterMs: 2500 }),
   });
@@ -358,7 +362,6 @@ test("POST rate limits authenticated prompt-link creation before token lookup or
 });
 
 test("POST returns a uniform 404 for missing, non-owned, or revoked access keys", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
 
   for (const token of [
     null,
@@ -381,7 +384,6 @@ test("POST returns a uniform 404 for missing, non-owned, or revoked access keys"
 });
 
 test("POST returns 400 for malformed JSON, invalid job/options, or unknown top-level keys without writing", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
 
   const cases = [
     {
@@ -427,7 +429,6 @@ test("POST returns 400 for malformed JSON, invalid job/options, or unknown top-l
 });
 
 test("POST creates an exchange code and hashed prompt link atomically with one shared ten-minute expiry and returns only the prompt URL", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
   const deps = createDeps({
     parseOptions: (job: ParseJob, options: ParseInput) => {
       assert.equal(job, "library-cron-setup");
@@ -497,7 +498,6 @@ test("POST creates an exchange code and hashed prompt link atomically with one s
 });
 
 test("POST always returns the prompt URL on the trusted public origin instead of reflecting a hostile request origin", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
   const deps = createDeps({
     publicOrigin: "https://followbrief.example",
   });
@@ -517,7 +517,6 @@ test("POST always returns the prompt URL on the trusted public origin instead of
 });
 
 test("POST lets the authenticated route path choose the access key and rejects body attempts to override it", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
   const deps = createDeps();
 
   const response = await createPromptLinkHandler(deps)(
@@ -531,7 +530,6 @@ test("POST lets the authenticated route path choose the access key and rejects b
 });
 
 test("POST bubbles unexpected transaction failures and commits neither record", async () => {
-  const { createPromptLinkHandler } = await loadRouteModule();
   const deps = createDeps({
     prisma: {
       async $transaction<T>(callback: (tx: {
@@ -576,7 +574,6 @@ test("POST bubbles unexpected transaction failures and commits neither record", 
 });
 
 test("GET rejects malformed prompt-link tokens with a uniform 404 before hashing or lookup", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
   const deps = createPromptLinkReadDeps();
 
   const response = await createPromptLinkReadHandlers(deps).GET(
@@ -592,7 +589,6 @@ test("GET rejects malformed prompt-link tokens with a uniform 404 before hashing
 });
 
 test("GET returns the same uniform 404 for missing, expired, missing exchange, redeemed exchange, and revoked token records", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
 
   const baseExchange = createPromptLinkReadRecord().exchangeCode!;
   const revokedAgentToken = baseExchange.agentToken!;
@@ -645,7 +641,6 @@ test("GET returns the same uniform 404 for missing, expired, missing exchange, r
 });
 
 test("GET revalidates persisted job and options through the parser and returns the same 404 for malformed stored data", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
 
   const invalidPersistedCases = [
     createPromptLinkReadRecord({ job: "not-an-exposed-job" }),
@@ -673,7 +668,6 @@ test("GET revalidates persisted job and options through the parser and returns t
 });
 
 test("GET returns rendered markdown directly, keeps the link reusable, and passes validated exchange plus trusted public origin to the renderer", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
   const deps = createPromptLinkReadDeps();
 
   const getOnce = () =>
@@ -765,7 +759,6 @@ test("GET returns rendered markdown directly, keeps the link reusable, and passe
 });
 
 test("GET never lets a hostile request origin override the trusted public origin passed to the renderer", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
   const deps = createPromptLinkReadDeps({
     publicOrigin: "https://followbrief.example",
   });
@@ -789,7 +782,6 @@ test("GET never lets a hostile request origin override the trusted public origin
 });
 
 test("HEAD returns the same validation and privacy headers with an empty body and skips rendering", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
   const deps = createPromptLinkReadDeps();
 
   const response = await createPromptLinkReadHandlers(deps).HEAD(
@@ -806,7 +798,6 @@ test("HEAD returns the same validation and privacy headers with an empty body an
 });
 
 test("HEAD returns the same uniform invalid response metadata without rendering", async () => {
-  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
   const deps = createPromptLinkReadDeps();
   deps.findPromptLinkByHash = async (hash: string) => {
     deps.observed.findCalls.push(hash);

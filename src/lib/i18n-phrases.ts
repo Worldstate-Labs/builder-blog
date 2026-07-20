@@ -892,6 +892,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "보안 설정 코드를 준비할 수 없습니다. 다시 시도하세요.",
     es: "No se pudo preparar un código de configuración seguro. Inténtalo de nuevo.",
   },
+  "Could not prepare a secure prompt link. Try again.": {
+    "zh-CN": "无法生成安全的 prompt link。请重试。",
+    "zh-TW": "無法產生安全的 prompt link。請重試。",
+    ja: "安全な prompt link を準備できませんでした。もう一度お試しください。",
+    ko: "보안 prompt link를 준비할 수 없습니다. 다시 시도하세요.",
+    es: "No se pudo preparar un prompt link seguro. Inténtalo de nuevo.",
+  },
   "Copied. Valid for 10 minutes. Send it to your local agent.": {
     "zh-CN": "已复制。10 分钟内有效。发送给你的 local agent。",
     "zh-TW": "已複製。10 分鐘內有效。傳送給你的 local agent。",
