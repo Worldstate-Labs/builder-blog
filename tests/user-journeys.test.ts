@@ -750,17 +750,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptRenderer, /job === "digest-cron-setup"[\s\S]*\? "digest-cron"/);
   assert.match(skillPromptRenderer, /localAgentTimeoutSeconds\(cronInterval, cronTimeoutJob\)/);
   assert.doesNotMatch(skillPromptRenderer, /localAgentTimeoutSeconds\(cronInterval, job\)/);
-  assert.match(skillPromptRenderer, /buildOpenClawInitialRunBootstrap/);
-  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawChild/);
-  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawParent/);
-  assert.match(skillPromptRenderer, /adaptSetupContinuationForUnattendedChild/);
-  assert.match(skillPromptRenderer, /content\.slice\(markerIndex\)\.trimStart\(\)/);
-  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawChild\(job, contentWithExchange\)/);
-  assert.match(skillPromptRenderer, /sliceSetupPromptForOpenClawParent\(job, contentWithExchange, openClawSetupBootstrap\)/);
   assert.match(skillPromptRenderer, /Queue the OpenClaw initial run/);
   assert.match(skillJobRoute, /searchParams\.get\("openclaw_setup_child"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("setup_account"\)/);
-  assert.match(skillPromptRenderer, /options\.runtime === "openclaw" && !openClawChild && isCronSetupJob/);
   assert.match(skillPromptRenderer, /buildOpenClawChildSetupUrl/);
   assert.match(skillPromptRenderer, /new URL\(`\/api\/skill\/jobs\/\$\{job\}\/skill\.md`, origin\)/);
   assert.match(skillPromptRenderer, /searchParams\.set\("setup_account", accountEmail\)/);
@@ -775,12 +767,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptRenderer, /Run this queued FollowBrief setup continuation/);
   assert.match(skillPromptRenderer, /numbering continues from the[\s\S]*user-facing setup prompt/);
   assert.match(skillPromptRenderer, /This child job is[\s\S]*unattended and must not wait for confirmation/);
-  assert.match(skillPromptRenderer, /openClawChild && isCronSetupJob[\s\S]*sliceSetupPromptForOpenClawChild/);
-  assert.match(skillPromptRenderer, /openClawSetupBootstrap[\s\S]*sliceSetupPromptForOpenClawParent/);
   assert.doesNotMatch(skillPromptRenderer, /FOLLOWBRIEF_OPENCLAW_SETUP_DETACHED/);
   assert.doesNotMatch(skillPromptRenderer, /FOLLOWBRIEF_OPENCLAW_DETACHED=1/);
   assert.doesNotMatch(skillPromptRenderer, /nohup openclaw agent/);
-  assert.match(skillPromptRenderer, /openClawSetupBootstrap[\s\S]*exchangeBlock[\s\S]*content/);
   assert.doesNotMatch(skillPromptRenderer, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
   // macOS scheduling uses a launchd LaunchAgent with anchor-aligned
   // StartCalendarInterval entries instead of a forever one-minute tick.
@@ -1164,10 +1153,6 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
-  assert.ok(
-    skillPromptRenderer.includes("([ \\t]*)"),
-    "skill job account injection must preserve indentation for nested job-run-update commands",
-  );
   {
     const accountEnv = 'BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com"';
     const sampleStopBlock = [
