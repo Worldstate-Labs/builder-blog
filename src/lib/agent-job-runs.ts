@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type AgentJobRunListItem = {
@@ -23,6 +24,155 @@ export type AgentJobRunListItem = {
   details: unknown;
   updatedAt: string;
 };
+
+type AgentJobRunFloorFilterArgs = {
+  before?: Date | null;
+  linkedInstanceIds: string[];
+  runFloor: Date;
+};
+
+type FetchRunHistoryLinkRow = {
+  startedAt: Date;
+  jobRunId: string | null;
+};
+
+type BuildFetchRunHistoryAgentJobQueryPlanArgs = {
+  rows: FetchRunHistoryLinkRow[];
+  cronRows: FetchRunHistoryLinkRow[];
+  before?: Date | null;
+  pageSize: number;
+};
+
+type FinalizeFetchRunHistoryAgentJobPageArgs<T> = {
+  runFloor: Date | null;
+  rowCount: number;
+  cronRowCount: number;
+  pageSize: number;
+  jobRuns: T[];
+  scheduledJobRuns: T[];
+  moreJobRuns: boolean;
+  moreScheduledJobRuns: boolean;
+};
+
+function normalizedLinkedInstanceIds(linkedInstanceIds: string[]) {
+  return Array.from(new Set(
+    linkedInstanceIds
+      .map((instanceId) => instanceId.trim())
+      .filter((instanceId) => instanceId.length > 0),
+  ));
+}
+
+export function agentJobRunFloorFilter({
+  before,
+  linkedInstanceIds,
+  runFloor,
+}: AgentJobRunFloorFilterArgs): Prisma.AgentJobRunWhereInput {
+  const normalizedIds = normalizedLinkedInstanceIds(linkedInstanceIds);
+  if (normalizedIds.length === 0) {
+    return {
+      startedAt: {
+        gte: runFloor,
+        ...(before ? { lt: before } : {}),
+      },
+    };
+  }
+
+  return {
+    AND: [
+      ...(before ? [{ startedAt: { lt: before } }] : []),
+      {
+        OR: [
+          { startedAt: { gte: runFloor } },
+          { instanceId: { in: normalizedIds } },
+        ],
+      },
+    ],
+  };
+}
+
+export function scheduledAgentJobRunFloorFilter({
+  before,
+  linkedInstanceIds,
+  runFloor,
+}: AgentJobRunFloorFilterArgs): Prisma.AgentJobRunWhereInput {
+  const normalizedIds = normalizedLinkedInstanceIds(linkedInstanceIds);
+  const floorBranch: Prisma.AgentJobRunWhereInput = {
+    OR: [
+      { expectedAt: { gte: runFloor } },
+      { expectedAt: null, startedAt: { gte: runFloor } },
+      ...(normalizedIds.length > 0 ? [{ instanceId: { in: normalizedIds } }] : []),
+    ],
+  };
+
+  if (!before) {
+    return floorBranch;
+  }
+
+  return {
+    AND: [
+      {
+        OR: [
+          { expectedAt: { lt: before } },
+          { expectedAt: null, startedAt: { lt: before } },
+        ],
+      },
+      floorBranch,
+    ],
+  };
+}
+
+export function buildFetchRunHistoryAgentJobQueryPlan({
+  rows,
+  cronRows,
+  before,
+  pageSize,
+}: BuildFetchRunHistoryAgentJobQueryPlanArgs) {
+  const visibleRows = rows.slice(0, pageSize);
+  const visibleCronRows = cronRows.slice(0, pageSize);
+  const linkedInstanceIds = normalizedLinkedInstanceIds(
+    [...visibleRows, ...visibleCronRows].map((run) => run.jobRunId ?? ""),
+  );
+  const runFloor = visibleRows.length > 0 ? rows[visibleRows.length - 1].startedAt : null;
+
+  return {
+    linkedInstanceIds,
+    runFloor,
+    regularJobRunWhere: runFloor
+      ? agentJobRunFloorFilter({ before, linkedInstanceIds, runFloor })
+      : null,
+    scheduledJobRunWhere: runFloor
+      ? scheduledAgentJobRunFloorFilter({ before, linkedInstanceIds, runFloor })
+      : null,
+  };
+}
+
+export function finalizeFetchRunHistoryAgentJobPage<T>({
+  runFloor,
+  rowCount,
+  cronRowCount,
+  pageSize,
+  jobRuns,
+  scheduledJobRuns,
+  moreJobRuns,
+  moreScheduledJobRuns,
+}: FinalizeFetchRunHistoryAgentJobPageArgs<T>) {
+  const visibleJobRuns = runFloor ? jobRuns : jobRuns.slice(0, pageSize);
+  const visibleScheduledJobRuns = runFloor
+    ? scheduledJobRuns
+    : scheduledJobRuns.slice(0, pageSize);
+  const hasMore =
+    rowCount > pageSize ||
+    cronRowCount > pageSize ||
+    (runFloor
+      ? moreJobRuns || moreScheduledJobRuns
+      : jobRuns.length > pageSize || scheduledJobRuns.length > pageSize);
+
+  return {
+    visibleJobRuns,
+    visibleScheduledJobRuns,
+    hasMore,
+  };
+}
 
 export function serializeAgentJobRun(row: {
   id: string;

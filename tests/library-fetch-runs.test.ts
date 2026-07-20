@@ -154,9 +154,13 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   // (the cursor the client sends next), not capped independently at the page
   // size, so runs that failed before writing a fetch-run row are not skipped
   // when paging older history.
-  assert.match(route, /const runFloor = runs\.length > 0 \? rows\[runs\.length - 1\]\.startedAt : null/);
-  assert.match(route, /startedAt: \{ gte: runFloor/);
-  assert.match(route, /const visibleJobRuns = runFloor \? jobRuns : jobRuns\.slice\(0, FETCH_RUN_PAGE_SIZE\)/);
+  assert.match(
+    route,
+    /buildFetchRunHistoryAgentJobQueryPlan\(\{[\s\S]*rows,\s*cronRows,\s*before,\s*pageSize: FETCH_RUN_PAGE_SIZE/,
+  );
+  assert.match(route, /regularJobRunWhere/);
+  assert.match(route, /scheduledJobRunWhere/);
+  assert.match(route, /finalizeFetchRunHistoryAgentJobPage\(/);
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
   assert.match(cronRoute, /z\.enum\(\["library-cron", "digest-cron"\]\)/);
   assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);

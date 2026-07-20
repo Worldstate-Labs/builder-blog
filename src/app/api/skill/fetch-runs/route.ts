@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
-import { getAgentJobRuns, getScheduledAgentJobRuns, serializeAgentJobRun } from "@/lib/agent-job-runs";
+import {
+  buildFetchRunHistoryAgentJobQueryPlan,
+  finalizeFetchRunHistoryAgentJobPage,
+  getAgentJobRuns,
+  getScheduledAgentJobRuns,
+  serializeAgentJobRun,
+} from "@/lib/agent-job-runs";
 import { compactFetchRunDetailsForStorage } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -270,6 +276,16 @@ export async function GET(request: Request) {
       where: { userId },
     }),
   ]);
+  const {
+    runFloor,
+    regularJobRunWhere,
+    scheduledJobRunWhere,
+  } = buildFetchRunHistoryAgentJobQueryPlan({
+    rows,
+    cronRows,
+    before,
+    pageSize: FETCH_RUN_PAGE_SIZE,
+  });
 
   const runs = rows.slice(0, FETCH_RUN_PAGE_SIZE).map(serializeRun);
   const cronRuns = cronRows.slice(0, FETCH_RUN_PAGE_SIZE).map(serializeRun);
@@ -284,47 +300,28 @@ export async function GET(request: Request) {
   // return every AgentJobRun down to this page's fetch-run floor so the next
   // cursor (that floor) cannot skip one. Once fetch runs are exhausted the client
   // pages by AgentJobRun time, so fall back to count-capped paging.
-  const runFloor = runs.length > 0 ? rows[runs.length - 1].startedAt : null;
-
   const [jobRuns, scheduledJobRuns, moreJobRuns, moreScheduledJobRuns] = await Promise.all([
-    runFloor
-      ? prisma.agentJobRun
+    runFloor && regularJobRunWhere
+        ? prisma.agentJobRun
           .findMany({
             where: {
               userId,
               jobType: "library-fetch",
-              startedAt: { gte: runFloor, ...(before ? { lt: before } : {}) },
+              ...regularJobRunWhere,
             },
             orderBy: { startedAt: "desc" },
           })
           .then((agentRuns) => agentRuns.map(serializeAgentJobRun))
       : // getAgentJobRuns wraps prisma.agentJobRun.findMany for all fetch runtime instances.
         getAgentJobRuns(userId, "library-fetch", FETCH_RUN_QUERY_SIZE, before),
-    runFloor
-      ? prisma.agentJobRun
+    runFloor && scheduledJobRunWhere
+        ? prisma.agentJobRun
           .findMany({
             where: {
               userId,
               scheduleJob: "library-cron",
               trigger: "scheduled",
-              AND: [
-                ...(before
-                  ? [
-                      {
-                        OR: [
-                          { expectedAt: { lt: before } },
-                          { expectedAt: null, startedAt: { lt: before } },
-                        ],
-                      },
-                    ]
-                  : []),
-                {
-                  OR: [
-                    { expectedAt: { gte: runFloor } },
-                    { expectedAt: null, startedAt: { gte: runFloor } },
-                  ],
-                },
-              ],
+              ...scheduledJobRunWhere,
             },
             orderBy: [{ expectedAt: "desc" }, { startedAt: "desc" }],
           })
@@ -357,13 +354,20 @@ export async function GET(request: Request) {
       : Promise.resolve(false),
   ]);
 
-  // With a fetch-run floor we already returned the whole window down to it, so
-  // never re-slice here (that would re-introduce the skip); without one we page
-  // the AgentJobRun lists by count like the fetch-run lists.
-  const visibleJobRuns = runFloor ? jobRuns : jobRuns.slice(0, FETCH_RUN_PAGE_SIZE);
-  const visibleScheduledJobRuns = runFloor
-    ? scheduledJobRuns
-    : scheduledJobRuns.slice(0, FETCH_RUN_PAGE_SIZE);
+  const {
+    visibleJobRuns,
+    visibleScheduledJobRuns,
+    hasMore,
+  } = finalizeFetchRunHistoryAgentJobPage({
+    runFloor,
+    rowCount: rows.length,
+    cronRowCount: cronRows.length,
+    pageSize: FETCH_RUN_PAGE_SIZE,
+    jobRuns,
+    scheduledJobRuns,
+    moreJobRuns,
+    moreScheduledJobRuns,
+  });
 
   const cron: LibraryCronJobStatus | null = cronJob
     ? {
@@ -382,13 +386,6 @@ export async function GET(request: Request) {
         updatedAt: cronJob.updatedAt.toISOString(),
       }
     : null;
-
-  const hasMore =
-    rows.length > FETCH_RUN_PAGE_SIZE ||
-    cronRows.length > FETCH_RUN_PAGE_SIZE ||
-    (runFloor
-      ? moreJobRuns || moreScheduledJobRuns
-      : jobRuns.length > FETCH_RUN_PAGE_SIZE || scheduledJobRuns.length > FETCH_RUN_PAGE_SIZE);
 
   return NextResponse.json({
     runs,

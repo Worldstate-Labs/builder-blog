@@ -6,6 +6,11 @@ import test from "node:test";
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
 
+async function loadAgentJobRunsModule() {
+  process.env.DATABASE_URL ??= "postgresql://postgres:postgres@127.0.0.1:5432/builder_blog_test";
+  return import("../src/lib/agent-job-runs");
+}
+
 test("Prisma schema stores local agent job runs separately from business logs", () => {
   const schema = source("prisma/schema.prisma");
 
@@ -113,6 +118,185 @@ test("server-issued job leases fence fetch writes without trusting runner clocks
   assert.match(fetchRunPatch, /lockResetFenceForWorker\(tx, run\.createdAt\)/);
   assert.match(builders, /select: \{ id: true, details: true, createdAt: true \}/);
   assert.match(builders, /lockResetFenceForWorker\(tx, run\.createdAt\)/);
+});
+
+test("agent job run floor helper keeps the visible window and linked older instances", async () => {
+  const { agentJobRunFloorFilter } = await loadAgentJobRunsModule();
+  assert.equal(typeof agentJobRunFloorFilter, "function");
+
+  const before = new Date("2026-07-20T12:00:00.000Z");
+  const runFloor = new Date("2026-07-19T12:00:00.000Z");
+
+  assert.deepEqual(
+    agentJobRunFloorFilter({
+      before,
+      runFloor,
+      linkedInstanceIds: ["", " job-older ", "job-older", "job-window"],
+    }),
+    {
+      AND: [
+        { startedAt: { lt: before } },
+        {
+          OR: [
+            { startedAt: { gte: runFloor } },
+            { instanceId: { in: ["job-older", "job-window"] } },
+          ],
+        },
+      ],
+    },
+  );
+});
+
+test("agent job run floor helper keeps the plain floor when no linked instances are visible", async () => {
+  const { agentJobRunFloorFilter } = await loadAgentJobRunsModule();
+  assert.equal(typeof agentJobRunFloorFilter, "function");
+
+  const runFloor = new Date("2026-07-19T12:00:00.000Z");
+
+  assert.deepEqual(
+    agentJobRunFloorFilter({
+      before: null,
+      runFloor,
+      linkedInstanceIds: ["", "   "],
+    }),
+    { startedAt: { gte: runFloor } },
+  );
+});
+
+test("scheduled job run floor helper applies before to every result and links older scheduled instances", async () => {
+  const { scheduledAgentJobRunFloorFilter } = await loadAgentJobRunsModule();
+  assert.equal(typeof scheduledAgentJobRunFloorFilter, "function");
+
+  const before = new Date("2026-07-20T12:00:00.000Z");
+  const runFloor = new Date("2026-07-19T12:00:00.000Z");
+
+  assert.deepEqual(
+    scheduledAgentJobRunFloorFilter({
+      before,
+      runFloor,
+      linkedInstanceIds: ["", " cron-old ", "cron-old"],
+    }),
+    {
+      AND: [
+        {
+          OR: [
+            { expectedAt: { lt: before } },
+            { expectedAt: null, startedAt: { lt: before } },
+          ],
+        },
+        {
+          OR: [
+            { expectedAt: { gte: runFloor } },
+            { expectedAt: null, startedAt: { gte: runFloor } },
+            { instanceId: { in: ["cron-old"] } },
+          ],
+        },
+      ],
+    },
+  );
+});
+
+test("fetch history query plan collects linked ids from visible runs and keeps the shared floor semantics", async () => {
+  const { buildFetchRunHistoryAgentJobQueryPlan } = await loadAgentJobRunsModule();
+  assert.equal(typeof buildFetchRunHistoryAgentJobQueryPlan, "function");
+
+  const before = new Date("2026-07-20T12:00:00.000Z");
+  const newer = new Date("2026-07-20T11:00:00.000Z");
+  const floor = new Date("2026-07-20T09:00:00.000Z");
+  const older = new Date("2026-07-20T07:00:00.000Z");
+
+  assert.deepEqual(
+    buildFetchRunHistoryAgentJobQueryPlan({
+      rows: [
+        { startedAt: newer, jobRunId: null },
+        { startedAt: floor, jobRunId: " regular-linked " },
+        { startedAt: older, jobRunId: "ignored-below-visible-page" },
+      ],
+      cronRows: [
+        { startedAt: newer, jobRunId: "scheduled-linked" },
+        { startedAt: floor, jobRunId: "regular-linked" },
+      ],
+      before,
+      pageSize: 2,
+    }),
+    {
+      linkedInstanceIds: ["regular-linked", "scheduled-linked"],
+      runFloor: floor,
+      regularJobRunWhere: {
+        AND: [
+          { startedAt: { lt: before } },
+          {
+            OR: [
+              { startedAt: { gte: floor } },
+              { instanceId: { in: ["regular-linked", "scheduled-linked"] } },
+            ],
+          },
+        ],
+      },
+      scheduledJobRunWhere: {
+        AND: [
+          {
+            OR: [
+              { expectedAt: { lt: before } },
+              { expectedAt: null, startedAt: { lt: before } },
+            ],
+          },
+          {
+            OR: [
+              { expectedAt: { gte: floor } },
+              { expectedAt: null, startedAt: { gte: floor } },
+              { instanceId: { in: ["regular-linked", "scheduled-linked"] } },
+            ],
+          },
+        ],
+      },
+    },
+  );
+});
+
+test("fetch history page finalizer preserves unsliced floor windows and existing hasMore behavior", async () => {
+  const { finalizeFetchRunHistoryAgentJobPage } = await loadAgentJobRunsModule();
+  assert.equal(typeof finalizeFetchRunHistoryAgentJobPage, "function");
+
+  const floor = new Date("2026-07-20T09:00:00.000Z");
+  const regularJobRuns = ["linked-older", "window-unlinked", "window-other"];
+  const scheduledJobRuns = ["scheduled-linked", "scheduled-window"];
+
+  assert.deepEqual(
+    finalizeFetchRunHistoryAgentJobPage({
+      runFloor: floor,
+      rowCount: 2,
+      cronRowCount: 1,
+      pageSize: 2,
+      jobRuns: regularJobRuns,
+      scheduledJobRuns,
+      moreJobRuns: false,
+      moreScheduledJobRuns: true,
+    }),
+    {
+      visibleJobRuns: regularJobRuns,
+      visibleScheduledJobRuns: scheduledJobRuns,
+      hasMore: true,
+    },
+  );
+
+  assert.deepEqual(
+    finalizeFetchRunHistoryAgentJobPage({
+      runFloor: null,
+      rowCount: 1,
+      cronRowCount: 1,
+      pageSize: 2,
+      jobRuns: ["job-1", "job-2", "job-3"],
+      scheduledJobRuns: ["sched-1", "sched-2", "sched-3"],
+      moreJobRuns: false,
+      moreScheduledJobRuns: false,
+    }),
+    {
+      visibleJobRuns: ["job-1", "job-2"],
+      visibleScheduledJobRuns: ["sched-1", "sched-2"],
+      hasMore: true,
+    },
+  );
 });
 
 test("terminal agent job runs cannot be regressed by late runtime updates", () => {
