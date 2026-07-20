@@ -13,6 +13,7 @@ import type { NormalizedAgentPromptRenderOptions } from "../src/lib/agent-prompt
 
 const ROUTE_MODULE_PATH = "../src/app/api/settings/tokens/[tokenId]/prompt-links/route";
 const READ_ROUTE_MODULE_PATH = "../src/app/p/[token]/route";
+const PUBLIC_ORIGIN_MODULE_PATH = "../src/lib/agent-prompt-public-origin";
 const INVALID_PROMPT_LINK_MESSAGE =
   "This FollowBrief prompt link is invalid or expired. Return to FollowBrief and copy a new prompt.";
 
@@ -24,6 +25,10 @@ async function loadRouteModule() {
 async function loadReadRouteModule() {
   process.env.DATABASE_URL ??= "postgres://followbrief:followbrief@127.0.0.1:5432/followbrief";
   return import(READ_ROUTE_MODULE_PATH);
+}
+
+async function loadPublicOriginModule() {
+  return import(PUBLIC_ORIGIN_MODULE_PATH);
 }
 
 type HandlerDeps = PromptLinkHandlerDeps;
@@ -54,6 +59,7 @@ type PromptLinkReadDeps = {
   hashToken(token: string): string;
   findPromptLinkByHash(hash: string): Promise<PromptLinkReadRecord | null>;
   parseOptions(job: ExposedPromptJob, input: unknown): AgentPromptRenderOptions;
+  publicOrigin: string;
   renderPrompt(input: {
     origin: string;
     job: ExposedPromptJob;
@@ -248,6 +254,7 @@ function createPromptLinkReadDeps(
       observed.renderCalls.push(input);
       return `# Prompt for ${input.exchange.accountEmail}\nOrigin: ${input.origin}\n`;
     },
+    publicOrigin: "https://followbrief.example",
     now() {
       return new Date("2026-07-20T12:00:00.000Z");
     },
@@ -287,6 +294,32 @@ test("prompt-link read route exports a handler factory plus GET and HEAD handler
   assert.equal(typeof routeModule.createPromptLinkReadHandlers, "function");
   assert.equal(typeof routeModule.GET, "function");
   assert.equal(typeof routeModule.HEAD, "function");
+});
+
+test("shared public-origin resolver prefers APP_BASE_URL, falls back to NEXTAUTH_URL, and normalizes to origin", async () => {
+  const publicOriginModule = await loadPublicOriginModule();
+
+  assert.equal(
+    publicOriginModule.resolveAgentPromptPublicOrigin({
+      appBaseUrl: "https://app.followbrief.example/some/path?x=1",
+      nextauthUrl: "https://nextauth.followbrief.example/ignored",
+    }),
+    "https://app.followbrief.example",
+  );
+  assert.equal(
+    publicOriginModule.resolveAgentPromptPublicOrigin({
+      appBaseUrl: "not a url",
+      nextauthUrl: "https://nextauth.followbrief.example/auth/signin",
+    }),
+    "https://nextauth.followbrief.example",
+  );
+  assert.equal(
+    publicOriginModule.resolveAgentPromptPublicOrigin({
+      appBaseUrl: "",
+      nextauthUrl: "",
+    }),
+    "https://followbrief.worldstatelabs.com",
+  );
 });
 
 test("POST returns 401 when the caller is not authenticated", async () => {
@@ -639,7 +672,7 @@ test("GET revalidates persisted job and options through the parser and returns t
   }
 });
 
-test("GET returns rendered markdown directly, keeps the link reusable, and passes validated exchange plus trusted origin to the renderer", async () => {
+test("GET returns rendered markdown directly, keeps the link reusable, and passes validated exchange plus trusted public origin to the renderer", async () => {
   const { createPromptLinkReadHandlers } = await loadReadRouteModule();
   const deps = createPromptLinkReadDeps();
 
@@ -664,11 +697,11 @@ test("GET returns rendered markdown directly, keeps the link reusable, and passe
   await assertPromptLinkPrivacyHeaders(second);
   assert.equal(
     await first.text(),
-    "# Prompt for reader@example.com\nOrigin: https://prompt-host.example\n",
+    "# Prompt for reader@example.com\nOrigin: https://followbrief.example\n",
   );
   assert.equal(
     await second.text(),
-    "# Prompt for reader@example.com\nOrigin: https://prompt-host.example\n",
+    "# Prompt for reader@example.com\nOrigin: https://followbrief.example\n",
   );
 
   assert.deepEqual(deps.observed.parseCalls, [
@@ -695,7 +728,7 @@ test("GET returns rendered markdown directly, keeps the link reusable, and passe
   ]);
   assert.deepEqual(deps.observed.renderCalls, [
     {
-      origin: "https://prompt-host.example",
+      origin: "https://followbrief.example",
       job: "library-cron-setup",
       options: {
         runtime: "openclaw",
@@ -712,7 +745,7 @@ test("GET returns rendered markdown directly, keeps the link reusable, and passe
       },
     },
     {
-      origin: "https://prompt-host.example",
+      origin: "https://followbrief.example",
       job: "library-cron-setup",
       options: {
         runtime: "openclaw",
@@ -729,6 +762,30 @@ test("GET returns rendered markdown directly, keeps the link reusable, and passe
       },
     },
   ]);
+});
+
+test("GET never lets a hostile request origin override the trusted public origin passed to the renderer", async () => {
+  const { createPromptLinkReadHandlers } = await loadReadRouteModule();
+  const deps = createPromptLinkReadDeps({
+    publicOrigin: "https://followbrief.example",
+  });
+
+  const response = await createPromptLinkReadHandlers(deps).GET(
+    makePromptLinkRequest(
+      "fbp_valid_prompt_link_token_123456",
+      "GET",
+      "https://attacker.example",
+    ),
+    { params: Promise.resolve({ token: "fbp_valid_prompt_link_token_123456" }) },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(
+    await response.text(),
+    "# Prompt for reader@example.com\nOrigin: https://followbrief.example\n",
+  );
+  assert.equal(deps.observed.renderCalls.length, 1);
+  assert.equal(deps.observed.renderCalls[0]?.origin, "https://followbrief.example");
 });
 
 test("HEAD returns the same validation and privacy headers with an empty body and skips rendering", async () => {

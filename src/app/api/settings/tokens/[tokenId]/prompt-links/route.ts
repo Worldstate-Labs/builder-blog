@@ -8,12 +8,12 @@ import {
   type AgentPromptRenderOptions,
   type ExposedPromptJob,
 } from "@/lib/agent-prompt-links";
+import { resolveAgentPromptPublicOrigin } from "@/lib/agent-prompt-public-origin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ tokenId: string }> };
-const DEFAULT_PUBLIC_ORIGIN = "https://followbrief.worldstatelabs.com";
 const PROMPT_LINK_LIMIT = 20;
 const PROMPT_LINK_WINDOW_MS = 10 * 60 * 1000;
 
@@ -65,22 +65,6 @@ export type PromptLinkHandlerDeps = {
     $transaction<T>(callback: (tx: TransactionClient) => Promise<T>): Promise<T>;
   };
 };
-
-function normalizeOrigin(value: string): string | null {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
-}
-
-function resolvePublicOrigin(): string {
-  return (
-    normalizeOrigin(process.env.APP_BASE_URL ?? "") ??
-    normalizeOrigin(process.env.NEXTAUTH_URL ?? "") ??
-    DEFAULT_PUBLIC_ORIGIN
-  );
-}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -190,7 +174,10 @@ const defaultDeps: PromptLinkHandlerDeps = {
     return `bb_ec_${randomBytes(16).toString("base64url")}`;
   },
   createPromptLinkToken: createAgentPromptLinkToken,
-  publicOrigin: resolvePublicOrigin(),
+  publicOrigin: resolveAgentPromptPublicOrigin({
+    appBaseUrl: process.env.APP_BASE_URL,
+    nextauthUrl: process.env.NEXTAUTH_URL,
+  }),
   rateLimit(key) {
     return rateLimit({
       key,
