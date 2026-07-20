@@ -10,6 +10,7 @@ import {
   renderAgentPrompt,
   type NormalizedAgentPromptRenderOptions,
 } from "@/lib/agent-prompt-renderer";
+import { resolveAgentPromptPublicOrigin } from "@/lib/agent-prompt-public-origin";
 import { createServerRenderAgentPromptDeps } from "@/lib/agent-prompt-renderer-server";
 import { prisma } from "@/lib/prisma";
 
@@ -41,6 +42,7 @@ export type PromptLinkReadHandlerDeps = {
   hashToken(token: string): string;
   findPromptLinkByHash(hash: string): Promise<PromptLinkReadRecord | null>;
   parseOptions(job: ExposedPromptJob, input: unknown): AgentPromptRenderOptions;
+  publicOrigin: string;
   renderPrompt(input: {
     origin: string;
     job: ExposedPromptJob;
@@ -150,7 +152,7 @@ async function handlePromptLinkRequest(
   }
 
   const content = await deps.renderPrompt({
-    origin: new URL(request.url).origin,
+    origin: deps.publicOrigin,
     job,
     options,
     exchange: {
@@ -210,6 +212,10 @@ const defaultDeps: PromptLinkReadHandlerDeps = {
     });
   },
   parseOptions: parseAgentPromptLinkOptions,
+  publicOrigin: resolveAgentPromptPublicOrigin({
+    appBaseUrl: process.env.APP_BASE_URL,
+    nextauthUrl: process.env.NEXTAUTH_URL,
+  }),
   renderPrompt(input) {
     return renderAgentPrompt(input, serverRenderDeps);
   },
