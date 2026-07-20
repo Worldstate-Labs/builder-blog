@@ -22,6 +22,35 @@ function normalizedOptions(
   };
 }
 
+type OpenClawChildSetupUrlOptions = Parameters<typeof buildOpenClawChildSetupUrl>[0]["options"];
+
+function normalizedOpenClawChildSetupOptions(
+  overrides: Partial<OpenClawChildSetupUrlOptions> = {},
+): OpenClawChildSetupUrlOptions {
+  return {
+    ...normalizedOptions({ runtime: "openclaw" }),
+    runtime: "openclaw",
+    ...overrides,
+  };
+}
+
+async function getSkillJobPromptRoute(
+  request: Request,
+  job: SkillJobName,
+): Promise<Response> {
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL ??= "postgres://followbrief:followbrief@127.0.0.1:5432/followbrief";
+  try {
+    const { GET } = await import("../src/app/api/skill/jobs/[job]/skill.md/route");
+    return GET(request, {
+      params: Promise.resolve({ job }),
+    });
+  } finally {
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
+  }
+}
+
 async function renderWithDefaults({
   job,
   options,
@@ -105,7 +134,8 @@ test("renderAgentPrompt renders recurring library setup with credential prep, ac
   assert.match(content, /1a\. Exchange the one-time setup code/);
   assert.match(content, /cron@example\.com/);
   assert.match(content, /Scheduled runtime: \*\*Codex\*\* \(codex\)/);
-  assert.match(content, /run {{AGENT_RUNTIME}}|PATH="\$SCHEDULER_PATH" command -v codex/);
+  assert.match(content, /PATH="\$SCHEDULER_PATH" command -v codex/);
+  assert.doesNotMatch(content, /\{\{AGENT_RUNTIME\}\}/);
   assert.doesNotMatch(content, /\{\{SOURCE_CREDENTIAL_PREP\}\}|\{\{CRON_FREQUENCY_KEY\}\}|\{\{CRON_FREQUENCY_LABEL\}\}/);
 
   const installIndex = content.indexOf("1. Install or refresh the skill:");
@@ -161,8 +191,7 @@ test("buildOpenClawChildSetupUrl creates a canonical child job URL from origin, 
     origin: "https://followbrief.example",
     job: "library-cron-setup",
     accountEmail: "queue@example.com",
-    options: normalizedOptions({
-      runtime: "openclaw",
+    options: normalizedOpenClawChildSetupOptions({
       frequency: "weekly",
       force: true,
       fetchDays: 45,
@@ -184,6 +213,50 @@ test("buildOpenClawChildSetupUrl creates a canonical child job URL from origin, 
   assert.equal(parsed.searchParams.get("postLimit"), "8");
   assert.equal(parsed.searchParams.get("ec"), null);
   assert.ok(!parsed.pathname.startsWith("/p/"));
+});
+
+test("buildOpenClawChildSetupUrl rejects invalid jobs or runtimes from untyped callers", () => {
+  assert.throws(
+    () =>
+      buildOpenClawChildSetupUrl({
+        origin: "https://followbrief.example",
+        job: "cloud-library-host" as never,
+        accountEmail: "queue@example.com",
+        options: normalizedOpenClawChildSetupOptions(),
+      }),
+    /only support cron setup jobs/i,
+  );
+  assert.throws(
+    () =>
+      buildOpenClawChildSetupUrl({
+        origin: "https://followbrief.example",
+        job: "library-cron-setup",
+        accountEmail: "queue@example.com",
+        options: normalizedOptions({ runtime: "codex" }) as never,
+      }),
+    /require runtime openclaw/i,
+  );
+});
+
+test("buildOpenClawChildSetupUrl narrows to OpenClaw cron setup inputs at compile time", () => {
+  if (false) {
+    const invalidJobArgs: Parameters<typeof buildOpenClawChildSetupUrl>[0] = {
+      origin: "https://followbrief.example",
+      // @ts-expect-error job must be a supported cron setup job
+      job: "library-once",
+      accountEmail: "queue@example.com",
+      options: normalizedOpenClawChildSetupOptions(),
+    };
+    const invalidRuntimeArgs: Parameters<typeof buildOpenClawChildSetupUrl>[0] = {
+      origin: "https://followbrief.example",
+      job: "library-cron-setup",
+      accountEmail: "queue@example.com",
+      // @ts-expect-error runtime must be openclaw
+      options: normalizedOptions({ runtime: "codex" }),
+    };
+    void invalidJobArgs;
+    void invalidRuntimeArgs;
+  }
 });
 
 test("renderAgentPrompt slices OpenClaw parent and child setup prompts independently of the parent entry URL", async () => {
@@ -215,4 +288,55 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.doesNotMatch(child, /1\. Install or refresh the skill:/);
   assert.doesNotMatch(child, /1a\. Exchange the one-time setup code/);
   assert.doesNotMatch(child, /bb_ec_renderer_openclaw_parent/);
+});
+
+test("route GET delegates cloud-library-host rendering and preserves markdown headers", async () => {
+  const request = new Request(
+    "https://followbrief.example/api/skill/jobs/cloud-library-host/skill.md?runtime=openclaw&days=9&parallel=4&postLimit=7",
+  );
+  const response = await getSkillJobPromptRoute(request, "cloud-library-host");
+
+  const content = await response.text();
+  const rendered = await renderWithDefaults({
+    job: "cloud-library-host",
+    options: {
+      runtime: "openclaw",
+      fetchDays: 9,
+      parallelWorkers: 4,
+      fetchLimit: 7,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "text/markdown; charset=utf-8");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(content, rendered);
+});
+
+test("route GET delegates OpenClaw child setup rendering for DB-free cron setup requests", async () => {
+  const request = new Request(
+    "https://followbrief.example/api/skill/jobs/library-cron-setup/skill.md?openclaw_setup_child=1&setup_account=openclaw%40example.com&runtime=openclaw&freq=weekly&force=1&days=11&parallel=3&postLimit=4",
+  );
+  const response = await getSkillJobPromptRoute(request, "library-cron-setup");
+
+  const content = await response.text();
+  const rendered = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: {
+      runtime: "openclaw",
+      frequency: "weekly",
+      force: true,
+      fetchDays: 11,
+      parallelWorkers: 3,
+      fetchLimit: 4,
+    },
+    openClawChild: {
+      accountEmail: "openclaw@example.com",
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "text/markdown; charset=utf-8");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(content, rendered);
 });

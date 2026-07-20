@@ -25,6 +25,12 @@ export type NormalizedAgentPromptRenderOptions = {
   fetchLimit: number;
 };
 
+type OpenClawChildSetupJobName = "library-cron-setup" | "digest-cron-setup";
+
+type OpenClawChildSetupRenderOptions = Omit<NormalizedAgentPromptRenderOptions, "runtime"> & {
+  runtime: "openclaw";
+};
+
 type ExchangeRenderContext = {
   code: string;
   accountEmail: string;
@@ -239,14 +245,20 @@ export function buildOpenClawChildSetupUrl({
   options,
 }: {
   origin: string;
-  job: SkillJobName;
+  job: OpenClawChildSetupJobName;
   accountEmail: string;
-  options: NormalizedAgentPromptRenderOptions;
+  options: OpenClawChildSetupRenderOptions;
 }): string {
+  if (job !== "library-cron-setup" && job !== "digest-cron-setup") {
+    throw new Error(`OpenClaw child setup URLs only support cron setup jobs, received: ${job}`);
+  }
+  if (options.runtime !== "openclaw") {
+    throw new Error(`OpenClaw child setup URLs require runtime openclaw, received: ${options.runtime}`);
+  }
   const nextUrl = new URL(`/api/skill/jobs/${job}/skill.md`, origin);
   nextUrl.searchParams.set("openclaw_setup_child", "1");
   nextUrl.searchParams.set("setup_account", accountEmail);
-  if (options.runtime) nextUrl.searchParams.set("runtime", options.runtime);
+  nextUrl.searchParams.set("runtime", options.runtime);
   nextUrl.searchParams.set("freq", options.frequency);
   nextUrl.searchParams.set("force", options.force ? "1" : "0");
   nextUrl.searchParams.set("days", String(options.fetchDays));
@@ -327,7 +339,7 @@ export async function renderAgentPrompt(
               origin,
               job,
               accountEmail,
-              options,
+              options: options as OpenClawChildSetupRenderOptions,
             }),
             setupTimeoutSeconds: openClawSetupTimeoutSeconds,
           })
