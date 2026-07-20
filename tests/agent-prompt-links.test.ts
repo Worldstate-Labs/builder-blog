@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import {
   AGENT_PROMPT_LINK_PRIVACY_HEADERS,
@@ -10,6 +12,9 @@ import {
   type AgentPromptRenderOptions,
   type ExposedPromptJob,
 } from "../src/lib/agent-prompt-links";
+
+const root = process.cwd();
+const source = (path: string) => readFileSync(join(root, path), "utf8");
 
 test("parseAgentPromptLinkOptions accepts only the exposed jobs and their applicable options", () => {
   const acceptedCases: Array<{
@@ -182,4 +187,45 @@ test("prompt link contract exposes ten-minute ttl and required privacy headers",
     "Referrer-Policy": "no-referrer",
     "X-Robots-Tag": "noindex, nofollow, noarchive",
   });
+});
+
+test("Prisma schema declares a hashed AgentPromptLink capability tied one-to-one to ExchangeCode", () => {
+  const schema = source("prisma/schema.prisma");
+
+  assert.match(schema, /model AgentPromptLink \{/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*id\s+String\s+@id @default\(cuid\(\)\)/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*tokenHash\s+String\s+@unique/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*exchangeCodeId\s+String\s+@unique/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*job\s+String/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*options\s+Json/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*expiresAt\s+DateTime/);
+  assert.match(schema, /model AgentPromptLink \{[\s\S]*\n\s*createdAt\s+DateTime\s+@default\(now\(\)\)/);
+  assert.match(
+    schema,
+    /model AgentPromptLink \{[\s\S]*exchangeCode\s+ExchangeCode\s+@relation\(fields: \[exchangeCodeId\], references: \[id\], onDelete: Cascade\)/,
+  );
+  assert.match(schema, /model ExchangeCode \{[\s\S]*agentPromptLink\s+AgentPromptLink\?/);
+});
+
+test("agent prompt link migration creates hashed capability storage with unique indexes and cascade deletion", () => {
+  const migration = source("prisma/migrations/000089_agent_prompt_links/migration.sql");
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS "AgentPromptLink"/);
+  assert.match(migration, /"id"\s+TEXT\s+NOT NULL/);
+  assert.match(migration, /"tokenHash"\s+TEXT\s+NOT NULL/);
+  assert.match(migration, /"exchangeCodeId"\s+TEXT\s+NOT NULL/);
+  assert.match(migration, /"job"\s+TEXT\s+NOT NULL/);
+  assert.match(migration, /"options"\s+JSONB\s+NOT NULL/);
+  assert.match(migration, /"expiresAt"\s+TIMESTAMP\(3\)\s+NOT NULL/);
+  assert.match(migration, /"createdAt"\s+TIMESTAMP\(3\)\s+NOT NULL DEFAULT CURRENT_TIMESTAMP/);
+  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS "AgentPromptLink_tokenHash_key" ON "AgentPromptLink"\("tokenHash"\)/);
+  assert.match(
+    migration,
+    /CREATE UNIQUE INDEX IF NOT EXISTS "AgentPromptLink_exchangeCodeId_key" ON "AgentPromptLink"\("exchangeCodeId"\)/,
+  );
+  assert.match(migration, /AgentPromptLink_exchangeCodeId_fkey/);
+  assert.match(
+    migration,
+    /FOREIGN KEY \("exchangeCodeId"\) REFERENCES "ExchangeCode"\("id"\) ON DELETE CASCADE ON UPDATE CASCADE/,
+  );
 });
