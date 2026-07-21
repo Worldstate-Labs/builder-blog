@@ -1143,8 +1143,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(cloudCronStopPrompt, /Stop the FollowBrief Cloud worker host/);
   assert.match(cloudCronStopPrompt, /cloud-library-host\/current\.json/);
   assert.match(cloudCronStopPrompt, /cloud-library-cron\/current\.json/);
-  assert.match(cloudCronStopPrompt, /--job-type cloud-library-fetch/);
-  assert.match(cloudCronStopPrompt, /--status killed/);
+  assert.match(cloudCronStopPrompt, /BUILDER_BLOG_CLOUD_HOST_CONTROL=stop-current/);
+  assert.doesNotMatch(cloudCronStopPrompt, /job-run-update/);
   assert.doesNotMatch(cloudCronStopPrompt, /cron-status/);
   assert.match(digestOncePrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-once/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);

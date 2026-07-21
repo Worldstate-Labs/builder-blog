@@ -1840,7 +1840,13 @@ aggregate_runtime_usage_files() {
 }
 
 job_run_update() {
-  if [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-}" = "1" ]; then return 0; fi
+  if [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-}" = "1" ]; then
+    if [ "${BUILDER_BLOG_STRICT_JOB_UPDATE:-0}" = "1" ]; then
+      echo "Strict FollowBrief job status updates cannot run while web sync is disabled." >&2
+      return 1
+    fi
+    return 0
+  fi
   _status="$1"
   _summary="${2:-}"
   _reason="${3:-}"
@@ -1886,6 +1892,10 @@ job_run_update() {
     echo "FollowBrief rejected the runtime job lease; refusing to start stale work." >&2
     return 1
   fi
+  if [ "${BUILDER_BLOG_STRICT_JOB_UPDATE:-0}" = "1" ]; then
+    echo "FollowBrief rejected the required terminal job status update ($_status)." >&2
+    return 1
+  fi
   return 0
 }
 
@@ -1902,6 +1912,30 @@ verify_followbrief_pid() {
   # recycled PID belonging to the user's own interactive runtime got accepted
   # and then killed/blocked. Anchor identity to this runner script alone.
   printf '%s' "$_args" | grep -qF "builder-agent-runner.sh" || return 1
+}
+
+process_start_epoch() {
+  _pse_pid="${1:-}"
+  [ -n "$_pse_pid" ] || return 1
+  _pse_started="$(ps -p "$_pse_pid" -o lstart= 2>/dev/null | head -n 1)"
+  [ -n "$_pse_started" ] || return 1
+  node - "$_pse_started" <<'NODE'
+const value = Date.parse(String(process.argv[2] || ""));
+if (!Number.isFinite(value)) process.exit(1);
+process.stdout.write(String(Math.floor(value / 1000)));
+NODE
+}
+
+verify_followbrief_current_pid() {
+  _vfcp_pid="${1:-}"
+  _vfcp_expected_start="${2:-}"
+  verify_followbrief_pid "$_vfcp_pid" || return 1
+  case "$_vfcp_expected_start" in
+    ''|0|*[!0-9]*) return 0 ;;
+  esac
+  _vfcp_actual_start="$(process_start_epoch "$_vfcp_pid" 2>/dev/null || true)"
+  [ -n "$_vfcp_actual_start" ] || return 1
+  [ "$_vfcp_actual_start" = "$_vfcp_expected_start" ]
 }
 
 process_tree_pids() {
@@ -1963,6 +1997,30 @@ terminate_process_tree() {
     fi
     sleep 1
     tpt_left=$(( tpt_left - 1 ))
+  done
+  return 1
+}
+
+terminate_recorded_process_ids() {
+  trpi_targets="${1:-}"
+  trpi_signal="${2:-KILL}"
+  trpi_wait_seconds="${3:-3}"
+  [ -n "$trpi_targets" ] || return 0
+  for trpi_pid in $trpi_targets; do
+    kill -s "$trpi_signal" "$trpi_pid" 2>/dev/null || true
+  done
+  trpi_left="$trpi_wait_seconds"
+  while [ "$trpi_left" -gt 0 ]; do
+    trpi_alive=0
+    for trpi_pid in $trpi_targets; do
+      if kill -0 "$trpi_pid" 2>/dev/null; then
+        trpi_alive=1
+        break
+      fi
+    done
+    if [ "$trpi_alive" -eq 0 ]; then return 0; fi
+    sleep 1
+    trpi_left=$(( trpi_left - 1 ))
   done
   return 1
 }
@@ -2220,8 +2278,12 @@ write_current_file() {
   _worker_pid="$3"
   _started="$4"
   _expected="$5"
-  printf '{\n  "instanceId": "%s",\n  "workerPid": %s,\n  "startedAt": "%s",\n  "expectedAt": "%s"\n}\n' \
-    "$_instance" "$_worker_pid" "$_started" "$_expected" > "$_file"
+  _process_start_epoch="$(process_start_epoch "$_worker_pid" 2>/dev/null || true)"
+  case "$_process_start_epoch" in
+    ''|*[!0-9]*) _process_start_epoch=0 ;;
+  esac
+  printf '{\n  "instanceId": "%s",\n  "workerPid": %s,\n  "processStartEpoch": %s,\n  "startedAt": "%s",\n  "expectedAt": "%s"\n}\n' \
+    "$_instance" "$_worker_pid" "$_process_start_epoch" "$_started" "$_expected" > "$_file"
 }
 
 clear_current_file() {
@@ -2423,7 +2485,8 @@ job_run_update_for_instance() {
   unset LAST_AGENT_USAGE_FILE
   export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
 
-  job_run_update "$@"
+  _target_update_code=0
+  job_run_update "$@" || _target_update_code=$?
 
   BUILDER_BLOG_JOB_RUN_ID="$_saved_instance"
   BUILDER_BLOG_JOB_STARTED_AT="$_saved_started"
@@ -2447,6 +2510,139 @@ job_run_update_for_instance() {
     unset LAST_AGENT_USAGE_FILE
   fi
   export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
+  return "$_target_update_code"
+}
+
+strict_job_run_update_for_instance() {
+  _sjrui_had_strict=0
+  _sjrui_saved_strict="${BUILDER_BLOG_STRICT_JOB_UPDATE:-}"
+  if [ "${BUILDER_BLOG_STRICT_JOB_UPDATE+x}" = "x" ]; then
+    _sjrui_had_strict=1
+  fi
+  BUILDER_BLOG_STRICT_JOB_UPDATE=1
+  export BUILDER_BLOG_STRICT_JOB_UPDATE
+  _sjrui_code=0
+  job_run_update_for_instance "$@" || _sjrui_code=$?
+  if [ "$_sjrui_had_strict" = "1" ]; then
+    BUILDER_BLOG_STRICT_JOB_UPDATE="$_sjrui_saved_strict"
+    export BUILDER_BLOG_STRICT_JOB_UPDATE
+  else
+    unset BUILDER_BLOG_STRICT_JOB_UPDATE
+  fi
+  return "$_sjrui_code"
+}
+
+cloud_host_control_current_file() {
+  _chcc_action="$1"
+  _chcc_file="$2"
+  _chcc_label="$3"
+  if [ ! -r "$_chcc_file" ]; then
+    echo "No recorded $_chcc_label worker for ${BUILDER_BLOG_ACCOUNT:-default}."
+    return 0
+  fi
+
+  _chcc_pid="$(json_get_number workerPid "$_chcc_file")"
+  _chcc_process_start="$(json_get_number processStartEpoch "$_chcc_file")"
+  _chcc_instance="$(json_get_string instanceId "$_chcc_file")"
+  _chcc_started="$(json_get_string startedAt "$_chcc_file")"
+  _chcc_expected="$(json_get_string expectedAt "$_chcc_file")"
+  if [ -z "$_chcc_instance" ]; then
+    echo "Recorded $_chcc_label worker has no instanceId; preserving $_chcc_file for manual inspection." >&2
+    return 65
+  fi
+
+  _chcc_exact_live=0
+  _chcc_other_live=0
+  if [ -n "$_chcc_pid" ] && verify_followbrief_current_pid "$_chcc_pid" "$_chcc_process_start"; then
+    _chcc_exact_live=1
+  elif [ -n "$_chcc_pid" ] && kill -0 "$_chcc_pid" 2>/dev/null; then
+    # A live PID with the wrong argv is a recycled PID. It is never safe to
+    # signal it, even when it belongs to another local agent process.
+    _chcc_other_live=1
+  fi
+
+  case "$_chcc_action" in
+    mark-replaced)
+      if [ "$_chcc_exact_live" = "1" ]; then
+        if ! strict_job_run_update_for_instance \
+          "$_chcc_instance" "$_chcc_started" "$_chcc_expected" \
+          replaced "Cloud worker host replacement was confirmed by the admin." "worker_host_replace_requested" \
+          --stage "stopping"; then
+          echo "Could not mark $_chcc_label worker $_chcc_instance as replaced; leaving it running and preserving its marker." >&2
+          return 1
+        fi
+        echo "Marked $_chcc_label worker $_chcc_instance as replaced; service handoff may proceed."
+        return 0
+      fi
+      ;;
+    stop-current)
+      if [ "$_chcc_exact_live" = "1" ]; then
+        # Cache descendants before TERM. If the runner root exits while a child
+        # ignores TERM, that child is reparented and can no longer be found by
+        # walking from the old root PID during escalation.
+        _chcc_process_ids="$(process_tree_pids "$_chcc_pid" | awk 'NF { printf "%s%s", sep, $1; sep=" " }')"
+        [ -n "$_chcc_process_ids" ] || _chcc_process_ids="$_chcc_pid"
+        if ! terminate_process_tree "$_chcc_pid" TERM 30; then
+          if ! terminate_recorded_process_ids "$_chcc_process_ids" KILL 3; then
+            echo "Could not terminate $_chcc_label worker pid $_chcc_pid; preserving its marker." >&2
+            return 75
+          fi
+        fi
+        if verify_followbrief_current_pid "$_chcc_pid" "$_chcc_process_start"; then
+          echo "$_chcc_label worker pid $_chcc_pid is still active; preserving its marker." >&2
+          return 75
+        fi
+        if ! strict_job_run_update_for_instance \
+          "$_chcc_instance" "$_chcc_started" "$_chcc_expected" \
+          killed "Cloud worker host stopped by admin." "stop_cloud_worker_host" \
+          --stage "stopped"; then
+          echo "Stopped $_chcc_label worker but could not record its terminal status; preserving its marker for retry." >&2
+          return 1
+        fi
+        clear_current_file "$_chcc_file" "$_chcc_instance"
+        echo "Stopped $_chcc_label worker $_chcc_instance."
+        return 0
+      fi
+      ;;
+    *)
+      echo "Unsupported Cloud host control action: $_chcc_action" >&2
+      return 64
+      ;;
+  esac
+
+  _chcc_stale_reason="stale_pid_worker_host"
+  if [ "$_chcc_other_live" = "1" ]; then
+    _chcc_stale_summary="Recorded Cloud worker PID now belongs to another process; it was left untouched."
+  else
+    _chcc_stale_summary="Recorded Cloud worker exited before reporting a terminal state."
+  fi
+  if ! strict_job_run_update_for_instance \
+    "$_chcc_instance" "$_chcc_started" "$_chcc_expected" \
+    stale "$_chcc_stale_summary" "$_chcc_stale_reason" \
+    --stage "stopped"; then
+    echo "Could not reconcile stale $_chcc_label worker $_chcc_instance; preserving its marker." >&2
+    return 1
+  fi
+  clear_current_file "$_chcc_file" "$_chcc_instance"
+  echo "Reconciled stale $_chcc_label worker $_chcc_instance without signaling pid ${_chcc_pid:-unknown}."
+}
+
+run_cloud_host_control() {
+  _chc_action="${BUILDER_BLOG_CLOUD_HOST_CONTROL:-}"
+  case "$_chc_action" in
+    mark-replaced|stop-current) ;;
+    *)
+      echo "BUILDER_BLOG_CLOUD_HOST_CONTROL must be mark-replaced or stop-current." >&2
+      return 64
+      ;;
+  esac
+  export BUILDER_BLOG_JOB_TRIGGER="manual_cli"
+  export BUILDER_BLOG_SCHEDULE_JOB=""
+  _chc_base="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG"
+  cloud_host_control_current_file \
+    "$_chc_action" "$_chc_base/cloud-library-host/current.json" "cloud-library-host" || return "$?"
+  cloud_host_control_current_file \
+    "$_chc_action" "$_chc_base/cloud-library-cron/current.json" "cloud-library-cron" || return "$?"
 }
 
 run_cron_supervisor() {
@@ -4741,6 +4937,11 @@ run_library_job() {
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then
   run_runtime_smoke_check
+  exit "$?"
+fi
+
+if [ "$JOB_NAME" = "cloud-library-host" ] && [ -n "${BUILDER_BLOG_CLOUD_HOST_CONTROL:-}" ]; then
+  run_cloud_host_control
   exit "$?"
 fi
 

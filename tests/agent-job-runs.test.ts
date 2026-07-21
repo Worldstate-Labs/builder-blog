@@ -831,6 +831,20 @@ test("runner cleans cloud host temp files and orphaned fetch tools", () => {
   assert.match(runner, /cloud_host_sleep_with_heartbeat[\s\S]*cleanup_transient_job_artifacts/);
 });
 
+test("runner exposes strict account-scoped cloud host lifecycle controls", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+
+  assert.match(runner, /BUILDER_BLOG_CLOUD_HOST_CONTROL/);
+  assert.match(runner, /mark-replaced\|stop-current/);
+  assert.match(runner, /cloud_host_control_current_file/);
+  assert.match(runner, /cloud-library-host\/current\.json/);
+  assert.match(runner, /cloud-library-cron\/current\.json/);
+  assert.match(runner, /processStartEpoch/);
+  assert.match(runner, /verify_followbrief_current_pid/);
+  assert.match(runner, /BUILDER_BLOG_STRICT_JOB_UPDATE/);
+  assert.match(runner, /_target_update_code=0[\s\S]*job_run_update "\$@" \|\| _target_update_code=\$\?/);
+});
+
 test("production app defaults use the FollowBrief domain", () => {
   const cli = source("scripts/builder-digest.mjs");
   const runner = source("scripts/builder-agent-runner.sh");

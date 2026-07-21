@@ -8,6 +8,17 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+const shellFunction = (text: string, name: string) => {
+  const start = text.indexOf(`${name}() {`);
+  assert.notEqual(start, -1, `missing shell function ${name}`);
+  const end = text.indexOf("\n}\n\n", start);
+  assert.notEqual(end, -1, `missing end of shell function ${name}`);
+  return text.slice(start, end + 3);
+};
+
+const markdownShellBlocks = (text: string) =>
+  [...text.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1]);
+
 test("assign-fetch-tasks stamps each cloud shard with its validated execution budget", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-shard-budgets-"));
   try {
@@ -2229,11 +2240,356 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(stopPrompt, /cloud-library-cron\/current\.json/);
   assert.match(stopPrompt, /runtime-cloud-library-host-\$ACCOUNT_SLUG/);
   assert.match(stopPrompt, /runtime-cloud-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(stopPrompt, /--job-type cloud-library-fetch/);
-  assert.match(stopPrompt, /--status killed/);
-  assert.match(stopPrompt, /--stage stopped/);
+  assert.match(stopPrompt, /BUILDER_BLOG_CLOUD_HOST_CONTROL=stop-current/);
+  assert.doesNotMatch(stopPrompt, /job-run-update/);
   assert.doesNotMatch(stopPrompt, /cron-status/);
   assert.doesNotMatch(stopPrompt, /--schedule-job cloud-library-cron/);
+});
+
+test("admin cloud host prompts coordinate account-safe replacement and stop before mutating pins", async () => {
+  const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
+  const stopPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
+
+  const setupInspect = setupPrompt.indexOf("ACTIVE_CLOUD_WORKER");
+  const setupMark = setupPrompt.indexOf("BUILDER_BLOG_CLOUD_HOST_CONTROL=mark-replaced");
+  const setupStop = setupPrompt.indexOf("BUILDER_BLOG_CLOUD_HOST_CONTROL=stop-current");
+  const setupPin = setupPrompt.indexOf('runtime-cloud-library-host-$ACCOUNT_SLUG');
+  assert.ok(setupInspect >= 0, "setup must inspect the existing host");
+  assert.ok(setupMark > setupInspect, "setup must mark the old host only after inspection/confirmation");
+  assert.ok(setupStop > setupMark, "setup must stop the confirmed old host after marking replacement");
+  assert.ok(setupPin > setupStop, "setup must not write runtime pins before replacement succeeds");
+  assert.match(setupPrompt, /loaded service owner cannot be proven/i);
+  assert.match(setupPrompt, /BLOCKED_CLOUD_WORKER: systemctl is unavailable; service state cannot be proven/i);
+  assert.match(setupPrompt, /BUILDER_BLOG_ACCOUNT="\$EXISTING_ACCT"[\s\S]*BUILDER_BLOG_CLOUD_HOST_CONTROL=mark-replaced/);
+  assert.match(setupPrompt, /launchctl kickstart[\s\S]*launchctl print/);
+  assert.match(setupPrompt, /systemctl --user restart[\s\S]*systemctl --user is-active --quiet/);
+  assert.doesNotMatch(setupPrompt, /codex exec\|claude -p\|hermes chat\|openclaw/);
+
+  const stopOwnerCheck = stopPrompt.indexOf("SERVICE_ACCOUNT");
+  const stopService = stopPrompt.indexOf("SERVICE_ABSENT");
+  const stopCurrent = stopPrompt.indexOf("BUILDER_BLOG_CLOUD_HOST_CONTROL=stop-current");
+  const stopPin = stopPrompt.indexOf('runtime-cloud-library-host-$ACCOUNT_SLUG');
+  assert.ok(stopOwnerCheck >= 0, "stop must resolve the shared service owner");
+  assert.ok(stopService > stopOwnerCheck, "stop must reject an ownership mismatch before unloading the service");
+  assert.ok(stopCurrent > stopService, "stop must verify service absence before terminating the recorded worker");
+  assert.ok(stopPin > stopCurrent, "stop must preserve runtime pins until worker cleanup succeeds");
+  assert.match(stopPrompt, /service belongs to another FollowBrief account/i);
+  assert.match(stopPrompt, /loaded service owner cannot be proven/i);
+  assert.match(stopPrompt, /systemctl is unavailable; service state cannot be proven/i);
+  assert.doesNotMatch(stopPrompt, /codex exec\|claude -p\|hermes chat\|openclaw/);
+  assert.doesNotMatch(stopPrompt, /disable --now[^\n]*\|\| true/);
+  assert.doesNotMatch(stopPrompt, /stop followbrief-cloud-library-host\.service[^\n]*\|\| true/);
+});
+
+test("cloud host control wrapper cannot mask a primary marker failure with an absent compatibility marker", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-wrapper-"));
+  try {
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -u
+${shellFunction(runner, "run_cloud_host_control")}
+AGENT_DIR="${dir}"
+ACCOUNT_SLUG=account
+BUILDER_BLOG_CLOUD_HOST_CONTROL=stop-current
+calls=0
+cloud_host_control_current_file() {
+  calls=$((calls + 1))
+  printf '%s\\n' "$3" >> "${dir}/calls"
+  [ "$calls" -ne 1 ]
+}
+run_cloud_host_control
+`,
+      "utf8",
+    );
+    await assert.rejects(execFileAsync("sh", [script]));
+    assert.equal((await readFile(join(dir, "calls"), "utf8")).trim(), "cloud-library-host");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("admin cloud stop refuses to unload a loaded launchd service owned by another account", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-stop-owner-"));
+  try {
+    const plistDir = join(dir, "Library", "LaunchAgents");
+    const plist = join(plistDir, "com.followbrief.cloud-library-host.plist");
+    await mkdir(plistDir, { recursive: true });
+    await writeFile(
+      plist,
+      '<string>BUILDER_BLOG_ACCOUNT="other@example.com" builder-agent-runner.sh cloud-library-host</string>\n',
+      "utf8",
+    );
+    const prompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
+    const block = markdownShellBlocks(prompt).find((candidate) => candidate.includes("SERVICE_ABSENT launchd"));
+    assert.ok(block, "missing launchd stop block");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+launchctl() { printf '%s\\n' "$*" >> "${dir}/launchctl.log"; return 0; }
+${block}`,
+      "utf8",
+    );
+    await assert.rejects(
+      execFileAsync("sh", [script], {
+        env: { ...process.env, HOME: dir, BUILDER_BLOG_ACCOUNT: "target@example.com" },
+      }),
+    );
+    assert.match(await readFile(plist, "utf8"), /other@example\.com/);
+    assert.doesNotMatch(await readFile(join(dir, "launchctl.log"), "utf8"), /bootout/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("admin cloud stop fails closed when Linux service state cannot be inspected", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-stop-no-systemctl-"));
+  try {
+    const prompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
+    const block = markdownShellBlocks(prompt).find((candidate) => candidate.includes("SERVICE_ABSENT systemd"));
+    assert.ok(block, "missing systemd stop block");
+    const script = join(dir, "check.sh");
+    await writeFile(script, `set -eu\n${block}`, "utf8");
+    await assert.rejects(
+      execFileAsync("/bin/sh", [script], {
+        env: {
+          ...process.env,
+          HOME: dir,
+          PATH: dir,
+          BUILDER_BLOG_ACCOUNT: "target@example.com",
+        },
+      }),
+      (error: unknown) => {
+        assert.match(String((error as { stderr?: string }).stderr), /systemctl is unavailable; service state cannot be proven/);
+        return true;
+      },
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control keeps the marker when an exact worker cannot be terminated", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-terminate-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-1", workerPid: 4242, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+verify_followbrief_pid() { return 0; }
+terminate_process_tree() { return 1; }
+job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await assert.rejects(execFileAsync("sh", [script]));
+    assert.equal(JSON.parse(await readFile(currentFile, "utf8")).instanceId, "host-1");
+    await assert.rejects(readFile(join(dir, "updates"), "utf8"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control escalates the cached descendant set after the runner root exits", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-descendants-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-tree", workerPid: 4242, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "terminate_recorded_process_ids")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+verify_calls=0
+verify_followbrief_pid() { verify_calls=$((verify_calls + 1)); [ "$verify_calls" -eq 1 ]; }
+process_tree_pids() { printf '4242\\n4343\\n'; }
+terminate_process_tree() { return 1; }
+terminate_recorded_process_ids() { printf '%s\\n' "$1" > "${dir}/killed"; return 0; }
+job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "killed");
+    assert.equal((await readFile(join(dir, "killed"), "utf8")).trim(), "4242 4343");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control never kills a live pid that is not the recorded FollowBrief runner", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-recycled-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-2", workerPid: 5252, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+verify_followbrief_pid() { return 1; }
+kill() { return 0; }
+terminate_process_tree() { touch "${dir}/terminated"; return 0; }
+job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    await assert.rejects(readFile(join(dir, "terminated"), "utf8"));
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "stale");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control treats a matching runner argv with a different process start as pid reuse", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-runner-reuse-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-reused", workerPid: 5353, processStartEpoch: 100, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+verify_followbrief_pid() { return 0; }
+process_start_epoch() { printf '200\\n'; }
+kill() { return 0; }
+terminate_process_tree() { touch "${dir}/terminated"; return 0; }
+job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    await assert.rejects(readFile(join(dir, "terminated"), "utf8"));
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "stale");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control preserves current.json when the terminal status update fails", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-status-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-3", workerPid: 6262, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+verify_followbrief_pid() { return 1; }
+kill() { return 1; }
+terminate_process_tree() { return 0; }
+job_run_update_for_instance() { return 1; }
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await assert.rejects(execFileAsync("sh", [script]));
+    assert.equal(JSON.parse(await readFile(currentFile, "utf8")).instanceId, "host-3");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("mark-replaced records the live host without terminating it or clearing its marker", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-replace-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-4", workerPid: 7272, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+verify_followbrief_pid() { return 0; }
+terminate_process_tree() { touch "${dir}/terminated"; return 0; }
+job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+cloud_host_control_current_file mark-replaced "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+    assert.equal(JSON.parse(await readFile(currentFile, "utf8")).instanceId, "host-4");
+    await assert.rejects(readFile(join(dir, "terminated"), "utf8"));
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "replaced");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("cloud source readiness check is read-only and verifies deployment prerequisites", async () => {
