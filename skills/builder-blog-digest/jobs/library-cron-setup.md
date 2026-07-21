@@ -369,6 +369,18 @@ NODE
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
 LAUNCHD_SCHEDULE_XML="$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")"
+wait_for_launchd_absent() {
+  label="$1"
+  remaining=30
+  while [ "$remaining" -gt 0 ]; do
+    if ! launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+    remaining=$((remaining - 1))
+  done
+  ! launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1
+}
 LABEL="com.followbrief.library.$(account_slug "$ACCT")"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
@@ -397,9 +409,13 @@ $LAUNCHD_SCHEDULE_XML
 </plist>
 PLISTEOF
 node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason setup_replace
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
-BOOTOUT_CODE="$?"
+BOOTOUT_CODE=0
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || BOOTOUT_CODE="$?"
 node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason "exit_$BOOTOUT_CODE"
+if ! wait_for_launchd_absent "$LABEL"; then
+  echo "timed out waiting for launchd to unload: $LABEL" >&2
+  exit 75
+fi
 launchctl enable "gui/$(id -u)/$LABEL"
 if launchctl bootstrap "gui/$(id -u)" "$PLIST"; then
   node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootstrap_succeeded --label "$LABEL" --plist-exists 1 --reason setup_install

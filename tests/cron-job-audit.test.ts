@@ -16,6 +16,15 @@ const regularLocalLaunchdStopBlock = (prompt: string, job: string) => {
   return block;
 };
 
+const regularLocalLaunchdSetupBlock = (prompt: string, job: string) => {
+  const block = markdownShellBlocks(prompt).find(
+    (candidate) =>
+      candidate.includes("LAUNCHD_SCHEDULE_XML") && candidate.includes("launchd_bootstrap_succeeded"),
+  );
+  assert.ok(block, `missing regular local launchd setup block for ${job}`);
+  return block;
+};
+
 test("cron scheduler status changes leave local and server audit events", () => {
   const schema = source("prisma/schema.prisma");
   const cli = source("scripts/builder-digest.mjs");
@@ -149,5 +158,49 @@ test("cron stop prompts clean stale local scheduler state before reporting stopp
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_no_schedule_found`));
     assert.match(prompt, /"plist absent: \$PLIST"/);
     assert.match(prompt, new RegExp(`cron-status[\\s\\S]*--job ${job}[\\s\\S]*--status stopped`));
+  }
+});
+
+test("launchd replacement waits before bootstrap in regular local setup prompts", () => {
+  const librarySetup = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
+  const digestSetup = source("skills/builder-blog-digest/jobs/digest-cron-setup.md");
+
+  for (const [job, prompt] of [
+    ["library-cron", librarySetup],
+    ["digest-cron", digestSetup],
+  ] as const) {
+    const block = regularLocalLaunchdSetupBlock(prompt, job);
+
+    assert.match(block, /wait_for_launchd_absent\(\) \{/);
+    assert.match(block, /remaining=30/);
+    assert.match(block, /while \[ "\$remaining" -gt 0 \]/);
+    assert.match(block, /sleep 1/);
+    assert.match(block, /remaining=\$\(\(remaining - 1\)\)/);
+    assert.match(block, /launchctl print "gui\/\$\(id -u\)\/\$label" >/);
+
+    assert.match(
+      block,
+      /BOOTOUT_CODE=0[\s\S]*launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" 2>\/dev\/null \|\| BOOTOUT_CODE="\$\?"/,
+    );
+    assert.match(block, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_finished[\\s\\S]*--reason "exit_\\$BOOTOUT_CODE"`));
+
+    const bootoutIndex = block.indexOf('launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null');
+    const waitIndex = block.indexOf('wait_for_launchd_absent "$LABEL"');
+    const enableIndex = block.indexOf('launchctl enable "gui/$(id -u)/$LABEL"');
+    const bootstrapIndex = block.indexOf('launchctl bootstrap "gui/$(id -u)" "$PLIST"');
+    assert.ok(bootoutIndex >= 0, `${job} setup block must boot out the existing job`);
+    assert.ok(waitIndex > bootoutIndex, `${job} setup block must wait for launchd absence after bootout`);
+    assert.ok(enableIndex > waitIndex, `${job} setup block must wait before launchctl enable`);
+    assert.ok(bootstrapIndex > waitIndex, `${job} setup block must wait before launchctl bootstrap`);
+
+    assert.match(
+      block,
+      /if ! wait_for_launchd_absent "\$LABEL"; then[\s\S]*timed out waiting for launchd to unload: \$LABEL[\s\S]*exit 75[\s\S]*fi/,
+    );
+    assert.doesNotMatch(
+      block,
+      /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" 2>\/dev\/null\s*\nBOOTOUT_CODE="\$\?"\s*\n(?:.*\n){0,2}launchctl enable "gui\/\$\(id -u\)\/\$LABEL"/,
+      `${job} setup block must not regress to immediate bootstrap after bootout`,
+    );
   }
 });
