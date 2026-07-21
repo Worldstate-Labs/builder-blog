@@ -100,9 +100,8 @@ test("cron stop prompts audit scheduler mutations before web status sync", () =>
     assert.match(block, /wait_for_launchd_absent\(\) \{/);
     assert.match(block, /remaining=30/);
     assert.match(block, /while launchctl print "gui\/\$\(id -u\)\/\$label" >/);
-    assert.match(block, /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" 2>\/dev\/null/);
-    assert.match(block, /BOOTOUT_CODE="\$\?"/);
-    assert.match(block, /if \[ "\$LOADED" = "1" \] && \[ "\$BOOTOUT_CODE" = "0" \]; then[\s\S]*wait_for_launchd_absent "\$LABEL"/);
+    assert.match(block, /BOOTOUT_CODE=0[\s\S]*launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" 2>\/dev\/null \|\| BOOTOUT_CODE="\$\?"/);
+    assert.match(block, /if \[ "\$LOADED" = "1" \]; then[\s\S]*wait_for_launchd_absent "\$LABEL"/);
     assert.match(block, /if wait_for_launchd_absent "\$LABEL"; then[\s\S]*LOADED_AFTER=0[\s\S]*else[\s\S]*LOADED_AFTER=1/);
     assert.match(
       block,
@@ -110,7 +109,7 @@ test("cron stop prompts audit scheduler mutations before web status sync", () =>
         `cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_finished[\\s\\S]*--launchctl-loaded "\\$LOADED_AFTER"[\\s\\S]*--reason "exit_\\$BOOTOUT_CODE"`,
       ),
     );
-    assert.match(block, /wait_for_launchd_absent "\$LABEL"[\s\S]*exit 75[\s\S]*rm -f "\$PLIST"/);
+    assert.match(block, /if \[ "\$LOADED" = "1" \] && \[ "\$LOADED_AFTER" = "1" \]; then[\s\S]*exit 75[\s\S]*rm -f "\$PLIST"/);
     assert.match(
       block,
       new RegExp(

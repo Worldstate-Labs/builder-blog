@@ -2570,6 +2570,109 @@ ${block}
   }
 });
 
+test("regular local launchd stop waits for absence before removing plist after nonzero bootout", async () => {
+  for (const [job, promptPath, label] of [
+    ["library-cron", "skills/builder-blog-digest/jobs/library-cron-stop.md", "com.followbrief.library.test_bootout_nonzero"],
+    ["digest-cron", "skills/builder-blog-digest/jobs/digest-cron-stop.md", "com.followbrief.digest.test_bootout_nonzero"],
+  ] as const) {
+    const dir = await mkdtemp(join(tmpdir(), `fb-${job}-stop-nonzero-wait-`));
+    try {
+      const plistDir = join(dir, "Library", "LaunchAgents");
+      const fakeBin = join(dir, "fake-bin");
+      const agentDir = join(dir, ".builder-blog");
+      const plist = join(plistDir, `${label}.plist`);
+      await mkdir(plistDir, { recursive: true });
+      await mkdir(fakeBin, { recursive: true });
+      await mkdir(agentDir, { recursive: true });
+      await writeFile(plist, "<plist />\n", "utf8");
+      await writeFile(join(agentDir, "builder-digest.mjs"), "// stub\n", "utf8");
+      await writeFile(
+        join(fakeBin, "node"),
+        `#!/bin/sh
+if [ "$#" -ge 2 ] && [ "$2" = "cron-audit" ]; then
+  case "$1" in
+    */builder-digest.mjs)
+      printf '%s\\n' "$*" >> "${dir}/node.log"
+      exit 0
+      ;;
+  esac
+fi
+echo "unexpected node call: $*" >&2
+exit 91
+`,
+        "utf8",
+      );
+      await execFileAsync("chmod", ["+x", join(fakeBin, "node")]);
+      const prompt = await readFile(promptPath, "utf8");
+      const block = regularLocalStopBlock(prompt, job);
+      const script = join(dir, "check.sh");
+      await writeFile(
+        script,
+        `set -eu
+SLEEP_CALLS=0
+BOOTOUT_DONE=0
+LAUNCHD_GONE=0
+launchctl() {
+  printf '%s\\n' "$*" >> "${dir}/launchctl.log"
+  case "$1" in
+    print)
+      if [ "$BOOTOUT_DONE" -eq 1 ] && [ "$SLEEP_CALLS" -ge 2 ]; then
+        LAUNCHD_GONE=1
+        return 1
+      fi
+      return 0
+      ;;
+    bootout)
+      BOOTOUT_DONE=1
+      return 42
+      ;;
+  esac
+  return 0
+}
+sleep() {
+  SLEEP_CALLS=$((SLEEP_CALLS + 1))
+  printf 'sleep %s\\n' "$1" >> "${dir}/launchctl.log"
+  return 0
+}
+rm() {
+  printf 'rm %s gone=%s sleeps=%s\\n' "$*" "$LAUNCHD_GONE" "$SLEEP_CALLS" >> "${dir}/ops.log"
+  command rm "$@"
+}
+${block}
+`,
+        "utf8",
+      );
+      const result = await execFileAsync("/bin/sh", [script], {
+        env: {
+          ...process.env,
+          HOME: dir,
+          PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+          BUILDER_BLOG_ACCOUNT: "",
+          BUILDER_BLOG_AGENT_DIR: agentDir,
+          LABEL: label,
+        },
+      });
+      assert.match(result.stdout, new RegExp(`launchd absent: ${label}`));
+      assert.doesNotMatch(result.stdout, /STILL LOADED|STILL PLIST/);
+      await assert.rejects(readFile(plist, "utf8"), /ENOENT/);
+      const launchctlLog = await readFile(join(dir, "launchctl.log"), "utf8");
+      assert.match(launchctlLog, /^bootout gui\//m);
+      assert.equal((launchctlLog.match(/^sleep 1$/gm) ?? []).length, 2);
+      const opsLog = await readFile(join(dir, "ops.log"), "utf8");
+      assert.match(opsLog, /^rm -f .* gone=1 sleeps=2$/m);
+      const nodeLog = await readFile(join(dir, "node.log"), "utf8");
+      assert.match(nodeLog, /launchd_bootout_start/);
+      assert.match(nodeLog, /launchd_bootout_finished/);
+      assert.match(nodeLog, /--reason exit_42/);
+      assert.match(nodeLog, /--launchctl-loaded 0/);
+      assert.match(nodeLog, /launchd_remove_plist/);
+      assert.ok(nodeLog.indexOf("launchd_bootout_finished") < nodeLog.indexOf("launchd_remove_plist"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+});
+
 test("regular local launchd stop times out before cleanup", async () => {
   for (const [job, promptPath, label] of [
     ["library-cron", "skills/builder-blog-digest/jobs/library-cron-stop.md", "com.followbrief.library.test_timeout"],
@@ -2661,6 +2764,102 @@ ${block}
       assert.match(nodeLog, /--launchctl-loaded 1/);
       assert.doesNotMatch(nodeLog, /launchd_remove_plist/);
       assert.ok(nodeLog.indexOf("launchd_bootout_start") < nodeLog.indexOf("launchd_bootout_finished"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test("regular local launchd stop times out before cleanup after nonzero bootout", async () => {
+  for (const [job, promptPath, label] of [
+    ["library-cron", "skills/builder-blog-digest/jobs/library-cron-stop.md", "com.followbrief.library.test_timeout_nonzero"],
+    ["digest-cron", "skills/builder-blog-digest/jobs/digest-cron-stop.md", "com.followbrief.digest.test_timeout_nonzero"],
+  ] as const) {
+    const dir = await mkdtemp(join(tmpdir(), `fb-${job}-stop-timeout-nonzero-`));
+    try {
+      const plistDir = join(dir, "Library", "LaunchAgents");
+      const fakeBin = join(dir, "fake-bin");
+      const agentDir = join(dir, ".builder-blog");
+      const plist = join(plistDir, `${label}.plist`);
+      await mkdir(plistDir, { recursive: true });
+      await mkdir(fakeBin, { recursive: true });
+      await mkdir(agentDir, { recursive: true });
+      await writeFile(plist, "<plist />\n", "utf8");
+      await writeFile(join(agentDir, "builder-digest.mjs"), "// stub\n", "utf8");
+      await writeFile(
+        join(fakeBin, "node"),
+        `#!/bin/sh
+if [ "$#" -ge 2 ] && [ "$2" = "cron-audit" ]; then
+  case "$1" in
+    */builder-digest.mjs)
+      printf '%s\\n' "$*" >> "${dir}/node.log"
+      exit 0
+      ;;
+  esac
+fi
+echo "unexpected node call: $*" >&2
+exit 91
+`,
+        "utf8",
+      );
+      await execFileAsync("chmod", ["+x", join(fakeBin, "node")]);
+      const prompt = await readFile(promptPath, "utf8");
+      const block = regularLocalStopBlock(prompt, job);
+      const script = join(dir, "check.sh");
+      await writeFile(
+        script,
+        `set -eu
+SLEEP_CALLS=0
+launchctl() {
+  printf '%s\\n' "$*" >> "${dir}/launchctl.log"
+  case "$1" in
+    print) return 0 ;;
+    bootout) return 42 ;;
+  esac
+  return 0
+}
+sleep() {
+  SLEEP_CALLS=$((SLEEP_CALLS + 1))
+  printf 'sleep %s\\n' "$1" >> "${dir}/launchctl.log"
+  return 0
+}
+rm() {
+  printf 'rm %s\\n' "$*" >> "${dir}/ops.log"
+  command rm "$@"
+}
+${block}
+`,
+        "utf8",
+      );
+      await assert.rejects(
+        execFileAsync("/bin/sh", [script], {
+          env: {
+            ...process.env,
+            HOME: dir,
+            PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+            BUILDER_BLOG_ACCOUNT: "",
+            BUILDER_BLOG_AGENT_DIR: agentDir,
+            LABEL: label,
+          },
+        }),
+        (error: unknown) => {
+          const failure = error as { code?: number; stdout?: string; stderr?: string };
+          assert.equal(failure.code, 75);
+          assert.match(`${failure.stdout ?? ""}\n${failure.stderr ?? ""}`, /timed out waiting for launchd to go absent/i);
+          return true;
+        },
+      );
+      assert.equal(await readFile(plist, "utf8"), "<plist />\n");
+      const launchctlLog = await readFile(join(dir, "launchctl.log"), "utf8");
+      assert.match(launchctlLog, /^bootout gui\//m);
+      assert.equal((launchctlLog.match(/^sleep 1$/gm) ?? []).length, 30);
+      await assert.rejects(readFile(join(dir, "ops.log"), "utf8"), /ENOENT/);
+      const nodeLog = await readFile(join(dir, "node.log"), "utf8");
+      assert.match(nodeLog, /launchd_bootout_start/);
+      assert.match(nodeLog, /launchd_bootout_finished/);
+      assert.match(nodeLog, /--reason exit_42/);
+      assert.match(nodeLog, /--launchctl-loaded 1/);
+      assert.doesNotMatch(nodeLog, /launchd_remove_plist/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

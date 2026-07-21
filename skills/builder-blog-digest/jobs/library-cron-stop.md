@@ -159,9 +159,9 @@ for LABEL in $LABELS; do
 
   if [ "$LOADED" = "1" ] || [ "$PLIST_EXISTS" = "1" ]; then
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$PLIST_EXISTS" --launchctl-loaded "$LOADED" --reason stop_cron
-    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
-    BOOTOUT_CODE="$?"
-    if [ "$LOADED" = "1" ] && [ "$BOOTOUT_CODE" = "0" ]; then
+    BOOTOUT_CODE=0
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || BOOTOUT_CODE="$?"
+    if [ "$LOADED" = "1" ]; then
       if wait_for_launchd_absent "$LABEL"; then
         LOADED_AFTER=0
       else
@@ -173,7 +173,7 @@ for LABEL in $LABELS; do
       LOADED_AFTER=0
     fi
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason "exit_$BOOTOUT_CODE"
-    if [ "$LOADED" = "1" ] && [ "$BOOTOUT_CODE" = "0" ] && [ "$LOADED_AFTER" = "1" ]; then
+    if [ "$LOADED" = "1" ] && [ "$LOADED_AFTER" = "1" ]; then
       echo "timed out waiting for launchd to go absent: $LABEL" >&2
       exit 75
     fi
