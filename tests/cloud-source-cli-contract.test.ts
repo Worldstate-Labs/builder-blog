@@ -2281,6 +2281,32 @@ test("admin cloud host prompts coordinate account-safe replacement and stop befo
   assert.doesNotMatch(stopPrompt, /stop followbrief-cloud-library-host\.service[^\n]*\|\| true/);
 });
 
+test("admin cloud setup launchd replacement paths wait for absence after bootout", async () => {
+  const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
+  const replacementBlock = markdownShellBlocks(setupPrompt).find((candidate) => candidate.includes("OLD_CLOUD_WORKER_STOPPED"));
+  const installBlock = markdownShellBlocks(setupPrompt).find((candidate) => candidate.includes("Installed launchd worker host"));
+
+  assert.ok(replacementBlock, "missing launchd replacement block");
+  assert.ok(installBlock, "missing launchd install block");
+
+  assert.match(replacementBlock, /wait_for_launchd_absent\(\) \{/);
+  assert.match(
+    replacementBlock,
+    /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" \|\| exit "\$\?"[\s\S]*wait_for_launchd_absent "\$LABEL"[\s\S]*rm -f "\$PLIST" \|\| exit "\$\?"/,
+  );
+  assert.match(replacementBlock, /timed out/i);
+  assert.doesNotMatch(
+    replacementBlock,
+    /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" \|\| exit "\$\?"[\s\S]*launchctl print "gui\/\$\(id -u\)\/\$LABEL" >/,
+  );
+
+  assert.match(installBlock, /wait_for_launchd_absent\(\) \{/);
+  assert.match(
+    installBlock,
+    /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" 2>\/dev\/null \|\| true[\s\S]*wait_for_launchd_absent "\$LABEL"[\s\S]*launchctl enable "gui\/\$\(id -u\)\/\$LABEL"[\s\S]*launchctl bootstrap "gui\/\$\(id -u\)" "\$PLIST"/,
+  );
+});
+
 test("cloud host control wrapper cannot mask a primary marker failure with an absent compatibility marker", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-wrapper-"));
   try {
@@ -2339,6 +2365,68 @@ ${block}`,
     );
     assert.match(await readFile(plist, "utf8"), /other@example\.com/);
     assert.doesNotMatch(await readFile(join(dir, "launchctl.log"), "utf8"), /bootout/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("admin cloud stop waits for launchd absence before removing this account's plist", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-stop-wait-"));
+  try {
+    const plistDir = join(dir, "Library", "LaunchAgents");
+    const plist = join(plistDir, "com.followbrief.cloud-library-host.plist");
+    await mkdir(plistDir, { recursive: true });
+    await writeFile(
+      plist,
+      '<string>BUILDER_BLOG_ACCOUNT="target@example.com" builder-agent-runner.sh cloud-library-host</string>\n',
+      "utf8",
+    );
+    const prompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
+    const block = markdownShellBlocks(prompt).find((candidate) => candidate.includes("SERVICE_ABSENT launchd"));
+    assert.ok(block, "missing launchd stop block");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+SLEEP_CALLS=0
+BOOTOUT_DONE=0
+launchctl() {
+  printf '%s\\n' "$*" >> "${dir}/launchctl.log"
+  case "$1" in
+    print)
+      if [ "$BOOTOUT_DONE" -eq 1 ] && [ "$SLEEP_CALLS" -ge 2 ]; then
+        return 1
+      fi
+      return 0
+      ;;
+    bootout)
+      BOOTOUT_DONE=1
+      return 0
+      ;;
+  esac
+  return 0
+}
+sleep() {
+  SLEEP_CALLS=$((SLEEP_CALLS + 1))
+  printf 'sleep %s\\n' "$1" >> "${dir}/launchctl.log"
+  return 0
+}
+${block}`,
+      "utf8",
+    );
+    const result = await execFileAsync("sh", [script], {
+      env: { ...process.env, HOME: dir, BUILDER_BLOG_ACCOUNT: "target@example.com" },
+    }).catch((error: unknown) => {
+      assert.equal((error as { code?: number }).code, 75);
+      assert.match(String((error as { stderr?: string }).stderr), /service is still loaded/i);
+      throw error;
+    });
+    assert.match(result.stdout, /SERVICE_ABSENT launchd com\.followbrief\.cloud-library-host/);
+    await assert.rejects(readFile(plist, "utf8"), /ENOENT/);
+    const launchctlLog = await readFile(join(dir, "launchctl.log"), "utf8");
+    assert.match(launchctlLog, /^bootout gui\//m);
+    assert.match(launchctlLog, /^sleep 1$/m);
+    assert.match(launchctlLog, /^print gui\//m);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -30,6 +30,15 @@ macOS (`uname -s` is `Darwin`):
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 LABEL="com.followbrief.cloud-library-host"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+wait_for_launchd_absent() {
+  label="$1"
+  remaining=30
+  while launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; do
+    [ "$remaining" -gt 0 ] || return 1
+    sleep 1
+    remaining=$((remaining - 1))
+  done
+}
 SERVICE_LOADED=0
 if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then SERVICE_LOADED=1; fi
 SERVICE_ACCOUNT=""
@@ -54,8 +63,8 @@ fi
 if [ "$SERVICE_LOADED" = "1" ]; then
   launchctl bootout "gui/$(id -u)/$LABEL" || exit "$?"
 fi
-if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
-  echo "service is still loaded: $LABEL" >&2
+if [ "$SERVICE_LOADED" = "1" ] && ! wait_for_launchd_absent "$LABEL"; then
+  echo "timed out waiting for launchd service to unload: $LABEL" >&2
   exit 75
 fi
 rm -f "$PLIST" || exit "$?"

@@ -143,6 +143,15 @@ LABEL="com.followbrief.cloud-library-host"
 UNIT_NAME="followbrief-cloud-library-host.service"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 UNIT="$HOME/.config/systemd/user/$UNIT_NAME"
+wait_for_launchd_absent() {
+  label="$1"
+  remaining=30
+  while launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; do
+    [ "$remaining" -gt 0 ] || return 1
+    sleep 1
+    remaining=$((remaining - 1))
+  done
+}
 SERVICE_FILE="$UNIT"
 [ "$(uname -s)" = "Darwin" ] && SERVICE_FILE="$PLIST"
 if [ "$(uname -s)" != "Darwin" ] && ! command -v systemctl >/dev/null 2>&1; then
@@ -169,8 +178,8 @@ case "$(uname -s)" in
     if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
       launchctl bootout "gui/$(id -u)/$LABEL" || exit "$?"
     fi
-    if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
-      echo "shared launchd service is still loaded" >&2
+    if ! wait_for_launchd_absent "$LABEL"; then
+      echo "timed out waiting for shared launchd service to unload: $LABEL" >&2
       exit 75
     fi
     rm -f "$PLIST" || exit "$?"
@@ -234,6 +243,15 @@ IDLE_SECONDS="${BUILDER_BLOG_CLOUD_IDLE_SECONDS:-300}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 LABEL="com.followbrief.cloud-library-host"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+wait_for_launchd_absent() {
+  label="$1"
+  remaining=30
+  while launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; do
+    [ "$remaining" -gt 0 ] || return 1
+    sleep 1
+    remaining=$((remaining - 1))
+  done
+}
 mkdir -p "$HOME/Library/LaunchAgents" "$AGENT_DIR/logs"
 cat > "$PLIST" <<PLISTEOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -255,6 +273,10 @@ cat > "$PLIST" <<PLISTEOF
 </plist>
 PLISTEOF
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+if ! wait_for_launchd_absent "$LABEL"; then
+  echo "timed out waiting for launchd service to unload before bootstrap: $LABEL" >&2
+  exit 75
+fi
 launchctl enable "gui/$(id -u)/$LABEL"
 launchctl bootstrap "gui/$(id -u)" "$PLIST" || {
   BOOTSTRAP_CODE="$?"
