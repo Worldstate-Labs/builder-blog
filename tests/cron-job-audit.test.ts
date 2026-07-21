@@ -5,6 +5,16 @@ import test from "node:test";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
+const markdownShellBlocks = (text: string) =>
+  [...text.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1]);
+
+const regularLocalLaunchdStopBlock = (prompt: string, job: string) => {
+  const block = markdownShellBlocks(prompt).find(
+    (candidate) => candidate.includes("legacy_account_slug()") && candidate.includes('launchd absent: $LABEL'),
+  );
+  assert.ok(block, `missing regular local launchd stop block for ${job}`);
+  return block;
+};
 
 test("cron scheduler status changes leave local and server audit events", () => {
   const schema = source("prisma/schema.prisma");
@@ -56,7 +66,7 @@ test("cron scheduler status changes leave local and server audit events", () => 
   assert.match(cli, /local_scheduler_missing/);
 });
 
-test("cron setup and stop prompts audit scheduler mutations before web status sync", () => {
+test("cron stop prompts audit scheduler mutations before web status sync", () => {
   const librarySetup = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
   const digestSetup = source("skills/builder-blog-digest/jobs/digest-cron-setup.md");
   const libraryStop = source("skills/builder-blog-digest/jobs/library-cron-stop.md");
@@ -76,6 +86,7 @@ test("cron setup and stop prompts audit scheduler mutations before web status sy
     ["library-cron", libraryStop],
     ["digest-cron", digestStop],
   ] as const) {
+    const block = regularLocalLaunchdStopBlock(prompt, job);
     assert.match(prompt, /Install or refresh the skill/);
     assert.ok(
       prompt.indexOf("Install or refresh the skill") < prompt.indexOf("cron-audit"),
@@ -86,6 +97,26 @@ test("cron setup and stop prompts audit scheduler mutations before web status sy
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_remove_plist`));
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event crontab_remove_succeeded`));
     assert.match(prompt, /cron-status[\s\S]*--status stopped/);
+    assert.match(block, /wait_for_launchd_absent\(\) \{/);
+    assert.match(block, /remaining=30/);
+    assert.match(block, /while launchctl print "gui\/\$\(id -u\)\/\$label" >/);
+    assert.match(block, /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" 2>\/dev\/null/);
+    assert.match(block, /BOOTOUT_CODE="\$\?"/);
+    assert.match(block, /if \[ "\$LOADED" = "1" \] && \[ "\$BOOTOUT_CODE" = "0" \]; then[\s\S]*wait_for_launchd_absent "\$LABEL"/);
+    assert.match(block, /if wait_for_launchd_absent "\$LABEL"; then[\s\S]*LOADED_AFTER=0[\s\S]*else[\s\S]*LOADED_AFTER=1/);
+    assert.match(
+      block,
+      new RegExp(
+        `cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_finished[\\s\\S]*--launchctl-loaded "\\$LOADED_AFTER"[\\s\\S]*--reason "exit_\\$BOOTOUT_CODE"`,
+      ),
+    );
+    assert.match(block, /wait_for_launchd_absent "\$LABEL"[\s\S]*exit 75[\s\S]*rm -f "\$PLIST"/);
+    assert.match(
+      block,
+      new RegExp(
+        `launchd_bootout_finished[\\s\\S]*rm -f "\\$PLIST"[\\s\\S]*cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_remove_plist[\\s\\S]*--launchctl-loaded "\\$LOADED_AFTER"`,
+      ),
+    );
   }
 });
 
@@ -97,6 +128,7 @@ test("cron stop prompts clean stale local scheduler state before reporting stopp
     ["library-cron", libraryStop],
     ["digest-cron", digestStop],
   ] as const) {
+    const block = regularLocalLaunchdStopBlock(prompt, job);
     assert.doesNotMatch(
       prompt,
       /account-scoped label is not\s+present in `launchctl list[\s\S]*STOP: report that\s+there is no/,
@@ -113,8 +145,8 @@ test("cron stop prompts clean stale local scheduler state before reporting stopp
     assert.match(prompt, /LABELS="\$LABELS \$LEGACY_LABEL"/);
     assert.match(prompt, /for LABEL in \$LABELS/);
     assert.match(prompt, /loaded service,\s+no target plist\/crontab entry,\s+no current\s+worker file, no pin files/);
-    assert.match(prompt, /launchctl print "gui\/\$\(id -u\)\/\$LABEL"/);
-    assert.match(prompt, /\[ -f "\$PLIST" \]/);
+    assert.match(block, /launchctl print "gui\/\$\(id -u\)\/\$LABEL"/);
+    assert.match(block, /\[ -f "\$PLIST" \]/);
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_no_schedule_found`));
     assert.match(prompt, /"plist absent: \$PLIST"/);
     assert.match(prompt, new RegExp(`cron-status[\\s\\S]*--job ${job}[\\s\\S]*--status stopped`));

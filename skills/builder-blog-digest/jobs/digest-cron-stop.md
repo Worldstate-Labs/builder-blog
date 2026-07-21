@@ -137,6 +137,15 @@ else
 fi
 for LABEL in $LABELS; do
   PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+  wait_for_launchd_absent() {
+    label="$1"
+    remaining=30
+    while launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; do
+      [ "$remaining" -gt 0 ] || return 1
+      sleep 1
+      remaining=$((remaining - 1))
+    done
+  }
   if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
     LOADED=1
   else
@@ -152,12 +161,22 @@ for LABEL in $LABELS; do
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$PLIST_EXISTS" --launchctl-loaded "$LOADED" --reason stop_cron
     launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
     BOOTOUT_CODE="$?"
-    if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+    if [ "$LOADED" = "1" ] && [ "$BOOTOUT_CODE" = "0" ]; then
+      if wait_for_launchd_absent "$LABEL"; then
+        LOADED_AFTER=0
+      else
+        LOADED_AFTER=1
+      fi
+    elif launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
       LOADED_AFTER=1
     else
       LOADED_AFTER=0
     fi
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason "exit_$BOOTOUT_CODE"
+    if [ "$LOADED" = "1" ] && [ "$BOOTOUT_CODE" = "0" ] && [ "$LOADED_AFTER" = "1" ]; then
+      echo "timed out waiting for launchd to go absent: $LABEL" >&2
+      exit 75
+    fi
     rm -f "$PLIST"
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason stop_cron
   else
