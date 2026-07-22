@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { WorkspaceAutoRefresh } from "@/components/WorkspaceAutoRefresh";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { contentSyncState } from "@/lib/content-sync-state";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function WorkspaceLayout({
   children,

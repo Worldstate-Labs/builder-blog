@@ -524,6 +524,30 @@ test("post detail keeps source actions with the source row without a top source 
   assert.match(globals, /\.post-detail-author-name,[\s\S]*\.post-detail-author-handle\s*{[\s\S]*text-overflow:\s*ellipsis/);
 });
 
+test("post detail decodes HTML entities in fetched body text", () => {
+  const html = renderToStaticMarkup(
+    createElement(PostCard, {
+      post: {
+        id: "feed_encoded_body",
+        title: "Encoded body",
+        body: "Apollo&#x27;s research &amp; Artemis",
+        url: "https://example.com/encoded-body",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Example Blog",
+        sourceType: "blog",
+        fetchTool: null,
+      },
+      showDebugActions: false,
+      variant: "detail",
+    }),
+  );
+
+  assert.doesNotMatch(html, /&amp;#x27;/);
+  assert.doesNotMatch(html, /&amp;amp;/);
+  assert.match(html, /Apollo(?:'|&#x27;)s research &amp; Artemis/);
+});
+
 test("post card action controls include the post title in accessible names", () => {
   const longSummary = Array.from({ length: 205 }, (_, index) => `word${index}`).join(" ");
   const html = renderToStaticMarkup(

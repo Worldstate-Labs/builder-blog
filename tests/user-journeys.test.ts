@@ -35,7 +35,9 @@ import { DEFAULT_SOURCE_CONFIGS } from "../src/lib/source-config-seed";
 import { checkBodyContentQuality } from "../src/lib/content-quality";
 import {
   buildRecommendationSignals,
+  dedupeRecommendationSnapshots,
   rankRecommendationResults,
+  recommendationContentKey,
   scoreRecommendation,
   type RecommendationCandidate,
 } from "../src/lib/recommendations";
@@ -2162,6 +2164,79 @@ test("digest candidate limit prioritizes one post from each source before fillin
     prioritizeSourceCoverage(ordered, 2).map((item) => item.externalId),
     ["a-new", "b-new"],
   );
+});
+
+test("recommendation content dedupe follows the original URL across different source entities", () => {
+  const builderA = {
+    id: "builder_a",
+    entityId: "entity_a",
+    name: "Source A",
+    handle: null,
+    kind: BuilderKind.BLOG,
+    sourceType: "blog",
+    sourceUrl: "https://source-a.example.com",
+    fetchUrl: null,
+    avatarUrl: null,
+    avatarDataUrl: null,
+    bio: null,
+    ownerUserId: null,
+    lastFetchedAt: null,
+  };
+  const builderB = { ...builderA, id: "builder_b", entityId: "entity_b", name: "Source B" };
+  const originalUrl = "https://www.dwarkesh.com/p/adam-brown-gr";
+  const itemA = {
+    ...recommendationCandidate({
+      id: "feed_a",
+      builder: builderA,
+      body: "First imported copy.",
+      publishedAt: "2026-05-22T12:00:00.000Z",
+    }),
+    externalId: "source-a-copy",
+    url: `${originalUrl}?utm_source=source-a`,
+  };
+  const itemB = {
+    ...recommendationCandidate({
+      id: "feed_b",
+      builder: builderB,
+      body: "Second imported copy.",
+      publishedAt: "2026-05-22T12:00:00.000Z",
+    }),
+    externalId: "source-b-copy",
+    url: originalUrl,
+  };
+
+  assert.equal(
+    recommendationContentKey({
+      entityId: builderA.entityId,
+      externalId: itemA.externalId,
+      kind: itemA.kind,
+      url: itemA.url,
+    }),
+    recommendationContentKey({
+      entityId: builderB.entityId,
+      externalId: itemB.externalId,
+      kind: itemB.kind,
+      url: itemB.url,
+    }),
+  );
+
+  const deduped = dedupeRecommendationSnapshots([
+    {
+      id: "snapshot_new",
+      createdAt: new Date("2026-05-23T12:00:00.000Z"),
+      reason: "subscription:initial",
+      items: [{ item: itemA, score: 2, reasons: [], rank: 1, readAt: null }],
+    },
+    {
+      id: "snapshot_old",
+      createdAt: new Date("2026-05-22T12:00:00.000Z"),
+      reason: "subscription:initial",
+      items: [{ item: itemB, score: 1, reasons: [], rank: 1, readAt: null }],
+    },
+  ]);
+
+  assert.equal(deduped.length, 1);
+  assert.deepEqual(deduped[0].items.map(({ item }) => item.id), ["feed_a"]);
 });
 
 test("recommendation feed user path scores unread fetched posts from profile, subscriptions, and read log", () => {

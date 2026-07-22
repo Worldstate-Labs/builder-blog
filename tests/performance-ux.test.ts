@@ -773,7 +773,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.fb-login-nav-link\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /@media \(max-width:\s*520px\)[\s\S]*\.fb-public-m-top \.fb-brand-name\s*{[\s\S]*display:\s*none/);
+  assert.match(globals, /@media \(max-width:\s*520px\)[\s\S]*\.fb-m-top \.fb-brand-name\s*{[\s\S]*clip:\s*rect\(0, 0, 0, 0\)[\s\S]*position:\s*absolute/);
   assert.match(globals, /\.fb-login-title\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.fb-login-title\s*{[\s\S]*font-size:\s*2\.55rem/);
   assert.match(globals, /\.fb-login-panel-title\s*{[\s\S]*font-family:\s*var\(--font-geist-sans\)/);
@@ -5009,7 +5009,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /aria-expanded=\{rawExpanded\}/);
   assert.doesNotMatch(postCard, /<button[\s\S]{0,420}<BookOpen aria-hidden="true" className="post-raw-content-action-icon" \/>[\s\S]{0,60}<\/button>/);
-  assert.match(postCard, /<section[\s\S]*className=\{`post-detail-raw[\s\S]*<div[\s\S]*aria-label=\{rawContentLabel\}[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"[\s\S]*\{post\.body\}[\s\S]*<\/div>[\s\S]*<\/section>/);
+  assert.match(postCard, /<section[\s\S]*className=\{`post-detail-raw[\s\S]*<div[\s\S]*aria-label=\{rawContentLabel\}[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"[\s\S]*\{detailRawContent\}[\s\S]*<\/div>[\s\S]*<\/section>/);
   assert.match(postCard, /Same post available via other source libraries/);
   assert.match(postCard, /additional source library/);
   assert.match(postCard, /additional source libraries/);

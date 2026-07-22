@@ -1,10 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Rss, Search, Terminal } from "lucide-react";
 import { I18nText } from "@/components/I18nProvider";
 import { PromoVideo } from "@/components/PromoVideo";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   const session = await getCurrentSession();

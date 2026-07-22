@@ -77,12 +77,19 @@ setup command from Settings, or run:
 /bin/sh -c "$(curl -fsSL https://followbrief.worldstatelabs.com/api/skill/bootstrap)"
 ```
 
-Served files:
+The bootstrap installs the CLI and the job-specific skill prompts. Public
+endpoints include:
 
 ```text
-/api/skill/files/builder-blog-digest.md
 /api/skill/files/builder-digest.mjs
+/api/skill/files/builder-blog-library-once.md
+/api/skill/files/builder-blog-digest-once.md
+/api/skill/jobs/library-once/skill.md
+/api/skill/jobs/digest-once/skill.md
 ```
+
+Authentication is established by copying a one-time prompt from the web app;
+the CLI has no separate `login` subcommand.
 
 ## Local agent setup
 

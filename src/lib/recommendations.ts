@@ -3,6 +3,7 @@ import {
   defaultRecommendationSortMode,
   type RecommendationSortMode,
 } from "@/lib/recommendation-sort";
+import { canonicalPostUrl } from "@/lib/canonical-url";
 
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
@@ -34,6 +35,8 @@ type RecommendationBuilder = {
 
 export type RecommendationCandidate = {
   id: string;
+  canonicalPostId?: string | null;
+  externalId?: string;
   kind: FeedItemKind;
   title: string | null;
   headline: string | null;
@@ -167,10 +170,10 @@ export async function getRecommendationTimeline({
         userId,
       })
     : [];
-  const snapshots = [
+  const snapshots = dedupeRecommendationSnapshots([
     ...(created.snapshot ? [created.snapshot] : []),
     ...existing,
-  ];
+  ]);
 
   return {
     snapshots,
@@ -356,9 +359,20 @@ export async function createRecommendationSnapshot({
     (
       await prisma.feedRead.findMany({
         where: { userId },
-        select: { entityId: true, kind: true, externalId: true },
+        select: {
+          entityId: true,
+          kind: true,
+          externalId: true,
+          feedItem: { select: { canonicalPostId: true, url: true } },
+        },
       })
-    ).map((r) => `${r.entityId}:${r.kind}:${r.externalId}`),
+    ).map((row) => recommendationContentKey({
+      canonicalPostId: row.feedItem?.canonicalPostId,
+      entityId: row.entityId,
+      externalId: row.externalId,
+      kind: row.kind,
+      url: row.feedItem?.url,
+    })),
   );
 
   const snapshottedEntityKeys = new Set(
@@ -366,21 +380,35 @@ export async function createRecommendationSnapshot({
       await prisma.feedItem.findMany({
         where: { id: { in: uniqueIds(snapshotRows.map((row) => row.feedItemId)) } },
         select: {
+          canonicalPostId: true,
           kind: true,
           externalId: true,
+          url: true,
           builder: { select: { entityId: true } },
         },
       })
     )
       .filter((r) => r.builder?.entityId)
-      .map((r) => `${r.builder!.entityId}:${r.kind}:${r.externalId}`),
+      .map((row) => recommendationContentKey({
+        canonicalPostId: row.canonicalPostId,
+        entityId: row.builder!.entityId!,
+        externalId: row.externalId,
+        kind: row.kind,
+        url: row.url,
+      })),
   );
 
   const dedupGroups = new Map<string, typeof rawCandidates>();
   for (const item of rawCandidates) {
     const entityId = item.builder?.entityId;
     if (!entityId) continue;
-    const key = `${entityId}:${item.kind}:${item.externalId}`;
+    const key = recommendationContentKey({
+      canonicalPostId: item.canonicalPostId,
+      entityId,
+      externalId: item.externalId,
+      kind: item.kind,
+      url: item.url,
+    });
     if (readEntityKeys.has(key)) continue;
     if (snapshottedEntityKeys.has(key)) continue;
     const list = dedupGroups.get(key) ?? [];
@@ -397,7 +425,15 @@ export async function createRecommendationSnapshot({
       await prisma.userChannelPreference.findMany({
         where: {
           userId,
-          entityId: { in: [...new Set([...dedupGroups.keys()].map((key) => key.split(":")[0]))] },
+          entityId: {
+            in: uniqueIds(
+              [...dedupGroups.values()].flatMap((variants) =>
+                variants
+                  .map((variant) => variant.builder?.entityId)
+                  .filter((id): id is string => Boolean(id)),
+              ),
+            ),
+          },
         },
         select: { entityId: true, primaryBuilderId: true },
       }),
@@ -430,6 +466,48 @@ type CandidateList = Array<
   }
 >;
 
+type RecommendationContentIdentity = {
+  canonicalPostId?: string | null;
+  entityId: string;
+  externalId: string;
+  kind: FeedItemKind;
+  url?: string | null;
+};
+
+/**
+ * Prefer the normalized original URL so old and new rows share an identity
+ * across source entities. CanonicalPost and entity keys cover invalid URLs.
+ */
+export function recommendationContentKey(item: RecommendationContentIdentity) {
+  const canonicalUrl = canonicalPostUrl(item.url);
+  if (canonicalUrl) return `url:${canonicalUrl}`;
+  if (item.canonicalPostId) return `canonical:${item.canonicalPostId}`;
+  return `entity:${item.entityId}:${item.kind}:${item.externalId}`;
+}
+
+/** Remove canonical duplicates that already exist in separate stored snapshots. */
+export function dedupeRecommendationSnapshots(
+  snapshots: RecommendationSnapshotResult[],
+): RecommendationSnapshotResult[] {
+  const seen = new Set<string>();
+  return snapshots.flatMap((snapshot) => {
+    const items = snapshot.items.filter(({ item }) => {
+      const entityId = item.builder?.entityId ?? item.builder?.id ?? `feed:${item.id}`;
+      const key = recommendationContentKey({
+        canonicalPostId: item.canonicalPostId,
+        entityId,
+        externalId: item.externalId ?? item.id,
+        kind: item.kind,
+        url: item.url,
+      });
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return items.length > 0 ? [{ ...snapshot, items }] : [];
+  });
+}
+
 function pickPrimaryVariants(
   userId: string,
   dedupGroups: Map<string, CandidateList>,
@@ -438,9 +516,11 @@ function pickPrimaryVariants(
   const pinnedMap = new Map(channelPrefs.map((p) => [p.entityId, p.primaryBuilderId]));
   const candidates: CandidateList = [];
   for (const variants of dedupGroups.values()) {
-    const first = variants[0]!;
-    const entityId = first.builder!.entityId!;
-    const pinned = pinnedMap.get(entityId);
+    const pinned = variants
+      .map((variant) => variant.builder?.entityId)
+      .filter((entityId): entityId is string => Boolean(entityId))
+      .map((entityId) => pinnedMap.get(entityId))
+      .find((builderId): builderId is string => Boolean(builderId));
     let pick: CandidateList[number] | undefined;
     if (variants.length === 1) {
       pick = variants[0]!;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
@@ -8,6 +9,11 @@ import {
   termsIntro,
   termsPageMeta,
 } from "@/lib/legal-pages";
+
+export const metadata: Metadata = {
+  title: "Terms",
+  alternates: { canonical: "/terms" },
+};
 
 export default async function TermsPage() {
   const session = await getCurrentSession();

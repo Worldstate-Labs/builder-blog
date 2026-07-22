@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { PostDetailPage } from "@/components/PostDetailPage";
+
+export const metadata: Metadata = { title: "Post" };
 
 export default async function PostPage({
   params,

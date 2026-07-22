@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
@@ -14,6 +15,8 @@ import { serializeCloudFetchRun, serializeCloudWorkerHost } from "@/lib/cloud-fe
 import { CLOUD_FETCH_CONFIG_ID, serializeCloudFetchConfig } from "@/lib/cloud-source-config";
 import { getCloudLibraryAdminSnapshot } from "@/lib/cloud-library-overview-data";
 import { prisma } from "@/lib/prisma";
+
+export const metadata: Metadata = { title: "Cloud library management" };
 
 const PAGE_SIZE = 20;
 

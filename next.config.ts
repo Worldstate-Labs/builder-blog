@@ -44,6 +44,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "builder-blog.worldstatelabs.com" }],
+        destination: "https://followbrief.worldstatelabs.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

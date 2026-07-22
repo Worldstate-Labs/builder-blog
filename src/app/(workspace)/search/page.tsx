@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -48,6 +49,8 @@ import {
   withDateSearchOperators,
   withSiteSearchOperator,
 } from "@/lib/search";
+
+export const metadata: Metadata = { title: "Search" };
 
 type SearchParams = Promise<{
   q?: string | string[];

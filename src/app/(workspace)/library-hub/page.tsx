@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { I18nText } from "@/components/I18nProvider";
@@ -14,6 +15,8 @@ import {
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { getSourceLibraryMetadataByOwnerIds } from "@/lib/source-library-metadata";
+
+export const metadata: Metadata = { title: "Hub" };
 
 type SourceLibraryHubPageData = Awaited<ReturnType<typeof loadSourceLibraryHubPageData>>;
 

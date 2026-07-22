@@ -10903,6 +10903,19 @@ a.builder-library-name:hover {
   margin-top: 0;
 }
 
+.fb-login-panel-copy a {
+  color: var(--accent-strong);
+  font-weight: 700;
+  text-decoration-color: color-mix(in oklch, var(--accent-strong) 55%, transparent);
+  text-underline-offset: 0.14em;
+}
+
+.fb-login-panel-copy a:hover,
+.fb-login-panel-copy a:focus-visible {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
 .fb-login-proof {
   align-items: center;
   border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
@@ -11116,6 +11129,7 @@ a.builder-library-name:hover {
   gap: 0.875rem;
   margin-inline: auto;
   max-width: var(--settings-max);
+  min-width: 0;
   width: 100%;
 }
 
@@ -11458,7 +11472,20 @@ a.builder-library-name:hover {
   gap: 1.25rem;
   margin-inline: auto;
   max-width: var(--settings-max);
+  min-width: 0;
   width: 100%;
+}
+
+.settings-access-grid > *,
+.settings-rules > *,
+.settings-rules-body,
+.settings-config-form,
+.settings-section,
+.settings-section-body,
+.settings-field,
+.settings-choice-field {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .settings-rules-panel {
@@ -12248,6 +12275,8 @@ a.builder-library-name:hover {
   border: 1px solid color-mix(in oklch, var(--line) 76%, transparent);
   border-radius: 8px;
   box-shadow: inset 0 1px 0 color-mix(in oklch, var(--surface-paper) 36%, transparent);
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -12271,6 +12300,7 @@ a.builder-library-name:hover {
 
 .settings-markdown-body {
   display: grid;
+  min-width: 0;
 }
 
 .settings-markdown-body.is-split {
@@ -12285,6 +12315,8 @@ a.builder-library-name:hover {
   font-family: var(--font-geist-mono);
   font-size: 0.8125rem;
   line-height: 1.55;
+  max-width: 100%;
+  min-width: 0;
   outline: none;
   padding: 0.75rem 0.85rem;
   resize: vertical;
@@ -12306,7 +12338,10 @@ a.builder-library-name:hover {
   color: var(--ink);
   font-size: 0.875rem;
   line-height: 1.6;
+  max-width: 100%;
+  min-width: 0;
   overflow: auto;
+  overflow-wrap: anywhere;
   padding: 0.85rem 1rem;
 }
 
@@ -13660,7 +13695,19 @@ mark.fb-mark-highlight {
 }
 
 @media (max-width: 520px) {
-  .fb-public-m-top .fb-brand-name {
+  .fb-m-top .fb-brand-name {
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .fb-public-mobile-actions .fb-login-nav-link {
     display: none;
   }
 }
@@ -14384,8 +14431,14 @@ body {
   }
 
   .settings-markdown-toolbar {
+    flex-wrap: wrap;
     gap: 0.15rem;
     padding: 0.3rem;
+  }
+
+  .settings-markdown-toolbar-spacer {
+    flex-basis: 100%;
+    height: 0;
   }
 
   .settings-markdown-tool {
