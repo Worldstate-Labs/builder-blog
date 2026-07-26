@@ -19,6 +19,10 @@ import { languageOptions } from "@/components/settings/SettingsFields";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { useHydrated } from "@/components/ThemeToggle";
 import { CLOUD_SOURCE_SUBMISSION_LIMIT } from "@/lib/cloud-source-contracts";
+import {
+  ClientOperationTimeoutError,
+  runClientOperationWithTimeout,
+} from "@/lib/client-operation-timeout";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
 import type { AgentPromptRenderOptions, ExposedPromptJob } from "@/lib/agent-prompt-links";
 import { sourceLabelForType } from "@/lib/source-display";
@@ -108,6 +112,9 @@ export type CloudSubmissionSource = {
   avatarDataUrl: string | null;
 };
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
+const CLIPBOARD_WRITE_TIMEOUT_MS = 2_000;
+const PROMPT_LINK_REQUEST_TIMEOUT_MS = 15_000;
+const SETTINGS_REQUEST_TIMEOUT_MS = 15_000;
 function promptDialogDescription(
   context: SkillPromptContext,
   runtimeType: RuntimeType = defaultRuntimeTypeForContext(context),
@@ -123,7 +130,13 @@ function promptDialogDescription(
 async function copyTextToClipboard(text: string) {
   try {
     if (navigator.clipboard?.writeText && document.hasFocus()) {
-      await navigator.clipboard.writeText(text);
+      await runClientOperationWithTimeout(
+        async () => navigator.clipboard.writeText(text),
+        {
+          timeoutMs: CLIPBOARD_WRITE_TIMEOUT_MS,
+          timeoutMessage: "Clipboard write took too long.",
+        },
+      );
       return true;
     }
   } catch {
@@ -215,11 +228,19 @@ async function persistSummaryLanguage(
 ): Promise<boolean> {
   if (initial !== null && picked === initial) return true;
   try {
-    const res = await fetch("/api/settings/summary-language", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ summaryLanguage: picked }),
-    });
+    const res = await runClientOperationWithTimeout(
+      (signal) =>
+        fetch("/api/settings/summary-language", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ summaryLanguage: picked }),
+          signal,
+        }),
+      {
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
+        timeoutMessage: "Saving the summary language took too long.",
+      },
+    );
     return res.ok;
   } catch {
     return false;
@@ -266,11 +287,19 @@ async function persistDigestMaxAge(
 ): Promise<boolean> {
   if (picked === initial) return true;
   try {
-    const res = await fetch("/api/settings/digest-max-age", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ digestMaxPostAgeDays: picked }),
-    });
+    const res = await runClientOperationWithTimeout(
+      (signal) =>
+        fetch("/api/settings/digest-max-age", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ digestMaxPostAgeDays: picked }),
+          signal,
+        }),
+      {
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
+        timeoutMessage: "Saving the lookback window took too long.",
+      },
+    );
     return res.ok;
   } catch {
     return false;
@@ -449,15 +478,24 @@ export function SkillPromptActions({
     body: PromptLinkBody,
   ): Promise<string | null> {
     try {
-      const response = await fetch(`/api/settings/tokens/${tokenId}/prompt-links`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await runClientOperationWithTimeout(
+        (signal) =>
+          fetch(`/api/settings/tokens/${tokenId}/prompt-links`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+            signal,
+          }),
+        {
+          timeoutMs: PROMPT_LINK_REQUEST_TIMEOUT_MS,
+          timeoutMessage: "Creating the secure link took too long. Try again.",
+        },
+      );
       if (!response.ok) return null;
       const responseBody = await response.json().catch(() => null);
       return typeof responseBody?.url === "string" ? responseBody.url : null;
-    } catch {
+    } catch (error) {
+      if (error instanceof ClientOperationTimeoutError) throw error;
       return null;
     }
   }
@@ -768,6 +806,7 @@ export function SkillPromptActions({
           onConfirm={async (selection) => {
             const completed = await continueScheduleCopy(selection);
             if (completed) setCronConfigOpen(false);
+            return completed;
           }}
         />
       ) : null}
@@ -1368,7 +1407,7 @@ function CronConfigDialog({
   digestMaxPostAgeDays: number | null;
   onCancel: () => void;
   onCloudSubmitted?: () => void;
-  onConfirm: (selection: SchedulePromptSelection) => void | Promise<void>;
+  onConfirm: (selection: SchedulePromptSelection) => boolean | Promise<boolean>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const defaultRuntimeType = defaultRuntimeTypeForContext(context);
@@ -1559,15 +1598,18 @@ function CronConfigDialog({
         return;
       }
       if (pickedFreq === "once") {
-        await onConfirm({
+        const completed = await onConfirm({
           target: "once",
           runtime: pickedRuntime,
           overrideFetched,
           fetchDays,
           parallelWorkers,
         });
+        if (!completed) {
+          setError("Could not prepare the secure link. Try again.");
+        }
       } else {
-        await onConfirm({
+        const completed = await onConfirm({
           target: "cron",
           cron: {
             runtime: pickedRuntime,
@@ -1577,6 +1619,9 @@ function CronConfigDialog({
             parallelWorkers,
           },
         });
+        if (!completed) {
+          setError("Could not prepare the secure link. Try again.");
+        }
       }
     } finally {
       setSubmitting(false);

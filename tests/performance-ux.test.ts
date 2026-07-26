@@ -916,6 +916,11 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.match(skillPromptActions, /Could not save the summary language\. Try again\./);
   assert.match(skillPromptActions, /Could not save the lookback window\. Try again\./);
+  assert.match(skillPromptActions, /PROMPT_LINK_REQUEST_TIMEOUT_MS/);
+  assert.match(skillPromptActions, /runClientOperationWithTimeout/);
+  assert.match(skillPromptActions, /Creating the secure link took too long\. Try again\./);
+  assert.match(skillPromptActions, /const completed = await onConfirm/);
+  assert.match(skillPromptActions, /if \(!completed\) \{[\s\S]*setError\("Could not prepare the secure link\. Try again\."\)/);
   assert.doesNotMatch(skillPromptActions, /Could not save max post age\. Try again\./);
   assert.doesNotMatch(skillPromptActions, /Couldn't save/);
   assert.doesNotMatch(skillPromptActions, /summary language — try again/);
