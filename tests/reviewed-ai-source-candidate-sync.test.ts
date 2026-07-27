@@ -546,6 +546,57 @@ test("sync rejects when a reviewed target key is already owned by another seeded
   assert.deepEqual(prisma.upsertedKeys, []);
 });
 
+test("sync adopts an admin-library target only when its audited source identity matches", async () => {
+  const library = await loadLibraryModule();
+  const syncModule = await loadSyncModule();
+  const reviewedSeeds = expectedReviewedSeeds(library);
+  const adoptingSeed = reviewedSeeds[0];
+  const prisma = new FakePrismaClient([
+    storedCandidate("candidate_admin", {
+      ...adoptingSeed,
+      name: "Older admin display name",
+      avatarDataUrl: "data:image/png;base64,YWRtaW4=",
+      seededFrom: "admin_source_library",
+      seedBuilderId: "admin_builder",
+    }),
+  ]);
+
+  const summary = await syncModule.syncReviewedAiSourceCandidates!(prisma);
+
+  assert.equal(summary.existingCount, 1);
+  const adopted = prisma.exportRows().find((row) => row.sourceKey === adoptingSeed.sourceKey);
+  assert.deepEqual(adopted, {
+    id: "candidate_admin",
+    ...adoptingSeed,
+    avatarDataUrl: "data:image/png;base64,YWRtaW4=",
+    seededFrom: library.CURATED_AI_SOURCE_CANDIDATE_SEED ?? "curated_ai_sources",
+    seedBuilderId: null,
+  });
+});
+
+test("sync rejects an admin-library target when an audited source identity field differs", async () => {
+  const library = await loadLibraryModule();
+  const syncModule = await loadSyncModule();
+  const reviewedSeeds = expectedReviewedSeeds(library);
+  const conflictingSeed = reviewedSeeds[0];
+  const initialRows = [
+    storedCandidate("candidate_admin_conflict", {
+      ...conflictingSeed,
+      fetchUrl: "https://conflict.example.com/feed.xml",
+      seededFrom: "admin_source_library",
+      seedBuilderId: "admin_builder",
+    }),
+  ];
+  const prisma = new FakePrismaClient(initialRows);
+
+  await assert.rejects(
+    syncModule.syncReviewedAiSourceCandidates!(prisma),
+    /owned|conflict|identity/i,
+  );
+  assert.deepEqual(prisma.exportRows(), initialRows);
+  assert.deepEqual(prisma.upsertedKeys, []);
+});
+
 test("sync adopts null-owned reviewed targets and preserves their cached avatar without writing avatarDataUrl in update", async () => {
   const library = await loadLibraryModule();
   const syncModule = await loadSyncModule();

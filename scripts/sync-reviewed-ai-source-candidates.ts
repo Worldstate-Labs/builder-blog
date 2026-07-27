@@ -83,6 +83,8 @@ type SyncSummary = {
   structuralDigest: string;
 };
 
+const ADMIN_SOURCE_CANDIDATE_SEED = "admin_source_library";
+
 const STRUCTURAL_SELECT = {
   sourceKey: true,
   name: true,
@@ -125,7 +127,7 @@ export async function syncReviewedAiSourceCandidates(
         const existingTargets = await readStructuralRows(tx.sourceCandidate, {
           where: { sourceKey: { in: targetKeys } },
         });
-        assertReviewedTargetOwnership(existingTargets);
+        assertReviewedTargetOwnership(existingTargets, reviewedSeeds);
         const existingByKey = new Map(
           existingTargets.map((candidate) => [candidate.sourceKey, candidate]),
         );
@@ -212,15 +214,43 @@ function structuralRowsEqual(
 
 function assertReviewedTargetOwnership(
   existingTargets: SourceCandidateStructuralRow[],
+  reviewedSeeds: SourceCandidateStructuralRow[],
 ) {
+  const reviewedByKey = new Map(
+    reviewedSeeds.map((candidate) => [candidate.sourceKey, candidate]),
+  );
   const conflict = existingTargets.find(
-    (candidate) =>
-      candidate.seededFrom !== null &&
-      candidate.seededFrom !== CURATED_AI_SOURCE_CANDIDATE_SEED,
+    (candidate) => {
+      if (
+        candidate.seededFrom === null ||
+        candidate.seededFrom === CURATED_AI_SOURCE_CANDIDATE_SEED
+      ) {
+        return false;
+      }
+      const reviewed = reviewedByKey.get(candidate.sourceKey);
+      return !(
+        candidate.seededFrom === ADMIN_SOURCE_CANDIDATE_SEED &&
+        reviewed &&
+        hasMatchingSourceIdentity(candidate, reviewed)
+      );
+    },
   );
   if (!conflict) return;
   throw new Error(
     `reviewed AI source candidate sync conflict for sourceKey ${conflict.sourceKey}: existing row is owned by seededFrom ${conflict.seededFrom ?? "null"}`,
+  );
+}
+
+function hasMatchingSourceIdentity(
+  existing: SourceCandidateStructuralRow,
+  reviewed: SourceCandidateStructuralRow,
+) {
+  return (
+    existing.sourceType === reviewed.sourceType &&
+    existing.sourceUrl === reviewed.sourceUrl &&
+    existing.fetchUrl === reviewed.fetchUrl &&
+    existing.handle === reviewed.handle &&
+    existing.avatarUrl === reviewed.avatarUrl
   );
 }
 
