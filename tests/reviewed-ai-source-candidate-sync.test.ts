@@ -427,6 +427,54 @@ test("an unrelated-row snapshot mismatch rejects the transaction and preserves t
   assert.deepEqual(prisma.exportRows(), initialRows);
 });
 
+test("sync rejects when a reviewed target key is already owned by another seededFrom namespace", async () => {
+  const library = await loadLibraryModule();
+  const syncModule = await loadSyncModule();
+  const reviewedSeeds = expectedReviewedSeeds(library);
+  const foreignOwnedSeed = reviewedSeeds[0];
+  const initialRows = [
+    storedCandidate("candidate_conflict", {
+      ...foreignOwnedSeed,
+      name: "Foreign Owned Candidate",
+      avatarDataUrl: "data:image/png;base64,Zm9yZWlnbg==",
+      seededFrom: "cloud_source_library",
+    }),
+    storedCandidate("candidate_curated_existing", {
+      ...reviewedSeeds[1],
+      avatarDataUrl: "data:image/png;base64,Y3VyYXRlZA==",
+      seededFrom: library.CURATED_AI_SOURCE_CANDIDATE_SEED ?? "curated_ai_sources",
+    }),
+    storedCandidate("candidate_unrelated", {
+      sourceKey: "blog:https://manual.example.com/feed",
+      name: "Manual Candidate",
+      sourceType: "blog",
+      sourceUrl: "https://manual.example.com/feed",
+      fetchUrl: "https://manual.example.com/feed.xml",
+      handle: null,
+      avatarUrl: "https://manual.example.com/avatar.png",
+      avatarDataUrl: null,
+      seedBuilderId: null,
+      seededFrom: "manual_builder",
+    }),
+  ];
+  const prisma = new FakePrismaClient(initialRows);
+
+  await assert.rejects(
+    syncModule.syncReviewedAiSourceCandidates!(prisma),
+    (error: unknown) => {
+      assert.match(String(error), new RegExp(foreignOwnedSeed.sourceKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      assert.match(String(error), /seededFrom|owned|conflict/i);
+      assert.doesNotMatch(String(error), /postgres(?:ql)?:\/\//i);
+      assert.doesNotMatch(String(error), /DATABASE_URL/i);
+      return true;
+    },
+  );
+
+  assert.deepEqual(prisma.exportRows(), initialRows);
+  assert.equal(prisma.transactionCalls.length, 1);
+  assert.deepEqual(prisma.upsertedKeys, []);
+});
+
 async function loadLibraryModule() {
   return import(`${pathToFileURL(SOURCE_CANDIDATE_LIBRARY_PATH).href}?t=${Date.now()}`) as Promise<SourceCandidateLibraryModule>;
 }

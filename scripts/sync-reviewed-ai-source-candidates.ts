@@ -100,6 +100,7 @@ export async function syncReviewedAiSourceCandidates(
       const existingTargets = await readStructuralRows(tx.sourceCandidate, {
         where: { sourceKey: { in: targetKeys } },
       });
+      assertReviewedTargetOwnership(existingTargets);
       const existingByKey = new Map(
         existingTargets.map((candidate) => [candidate.sourceKey, candidate]),
       );
@@ -200,6 +201,18 @@ function structuralRowsEqual(
   expected: SourceCandidateStructuralRow[],
 ) {
   return stableJson(actual) === stableJson(expected);
+}
+
+function assertReviewedTargetOwnership(
+  existingTargets: SourceCandidateStructuralRow[],
+) {
+  const conflict = existingTargets.find(
+    (candidate) => candidate.seededFrom !== CURATED_AI_SOURCE_CANDIDATE_SEED,
+  );
+  if (!conflict) return;
+  throw new Error(
+    `reviewed AI source candidate sync conflict for sourceKey ${conflict.sourceKey}: existing row is owned by seededFrom ${conflict.seededFrom ?? "null"}`,
+  );
 }
 
 function structuralDigest(rows: SourceCandidateStructuralRow[]) {
