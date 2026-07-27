@@ -21,7 +21,6 @@ import {
 import {
   resolvePersonalBuilderInput,
   type PersonalBuilderInput,
-  type Resolution,
 } from "../src/lib/personal-builder-input";
 import { fetchPersonalBlogBuilderForTest, fetchPersonalXBuilderForTest } from "./builder-digest.mjs";
 

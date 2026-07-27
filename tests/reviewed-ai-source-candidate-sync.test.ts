@@ -118,10 +118,10 @@ class FakePrismaClient {
   }
 
   readonly sourceCandidate = {
-    findMany: async (_args: FindManyArgs) => {
+    findMany: async () => {
       throw new Error("reviewed candidate sync must use sourceCandidate reads inside $transaction");
     },
-    upsert: async (_args: UpsertArgs) => {
+    upsert: async () => {
       throw new Error("reviewed candidate sync must use sourceCandidate upserts inside $transaction");
     },
     deleteMany: async (args: unknown) => {
