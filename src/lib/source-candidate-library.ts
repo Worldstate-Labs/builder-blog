@@ -137,8 +137,7 @@ export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
     sourceType: "blog",
     sourceUrl: "https://drfeifei.substack.com/",
     fetchUrl: "https://drfeifei.substack.com/feed",
-    avatarUrl:
-      "https://substackcdn.com/image/fetch/$s_!8YAq!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fdrfeifei.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D-1118629820%26version%3D9",
+    avatarUrl: "https://www.google.com/s2/favicons?domain=drfeifei.substack.com&sz=128",
   },
   {
     name: "François Chollet",
@@ -209,7 +208,7 @@ export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
     name: "Artificial Analysis",
     sourceType: "blog",
     sourceUrl: "https://artificialanalysis.ai/articles",
-    avatarUrl: "https://artificialanalysis.ai/opengraph-image.png?732728ccc2829321",
+    avatarUrl: "https://www.google.com/s2/favicons?domain=artificialanalysis.ai&sz=128",
   },
   {
     name: "METR",

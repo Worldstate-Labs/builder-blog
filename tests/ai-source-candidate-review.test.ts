@@ -853,6 +853,13 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
       reason: string | null;
       proposal: {
         name: string;
+        sourceType: string;
+        sourceUrl: string;
+        fetchUrl: string | null;
+        handle: string | null;
+      };
+      icon: {
+        url: string | null;
       };
     }>;
   };
@@ -867,6 +874,7 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
       name: string;
       sourceType: string;
       sourceUrl: string;
+      fetchUrl?: string | null;
       avatarUrl?: string | null;
       handle?: string | null;
     }>;
@@ -929,6 +937,28 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
     if (candidate.sourceType === "x") {
       assert.ok(candidate.handle, `${candidate.name} must define an X handle`);
     }
+
+    const audited = report.results.find(
+      (result) => result.accepted && result.proposal.name === candidate.name,
+    );
+    assert.ok(audited, `${candidate.name} must have accepted audit evidence`);
+    assert.deepEqual(
+      {
+        sourceType: candidate.sourceType,
+        sourceUrl: candidate.sourceUrl,
+        fetchUrl: candidate.fetchUrl ?? null,
+        handle: candidate.handle ?? null,
+        avatarUrl: candidate.avatarUrl ?? null,
+      },
+      {
+        sourceType: audited.proposal.sourceType,
+        sourceUrl: audited.proposal.sourceUrl,
+        fetchUrl: audited.proposal.fetchUrl,
+        handle: audited.proposal.handle,
+        avatarUrl: audited.icon.url,
+      },
+      `${candidate.name} must exactly match its accepted audit evidence`,
+    );
   }
 
   const aiKeys = library.CURATED_AI_SOURCE_CANDIDATES.map((candidate) =>
