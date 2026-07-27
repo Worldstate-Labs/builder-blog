@@ -9,6 +9,7 @@ import {
   normalizeUiLocale,
   uiLocaleCookieName,
 } from "@/lib/i18n";
+import { publicSiteOrigin } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,7 +29,11 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "FollowBrief",
+  metadataBase: new URL(publicSiteOrigin),
+  title: {
+    default: "FollowBrief",
+    template: "%s | FollowBrief",
+  },
   description:
     "Follow sources, build AI Brief, and search your workspace.",
 };

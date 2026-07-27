@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
@@ -21,6 +22,8 @@ import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { RelativeTime } from "@/components/RelativeTime";
 import { prisma } from "@/lib/prisma";
+
+export const metadata: Metadata = { title: "Source" };
 
 type Params = { params: Promise<{ entityId: string }> };
 

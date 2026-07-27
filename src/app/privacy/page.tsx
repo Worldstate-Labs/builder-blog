@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
@@ -8,6 +9,11 @@ import {
   privacyIntro,
   privacyPageMeta,
 } from "@/lib/legal-pages";
+
+export const metadata: Metadata = {
+  title: "Privacy",
+  alternates: { canonical: "/privacy" },
+};
 
 export default async function PrivacyPage() {
   const session = await getCurrentSession();

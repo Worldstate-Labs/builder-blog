@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { BookOpenCheck, Rss, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
@@ -7,6 +8,11 @@ import { I18nText } from "@/components/I18nProvider";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
 import type { I18nKey } from "@/lib/i18n";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  robots: { index: false, follow: false },
+};
 
 export default async function LoginPage({
   searchParams,

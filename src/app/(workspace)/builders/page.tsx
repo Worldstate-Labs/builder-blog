@@ -1,4 +1,5 @@
 import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -64,6 +65,8 @@ import {
 } from "@/lib/source-library-metadata";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 import { loadUserCloudFetchLog } from "@/lib/user-cloud-fetch-log-data";
+
+export const metadata: Metadata = { title: "Sources" };
 
 type BuilderWithCount = {
   id: string;

@@ -123,9 +123,10 @@ export function PostCardView({
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
   const builder = post.builder ?? fallbackBuilder ?? null;
   const isDetail = variant === "detail";
-  const summary = displaySummaryText(post.summary, post.url) || normalizedText(post.body);
+  const bodyText = normalizedText(post.body);
+  const summary = displaySummaryText(post.summary, post.url) || bodyText;
   const originalSummary = normalizedText(post.originalSummary);
-  const title = decodeHtmlEntities(post.title || firstLine(post.body));
+  const title = decodeHtmlEntities(post.title || firstLine(bodyText));
   const actionContext = compactActionContext(title);
   const summaryIdBase = useId();
   const rawIdBase = useId();
@@ -181,10 +182,10 @@ export function PostCardView({
   const rawContentMode = rawContentModeForSourceType(builder?.sourceType ?? post.sourceType);
   const rawContent = rawContentMode === "raw_summary"
     ? originalSummary || summary
-    : post.body;
+    : bodyText;
   const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Original content";
   const detailSummary = displaySummaryText(post.summary, post.url);
-  const detailRawContent = normalizedText(post.body);
+  const detailRawContent = bodyText;
   const showDetailSummary = Boolean(
     isDetail && detailSummary && detailSummary !== detailRawContent,
   );
@@ -200,7 +201,7 @@ export function PostCardView({
         showReadIndicator ||
         extraMeta),
   );
-  const detailReadTime = readingTimeLabel(`${detailSummary || ""} ${post.body || ""}`);
+  const detailReadTime = readingTimeLabel(`${detailSummary || ""} ${bodyText}`);
 
   return (
     <article
@@ -368,7 +369,7 @@ export function PostCardView({
                     id={rawRegionId}
                     role="region"
                   >
-                    {post.body}
+                    {detailRawContent}
                   </div>
                 ) : null}
               </section>

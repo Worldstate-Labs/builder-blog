@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
@@ -27,6 +28,8 @@ import {
   getUserDigestConfig,
   getUserSourceConfigs,
 } from "@/lib/source-config-store";
+
+export const metadata: Metadata = { title: "Settings" };
 
 const ADMIN_DIGEST_PROMPT_COUNT: number = 3;
 

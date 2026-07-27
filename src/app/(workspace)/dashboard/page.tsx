@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { DigestArchivePicker, type DigestArchivePickerOption } from "@/components/DigestArchivePicker";
@@ -24,6 +25,8 @@ import {
 } from "@/lib/library-hub";
 import { digestSourceLinksForUser, type DigestSourceLink } from "@/lib/digest-source-links";
 import { prisma } from "@/lib/prisma";
+
+export const metadata: Metadata = { title: "Home" };
 
 const digestPickerSize = 100;
 const NO_FOLLOWED_SOURCES_BODY =
