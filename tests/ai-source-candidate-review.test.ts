@@ -270,6 +270,103 @@ test("evaluateAiSourceAudit rejects a blog when robots access is denied", () => 
   assert.equal(result.reason, "robots_denied");
 });
 
+test("evaluateAiSourceAudit rejects unsupported source types before other evidence is considered", () => {
+  const result = evaluateAiSourceAudit(
+    buildBlogAuditInput({
+      proposal: {
+        name: "Test Website",
+        sourceType: "website",
+        sourceUrl: "https://example.com",
+      },
+      fetch: {
+        itemCount: 0,
+        recentItemCount: 0,
+        actionableTasks: [],
+        hardFailure: true,
+        hardFailureDetail: "should not win",
+      },
+      icon: {
+        url: null,
+        safeUrl: false,
+        downloaded: false,
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "unsupported_source_type");
+  assert.match(result.detail, /unsupported source type "website"/i);
+});
+
+test("evaluateAiSourceAudit rejects when resolver evidence failed", () => {
+  const result = evaluateAiSourceAudit(
+    buildBlogAuditInput({
+      resolver: {
+        ok: false,
+        finalUrl: null,
+        status: 302,
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "resolver_failed");
+  assert.match(result.detail, /resolver did not succeed/i);
+});
+
+test("evaluateAiSourceAudit rejects login-walled probes as probe_failed", () => {
+  const result = evaluateAiSourceAudit(
+    buildBlogAuditInput({
+      probe: {
+        ok: true,
+        finalUrl: "https://example.com/blog",
+        status: 200,
+        robotsDenied: false,
+        loginRequired: true,
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "probe_failed");
+  assert.match(result.detail, /source probe/i);
+});
+
+test("evaluateAiSourceAudit rejects hard fetch failures and preserves the fetch detail", () => {
+  const result = evaluateAiSourceAudit(
+    buildBlogAuditInput({
+      fetch: {
+        itemCount: 0,
+        recentItemCount: 0,
+        actionableTasks: [],
+        hardFailure: true,
+        hardFailureDetail: "Feed returned a corrupt payload",
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "hard_fetch_failed");
+  assert.equal(result.detail, "Feed returned a corrupt payload");
+});
+
+test("evaluateAiSourceAudit rejects X handle mismatches after auth succeeds", () => {
+  const result = evaluateAiSourceAudit(
+    buildXAuditInput({
+      x: {
+        tokenState: "accepted",
+        requestedHandle: "example",
+        resolvedHandle: "someone-else",
+        exactHandleMatch: false,
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "x_handle_mismatch");
+  assert.match(result.detail, /did not exactly match/i);
+});
+
 test("evaluateAiSourceAudit accepts X when the exact handle resolves and a recent post exists", () => {
   const input = buildXAuditInput();
   const result = evaluateAiSourceAudit(input);
@@ -321,6 +418,32 @@ test("evaluateAiSourceAudit rejects X when the bearer token is invalid", () => {
   assert.equal(result.reason, "x_token_invalid");
 });
 
+test("evaluateAiSourceAudit treats unknown X token state as x_token_invalid", () => {
+  const result = evaluateAiSourceAudit(
+    buildXAuditInput({
+      x: {
+        tokenState: "unknown",
+        requestedHandle: "example",
+        resolvedHandle: "someone-else",
+        exactHandleMatch: false,
+      },
+      fetch: {
+        itemCount: 0,
+        recentItemCount: 0,
+        actionableTasks: [],
+      },
+      icon: {
+        url: null,
+        safeUrl: false,
+        downloaded: false,
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "x_token_invalid");
+});
+
 test("evaluateAiSourceAudit rejects X when the exact handle resolves but no recent post exists", () => {
   const result = evaluateAiSourceAudit(
     buildXAuditInput({
@@ -349,4 +472,34 @@ test("evaluateAiSourceAudit rejects otherwise passable results when the icon dow
 
   assert.equal(result.accepted, false);
   assert.equal(result.reason, "icon_unavailable");
+});
+
+test("evaluateAiSourceAudit gives hard fetch failures precedence over robots, content, and icon failures", () => {
+  const result = evaluateAiSourceAudit(
+    buildBlogAuditInput({
+      probe: {
+        ok: false,
+        finalUrl: "https://example.com/blog",
+        status: 403,
+        robotsDenied: true,
+        loginRequired: false,
+      },
+      fetch: {
+        itemCount: 0,
+        recentItemCount: 0,
+        actionableTasks: [],
+        hardFailure: true,
+        hardFailureDetail: "HTTP 500 while fetching feed",
+      },
+      icon: {
+        url: null,
+        safeUrl: false,
+        downloaded: false,
+      },
+    }),
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "hard_fetch_failed");
+  assert.equal(result.detail, "HTTP 500 while fetching feed");
 });
