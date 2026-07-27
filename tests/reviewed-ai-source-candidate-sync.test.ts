@@ -95,7 +95,10 @@ type UpsertHook = (state: StoredSourceCandidate[], args: UpsertArgs, upsertCount
 
 class FakePrismaClient {
   private rows: StoredSourceCandidate[];
-  readonly transactionCalls: Array<{ interactive: boolean }> = [];
+  readonly transactionCalls: Array<{
+    interactive: boolean;
+    options?: { maxWait?: number; timeout?: number };
+  }> = [];
   readonly deleteManyCalls: unknown[] = [];
   readonly upsertedKeys: string[] = [];
   readonly upsertCalls: UpsertArgs[] = [];
@@ -138,8 +141,9 @@ class FakePrismaClient {
         deleteMany: (args: unknown) => Promise<{ count: number }>;
       };
     }) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number },
   ): Promise<T> {
-    this.transactionCalls.push({ interactive: true });
+    this.transactionCalls.push({ interactive: true, options });
     const state = cloneRows(this.rows);
     let upsertCount = 0;
     const tx = {
@@ -280,6 +284,10 @@ test("sync runs in one transaction, upserts reviewed AI candidates, preserves av
   const summary = await syncModule.syncReviewedAiSourceCandidates!(prisma);
 
   assert.equal(prisma.transactionCalls.length, 1);
+  assert.deepEqual(prisma.transactionCalls[0], {
+    interactive: true,
+    options: { maxWait: 10_000, timeout: 60_000 },
+  });
   assert.equal(prisma.deleteManyCalls.length, 0);
   assert.equal(prisma.upsertedKeys.length, reviewedSeeds.length);
   assert.equal(new Set(prisma.upsertedKeys).size, reviewedSeeds.length);

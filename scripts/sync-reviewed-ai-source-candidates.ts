@@ -67,6 +67,10 @@ type PrismaTransactionLike = {
 type PrismaClientLike = {
   $transaction<T>(
     callback: (tx: PrismaTransactionLike) => Promise<T>,
+    options?: {
+      maxWait?: number;
+      timeout?: number;
+    },
   ): Promise<T>;
   $disconnect?(): Promise<void>;
 };
@@ -107,54 +111,57 @@ export async function syncReviewedAiSourceCandidates(
   prismaClient: PrismaClientLike,
 ): Promise<SyncSummary> {
   try {
-    return await prismaClient.$transaction(async (tx) => {
-      const reviewedSeeds = REVIEWED_AI_SOURCE_CANDIDATES
-        .map((candidate) =>
-          seedFromCuratedCandidate(candidate, CURATED_AI_SOURCE_CANDIDATE_SEED),
-        )
-        .sort(compareBySourceKey);
-      const targetKeys = reviewedSeeds.map((seed) => seed.sourceKey);
-      const unrelatedBefore = await readStructuralRows(tx.sourceCandidate, {
-        where: { sourceKey: { notIn: targetKeys } },
-      });
-      const existingTargets = await readStructuralRows(tx.sourceCandidate, {
-        where: { sourceKey: { in: targetKeys } },
-      });
-      assertReviewedTargetOwnership(existingTargets);
-      const existingByKey = new Map(
-        existingTargets.map((candidate) => [candidate.sourceKey, candidate]),
-      );
-
-      for (const seed of reviewedSeeds) {
-        await tx.sourceCandidate.upsert({
-          where: { sourceKey: seed.sourceKey },
-          update: updatePayloadForSeed(seed),
-          create: createPayloadForSeed(seed),
+    return await prismaClient.$transaction(
+      async (tx) => {
+        const reviewedSeeds = REVIEWED_AI_SOURCE_CANDIDATES
+          .map((candidate) =>
+            seedFromCuratedCandidate(candidate, CURATED_AI_SOURCE_CANDIDATE_SEED),
+          )
+          .sort(compareBySourceKey);
+        const targetKeys = reviewedSeeds.map((seed) => seed.sourceKey);
+        const unrelatedBefore = await readStructuralRows(tx.sourceCandidate, {
+          where: { sourceKey: { notIn: targetKeys } },
         });
-      }
+        const existingTargets = await readStructuralRows(tx.sourceCandidate, {
+          where: { sourceKey: { in: targetKeys } },
+        });
+        assertReviewedTargetOwnership(existingTargets);
+        const existingByKey = new Map(
+          existingTargets.map((candidate) => [candidate.sourceKey, candidate]),
+        );
 
-      const targetAfter = await readStructuralRows(tx.sourceCandidate, {
-        where: { sourceKey: { in: targetKeys } },
-      });
-      const unrelatedAfter = await readStructuralRows(tx.sourceCandidate, {
-        where: { sourceKey: { notIn: targetKeys } },
-      });
+        for (const seed of reviewedSeeds) {
+          await tx.sourceCandidate.upsert({
+            where: { sourceKey: seed.sourceKey },
+            update: updatePayloadForSeed(seed),
+            create: createPayloadForSeed(seed),
+          });
+        }
 
-      assertReviewedTargetState(targetAfter, reviewedSeeds, existingByKey);
-      assertStructuralMatch(
-        unrelatedAfter.map(manifestStructuralRow),
-        unrelatedBefore.map(manifestStructuralRow),
-        "unrelated source candidate snapshot changed during reviewed sync",
-      );
+        const targetAfter = await readStructuralRows(tx.sourceCandidate, {
+          where: { sourceKey: { in: targetKeys } },
+        });
+        const unrelatedAfter = await readStructuralRows(tx.sourceCandidate, {
+          where: { sourceKey: { notIn: targetKeys } },
+        });
 
-      return {
-        targetCount: reviewedSeeds.length,
-        insertedCount: reviewedSeeds.length - existingTargets.length,
-        existingCount: existingTargets.length,
-        unchangedUnrelatedCount: unrelatedBefore.length,
-        structuralDigest: structuralDigest(targetAfter.map(manifestStructuralRow)),
-      };
-    });
+        assertReviewedTargetState(targetAfter, reviewedSeeds, existingByKey);
+        assertStructuralMatch(
+          unrelatedAfter.map(manifestStructuralRow),
+          unrelatedBefore.map(manifestStructuralRow),
+          "unrelated source candidate snapshot changed during reviewed sync",
+        );
+
+        return {
+          targetCount: reviewedSeeds.length,
+          insertedCount: reviewedSeeds.length - existingTargets.length,
+          existingCount: existingTargets.length,
+          unchangedUnrelatedCount: unrelatedBefore.length,
+          structuralDigest: structuralDigest(targetAfter.map(manifestStructuralRow)),
+        };
+      },
+      { maxWait: 10_000, timeout: 60_000 },
+    );
   } catch (error) {
     throw new Error(sanitizeErrorMessage(error));
   }
