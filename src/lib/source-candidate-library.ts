@@ -4,7 +4,7 @@ import type { SourceCandidate } from "@/lib/source-candidates";
 import { builderKindForSourceType } from "@/lib/source-registry";
 
 const ADMIN_SOURCE_CANDIDATE_SEED = "admin_source_library";
-const CURATED_AI_SOURCE_CANDIDATE_SEED = "curated_ai_sources";
+export const CURATED_AI_SOURCE_CANDIDATE_SEED = "curated_ai_sources";
 const CURATED_NEWS_SOURCE_CANDIDATE_SEED = "curated_news_sources";
 const SOURCE_CANDIDATE_LIMIT = 300;
 const SOURCE_CANDIDATE_SEED_TTL_MS = 5 * 60 * 1000;
@@ -12,7 +12,7 @@ const SOURCE_CANDIDATE_SEED_TTL_MS = 5 * 60 * 1000;
 let sourceCandidateSeedPromise: Promise<void> | null = null;
 let sourceCandidateSeededAt = 0;
 
-type CuratedSourceCandidate = {
+export type CuratedSourceCandidate = {
   name: string;
   sourceType: string;
   sourceUrl: string;
@@ -22,7 +22,7 @@ type CuratedSourceCandidate = {
   handle?: string | null;
 };
 
-const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
+const EXISTING_CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "OpenAI News", sourceType: "blog", sourceUrl: "https://openai.com/news/rss.xml", fetchUrl: "https://openai.com/news/rss.xml" },
   { name: "Anthropic Engineering", sourceType: "blog", sourceUrl: "https://www.anthropic.com/engineering" },
   { name: "Claude Blog", sourceType: "blog", sourceUrl: "https://claude.com/blog" },
@@ -118,6 +118,84 @@ const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
 // Seeking Alpha, Foreign Affairs) and freemium/metered ones (Noahpinion,
 // Project Syndicate) are deliberately excluded. Every feed below was HTTP-checked
 // to return 200 + a valid RSS/Atom feed.
+export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
+  {
+    name: "Hamel Husain",
+    sourceType: "blog",
+    sourceUrl: "https://hamel.dev/",
+    avatarUrl: "https://www.google.com/s2/favicons?domain=hamel.dev&sz=128",
+  },
+  {
+    name: "Eugene Yan",
+    sourceType: "blog",
+    sourceUrl: "https://eugeneyan.com/",
+    avatarUrl: "https://eugeneyan.com/assets/og_image/default.jpg",
+  },
+  {
+    name: "Fei-Fei Li",
+    sourceType: "blog",
+    sourceUrl: "https://drfeifei.substack.com/",
+    fetchUrl: "https://drfeifei.substack.com/feed",
+    avatarUrl:
+      "https://substackcdn.com/image/fetch/$s_!8YAq!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fdrfeifei.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D-1118629820%26version%3D9",
+  },
+  {
+    name: "SemiAnalysis",
+    sourceType: "blog",
+    sourceUrl: "https://newsletter.semianalysis.com/",
+    fetchUrl: "https://newsletter.semianalysis.com/feed",
+    avatarUrl:
+      "https://substackcdn.com/image/fetch/$s_!erS6!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fsemianalysis.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D4756587%26version%3D9",
+  },
+  {
+    name: "AI Snake Oil",
+    sourceType: "blog",
+    sourceUrl: "https://www.normaltech.ai/",
+    fetchUrl: "https://www.normaltech.ai/feed",
+    avatarUrl:
+      "https://substackcdn.com/image/fetch/$s_!0m1X!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Faisnakeoil.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D2066899008%26version%3D9",
+  },
+  {
+    name: "Thinking Machines Lab",
+    sourceType: "blog",
+    sourceUrl: "https://thinkingmachines.ai/blog/",
+    fetchUrl: "https://thinkingmachines.ai/blog/index.xml",
+    avatarUrl: "https://thinkingmachines.ai/images/home.png",
+  },
+  {
+    name: "Sakana AI",
+    sourceType: "blog",
+    sourceUrl: "https://sakana.ai/blog/",
+    fetchUrl: "https://sakana.ai/feed.xml",
+    avatarUrl: "https://sakana.ai/assets/home/sakana_rect.png",
+  },
+  {
+    name: "Artificial Analysis",
+    sourceType: "blog",
+    sourceUrl: "https://artificialanalysis.ai/articles",
+    avatarUrl: "https://www.google.com/s2/favicons?domain=artificialanalysis.ai&sz=128",
+  },
+  {
+    name: "METR",
+    sourceType: "blog",
+    sourceUrl: "https://metr.org/blog/",
+    fetchUrl: "https://metr.org/feed.xml",
+    avatarUrl: "https://metr.org/assets/images/logo/og-image-logo.png",
+  },
+  {
+    name: "ARC Prize",
+    sourceType: "blog",
+    sourceUrl: "https://arcprize.org/blog",
+    fetchUrl: "https://arcprize.org/feed.xml",
+    avatarUrl: "https://arcprize.org/media/images/og-image-default.jpg",
+  },
+];
+
+export const CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
+  ...EXISTING_CURATED_AI_SOURCE_CANDIDATES,
+  ...REVIEWED_AI_SOURCE_CANDIDATES,
+];
+
 const CURATED_NEWS_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   // Finance / markets
   { name: "CNBC Top News", sourceType: "blog", sourceUrl: "https://www.cnbc.com/id/100003114/device/rss/rss.html", fetchUrl: "https://www.cnbc.com/id/100003114/device/rss/rss.html", avatarDomain: "cnbc.com" },
@@ -316,7 +394,7 @@ function seedFromBuilder(builder: BuilderSeedSource) {
   };
 }
 
-function seedFromCuratedCandidate(
+export function seedFromCuratedCandidate(
   candidate: CuratedSourceCandidate,
   seededFrom: string = CURATED_AI_SOURCE_CANDIDATE_SEED,
 ) {
@@ -334,7 +412,7 @@ function seedFromCuratedCandidate(
   };
 }
 
-function sourceKeyForCuratedCandidate(candidate: CuratedSourceCandidate) {
+export function sourceKeyForCuratedCandidate(candidate: CuratedSourceCandidate) {
   const kind = builderKindForSourceType(candidate.sourceType);
   const value =
     candidate.sourceType === "x" && candidate.handle

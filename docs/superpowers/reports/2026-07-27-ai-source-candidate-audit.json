@@ -1,0 +1,1898 @@
+{
+  "generatedAt": "2026-07-27T15:04:25.301Z",
+  "cutoff": "2026-04-28T15:04:25.301Z",
+  "proposalCount": 41,
+  "resultCount": 41,
+  "complete": true,
+  "runtimeError": null,
+  "acceptedCount": 10,
+  "excludedCount": 31,
+  "results": [
+    {
+      "proposal": {
+        "name": "One Useful Thing",
+        "sourceType": "blog",
+        "sourceUrl": "https://www.oneusefulthing.org/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "icon_unavailable",
+      "detail": "Source \"One Useful Thing\" is missing a safely downloadable icon.",
+      "http": {
+        "finalUrl": "https://www.oneusefulthing.org/feed",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://www.oneusefulthing.org/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://www.oneusefulthing.org/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://substackcdn.com/image/fetch/$s_!oAcC!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Foneusefulthing.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D2081931964%26version%3D9",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Chip Huyen",
+        "sourceType": "blog",
+        "sourceUrl": "https://huyenchip.com/",
+        "fetchUrl": "https://huyenchip.com/feed.xml",
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"Chip Huyen\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://huyenchip.com/feed.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://huyenchip.com/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://huyenchip.com/",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=huyenchip.com&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Hamel Husain",
+        "sourceType": "blog",
+        "sourceUrl": "https://hamel.dev/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Hamel Husain\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://hamel.dev/",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://hamel.dev/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://hamel.dev/",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 1,
+        "recentItemCount": 1,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=hamel.dev&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Eugene Yan",
+        "sourceType": "blog",
+        "sourceUrl": "https://eugeneyan.com/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Eugene Yan\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://eugeneyan.com/",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://eugeneyan.com/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://eugeneyan.com/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 2,
+        "recentItemCount": 1,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://eugeneyan.com/assets/og_image/default.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Sam Altman",
+        "sourceType": "blog",
+        "sourceUrl": "https://blog.samaltman.com/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"Sam Altman\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://blog.samaltman.com/",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://blog.samaltman.com/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://blog.samaltman.com/",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=blog.samaltman.com&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Fei-Fei Li",
+        "sourceType": "blog",
+        "sourceUrl": "https://drfeifei.substack.com/",
+        "fetchUrl": "https://drfeifei.substack.com/feed",
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Fei-Fei Li\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://drfeifei.substack.com/feed",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://drfeifei.substack.com/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://drfeifei.substack.com/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 1,
+        "recentItemCount": 1,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://substackcdn.com/image/fetch/$s_!8YAq!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fdrfeifei.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D-1118629820%26version%3D9",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "François Chollet",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/fchollet",
+        "fetchUrl": null,
+        "handle": "fchollet"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"François Chollet\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/fchollet?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/fchollet",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/fchollet?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "fchollet",
+        "resolvedHandle": "fchollet",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2006806326140350470/Kd5oZv-f.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "SemiAnalysis",
+        "sourceType": "blog",
+        "sourceUrl": "https://newsletter.semianalysis.com/",
+        "fetchUrl": "https://newsletter.semianalysis.com/feed",
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"SemiAnalysis\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://newsletter.semianalysis.com/feed",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://newsletter.semianalysis.com/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://newsletter.semianalysis.com/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://substackcdn.com/image/fetch/$s_!erS6!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fsemianalysis.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D4756587%26version%3D9",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "AI Snake Oil",
+        "sourceType": "blog",
+        "sourceUrl": "https://www.normaltech.ai/",
+        "fetchUrl": "https://www.normaltech.ai/feed",
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"AI Snake Oil\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://www.normaltech.ai/feed",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://www.normaltech.ai/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://www.normaltech.ai/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://substackcdn.com/image/fetch/$s_!0m1X!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Faisnakeoil.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D2066899008%26version%3D9",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "fast.ai",
+        "sourceType": "blog",
+        "sourceUrl": "https://www.fast.ai/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"fast.ai\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://www.fast.ai/index.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://www.fast.ai/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://www.fast.ai/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.fast.ai/posts/2026-02-17-education/Interactive_whiteboard_thumbnail.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "宝玉",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/dotey",
+        "fetchUrl": null,
+        "handle": "dotey"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"宝玉\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/dotey?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/dotey",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/dotey?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "dotey",
+        "resolvedHandle": "dotey",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/561086911561736192/6_g58vEs.jpeg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Georgi Gerganov",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/ggerganov",
+        "fetchUrl": null,
+        "handle": "ggerganov"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Georgi Gerganov\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/ggerganov?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/ggerganov",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/ggerganov?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "ggerganov",
+        "resolvedHandle": "ggerganov",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1654097134315098113/zCZD0wYz.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "World Labs",
+        "sourceType": "blog",
+        "sourceUrl": "https://www.worldlabs.ai/blog",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"World Labs\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://www.worldlabs.ai/blog",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://www.worldlabs.ai/blog",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://www.worldlabs.ai/blog",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.worldlabs.ai/opengraph-image.png?4b39e0cc40ca8b21",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Thinking Machines Lab",
+        "sourceType": "blog",
+        "sourceUrl": "https://thinkingmachines.ai/blog/",
+        "fetchUrl": "https://thinkingmachines.ai/blog/index.xml",
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Thinking Machines Lab\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://thinkingmachines.ai/blog/index.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://thinkingmachines.ai/blog/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://thinkingmachines.ai/blog/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 2,
+        "recentItemCount": 2,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://thinkingmachines.ai/images/home.png",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Apple Machine Learning Research",
+        "sourceType": "blog",
+        "sourceUrl": "https://machinelearning.apple.com/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "icon_unavailable",
+      "detail": "Source \"Apple Machine Learning Research\" is missing a safely downloadable icon.",
+      "http": {
+        "finalUrl": "https://machinelearning.apple.com/rss.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://machinelearning.apple.com/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://machinelearning.apple.com/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://mlr.cdn-apple.com/media/Home_1200x630_48225d82e9.png",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "NVIDIA Research",
+        "sourceType": "blog",
+        "sourceUrl": "https://www.nvidia.com/en-us/research/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"NVIDIA Research\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://www.nvidia.com/en-us/research/",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://www.nvidia.com/en-us/research/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://www.nvidia.com/en-us/research/",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=www.nvidia.com&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "xAI News",
+        "sourceType": "blog",
+        "sourceUrl": "https://x.ai/news",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "hard_fetch_failed",
+      "detail": "Failed to fetch https://x.ai/news: HTTP 403",
+      "http": {
+        "finalUrl": "https://x.ai/news",
+        "status": null
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.ai/news",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://x.ai/news",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": "Failed to fetch https://x.ai/news: HTTP 403"
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=x.ai&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Qwen Blog",
+        "sourceType": "blog",
+        "sourceUrl": "https://qwen.ai/blog",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"Qwen Blog\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://qwen.ai/blog",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://qwen.ai/blog",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://qwen.ai/blog",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://img.alicdn.com/imgextra/i4/O1CN01OXv3EM1FN8t9W4P79_!!6000000000474-2-tps-80-80.png",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "DeepSeek Updates",
+        "sourceType": "blog",
+        "sourceUrl": "https://api-docs.deepseek.com/news/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"DeepSeek Updates\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://api-docs.deepseek.com/news/",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://api-docs.deepseek.com/news/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api-docs.deepseek.com/news/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 1,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://api-docs.deepseek.com/img/deepseek-social-card.jpeg",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Ai2 News",
+        "sourceType": "blog",
+        "sourceUrl": "https://allenai.org/news",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"Ai2 News\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://allenai.org/news",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://allenai.org/news",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://allenai.org/news",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=allenai.org&sz=128",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Sakana AI",
+        "sourceType": "blog",
+        "sourceUrl": "https://sakana.ai/blog/",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Sakana AI\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://sakana.ai/feed.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://sakana.ai/blog/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://sakana.ai/blog/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://sakana.ai/assets/home/sakana_rect.png",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Nous Research",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/NousResearch",
+        "fetchUrl": null,
+        "handle": "NousResearch"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Nous Research\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/nousresearch?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/nousresearch",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://x.com/nousresearch",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "nousresearch",
+        "resolvedHandle": "NousResearch",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": null,
+        "safeUrl": false,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Unsloth",
+        "sourceType": "blog",
+        "sourceUrl": "https://unsloth.ai/blog",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"Unsloth\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://unsloth.ai/blog",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://unsloth.ai/blog",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://unsloth.ai/blog",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 2,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://unsloth.ai/cgi/image/unsloth_loading_page_render_IswSIHyKOTf-9L-SSjPML.png?format=raw",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Perplexity Blog",
+        "sourceType": "blog",
+        "sourceUrl": "https://www.perplexity.ai/hub/blog",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "hard_fetch_failed",
+      "detail": "Failed to fetch https://www.perplexity.ai/hub/blog: HTTP 403",
+      "http": {
+        "finalUrl": "https://www.perplexity.ai/hub/blog",
+        "status": 403
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://www.perplexity.ai/hub/blog",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://www.perplexity.ai/hub/blog",
+        "status": 403,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": "Failed to fetch https://www.perplexity.ai/hub/blog: HTTP 403"
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=www.perplexity.ai&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Artificial Analysis",
+        "sourceType": "blog",
+        "sourceUrl": "https://artificialanalysis.ai/articles",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Artificial Analysis\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://artificialanalysis.ai/articles",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://artificialanalysis.ai/articles",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://artificialanalysis.ai/articles",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://www.google.com/s2/favicons?domain=artificialanalysis.ai&sz=128",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Epoch AI",
+        "sourceType": "blog",
+        "sourceUrl": "https://epoch.ai/latest",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Blog source \"Epoch AI\" has no recent content items or actionable article fetch tasks to review.",
+      "http": {
+        "finalUrl": "https://epoch.ai/latest",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://epoch.ai/latest",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://epoch.ai/latest",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://epoch.ai/assets/images/thumbnails/general.png",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "METR",
+        "sourceType": "blog",
+        "sourceUrl": "https://metr.org/blog/",
+        "fetchUrl": "https://metr.org/feed.xml",
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"METR\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://metr.org/feed.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://metr.org/blog/",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://metr.org/blog/",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://metr.org/assets/images/logo/og-image-logo.png",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "ARC Prize",
+        "sourceType": "blog",
+        "sourceUrl": "https://arcprize.org/blog",
+        "fetchUrl": null,
+        "handle": null
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"ARC Prize\" passed the AI source audit.",
+      "http": {
+        "finalUrl": "https://arcprize.org/feed.xml",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://arcprize.org/blog",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://arcprize.org/blog",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 2,
+        "recentItemCount": 2,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "unknown",
+        "requestedHandle": null,
+        "resolvedHandle": null,
+        "exactHandleMatch": false
+      },
+      "icon": {
+        "url": "https://arcprize.org/media/images/og-image-default.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Demis Hassabis",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/demishassabis",
+        "fetchUrl": null,
+        "handle": "demishassabis"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Demis Hassabis\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/demishassabis?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/demishassabis",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://x.com/demishassabis",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "demishassabis",
+        "resolvedHandle": "demishassabis",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": null,
+        "safeUrl": false,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Yann LeCun",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/ylecun",
+        "fetchUrl": null,
+        "handle": "ylecun"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Yann LeCun\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/ylecun?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/ylecun",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/ylecun?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "ylecun",
+        "resolvedHandle": "ylecun",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1483577865056702469/rWA-3_T7.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Jim Fan",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/DrJimFan",
+        "fetchUrl": null,
+        "handle": "DrJimFan"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Jim Fan\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/drjimfan?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/drjimfan",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/drjimfan?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "drjimfan",
+        "resolvedHandle": "DrJimFan",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1554922493101559808/SYSZhbcd.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Thomas Wolf",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/Thom_Wolf",
+        "fetchUrl": null,
+        "handle": "Thom_Wolf"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Thomas Wolf\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/thom_wolf?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/thom_wolf",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/thom_wolf?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "thom_wolf",
+        "resolvedHandle": "Thom_Wolf",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2068682157451571200/_ZNKM_5E.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Ilya Sutskever",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/ilyasut",
+        "fetchUrl": null,
+        "handle": "ilyasut"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Ilya Sutskever\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/ilyasut?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/ilyasut",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/ilyasut?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "ilyasut",
+        "resolvedHandle": "ilyasut",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1961115716889030656/We74zmE-.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Dario Amodei",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/DarioAmodei",
+        "fetchUrl": null,
+        "handle": "DarioAmodei"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Dario Amodei\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/darioamodei?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/darioamodei",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/darioamodei?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "darioamodei",
+        "resolvedHandle": "DarioAmodei",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2015835742577012736/uOwdzrEz.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Thibault Sottiaux",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/thsottiaux",
+        "fetchUrl": null,
+        "handle": "thsottiaux"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Thibault Sottiaux\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/thsottiaux?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/thsottiaux",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/thsottiaux?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "thsottiaux",
+        "resolvedHandle": "thsottiaux",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2075819673263001600/pj1vyX6I.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Nan Yu",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/thenanyu",
+        "fetchUrl": null,
+        "handle": "thenanyu"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Nan Yu\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/thenanyu?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/thenanyu",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/thenanyu?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "thenanyu",
+        "resolvedHandle": "thenanyu",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2025584578631544833/SMgxO8lp.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Madhu Guru",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/realmadhuguru",
+        "fetchUrl": null,
+        "handle": "realmadhuguru"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Madhu Guru\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/realmadhuguru?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/realmadhuguru",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/realmadhuguru?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "realmadhuguru",
+        "resolvedHandle": "realmadhuguru",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1487465096242737157/AL-7r3o0.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Amjad Masad",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/amasad",
+        "fetchUrl": null,
+        "handle": "amasad"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Amjad Masad\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/amasad?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/amasad",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/amasad?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "amasad",
+        "resolvedHandle": "amasad",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1897858917507776512/TRVTyKFk.jpg",
+        "safeUrl": true,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Guillermo Rauch",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/rauchg",
+        "fetchUrl": null,
+        "handle": "rauchg"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Guillermo Rauch\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/rauchg?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/rauchg",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://x.com/rauchg",
+        "status": null,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "rauchg",
+        "resolvedHandle": "rauchg",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": null,
+        "safeUrl": false,
+        "downloaded": false
+      }
+    },
+    {
+      "proposal": {
+        "name": "Aaron Levie",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/levie",
+        "fetchUrl": null,
+        "handle": "levie"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Aaron Levie\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/levie?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/levie",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/levie?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "levie",
+        "resolvedHandle": "levie",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/885529357904510976/tM0vLiYS.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    },
+    {
+      "proposal": {
+        "name": "Matt Turck",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/mattturck",
+        "fetchUrl": null,
+        "handle": "mattturck"
+      },
+      "accepted": false,
+      "reason": "no_recent_content",
+      "detail": "Resolved X account \"Matt Turck\" has no recent posts available to review.",
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/mattturck?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/mattturck",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/mattturck?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 0,
+        "recentItemCount": 0,
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "mattturck",
+        "resolvedHandle": "mattturck",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/525262417635205120/xkF8FYY-.jpeg",
+        "safeUrl": true,
+        "downloaded": true
+      }
+    }
+  ]
+}

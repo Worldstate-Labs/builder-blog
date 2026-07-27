@@ -67,6 +67,14 @@ const EXPECTED_NEW_X_HANDLES = {
 const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_JSON_PATH = resolve(WORKSPACE_ROOT, "package.json");
 const AUDIT_CLI_PATH = resolve(WORKSPACE_ROOT, "scripts/audit-ai-source-candidates.ts");
+const SOURCE_CANDIDATE_LIBRARY_PATH = resolve(
+  WORKSPACE_ROOT,
+  "src/lib/source-candidate-library.ts",
+);
+const AUDIT_REPORT_PATH = resolve(
+  WORKSPACE_ROOT,
+  "docs/superpowers/reports/2026-07-27-ai-source-candidate-audit.json",
+);
 
 function responseWithUrl(
   body: BodyInit | null | undefined,
@@ -829,6 +837,118 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
   assert.doesNotMatch(serialized, /postgres:\/\//i);
   assert.doesNotMatch(serialized, /\/Users\/jie\//);
   assert.doesNotMatch(serialized, /body=<html>/i);
+});
+
+test("reviewed AI source candidates match the accepted July 27, 2026 audit report", async () => {
+  assert.ok(
+    existsSync(AUDIT_REPORT_PATH),
+    "docs/superpowers/reports/2026-07-27-ai-source-candidate-audit.json must exist",
+  );
+
+  const report = JSON.parse(readFileSync(AUDIT_REPORT_PATH, "utf8")) as {
+    complete: boolean;
+    results: Array<{
+      accepted: boolean;
+      reason: string | null;
+      proposal: {
+        name: string;
+      };
+    }>;
+  };
+
+  assert.equal(report.complete, true);
+  assert.equal(report.results.length, 41);
+
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = previousDatabaseUrl || "postgresql://user:pass@localhost:5432/builder_blog_test";
+  const library = await import(pathToFileURL(SOURCE_CANDIDATE_LIBRARY_PATH).href) as {
+    REVIEWED_AI_SOURCE_CANDIDATES?: Array<{
+      name: string;
+      sourceType: string;
+      sourceUrl: string;
+      avatarUrl?: string | null;
+      handle?: string | null;
+    }>;
+    CURATED_AI_SOURCE_CANDIDATES?: Array<{
+      name: string;
+      sourceType: string;
+      sourceUrl: string;
+      avatarUrl?: string | null;
+      handle?: string | null;
+    }>;
+    sourceKeyForCuratedCandidate?: (candidate: {
+      name: string;
+      sourceType: string;
+      sourceUrl: string;
+      avatarUrl?: string | null;
+      handle?: string | null;
+    }) => string;
+  };
+  if (previousDatabaseUrl === undefined) {
+    delete process.env.DATABASE_URL;
+  } else {
+    process.env.DATABASE_URL = previousDatabaseUrl;
+  }
+
+  assert.ok(
+    Array.isArray(library.REVIEWED_AI_SOURCE_CANDIDATES),
+    "REVIEWED_AI_SOURCE_CANDIDATES must be exported",
+  );
+  assert.ok(
+    Array.isArray(library.CURATED_AI_SOURCE_CANDIDATES),
+    "CURATED_AI_SOURCE_CANDIDATES must be exported",
+  );
+  assert.equal(
+    typeof library.sourceKeyForCuratedCandidate,
+    "function",
+    "sourceKeyForCuratedCandidate must be exported",
+  );
+
+  const acceptedNames = report.results
+    .filter((result) => result.accepted)
+    .map((result) => result.proposal.name)
+    .sort();
+  const reviewedNames = library.REVIEWED_AI_SOURCE_CANDIDATES
+    .map((candidate) => candidate.name)
+    .sort();
+  assert.deepEqual(reviewedNames, acceptedNames);
+
+  const reviewedNameSet = new Set(reviewedNames);
+  for (const candidate of library.REVIEWED_AI_SOURCE_CANDIDATES) {
+    assert.ok(
+      candidate.sourceType === "blog" || candidate.sourceType === "x",
+      `${candidate.name} must use a supported reviewed sourceType`,
+    );
+    assert.equal(
+      new URL(candidate.sourceUrl).protocol,
+      "https:",
+      `${candidate.name} must use an HTTPS sourceUrl`,
+    );
+    assert.ok(candidate.avatarUrl, `${candidate.name} must define an explicit avatarUrl`);
+    if (candidate.sourceType === "x") {
+      assert.ok(candidate.handle, `${candidate.name} must define an X handle`);
+    }
+  }
+
+  const aiKeys = library.CURATED_AI_SOURCE_CANDIDATES.map((candidate) =>
+    library.sourceKeyForCuratedCandidate!(candidate),
+  );
+  assert.equal(new Set(aiKeys).size, aiKeys.length, "curated AI canonical keys must be unique");
+
+  for (const result of report.results) {
+    if (result.accepted) {
+      assert.ok(
+        reviewedNameSet.has(result.proposal.name),
+        `${result.proposal.name} must be included in REVIEWED_AI_SOURCE_CANDIDATES`,
+      );
+    } else {
+      assert.ok(
+        !reviewedNameSet.has(result.proposal.name),
+        `${result.proposal.name} must be excluded from REVIEWED_AI_SOURCE_CANDIDATES`,
+      );
+      assert.ok(result.reason, `${result.proposal.name} must keep a rejection reason`);
+    }
+  }
 });
 
 test("audit AI source candidate CLI rejects X when only a generic x.com favicon is available", async () => {
