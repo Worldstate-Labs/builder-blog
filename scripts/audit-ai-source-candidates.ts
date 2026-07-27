@@ -102,6 +102,18 @@ type AuditJsonOutput = {
   results: AiSourceAuditResult[];
 };
 
+type ObservedHttpEvidence = {
+  finalUrl: string | null;
+  status: number | null;
+};
+
+type AuditFetchSummary = {
+  http: ObservedHttpEvidence;
+  fetch: AiSourceAuditFetchEvidence;
+  x: AiSourceAuditXEvidence;
+  xProfileImageUrl: string | null;
+};
+
 const DEFAULT_DEPS: AuditDependencies = {
   evaluateAiSourceAudit,
   resolvePersonalBuilderInput,
@@ -125,20 +137,19 @@ export async function runAuditCli(options: RunAuditCliOptions = {}): Promise<num
 
   try {
     for (const [index, proposal] of proposals.entries()) {
-      results.push(
-        await auditProposal({
-          deps,
-          proposal,
-          index,
-          cutoff,
-        }),
-      );
+      results.push(await safeAuditProposal({ deps, proposal, index, cutoff }));
     }
   } catch (error) {
     runtimeError = sanitizeText(errorMessage(error));
     if (runtimeError) {
       stderr.write(`${runtimeError}\n`);
     }
+  }
+
+  if (runtimeError === null && results.length !== proposals.length) {
+    runtimeError = sanitizeText(
+      `Audit invariant failed: produced ${results.length} results for ${proposals.length} proposals.`,
+    );
   }
 
   const complete = runtimeError === null && results.length === proposals.length;
@@ -154,6 +165,24 @@ export async function runAuditCli(options: RunAuditCliOptions = {}): Promise<num
 
   stdout.write(`${JSON.stringify(output, null, 2)}\n`);
   return complete ? 0 : 1;
+}
+
+async function safeAuditProposal({
+  deps,
+  proposal,
+  index,
+  cutoff,
+}: {
+  deps: AuditDependencies;
+  proposal: AiSourceReviewProposal;
+  index: number;
+  cutoff: Date;
+}): Promise<AiSourceAuditResult> {
+  try {
+    return await auditProposal({ deps, proposal, index, cutoff });
+  } catch (error) {
+    return buildCandidateFailureResult(deps, proposal, sanitizeText(errorMessage(error)));
+  }
 }
 
 async function auditProposal({
@@ -177,6 +206,10 @@ async function auditProposal({
     return deps.evaluateAiSourceAudit(
       buildAuditInput({
         proposal,
+        http: {
+          finalUrl: null,
+          status: null,
+        },
         resolver: {
           ok: false,
           finalUrl: null,
@@ -196,6 +229,7 @@ async function auditProposal({
           proposal,
           sourceUrl: proposal.sourceUrl,
           probe: null,
+          xProfileImageUrl: null,
         }),
       }),
     );
@@ -203,11 +237,13 @@ async function auditProposal({
 
   const normalized = resolution.value;
   const requestedFetchUrl = proposal.fetchUrl ?? normalized.fetchUrl;
+  const probeRecorder = createHttpObservationRecorder(deps.fetchImpl);
   const probe = await deps.probeAndEnrichSource({
     sourceType: normalized.sourceType,
     sourceUrl: normalized.sourceUrl,
     fetchUrl: requestedFetchUrl,
     handle: normalized.handle,
+    fetcher: probeRecorder.fetcher,
   });
 
   const builder = buildAuditBuilder({
@@ -217,68 +253,42 @@ async function auditProposal({
     requestedFetchUrl,
     index,
   });
+  const fetchSummary =
+    builder.kind === "X"
+      ? await fetchXAuditEvidence(deps, builder, cutoff)
+      : await fetchBlogAuditEvidence(deps, builder, cutoff);
   const icon = await resolveIconEvidence({
     deps,
     proposal,
     sourceUrl: builder.fetchUrl ?? builder.sourceUrl ?? proposal.sourceUrl,
     probe,
+    xProfileImageUrl: fetchSummary.xProfileImageUrl,
   });
 
-  try {
-    const fetchSummary =
-      builder.kind === "X"
-        ? await fetchXAuditEvidence(deps, builder, cutoff)
-        : await fetchBlogAuditEvidence(deps, builder, cutoff);
-
-    return deps.evaluateAiSourceAudit(
-      buildAuditInput({
-        proposal,
-        resolver: {
-          ok: true,
-          finalUrl: normalized.sourceUrl,
-          status: null,
-        },
-        probe: {
-          ok: probe.ok,
-          finalUrl: builder.fetchUrl ?? builder.sourceUrl,
-          status: null,
-          robotsDenied: false,
-          loginRequired: false,
-        },
-        fetch: fetchSummary.fetch,
-        x: fetchSummary.x,
-        icon,
-      }),
-    );
-  } catch (error) {
-    return deps.evaluateAiSourceAudit(
-      buildAuditInput({
-        proposal,
-        resolver: {
-          ok: true,
-          finalUrl: normalized.sourceUrl,
-          status: null,
-        },
-        probe: {
-          ok: probe.ok,
-          finalUrl: builder.fetchUrl ?? builder.sourceUrl,
-          status: null,
-          robotsDenied: false,
-          loginRequired: false,
-        },
-        fetch: {
-          ...emptyFetchEvidence(),
-          hardFailure: true,
-          hardFailureDetail: sanitizeText(errorMessage(error)),
-        },
-        x:
-          builder.kind === "X"
-            ? baseXEvidence(builder.handle)
-            : baseXEvidence(null),
-        icon,
-      }),
-    );
-  }
+  return deps.evaluateAiSourceAudit(
+    buildAuditInput({
+      proposal,
+      http: preferredHttpEvidence(
+        fetchSummary.http,
+        probeRecorder.observation(builder.fetchUrl ?? builder.sourceUrl ?? normalized.sourceUrl),
+      ),
+      resolver: {
+        ok: true,
+        finalUrl: normalized.sourceUrl,
+        status: null,
+      },
+      probe: {
+        ok: probe.ok,
+        finalUrl: probeRecorder.observation(normalized.sourceUrl).finalUrl,
+        status: probeRecorder.observation(normalized.sourceUrl).status,
+        robotsDenied: false,
+        loginRequired: false,
+      },
+      fetch: fetchSummary.fetch,
+      x: fetchSummary.x,
+      icon,
+    }),
+  );
 }
 
 function buildAuditBuilder({
@@ -309,11 +319,12 @@ async function fetchBlogAuditEvidence(
   deps: AuditDependencies,
   builder: AuditBuilder,
   cutoff: Date,
-): Promise<{
-  fetch: AiSourceAuditFetchEvidence;
-  x: AiSourceAuditXEvidence;
-}> {
-  const result = await deps.fetchPersonalBlogBuilderForTest(builder, buildFetchOptions(cutoff));
+): Promise<AuditFetchSummary> {
+  const recorder = createHttpObservationRecorder(deps.fetchImpl, { ignore: isRobotsTxtRequest });
+  const result = await deps.fetchPersonalBlogBuilderForTest(
+    builder,
+    buildFetchOptions(cutoff, { fetcher: recorder.fetcher }),
+  );
   const items = Array.isArray(result.items) ? result.items : [];
   const recentItems = items.filter((item) => isWithinCutoff(item?.publishedAt, cutoff));
   const actionableTasks = (Array.isArray(result.agentTasks) ? result.agentTasks : [])
@@ -328,12 +339,14 @@ async function fetchBlogAuditEvidence(
     }));
 
   return {
+    http: recorder.observation(builder.fetchUrl ?? builder.sourceUrl),
     fetch: {
       itemCount: items.length,
       recentItemCount: recentItems.length,
       actionableTasks,
     },
     x: baseXEvidence(null),
+    xProfileImageUrl: null,
   };
 }
 
@@ -341,10 +354,7 @@ async function fetchXAuditEvidence(
   deps: AuditDependencies,
   builder: AuditBuilder,
   cutoff: Date,
-): Promise<{
-  fetch: AiSourceAuditFetchEvidence;
-  x: AiSourceAuditXEvidence;
-}> {
+): Promise<AuditFetchSummary> {
   const lookupObservation = createXLookupRecorder(builder.handle, deps.fetchImpl);
   const result = await deps.fetchPersonalXBuilderForTest(
     builder,
@@ -361,6 +371,7 @@ async function fetchXAuditEvidence(
   const exactHandleMatch = tokenState === "accepted" && lookupObservation.exactHandleMatch();
 
   return {
+    http: lookupObservation.httpObservation(builder.sourceUrl),
     fetch: {
       itemCount: items.length,
       recentItemCount: recentItems.length,
@@ -372,6 +383,7 @@ async function fetchXAuditEvidence(
       resolvedHandle: lookupObservation.resolvedHandle(),
       exactHandleMatch,
     },
+    xProfileImageUrl: lookupObservation.profileImageUrl(),
   };
 }
 
@@ -388,6 +400,7 @@ function buildFetchOptions(cutoff: Date, extra: { fetcher?: FetchLike } = {}) {
 
 function buildAuditInput({
   proposal,
+  http,
   resolver,
   probe,
   fetch,
@@ -395,6 +408,7 @@ function buildAuditInput({
   icon,
 }: {
   proposal: AiSourceReviewProposal;
+  http: AiSourceAuditInput["http"];
   resolver: AiSourceAuditInput["resolver"];
   probe: AiSourceAuditInput["probe"];
   fetch: AiSourceAuditInput["fetch"];
@@ -411,10 +425,7 @@ function buildAuditInput({
       ...(proposal.avatarDomain ? { avatarDomain: proposal.avatarDomain } : {}),
       ...(proposal.avatarUrl ? { avatarUrl: proposal.avatarUrl } : {}),
     },
-    http: {
-      finalUrl: probe.finalUrl ?? resolver.finalUrl,
-      status: probe.status ?? resolver.status,
-    },
+    http,
     resolver,
     probe,
     fetch,
@@ -428,17 +439,26 @@ async function resolveIconEvidence({
   proposal,
   sourceUrl,
   probe,
+  xProfileImageUrl,
 }: {
   deps: AuditDependencies;
   proposal: AiSourceReviewProposal;
   sourceUrl: string | null;
   probe: ProbeOutcome | null;
+  xProfileImageUrl: string | null;
 }): Promise<AiSourceAuditInput["icon"]> {
-  const fallbackDomain = proposal.avatarDomain ?? hostForUrl(sourceUrl ?? proposal.sourceUrl);
-  const safeUrl =
-    toSafeAvatarUrl(proposal.avatarUrl) ??
-    toSafeAvatarUrl(probe?.enrichment.avatarUrl) ??
-    (fallbackDomain ? googleFaviconUrl(fallbackDomain) : null);
+  const safeUrl = proposal.sourceType === "x"
+    ? toSafeAvatarUrl(proposal.avatarUrl) ??
+      toSafeAvatarUrl(probe?.enrichment.avatarUrl) ??
+      toSafeAvatarUrl(xProfileImageUrl)
+    : (() => {
+        const fallbackDomain = proposal.avatarDomain ?? hostForUrl(sourceUrl ?? proposal.sourceUrl);
+        return (
+          toSafeAvatarUrl(proposal.avatarUrl) ??
+          toSafeAvatarUrl(probe?.enrichment.avatarUrl) ??
+          (fallbackDomain ? googleFaviconUrl(fallbackDomain) : null)
+        );
+      })();
   const avatarDataUrl = await deps.resolveAvatarDataUrl(safeUrl);
 
   return {
@@ -481,20 +501,34 @@ function emptyFetchEvidence(): AiSourceAuditFetchEvidence {
 function createXLookupRecorder(requestedHandle: string | null, fetchImpl: FetchLike) {
   let resolvedHandle: string | null = null;
   let exactHandleMatch = false;
+  let profileImageUrl: string | null = null;
+  let httpObservation: ObservedHttpEvidence | null = null;
   const requested = normalizeHandleForCompare(requestedHandle);
 
   return {
     fetcher: async (input: string | URL | Request, init?: RequestInit) => {
       const response = await fetchImpl(input, init);
+      if (httpObservation === null) {
+        httpObservation = {
+          status: response.status,
+          finalUrl: response.url || normalizeRequestUrl(input)?.toString() || null,
+        };
+      }
       await observeXUserLookup({ requestedHandle: requested, input, response }).then((observation) => {
         if (!observation) return;
         resolvedHandle = observation.resolvedHandle;
         exactHandleMatch = observation.exactHandleMatch;
+        profileImageUrl = observation.profileImageUrl;
       });
       return response;
     },
     resolvedHandle: () => resolvedHandle,
     exactHandleMatch: () => exactHandleMatch,
+    profileImageUrl: () => profileImageUrl,
+    httpObservation: (fallbackUrl: string | null) => httpObservation ?? {
+      finalUrl: fallbackUrl,
+      status: null,
+    },
   };
 }
 
@@ -506,7 +540,7 @@ async function observeXUserLookup({
   requestedHandle: string | null;
   input: string | URL | Request;
   response: Response;
-}): Promise<{ resolvedHandle: string | null; exactHandleMatch: boolean } | null> {
+}): Promise<{ resolvedHandle: string | null; exactHandleMatch: boolean; profileImageUrl: string | null } | null> {
   if (!requestedHandle || !response.ok) return null;
 
   const url = normalizeRequestUrl(input);
@@ -516,21 +550,63 @@ async function observeXUserLookup({
 
   try {
     const json = (await response.clone().json()) as {
-      data?: { id?: unknown; username?: unknown };
+      data?: { id?: unknown; username?: unknown; profile_image_url?: unknown };
     } | null;
     const userId = typeof json?.data?.id === "string" ? json.data.id.trim() : "";
     const username = typeof json?.data?.username === "string" ? json.data.username.trim() : "";
+    const profileImageUrl =
+      typeof json?.data?.profile_image_url === "string"
+        ? json.data.profile_image_url.trim()
+        : "";
     const normalizedResolvedHandle = normalizeHandleForCompare(username);
     if (!userId || !normalizedResolvedHandle) {
-      return { resolvedHandle: null, exactHandleMatch: false };
+      return { resolvedHandle: null, exactHandleMatch: false, profileImageUrl: null };
     }
     return {
       resolvedHandle: username,
       exactHandleMatch: normalizedResolvedHandle === requestedHandle,
+      profileImageUrl: profileImageUrl || null,
     };
   } catch {
     return null;
   }
+}
+
+function createHttpObservationRecorder(
+  fetchImpl: FetchLike,
+  options: { ignore?: (input: string | URL | Request) => boolean } = {},
+) {
+  let observation: ObservedHttpEvidence | null = null;
+
+  return {
+    fetcher: async (input: string | URL | Request, init?: RequestInit) => {
+      const response = await fetchImpl(input, init);
+      if (observation === null && !(options.ignore?.(input) ?? false)) {
+        observation = {
+          status: response.status,
+          finalUrl: response.url || normalizeRequestUrl(input)?.toString() || null,
+        };
+      }
+      return response;
+    },
+    observation: (fallbackUrl: string | null): ObservedHttpEvidence =>
+      observation ?? {
+        finalUrl: fallbackUrl,
+        status: null,
+      },
+  };
+}
+
+function preferredHttpEvidence(
+  primary: ObservedHttpEvidence,
+  fallback: ObservedHttpEvidence,
+): ObservedHttpEvidence {
+  return primary.status !== null || primary.finalUrl !== null ? primary : fallback;
+}
+
+function isRobotsTxtRequest(input: string | URL | Request): boolean {
+  const url = normalizeRequestUrl(input);
+  return url?.pathname === "/robots.txt";
 }
 
 function normalizeHandleForCompare(handle: string | null | undefined): string | null {
@@ -546,6 +622,45 @@ function normalizeRequestUrl(input: string | URL | Request): URL | null {
   } catch {
     return null;
   }
+}
+
+function buildCandidateFailureResult(
+  deps: AuditDependencies,
+  proposal: AiSourceReviewProposal,
+  detail: string,
+): AiSourceAuditResult {
+  return deps.evaluateAiSourceAudit(
+    buildAuditInput({
+      proposal,
+      http: {
+        finalUrl: proposal.fetchUrl ?? proposal.sourceUrl,
+        status: null,
+      },
+      resolver: {
+        ok: true,
+        finalUrl: proposal.sourceUrl,
+        status: null,
+      },
+      probe: {
+        ok: true,
+        finalUrl: proposal.fetchUrl ?? proposal.sourceUrl,
+        status: null,
+        robotsDenied: false,
+        loginRequired: false,
+      },
+      fetch: {
+        ...emptyFetchEvidence(),
+        hardFailure: true,
+        hardFailureDetail: detail,
+      },
+      x: baseXEvidence(proposal.handle ?? null),
+      icon: {
+        url: null,
+        safeUrl: false,
+        downloaded: false,
+      },
+    }),
+  );
 }
 
 function stableAuditBuilderId(proposal: AiSourceReviewProposal, index: number): string {

@@ -70,6 +70,7 @@ type ProbeInput = {
   sourceUrl: string | null;
   fetchUrl: string | null;
   handle: string | null;
+  fetcher?: typeof fetch;
 };
 
 const USER_AGENT =
@@ -230,7 +231,7 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
         "User-Agent": USER_AGENT,
         Authorization: `Bearer ${bearer}`,
       },
-    });
+    }, input.fetcher);
   } catch (error) {
     console.warn("[builder-enrichment] x fetch failed", { handle, error });
     return {
@@ -312,7 +313,7 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   try {
     response = await fetchWithTimeout(pageUrl, {
       headers: { "User-Agent": USER_AGENT },
-    });
+    }, input.fetcher);
   } catch (error) {
     console.warn("[builder-enrichment] youtube fetch failed", { pageUrl, error });
     return {
@@ -386,7 +387,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   try {
     response = await fetchWithTimeout(pageUrl, {
       headers: { "User-Agent": USER_AGENT },
-    });
+    }, input.fetcher);
   } catch (error) {
     console.warn("[builder-enrichment] html fetch failed", { pageUrl, error });
     return {
@@ -522,7 +523,7 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
   try {
     response = await fetchWithTimeout(fetchTarget, {
       headers: { "User-Agent": USER_AGENT },
-    });
+    }, input.fetcher);
   } catch (error) {
     console.warn("[builder-enrichment] podcast fetch failed", { fetchTarget, error });
     return {
@@ -596,11 +597,12 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
 async function fetchWithTimeout(
   url: string,
   init: { headers: Record<string, string> },
+  fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    return await fetch(url, {
+    return await fetcher(url, {
       headers: init.headers,
       signal: controller.signal,
       redirect: "follow",

@@ -225,6 +225,31 @@ test("probe requires confirmation when an HTML page cannot be verified", async (
   }
 });
 
+test("probe can use an injected fetcher without touching global fetch", async () => {
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("global fetch should not be used");
+  };
+  try {
+    const outcome = await probeAndEnrichSource({
+      sourceType: "blog",
+      sourceUrl: "https://example.com/blog",
+      fetchUrl: null,
+      handle: null,
+      fetcher: async () =>
+        new Response(
+          '<!doctype html><html><head><title>Injected Probe</title></head><body>Injected Probe</body></html>',
+          { status: 200, headers: { "content-type": "text/html" } },
+        ),
+    });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.enrichment.name, "Injected Probe");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("probe respects the 4s timeout and the standard User-Agent", () => {
   assert.match(PROBE_SOURCE, /new\s+AbortController\(\)/);
   assert.match(PROBE_SOURCE, /FETCH_TIMEOUT_MS\s*=\s*4000/);

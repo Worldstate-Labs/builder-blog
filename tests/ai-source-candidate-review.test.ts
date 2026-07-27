@@ -68,6 +68,19 @@ const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_JSON_PATH = resolve(WORKSPACE_ROOT, "package.json");
 const AUDIT_CLI_PATH = resolve(WORKSPACE_ROOT, "scripts/audit-ai-source-candidates.ts");
 
+function responseWithUrl(
+  body: BodyInit | null | undefined,
+  init: ResponseInit,
+  url: string,
+): Response {
+  const response = new Response(body, init);
+  Object.defineProperty(response, "url", {
+    value: url,
+    configurable: true,
+  });
+  return response;
+}
+
 function buildBlogAuditInput(
   overrides: Partial<AiSourceAuditInput> = {},
 ): AiSourceAuditInput {
@@ -546,6 +559,7 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
   );
 
   const mod = await import(pathToFileURL(AUDIT_CLI_PATH).href);
+  const { probeAndEnrichSource } = await import("../src/lib/builder-enrichment");
   assert.equal(typeof mod.runAuditCli, "function");
 
   const now = new Date("2026-07-27T12:00:00.000Z");
@@ -556,143 +570,325 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
   const xCutoffs: string[] = [];
   let stdout = "";
   let stderr = "";
+  const previousToken = process.env.X_BEARER_TOKEN;
+
+  try {
+    process.env.X_BEARER_TOKEN = "test-token";
+    const exitCode = await mod.runAuditCli({
+      now: () => new Date(now),
+      stdout: {
+        write(chunk: string) {
+          stdout += chunk;
+        },
+      },
+      stderr: {
+        write(chunk: string) {
+          stderr += chunk;
+        },
+      },
+      proposals: [
+        {
+          name: "Audit Blog",
+          sourceType: "blog",
+          sourceUrl: "https://example.com/blog",
+        },
+        {
+          name: "Audit X",
+          sourceType: "x",
+          sourceUrl: "https://x.com/auditx",
+          handle: "auditx",
+        },
+        {
+          name: "Broken Blog",
+          sourceType: "blog",
+          sourceUrl: "https://broken.example.com/blog",
+          fetchUrl: "https://broken.example.com/feed.xml",
+        },
+      ],
+      deps: {
+        evaluateAiSourceAudit,
+        fetchImpl: async (input: string | URL | Request) => {
+          const url =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.toString()
+                : input.url;
+          if (url === "https://example.com/blog") {
+            return responseWithUrl(
+              `<!doctype html><html><head>
+                <title>Audit Blog</title>
+                <meta property="og:image" content="https://cdn.example.com/icon.png" />
+                <link rel="alternate" type="application/rss+xml" href="https://example.com/feed.xml" />
+              </head><body>Audit Blog</body></html>`,
+              { status: 200, headers: { "content-type": "text/html" } },
+              "https://www.example.com/blog",
+            );
+          }
+          if (url === "https://broken.example.com/blog") {
+            return responseWithUrl(
+              `<!doctype html><html><head>
+                <title>Broken Blog</title>
+                <meta property="og:image" content="https://cdn.example.com/broken-icon.png" />
+              </head><body>Broken Blog</body></html>`,
+              { status: 200, headers: { "content-type": "text/html" } },
+              "https://broken.example.com/blog",
+            );
+          }
+          if (url === "https://example.com/feed.xml") {
+            return responseWithUrl(
+              `<?xml version="1.0"?><rss version="2.0"><channel><title>Audit Blog Feed</title></channel></rss>`,
+              { status: 200, headers: { "content-type": "application/rss+xml" } },
+              "https://feeds.example.com/feed.xml",
+            );
+          }
+          if (url.includes("/2/users/by/username/auditx")) {
+            return responseWithUrl(
+              JSON.stringify({
+                data: {
+                  id: "user-1",
+                  username: "AuditX",
+                  profile_image_url: "https://pbs.twimg.com/profile_images/auditx_normal.jpg",
+                },
+              }),
+              {
+                status: 200,
+                headers: { "content-type": "application/json" },
+              },
+              "https://api.x.com/2/users/by/username/auditx?user.fields=name,profile_image_url",
+            );
+          }
+          throw new Error(`Unexpected fetch URL: ${url}`);
+        },
+        resolvePersonalBuilderInput: async ({
+          displayName,
+          sourceType,
+          sourceValue,
+        }: {
+          displayName: string;
+          sourceType: string;
+          sourceValue: string;
+        }) => {
+          if (sourceType === "x") {
+            return {
+              ok: true as const,
+              value: {
+                kind: "X",
+                sourceType,
+                name: displayName,
+                handle: "auditx",
+                sourceUrl: "https://x.com/auditx",
+                fetchUrl: null,
+              },
+            };
+          }
+          return {
+            ok: true as const,
+            value: {
+              kind: "BLOG",
+              sourceType,
+              name: displayName,
+              handle: null,
+              sourceUrl: sourceValue,
+              fetchUrl: null,
+            },
+          };
+        },
+        probeAndEnrichSource,
+        resolveAvatarDataUrl: async (avatarUrl: string | null) =>
+          avatarUrl ? "data:image/png;base64,secret-avatar" : null,
+        fetchPersonalBlogBuilderForTest: async (
+          builder: { name: string; fetchUrl?: string | null },
+          options: { cutoff: Date; fetcher?: (input: string) => Promise<Response> },
+        ) => {
+          blogCutoffs.push(options.cutoff.toISOString());
+          if (builder.name === "Broken Blog") {
+            throw new Error(
+              "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local data:image/png;base64,abc",
+            );
+          }
+          if (builder.fetchUrl) {
+            await options.fetcher?.(builder.fetchUrl);
+          }
+          return {
+            items: [],
+            agentTasks: [
+              {
+                type: "blog_article_fetch",
+                item: { publishedAt: "2026-07-01T00:00:00.000Z" },
+              },
+              {
+                type: "blog_article_fetch",
+                item: { publishedAt: "2026-03-01T00:00:00.000Z" },
+              },
+              {
+                type: "something_else",
+                item: { publishedAt: "2026-07-02T00:00:00.000Z" },
+              },
+            ],
+          };
+        },
+        fetchPersonalXBuilderForTest: async (
+          _builder: { name: string },
+          options: { cutoff: Date; fetcher?: (input: string) => Promise<Response> },
+        ) => {
+          xCutoffs.push(options.cutoff.toISOString());
+          await options.fetcher?.(
+            "https://api.x.com/2/users/by/username/auditx?user.fields=description",
+          );
+          return {
+            items: [
+              {
+                publishedAt: "2026-07-20T00:00:00.000Z",
+              },
+            ],
+            agentTasks: [],
+          };
+        },
+      },
+    });
+
+    assert.equal(exitCode, 0);
+  } finally {
+    if (previousToken === undefined) {
+      delete process.env.X_BEARER_TOKEN;
+    } else {
+      process.env.X_BEARER_TOKEN = previousToken;
+    }
+  }
+  assert.equal(stderr, "");
+  assert.ok(stdout.endsWith("\n"));
+
+  const parsed = JSON.parse(stdout) as {
+    cutoff: string;
+    proposalCount: number;
+    resultCount: number;
+    results: Array<{
+      proposal: { name: string };
+      accepted: boolean;
+      reason: string | null;
+      http: {
+        finalUrl: string | null;
+        status: number | null;
+      };
+      probe: {
+        finalUrl: string | null;
+        status: number | null;
+      };
+      fetch: {
+        recentItemCount: number;
+        actionableTaskCount: number;
+        actionableTaskTypes: string[];
+        hardFailureDetail?: string | null;
+      };
+      x: {
+        tokenState: string;
+        exactHandleMatch: boolean;
+        resolvedHandle: string | null;
+      };
+      icon: {
+        url: string | null;
+        downloaded: boolean;
+      };
+    }>;
+  };
+
+  assert.equal(parsed.cutoff, expectedCutoffIso);
+  assert.equal(parsed.proposalCount, 3);
+  assert.equal(parsed.resultCount, 3);
+  assert.deepEqual(blogCutoffs, [expectedCutoffIso, expectedCutoffIso]);
+  assert.deepEqual(xCutoffs, [expectedCutoffIso]);
+
+  const resultsByName = new Map(parsed.results.map((result) => [result.proposal.name, result]));
+  assert.equal(resultsByName.get("Audit Blog")?.accepted, true);
+  assert.equal(resultsByName.get("Audit Blog")?.probe.status, 200);
+  assert.equal(resultsByName.get("Audit Blog")?.probe.finalUrl, "https://www.example.com/blog");
+  assert.equal(resultsByName.get("Audit Blog")?.http.status, 200);
+  assert.equal(resultsByName.get("Audit Blog")?.http.finalUrl, "https://feeds.example.com/feed.xml");
+  assert.equal(resultsByName.get("Audit Blog")?.fetch.recentItemCount, 0);
+  assert.equal(resultsByName.get("Audit Blog")?.fetch.actionableTaskCount, 1);
+  assert.deepEqual(resultsByName.get("Audit Blog")?.fetch.actionableTaskTypes, [
+    "blog_article_fetch",
+  ]);
+  assert.equal(resultsByName.get("Audit X")?.accepted, true);
+  assert.equal(resultsByName.get("Audit X")?.x.tokenState, "accepted");
+  assert.equal(resultsByName.get("Audit X")?.x.exactHandleMatch, true);
+  assert.equal(resultsByName.get("Audit X")?.x.resolvedHandle, "AuditX");
+  assert.equal(
+    resultsByName.get("Audit X")?.icon.url,
+    "https://pbs.twimg.com/profile_images/auditx.jpg",
+  );
+  assert.equal(resultsByName.get("Audit X")?.icon.downloaded, true);
+  assert.equal(resultsByName.get("Broken Blog")?.accepted, false);
+  assert.equal(resultsByName.get("Broken Blog")?.reason, "hard_fetch_failed");
+
+  const serialized = JSON.stringify(parsed);
+  assert.doesNotMatch(serialized, /X_BEARER_TOKEN/);
+  assert.doesNotMatch(serialized, /Authorization/i);
+  assert.doesNotMatch(serialized, /data:image\//i);
+  assert.doesNotMatch(serialized, /postgres:\/\//i);
+  assert.doesNotMatch(serialized, /\/Users\/jie\//);
+  assert.doesNotMatch(serialized, /body=<html>/i);
+});
+
+test("audit AI source candidate CLI rejects X when only a generic x.com favicon is available", async () => {
+  assert.ok(
+    existsSync(AUDIT_CLI_PATH),
+    "scripts/audit-ai-source-candidates.ts must exist",
+  );
+
+  const mod = await import(pathToFileURL(AUDIT_CLI_PATH).href);
+  let stdout = "";
 
   const exitCode = await mod.runAuditCli({
-    now: () => new Date(now),
+    now: () => new Date("2026-07-27T12:00:00.000Z"),
     stdout: {
       write(chunk: string) {
         stdout += chunk;
       },
     },
     stderr: {
-      write(chunk: string) {
-        stderr += chunk;
-      },
+      write() {},
     },
     proposals: [
-      {
-        name: "Audit Blog",
-        sourceType: "blog",
-        sourceUrl: "https://example.com/blog",
-      },
       {
         name: "Audit X",
         sourceType: "x",
         sourceUrl: "https://x.com/auditx",
         handle: "auditx",
       },
-      {
-        name: "Broken Blog",
-        sourceType: "blog",
-        sourceUrl: "https://broken.example.com/blog",
-        fetchUrl: "https://broken.example.com/feed.xml",
-      },
     ],
     deps: {
       evaluateAiSourceAudit,
-      fetchImpl: async (input: string | URL | Request) => {
-        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-        if (url.includes("/2/users/by/username/auditx")) {
-          return new Response(
-            JSON.stringify({ data: { id: "user-1", username: "AuditX" } }),
-            {
-              status: 200,
-              headers: { "content-type": "application/json" },
-            },
-          );
-        }
-        throw new Error(`Unexpected fetch URL: ${url}`);
-      },
-      resolvePersonalBuilderInput: async ({
-        displayName,
-        sourceType,
-        sourceValue,
-      }: {
-        displayName: string;
-        sourceType: string;
-        sourceValue: string;
-      }) => {
-        if (sourceType === "x") {
-          return {
-            ok: true as const,
-            value: {
-              kind: "X",
-              sourceType,
-              name: displayName,
-              handle: "auditx",
-              sourceUrl: "https://x.com/auditx",
-              fetchUrl: null,
-            },
-          };
-        }
-        return {
-          ok: true as const,
-          value: {
-            kind: "BLOG",
-            sourceType,
-            name: displayName,
-            handle: null,
-            sourceUrl: sourceValue,
-            fetchUrl: sourceValue.endsWith("/blog")
-              ? "https://example.com/feed.xml"
-              : null,
-          },
-        };
-      },
-      probeAndEnrichSource: async ({
-        sourceType,
-        sourceUrl,
-      }: {
-        sourceType: string;
-        sourceUrl: string | null;
-      }) => ({
-        ok: true,
-        enrichment: {
-          avatarUrl:
-            sourceType === "x"
-              ? "https://pbs.twimg.com/profile_images/auditx.jpg"
-              : "https://cdn.example.com/icon.png",
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ data: { id: "user-1", username: "auditx" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      resolvePersonalBuilderInput: async () => ({
+        ok: true as const,
+        value: {
+          kind: "X",
+          sourceType: "x",
+          name: "Audit X",
+          handle: "auditx",
+          sourceUrl: "https://x.com/auditx",
+          fetchUrl: null,
         },
-        discoveredFetchUrl:
-          sourceUrl === "https://example.com/blog"
-            ? "https://example.com/discovered.xml"
-            : undefined,
       }),
-      resolveAvatarDataUrl: async (avatarUrl: string | null) =>
-        avatarUrl ? "data:image/png;base64,secret-avatar" : null,
-      fetchPersonalBlogBuilderForTest: async (
-        builder: { name: string },
-        options: { cutoff: Date },
-      ) => {
-        blogCutoffs.push(options.cutoff.toISOString());
-        if (builder.name === "Broken Blog") {
-          throw new Error(
-            "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local data:image/png;base64,abc",
-          );
-        }
-        return {
-          items: [],
-          agentTasks: [
-            {
-              type: "blog_article_fetch",
-              item: { publishedAt: "2026-07-01T00:00:00.000Z" },
-            },
-            {
-              type: "blog_article_fetch",
-              item: { publishedAt: "2026-03-01T00:00:00.000Z" },
-            },
-            {
-              type: "something_else",
-              item: { publishedAt: "2026-07-02T00:00:00.000Z" },
-            },
-          ],
-        };
-      },
+      probeAndEnrichSource: async () => ({
+        ok: true,
+        enrichment: {},
+      }),
+      resolveAvatarDataUrl: async () => "data:image/png;base64,secret-avatar",
+      fetchPersonalBlogBuilderForTest: async () => ({
+        items: [],
+        agentTasks: [],
+      }),
       fetchPersonalXBuilderForTest: async (
         _builder: { name: string },
-        options: { cutoff: Date; fetcher?: (input: string) => Promise<Response> },
+        options: { fetcher?: (input: string) => Promise<Response> },
       ) => {
-        xCutoffs.push(options.cutoff.toISOString());
         await options.fetcher?.(
           "https://api.x.com/2/users/by/username/auditx?user.fields=description",
         );
@@ -709,60 +905,22 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(stderr, "");
-  assert.ok(stdout.endsWith("\n"));
 
   const parsed = JSON.parse(stdout) as {
-    cutoff: string;
-    proposalCount: number;
-    resultCount: number;
     results: Array<{
-      proposal: { name: string };
       accepted: boolean;
       reason: string | null;
-      fetch: {
-        recentItemCount: number;
-        actionableTaskCount: number;
-        actionableTaskTypes: string[];
-        hardFailureDetail?: string | null;
-      };
-      x: {
-        tokenState: string;
-        exactHandleMatch: boolean;
-      };
       icon: {
+        url: string | null;
         downloaded: boolean;
       };
     }>;
   };
 
-  assert.equal(parsed.cutoff, expectedCutoffIso);
-  assert.equal(parsed.proposalCount, 3);
-  assert.equal(parsed.resultCount, 3);
-  assert.deepEqual(blogCutoffs, [expectedCutoffIso, expectedCutoffIso]);
-  assert.deepEqual(xCutoffs, [expectedCutoffIso]);
-
-  const resultsByName = new Map(parsed.results.map((result) => [result.proposal.name, result]));
-  assert.equal(resultsByName.get("Audit Blog")?.accepted, true);
-  assert.equal(resultsByName.get("Audit Blog")?.fetch.recentItemCount, 0);
-  assert.equal(resultsByName.get("Audit Blog")?.fetch.actionableTaskCount, 1);
-  assert.deepEqual(resultsByName.get("Audit Blog")?.fetch.actionableTaskTypes, [
-    "blog_article_fetch",
-  ]);
-  assert.equal(resultsByName.get("Audit X")?.accepted, true);
-  assert.equal(resultsByName.get("Audit X")?.x.tokenState, "accepted");
-  assert.equal(resultsByName.get("Audit X")?.x.exactHandleMatch, true);
-  assert.equal(resultsByName.get("Broken Blog")?.accepted, false);
-  assert.equal(resultsByName.get("Broken Blog")?.reason, "hard_fetch_failed");
-  assert.equal(resultsByName.get("Broken Blog")?.icon.downloaded, true);
-
-  const serialized = JSON.stringify(parsed);
-  assert.doesNotMatch(serialized, /X_BEARER_TOKEN/);
-  assert.doesNotMatch(serialized, /Authorization/i);
-  assert.doesNotMatch(serialized, /data:image\//i);
-  assert.doesNotMatch(serialized, /postgres:\/\//i);
-  assert.doesNotMatch(serialized, /\/Users\/jie\//);
-  assert.doesNotMatch(serialized, /body=<html>/i);
+  assert.equal(parsed.results.length, 1);
+  assert.equal(parsed.results[0]?.accepted, false);
+  assert.equal(parsed.results[0]?.reason, "icon_unavailable");
+  assert.equal(parsed.results[0]?.icon.url, null);
 });
 
 test("audit AI source candidate CLI rejects X when token is accepted but exact handle lookup evidence was not observed", async () => {
@@ -954,4 +1112,124 @@ test("audit AI source candidate CLI rejects X when lookup resolves a different u
   assert.equal(parsed.results[0]?.x.tokenState, "accepted");
   assert.equal(parsed.results[0]?.x.exactHandleMatch, false);
   assert.equal(parsed.results[0]?.x.resolvedHandle, "someoneElse");
+});
+
+test("audit AI source candidate CLI isolates candidate-local probe failures and still completes the full result set", async () => {
+  assert.ok(
+    existsSync(AUDIT_CLI_PATH),
+    "scripts/audit-ai-source-candidates.ts must exist",
+  );
+
+  const mod = await import(pathToFileURL(AUDIT_CLI_PATH).href);
+  let stdout = "";
+
+  const exitCode = await mod.runAuditCli({
+    now: () => new Date("2026-07-27T12:00:00.000Z"),
+    stdout: {
+      write(chunk: string) {
+        stdout += chunk;
+      },
+    },
+    stderr: {
+      write() {},
+    },
+    proposals: [
+      {
+        name: "Broken Blog",
+        sourceType: "blog",
+        sourceUrl: "https://broken.example.com/blog",
+      },
+      {
+        name: "Audit Blog",
+        sourceType: "blog",
+        sourceUrl: "https://example.com/blog",
+      },
+    ],
+    deps: {
+      evaluateAiSourceAudit,
+      fetchImpl: async () =>
+        responseWithUrl(
+          `<?xml version="1.0"?><rss version="2.0"><channel><title>Audit Feed</title></channel></rss>`,
+          { status: 200, headers: { "content-type": "application/rss+xml" } },
+          "https://example.com/feed.xml",
+        ),
+      resolvePersonalBuilderInput: async ({
+        displayName,
+        sourceType,
+        sourceValue,
+      }: {
+        displayName: string;
+        sourceType: string;
+        sourceValue: string;
+      }) => ({
+        ok: true as const,
+        value: {
+          kind: "BLOG",
+          sourceType,
+          name: displayName,
+          handle: null,
+          sourceUrl: sourceValue,
+          fetchUrl: sourceValue,
+        },
+      }),
+      probeAndEnrichSource: async ({ sourceUrl }: { sourceUrl: string | null }) => {
+        if (sourceUrl?.includes("broken")) {
+          throw new Error(
+            "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local",
+          );
+        }
+        return {
+          ok: true,
+          enrichment: {
+            avatarUrl: "https://cdn.example.com/icon.png",
+          },
+        };
+      },
+      resolveAvatarDataUrl: async () => "data:image/png;base64,secret-avatar",
+      fetchPersonalBlogBuilderForTest: async () => ({
+        items: [],
+        agentTasks: [
+          {
+            type: "blog_article_fetch",
+            item: { publishedAt: "2026-07-01T00:00:00.000Z" },
+          },
+        ],
+      }),
+      fetchPersonalXBuilderForTest: async () => ({
+        items: [],
+        agentTasks: [],
+      }),
+    },
+  });
+
+  assert.equal(exitCode, 0);
+
+  const parsed = JSON.parse(stdout) as {
+    complete: boolean;
+    runtimeError: string | null;
+    resultCount: number;
+    results: Array<{
+      proposal: { name: string };
+      accepted: boolean;
+      reason: string | null;
+      detail: string;
+    }>;
+  };
+
+  assert.equal(parsed.complete, true);
+  assert.equal(parsed.runtimeError, null);
+  assert.equal(parsed.resultCount, 2);
+
+  const resultsByName = new Map(parsed.results.map((result) => [result.proposal.name, result]));
+  assert.equal(resultsByName.get("Broken Blog")?.accepted, false);
+  assert.equal(resultsByName.get("Broken Blog")?.reason, "hard_fetch_failed");
+  assert.equal(resultsByName.get("Audit Blog")?.accepted, true);
+
+  const serialized = JSON.stringify(parsed);
+  assert.doesNotMatch(serialized, /X_BEARER_TOKEN/);
+  assert.doesNotMatch(serialized, /Authorization/i);
+  assert.doesNotMatch(serialized, /data:image\//i);
+  assert.doesNotMatch(serialized, /postgres:\/\//i);
+  assert.doesNotMatch(serialized, /\/Users\/jie\//);
+  assert.doesNotMatch(serialized, /body=<html>/i);
 });
