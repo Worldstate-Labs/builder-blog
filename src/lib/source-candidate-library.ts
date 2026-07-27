@@ -1,5 +1,4 @@
 import { canonicalBuilderKey, normalizeHandle } from "@/lib/builder-keys";
-import { prisma } from "@/lib/prisma";
 import type { SourceCandidate } from "@/lib/source-candidates";
 import { builderKindForSourceType } from "@/lib/source-registry";
 
@@ -400,6 +399,7 @@ async function seedSourceCandidateLibrary() {
 }
 
 export async function listSourceCandidates(): Promise<SourceCandidate[]> {
+  const prisma = await getPrismaClient();
   const candidates = await prisma.sourceCandidate.findMany({
     orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
     take: SOURCE_CANDIDATE_LIMIT,
@@ -408,6 +408,7 @@ export async function listSourceCandidates(): Promise<SourceCandidate[]> {
 }
 
 async function seedSourceCandidatesFromAdminLibrary() {
+  const prisma = await getPrismaClient();
   const adminLibrary = await prisma.libraryHubEntry.findFirst({
     where: { isFeatured: true },
     include: {
@@ -471,6 +472,7 @@ async function seedCuratedSourceCandidates(
   candidates: CuratedSourceCandidate[],
   seededFrom: string,
 ) {
+  const prisma = await getPrismaClient();
   const seeds = candidates.map((candidate) => seedFromCuratedCandidate(candidate, seededFrom));
   const existingCandidates = await prisma.sourceCandidate.findMany({
     where: { sourceKey: { in: seeds.map((seed) => seed.sourceKey) } },
@@ -565,6 +567,11 @@ function sourceHost(sourceUrl: string) {
 
 function googleFaviconUrl(domain: string) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+}
+
+async function getPrismaClient() {
+  const { prisma } = await import("@/lib/prisma");
+  return prisma;
 }
 
 function serializeSourceCandidate(candidate: {

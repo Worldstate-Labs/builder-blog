@@ -15,6 +15,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "avatars:backfill": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-avatar-cache.ts",
     "sources:audit-ai-candidates": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/audit-ai-source-candidates.ts",
+    "sources:sync-reviewed-ai-candidates": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-reviewed-ai-source-candidates.ts",
     "skill": "node scripts/builder-digest.mjs",
     "test": "tsx --test tests/**/*.test.ts",
     "storybook": "npm --prefix storybook-tools run storybook --",
