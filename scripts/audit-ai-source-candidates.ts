@@ -229,6 +229,12 @@ async function auditProposal({
       finalUrl: null,
       status: null,
     };
+    const iconSeed = buildIconEvidenceSeed({
+      proposal,
+      sourceUrl: proposal.sourceUrl,
+      probe: null,
+      xProfileImageUrl: null,
+    });
     return deps.evaluateAiSourceAudit(
       buildAuditInput({
         proposal,
@@ -239,10 +245,7 @@ async function auditProposal({
         x: state.x,
         icon: await resolveIconEvidence({
           deps,
-          proposal,
-          sourceUrl: proposal.sourceUrl,
-          probe: null,
-          xProfileImageUrl: null,
+          iconSeed,
         }),
       }),
     );
