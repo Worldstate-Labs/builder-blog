@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-27T15:31:35.497Z",
-  "cutoff": "2026-04-28T15:31:35.497Z",
+  "generatedAt": "2026-07-27T15:46:10.455Z",
+  "cutoff": "2026-04-28T15:46:10.455Z",
   "proposalCount": 41,
   "resultCount": 41,
   "complete": true,
@@ -13,7 +13,7 @@
         "name": "One Useful Thing",
         "sourceType": "blog",
         "sourceUrl": "https://www.oneusefulthing.org/",
-        "fetchUrl": null,
+        "fetchUrl": "https://www.oneusefulthing.org/feed",
         "handle": null
       },
       "accepted": true,
@@ -235,7 +235,7 @@
       "icon": {
         "url": "https://phaven-prod.s3.amazonaws.com/files/image_part/asset/3439526/q4Xtf4iMYA_SCrMc8hMfnF_k3UE/large_WhatsApp_Image_2026-02-28_at_15.26.14__4_.jpeg",
         "safeUrl": true,
-        "downloaded": false
+        "downloaded": true
       }
     },
     {
@@ -261,7 +261,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://drfeifei.substack.com/",
-        "status": 200,
+        "status": null,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -279,7 +279,7 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://substackcdn.com/image/fetch/$s_!8YAq!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fdrfeifei.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D-1118629820%26version%3D9",
+        "url": "https://www.google.com/s2/favicons?domain=drfeifei.substack.com&sz=128",
         "safeUrl": true,
         "downloaded": true
       }
@@ -721,7 +721,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://www.nvidia.com/en-us/research/",
-        "status": 200,
+        "status": null,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -739,7 +739,7 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://www.nvidia.com/content/dam/en-zz/Solutions/research/nvidia-arap-annoucement-social-1200x600-research-b.jpg",
+        "url": "https://www.google.com/s2/favicons?domain=www.nvidia.com&sz=128",
         "safeUrl": true,
         "downloaded": true
       }
@@ -887,7 +887,7 @@
         "name": "Ai2 News",
         "sourceType": "blog",
         "sourceUrl": "https://allenai.org/news",
-        "fetchUrl": null,
+        "fetchUrl": "https://allenai.org/rss.xml",
         "handle": null
       },
       "accepted": true,
@@ -1079,7 +1079,7 @@
       "detail": "Failed to fetch https://www.perplexity.ai/hub/blog: HTTP 403",
       "http": {
         "finalUrl": "https://www.perplexity.ai/hub/blog",
-        "status": 403
+        "status": null
       },
       "resolver": {
         "ok": true,
@@ -1089,7 +1089,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://www.perplexity.ai/hub/blog",
-        "status": 403,
+        "status": null,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -1135,7 +1135,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://artificialanalysis.ai/articles",
-        "status": 200,
+        "status": null,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -1153,7 +1153,7 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://artificialanalysis.ai/opengraph-image.png?732728ccc2829321",
+        "url": "https://www.google.com/s2/favicons?domain=artificialanalysis.ai&sz=128",
         "safeUrl": true,
         "downloaded": true
       }
