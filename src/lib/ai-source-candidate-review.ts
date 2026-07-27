@@ -93,7 +93,7 @@ export type AiSourceAuditResult = {
   x: AiSourceAuditXEvidence;
   icon: AiSourceAuditIconEvidence;
   accepted: boolean;
-  rejectionReason: AiSourceAuditRejectionReason | null;
+  reason: AiSourceAuditRejectionReason | null;
   detail: string;
 };
 
@@ -111,7 +111,7 @@ function reject(
     x: input.x,
     icon: input.icon,
     accepted: false,
-    rejectionReason: reason,
+    reason,
     detail,
   };
 }
@@ -134,7 +134,7 @@ function accept(input: AiSourceAuditInput, detail: string): AiSourceAuditResult 
     x: input.x,
     icon: input.icon,
     accepted: true,
-    rejectionReason: null,
+    reason: null,
     detail,
   };
 }

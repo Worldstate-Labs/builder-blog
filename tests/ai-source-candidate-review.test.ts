@@ -198,7 +198,7 @@ test("evaluateAiSourceAudit accepts a blog with at least one real fetched item",
   const result = evaluateAiSourceAudit(input);
 
   assert.equal(result.accepted, true);
-  assert.equal(result.rejectionReason, null);
+  assert.equal(result.reason, null);
   assert.equal(result.proposal, input.proposal);
   assert.deepEqual(result.http, input.http);
   assert.deepEqual(result.resolver, input.resolver);
@@ -227,7 +227,7 @@ test("evaluateAiSourceAudit accepts a blog with a recent actionable blog_article
   const result = evaluateAiSourceAudit(input);
 
   assert.equal(result.accepted, true);
-  assert.equal(result.rejectionReason, null);
+  assert.equal(result.reason, null);
   assert.equal(result.fetch.actionableTaskCount, 1);
   assert.deepEqual(result.fetch.actionableTaskTypes, ["blog_article_fetch"]);
 });
@@ -244,7 +244,7 @@ test("evaluateAiSourceAudit rejects blog metadata-only results without recent co
   );
 
   assert.equal(result.accepted, false);
-  assert.equal(result.rejectionReason, "no_recent_content");
+  assert.equal(result.reason, "no_recent_content");
   assert.match(result.detail, /recent content/i);
 });
 
@@ -267,7 +267,7 @@ test("evaluateAiSourceAudit rejects a blog when robots access is denied", () => 
   );
 
   assert.equal(result.accepted, false);
-  assert.equal(result.rejectionReason, "robots_denied");
+  assert.equal(result.reason, "robots_denied");
 });
 
 test("evaluateAiSourceAudit accepts X when the exact handle resolves and a recent post exists", () => {
@@ -275,7 +275,7 @@ test("evaluateAiSourceAudit accepts X when the exact handle resolves and a recen
   const result = evaluateAiSourceAudit(input);
 
   assert.equal(result.accepted, true);
-  assert.equal(result.rejectionReason, null);
+  assert.equal(result.reason, null);
   assert.deepEqual(result.x, input.x);
 });
 
@@ -297,7 +297,7 @@ test("evaluateAiSourceAudit rejects X when the bearer token is missing", () => {
   );
 
   assert.equal(result.accepted, false);
-  assert.equal(result.rejectionReason, "x_token_missing");
+  assert.equal(result.reason, "x_token_missing");
 });
 
 test("evaluateAiSourceAudit rejects X when the bearer token is invalid", () => {
@@ -318,7 +318,7 @@ test("evaluateAiSourceAudit rejects X when the bearer token is invalid", () => {
   );
 
   assert.equal(result.accepted, false);
-  assert.equal(result.rejectionReason, "x_token_invalid");
+  assert.equal(result.reason, "x_token_invalid");
 });
 
 test("evaluateAiSourceAudit rejects X when the exact handle resolves but no recent post exists", () => {
@@ -333,7 +333,7 @@ test("evaluateAiSourceAudit rejects X when the exact handle resolves but no rece
   );
 
   assert.equal(result.accepted, false);
-  assert.equal(result.rejectionReason, "no_recent_content");
+  assert.equal(result.reason, "no_recent_content");
 });
 
 test("evaluateAiSourceAudit rejects otherwise passable results when the icon download fails", () => {
@@ -348,5 +348,5 @@ test("evaluateAiSourceAudit rejects otherwise passable results when the icon dow
   );
 
   assert.equal(result.accepted, false);
-  assert.equal(result.rejectionReason, "icon_unavailable");
+  assert.equal(result.reason, "icon_unavailable");
 });
