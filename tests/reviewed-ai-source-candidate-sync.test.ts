@@ -87,7 +87,7 @@ type UpsertArgs = {
   where: {
     sourceKey: string;
   };
-  update: StructuralSourceCandidate;
+  update: Partial<StructuralSourceCandidate>;
   create: StructuralSourceCandidate;
 };
 
@@ -98,6 +98,7 @@ class FakePrismaClient {
   readonly transactionCalls: Array<{ interactive: boolean }> = [];
   readonly deleteManyCalls: unknown[] = [];
   readonly upsertedKeys: string[] = [];
+  readonly upsertCalls: UpsertArgs[] = [];
   private readonly throwOnUpsertSourceKey?: string;
   private readonly upsertErrorMessage?: string;
   private readonly onUpsert?: UpsertHook;
@@ -147,6 +148,7 @@ class FakePrismaClient {
         upsert: async (args: UpsertArgs) => {
           upsertCount += 1;
           this.upsertedKeys.push(args.where.sourceKey);
+          this.upsertCalls.push(cloneRow(args));
           if (args.where.sourceKey === this.throwOnUpsertSourceKey) {
             throw new Error(
               this.upsertErrorMessage ??
@@ -194,6 +196,12 @@ class FakePrismaClient {
   structuralRows() {
     return cloneRows(this.rows)
       .map(structuralCandidate)
+      .sort(compareBySourceKey);
+  }
+
+  manifestStructuralRows() {
+    return cloneRows(this.rows)
+      .map(manifestStructuralCandidate)
       .sort(compareBySourceKey);
   }
 }
@@ -263,7 +271,7 @@ test("sync runs in one transaction, upserts reviewed AI candidates, preserves av
     ...unrelatedRows,
   ]);
   const unrelatedBefore = prisma
-    .structuralRows()
+    .manifestStructuralRows()
     .filter((row) => row.sourceKey !== firstSeed.sourceKey && row.sourceKey !== secondSeed.sourceKey);
 
   process.env.DATABASE_URL =
@@ -275,6 +283,15 @@ test("sync runs in one transaction, upserts reviewed AI candidates, preserves av
   assert.equal(prisma.deleteManyCalls.length, 0);
   assert.equal(prisma.upsertedKeys.length, reviewedSeeds.length);
   assert.equal(new Set(prisma.upsertedKeys).size, reviewedSeeds.length);
+  const updateCalls = prisma.upsertCalls.filter((call) =>
+    call.where.sourceKey === firstSeed.sourceKey || call.where.sourceKey === secondSeed.sourceKey,
+  );
+  assert.equal(updateCalls.length, 2);
+  for (const call of updateCalls) {
+    assert.equal("avatarDataUrl" in call.update, false);
+    assert.equal("seedBuilderId" in call.update, true);
+    assert.equal(call.update.seedBuilderId, null);
+  }
 
   const rowsByKey = new Map(prisma.structuralRows().map((row) => [row.sourceKey, row]));
   assert.equal(
@@ -292,10 +309,11 @@ test("sync runs in one transaction, upserts reviewed AI candidates, preserves av
       avatarDataUrl: expectedAvatarDataUrl,
     });
     assert.equal(actual?.seededFrom, library.CURATED_AI_SOURCE_CANDIDATE_SEED ?? "curated_ai_sources");
+    assert.equal(actual?.seedBuilderId, null);
   }
 
   const unrelatedAfter = prisma
-    .structuralRows()
+    .manifestStructuralRows()
     .filter((row) => !reviewedSeeds.some((seed) => seed.sourceKey === row.sourceKey));
   assert.deepEqual(unrelatedAfter, unrelatedBefore);
 
@@ -427,6 +445,51 @@ test("an unrelated-row snapshot mismatch rejects the transaction and preserves t
   assert.deepEqual(prisma.exportRows(), initialRows);
 });
 
+test("sync ignores unrelated avatar cache and seedBuilderId churn during the transaction", async () => {
+  const library = await loadLibraryModule();
+  const syncModule = await loadSyncModule();
+  const reviewedSeeds = expectedReviewedSeeds(library);
+  const initialRows = [
+    storedCandidate("candidate_existing", {
+      ...reviewedSeeds[0],
+      avatarDataUrl: "data:image/png;base64,cHJlc2VydmU=",
+    }),
+    storedCandidate("candidate_unrelated", {
+      sourceKey: "blog:https://cache.example.com/feed",
+      name: "Cache Target",
+      sourceType: "blog",
+      sourceUrl: "https://cache.example.com/feed",
+      fetchUrl: "https://cache.example.com/feed.xml",
+      handle: null,
+      avatarUrl: "https://cache.example.com/favicon.png",
+      avatarDataUrl: null,
+      seedBuilderId: null,
+      seededFrom: "admin_source_library",
+    }),
+  ];
+  const prisma = new FakePrismaClient(initialRows, {
+    onUpsert(state, _args, upsertCount) {
+      if (upsertCount !== 1) return;
+      const unrelated = state.find(
+        (row) => row.sourceKey === "blog:https://cache.example.com/feed",
+      );
+      if (unrelated) {
+        unrelated.avatarDataUrl = "data:image/png;base64,YmFja2ZpbGw=";
+        unrelated.seedBuilderId = "builder_backfill";
+      }
+    },
+  });
+
+  const summary = await syncModule.syncReviewedAiSourceCandidates!(prisma);
+
+  assert.equal(summary.targetCount, reviewedSeeds.length);
+  const unrelated = prisma.exportRows().find(
+    (row) => row.sourceKey === "blog:https://cache.example.com/feed",
+  );
+  assert.equal(unrelated?.avatarDataUrl, "data:image/png;base64,YmFja2ZpbGw=");
+  assert.equal(unrelated?.seedBuilderId, "builder_backfill");
+});
+
 test("sync rejects when a reviewed target key is already owned by another seededFrom namespace", async () => {
   const library = await loadLibraryModule();
   const syncModule = await loadSyncModule();
@@ -475,6 +538,37 @@ test("sync rejects when a reviewed target key is already owned by another seeded
   assert.deepEqual(prisma.upsertedKeys, []);
 });
 
+test("sync adopts null-owned reviewed targets and preserves their cached avatar without writing avatarDataUrl in update", async () => {
+  const library = await loadLibraryModule();
+  const syncModule = await loadSyncModule();
+  const reviewedSeeds = expectedReviewedSeeds(library);
+  const adoptingSeed = reviewedSeeds[0];
+  const prisma = new FakePrismaClient([
+    storedCandidate("candidate_legacy", {
+      ...adoptingSeed,
+      name: `${adoptingSeed.name} legacy`,
+      avatarDataUrl: "data:image/png;base64,bGVnYWN5",
+      seededFrom: null,
+      seedBuilderId: "legacy_builder",
+    }),
+  ]);
+
+  const summary = await syncModule.syncReviewedAiSourceCandidates!(prisma);
+
+  assert.equal(summary.existingCount, 1);
+  const adopted = prisma.exportRows().find((row) => row.sourceKey === adoptingSeed.sourceKey);
+  assert.deepEqual(adopted, {
+    id: "candidate_legacy",
+    ...adoptingSeed,
+    avatarDataUrl: "data:image/png;base64,bGVnYWN5",
+    seededFrom: library.CURATED_AI_SOURCE_CANDIDATE_SEED ?? "curated_ai_sources",
+    seedBuilderId: null,
+  });
+  const updateCall = prisma.upsertCalls.find((call) => call.where.sourceKey === adoptingSeed.sourceKey);
+  assert.ok(updateCall);
+  assert.equal("avatarDataUrl" in updateCall.update, false);
+});
+
 async function loadLibraryModule() {
   return import(`${pathToFileURL(SOURCE_CANDIDATE_LIBRARY_PATH).href}?t=${Date.now()}`) as Promise<SourceCandidateLibraryModule>;
 }
@@ -521,9 +615,22 @@ function structuralCandidate(candidate: StoredSourceCandidate): StructuralSource
   };
 }
 
+function manifestStructuralCandidate(candidate: StoredSourceCandidate) {
+  return {
+    sourceKey: candidate.sourceKey,
+    name: candidate.name,
+    sourceType: candidate.sourceType,
+    sourceUrl: candidate.sourceUrl,
+    fetchUrl: candidate.fetchUrl,
+    handle: candidate.handle,
+    avatarUrl: candidate.avatarUrl,
+    seededFrom: candidate.seededFrom,
+  };
+}
+
 function compareBySourceKey(
-  left: StructuralSourceCandidate,
-  right: StructuralSourceCandidate,
+  left: { sourceKey: string },
+  right: { sourceKey: string },
 ) {
   return left.sourceKey.localeCompare(right.sourceKey);
 }
@@ -559,10 +666,7 @@ function selectRows(rows: StoredSourceCandidate[], args: FindManyArgs) {
   });
 }
 
-function matchesWhere(
-  row: StoredSourceCandidate,
-  where: FindManyArgs["where"],
-) {
+function matchesWhere(row: StoredSourceCandidate, where: FindManyArgs["where"]) {
   if (!where) return true;
   if (
     where.seededFrom !== undefined &&

@@ -42,7 +42,16 @@ type SourceCandidateUpsertArgs = {
   where: {
     sourceKey: string;
   };
-  update: SourceCandidateStructuralRow;
+  update: {
+    name: string;
+    sourceType: string;
+    sourceUrl: string | null;
+    fetchUrl: string | null;
+    handle: string | null;
+    avatarUrl: string | null;
+    seedBuilderId: string | null;
+    seededFrom: string | null;
+  };
   create: SourceCandidateStructuralRow;
 };
 
@@ -83,6 +92,17 @@ const STRUCTURAL_SELECT = {
   seededFrom: true,
 } satisfies Record<keyof SourceCandidateStructuralRow, true>;
 
+type ManifestStructuralRow = {
+  sourceKey: string;
+  name: string;
+  sourceType: string;
+  sourceUrl: string | null;
+  fetchUrl: string | null;
+  handle: string | null;
+  avatarUrl: string | null;
+  seededFrom: string | null;
+};
+
 export async function syncReviewedAiSourceCandidates(
   prismaClient: PrismaClientLike,
 ): Promise<SyncSummary> {
@@ -106,29 +126,13 @@ export async function syncReviewedAiSourceCandidates(
       );
 
       for (const seed of reviewedSeeds) {
-        const existing = existingByKey.get(seed.sourceKey);
-        const nextRow = {
-          ...seed,
-          avatarDataUrl: existing?.avatarDataUrl ?? seed.avatarDataUrl,
-          seedBuilderId: null,
-          seededFrom: CURATED_AI_SOURCE_CANDIDATE_SEED,
-        };
         await tx.sourceCandidate.upsert({
           where: { sourceKey: seed.sourceKey },
-          update: nextRow,
-          create: nextRow,
+          update: updatePayloadForSeed(seed),
+          create: createPayloadForSeed(seed),
         });
       }
 
-      const expectedTargets = reviewedSeeds.map((seed) => {
-        const existing = existingByKey.get(seed.sourceKey);
-        return {
-          ...seed,
-          avatarDataUrl: existing?.avatarDataUrl ?? seed.avatarDataUrl,
-          seedBuilderId: null,
-          seededFrom: CURATED_AI_SOURCE_CANDIDATE_SEED,
-        };
-      });
       const targetAfter = await readStructuralRows(tx.sourceCandidate, {
         where: { sourceKey: { in: targetKeys } },
       });
@@ -136,14 +140,10 @@ export async function syncReviewedAiSourceCandidates(
         where: { sourceKey: { notIn: targetKeys } },
       });
 
+      assertReviewedTargetState(targetAfter, reviewedSeeds, existingByKey);
       assertStructuralMatch(
-        targetAfter,
-        expectedTargets,
-        "reviewed target rows diverged from the expected structural sync result",
-      );
-      assertStructuralMatch(
-        unrelatedAfter,
-        unrelatedBefore,
+        unrelatedAfter.map(manifestStructuralRow),
+        unrelatedBefore.map(manifestStructuralRow),
         "unrelated source candidate snapshot changed during reviewed sync",
       );
 
@@ -152,7 +152,7 @@ export async function syncReviewedAiSourceCandidates(
         insertedCount: reviewedSeeds.length - existingTargets.length,
         existingCount: existingTargets.length,
         unchangedUnrelatedCount: unrelatedBefore.length,
-        structuralDigest: structuralDigest(targetAfter),
+        structuralDigest: structuralDigest(targetAfter.map(manifestStructuralRow)),
       };
     });
   } catch (error) {
@@ -187,8 +187,8 @@ async function readStructuralRows(
 }
 
 function assertStructuralMatch(
-  actual: SourceCandidateStructuralRow[],
-  expected: SourceCandidateStructuralRow[],
+  actual: ManifestStructuralRow[],
+  expected: ManifestStructuralRow[],
   message: string,
 ) {
   if (!structuralRowsEqual(actual, expected)) {
@@ -197,8 +197,8 @@ function assertStructuralMatch(
 }
 
 function structuralRowsEqual(
-  actual: SourceCandidateStructuralRow[],
-  expected: SourceCandidateStructuralRow[],
+  actual: ManifestStructuralRow[],
+  expected: ManifestStructuralRow[],
 ) {
   return stableJson(actual) === stableJson(expected);
 }
@@ -207,7 +207,9 @@ function assertReviewedTargetOwnership(
   existingTargets: SourceCandidateStructuralRow[],
 ) {
   const conflict = existingTargets.find(
-    (candidate) => candidate.seededFrom !== CURATED_AI_SOURCE_CANDIDATE_SEED,
+    (candidate) =>
+      candidate.seededFrom !== null &&
+      candidate.seededFrom !== CURATED_AI_SOURCE_CANDIDATE_SEED,
   );
   if (!conflict) return;
   throw new Error(
@@ -215,7 +217,84 @@ function assertReviewedTargetOwnership(
   );
 }
 
-function structuralDigest(rows: SourceCandidateStructuralRow[]) {
+function assertReviewedTargetState(
+  actualTargets: SourceCandidateStructuralRow[],
+  reviewedSeeds: SourceCandidateStructuralRow[],
+  existingByKey: Map<string, SourceCandidateStructuralRow>,
+) {
+  const expectedManifestTargets = reviewedSeeds
+    .map((seed) => manifestStructuralRow(createPayloadForSeed(seed)))
+    .sort(compareBySourceKey);
+  const actualManifestTargets = actualTargets
+    .map(manifestStructuralRow)
+    .sort(compareBySourceKey);
+
+  assertStructuralMatch(
+    actualManifestTargets,
+    expectedManifestTargets,
+    "reviewed target rows diverged from the expected structural sync result",
+  );
+
+  for (const target of actualTargets) {
+    if (target.seedBuilderId !== null) {
+      throw new Error(
+        `reviewed AI source candidate sync left seedBuilderId on sourceKey ${target.sourceKey}`,
+      );
+    }
+    const existing = existingByKey.get(target.sourceKey);
+    if (existing?.avatarDataUrl && target.avatarDataUrl === null) {
+      throw new Error(
+        `reviewed AI source candidate sync cleared avatar cache for sourceKey ${target.sourceKey}`,
+      );
+    }
+  }
+}
+
+function updatePayloadForSeed(seed: SourceCandidateStructuralRow) {
+  return {
+    name: seed.name,
+    sourceType: seed.sourceType,
+    sourceUrl: seed.sourceUrl,
+    fetchUrl: seed.fetchUrl,
+    handle: seed.handle,
+    avatarUrl: seed.avatarUrl,
+    seedBuilderId: null,
+    seededFrom: CURATED_AI_SOURCE_CANDIDATE_SEED,
+  };
+}
+
+function createPayloadForSeed(seed: SourceCandidateStructuralRow): SourceCandidateStructuralRow {
+  return {
+    ...seed,
+    avatarDataUrl: null,
+    seedBuilderId: null,
+    seededFrom: CURATED_AI_SOURCE_CANDIDATE_SEED,
+  };
+}
+
+function manifestStructuralRow(row: {
+  sourceKey: string;
+  name: string;
+  sourceType: string;
+  sourceUrl: string | null;
+  fetchUrl: string | null;
+  handle: string | null;
+  avatarUrl: string | null;
+  seededFrom: string | null;
+}): ManifestStructuralRow {
+  return {
+    sourceKey: row.sourceKey,
+    name: row.name,
+    sourceType: row.sourceType,
+    sourceUrl: row.sourceUrl,
+    fetchUrl: row.fetchUrl,
+    handle: row.handle,
+    avatarUrl: row.avatarUrl,
+    seededFrom: row.seededFrom,
+  };
+}
+
+function structuralDigest(rows: ManifestStructuralRow[]) {
   return createHash("sha256").update(stableJson(rows)).digest("hex");
 }
 
@@ -224,8 +303,8 @@ function stableJson(value: unknown) {
 }
 
 function compareBySourceKey(
-  left: SourceCandidateStructuralRow,
-  right: SourceCandidateStructuralRow,
+  left: { sourceKey: string },
+  right: { sourceKey: string },
 ) {
   return left.sourceKey.localeCompare(right.sourceKey);
 }
