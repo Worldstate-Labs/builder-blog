@@ -52,11 +52,14 @@ type FetchResult = {
   agentTasks?: readonly FetchTask[];
 };
 
+type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
 type AuditDependencies = {
   evaluateAiSourceAudit: typeof evaluateAiSourceAudit;
   resolvePersonalBuilderInput: typeof resolvePersonalBuilderInput;
   probeAndEnrichSource: typeof probeAndEnrichSource;
   resolveAvatarDataUrl: typeof resolveAvatarDataUrl;
+  fetchImpl: FetchLike;
   fetchPersonalBlogBuilderForTest: (
     builder: AuditBuilder,
     options: {
@@ -65,6 +68,7 @@ type AuditDependencies = {
       agentModel: string;
       fetchedItemKeys: Set<string>;
       sources: Record<string, never>;
+      fetcher?: FetchLike;
     },
   ) => Promise<FetchResult>;
   fetchPersonalXBuilderForTest: (
@@ -75,6 +79,7 @@ type AuditDependencies = {
       agentModel: string;
       fetchedItemKeys: Set<string>;
       sources: Record<string, never>;
+      fetcher?: FetchLike;
     },
   ) => Promise<FetchResult>;
 };
@@ -102,6 +107,7 @@ const DEFAULT_DEPS: AuditDependencies = {
   resolvePersonalBuilderInput,
   probeAndEnrichSource,
   resolveAvatarDataUrl,
+  fetchImpl: fetch,
   fetchPersonalBlogBuilderForTest,
   fetchPersonalXBuilderForTest,
 };
@@ -339,7 +345,11 @@ async function fetchXAuditEvidence(
   fetch: AiSourceAuditFetchEvidence;
   x: AiSourceAuditXEvidence;
 }> {
-  const result = await deps.fetchPersonalXBuilderForTest(builder, buildFetchOptions(cutoff));
+  const lookupObservation = createXLookupRecorder(builder.handle, deps.fetchImpl);
+  const result = await deps.fetchPersonalXBuilderForTest(
+    builder,
+    buildFetchOptions(cutoff, { fetcher: lookupObservation.fetcher }),
+  );
   const items = Array.isArray(result.items) ? result.items : [];
   const recentItems = items.filter((item) => isWithinCutoff(item?.publishedAt, cutoff));
   const tasks = Array.isArray(result.agentTasks) ? result.agentTasks : [];
@@ -348,7 +358,7 @@ async function fetchXAuditEvidence(
     : tasks.some((task) => task?.type === "x_token_invalid")
       ? "invalid"
       : "accepted";
-  const exactHandleMatch = tokenState === "accepted" && Boolean(builder.handle);
+  const exactHandleMatch = tokenState === "accepted" && lookupObservation.exactHandleMatch();
 
   return {
     fetch: {
@@ -359,19 +369,20 @@ async function fetchXAuditEvidence(
     x: {
       tokenState,
       requestedHandle: builder.handle,
-      resolvedHandle: exactHandleMatch ? builder.handle : null,
+      resolvedHandle: lookupObservation.resolvedHandle(),
       exactHandleMatch,
     },
   };
 }
 
-function buildFetchOptions(cutoff: Date) {
+function buildFetchOptions(cutoff: Date, extra: { fetcher?: FetchLike } = {}) {
   return {
     cutoff,
     limit: 3,
     agentModel: "candidate-audit",
     fetchedItemKeys: new Set<string>(),
     sources: {} as Record<string, never>,
+    ...extra,
   };
 }
 
@@ -465,6 +476,76 @@ function emptyFetchEvidence(): AiSourceAuditFetchEvidence {
     recentItemCount: 0,
     actionableTasks: [],
   };
+}
+
+function createXLookupRecorder(requestedHandle: string | null, fetchImpl: FetchLike) {
+  let resolvedHandle: string | null = null;
+  let exactHandleMatch = false;
+  const requested = normalizeHandleForCompare(requestedHandle);
+
+  return {
+    fetcher: async (input: string | URL | Request, init?: RequestInit) => {
+      const response = await fetchImpl(input, init);
+      await observeXUserLookup({ requestedHandle: requested, input, response }).then((observation) => {
+        if (!observation) return;
+        resolvedHandle = observation.resolvedHandle;
+        exactHandleMatch = observation.exactHandleMatch;
+      });
+      return response;
+    },
+    resolvedHandle: () => resolvedHandle,
+    exactHandleMatch: () => exactHandleMatch,
+  };
+}
+
+async function observeXUserLookup({
+  requestedHandle,
+  input,
+  response,
+}: {
+  requestedHandle: string | null;
+  input: string | URL | Request;
+  response: Response;
+}): Promise<{ resolvedHandle: string | null; exactHandleMatch: boolean } | null> {
+  if (!requestedHandle || !response.ok) return null;
+
+  const url = normalizeRequestUrl(input);
+  if (!url) return null;
+  const expectedPath = `/2/users/by/username/${encodeURIComponent(requestedHandle)}`;
+  if (url.hostname !== "api.x.com" || url.pathname !== expectedPath) return null;
+
+  try {
+    const json = (await response.clone().json()) as {
+      data?: { id?: unknown; username?: unknown };
+    } | null;
+    const userId = typeof json?.data?.id === "string" ? json.data.id.trim() : "";
+    const username = typeof json?.data?.username === "string" ? json.data.username.trim() : "";
+    const normalizedResolvedHandle = normalizeHandleForCompare(username);
+    if (!userId || !normalizedResolvedHandle) {
+      return { resolvedHandle: null, exactHandleMatch: false };
+    }
+    return {
+      resolvedHandle: username,
+      exactHandleMatch: normalizedResolvedHandle === requestedHandle,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeHandleForCompare(handle: string | null | undefined): string | null {
+  const value = String(handle ?? "").trim().replace(/^@+/, "").toLowerCase();
+  return value || null;
+}
+
+function normalizeRequestUrl(input: string | URL | Request): URL | null {
+  try {
+    if (typeof input === "string") return new URL(input);
+    if (input instanceof URL) return new URL(input.toString());
+    return new URL(input.url);
+  } catch {
+    return null;
+  }
 }
 
 function stableAuditBuilderId(proposal: AiSourceReviewProposal, index: number): string {

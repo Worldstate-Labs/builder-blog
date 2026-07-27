@@ -590,6 +590,19 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
     ],
     deps: {
       evaluateAiSourceAudit,
+      fetchImpl: async (input: string | URL | Request) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.includes("/2/users/by/username/auditx")) {
+          return new Response(
+            JSON.stringify({ data: { id: "user-1", username: "AuditX" } }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            },
+          );
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      },
       resolvePersonalBuilderInput: async ({
         displayName,
         sourceType,
@@ -677,9 +690,12 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
       },
       fetchPersonalXBuilderForTest: async (
         _builder: { name: string },
-        options: { cutoff: Date },
+        options: { cutoff: Date; fetcher?: (input: string) => Promise<Response> },
       ) => {
         xCutoffs.push(options.cutoff.toISOString());
+        await options.fetcher?.(
+          "https://api.x.com/2/users/by/username/auditx?user.fields=description",
+        );
         return {
           items: [
             {
@@ -747,4 +763,195 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
   assert.doesNotMatch(serialized, /postgres:\/\//i);
   assert.doesNotMatch(serialized, /\/Users\/jie\//);
   assert.doesNotMatch(serialized, /body=<html>/i);
+});
+
+test("audit AI source candidate CLI rejects X when token is accepted but exact handle lookup evidence was not observed", async () => {
+  assert.ok(
+    existsSync(AUDIT_CLI_PATH),
+    "scripts/audit-ai-source-candidates.ts must exist",
+  );
+
+  const mod = await import(pathToFileURL(AUDIT_CLI_PATH).href);
+  let stdout = "";
+
+  const exitCode = await mod.runAuditCli({
+    now: () => new Date("2026-07-27T12:00:00.000Z"),
+    stdout: {
+      write(chunk: string) {
+        stdout += chunk;
+      },
+    },
+    stderr: {
+      write() {},
+    },
+    proposals: [
+      {
+        name: "Audit X",
+        sourceType: "x",
+        sourceUrl: "https://x.com/auditx",
+        handle: "auditx",
+      },
+    ],
+    deps: {
+      evaluateAiSourceAudit,
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ data: { id: "user-1", username: "auditx" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      resolvePersonalBuilderInput: async () => ({
+        ok: true as const,
+        value: {
+          kind: "X",
+          sourceType: "x",
+          name: "Audit X",
+          handle: "auditx",
+          sourceUrl: "https://x.com/auditx",
+          fetchUrl: null,
+        },
+      }),
+      probeAndEnrichSource: async () => ({
+        ok: true,
+        enrichment: {
+          avatarUrl: "https://pbs.twimg.com/profile_images/auditx.jpg",
+        },
+      }),
+      resolveAvatarDataUrl: async () => "data:image/png;base64,secret-avatar",
+      fetchPersonalBlogBuilderForTest: async () => ({
+        items: [],
+        agentTasks: [],
+      }),
+      fetchPersonalXBuilderForTest: async () => ({
+        items: [
+          {
+            publishedAt: "2026-07-20T00:00:00.000Z",
+          },
+        ],
+        agentTasks: [],
+      }),
+    },
+  });
+
+  assert.equal(exitCode, 0);
+
+  const parsed = JSON.parse(stdout) as {
+    results: Array<{
+      accepted: boolean;
+      reason: string | null;
+      x: {
+        tokenState: string;
+        exactHandleMatch: boolean;
+      };
+      fetch: {
+        recentItemCount: number;
+      };
+    }>;
+  };
+
+  assert.equal(parsed.results.length, 1);
+  assert.equal(parsed.results[0]?.accepted, false);
+  assert.equal(parsed.results[0]?.reason, "x_handle_mismatch");
+  assert.equal(parsed.results[0]?.x.tokenState, "accepted");
+  assert.equal(parsed.results[0]?.x.exactHandleMatch, false);
+  assert.equal(parsed.results[0]?.fetch.recentItemCount, 1);
+});
+
+test("audit AI source candidate CLI rejects X when lookup resolves a different username", async () => {
+  assert.ok(
+    existsSync(AUDIT_CLI_PATH),
+    "scripts/audit-ai-source-candidates.ts must exist",
+  );
+
+  const mod = await import(pathToFileURL(AUDIT_CLI_PATH).href);
+  let stdout = "";
+
+  const exitCode = await mod.runAuditCli({
+    now: () => new Date("2026-07-27T12:00:00.000Z"),
+    stdout: {
+      write(chunk: string) {
+        stdout += chunk;
+      },
+    },
+    stderr: {
+      write() {},
+    },
+    proposals: [
+      {
+        name: "Audit X",
+        sourceType: "x",
+        sourceUrl: "https://x.com/auditx",
+        handle: "auditx",
+      },
+    ],
+    deps: {
+      evaluateAiSourceAudit,
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({ data: { id: "user-1", username: "someoneElse" } }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      resolvePersonalBuilderInput: async () => ({
+        ok: true as const,
+        value: {
+          kind: "X",
+          sourceType: "x",
+          name: "Audit X",
+          handle: "auditx",
+          sourceUrl: "https://x.com/auditx",
+          fetchUrl: null,
+        },
+      }),
+      probeAndEnrichSource: async () => ({
+        ok: true,
+        enrichment: {
+          avatarUrl: "https://pbs.twimg.com/profile_images/auditx.jpg",
+        },
+      }),
+      resolveAvatarDataUrl: async () => "data:image/png;base64,secret-avatar",
+      fetchPersonalBlogBuilderForTest: async () => ({
+        items: [],
+        agentTasks: [],
+      }),
+      fetchPersonalXBuilderForTest: async (
+        _builder: { name: string },
+        options: { fetcher?: (input: string) => Promise<Response> },
+      ) => {
+        await options.fetcher?.(
+          "https://api.x.com/2/users/by/username/auditx?user.fields=description",
+        );
+        return {
+          items: [
+            {
+              publishedAt: "2026-07-20T00:00:00.000Z",
+            },
+          ],
+          agentTasks: [],
+        };
+      },
+    },
+  });
+
+  assert.equal(exitCode, 0);
+
+  const parsed = JSON.parse(stdout) as {
+    results: Array<{
+      accepted: boolean;
+      reason: string | null;
+      x: {
+        tokenState: string;
+        exactHandleMatch: boolean;
+        resolvedHandle: string | null;
+      };
+    }>;
+  };
+
+  assert.equal(parsed.results.length, 1);
+  assert.equal(parsed.results[0]?.accepted, false);
+  assert.equal(parsed.results[0]?.reason, "x_handle_mismatch");
+  assert.equal(parsed.results[0]?.x.tokenState, "accepted");
+  assert.equal(parsed.results[0]?.x.exactHandleMatch, false);
+  assert.equal(parsed.results[0]?.x.resolvedHandle, "someoneElse");
 });
