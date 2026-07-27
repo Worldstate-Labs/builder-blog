@@ -242,7 +242,12 @@ export function evaluateAiSourceAudit(input: AiSourceAuditInput): AiSourceAuditR
 }
 
 export const AI_SOURCE_REVIEW_PROPOSALS = [
-  { name: "One Useful Thing", sourceType: "blog", sourceUrl: "https://www.oneusefulthing.org/" },
+  {
+    name: "One Useful Thing",
+    sourceType: "blog",
+    sourceUrl: "https://www.oneusefulthing.org/",
+    fetchUrl: "https://www.oneusefulthing.org/feed",
+  },
   {
     name: "Chip Huyen",
     sourceType: "blog",
@@ -290,7 +295,12 @@ export const AI_SOURCE_REVIEW_PROPOSALS = [
   { name: "xAI News", sourceType: "blog", sourceUrl: "https://x.ai/news" },
   { name: "Qwen Blog", sourceType: "blog", sourceUrl: "https://qwen.ai/blog" },
   { name: "DeepSeek Updates", sourceType: "blog", sourceUrl: "https://api-docs.deepseek.com/news/" },
-  { name: "Ai2 News", sourceType: "blog", sourceUrl: "https://allenai.org/news" },
+  {
+    name: "Ai2 News",
+    sourceType: "blog",
+    sourceUrl: "https://allenai.org/news",
+    fetchUrl: "https://allenai.org/rss.xml",
+  },
   {
     name: "Sakana AI",
     sourceType: "blog",

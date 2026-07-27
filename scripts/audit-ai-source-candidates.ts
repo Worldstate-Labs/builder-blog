@@ -52,6 +52,8 @@ type FetchResult = {
   agentTasks?: readonly FetchTask[];
 };
 
+type XFetchResult = FetchResult | readonly FetchItem[];
+
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 type AuditDependencies = {
@@ -81,7 +83,7 @@ type AuditDependencies = {
       sources: Record<string, never>;
       fetcher?: FetchLike;
     },
-  ) => Promise<FetchResult>;
+  ) => Promise<XFetchResult>;
 };
 
 type RunAuditCliOptions = {
@@ -411,10 +413,10 @@ async function fetchXAuditEvidence(
   cutoff: Date,
 ): Promise<AuditFetchSummary> {
   const lookupObservation = createXLookupRecorder(builder.handle, deps.fetchImpl);
-  const result = await deps.fetchPersonalXBuilderForTest(
+  const result = normalizeXFetchResult(await deps.fetchPersonalXBuilderForTest(
     builder,
     buildFetchOptions(cutoff, { fetcher: lookupObservation.fetcher }),
-  );
+  ));
   const items = Array.isArray(result.items) ? result.items : [];
   const recentItems = items.filter((item) => isWithinCutoff(item?.publishedAt, cutoff));
   const tasks = Array.isArray(result.agentTasks) ? result.agentTasks : [];
@@ -439,6 +441,20 @@ async function fetchXAuditEvidence(
       exactHandleMatch,
     },
     xProfileImageUrl: lookupObservation.profileImageUrl(),
+  };
+}
+
+function normalizeXFetchResult(result: XFetchResult): FetchResult {
+  if (Array.isArray(result)) {
+    return {
+      items: result,
+      agentTasks: [],
+    };
+  }
+  const normalized = result as FetchResult;
+  return {
+    items: Array.isArray(normalized.items) ? normalized.items : [],
+    agentTasks: Array.isArray(normalized.agentTasks) ? normalized.agentTasks : [],
   };
 }
 

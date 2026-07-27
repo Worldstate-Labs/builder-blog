@@ -744,14 +744,15 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
           await options.fetcher?.(
             "https://api.x.com/2/users/by/username/auditx?user.fields=description",
           );
-          return {
-            items: [
-              {
-                publishedAt: "2026-07-20T00:00:00.000Z",
-              },
-            ],
-            agentTasks: [],
-          };
+          return [
+            {
+              publishedAt: "2026-07-20T00:00:00.000Z",
+              body: "Recent X post",
+              externalId: "tweet-1",
+              kind: "TWEET",
+              url: "https://x.com/auditx/status/tweet-1",
+            },
+          ];
         },
       },
     });

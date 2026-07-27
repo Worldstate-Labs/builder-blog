@@ -120,10 +120,12 @@ const EXISTING_CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
 // to return 200 + a valid RSS/Atom feed.
 export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   {
-    name: "Hamel Husain",
+    name: "One Useful Thing",
     sourceType: "blog",
-    sourceUrl: "https://hamel.dev/",
-    avatarUrl: "https://www.google.com/s2/favicons?domain=hamel.dev&sz=128",
+    sourceUrl: "https://www.oneusefulthing.org/",
+    fetchUrl: "https://www.oneusefulthing.org/feed",
+    avatarUrl:
+      "https://substackcdn.com/image/fetch/$s_!oAcC!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Foneusefulthing.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D2081931964%26version%3D9",
   },
   {
     name: "Eugene Yan",
@@ -138,6 +140,13 @@ export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
     fetchUrl: "https://drfeifei.substack.com/feed",
     avatarUrl:
       "https://substackcdn.com/image/fetch/$s_!8YAq!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Fdrfeifei.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D-1118629820%26version%3D9",
+  },
+  {
+    name: "François Chollet",
+    sourceType: "x",
+    sourceUrl: "https://x.com/fchollet",
+    handle: "fchollet",
+    avatarUrl: "https://pbs.twimg.com/profile_images/2006806326140350470/Kd5oZv-f.jpg",
   },
   {
     name: "SemiAnalysis",
@@ -156,11 +165,32 @@ export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
       "https://substackcdn.com/image/fetch/$s_!0m1X!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Faisnakeoil.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D2066899008%26version%3D9",
   },
   {
+    name: "宝玉",
+    sourceType: "x",
+    sourceUrl: "https://x.com/dotey",
+    handle: "dotey",
+    avatarUrl: "https://pbs.twimg.com/profile_images/561086911561736192/6_g58vEs.jpeg",
+  },
+  {
+    name: "Georgi Gerganov",
+    sourceType: "x",
+    sourceUrl: "https://x.com/ggerganov",
+    handle: "ggerganov",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1654097134315098113/zCZD0wYz.jpg",
+  },
+  {
     name: "Thinking Machines Lab",
     sourceType: "blog",
     sourceUrl: "https://thinkingmachines.ai/blog/",
     fetchUrl: "https://thinkingmachines.ai/blog/index.xml",
     avatarUrl: "https://thinkingmachines.ai/images/home.png",
+  },
+  {
+    name: "Ai2 News",
+    sourceType: "blog",
+    sourceUrl: "https://allenai.org/news",
+    fetchUrl: "https://allenai.org/rss.xml",
+    avatarUrl: "https://www.datocms-assets.com/64837/1720481675-social-image-1200x630.png",
   },
   {
     name: "Sakana AI",
@@ -170,10 +200,17 @@ export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
     avatarUrl: "https://sakana.ai/assets/home/sakana_rect.png",
   },
   {
+    name: "Nous Research",
+    sourceType: "x",
+    sourceUrl: "https://x.com/NousResearch",
+    handle: "NousResearch",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1816254738234761216/TX7TW-Mp.jpg",
+  },
+  {
     name: "Artificial Analysis",
     sourceType: "blog",
     sourceUrl: "https://artificialanalysis.ai/articles",
-    avatarUrl: "https://www.google.com/s2/favicons?domain=artificialanalysis.ai&sz=128",
+    avatarUrl: "https://artificialanalysis.ai/opengraph-image.png?732728ccc2829321",
   },
   {
     name: "METR",
@@ -188,6 +225,97 @@ export const REVIEWED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
     sourceUrl: "https://arcprize.org/blog",
     fetchUrl: "https://arcprize.org/feed.xml",
     avatarUrl: "https://arcprize.org/media/images/og-image-default.jpg",
+  },
+  {
+    name: "Demis Hassabis",
+    sourceType: "x",
+    sourceUrl: "https://x.com/demishassabis",
+    handle: "demishassabis",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1990472620614053888/xrAu0wQL.jpg",
+  },
+  {
+    name: "Yann LeCun",
+    sourceType: "x",
+    sourceUrl: "https://x.com/ylecun",
+    handle: "ylecun",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1483577865056702469/rWA-3_T7.jpg",
+  },
+  {
+    name: "Jim Fan",
+    sourceType: "x",
+    sourceUrl: "https://x.com/DrJimFan",
+    handle: "DrJimFan",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1554922493101559808/SYSZhbcd.jpg",
+  },
+  {
+    name: "Thomas Wolf",
+    sourceType: "x",
+    sourceUrl: "https://x.com/Thom_Wolf",
+    handle: "Thom_Wolf",
+    avatarUrl: "https://pbs.twimg.com/profile_images/2068682157451571200/_ZNKM_5E.jpg",
+  },
+  {
+    name: "Ilya Sutskever",
+    sourceType: "x",
+    sourceUrl: "https://x.com/ilyasut",
+    handle: "ilyasut",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1961115716889030656/We74zmE-.jpg",
+  },
+  {
+    name: "Dario Amodei",
+    sourceType: "x",
+    sourceUrl: "https://x.com/DarioAmodei",
+    handle: "DarioAmodei",
+    avatarUrl: "https://pbs.twimg.com/profile_images/2015835742577012736/uOwdzrEz.jpg",
+  },
+  {
+    name: "Thibault Sottiaux",
+    sourceType: "x",
+    sourceUrl: "https://x.com/thsottiaux",
+    handle: "thsottiaux",
+    avatarUrl: "https://pbs.twimg.com/profile_images/2075819673263001600/pj1vyX6I.jpg",
+  },
+  {
+    name: "Nan Yu",
+    sourceType: "x",
+    sourceUrl: "https://x.com/thenanyu",
+    handle: "thenanyu",
+    avatarUrl: "https://pbs.twimg.com/profile_images/2025584578631544833/SMgxO8lp.jpg",
+  },
+  {
+    name: "Madhu Guru",
+    sourceType: "x",
+    sourceUrl: "https://x.com/realmadhuguru",
+    handle: "realmadhuguru",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1487465096242737157/AL-7r3o0.jpg",
+  },
+  {
+    name: "Amjad Masad",
+    sourceType: "x",
+    sourceUrl: "https://x.com/amasad",
+    handle: "amasad",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1897858917507776512/TRVTyKFk.jpg",
+  },
+  {
+    name: "Guillermo Rauch",
+    sourceType: "x",
+    sourceUrl: "https://x.com/rauchg",
+    handle: "rauchg",
+    avatarUrl: "https://pbs.twimg.com/profile_images/1783856060249595904/8TfcCN0r.jpg",
+  },
+  {
+    name: "Aaron Levie",
+    sourceType: "x",
+    sourceUrl: "https://x.com/levie",
+    handle: "levie",
+    avatarUrl: "https://pbs.twimg.com/profile_images/885529357904510976/tM0vLiYS.jpg",
+  },
+  {
+    name: "Matt Turck",
+    sourceType: "x",
+    sourceUrl: "https://x.com/mattturck",
+    handle: "mattturck",
+    avatarUrl: "https://pbs.twimg.com/profile_images/525262417635205120/xkF8FYY-.jpeg",
   },
 ];
 

@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-07-27T15:04:25.301Z",
-  "cutoff": "2026-04-28T15:04:25.301Z",
+  "generatedAt": "2026-07-27T15:31:35.497Z",
+  "cutoff": "2026-04-28T15:31:35.497Z",
   "proposalCount": 41,
   "resultCount": 41,
   "complete": true,
   "runtimeError": null,
-  "acceptedCount": 10,
-  "excludedCount": 31,
+  "acceptedCount": 28,
+  "excludedCount": 13,
   "results": [
     {
       "proposal": {
@@ -16,9 +16,9 @@
         "fetchUrl": null,
         "handle": null
       },
-      "accepted": false,
-      "reason": "icon_unavailable",
-      "detail": "Source \"One Useful Thing\" is missing a safely downloadable icon.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"One Useful Thing\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://www.oneusefulthing.org/feed",
         "status": 200
@@ -51,7 +51,7 @@
       "icon": {
         "url": "https://substackcdn.com/image/fetch/$s_!oAcC!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Foneusefulthing.substack.com%2Ftwitter%2Fsubscribe-card.jpg%3Fv%3D2081931964%26version%3D9",
         "safeUrl": true,
-        "downloaded": false
+        "downloaded": true
       }
     },
     {
@@ -77,7 +77,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://huyenchip.com/",
-        "status": null,
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -108,11 +108,11 @@
         "fetchUrl": null,
         "handle": null
       },
-      "accepted": true,
-      "reason": null,
-      "detail": "Source \"Hamel Husain\" passed the AI source audit.",
+      "accepted": false,
+      "reason": "icon_unavailable",
+      "detail": "Source \"Hamel Husain\" is missing a safely downloadable icon.",
       "http": {
-        "finalUrl": "https://hamel.dev/",
+        "finalUrl": "https://hamel.dev/index.xml",
         "status": 200
       },
       "resolver": {
@@ -123,13 +123,13 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://hamel.dev/",
-        "status": null,
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 1,
-        "recentItemCount": 1,
+        "itemCount": 2,
+        "recentItemCount": 2,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -141,9 +141,9 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://www.google.com/s2/favicons?domain=hamel.dev&sz=128",
+        "url": "https://hamel.dev/quarto.png",
         "safeUrl": true,
-        "downloaded": true
+        "downloaded": false
       }
     },
     {
@@ -204,7 +204,7 @@
       "reason": "no_recent_content",
       "detail": "Blog source \"Sam Altman\" has no recent content items or actionable article fetch tasks to review.",
       "http": {
-        "finalUrl": "https://blog.samaltman.com/",
+        "finalUrl": "https://blog.samaltman.com/posts.atom",
         "status": 200
       },
       "resolver": {
@@ -215,7 +215,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://blog.samaltman.com/",
-        "status": null,
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -233,9 +233,9 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://www.google.com/s2/favicons?domain=blog.samaltman.com&sz=128",
+        "url": "https://phaven-prod.s3.amazonaws.com/files/image_part/asset/3439526/q4Xtf4iMYA_SCrMc8hMfnF_k3UE/large_WhatsApp_Image_2026-02-28_at_15.26.14__4_.jpeg",
         "safeUrl": true,
-        "downloaded": true
+        "downloaded": false
       }
     },
     {
@@ -292,9 +292,9 @@
         "fetchUrl": null,
         "handle": "fchollet"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"François Chollet\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"François Chollet\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/fchollet?user.fields=description",
         "status": 200
@@ -312,8 +312,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -476,9 +476,9 @@
         "fetchUrl": null,
         "handle": "dotey"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"宝玉\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"宝玉\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/dotey?user.fields=description",
         "status": 200
@@ -496,8 +496,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -522,9 +522,9 @@
         "fetchUrl": null,
         "handle": "ggerganov"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Georgi Gerganov\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Georgi Gerganov\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/ggerganov?user.fields=description",
         "status": 200
@@ -542,8 +542,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -721,7 +721,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://www.nvidia.com/en-us/research/",
-        "status": null,
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -739,7 +739,7 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://www.google.com/s2/favicons?domain=www.nvidia.com&sz=128",
+        "url": "https://www.nvidia.com/content/dam/en-zz/Solutions/research/nvidia-arap-annoucement-social-1200x600-research-b.jpg",
         "safeUrl": true,
         "downloaded": true
       }
@@ -757,7 +757,7 @@
       "detail": "Failed to fetch https://x.ai/news: HTTP 403",
       "http": {
         "finalUrl": "https://x.ai/news",
-        "status": null
+        "status": 403
       },
       "resolver": {
         "ok": true,
@@ -767,7 +767,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://x.ai/news",
-        "status": null,
+        "status": 403,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -890,11 +890,11 @@
         "fetchUrl": null,
         "handle": null
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Blog source \"Ai2 News\" has no recent content items or actionable article fetch tasks to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Ai2 News\" passed the AI source audit.",
       "http": {
-        "finalUrl": "https://allenai.org/news",
+        "finalUrl": "https://allenai.org/rss.xml",
         "status": 200
       },
       "resolver": {
@@ -905,13 +905,13 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://allenai.org/news",
-        "status": null,
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
       "fetch": {
         "itemCount": 3,
-        "recentItemCount": 0,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -923,9 +923,9 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://www.google.com/s2/favicons?domain=allenai.org&sz=128",
+        "url": "https://www.datocms-assets.com/64837/1720481675-social-image-1200x630.png",
         "safeUrl": true,
-        "downloaded": false
+        "downloaded": true
       }
     },
     {
@@ -933,7 +933,7 @@
         "name": "Sakana AI",
         "sourceType": "blog",
         "sourceUrl": "https://sakana.ai/blog/",
-        "fetchUrl": null,
+        "fetchUrl": "https://sakana.ai/feed.xml",
         "handle": null
       },
       "accepted": true,
@@ -982,9 +982,9 @@
         "fetchUrl": null,
         "handle": "NousResearch"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Nous Research\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Nous Research\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/nousresearch?user.fields=description",
         "status": 200
@@ -996,14 +996,14 @@
       },
       "probe": {
         "ok": true,
-        "finalUrl": "https://x.com/nousresearch",
-        "status": null,
+        "finalUrl": "https://api.x.com/2/users/by/username/nousresearch?user.fields=name,profile_image_url",
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1015,9 +1015,9 @@
         "exactHandleMatch": true
       },
       "icon": {
-        "url": null,
-        "safeUrl": false,
-        "downloaded": false
+        "url": "https://pbs.twimg.com/profile_images/1816254738234761216/TX7TW-Mp.jpg",
+        "safeUrl": true,
+        "downloaded": true
       }
     },
     {
@@ -1135,7 +1135,7 @@
       "probe": {
         "ok": true,
         "finalUrl": "https://artificialanalysis.ai/articles",
-        "status": null,
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
@@ -1153,7 +1153,7 @@
         "exactHandleMatch": false
       },
       "icon": {
-        "url": "https://www.google.com/s2/favicons?domain=artificialanalysis.ai&sz=128",
+        "url": "https://artificialanalysis.ai/opengraph-image.png?732728ccc2829321",
         "safeUrl": true,
         "downloaded": true
       }
@@ -1255,7 +1255,7 @@
         "name": "ARC Prize",
         "sourceType": "blog",
         "sourceUrl": "https://arcprize.org/blog",
-        "fetchUrl": null,
+        "fetchUrl": "https://arcprize.org/feed.xml",
         "handle": null
       },
       "accepted": true,
@@ -1304,9 +1304,9 @@
         "fetchUrl": null,
         "handle": "demishassabis"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Demis Hassabis\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Demis Hassabis\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/demishassabis?user.fields=description",
         "status": 200
@@ -1318,14 +1318,14 @@
       },
       "probe": {
         "ok": true,
-        "finalUrl": "https://x.com/demishassabis",
-        "status": null,
+        "finalUrl": "https://api.x.com/2/users/by/username/demishassabis?user.fields=name,profile_image_url",
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1337,9 +1337,9 @@
         "exactHandleMatch": true
       },
       "icon": {
-        "url": null,
-        "safeUrl": false,
-        "downloaded": false
+        "url": "https://pbs.twimg.com/profile_images/1990472620614053888/xrAu0wQL.jpg",
+        "safeUrl": true,
+        "downloaded": true
       }
     },
     {
@@ -1350,9 +1350,9 @@
         "fetchUrl": null,
         "handle": "ylecun"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Yann LeCun\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Yann LeCun\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/ylecun?user.fields=description",
         "status": 200
@@ -1370,8 +1370,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 1,
+        "recentItemCount": 1,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1396,9 +1396,9 @@
         "fetchUrl": null,
         "handle": "DrJimFan"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Jim Fan\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Jim Fan\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/drjimfan?user.fields=description",
         "status": 200
@@ -1416,8 +1416,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1442,9 +1442,9 @@
         "fetchUrl": null,
         "handle": "Thom_Wolf"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Thomas Wolf\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Thomas Wolf\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/thom_wolf?user.fields=description",
         "status": 200
@@ -1462,8 +1462,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1488,9 +1488,9 @@
         "fetchUrl": null,
         "handle": "ilyasut"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Ilya Sutskever\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Ilya Sutskever\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/ilyasut?user.fields=description",
         "status": 200
@@ -1508,8 +1508,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 2,
+        "recentItemCount": 2,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1534,9 +1534,9 @@
         "fetchUrl": null,
         "handle": "DarioAmodei"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Dario Amodei\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Dario Amodei\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/darioamodei?user.fields=description",
         "status": 200
@@ -1554,8 +1554,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1580,9 +1580,9 @@
         "fetchUrl": null,
         "handle": "thsottiaux"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Thibault Sottiaux\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Thibault Sottiaux\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/thsottiaux?user.fields=description",
         "status": 200
@@ -1600,8 +1600,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1626,9 +1626,9 @@
         "fetchUrl": null,
         "handle": "thenanyu"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Nan Yu\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Nan Yu\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/thenanyu?user.fields=description",
         "status": 200
@@ -1646,8 +1646,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1672,9 +1672,9 @@
         "fetchUrl": null,
         "handle": "realmadhuguru"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Madhu Guru\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Madhu Guru\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/realmadhuguru?user.fields=description",
         "status": 200
@@ -1692,8 +1692,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1718,9 +1718,9 @@
         "fetchUrl": null,
         "handle": "amasad"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Amjad Masad\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Amjad Masad\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/amasad?user.fields=description",
         "status": 200
@@ -1738,8 +1738,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1753,7 +1753,7 @@
       "icon": {
         "url": "https://pbs.twimg.com/profile_images/1897858917507776512/TRVTyKFk.jpg",
         "safeUrl": true,
-        "downloaded": false
+        "downloaded": true
       }
     },
     {
@@ -1764,9 +1764,9 @@
         "fetchUrl": null,
         "handle": "rauchg"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Guillermo Rauch\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Guillermo Rauch\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/rauchg?user.fields=description",
         "status": 200
@@ -1778,14 +1778,14 @@
       },
       "probe": {
         "ok": true,
-        "finalUrl": "https://x.com/rauchg",
-        "status": null,
+        "finalUrl": "https://api.x.com/2/users/by/username/rauchg?user.fields=name,profile_image_url",
+        "status": 200,
         "robotsDenied": false,
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1797,9 +1797,9 @@
         "exactHandleMatch": true
       },
       "icon": {
-        "url": null,
-        "safeUrl": false,
-        "downloaded": false
+        "url": "https://pbs.twimg.com/profile_images/1783856060249595904/8TfcCN0r.jpg",
+        "safeUrl": true,
+        "downloaded": true
       }
     },
     {
@@ -1810,9 +1810,9 @@
         "fetchUrl": null,
         "handle": "levie"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Aaron Levie\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Aaron Levie\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/levie?user.fields=description",
         "status": 200
@@ -1830,8 +1830,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
@@ -1856,9 +1856,9 @@
         "fetchUrl": null,
         "handle": "mattturck"
       },
-      "accepted": false,
-      "reason": "no_recent_content",
-      "detail": "Resolved X account \"Matt Turck\" has no recent posts available to review.",
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Matt Turck\" passed the AI source audit.",
       "http": {
         "finalUrl": "https://api.x.com/2/users/by/username/mattturck?user.fields=description",
         "status": 200
@@ -1876,8 +1876,8 @@
         "loginRequired": false
       },
       "fetch": {
-        "itemCount": 0,
-        "recentItemCount": 0,
+        "itemCount": 3,
+        "recentItemCount": 3,
         "actionableTaskCount": 0,
         "actionableTaskTypes": [],
         "hardFailureDetail": null
