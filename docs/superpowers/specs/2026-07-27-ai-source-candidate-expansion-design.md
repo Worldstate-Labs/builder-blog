@@ -57,9 +57,19 @@ The reviewed sources belong in `CURATED_AI_SOURCE_CANDIDATES` in
 `ensureSourceCandidateSeeded`; a production-only insert is not acceptable because
 the curated seeder deletes stale rows for its seed namespace.
 
-After code verification, apply the same reviewed records to production in one
-idempotent upsert transaction. Deploying the committed seed and writing production
-must converge to identical rows.
+The source-controlled manifest owns the structural fields (`name`, `sourceType`,
+`sourceUrl`, `fetchUrl`, `handle`, and `avatarUrl`). `avatarDataUrl` is a derived
+production cache and is populated after seeding with the existing avatar backfill
+path. The committed manifest and production must agree on structural fields; the
+production acceptance check additionally requires a materialized icon cache.
+
+After code verification, `scripts/sync-reviewed-ai-source-candidates.ts` applies
+the accepted manifest subset to production in one idempotent Prisma transaction.
+The script uses the same canonical-key and seed-record builders as the application,
+sets `seededFrom` to `curated_ai_sources`, upserts by `sourceKey`, and never deletes
+or updates unrelated candidates. A failed upsert rolls back the complete batch.
+Deploying the committed seed and running the production sync must converge to the
+same structural rows.
 
 ## Review rules
 
@@ -77,12 +87,11 @@ Use only the supported source types from `config/sources.json`.
 - `blog`: Prefer a public RSS/Atom feed that returns valid XML and at least one
   recent entry. Keep the human-readable homepage in `sourceUrl` and the feed in
   `fetchUrl`.
-- `blog` without RSS: Accept only when the official index is publicly reachable,
-  exposes distinct recent article links, and the existing agent-scraping path can
-  fetch those articles.
-- `website`: Use for research/news indexes that do not represent a conventional
-  blog but expose stable, dated content pages. These use the existing
-  `requires_agent` path.
+- `blog` without RSS: Accept only when the official index is publicly reachable
+  and the real blog fetcher discovers and acquires at least one recent article.
+- `website`: Do not use for any reviewed news or research index in this batch. The
+  current website fetcher reads only the supplied page and does not traverse child
+  article links, so a successful metadata probe would not prove useful ingestion.
 - `x`: Accept only an official profile whose handle resolves through the
   configured production X API. X candidates depend on `X_BEARER_TOKEN`; a public
   profile page alone is not proof of fetchability.
@@ -98,21 +107,38 @@ candidate until a supported GitHub source type exists.
 - HTML source: prefer a safe official OpenGraph image or icon discovered by the
   existing enrichment probe.
 - Feed-only source: use the publication's official domain favicon.
-- Persist a safe `avatarUrl` and materialize `avatarDataUrl` using
-  `resolveAvatarDataUrl`. A candidate may not ship with both fields null.
+- Commit a safe `avatarUrl`, then run `npm run avatars:backfill` against production
+  to materialize `avatarDataUrl` through `resolveAvatarDataUrl`.
+- Production verification rejects any accepted candidate whose `avatarUrl` or
+  `avatarDataUrl` remains null after backfill.
 - Reject unrelated hero images that do not identify the source.
 
 ### Fetchability evidence
 
-For every accepted candidate, record and verify:
+Metadata resolution is diagnostic only and is not sufficient for acceptance.
+For every accepted candidate, the audit harness records and verifies:
 
 - final `sourceUrl` and optional `fetchUrl`;
 - HTTP status and final redirect target;
-- RSS/Atom parse result or, for HTML, discovery of dated article links;
+- RSS/Atom parse result or discovery of dated article links;
 - source type selected by the existing resolver;
 - probe result, including discovered feed and metadata;
 - icon download result;
-- for X, API handle lookup result.
+- execution of the same deterministic source fetcher used by
+  `scripts/builder-digest.mjs`;
+- for X, an authenticated API handle lookup and timeline fetch using a valid
+  `X_BEARER_TOKEN`.
+
+A blog passes only when `fetchPersonalBlogBuilderForTest` returns at least one
+recent item or at least one actionable agent task produced from a discovered
+recent article, without a robots denial or hard index/article fetch error. The
+audit uses a 90-day cutoff so an obsolete archive cannot pass merely because it
+contains old posts.
+
+An X source passes only when the production-equivalent bearer token positively
+resolves the exact handle and `fetchPersonalXBuilderForTest` returns at least one
+post within the 90-day audit window. If the token is absent or invalid, the X
+entry is not accepted; public profile HTML is not a fallback.
 
 Transient 403/429 responses are not sufficient for acceptance unless the
 configured local-agent method has a separately verified retrieval path. Dead,
@@ -120,21 +146,29 @@ private, empty, or login-only sources are excluded and reported.
 
 ## Implementation
 
-1. Build a temporary audit manifest for the 34 requested sources.
+1. Add the 34 requested sources to a review manifest consumed by
+   `scripts/audit-ai-source-candidates.ts`; each entry contains the proposed
+   canonical name, source URL, optional fetch URL/handle, and expected type.
 2. Discover official canonical pages and RSS/Atom endpoints.
-3. Exercise `resolvePersonalBuilderInput` and `probeAndEnrichSource` against every
-   manifest entry using production-equivalent environment capabilities.
-4. Resolve and cache icons.
-5. Keep only entries that meet the review rules, recording exclusions and
-   fallbacks.
-6. Add accepted entries to `CURATED_AI_SOURCE_CANDIDATES`.
-7. Add regression tests that assert the reviewed source names, canonical endpoints,
-   supported types, non-null icon configuration, and duplicate-free canonical
-   keys.
-8. Run focused tests, the full relevant test suite, lint, and typecheck.
-9. Commit and push `main`.
-10. Upsert the reviewed rows into production and independently verify candidate
-    count, field values, icon cache presence, and seed idempotence.
+3. Exercise `resolvePersonalBuilderInput`, `probeAndEnrichSource`, and the real
+   type-specific fetcher against every entry with production-equivalent
+   credentials. The audit emits a JSON report containing outcomes and exact
+   exclusion reasons.
+4. Keep only passing entries in the exported
+   `CURATED_AI_SOURCE_CANDIDATES` manifest, with an explicit official icon URL.
+5. Add regression tests that assert the reviewed source names, canonical endpoints,
+   supported types, non-null icon URL, duplicate-free canonical keys, and audit
+   pass semantics.
+6. Add `scripts/sync-reviewed-ai-source-candidates.ts`, which imports the reviewed
+   manifest and shared seed helpers instead of duplicating canonical-key logic.
+7. Run focused tests, the relevant full suite, lint, and typecheck.
+8. Commit and push `main`, then confirm the production deployment is healthy.
+9. Pull the production environment to a temporary file; record the total candidate
+   count and a stable snapshot of all unrelated `sourceKey`/structural fields.
+10. Run the transactional sync twice, proving idempotence and identical target
+    rows, then run `npm run avatars:backfill`.
+11. Verify every accepted target row and its icon cache, compare the unrelated
+    snapshot byte-for-byte, and delete the temporary environment file.
 
 ## Failure handling
 
@@ -144,14 +178,21 @@ private, empty, or login-only sources are excluded and reported.
   tests.
 - The production upsert is transactional and verifies that unrelated candidates
   are unchanged.
+- Avatar backfill is deliberately outside the database transaction because it
+  performs network I/O. A backfill failure leaves the idempotently seeded rows in
+  place, fails the release check, reports the affected candidates, and can be
+  retried safely without another insert.
 - Temporary production environment files are deleted after verification.
 
 ## Acceptance criteria
 
 - Every accepted requested source has reviewed `name`, `sourceType`, `sourceUrl`,
-  `fetchUrl`, and icon data.
-- Every accepted source is reachable through an existing FollowBrief fetch path.
+  `fetchUrl`, and a committed official `avatarUrl`.
+- Every accepted source produces current content through the real existing
+  FollowBrief fetcher in the audit environment; a metadata-only probe never passes.
 - No unsupported source type or canonical-key duplicate is introduced.
 - Curated seeding is idempotent and does not remove the new entries.
-- Production and source-controlled curated records agree.
+- Production and source-controlled curated structural records agree, and every
+  accepted production row has a non-null `avatarDataUrl`.
+- The before/after production snapshot proves unrelated candidates are unchanged.
 - Excluded sources and reasons are explicitly reported.
