@@ -8,6 +8,239 @@ export type AiSourceReviewProposal = {
   avatarUrl?: string;
 };
 
+export type AiSourceAuditProposal = Omit<AiSourceReviewProposal, "sourceType"> & {
+  sourceType: AiSourceReviewProposal["sourceType"] | "website";
+};
+
+export type AiSourceAuditHttpEvidence = {
+  finalUrl: string | null;
+  status: number | null;
+};
+
+export type AiSourceAuditResolverEvidence = {
+  ok: boolean;
+  finalUrl: string | null;
+  status: number | null;
+};
+
+export type AiSourceAuditProbeEvidence = {
+  ok: boolean;
+  finalUrl: string | null;
+  status: number | null;
+  robotsDenied: boolean;
+  loginRequired: boolean;
+};
+
+export type AiSourceAuditFetcherTaskEvidence = {
+  type: string;
+  recentDiscoveredContent: boolean;
+};
+
+export type AiSourceAuditFetchEvidence = {
+  itemCount: number;
+  recentItemCount: number;
+  actionableTasks: readonly AiSourceAuditFetcherTaskEvidence[];
+  hardFailure?: boolean;
+  hardFailureDetail?: string | null;
+};
+
+export type AiSourceAuditTokenState = "accepted" | "missing" | "invalid" | "unknown";
+
+export type AiSourceAuditXEvidence = {
+  tokenState: AiSourceAuditTokenState;
+  requestedHandle: string | null;
+  resolvedHandle: string | null;
+  exactHandleMatch: boolean;
+};
+
+export type AiSourceAuditIconEvidence = {
+  url: string | null;
+  safeUrl: boolean;
+  downloaded: boolean;
+};
+
+export type AiSourceAuditInput = {
+  proposal: AiSourceAuditProposal;
+  http: AiSourceAuditHttpEvidence;
+  resolver: AiSourceAuditResolverEvidence;
+  probe: AiSourceAuditProbeEvidence;
+  fetch: AiSourceAuditFetchEvidence;
+  x: AiSourceAuditXEvidence;
+  icon: AiSourceAuditIconEvidence;
+};
+
+export type AiSourceAuditRejectionReason =
+  | "unsupported_source_type"
+  | "resolver_failed"
+  | "probe_failed"
+  | "hard_fetch_failed"
+  | "robots_denied"
+  | "x_token_missing"
+  | "x_token_invalid"
+  | "x_handle_mismatch"
+  | "no_recent_content"
+  | "icon_unavailable";
+
+export type AiSourceAuditResult = {
+  proposal: AiSourceAuditProposal;
+  http: AiSourceAuditHttpEvidence;
+  resolver: AiSourceAuditResolverEvidence;
+  probe: AiSourceAuditProbeEvidence;
+  fetch: AiSourceAuditFetchEvidence & {
+    actionableTaskCount: number;
+    actionableTaskTypes: readonly string[];
+  };
+  x: AiSourceAuditXEvidence;
+  icon: AiSourceAuditIconEvidence;
+  accepted: boolean;
+  rejectionReason: AiSourceAuditRejectionReason | null;
+  detail: string;
+};
+
+function reject(
+  input: AiSourceAuditInput,
+  reason: AiSourceAuditRejectionReason,
+  detail: string,
+): AiSourceAuditResult {
+  return {
+    proposal: input.proposal,
+    http: input.http,
+    resolver: input.resolver,
+    probe: input.probe,
+    fetch: summarizeFetchEvidence(input.fetch),
+    x: input.x,
+    icon: input.icon,
+    accepted: false,
+    rejectionReason: reason,
+    detail,
+  };
+}
+
+function summarizeFetchEvidence(fetch: AiSourceAuditFetchEvidence): AiSourceAuditResult["fetch"] {
+  return {
+    ...fetch,
+    actionableTaskCount: fetch.actionableTasks.length,
+    actionableTaskTypes: fetch.actionableTasks.map((task) => task.type),
+  };
+}
+
+function accept(input: AiSourceAuditInput, detail: string): AiSourceAuditResult {
+  return {
+    proposal: input.proposal,
+    http: input.http,
+    resolver: input.resolver,
+    probe: input.probe,
+    fetch: summarizeFetchEvidence(input.fetch),
+    x: input.x,
+    icon: input.icon,
+    accepted: true,
+    rejectionReason: null,
+    detail,
+  };
+}
+
+function hasRecentBlogFallbackTask(fetch: AiSourceAuditFetchEvidence): boolean {
+  return fetch.actionableTasks.some(
+    (task) => task.type === "blog_article_fetch" && task.recentDiscoveredContent,
+  );
+}
+
+function hasUsableIcon(icon: AiSourceAuditIconEvidence): boolean {
+  return Boolean(icon.url) && icon.safeUrl && icon.downloaded;
+}
+
+export function evaluateAiSourceAudit(input: AiSourceAuditInput): AiSourceAuditResult {
+  if (input.proposal.sourceType !== "blog" && input.proposal.sourceType !== "x") {
+    return reject(
+      input,
+      "unsupported_source_type",
+      `Unsupported source type "${input.proposal.sourceType}" is not eligible for AI source review.`,
+    );
+  }
+
+  if (!input.resolver.ok) {
+    return reject(
+      input,
+      "resolver_failed",
+      `Source resolver did not succeed for "${input.proposal.name}".`,
+    );
+  }
+
+  if (input.probe.loginRequired || (!input.probe.ok && !input.probe.robotsDenied)) {
+    return reject(
+      input,
+      "probe_failed",
+      `Source probe did not confirm a directly fetchable public source for "${input.proposal.name}".`,
+    );
+  }
+
+  if (input.fetch.hardFailure) {
+    return reject(
+      input,
+      "hard_fetch_failed",
+      input.fetch.hardFailureDetail ||
+        `Real content fetch failed for "${input.proposal.name}" before current content could be verified.`,
+    );
+  }
+
+  if (input.probe.robotsDenied) {
+    return reject(
+      input,
+      "robots_denied",
+      `Source "${input.proposal.name}" disallows fetch access via robots or equivalent policy.`,
+    );
+  }
+
+  if (input.proposal.sourceType === "x") {
+    if (input.x.tokenState === "missing") {
+      return reject(
+        input,
+        "x_token_missing",
+        `X bearer token is missing for "${input.proposal.name}".`,
+      );
+    }
+    if (input.x.tokenState === "invalid" || input.x.tokenState !== "accepted") {
+      return reject(
+        input,
+        "x_token_invalid",
+        `X bearer token was not positively accepted for "${input.proposal.name}".`,
+      );
+    }
+    if (!input.x.exactHandleMatch) {
+      return reject(
+        input,
+        "x_handle_mismatch",
+        `Resolved X handle did not exactly match the requested handle for "${input.proposal.name}".`,
+      );
+    }
+    if (input.fetch.recentItemCount < 1) {
+      return reject(
+        input,
+        "no_recent_content",
+        `Resolved X account "${input.proposal.name}" has no recent posts available to review.`,
+      );
+    }
+  } else {
+    if (input.fetch.recentItemCount < 1 && !hasRecentBlogFallbackTask(input.fetch)) {
+      return reject(
+        input,
+        "no_recent_content",
+        `Blog source "${input.proposal.name}" has no recent content items or actionable article fetch tasks to review.`,
+      );
+    }
+  }
+
+  if (!hasUsableIcon(input.icon)) {
+    return reject(
+      input,
+      "icon_unavailable",
+      `Source "${input.proposal.name}" is missing a safely downloadable icon.`,
+    );
+  }
+
+  return accept(input, `Source "${input.proposal.name}" passed the AI source audit.`);
+}
+
 export const AI_SOURCE_REVIEW_PROPOSALS = [
   { name: "One Useful Thing", sourceType: "blog", sourceUrl: "https://www.oneusefulthing.org/" },
   {
