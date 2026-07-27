@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   AI_SOURCE_REVIEW_PROPOSALS,
   evaluateAiSourceAudit,
@@ -60,6 +63,10 @@ const EXPECTED_NEW_X_HANDLES = {
   "Aaron Levie": "levie",
   "Matt Turck": "mattturck",
 } as const;
+
+const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const PACKAGE_JSON_PATH = resolve(WORKSPACE_ROOT, "package.json");
+const AUDIT_CLI_PATH = resolve(WORKSPACE_ROOT, "scripts/audit-ai-source-candidates.ts");
 
 function buildBlogAuditInput(
   overrides: Partial<AiSourceAuditInput> = {},
@@ -502,4 +509,242 @@ test("evaluateAiSourceAudit gives hard fetch failures precedence over robots, co
   assert.equal(result.accepted, false);
   assert.equal(result.reason, "hard_fetch_failed");
   assert.equal(result.detail, "HTTP 500 while fetching feed");
+});
+
+test("package.json exposes the production-equivalent AI source candidate audit command", () => {
+  const packageJson = JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+
+  assert.equal(
+    packageJson.scripts?.["sources:audit-ai-candidates"],
+    "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/audit-ai-source-candidates.ts",
+  );
+});
+
+test("audit AI source candidate CLI imports the production resolver, probe, avatar, and real builder fetchers", () => {
+  assert.ok(
+    existsSync(AUDIT_CLI_PATH),
+    "scripts/audit-ai-source-candidates.ts must exist",
+  );
+
+  const source = readFileSync(AUDIT_CLI_PATH, "utf8");
+  assert.match(source, /AI_SOURCE_REVIEW_PROPOSALS/);
+  assert.match(source, /evaluateAiSourceAudit/);
+  assert.match(source, /resolvePersonalBuilderInput/);
+  assert.match(source, /probeAndEnrichSource/);
+  assert.match(source, /resolveAvatarDataUrl/);
+  assert.match(source, /fetchPersonalBlogBuilderForTest/);
+  assert.match(source, /fetchPersonalXBuilderForTest/);
+  assert.match(source, /from\s+["']\.\/builder-digest\.mjs["']/);
+});
+
+test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized JSON-only stdout, and keeps exit zero when candidates are excluded", async () => {
+  assert.ok(
+    existsSync(AUDIT_CLI_PATH),
+    "scripts/audit-ai-source-candidates.ts must exist",
+  );
+
+  const mod = await import(pathToFileURL(AUDIT_CLI_PATH).href);
+  assert.equal(typeof mod.runAuditCli, "function");
+
+  const now = new Date("2026-07-27T12:00:00.000Z");
+  const expectedCutoffIso = new Date(
+    now.getTime() - 90 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const blogCutoffs: string[] = [];
+  const xCutoffs: string[] = [];
+  let stdout = "";
+  let stderr = "";
+
+  const exitCode = await mod.runAuditCli({
+    now: () => new Date(now),
+    stdout: {
+      write(chunk: string) {
+        stdout += chunk;
+      },
+    },
+    stderr: {
+      write(chunk: string) {
+        stderr += chunk;
+      },
+    },
+    proposals: [
+      {
+        name: "Audit Blog",
+        sourceType: "blog",
+        sourceUrl: "https://example.com/blog",
+      },
+      {
+        name: "Audit X",
+        sourceType: "x",
+        sourceUrl: "https://x.com/auditx",
+        handle: "auditx",
+      },
+      {
+        name: "Broken Blog",
+        sourceType: "blog",
+        sourceUrl: "https://broken.example.com/blog",
+        fetchUrl: "https://broken.example.com/feed.xml",
+      },
+    ],
+    deps: {
+      evaluateAiSourceAudit,
+      resolvePersonalBuilderInput: async ({
+        displayName,
+        sourceType,
+        sourceValue,
+      }: {
+        displayName: string;
+        sourceType: string;
+        sourceValue: string;
+      }) => {
+        if (sourceType === "x") {
+          return {
+            ok: true as const,
+            value: {
+              kind: "X",
+              sourceType,
+              name: displayName,
+              handle: "auditx",
+              sourceUrl: "https://x.com/auditx",
+              fetchUrl: null,
+            },
+          };
+        }
+        return {
+          ok: true as const,
+          value: {
+            kind: "BLOG",
+            sourceType,
+            name: displayName,
+            handle: null,
+            sourceUrl: sourceValue,
+            fetchUrl: sourceValue.endsWith("/blog")
+              ? "https://example.com/feed.xml"
+              : null,
+          },
+        };
+      },
+      probeAndEnrichSource: async ({
+        sourceType,
+        sourceUrl,
+      }: {
+        sourceType: string;
+        sourceUrl: string | null;
+      }) => ({
+        ok: true,
+        enrichment: {
+          avatarUrl:
+            sourceType === "x"
+              ? "https://pbs.twimg.com/profile_images/auditx.jpg"
+              : "https://cdn.example.com/icon.png",
+        },
+        discoveredFetchUrl:
+          sourceUrl === "https://example.com/blog"
+            ? "https://example.com/discovered.xml"
+            : undefined,
+      }),
+      resolveAvatarDataUrl: async (avatarUrl: string | null) =>
+        avatarUrl ? "data:image/png;base64,secret-avatar" : null,
+      fetchPersonalBlogBuilderForTest: async (
+        builder: { name: string },
+        options: { cutoff: Date },
+      ) => {
+        blogCutoffs.push(options.cutoff.toISOString());
+        if (builder.name === "Broken Blog") {
+          throw new Error(
+            "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local data:image/png;base64,abc",
+          );
+        }
+        return {
+          items: [],
+          agentTasks: [
+            {
+              type: "blog_article_fetch",
+              item: { publishedAt: "2026-07-01T00:00:00.000Z" },
+            },
+            {
+              type: "blog_article_fetch",
+              item: { publishedAt: "2026-03-01T00:00:00.000Z" },
+            },
+            {
+              type: "something_else",
+              item: { publishedAt: "2026-07-02T00:00:00.000Z" },
+            },
+          ],
+        };
+      },
+      fetchPersonalXBuilderForTest: async (
+        _builder: { name: string },
+        options: { cutoff: Date },
+      ) => {
+        xCutoffs.push(options.cutoff.toISOString());
+        return {
+          items: [
+            {
+              publishedAt: "2026-07-20T00:00:00.000Z",
+            },
+          ],
+          agentTasks: [],
+        };
+      },
+    },
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr, "");
+  assert.ok(stdout.endsWith("\n"));
+
+  const parsed = JSON.parse(stdout) as {
+    cutoff: string;
+    proposalCount: number;
+    resultCount: number;
+    results: Array<{
+      proposal: { name: string };
+      accepted: boolean;
+      reason: string | null;
+      fetch: {
+        recentItemCount: number;
+        actionableTaskCount: number;
+        actionableTaskTypes: string[];
+        hardFailureDetail?: string | null;
+      };
+      x: {
+        tokenState: string;
+        exactHandleMatch: boolean;
+      };
+      icon: {
+        downloaded: boolean;
+      };
+    }>;
+  };
+
+  assert.equal(parsed.cutoff, expectedCutoffIso);
+  assert.equal(parsed.proposalCount, 3);
+  assert.equal(parsed.resultCount, 3);
+  assert.deepEqual(blogCutoffs, [expectedCutoffIso, expectedCutoffIso]);
+  assert.deepEqual(xCutoffs, [expectedCutoffIso]);
+
+  const resultsByName = new Map(parsed.results.map((result) => [result.proposal.name, result]));
+  assert.equal(resultsByName.get("Audit Blog")?.accepted, true);
+  assert.equal(resultsByName.get("Audit Blog")?.fetch.recentItemCount, 0);
+  assert.equal(resultsByName.get("Audit Blog")?.fetch.actionableTaskCount, 1);
+  assert.deepEqual(resultsByName.get("Audit Blog")?.fetch.actionableTaskTypes, [
+    "blog_article_fetch",
+  ]);
+  assert.equal(resultsByName.get("Audit X")?.accepted, true);
+  assert.equal(resultsByName.get("Audit X")?.x.tokenState, "accepted");
+  assert.equal(resultsByName.get("Audit X")?.x.exactHandleMatch, true);
+  assert.equal(resultsByName.get("Broken Blog")?.accepted, false);
+  assert.equal(resultsByName.get("Broken Blog")?.reason, "hard_fetch_failed");
+  assert.equal(resultsByName.get("Broken Blog")?.icon.downloaded, true);
+
+  const serialized = JSON.stringify(parsed);
+  assert.doesNotMatch(serialized, /X_BEARER_TOKEN/);
+  assert.doesNotMatch(serialized, /Authorization/i);
+  assert.doesNotMatch(serialized, /data:image\//i);
+  assert.doesNotMatch(serialized, /postgres:\/\//i);
+  assert.doesNotMatch(serialized, /\/Users\/jie\//);
+  assert.doesNotMatch(serialized, /body=<html>/i);
 });
