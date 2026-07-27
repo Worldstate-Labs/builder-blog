@@ -114,6 +114,19 @@ type AuditFetchSummary = {
   xProfileImageUrl: string | null;
 };
 
+type AuditFailureStage = "resolution" | "probe" | "fetch" | "icon";
+
+type AuditCandidateState = {
+  stage: AuditFailureStage;
+  proposal: AiSourceReviewProposal;
+  http: AiSourceAuditInput["http"];
+  resolver: AiSourceAuditInput["resolver"];
+  probe: AiSourceAuditInput["probe"];
+  fetch: AiSourceAuditInput["fetch"];
+  x: AiSourceAuditInput["x"];
+  icon: AiSourceAuditInput["icon"];
+};
+
 const DEFAULT_DEPS: AuditDependencies = {
   evaluateAiSourceAudit,
   resolvePersonalBuilderInput,
@@ -178,10 +191,15 @@ async function safeAuditProposal({
   index: number;
   cutoff: Date;
 }): Promise<AiSourceAuditResult> {
+  const state = createCandidateState(proposal);
   try {
-    return await auditProposal({ deps, proposal, index, cutoff });
+    return await auditProposal({ deps, proposal, index, cutoff, state });
   } catch (error) {
-    return buildCandidateFailureResult(deps, proposal, sanitizeText(errorMessage(error)));
+    return buildCandidateFailureResult(
+      deps,
+      state,
+      sanitizeText(errorMessage(error)),
+    );
   }
 }
 
@@ -190,12 +208,15 @@ async function auditProposal({
   proposal,
   index,
   cutoff,
+  state,
 }: {
   deps: AuditDependencies;
   proposal: AiSourceReviewProposal;
   index: number;
   cutoff: Date;
+  state: AuditCandidateState;
 }): Promise<AiSourceAuditResult> {
+  state.stage = "resolution";
   const resolution = await deps.resolvePersonalBuilderInput({
     displayName: proposal.name,
     sourceType: proposal.sourceType,
@@ -203,27 +224,19 @@ async function auditProposal({
   });
 
   if (!resolution.ok) {
+    state.resolver = {
+      ok: false,
+      finalUrl: null,
+      status: null,
+    };
     return deps.evaluateAiSourceAudit(
       buildAuditInput({
         proposal,
-        http: {
-          finalUrl: null,
-          status: null,
-        },
-        resolver: {
-          ok: false,
-          finalUrl: null,
-          status: null,
-        },
-        probe: {
-          ok: true,
-          finalUrl: null,
-          status: null,
-          robotsDenied: false,
-          loginRequired: false,
-        },
-        fetch: emptyFetchEvidence(),
-        x: baseXEvidence(proposal.handle ?? null),
+        http: state.http,
+        resolver: state.resolver,
+        probe: state.probe,
+        fetch: state.fetch,
+        x: state.x,
         icon: await resolveIconEvidence({
           deps,
           proposal,
@@ -236,8 +249,14 @@ async function auditProposal({
   }
 
   const normalized = resolution.value;
+  state.resolver = {
+    ok: true,
+    finalUrl: normalized.sourceUrl,
+    status: null,
+  };
   const requestedFetchUrl = proposal.fetchUrl ?? normalized.fetchUrl;
   const probeRecorder = createHttpObservationRecorder(deps.fetchImpl);
+  state.stage = "probe";
   const probe = await deps.probeAndEnrichSource({
     sourceType: normalized.sourceType,
     sourceUrl: normalized.sourceUrl,
@@ -245,6 +264,17 @@ async function auditProposal({
     handle: normalized.handle,
     fetcher: probeRecorder.fetcher,
   });
+  state.probe = {
+    ok: probe.ok,
+    finalUrl: probeRecorder.observation(normalized.sourceUrl).finalUrl,
+    status: probeRecorder.observation(normalized.sourceUrl).status,
+    robotsDenied: false,
+    loginRequired: false,
+  };
+  state.http = preferredHttpEvidence(
+    state.http,
+    probeRecorder.observation(normalized.sourceUrl),
+  );
 
   const builder = buildAuditBuilder({
     proposal,
@@ -253,40 +283,62 @@ async function auditProposal({
     requestedFetchUrl,
     index,
   });
-  const fetchSummary =
+  let xProfileImageUrl: string | null = null;
+  if (builder.kind !== "X") {
+    state.stage = "icon";
+    const iconSeed = buildIconEvidenceSeed({
+      proposal,
+      sourceUrl: builder.fetchUrl ?? builder.sourceUrl ?? proposal.sourceUrl,
+      probe,
+      xProfileImageUrl: null,
+    });
+    state.icon = {
+      ...iconSeed,
+      downloaded: false,
+    };
+    state.icon = await resolveIconEvidence({
+      deps,
+      iconSeed,
+    });
+  }
+  state.stage = "fetch";
+  const fetchSummary = await (
     builder.kind === "X"
-      ? await fetchXAuditEvidence(deps, builder, cutoff)
-      : await fetchBlogAuditEvidence(deps, builder, cutoff);
-  const icon = await resolveIconEvidence({
-    deps,
-    proposal,
-    sourceUrl: builder.fetchUrl ?? builder.sourceUrl ?? proposal.sourceUrl,
-    probe,
-    xProfileImageUrl: fetchSummary.xProfileImageUrl,
-  });
+      ? fetchXAuditEvidence(deps, builder, cutoff)
+      : fetchBlogAuditEvidence(deps, builder, cutoff)
+  );
+  state.http = preferredHttpEvidence(fetchSummary.http, state.http);
+  state.fetch = fetchSummary.fetch;
+  state.x = fetchSummary.x;
+  xProfileImageUrl = fetchSummary.xProfileImageUrl;
+
+  if (builder.kind === "X") {
+    state.stage = "icon";
+    const iconSeed = buildIconEvidenceSeed({
+      proposal,
+      sourceUrl: builder.fetchUrl ?? builder.sourceUrl ?? proposal.sourceUrl,
+      probe,
+      xProfileImageUrl,
+    });
+    state.icon = {
+      ...iconSeed,
+      downloaded: false,
+    };
+    state.icon = await resolveIconEvidence({
+      deps,
+      iconSeed,
+    });
+  }
 
   return deps.evaluateAiSourceAudit(
-    buildAuditInput({
+      buildAuditInput({
       proposal,
-      http: preferredHttpEvidence(
-        fetchSummary.http,
-        probeRecorder.observation(builder.fetchUrl ?? builder.sourceUrl ?? normalized.sourceUrl),
-      ),
-      resolver: {
-        ok: true,
-        finalUrl: normalized.sourceUrl,
-        status: null,
-      },
-      probe: {
-        ok: probe.ok,
-        finalUrl: probeRecorder.observation(normalized.sourceUrl).finalUrl,
-        status: probeRecorder.observation(normalized.sourceUrl).status,
-        robotsDenied: false,
-        loginRequired: false,
-      },
-      fetch: fetchSummary.fetch,
-      x: fetchSummary.x,
-      icon,
+      http: state.http,
+      resolver: state.resolver,
+      probe: state.probe,
+      fetch: state.fetch,
+      x: state.x,
+      icon: state.icon,
     }),
   );
 }
@@ -434,19 +486,17 @@ function buildAuditInput({
   };
 }
 
-async function resolveIconEvidence({
-  deps,
+function buildIconEvidenceSeed({
   proposal,
   sourceUrl,
   probe,
   xProfileImageUrl,
 }: {
-  deps: AuditDependencies;
   proposal: AiSourceReviewProposal;
   sourceUrl: string | null;
   probe: ProbeOutcome | null;
   xProfileImageUrl: string | null;
-}): Promise<AiSourceAuditInput["icon"]> {
+}): Omit<AiSourceAuditInput["icon"], "downloaded"> {
   const safeUrl = proposal.sourceType === "x"
     ? toSafeAvatarUrl(proposal.avatarUrl) ??
       toSafeAvatarUrl(probe?.enrichment.avatarUrl) ??
@@ -459,11 +509,23 @@ async function resolveIconEvidence({
           (fallbackDomain ? googleFaviconUrl(fallbackDomain) : null)
         );
       })();
-  const avatarDataUrl = await deps.resolveAvatarDataUrl(safeUrl);
 
   return {
     url: safeUrl,
     safeUrl: Boolean(safeUrl),
+  };
+}
+
+async function resolveIconEvidence({
+  deps,
+  iconSeed,
+}: {
+  deps: AuditDependencies;
+  iconSeed: Omit<AiSourceAuditInput["icon"], "downloaded">;
+}): Promise<AiSourceAuditInput["icon"]> {
+  const avatarDataUrl = await deps.resolveAvatarDataUrl(iconSeed.url);
+  return {
+    ...iconSeed,
     downloaded: Boolean(avatarDataUrl),
   };
 }
@@ -626,41 +688,62 @@ function normalizeRequestUrl(input: string | URL | Request): URL | null {
 
 function buildCandidateFailureResult(
   deps: AuditDependencies,
-  proposal: AiSourceReviewProposal,
+  state: AuditCandidateState,
   detail: string,
 ): AiSourceAuditResult {
+  const fetch =
+    state.stage === "icon"
+      ? state.fetch
+      : {
+          ...state.fetch,
+          hardFailure: true,
+          hardFailureDetail: detail,
+        };
+  const icon =
+    state.stage === "icon"
+      ? state.icon
+      : state.icon;
   return deps.evaluateAiSourceAudit(
     buildAuditInput({
-      proposal,
-      http: {
-        finalUrl: proposal.fetchUrl ?? proposal.sourceUrl,
-        status: null,
-      },
-      resolver: {
-        ok: true,
-        finalUrl: proposal.sourceUrl,
-        status: null,
-      },
-      probe: {
-        ok: true,
-        finalUrl: proposal.fetchUrl ?? proposal.sourceUrl,
-        status: null,
-        robotsDenied: false,
-        loginRequired: false,
-      },
-      fetch: {
-        ...emptyFetchEvidence(),
-        hardFailure: true,
-        hardFailureDetail: detail,
-      },
-      x: baseXEvidence(proposal.handle ?? null),
-      icon: {
-        url: null,
-        safeUrl: false,
-        downloaded: false,
-      },
+      proposal: state.proposal,
+      http: state.http,
+      resolver: state.resolver,
+      probe: state.probe,
+      fetch,
+      x: state.x,
+      icon,
     }),
   );
+}
+
+function createCandidateState(proposal: AiSourceReviewProposal): AuditCandidateState {
+  return {
+    stage: "resolution",
+    proposal,
+    http: {
+      finalUrl: null,
+      status: null,
+    },
+    resolver: {
+      ok: true,
+      finalUrl: proposal.sourceUrl,
+      status: null,
+    },
+    probe: {
+      ok: true,
+      finalUrl: null,
+      status: null,
+      robotsDenied: false,
+      loginRequired: false,
+    },
+    fetch: emptyFetchEvidence(),
+    x: baseXEvidence(proposal.handle ?? null),
+    icon: {
+      url: null,
+      safeUrl: false,
+      downloaded: false,
+    },
+  };
 }
 
 function stableAuditBuilderId(proposal: AiSourceReviewProposal, index: number): string {

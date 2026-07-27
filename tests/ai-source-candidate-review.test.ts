@@ -1114,7 +1114,7 @@ test("audit AI source candidate CLI rejects X when lookup resolves a different u
   assert.equal(parsed.results[0]?.x.resolvedHandle, "someoneElse");
 });
 
-test("audit AI source candidate CLI isolates candidate-local probe failures and still completes the full result set", async () => {
+test("audit AI source candidate CLI preserves observed evidence when a later candidate-local stage fails", async () => {
   assert.ok(
     existsSync(AUDIT_CLI_PATH),
     "scripts/audit-ai-source-candidates.ts must exist",
@@ -1135,9 +1135,15 @@ test("audit AI source candidate CLI isolates candidate-local probe failures and 
     },
     proposals: [
       {
-        name: "Broken Blog",
+        name: "Fetch Failure Blog",
         sourceType: "blog",
-        sourceUrl: "https://broken.example.com/blog",
+        sourceUrl: "https://fetch-failure.example.com/blog",
+      },
+      {
+        name: "Icon Failure X",
+        sourceType: "x",
+        sourceUrl: "https://x.com/iconfailure",
+        handle: "iconfailure",
       },
       {
         name: "Audit Blog",
@@ -1147,12 +1153,46 @@ test("audit AI source candidate CLI isolates candidate-local probe failures and 
     ],
     deps: {
       evaluateAiSourceAudit,
-      fetchImpl: async () =>
-        responseWithUrl(
+      fetchImpl: async (input: string | URL | Request) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (url === "https://fetch-failure.example.com/blog") {
+          return responseWithUrl(
+            '<!doctype html><html><head><title>Fetch Failure Blog</title><meta property="og:image" content="https://cdn.example.com/fetch-failure-icon.png" /></head><body>Fetch Failure Blog</body></html>',
+            { status: 200, headers: { "content-type": "text/html" } },
+            "https://www.fetch-failure.example.com/blog",
+          );
+        }
+        if (url.includes("/2/users/by/username/iconfailure")) {
+          return responseWithUrl(
+            JSON.stringify({
+              data: {
+                id: "user-icon-failure",
+                username: "iconfailure",
+                profile_image_url: "https://pbs.twimg.com/profile_images/iconfailure_normal.jpg",
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+            "https://api.x.com/2/users/by/username/iconfailure?user.fields=name,profile_image_url",
+          );
+        }
+        if (url === "https://x.com/iconfailure") {
+          return responseWithUrl(
+            '<!doctype html><html><head><title>Icon Failure X</title></head><body>Icon Failure X</body></html>',
+            { status: 200, headers: { "content-type": "text/html" } },
+            "https://x.com/iconfailure",
+          );
+        }
+        return responseWithUrl(
           `<?xml version="1.0"?><rss version="2.0"><channel><title>Audit Feed</title></channel></rss>`,
           { status: 200, headers: { "content-type": "application/rss+xml" } },
           "https://example.com/feed.xml",
-        ),
+        );
+      },
       resolvePersonalBuilderInput: async ({
         displayName,
         sourceType,
@@ -1161,22 +1201,56 @@ test("audit AI source candidate CLI isolates candidate-local probe failures and 
         displayName: string;
         sourceType: string;
         sourceValue: string;
-      }) => ({
-        ok: true as const,
-        value: {
-          kind: "BLOG",
-          sourceType,
-          name: displayName,
-          handle: null,
-          sourceUrl: sourceValue,
-          fetchUrl: sourceValue,
-        },
-      }),
-      probeAndEnrichSource: async ({ sourceUrl }: { sourceUrl: string | null }) => {
+      }) =>
+        sourceType === "x"
+          ? ({
+              ok: true as const,
+              value: {
+                kind: "X",
+                sourceType,
+                name: displayName,
+                handle: "iconfailure",
+                sourceUrl: sourceValue,
+                fetchUrl: null,
+              },
+            })
+          : ({
+              ok: true as const,
+              value: {
+                kind: "BLOG",
+                sourceType,
+                name: displayName,
+                handle: null,
+                sourceUrl: sourceValue,
+                fetchUrl: sourceValue,
+              },
+            }),
+      probeAndEnrichSource: async ({
+        sourceUrl,
+        fetcher,
+      }: {
+        sourceUrl: string | null;
+        fetcher?: (input: string) => Promise<Response>;
+      }) => {
+        if (sourceUrl) {
+          await fetcher?.(sourceUrl);
+        }
         if (sourceUrl?.includes("broken")) {
-          throw new Error(
-            "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local",
-          );
+          throw new Error("unreachable");
+        }
+        if (sourceUrl?.includes("fetch-failure")) {
+          return {
+            ok: true,
+            enrichment: {
+              avatarUrl: "https://cdn.example.com/fetch-failure-icon.png",
+            },
+          };
+        }
+        if (sourceUrl?.includes("iconfailure")) {
+          return {
+            ok: true,
+            enrichment: {},
+          };
         }
         return {
           ok: true,
@@ -1185,20 +1259,52 @@ test("audit AI source candidate CLI isolates candidate-local probe failures and 
           },
         };
       },
-      resolveAvatarDataUrl: async () => "data:image/png;base64,secret-avatar",
-      fetchPersonalBlogBuilderForTest: async () => ({
-        items: [],
-        agentTasks: [
-          {
-            type: "blog_article_fetch",
-            item: { publishedAt: "2026-07-01T00:00:00.000Z" },
-          },
-        ],
-      }),
-      fetchPersonalXBuilderForTest: async () => ({
-        items: [],
-        agentTasks: [],
-      }),
+      resolveAvatarDataUrl: async (avatarUrl: string | null) => {
+        if (avatarUrl?.includes("iconfailure")) {
+          throw new Error(
+            "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local",
+          );
+        }
+        return "data:image/png;base64,secret-avatar";
+      },
+      fetchPersonalBlogBuilderForTest: async (
+        builder: { name: string; fetchUrl?: string | null },
+        options: { fetcher?: (input: string) => Promise<Response> },
+      ) => {
+        if (builder.fetchUrl) {
+          await options.fetcher?.(builder.fetchUrl);
+        }
+        if (builder.name === "Fetch Failure Blog") {
+          throw new Error(
+            "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local",
+          );
+        }
+        return {
+          items: [],
+          agentTasks: [
+            {
+              type: "blog_article_fetch",
+              item: { publishedAt: "2026-07-01T00:00:00.000Z" },
+            },
+          ],
+        };
+      },
+      fetchPersonalXBuilderForTest: async (
+        _builder: { name: string; handle?: string | null },
+        options: { fetcher?: (input: string) => Promise<Response> },
+      ) => {
+        await options.fetcher?.(
+          "https://api.x.com/2/users/by/username/iconfailure?user.fields=description",
+        );
+        return {
+          items: [
+            {
+              publishedAt: "2026-07-20T00:00:00.000Z",
+            },
+          ],
+          agentTasks: [],
+        };
+      },
     },
   });
 
@@ -1213,16 +1319,60 @@ test("audit AI source candidate CLI isolates candidate-local probe failures and 
       accepted: boolean;
       reason: string | null;
       detail: string;
+      http: {
+        finalUrl: string | null;
+        status: number | null;
+      };
+      probe: {
+        finalUrl: string | null;
+        status: number | null;
+      };
+      icon: {
+        url: string | null;
+        downloaded: boolean;
+      };
     }>;
   };
 
   assert.equal(parsed.complete, true);
   assert.equal(parsed.runtimeError, null);
-  assert.equal(parsed.resultCount, 2);
+  assert.equal(parsed.resultCount, 3);
 
   const resultsByName = new Map(parsed.results.map((result) => [result.proposal.name, result]));
-  assert.equal(resultsByName.get("Broken Blog")?.accepted, false);
-  assert.equal(resultsByName.get("Broken Blog")?.reason, "hard_fetch_failed");
+  assert.equal(resultsByName.get("Fetch Failure Blog")?.accepted, false);
+  assert.equal(resultsByName.get("Fetch Failure Blog")?.reason, "hard_fetch_failed");
+  assert.equal(resultsByName.get("Fetch Failure Blog")?.probe.status, 200);
+  assert.equal(
+    resultsByName.get("Fetch Failure Blog")?.probe.finalUrl,
+    "https://www.fetch-failure.example.com/blog",
+  );
+  assert.equal(resultsByName.get("Fetch Failure Blog")?.http.status, 200);
+  assert.equal(
+    resultsByName.get("Fetch Failure Blog")?.http.finalUrl,
+    "https://www.fetch-failure.example.com/blog",
+  );
+  assert.equal(
+    resultsByName.get("Fetch Failure Blog")?.icon.url,
+    "https://cdn.example.com/fetch-failure-icon.png",
+  );
+  assert.equal(resultsByName.get("Fetch Failure Blog")?.icon.downloaded, true);
+  assert.equal(resultsByName.get("Icon Failure X")?.accepted, false);
+  assert.equal(resultsByName.get("Icon Failure X")?.reason, "icon_unavailable");
+  assert.equal(resultsByName.get("Icon Failure X")?.probe.status, 200);
+  assert.equal(
+    resultsByName.get("Icon Failure X")?.probe.finalUrl,
+    "https://x.com/iconfailure",
+  );
+  assert.equal(resultsByName.get("Icon Failure X")?.http.status, 200);
+  assert.equal(
+    resultsByName.get("Icon Failure X")?.http.finalUrl,
+    "https://api.x.com/2/users/by/username/iconfailure?user.fields=name,profile_image_url",
+  );
+  assert.equal(
+    resultsByName.get("Icon Failure X")?.icon.url,
+    "https://pbs.twimg.com/profile_images/iconfailure_normal.jpg",
+  );
+  assert.equal(resultsByName.get("Icon Failure X")?.icon.downloaded, false);
   assert.equal(resultsByName.get("Audit Blog")?.accepted, true);
 
   const serialized = JSON.stringify(parsed);
