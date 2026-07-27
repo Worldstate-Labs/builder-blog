@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Audit the 34 approved AI sources through FollowBrief's real fetch paths, add every passing source to the durable curated candidate library, materialize its production icon cache, and prove unrelated production candidates are unchanged.
+**Goal:** Audit the 41 approved AI sources through FollowBrief's real fetch paths, add every passing source to the durable curated candidate library, materialize its production icon cache, and prove unrelated production candidates are unchanged.
 
 **Architecture:** A review manifest records all proposed sources, while a reusable audit core evaluates real blog/X fetch results and a CLI supplies network and credential access. Only sources with a passing audit report are copied into the exported reviewed curated manifest. A separate transactional sync CLI imports the same seed builder as application seeding, then production verification and avatar backfill complete the rollout.
 
@@ -12,16 +12,16 @@
 
 ## File structure
 
-- Create `src/lib/ai-source-candidate-review.ts`: review types, the 34 proposed sources, deterministic audit pass/fail evaluation, and conversion to fetcher inputs.
+- Create `src/lib/ai-source-candidate-review.ts`: review types, the 41 proposed sources, deterministic audit pass/fail evaluation, and conversion to fetcher inputs.
 - Create `scripts/audit-ai-source-candidates.ts`: production-equivalent network audit CLI; calls resolver/probe, the real blog/X fetchers, and icon download logic; emits JSON.
 - Create `scripts/sync-reviewed-ai-source-candidates.ts`: transactional, idempotent production upsert and unrelated-row snapshot verification.
 - Modify `src/lib/source-candidate-library.ts`: export the curated candidate type, reviewed manifest, seed namespace, and shared seed builder; include only audit-passing records.
 - Create `tests/ai-source-candidate-review.test.ts`: manifest completeness, audit semantics, source-type, canonical-key, icon, and duplicate regression tests.
 - Create `tests/reviewed-ai-source-candidate-sync.test.ts`: transaction, idempotence, avatar-cache preservation, and unrelated-row protection tests.
 - Modify `package.json`: add stable audit and sync commands.
-- Create `docs/superpowers/reports/2026-07-27-ai-source-candidate-audit.json`: sanitized evidence for all 34 requested sources, including exclusions.
+- Create `docs/superpowers/reports/2026-07-27-ai-source-candidate-audit.json`: sanitized evidence for all 41 requested sources, including exclusions.
 
-### Task 1: Lock the 34-source review contract
+### Task 1: Lock the 41-source review contract
 
 **Files:**
 - Create: `tests/ai-source-candidate-review.test.ts`
@@ -32,7 +32,7 @@
 Create tests that import `AI_SOURCE_REVIEW_PROPOSALS` and assert:
 
 ```ts
-assert.equal(AI_SOURCE_REVIEW_PROPOSALS.length, 34);
+assert.equal(AI_SOURCE_REVIEW_PROPOSALS.length, 41);
 assert.deepEqual(
   new Set(AI_SOURCE_REVIEW_PROPOSALS.map((candidate) => candidate.name)),
   new Set([
@@ -70,6 +70,13 @@ assert.deepEqual(
     "Thomas Wolf",
     "Ilya Sutskever",
     "Dario Amodei",
+    "Thibault Sottiaux",
+    "Nan Yu",
+    "Madhu Guru",
+    "Amjad Masad",
+    "Guillermo Rauch",
+    "Aaron Levie",
+    "Matt Turck",
   ]),
 );
 for (const candidate of AI_SOURCE_REVIEW_PROPOSALS) {
@@ -77,6 +84,35 @@ for (const candidate of AI_SOURCE_REVIEW_PROPOSALS) {
   assert.match(candidate.sourceUrl, /^https:\/\//);
   if (candidate.sourceType === "x") assert.ok(candidate.handle);
 }
+```
+
+Assert the seven newly supplied X sources use these exact profile handles:
+
+```ts
+assert.deepEqual(
+  Object.fromEntries(
+    AI_SOURCE_REVIEW_PROPOSALS
+      .filter(({ name }) => [
+        "Thibault Sottiaux",
+        "Nan Yu",
+        "Madhu Guru",
+        "Amjad Masad",
+        "Guillermo Rauch",
+        "Aaron Levie",
+        "Matt Turck",
+      ].includes(name))
+      .map(({ name, handle }) => [name, handle]),
+  ),
+  {
+    "Thibault Sottiaux": "thsottiaux",
+    "Nan Yu": "thenanyu",
+    "Madhu Guru": "realmadhuguru",
+    "Amjad Masad": "amasad",
+    "Guillermo Rauch": "rauchg",
+    "Aaron Levie": "levie",
+    "Matt Turck": "mattturck",
+  },
+);
 ```
 
 Also assert there are no `website` or generic GitHub-profile proposals.
@@ -107,7 +143,7 @@ export type AiSourceReviewProposal = {
 };
 
 export const AI_SOURCE_REVIEW_PROPOSALS = [
-  // Exactly the 34 approved names, each with its proposed official canonical URL.
+  // Exactly the 41 approved names, each with its proposed official canonical URL.
 ] as const satisfies readonly AiSourceReviewProposal[];
 ```
 
@@ -302,7 +338,7 @@ vercel env pull /tmp/followbrief-ai-source-audit.env --environment=production --
 
 Never print the token value.
 
-- [ ] **Step 2: Run the network audit for all 34 proposals**
+- [ ] **Step 2: Run the network audit for all 41 proposals**
 
 Run with a production-equivalent environment:
 
@@ -310,7 +346,7 @@ Run with a production-equivalent environment:
 npx tsx --env-file-if-exists=/tmp/followbrief-ai-source-audit.env scripts/audit-ai-source-candidates.ts > /tmp/ai-source-candidate-audit.json
 ```
 
-Expected: valid JSON with exactly 34 results and a deterministic accepted/excluded outcome for each source.
+Expected: valid JSON with exactly 41 results and a deterministic accepted/excluded outcome for each source.
 
 - [ ] **Step 3: Manually inspect every result**
 
@@ -330,7 +366,7 @@ For each excluded source preserve its exact reason in the report. Do not weaken 
 Add tests that load the sanitized audit report and assert:
 
 ```ts
-assert.equal(report.results.length, 34);
+assert.equal(report.results.length, 41);
 assert.deepEqual(
   new Set(REVIEWED_AI_SOURCE_CANDIDATES.map(({ name }) => name)),
   new Set(report.results.filter(({ accepted }) => accepted).map(({ name }) => name)),

@@ -9,7 +9,7 @@ that the existing FollowBrief fetch path can acquire current content.
 
 ## Scope
 
-Review these 34 requested sources:
+Review these 41 requested sources:
 
 1. One Useful Thing
 2. Chip Huyen
@@ -45,6 +45,19 @@ Review these 34 requested sources:
 32. Thomas Wolf
 33. Ilya Sutskever
 34. Dario Amodei
+35. Thibault Sottiaux
+36. Nan Yu
+37. Madhu Guru
+38. Amjad Masad
+39. Guillermo Rauch
+40. Aaron Levie
+41. Matt Turck
+
+The seven additions from 35–41 are X candidates with proposed official handles
+`thsottiaux`, `thenanyu`, `realmadhuguru`, `amasad`, `rauchg`, `levie`, and
+`mattturck`. The user-supplied posts are identity/activity evidence only; the
+candidate URLs remain the profile URLs and must still pass authenticated API
+lookup plus the real timeline fetch.
 
 The existing candidate library is the comparison baseline. Exact canonical-key
 duplicates must be updated rather than inserted, and an existing equivalent
@@ -146,7 +159,7 @@ private, empty, or login-only sources are excluded and reported.
 
 ## Implementation
 
-1. Add the 34 requested sources to a review manifest consumed by
+1. Add the 41 requested sources to a review manifest consumed by
    `scripts/audit-ai-source-candidates.ts`; each entry contains the proposed
    canonical name, source URL, optional fetch URL/handle, and expected type.
 2. Discover official canonical pages and RSS/Atom endpoints.
