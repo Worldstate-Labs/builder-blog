@@ -215,6 +215,8 @@ test("all copied prompts install with bounded Node fetch before consuming the ex
     assert.ok(exchangeIndex > installIndex, `${job} must install before exchange`);
     assert.ok(stepTwoIndex > exchangeIndex, `${job} must exchange before step 2`);
     assert.match(content, /AbortController/);
+    assert.match(content, /maxAttempts\s*=\s*4/);
+    assert.match(content, /error\?\.cause/);
     assert.doesNotMatch(content, /curl -fsSL/);
     assert.doesNotMatch(content, /\{\{EXCHANGE_BLOCK\}\}/);
   }
@@ -314,6 +316,8 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.match(parent, /Next: Queue the OpenClaw initial run and schedule install\./);
   assert.match(parent, /OPENCLAW_CHILD_SETUP_PROMPT_URL='https:\/\/followbrief\.example\/api\/skill\/jobs\/library-cron-setup\/skill\.md\?openclaw_setup_child=1&setup_account=openclaw%40example\.com&runtime=openclaw/);
   assert.match(parent, /AbortController/);
+  assert.match(parent, /maxAttempts\s*=\s*4/);
+  assert.match(parent, /error\?\.cause/);
   assert.doesNotMatch(parent, /curl -fsSL/);
   assert.match(parent, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
   assert.doesNotMatch(parent, /Run this queued FollowBrief setup continuation/);

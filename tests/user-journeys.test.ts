@@ -500,12 +500,16 @@ test("web app serves the agent skill and setup command", () => {
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
   const runner = readFileSync("scripts/builder-agent-runner.sh", "utf8");
   const skillFileRoute = readFileSync("src/app/api/skill/files/[file]/route.ts", "utf8");
+  const agentSkillFileService = readFileSync("src/lib/agent-skill-files.ts", "utf8");
+  const skillFileSurface = `${skillFileRoute}\n${agentSkillFileService}`;
   const skillJobRoute = readFileSync("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
   const skillPromptRenderer = readFileSync("src/lib/agent-prompt-renderer.ts", "utf8");
   const skillPromptSurface = `${skillJobRoute}\n${skillPromptRenderer}`;
   const skillJobAliasRoute = readFileSync("src/app/api/skill/jobs/[job]/route.ts", "utf8");
   const skillJobFiles = readFileSync("src/lib/skill-job-files.ts", "utf8");
   const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
+  const skillBundleRoute = readFileSync("src/app/api/skill/bundle/route.ts", "utf8");
+  const skillBundleInstaller = readFileSync("scripts/install-agent-skill-bundle.cjs", "utf8");
   const libraryOncePrompt = readFileSync("skills/builder-blog-digest/jobs/library-once.md", "utf8");
   const digestOncePrompt = readFileSync("skills/builder-blog-digest/jobs/digest-once.md", "utf8");
   const libraryCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-setup.md", "utf8");
@@ -794,11 +798,11 @@ test("web app serves the agent skill and setup command", () => {
   // {{FETCH_FLAG}} bakes the one-time override choice into the runner env; the
   // files route neutralizes it to "" for the cached prompt copy.
   assert.match(skillPromptRenderer, /\{\{FETCH_FLAG\}\}/);
-  assert.match(skillFileRoute, /\{\{FETCH_FLAG\}\}/);
-  assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
-  assert.match(skillFileRoute, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
-  assert.match(skillFileRoute, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
-  assert.match(skillFileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
+  assert.match(skillFileSurface, /\{\{FETCH_FLAG\}\}/);
+  assert.match(skillFileSurface, /\{\{FETCH_DAYS\}\}/);
+  assert.match(skillFileSurface, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
+  assert.match(skillFileSurface, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
+  assert.match(skillFileSurface, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
   // cron-setup prompts generate an anchor-aligned schedule after the
   // validation run passes, then install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /schedule-spec/);
@@ -992,7 +996,7 @@ test("web app serves the agent skill and setup command", () => {
   // Scheduled source fetch is runner-owned now. There is no library-cron prompt
   // file; discovery and worker prompts are the only agent payloads for fetch work.
   assert.doesNotMatch(skillJobFiles, /"library-cron":/);
-  assert.doesNotMatch(skillFileRoute, /builder-blog-library-cron\.md/);
+  assert.doesNotMatch(skillFileSurface, /builder-blog-library-cron\.md/);
   assert.doesNotMatch(runner, /builder-blog-library-cron\.md/);
   assert.doesNotMatch(bootstrapRoute, /builder-blog-library-cron\.md/);
   const libraryDiscoveryPrompt = readFileSync(
@@ -1063,7 +1067,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryWorkerExpanded, /task\.builderSync/);
   assert.match(libraryWorkerExpanded, /Do not add new sources, URLs, or feed items/);
   // Both routes expand includes.
-  assert.match(skillFileRoute, /expandSkillIncludes/);
+  assert.match(skillFileSurface, /expandSkillIncludes/);
   assert.match(skillPromptRenderer, /expandSkillIncludes/);
   // The shared fragment is read at runtime via readFile, so it MUST be in
   // outputFileTracingIncludes for both routes that expand includes — else
@@ -1078,14 +1082,19 @@ test("web app serves the agent skill and setup command", () => {
     nextConfig.indexOf("const promptRuntimeTraceFiles"),
     nextConfig.indexOf("const nextConfig"),
   );
+  const completeRuntimeTraceDefinition = nextConfig.slice(
+    nextConfig.indexOf("const completeAgentRuntimeTraceFiles"),
+    nextConfig.indexOf("const nextConfig"),
+  );
   assert.match(
     promptRuntimeTraceDefinition,
     /\.\/skills\/builder-blog-digest\/jobs\/\*\.md/,
   );
   assert.match(promptRuntimeTraceDefinition, /\.\/config\/local-agent-timeouts\.json/);
-  assert.match(tracingForFilesRoute, /\.\.\.promptRuntimeTraceFiles/);
+  assert.match(tracingForFilesRoute, /completeAgentRuntimeTraceFiles/);
+  assert.match(completeRuntimeTraceDefinition, /\.\.\.promptRuntimeTraceFiles/);
   const registeredSkillFilePaths = [
-    ...skillFileRoute.matchAll(/path: "([^"]+)"/g),
+    ...skillFileSurface.matchAll(/sourcePath: "([^"]+)"/g),
   ].map((match) => match[1]);
   assert.ok(registeredSkillFilePaths.length >= 10, "expected skillFiles to parse");
   for (const file of registeredSkillFilePaths) {
@@ -1097,7 +1106,7 @@ test("web app serves the agent skill and setup command", () => {
     }
     if (file === "config/local-agent-timeouts.json") continue;
     assert.ok(
-      tracingForFilesRoute.includes(`"./${file}"`),
+      completeRuntimeTraceDefinition.includes(`"./${file}"`),
       `next.config.ts outputFileTracingIncludes for the files route is missing ${file} — that asset will 500 (ENOENT) on Vercel`,
     );
   }
@@ -1596,33 +1605,46 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /process\.exit\(78\)/);
   assert.match(runner, /refresh_skill_files/);
   assert.match(runner, /download_skill_file\(\)/);
+  assert.match(runner, /install-agent-skill-bundle\.cjs/);
+  assert.match(runner, /api\/skill\/bundle/);
   assert.match(runner, /AbortController/);
   assert.match(runner, /timed out while downloading/);
+  assert.match(runner, /current = current\.cause/);
   assert.doesNotMatch(runner, /curl -fsSL/);
   assert.match(runner, /mv "\$_tmp" "\$_dest"/);
-  assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
-  assert.match(runner, /api\/skill\/files\/cloud-shard-budget\.mjs/);
-  assert.match(runner, /api\/skill\/files\/local-agent-timeouts\.json/);
+  assert.doesNotMatch(
+    runner,
+    /download_skill_file "\$APP_URL\/api\/skill\/files\/builder-digest\.mjs"/,
+  );
+  assert.doesNotMatch(
+    runner,
+    /download_skill_file "\$APP_URL\/api\/skill\/files\/local-agent-timeouts\.json"/,
+  );
   assert.doesNotMatch(
     runner,
     /curl -fsSL "\$APP_URL\/api\/skill\/files\/builder-digest\.mjs" -o "\$AGENT_DIR\/builder-digest\.mjs"/,
   );
-  assert.match(bootstrapRoute, /download_skill_file\(\)/);
-  assert.match(bootstrapRoute, /mv "\$_tmp" "\$_dest"/);
-  assert.doesNotMatch(skillFileRoute, /builder-blog-digest\.md/);
-  assert.match(skillFileRoute, /builder-blog-library-once\.md/);
-  assert.match(skillFileRoute, /builder-blog-digest-once\.md/);
-  assert.match(skillFileRoute, /builder-blog-library-cron-setup\.md/);
-  assert.match(skillFileRoute, /builder-blog-digest-cron-setup\.md/);
-  assert.doesNotMatch(skillFileRoute, /builder-blog-library-cron\.md/);
-  assert.match(skillFileRoute, /builder-blog-cloud-library-host\.md/);
-  assert.match(skillFileRoute, /builder-blog-digest-cron\.md/);
-  assert.match(skillFileRoute, /builder-blog-library-worker\.md/);
-  assert.match(skillFileRoute, /builder-blog-library-discovery\.md/);
-  assert.match(skillFileRoute, /builder-agent-runner\.sh/);
-  assert.match(skillFileRoute, /builder-digest\.mjs/);
-  assert.match(skillFileRoute, /cloud-shard-budget\.mjs/);
-  assert.match(skillFileRoute, /local-agent-timeouts\.json/);
+  assert.match(bootstrapRoute, /api\/skill\/bundle/);
+  assert.match(bootstrapRoute, /install-agent-skill-bundle\.cjs/);
+  assert.doesNotMatch(bootstrapRoute, /download_skill_file\(\)/);
+  assert.match(skillBundleRoute, /buildAgentSkillBundle/);
+  assert.match(skillBundleInstaller, /installBundlePayload/);
+  assert.match(skillBundleInstaller, /bundleId/);
+  assert.match(skillBundleInstaller, /sha256/);
+  assert.doesNotMatch(skillFileSurface, /builder-blog-digest\.md/);
+  assert.match(skillFileSurface, /builder-blog-library-once\.md/);
+  assert.match(skillFileSurface, /builder-blog-digest-once\.md/);
+  assert.match(skillFileSurface, /builder-blog-library-cron-setup\.md/);
+  assert.match(skillFileSurface, /builder-blog-digest-cron-setup\.md/);
+  assert.doesNotMatch(skillFileSurface, /builder-blog-library-cron\.md/);
+  assert.match(skillFileSurface, /builder-blog-cloud-library-host\.md/);
+  assert.match(skillFileSurface, /builder-blog-digest-cron\.md/);
+  assert.match(skillFileSurface, /builder-blog-library-worker\.md/);
+  assert.match(skillFileSurface, /builder-blog-library-discovery\.md/);
+  assert.match(skillFileSurface, /builder-agent-runner\.sh/);
+  assert.match(skillFileSurface, /builder-digest\.mjs/);
+  assert.match(skillFileSurface, /cloud-shard-budget\.mjs/);
+  assert.match(skillFileSurface, /local-agent-timeouts\.json/);
   assert.match(skillJobFiles, /library-once/);
   assert.match(skillJobFiles, /digest-once/);
   assert.match(skillJobFiles, /cloud-library-host/);
@@ -1632,32 +1654,21 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobAliasRoute, /jobSkillFiles/);
   assert.match(skillJobAliasRoute, /rel="canonical"/);
   assert.doesNotMatch(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/cloud-shard-budget\.mjs/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-cloud-library-host\.md/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);
+  assert.doesNotMatch(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
+  assert.doesNotMatch(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);
   assert.match(bootstrapRoute, /command -v node/);
   assert.match(bootstrapRoute, /FollowBrief requires Node\.js 20 or newer/);
-  assert.match(bootstrapRoute, /AbortController/);
-  assert.match(bootstrapRoute, /timed out while downloading/);
+  assert.match(skillBundleInstaller, /AbortController/);
+  assert.match(skillBundleInstaller, /FollowBrief bundle download failed/);
   assert.doesNotMatch(bootstrapRoute, /command -v curl/);
   assert.doesNotMatch(bootstrapRoute, /curl -fsSL/);
-  assert.match(bootstrapRoute, /jobs\/library-once\.md/);
-  assert.match(bootstrapRoute, /jobs\/digest-once\.md/);
-  assert.match(bootstrapRoute, /jobs\/library-cron-setup\.md/);
-  assert.match(bootstrapRoute, /jobs\/digest-cron-setup\.md/);
-  assert.doesNotMatch(bootstrapRoute, /jobs\/library-cron\.md/);
-  assert.match(bootstrapRoute, /jobs\/digest-cron\.md/);
-  assert.match(bootstrapRoute, /jobs\/library-worker\.md/);
-  assert.match(bootstrapRoute, /jobs\/library-discovery\.md/);
   assert.match(bootstrapRoute, /Copy prompt button in the web app/);
   // F9: config/sources.json is the single source of truth for content-quality
   // floors / url patterns. bootstrap downloads it so the once-flow (bootstrap →
   // direct CLI, no runner) always has it locally, and the CLI carries NO
   // embedded fallback — a missing file fails loud with an actionable bootstrap
   // hint instead of silently running on guessed values.
-  assert.match(bootstrapRoute, /api\/skill\/files\/sources\.json/);
+  assert.match(skillBundleRoute, /buildAgentSkillBundle/);
   assert.doesNotMatch(cli, /disallowedPrimarySources:\s*\[/);
   assert.match(cli, /const path = sourcesConfigPath\(\)/);
   assert.match(cli, /Could not read \$\{path\}/);
@@ -1685,8 +1696,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryWorkerExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
   assert.match(libraryWorkerExpanded, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryWorkerExpanded, /[Dd]o not stop\s+just because one extraction method fails/);
-  assert.match(runner, /builder-blog-library-worker\.md/);
-  assert.match(runner, /builder-blog-library-discovery\.md/);
+  assert.match(skillFileSurface, /builder-blog-library-worker\.md/);
+  assert.match(skillFileSurface, /builder-blog-library-discovery\.md/);
   assert.doesNotMatch(digestCronPrompt, /builder-digest\.mjs" prepare/);
   assert.match(runner, /builder-digest\.mjs" prepare \$\{BUILDER_BLOG_DIGEST_REGENERATE:-\}/);
   assert.doesNotMatch(digestCronPrompt, /prepare --days/);

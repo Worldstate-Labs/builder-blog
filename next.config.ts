@@ -51,6 +51,14 @@ const promptRuntimeTraceFiles = [
   "./skills/builder-blog-digest/jobs/*.md",
   "./config/local-agent-timeouts.json",
 ];
+const completeAgentRuntimeTraceFiles = [
+  "./scripts/builder-digest.mjs",
+  "./scripts/builder-agent-runner.sh",
+  "./scripts/cloud-shard-budget.mjs",
+  "./scripts/install-agent-skill-bundle.cjs",
+  "./config/sources.json",
+  ...promptRuntimeTraceFiles,
+];
 
 const nextConfig: NextConfig = {
   async redirects() {
@@ -82,13 +90,9 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   outputFileTracingIncludes: {
-    "/api/skill/files/[file]": [
-      "./scripts/builder-digest.mjs",
-      "./scripts/builder-agent-runner.sh",
-      "./scripts/cloud-shard-budget.mjs",
-      "./config/sources.json",
-      ...promptRuntimeTraceFiles,
-    ],
+    "/api/skill/files/[file]": completeAgentRuntimeTraceFiles,
+    "/api/skill/bundle": completeAgentRuntimeTraceFiles,
+    "/api/skill/bootstrap": ["./scripts/install-agent-skill-bundle.cjs"],
     "/api/skill/jobs/[job]/skill.md": promptRuntimeTraceFiles,
     "/p/[token]": promptRuntimeTraceFiles,
   },

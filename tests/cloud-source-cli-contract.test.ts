@@ -371,19 +371,23 @@ test("cloud fetch command is exposed and keeps worker-facing task shape", async 
 
 test("shared cloud budget module is shipped through the skill file and bootstrap surfaces", async () => {
   const fileRoute = await readFile("src/app/api/skill/files/[file]/route.ts", "utf8");
+  const skillFiles = await readFile("src/lib/agent-skill-files.ts", "utf8");
+  const bundleRoute = await readFile("src/app/api/skill/bundle/route.ts", "utf8");
   const bootstrapRoute = await readFile("src/app/api/skill/bootstrap/route.ts", "utf8");
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
 
-  assert.match(fileRoute, /"cloud-shard-budget\.mjs"/);
-  assert.match(fileRoute, /path: "scripts\/cloud-shard-budget\.mjs"/);
-  assert.match(bootstrapRoute, /api\/skill\/files\/cloud-shard-budget\.mjs/);
-  assert.match(bootstrapRoute, /"\$AGENT_DIR\/cloud-shard-budget\.mjs"/);
-  assert.match(runner, /api\/skill\/files\/cloud-shard-budget\.mjs/);
-  assert.match(runner, /"\$AGENT_DIR\/cloud-shard-budget\.mjs"/);
+  assert.match(fileRoute, /readAgentSkillFile/);
+  assert.match(skillFiles, /"cloud-shard-budget\.mjs"/);
+  assert.match(skillFiles, /sourcePath: "scripts\/cloud-shard-budget\.mjs"/);
+  assert.match(skillFiles, /target: "cloud-shard-budget\.mjs"/);
+  assert.match(bundleRoute, /buildAgentSkillBundle/);
+  assert.match(bootstrapRoute, /api\/skill\/bundle/);
+  assert.match(runner, /api\/skill\/bundle/);
 });
 
 test("cloud library runner reuses the library worker pipeline with cloud fetch and sync commands", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const skillFiles = await readFile("src/lib/agent-skill-files.ts", "utf8");
 
   assert.match(runner, /cloud-library-cron/);
   assert.match(runner, /fetch-cloud-library/);
@@ -433,7 +437,8 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /cloud_host_sleep_with_heartbeat/);
   assert.match(runner, /BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1/);
   assert.match(runner, /run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result\.json "cloud library host"/);
-  assert.match(runner, /builder-blog-cloud-library-host\.md" "\$AGENT_DIR\/jobs\/cloud-library-host\.md"/);
+  assert.match(skillFiles, /"builder-blog-cloud-library-host\.md"/);
+  assert.match(skillFiles, /target: "jobs\/cloud-library-host\.md"/);
   assert.doesNotMatch(runner, /BUILDER_BLOG_CLOUD_HOST_CHILD/);
 });
 
@@ -2152,6 +2157,7 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
   const renderer = await readFile("src/lib/agent-prompt-renderer.ts", "utf8");
   const fileRoute = await readFile("src/app/api/skill/files/[file]/route.ts", "utf8");
+  const skillFiles = await readFile("src/lib/agent-skill-files.ts", "utf8");
   const bootstrapRoute = await readFile("src/app/api/skill/bootstrap/route.ts", "utf8");
   const jobFiles = await readFile("src/lib/skill-job-files.ts", "utf8");
   const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
@@ -2195,12 +2201,12 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(route, /const parallelMax = 20/);
   assert.doesNotMatch(renderer, /\{\{CLOUD_FETCH_LIMIT\}\}/);
   assert.match(renderer, /\{\{FETCH_LIMIT\}\}/);
-  assert.match(fileRoute, /builder-blog-cloud-library-host\.md/);
-  assert.match(fileRoute, /skills\/builder-blog-digest\/jobs\/cloud-library-host\.md/);
-  assert.match(fileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
-  assert.doesNotMatch(fileRoute, /asset\.path\.includes\("cloud-library"\) \? "1"/);
-  assert.match(bootstrapRoute, /builder-blog-cloud-library-host\.md/);
-  assert.match(bootstrapRoute, /jobs\/cloud-library-host\.md/);
+  assert.match(fileRoute, /readAgentSkillFile/);
+  assert.match(skillFiles, /builder-blog-cloud-library-host\.md/);
+  assert.match(skillFiles, /skills\/builder-blog-digest\/jobs\/cloud-library-host\.md/);
+  assert.match(skillFiles, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
+  assert.doesNotMatch(skillFiles, /asset\.path\.includes\("cloud-library"\) \? "1"/);
+  assert.match(bootstrapRoute, /api\/skill\/bundle/);
   assert.match(jobFiles, /"cloud-library-host":/);
   assert.match(jobFiles, /cloud-library-host\.md/);
   assert.match(jobFiles, /"cloud-library-cron-stop":/);

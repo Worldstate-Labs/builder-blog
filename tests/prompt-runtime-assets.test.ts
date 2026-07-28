@@ -6,12 +6,23 @@ import nextConfig from "../next.config";
 const PROMPT_RENDER_ROUTES = [
   "/p/[token]",
   "/api/skill/jobs/[job]/skill.md",
+] as const;
+const COMPLETE_AGENT_RUNTIME_ROUTES = [
   "/api/skill/files/[file]",
+  "/api/skill/bundle",
 ] as const;
 
 const PROMPT_RUNTIME_ASSETS = [
   "./skills/builder-blog-digest/jobs/*.md",
   "./config/local-agent-timeouts.json",
+] as const;
+const COMPLETE_AGENT_RUNTIME_ASSETS = [
+  "./scripts/builder-digest.mjs",
+  "./scripts/builder-agent-runner.sh",
+  "./scripts/cloud-shard-budget.mjs",
+  "./scripts/install-agent-skill-bundle.cjs",
+  "./config/sources.json",
+  ...PROMPT_RUNTIME_ASSETS,
 ] as const;
 
 const tracing = nextConfig.outputFileTracingIncludes as
@@ -32,6 +43,30 @@ for (const route of PROMPT_RENDER_ROUTES) {
     }
   });
 }
+
+for (const route of COMPLETE_AGENT_RUNTIME_ROUTES) {
+  test(`${route} traces the complete downloadable agent runtime`, () => {
+    assert.ok(tracing, "next.config.ts must declare outputFileTracingIncludes");
+
+    const routeAssets = tracing[route];
+    assert.ok(routeAssets, `${route} must declare runtime assets`);
+    for (const asset of COMPLETE_AGENT_RUNTIME_ASSETS) {
+      assert.ok(
+        routeAssets.includes(asset),
+        `${route} must trace ${asset}`,
+      );
+    }
+  });
+}
+
+test("bootstrap route traces the embedded bundle installer", () => {
+  assert.ok(tracing, "next.config.ts must declare outputFileTracingIncludes");
+  assert.ok(
+    tracing["/api/skill/bootstrap"]?.includes(
+      "./scripts/install-agent-skill-bundle.cjs",
+    ),
+  );
+});
 
 test("local and Vercel production builds verify the emitted prompt traces", () => {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {

@@ -76,10 +76,33 @@ const { writeFileSync } = require("node:fs");
 const url = process.argv[2];
 const destination = process.argv[3];
 const timeoutMs = 20_000;
-const maxAttempts = 2;
+const maxAttempts = 4;
+const retryBaseMs = 1_000;
+
+function formatErrorCause(error) {
+  const parts = [];
+  const seen = new Set();
+  let current = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const code = typeof current.code === "string" ? current.code : "";
+    const message =
+      typeof current.message === "string" && current.message.trim()
+        ? current.message.trim()
+        : "";
+    const label = [code, message].filter(Boolean).join(": ");
+    if (label && !parts.includes(label)) parts.push(label);
+    current = current.cause;
+  }
+  return parts.length > 0 ? parts.reverse().join(" <- ") : String(error || "unknown error");
+}
+
+function isRetryableStatus(status) {
+  return status === 408 || status === 429 || status >= 500;
+}
 
 async function download() {
-  let lastError;
+  const startedAt = Date.now();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
@@ -88,7 +111,13 @@ async function download() {
     try {
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const error = Object.assign(new Error(`HTTP ${response.status}`), {
+          status: response.status,
+        });
+        if (!isRetryableStatus(response.status)) {
+          throw Object.assign(error, { noRetry: true });
+        }
+        throw error;
       }
 
       const body = Buffer.from(await response.arrayBuffer());
@@ -99,20 +128,24 @@ async function download() {
       writeFileSync(destination, body);
       return;
     } catch (error) {
-      lastError =
-        error && error.name === "AbortError"
-          ? new Error(`timed out while downloading after ${timeoutMs / 1000}s`)
-          : error;
-      if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      if (error?.noRetry || attempt === maxAttempts) {
+        const reason =
+          error?.name === "AbortError"
+            ? `timed out while downloading after ${timeoutMs / 1000}s`
+            : formatErrorCause(error);
+        throw new Error(
+          `FollowBrief download failed for ${url}: ${reason}; ` +
+            `attempt ${attempt}/${maxAttempts}; elapsed ${Date.now() - startedAt}ms`,
+          { cause: error },
+        );
       }
+      await new Promise((resolve) =>
+        setTimeout(resolve, retryBaseMs * 2 ** (attempt - 1)),
+      );
     } finally {
       clearTimeout(timeout);
     }
   }
-
-  const reason = lastError instanceof Error ? lastError.message : String(lastError);
-  throw new Error(`FollowBrief download failed for ${url}: ${reason}`);
 }
 
 download().catch((error) => {
@@ -122,15 +155,9 @@ download().catch((error) => {
 NODE
 }
 
-# Self-update: pull the latest runner and, if it changed, atomically swap it
-# in and re-exec, so scheduled jobs pick up runner fixes from the server
-# without the user re-running setup. refresh_skill_files below already keeps
-# the CLI, prompts (with server-expanded includes), and sources.json current
-# every run; the runner is the one file it can't refresh in place, so it
-# self-updates here. The temp+rename+exec pattern is safe: the running shell
-# keeps reading the old (now-unlinked) inode while exec hands off to the new
-# file — unlike an in-place `curl -o` over a running script. Guarded against
-# a re-exec loop by BUILDER_BLOG_RUNNER_UPDATED.
+# Self-update remains a one-file compatibility bridge for previously installed
+# runners. Once the current runner is active, refresh_skill_files installs the
+# complete validated runtime in one bundle request.
 self_update_and_reexec() {
   if [ -n "${BUILDER_BLOG_RUNNER_UPDATED:-}" ]; then return 0; fi
   _self="$AGENT_DIR/builder-agent-runner.sh"
@@ -165,20 +192,13 @@ fi
 
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
-  download_skill_file "$APP_URL/api/skill/files/builder-digest.mjs" "$AGENT_DIR/builder-digest.mjs"
-  download_skill_file "$APP_URL/api/skill/files/cloud-shard-budget.mjs" "$AGENT_DIR/cloud-shard-budget.mjs"
-  download_skill_file "$APP_URL/api/skill/files/sources.json" "$AGENT_DIR/sources.json"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-once.md" "$AGENT_DIR/jobs/library-once.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-once.md" "$AGENT_DIR/jobs/digest-once.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" "$AGENT_DIR/jobs/library-cron-setup.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" "$AGENT_DIR/jobs/digest-cron-setup.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-cloud-library-cron.md" "$AGENT_DIR/jobs/cloud-library-cron.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-cloud-library-host.md" "$AGENT_DIR/jobs/cloud-library-host.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
-  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
-  download_skill_file "$APP_URL/api/skill/files/local-agent-timeouts.json" "$AGENT_DIR/local-agent-timeouts.json"
-  chmod +x "$AGENT_DIR/builder-digest.mjs"
+  _bundle_installer="$AGENT_DIR/install-agent-skill-bundle.cjs"
+  if [ ! -s "$_bundle_installer" ]; then
+    download_skill_file \
+      "$APP_URL/api/skill/files/install-agent-skill-bundle.cjs" \
+      "$_bundle_installer"
+  fi
+  node "$_bundle_installer" "$APP_URL/api/skill/bundle" "$AGENT_DIR"
 }
 
 download_skill_file() {

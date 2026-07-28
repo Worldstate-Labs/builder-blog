@@ -9,26 +9,55 @@ const promptDirectory = resolve(
   projectRoot,
   "skills/builder-blog-digest/jobs",
 );
-const expectedAssets = readdirSync(promptDirectory)
+const promptAssets = readdirSync(promptDirectory)
   .filter((file) => file.endsWith(".md"))
   .map((file) => resolve(promptDirectory, file))
   .concat(resolve(projectRoot, "config/local-agent-timeouts.json"));
+const installerAsset = resolve(
+  projectRoot,
+  "scripts/install-agent-skill-bundle.cjs",
+);
+const completeAgentRuntimeAssets = [
+  resolve(projectRoot, "scripts/builder-digest.mjs"),
+  resolve(projectRoot, "scripts/builder-agent-runner.sh"),
+  resolve(projectRoot, "scripts/cloud-shard-budget.mjs"),
+  installerAsset,
+  resolve(projectRoot, "config/sources.json"),
+  ...promptAssets,
+];
 
 const traceManifests = {
-  "short prompt link": ".next/server/app/p/[token]/route.js.nft.json",
-  "prompt job route":
-    ".next/server/app/api/skill/jobs/[job]/skill.md/route.js.nft.json",
-  "downloadable prompt route":
-    ".next/server/app/api/skill/files/[file]/route.js.nft.json",
+  "short prompt link": {
+    path: ".next/server/app/p/[token]/route.js.nft.json",
+    expectedAssets: promptAssets,
+  },
+  "prompt job route": {
+    path: ".next/server/app/api/skill/jobs/[job]/skill.md/route.js.nft.json",
+    expectedAssets: promptAssets,
+  },
+  "downloadable runtime route": {
+    path: ".next/server/app/api/skill/files/[file]/route.js.nft.json",
+    expectedAssets: completeAgentRuntimeAssets,
+  },
+  "runtime bundle route": {
+    path: ".next/server/app/api/skill/bundle/route.js.nft.json",
+    expectedAssets: completeAgentRuntimeAssets,
+  },
+  "bootstrap route": {
+    path: ".next/server/app/api/skill/bootstrap/route.js.nft.json",
+    expectedAssets: [installerAsset],
+  },
 };
 
-for (const [label, relativeManifestPath] of Object.entries(traceManifests)) {
-  const manifestPath = resolve(projectRoot, relativeManifestPath);
+for (const [label, manifest] of Object.entries(traceManifests)) {
+  const manifestPath = resolve(projectRoot, manifest.path);
   const trace = JSON.parse(readFileSync(manifestPath, "utf8"));
   const tracedFiles = new Set(
     trace.files.map((file) => resolve(dirname(manifestPath), file)),
   );
-  const missing = expectedAssets.filter((asset) => !tracedFiles.has(asset));
+  const missing = manifest.expectedAssets.filter(
+    (asset) => !tracedFiles.has(asset),
+  );
 
   if (missing.length > 0) {
     const relativeMissing = missing.map((asset) =>
@@ -40,6 +69,6 @@ for (const [label, relativeManifestPath] of Object.entries(traceManifests)) {
   }
 
   console.log(
-    `${label}: ${expectedAssets.length}/${expectedAssets.length} prompt runtime assets traced`,
+    `${label}: ${manifest.expectedAssets.length}/${manifest.expectedAssets.length} runtime assets traced`,
   );
 }
