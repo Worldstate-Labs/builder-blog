@@ -1074,49 +1074,41 @@ test("web app serves the agent skill and setup command", () => {
     nextConfig.indexOf('"/api/skill/files/[file]"'),
     nextConfig.indexOf('"/api/skill/jobs/[job]/skill.md"'),
   );
-  const tracingForJobsRoute = nextConfig.slice(
-    nextConfig.indexOf('"/api/skill/jobs/[job]/skill.md"'),
+  const promptRuntimeTraceDefinition = nextConfig.slice(
+    nextConfig.indexOf("const promptRuntimeTraceFiles"),
+    nextConfig.indexOf("const nextConfig"),
   );
-  for (const fragment of [
-    "_fetch-task-discovery.md",
-    "_fetch-task-core.md",
-    "_fetch-task-syncing.md",
-    "_digest-task-contract.md",
-    "local-agent-timeouts.json",
-  ]) {
-    assert.ok(
-      tracingForFilesRoute.includes(fragment),
-      `files-route tracing is missing ${fragment}`,
-    );
-    assert.ok(
-      tracingForJobsRoute.includes(fragment),
-      `jobs-route tracing is missing ${fragment}`,
-    );
-  }
+  assert.match(
+    promptRuntimeTraceDefinition,
+    /\.\/skills\/builder-blog-digest\/jobs\/\*\.md/,
+  );
+  assert.match(promptRuntimeTraceDefinition, /\.\/config\/local-agent-timeouts\.json/);
+  assert.match(tracingForFilesRoute, /\.\.\.promptRuntimeTraceFiles/);
   const registeredSkillFilePaths = [
     ...skillFileRoute.matchAll(/path: "([^"]+)"/g),
   ].map((match) => match[1]);
   assert.ok(registeredSkillFilePaths.length >= 10, "expected skillFiles to parse");
   for (const file of registeredSkillFilePaths) {
+    if (
+      file.startsWith("skills/builder-blog-digest/jobs/") &&
+      file.endsWith(".md")
+    ) {
+      continue;
+    }
+    if (file === "config/local-agent-timeouts.json") continue;
     assert.ok(
       tracingForFilesRoute.includes(`"./${file}"`),
       `next.config.ts outputFileTracingIncludes for the files route is missing ${file} — that asset will 500 (ENOENT) on Vercel`,
     );
   }
-  // Every job the [job]/skill.md route can serve must be in its tracing list,
-  // or that job 500s (ENOENT) on Vercel even though it works locally. Derive
-  // the set from the registry so a newly-added job can't be forgotten here
-  // (this is exactly how library-cron-stop slipped through and 500'd in prod).
+  // Every job the [job]/skill.md and /p/[token] routes can serve is covered by
+  // the shared directory glob, so adding a job or include fragment cannot
+  // silently omit it from a Vercel function.
   const registeredJobFiles = [
     ...skillJobFiles.matchAll(/jobs\/([a-z0-9-]+\.md)/g),
   ].map((m) => m[1]);
   assert.ok(registeredJobFiles.length >= 7, "expected jobSkillFiles to parse");
-  for (const file of registeredJobFiles) {
-    assert.ok(
-      tracingForJobsRoute.includes(file),
-      `next.config.ts outputFileTracingIncludes for the jobs route is missing ${file} — that job will 500 (ENOENT) on Vercel`,
-    );
-  }
+  assert.match(promptRuntimeTraceDefinition, /jobs\/\*\.md/);
   assert.match(digestOncePrompt, /builder-agent-runner\.sh" digest-once/);
   assert.doesNotMatch(digestOncePrompt, /builder-digest\.mjs" prepare/);
   assert.doesNotMatch(digestOncePrompt, /render-digest/);

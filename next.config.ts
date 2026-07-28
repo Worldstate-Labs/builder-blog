@@ -43,6 +43,15 @@ const securityHeaders = [
   },
 ];
 
+// renderAgentPrompt and expandSkillIncludes load these assets through dynamic
+// filesystem paths, which Next cannot infer. Keep one directory-scoped trace
+// contract for every route that renders a prompt so new jobs and fragments are
+// bundled automatically instead of requiring another synchronized file list.
+const promptRuntimeTraceFiles = [
+  "./skills/builder-blog-digest/jobs/*.md",
+  "./config/local-agent-timeouts.json",
+];
+
 const nextConfig: NextConfig = {
   async redirects() {
     return [
@@ -78,45 +87,10 @@ const nextConfig: NextConfig = {
       "./scripts/builder-agent-runner.sh",
       "./scripts/cloud-shard-budget.mjs",
       "./config/sources.json",
-      "./config/local-agent-timeouts.json",
-      "./skills/builder-blog-digest/jobs/library-once.md",
-      "./skills/builder-blog-digest/jobs/digest-once.md",
-      "./skills/builder-blog-digest/jobs/library-cron-setup.md",
-      "./skills/builder-blog-digest/jobs/cloud-library-cron.md",
-      "./skills/builder-blog-digest/jobs/cloud-library-host.md",
-      "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
-      "./skills/builder-blog-digest/jobs/digest-cron.md",
-      "./skills/builder-blog-digest/jobs/library-worker.md",
-      "./skills/builder-blog-digest/jobs/library-discovery.md",
-      // Shared fragments pulled in via {{INCLUDE:...}} by the library and
-      // digest job prompts; must be bundled or expandSkillIncludes 500s.
-      "./skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
-      "./skills/builder-blog-digest/jobs/_fetch-task-core.md",
-      "./skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
-      "./skills/builder-blog-digest/jobs/_digest-task-contract.md",
+      ...promptRuntimeTraceFiles,
     ],
-    // The jobs/skill.md route also expands {{INCLUDE:...}}, so it needs
-    // the fragment (and the job prompts it serves) bundled too.
-    "/api/skill/jobs/[job]/skill.md": [
-      "./skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
-      "./skills/builder-blog-digest/jobs/_fetch-task-core.md",
-      "./skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
-      "./skills/builder-blog-digest/jobs/_digest-task-contract.md",
-      "./skills/builder-blog-digest/jobs/library-once.md",
-      "./skills/builder-blog-digest/jobs/digest-once.md",
-      "./skills/builder-blog-digest/jobs/library-cron-setup.md",
-      "./skills/builder-blog-digest/jobs/cloud-library-cron.md",
-      "./skills/builder-blog-digest/jobs/cloud-library-host.md",
-      "./skills/builder-blog-digest/jobs/cloud-library-cron-stop.md",
-      "./skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
-      "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
-      "./skills/builder-blog-digest/jobs/digest-cron.md",
-      // Stop prompt is served by this route too; without it Vercel omits the
-      // file from the bundle and the route 500s (ENOENT) in production.
-      "./skills/builder-blog-digest/jobs/library-cron-stop.md",
-      "./skills/builder-blog-digest/jobs/digest-cron-stop.md",
-      "./config/local-agent-timeouts.json",
-    ],
+    "/api/skill/jobs/[job]/skill.md": promptRuntimeTraceFiles,
+    "/p/[token]": promptRuntimeTraceFiles,
   },
 };
 

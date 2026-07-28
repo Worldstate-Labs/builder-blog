@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
-    "vercel-build": "node scripts/vercel-migrate.mjs && next build --webpack",
+    "build": "next build --webpack && node scripts/verify-prompt-runtime-traces.mjs",
+    "vercel-build": "node scripts/vercel-migrate.mjs && next build --webpack && node scripts/verify-prompt-runtime-traces.mjs",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
