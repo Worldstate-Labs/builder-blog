@@ -357,3 +357,68 @@ export const AI_SOURCE_REVIEW_PROPOSALS = [
   { name: "Aaron Levie", sourceType: "x", sourceUrl: "https://x.com/levie", handle: "levie" },
   { name: "Matt Turck", sourceType: "x", sourceUrl: "https://x.com/mattturck", handle: "mattturck" },
 ] as const satisfies readonly AiSourceReviewProposal[];
+
+export const AI_PERSON_SOURCE_REVIEW_PROPOSALS = [
+  {
+    name: "Jensen Huang",
+    sourceType: "x",
+    sourceUrl: "https://x.com/JensenHuang",
+    handle: "JensenHuang",
+  },
+  { name: "Sam Altman", sourceType: "x", sourceUrl: "https://x.com/sama", handle: "sama" },
+  {
+    name: "Geoffrey Hinton",
+    sourceType: "x",
+    sourceUrl: "https://x.com/geoffreyhinton",
+    handle: "geoffreyhinton",
+  },
+  {
+    name: "Yoshua Bengio",
+    sourceType: "x",
+    sourceUrl: "https://x.com/Yoshua_Bengio",
+    handle: "Yoshua_Bengio",
+  },
+  {
+    name: "Mira Murati",
+    sourceType: "x",
+    sourceUrl: "https://x.com/miramurati",
+    handle: "miramurati",
+  },
+  {
+    name: "Mustafa Suleyman",
+    sourceType: "x",
+    sourceUrl: "https://x.com/mustafasuleyman",
+    handle: "mustafasuleyman",
+  },
+  { name: "Greg Brockman", sourceType: "x", sourceUrl: "https://x.com/gdb", handle: "gdb" },
+  {
+    name: "Aravind Srinivas",
+    sourceType: "x",
+    sourceUrl: "https://x.com/AravSrinivas",
+    handle: "AravSrinivas",
+  },
+  {
+    name: "Jeff Dean",
+    sourceType: "x",
+    sourceUrl: "https://x.com/JeffDean",
+    handle: "JeffDean",
+  },
+  {
+    name: "Clément Delangue",
+    sourceType: "x",
+    sourceUrl: "https://x.com/ClementDelangue",
+    handle: "ClementDelangue",
+  },
+  {
+    name: "Aidan Gomez",
+    sourceType: "x",
+    sourceUrl: "https://x.com/aidangomez",
+    handle: "aidangomez",
+  },
+  {
+    name: "Chip Huyen",
+    sourceType: "x",
+    sourceUrl: "https://x.com/chipro",
+    handle: "chipro",
+  },
+] as const satisfies readonly AiSourceReviewProposal[];

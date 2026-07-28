@@ -842,7 +842,9 @@ function sanitizeText(value: string): string {
     .replace(/X_BEARER_TOKEN/gi, "[redacted-token]")
     .replace(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, "[redacted-data-url]")
     .replace(/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^\s"']+/gi, "[redacted-database-url]")
-    .replace(/\/Users\/[^\s"']+/g, "[redacted-local-path]")
+    .replace(/\bfile:\/\/\/[^\s"']+/gi, "[redacted-local-path]")
+    .replace(/(^|[\s="'(])\/(?!\/)[^\s"']+/gm, "$1[redacted-local-path]")
+    .replace(/(^|[\s="'(])(?:[A-Za-z]:\\|\\\\)[^\s"']+/gm, "$1[redacted-local-path]")
     .replace(/body\s*=\s*<[^>]+>[\s\S]*$/gi, "[redacted-response-body]");
 }
 

@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  AI_PERSON_SOURCE_REVIEW_PROPOSALS,
   AI_SOURCE_REVIEW_PROPOSALS,
   evaluateAiSourceAudit,
   type AiSourceAuditInput,
@@ -64,6 +65,21 @@ const EXPECTED_NEW_X_HANDLES = {
   "Matt Turck": "mattturck",
 } as const;
 
+const EXPECTED_AI_PERSON_X_HANDLES = {
+  "Jensen Huang": "JensenHuang",
+  "Sam Altman": "sama",
+  "Geoffrey Hinton": "geoffreyhinton",
+  "Yoshua Bengio": "Yoshua_Bengio",
+  "Mira Murati": "miramurati",
+  "Mustafa Suleyman": "mustafasuleyman",
+  "Greg Brockman": "gdb",
+  "Aravind Srinivas": "AravSrinivas",
+  "Jeff Dean": "JeffDean",
+  "Clément Delangue": "ClementDelangue",
+  "Aidan Gomez": "aidangomez",
+  "Chip Huyen": "chipro",
+} as const;
+
 const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_JSON_PATH = resolve(WORKSPACE_ROOT, "package.json");
 const AUDIT_CLI_PATH = resolve(WORKSPACE_ROOT, "scripts/audit-ai-source-candidates.ts");
@@ -71,9 +87,13 @@ const SOURCE_CANDIDATE_LIBRARY_PATH = resolve(
   WORKSPACE_ROOT,
   "src/lib/source-candidate-library.ts",
 );
-const AUDIT_REPORT_PATH = resolve(
+const JULY_27_AUDIT_REPORT_PATH = resolve(
   WORKSPACE_ROOT,
   "docs/superpowers/reports/2026-07-27-ai-source-candidate-audit.json",
+);
+const AI_PERSON_AUDIT_REPORT_PATH = resolve(
+  WORKSPACE_ROOT,
+  "docs/superpowers/reports/2026-07-28-ai-person-candidate-audit.json",
 );
 
 function responseWithUrl(
@@ -218,6 +238,28 @@ test("AI source review proposals lock the 41-source candidate review contract", 
     assert.equal(proposal.sourceType, "x");
     assert.equal(proposal.handle, handle);
     assert.equal(proposal.sourceUrl, `https://x.com/${handle}`);
+  }
+});
+
+test("AI person source review proposals lock the approved 12-account audit batch", () => {
+  const proposals: readonly AiSourceReviewProposal[] = AI_PERSON_SOURCE_REVIEW_PROPOSALS;
+
+  assert.equal(proposals.length, 12);
+  assert.deepEqual(
+    proposals.map((proposal) => proposal.name).sort(),
+    Object.keys(EXPECTED_AI_PERSON_X_HANDLES).sort(),
+  );
+
+  for (const proposal of proposals) {
+    const expectedHandle =
+      EXPECTED_AI_PERSON_X_HANDLES[
+        proposal.name as keyof typeof EXPECTED_AI_PERSON_X_HANDLES
+      ];
+    assert.ok(expectedHandle, `${proposal.name} must be an approved AI person`);
+    assert.equal(proposal.sourceType, "x");
+    assert.equal(proposal.handle, expectedHandle);
+    assert.equal(proposal.sourceUrl, `https://x.com/${expectedHandle}`);
+    assert.equal(new URL(proposal.sourceUrl).protocol, "https:");
   }
 });
 
@@ -712,7 +754,7 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
           blogCutoffs.push(options.cutoff.toISOString());
           if (builder.name === "Broken Blog") {
             throw new Error(
-              "Authorization: Bearer test-secret X_BEARER_TOKEN body=<html>boom</html> postgres://db /Users/jie/code/builder_blog/.env.local data:image/png;base64,abc",
+              "Authorization: Bearer test-secret X_BEARER_TOKEN /tmp/followbrief-audit.env /var/folders/8s/private/audit.json postgresql://user:pass@db /Users/jie/code/builder_blog/.env.local data:image/png;base64,abc body=<html>boom</html>",
             );
           }
           if (builder.fetchUrl) {
@@ -835,18 +877,27 @@ test("audit AI source candidate CLI uses an exact 90-day cutoff, emits sanitized
   assert.doesNotMatch(serialized, /X_BEARER_TOKEN/);
   assert.doesNotMatch(serialized, /Authorization/i);
   assert.doesNotMatch(serialized, /data:image\//i);
-  assert.doesNotMatch(serialized, /postgres:\/\//i);
+  assert.doesNotMatch(
+    serialized,
+    /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\//i,
+  );
   assert.doesNotMatch(serialized, /\/Users\/jie\//);
+  assert.doesNotMatch(serialized, /\/tmp\//);
+  assert.doesNotMatch(serialized, /\/var\/folders\//);
   assert.doesNotMatch(serialized, /body=<html>/i);
 });
 
-test("reviewed AI source candidates match the accepted July 27, 2026 audit report", async () => {
+test("reviewed AI source candidates match the accepted immutable audit reports", async () => {
   assert.ok(
-    existsSync(AUDIT_REPORT_PATH),
+    existsSync(JULY_27_AUDIT_REPORT_PATH),
     "docs/superpowers/reports/2026-07-27-ai-source-candidate-audit.json must exist",
   );
+  assert.ok(
+    existsSync(AI_PERSON_AUDIT_REPORT_PATH),
+    "docs/superpowers/reports/2026-07-28-ai-person-candidate-audit.json must exist",
+  );
 
-  const report = JSON.parse(readFileSync(AUDIT_REPORT_PATH, "utf8")) as {
+  type AuditReport = {
     complete: boolean;
     results: Array<{
       accepted: boolean;
@@ -863,9 +914,27 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
       };
     }>;
   };
+  const july27Report = JSON.parse(
+    readFileSync(JULY_27_AUDIT_REPORT_PATH, "utf8"),
+  ) as AuditReport;
+  const aiPersonReportRaw = readFileSync(AI_PERSON_AUDIT_REPORT_PATH, "utf8");
+  const aiPersonReport = JSON.parse(aiPersonReportRaw) as AuditReport;
+  const reports = [july27Report, aiPersonReport];
+  const allResults = reports.flatMap((report) => report.results);
 
-  assert.equal(report.complete, true);
-  assert.equal(report.results.length, 41);
+  assert.equal(july27Report.complete, true);
+  assert.equal(july27Report.results.length, 41);
+  assert.equal(aiPersonReport.complete, true);
+  assert.equal(aiPersonReport.results.length, 12);
+  assert.doesNotMatch(aiPersonReportRaw, /X_BEARER_TOKEN/i);
+  assert.doesNotMatch(aiPersonReportRaw, /Authorization/i);
+  assert.doesNotMatch(aiPersonReportRaw, /data:image\//i);
+  assert.doesNotMatch(
+    aiPersonReportRaw,
+    /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\//i,
+  );
+  assert.doesNotMatch(aiPersonReportRaw, /\/(?:Users|tmp|var\/folders)\//);
+  assert.doesNotMatch(aiPersonReportRaw, /body=<html>/i);
 
   const previousDatabaseUrl = process.env.DATABASE_URL;
   process.env.DATABASE_URL = previousDatabaseUrl || "postgresql://user:pass@localhost:5432/builder_blog_test";
@@ -913,10 +982,16 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
     "sourceKeyForCuratedCandidate must be exported",
   );
 
-  const acceptedNames = report.results
+  const acceptedResults = allResults.filter((result) => result.accepted);
+  const acceptedNames = acceptedResults
     .filter((result) => result.accepted)
     .map((result) => result.proposal.name)
     .sort();
+  assert.equal(
+    new Set(acceptedNames).size,
+    acceptedNames.length,
+    "accepted audit names must be unique across immutable reports",
+  );
   const reviewedNames = library.REVIEWED_AI_SOURCE_CANDIDATES
     .map((candidate) => candidate.name)
     .sort();
@@ -938,7 +1013,7 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
       assert.ok(candidate.handle, `${candidate.name} must define an X handle`);
     }
 
-    const audited = report.results.find(
+    const audited = acceptedResults.find(
       (result) => result.accepted && result.proposal.name === candidate.name,
     );
     assert.ok(audited, `${candidate.name} must have accepted audit evidence`);
@@ -953,7 +1028,7 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
       {
         sourceType: audited.proposal.sourceType,
         sourceUrl: audited.proposal.sourceUrl,
-        fetchUrl: audited.proposal.fetchUrl,
+        fetchUrl: audited.proposal.fetchUrl ?? null,
         handle: audited.proposal.handle,
         avatarUrl: audited.icon.url,
       },
@@ -966,18 +1041,20 @@ test("reviewed AI source candidates match the accepted July 27, 2026 audit repor
   );
   assert.equal(new Set(aiKeys).size, aiKeys.length, "curated AI canonical keys must be unique");
 
-  for (const result of report.results) {
+  for (const result of allResults) {
     if (result.accepted) {
       assert.ok(
         reviewedNameSet.has(result.proposal.name),
         `${result.proposal.name} must be included in REVIEWED_AI_SOURCE_CANDIDATES`,
       );
     } else {
-      assert.ok(
-        !reviewedNameSet.has(result.proposal.name),
-        `${result.proposal.name} must be excluded from REVIEWED_AI_SOURCE_CANDIDATES`,
-      );
       assert.ok(result.reason, `${result.proposal.name} must keep a rejection reason`);
+      if (!acceptedNames.includes(result.proposal.name)) {
+        assert.ok(
+          !reviewedNameSet.has(result.proposal.name),
+          `${result.proposal.name} must be excluded without later accepted evidence`,
+        );
+      }
     }
   }
 });

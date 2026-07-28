@@ -1,0 +1,562 @@
+{
+  "generatedAt": "2026-07-28T11:57:33.655Z",
+  "cutoff": "2026-04-29T11:57:33.655Z",
+  "proposalCount": 12,
+  "resultCount": 12,
+  "complete": true,
+  "runtimeError": null,
+  "results": [
+    {
+      "proposal": {
+        "name": "Jensen Huang",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/JensenHuang",
+        "handle": "JensenHuang"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/jensenhuang?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/jensenhuang",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/jensenhuang?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 2,
+        "recentItemCount": 2,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "jensenhuang",
+        "resolvedHandle": "JensenHuang",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2080613261674962944/OMXX4RJ3.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Jensen Huang\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Sam Altman",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/sama",
+        "handle": "sama"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/sama?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/sama",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/sama?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "sama",
+        "resolvedHandle": "sama",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2046764873200394240/r7BxVezs.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Sam Altman\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Geoffrey Hinton",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/geoffreyhinton",
+        "handle": "geoffreyhinton"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/geoffreyhinton?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/geoffreyhinton",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/geoffreyhinton?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 2,
+        "recentItemCount": 2,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "geoffreyhinton",
+        "resolvedHandle": "geoffreyhinton",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1084213316963057664/fQGCUSt0.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Geoffrey Hinton\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Yoshua Bengio",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/Yoshua_Bengio",
+        "handle": "Yoshua_Bengio"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/yoshua_bengio?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/yoshua_bengio",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/yoshua_bengio?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "yoshua_bengio",
+        "resolvedHandle": "Yoshua_Bengio",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2033915590566428672/NVNxLW6g.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Yoshua Bengio\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Mira Murati",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/miramurati",
+        "handle": "miramurati"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/miramurati?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/miramurati",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/miramurati?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "miramurati",
+        "resolvedHandle": "miramurati",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2057853902918455296/D_nfq15L.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Mira Murati\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Mustafa Suleyman",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/mustafasuleyman",
+        "handle": "mustafasuleyman"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/mustafasuleyman?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/mustafasuleyman",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/mustafasuleyman?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "mustafasuleyman",
+        "resolvedHandle": "mustafasuleyman",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1927407622602276864/c_5uOZij.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Mustafa Suleyman\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Greg Brockman",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/gdb",
+        "handle": "gdb"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/gdb?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/gdb",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/gdb?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "gdb",
+        "resolvedHandle": "gdb",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1347621377503711233/bHg3ipfD.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Greg Brockman\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Aravind Srinivas",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/AravSrinivas",
+        "handle": "AravSrinivas"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/aravsrinivas?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/aravsrinivas",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/aravsrinivas?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "aravsrinivas",
+        "resolvedHandle": "AravSrinivas",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/2028729526822588416/WhtMUI-P.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Aravind Srinivas\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Jeff Dean",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/JeffDean",
+        "handle": "JeffDean"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/jeffdean?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/jeffdean",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/jeffdean?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "jeffdean",
+        "resolvedHandle": "JeffDean",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/935325968280907776/AcBo6zJc.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Jeff Dean\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Clément Delangue",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/ClementDelangue",
+        "handle": "ClementDelangue"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/clementdelangue?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/clementdelangue",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/clementdelangue?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "clementdelangue",
+        "resolvedHandle": "ClementDelangue",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1100512198139498497/utHSJ4st.png",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Clément Delangue\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Aidan Gomez",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/aidangomez",
+        "handle": "aidangomez"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/aidangomez?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/aidangomez",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/aidangomez?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 3,
+        "recentItemCount": 3,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "aidangomez",
+        "resolvedHandle": "aidangomez",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1888310001409650688/LV7GSIIT.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Aidan Gomez\" passed the AI source audit."
+    },
+    {
+      "proposal": {
+        "name": "Chip Huyen",
+        "sourceType": "x",
+        "sourceUrl": "https://x.com/chipro",
+        "handle": "chipro"
+      },
+      "http": {
+        "finalUrl": "https://api.x.com/2/users/by/username/chipro?user.fields=description",
+        "status": 200
+      },
+      "resolver": {
+        "ok": true,
+        "finalUrl": "https://x.com/chipro",
+        "status": null
+      },
+      "probe": {
+        "ok": true,
+        "finalUrl": "https://api.x.com/2/users/by/username/chipro?user.fields=name,profile_image_url",
+        "status": 200,
+        "robotsDenied": false,
+        "loginRequired": false
+      },
+      "fetch": {
+        "itemCount": 1,
+        "recentItemCount": 1,
+        "actionableTasks": [],
+        "actionableTaskCount": 0,
+        "actionableTaskTypes": [],
+        "hardFailureDetail": null
+      },
+      "x": {
+        "tokenState": "accepted",
+        "requestedHandle": "chipro",
+        "resolvedHandle": "chipro",
+        "exactHandleMatch": true
+      },
+      "icon": {
+        "url": "https://pbs.twimg.com/profile_images/1953498653685161984/gMssInYX.jpg",
+        "safeUrl": true,
+        "downloaded": true
+      },
+      "accepted": true,
+      "reason": null,
+      "detail": "Source \"Chip Huyen\" passed the AI source audit."
+    }
+  ]
+}
