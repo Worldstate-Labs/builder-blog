@@ -24,6 +24,7 @@ import {
   runClientOperationWithTimeout,
 } from "@/lib/client-operation-timeout";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
+import { buildAgentPromptLinkInstruction } from "@/lib/agent-prompt-link-instruction";
 import type { AgentPromptRenderOptions, ExposedPromptJob } from "@/lib/agent-prompt-links";
 import { sourceLabelForType } from "@/lib/source-display";
 
@@ -508,7 +509,7 @@ export function SkillPromptActions({
     if (target === "stop") return "";
     const body = buildPromptLinkBody(target, extras);
     if (!body) return "";
-    return `Open ${url} and follow the instructions.`;
+    return buildAgentPromptLinkInstruction(url);
   }
 
   function markPromptCopied(target: CopyTarget) {

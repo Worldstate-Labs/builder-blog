@@ -249,8 +249,7 @@ function loadSourcesConfig() {
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Could not read ${path} (${reason}). Re-run the FollowBrief ` +
-        `skill bootstrap to download it: /bin/sh -c "$(curl -fsSL ` +
-        `${process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL}/api/skill/bootstrap)"`,
+        "setup instructions to download it, then try again.",
     );
   }
   return _sourcesConfig;

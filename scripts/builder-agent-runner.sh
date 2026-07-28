@@ -67,6 +67,61 @@ fi
 
 mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp" "$JOB_STATE_DIR" "$JOB_TMP_DIR"
 
+download_to_path() {
+  _download_url="$1"
+  _download_dest="$2"
+  node - "$_download_url" "$_download_dest" <<'NODE'
+const { writeFileSync } = require("node:fs");
+
+const url = process.argv[2];
+const destination = process.argv[3];
+const timeoutMs = 20_000;
+const maxAttempts = 2;
+
+async function download() {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const body = Buffer.from(await response.arrayBuffer());
+      if (body.length === 0) {
+        throw new Error("empty response");
+      }
+
+      writeFileSync(destination, body);
+      return;
+    } catch (error) {
+      lastError =
+        error && error.name === "AbortError"
+          ? new Error(`timed out while downloading after ${timeoutMs / 1000}s`)
+          : error;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  const reason = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`FollowBrief download failed for ${url}: ${reason}`);
+}
+
+download().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});
+NODE
+}
+
 # Self-update: pull the latest runner and, if it changed, atomically swap it
 # in and re-exec, so scheduled jobs pick up runner fixes from the server
 # without the user re-running setup. refresh_skill_files below already keeps
@@ -78,10 +133,9 @@ mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp" "$JOB_STATE_DIR" "$JOB_TMP_DIR"
 # a re-exec loop by BUILDER_BLOG_RUNNER_UPDATED.
 self_update_and_reexec() {
   if [ -n "${BUILDER_BLOG_RUNNER_UPDATED:-}" ]; then return 0; fi
-  command -v curl >/dev/null 2>&1 || return 0
   _self="$AGENT_DIR/builder-agent-runner.sh"
   _next="$AGENT_DIR/.builder-agent-runner.$ACCOUNT_SLUG.$JOB_NAME.next"
-  if curl -fsSL "$APP_URL/api/skill/files/builder-agent-runner.sh" -o "$_next" 2>/dev/null && [ -s "$_next" ]; then
+  if download_to_path "$APP_URL/api/skill/files/builder-agent-runner.sh" "$_next" 2>/dev/null && [ -s "$_next" ]; then
     if ! runner_has_safe_bootstrap "$_next"; then
       rm -f "$_next" 2>/dev/null || true
       return 0
@@ -132,7 +186,7 @@ download_skill_file() {
   _dest="$2"
   mkdir -p "$(dirname "$_dest")"
   _tmp="$(dirname "$_dest")/.$(basename "$_dest").$ACCOUNT_SLUG.$JOB_NAME.$$.tmp"
-  if ! curl -fsSL "$_url" -o "$_tmp"; then
+  if ! download_to_path "$_url" "$_tmp"; then
     rm -f "$_tmp" 2>/dev/null || true
     return 1
   fi
@@ -153,7 +207,7 @@ fi
 
 if [ ! -f "$PROMPT_FILE" ] && { [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; }; then
   echo "Missing FollowBrief job prompt: $PROMPT_FILE" >&2
-  echo "Run: /bin/sh -c \"\$(curl -fsSL $APP_URL/api/skill/bootstrap)\"" >&2
+  echo "Copy and run fresh setup instructions from FollowBrief, then try again." >&2
   exit 66
 fi
 

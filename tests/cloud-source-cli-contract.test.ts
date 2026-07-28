@@ -2145,6 +2145,10 @@ test("library worker prompt forbids background task work", async () => {
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
   const actions = await readFile("src/components/AdminCloudFetchRunActions.tsx", "utf8");
+  const promptLinkInstruction = await readFile(
+    "src/lib/agent-prompt-link-instruction.ts",
+    "utf8",
+  );
   const route = await readFile("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
   const renderer = await readFile("src/lib/agent-prompt-renderer.ts", "utf8");
   const fileRoute = await readFile("src/app/api/skill/files/[file]/route.ts", "utf8");
@@ -2173,7 +2177,11 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(actions, /const options: PromptLinkBody\["options"\] = \{ runtime \}/);
   assert.match(actions, /options\.fetchDays = fetchDaysValue/);
   assert.match(actions, /options\.parallelWorkers = parallelWorkersValue/);
-  assert.match(actions, /Open \$\{url\} and follow the instructions\./);
+  assert.match(actions, /buildAgentPromptLinkInstruction\(url\)/);
+  assert.match(
+    promptLinkInstruction,
+    /If browser access is blocked, use Node\.js fetch instead of curl/,
+  );
   assert.doesNotMatch(actions, /exchange-code/);
   assert.doesNotMatch(actions, /URLSearchParams/);
   assert.doesNotMatch(actions, /Read \$\{url\} and follow the instructions\./);

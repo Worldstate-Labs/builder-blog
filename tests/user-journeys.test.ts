@@ -517,7 +517,8 @@ test("web app serves the agent skill and setup command", () => {
 
   assert.match(skillPromptRenderer, /"your Local Agent"/);
   assert.doesNotMatch(skillPromptRenderer, /"your local agent"/);
-  assert.match(skillPromptRenderer, /insertExchangeAfterInstallStep/);
+  assert.match(skillPromptRenderer, /insertExchangeBlock/);
+  assert.match(skillPromptRenderer, /EXCHANGE_BLOCK_MARKER/);
   assert.match(skillPromptRenderer, /1a\. Exchange the one-time setup code/);
   assert.match(skillPromptRenderer, /after installing the skill/);
   assert.doesNotMatch(skillPromptRenderer, /before step 1/);
@@ -604,7 +605,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /buildPromptLinkBody/);
   assert.match(skillPromptActions, /body:\s*JSON\.stringify/);
   assert.match(skillPromptActions, /responseBody\?\.url/);
-  assert.match(skillPromptActions, /Open \$\{url\} and follow the instructions\./);
+  assert.match(skillPromptActions, /buildAgentPromptLinkInstruction\(url\)/);
   assert.doesNotMatch(skillPromptActions, /exchange-code/);
   assert.doesNotMatch(skillPromptActions, /URLSearchParams/);
   assert.doesNotMatch(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
@@ -919,6 +920,10 @@ test("web app serves the agent skill and setup command", () => {
     "skills/builder-blog-digest/jobs/_digest-task-contract.md",
     "utf8",
   );
+  const installSkill = readFileSync(
+    "skills/builder-blog-digest/jobs/_install-skill.md",
+    "utf8",
+  );
   // Summary language is no longer hardcoded to Chinese — the contract defers to
   // the per-run language stated in summaryInstructions.prompt, which is what
   // lets the account-wide summary-language setting actually take effect.
@@ -932,6 +937,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestTaskContract, /defaults? (to )?simplified Chinese/i);
   function expandIncludes(content: string): string {
     return content
+      .replace(
+        /\{\{INCLUDE:install-skill\}\}/g,
+        installSkill.replace(/^\s*<!--[\s\S]*?-->\s*/, "").trim(),
+      )
       .replace(
         /\{\{INCLUDE:fetch-task-discovery TMP_JOB="([^"]*)"\}\}/g,
         (_m, tmpJob) =>
@@ -1582,6 +1591,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(cli, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(cli, /defaultDigestContextFile/);
   assert.match(cli, /defaultLibraryFetchResultFile/);
+  assert.doesNotMatch(cli, /curl -fsSL/);
   assert.match(runner, /No local agent runtime found/);
   // Runner self-updates from the server each run and re-execs the new
   // version, so cron jobs pick up runner fixes without re-running setup;
@@ -1594,6 +1604,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /process\.exit\(78\)/);
   assert.match(runner, /refresh_skill_files/);
   assert.match(runner, /download_skill_file\(\)/);
+  assert.match(runner, /AbortController/);
+  assert.match(runner, /timed out while downloading/);
+  assert.doesNotMatch(runner, /curl -fsSL/);
   assert.match(runner, /mv "\$_tmp" "\$_dest"/);
   assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(runner, /api\/skill\/files\/cloud-shard-budget\.mjs/);
@@ -1634,7 +1647,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);
   assert.match(bootstrapRoute, /command -v node/);
   assert.match(bootstrapRoute, /FollowBrief requires Node\.js 20 or newer/);
-  assert.match(bootstrapRoute, /command -v curl/);
+  assert.match(bootstrapRoute, /AbortController/);
+  assert.match(bootstrapRoute, /timed out while downloading/);
+  assert.doesNotMatch(bootstrapRoute, /command -v curl/);
+  assert.doesNotMatch(bootstrapRoute, /curl -fsSL/);
   assert.match(bootstrapRoute, /jobs\/library-once\.md/);
   assert.match(bootstrapRoute, /jobs\/digest-once\.md/);
   assert.match(bootstrapRoute, /jobs\/library-cron-setup\.md/);

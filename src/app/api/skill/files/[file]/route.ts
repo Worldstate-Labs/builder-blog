@@ -86,6 +86,7 @@ export async function GET(_request: Request, { params }: Params) {
   content = content.replaceAll("{{FETCH_DAYS}}", "30");
   content = content.replaceAll("{{PARALLEL_WORKERS}}", "10");
   content = content.replaceAll("{{FETCH_LIMIT}}", "3");
+  content = content.replaceAll("{{EXCHANGE_BLOCK}}", "");
   return new Response(content, {
     headers: {
       "content-type": asset.contentType,

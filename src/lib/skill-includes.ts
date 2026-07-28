@@ -18,6 +18,7 @@ import { join } from "node:path";
 // unchanged, so this is safe to call on every served file.
 
 const FRAGMENTS: Record<string, string> = {
+  "install-skill": "skills/builder-blog-digest/jobs/_install-skill.md",
   "fetch-task-discovery": "skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
   "fetch-task-core": "skills/builder-blog-digest/jobs/_fetch-task-core.md",
   "fetch-task-syncing": "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",

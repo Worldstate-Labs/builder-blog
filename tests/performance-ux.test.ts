@@ -1009,7 +1009,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\/api\/settings\/tokens\/\$\{tokenId\}\/prompt-links/);
   assert.match(skillPromptActions, /buildPromptLinkBody/);
   assert.match(skillPromptActions, /body:\s*JSON\.stringify\(body\)/);
-  assert.match(skillPromptActions, /Open \$\{url\} and follow the instructions\./);
+  assert.match(skillPromptActions, /buildAgentPromptLinkInstruction\(url\)/);
   assert.doesNotMatch(skillPromptActions, /exchange-code/);
   assert.doesNotMatch(skillPromptActions, /URLSearchParams/);
   assert.doesNotMatch(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);

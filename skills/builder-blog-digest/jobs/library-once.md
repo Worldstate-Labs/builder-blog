@@ -16,9 +16,7 @@ Execution contract:
 
 1. Install or refresh the skill:
 
-```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
-```
+{{INCLUDE:install-skill}}
 
 2. Run one source fetch through the FollowBrief runner:
 

@@ -74,7 +74,7 @@ The deployed web app serves the skill and CLI script. Users should copy the
 setup command from Settings, or run:
 
 ```bash
-/bin/sh -c "$(curl -fsSL https://followbrief.worldstatelabs.com/api/skill/bootstrap)"
+node -e 'fetch("https://followbrief.worldstatelabs.com/api/skill/bootstrap", { signal: AbortSignal.timeout(30000) }).then(async (response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); require("node:child_process").execFileSync("/bin/sh", ["-c", await response.text()], { stdio: "inherit" }); })'
 ```
 
 The bootstrap installs the CLI and the job-specific skill prompts. Public

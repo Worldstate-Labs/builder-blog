@@ -18,9 +18,7 @@ Execution contract:
 
 1. Install or refresh the skill so the strict lifecycle controls are current:
 
-```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
-```
+{{INCLUDE:install-skill}}
 
 2. Verify ownership, unload this account's shared service, and prove it absent.
 

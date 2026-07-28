@@ -75,4 +75,6 @@ test("README lists real skill endpoints and no obsolete CLI login command", () =
   assert.match(readme, /\/api\/skill\/files\/builder-digest\.mjs/);
   assert.match(readme, /\/api\/skill\/jobs\/library-once\/skill\.md/);
   assert.doesNotMatch(readme, /builder-digest\.mjs login\b/);
+  assert.match(readme, /AbortSignal\.timeout\(30000\)/);
+  assert.doesNotMatch(readme, /curl -fsSL/);
 });

@@ -186,6 +186,40 @@ test("renderAgentPrompt renders cloud worker host and cloud stop prompts without
   assert.match(stopPrompt, /BUILDER_BLOG_ACCOUNT="cloud-admin@example\.com"/);
 });
 
+test("all copied prompts install with bounded Node fetch before consuming the exchange code", async () => {
+  const jobs: SkillJobName[] = [
+    "library-once",
+    "digest-once",
+    "library-cron-setup",
+    "digest-cron-setup",
+    "library-cron-stop",
+    "digest-cron-stop",
+    "cloud-library-cron-setup",
+    "cloud-library-cron-stop",
+  ];
+
+  for (const job of jobs) {
+    const content = await renderWithDefaults({
+      job,
+      exchange: {
+        code: `bb_ec_${job.replaceAll("-", "_")}`,
+        accountEmail: "prompt-order@example.com",
+        accountUserId: "user_prompt_order",
+      },
+    });
+    const installIndex = content.indexOf("1. Install or refresh the skill");
+    const exchangeIndex = content.indexOf("1a. Exchange the one-time setup code");
+    const stepTwoIndex = content.indexOf("\n2.");
+
+    assert.ok(installIndex >= 0, `${job} must include the install step`);
+    assert.ok(exchangeIndex > installIndex, `${job} must install before exchange`);
+    assert.ok(stepTwoIndex > exchangeIndex, `${job} must exchange before step 2`);
+    assert.match(content, /AbortController/);
+    assert.doesNotMatch(content, /curl -fsSL/);
+    assert.doesNotMatch(content, /\{\{EXCHANGE_BLOCK\}\}/);
+  }
+});
+
 test("buildOpenClawChildSetupUrl creates a canonical child job URL from origin, job, normalized options, and account only", () => {
   const url = buildOpenClawChildSetupUrl({
     origin: "https://followbrief.example",
@@ -279,6 +313,8 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
 
   assert.match(parent, /Next: Queue the OpenClaw initial run and schedule install\./);
   assert.match(parent, /OPENCLAW_CHILD_SETUP_PROMPT_URL='https:\/\/followbrief\.example\/api\/skill\/jobs\/library-cron-setup\/skill\.md\?openclaw_setup_child=1&setup_account=openclaw%40example\.com&runtime=openclaw/);
+  assert.match(parent, /AbortController/);
+  assert.doesNotMatch(parent, /curl -fsSL/);
   assert.match(parent, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
   assert.doesNotMatch(parent, /Run this queued FollowBrief setup continuation/);
 

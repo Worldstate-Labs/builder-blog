@@ -14,12 +14,6 @@ if ! command -v node >/dev/null 2>&1; then
   exit 69
 fi
 
-if ! command -v curl >/dev/null 2>&1; then
-  echo "FollowBrief requires curl to download the skill files." >&2
-  echo "Install curl, then rerun this skill prompt." >&2
-  exit 69
-fi
-
 mkdir -p "$AGENT_DIR"
 mkdir -p "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
 
@@ -28,7 +22,51 @@ download_skill_file() {
   _dest="$2"
   mkdir -p "$(dirname "$_dest")"
   _tmp="$(dirname "$_dest")/.$(basename "$_dest").$$.tmp"
-  if ! curl -fsSL "$_url" -o "$_tmp"; then
+  if ! node - "$_url" "$_tmp" <<'NODE'
+const { writeFileSync } = require("node:fs");
+const url = process.argv[2];
+const destination = process.argv[3];
+const attempts = 2;
+const timeoutMs = 20_000;
+
+async function fetchOnce() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length === 0) throw new Error("empty response");
+    writeFileSync(destination, bytes);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+(async () => {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await fetchOnce();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+  }
+  throw lastError;
+})().catch((error) => {
+  const reason =
+    error?.name === "AbortError"
+      ? "timed out while downloading after " + timeoutMs / 1000 + " seconds"
+      : String(error?.message || error);
+  console.error("FollowBrief download failed for " + url + ": " + reason);
+  process.exitCode = 1;
+});
+NODE
+  then
     rm -f "$_tmp" 2>/dev/null || true
     return 1
   fi

@@ -19,9 +19,7 @@ below uses this pinned runtime; do not fall back to a different one.
 
 1. Install or refresh the skill:
 
-```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
-```
+{{INCLUDE:install-skill}}
 
 2. Create required directories and verify this account's local credential before
 changing scheduler state. The web Copy-prompt version runs a one-time exchange

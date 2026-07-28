@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy } from "lucide-react";
+import { buildAgentPromptLinkInstruction } from "@/lib/agent-prompt-link-instruction";
 
 type ActiveToken = { id: string; name: string | null };
 const CLOUD_WORKER_HOST_JOB = "cloud-library-cron-setup";
@@ -132,7 +133,7 @@ export function AdminCloudFetchRunActions({ activeTokens }: { activeTokens: Acti
         setStatus({ kind: "error", text: "Could not prepare a secure prompt link. Try again." });
         return;
       }
-      const command = `Open ${url} and follow the instructions.`;
+      const command = buildAgentPromptLinkInstruction(url);
       if (await copyText(command)) {
         setStatus({ kind: "info", text: "Copied. Valid for 10 minutes. Send it to your local agent." });
       } else {

@@ -76,6 +76,8 @@ const cronIntervalMinutes: Record<AgentPromptFrequency, string> = {
   weekly: "10080",
 };
 
+const EXCHANGE_BLOCK_MARKER = "{{EXCHANGE_BLOCK}}";
+
 function safePromptText(value: string | null | undefined): string {
   return String(value ?? "")
     .replace(/[`|\r\n]/g, " ")
@@ -148,7 +150,24 @@ function buildOpenClawInitialRunBootstrap({
     "CRON_ADD_OUTPUT=\"$SETUP_TMP_DIR/openclaw-cron-add-output.txt\"",
     "SETUP_ID=\"$(printf 'followbrief-%s-%s-%s' \"$ACCOUNT_SLUG\" \"$FOLLOWBRIEF_SETUP_JOB\" \"$(date -u +%Y%m%dT%H%M%SZ)\" | tr -c 'a-zA-Z0-9_.@+-' '_')\"",
     "RUN_AT=\"$(node -e 'console.log(new Date(Date.now()+30000).toISOString())')\"",
-    "curl -fsSL \"$OPENCLAW_CHILD_SETUP_PROMPT_URL\" -o \"$PROMPT_COPY\"",
+    "node - \"$OPENCLAW_CHILD_SETUP_PROMPT_URL\" \"$PROMPT_COPY\" <<'NODE'",
+    "const { writeFileSync } = require(\"node:fs\");",
+    "const url = process.argv[2];",
+    "const destination = process.argv[3];",
+    "const controller = new AbortController();",
+    "const timer = setTimeout(() => controller.abort(), 30_000);",
+    "(async () => {",
+    "  const response = await fetch(url, { signal: controller.signal });",
+    "  if (!response.ok) throw new Error(\"HTTP \" + response.status);",
+    "  writeFileSync(destination, Buffer.from(await response.arrayBuffer()));",
+    "})()",
+    "  .catch((error) => {",
+    "    const reason = error?.name === \"AbortError\" ? \"timed out after 30 seconds\" : String(error?.message || error);",
+    "    console.error(\"FollowBrief prompt download failed: \" + url + \": \" + reason);",
+    "    process.exitCode = 1;",
+    "  })",
+    "  .finally(() => clearTimeout(timer));",
+    "NODE",
     "OPENCLAW_TIMEOUT_CURRENT=\"$(openclaw config get agents.defaults.timeoutSeconds 2>/dev/null || printf '0\\n')\"",
     "case \"$OPENCLAW_TIMEOUT_CURRENT\" in ''|*[!0-9]*) OPENCLAW_TIMEOUT_CURRENT=0 ;; esac",
     "if [ \"$OPENCLAW_TIMEOUT_CURRENT\" -lt \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" ]; then",
@@ -229,13 +248,16 @@ function sliceSetupPromptForOpenClawParent(
   return `${parentBody}\n\n${initialRunBootstrap}`;
 }
 
-function insertExchangeAfterInstallStep(content: string, exchangeBlock: string): string {
-  const installStep =
-    /(1\. Install or refresh the skill:[\s\S]*?^```[^\n]*\n[\s\S]*?^```\n)/m;
-  if (!installStep.test(content)) {
-    return `${exchangeBlock}\n${content}`;
+function insertExchangeBlock(content: string, exchangeBlock: string): string {
+  const markerCount = content.split(EXCHANGE_BLOCK_MARKER).length - 1;
+  if (markerCount === 0) {
+    if (!exchangeBlock) return content;
+    throw new Error("Prompt with an exchange code is missing the exchange block marker.");
   }
-  return content.replace(installStep, "$1\n" + exchangeBlock + "\n");
+  if (markerCount !== 1) {
+    throw new Error(`Prompt must contain exactly one exchange block marker, found ${markerCount}.`);
+  }
+  return content.replace(EXCHANGE_BLOCK_MARKER, exchangeBlock);
 }
 
 export function buildOpenClawChildSetupUrl({
@@ -358,9 +380,7 @@ export async function renderAgentPrompt(
         ].join("\n")
       : "";
 
-    const contentWithExchange = exchangeBlock
-      ? insertExchangeAfterInstallStep(content, exchangeBlock)
-      : content;
+    const contentWithExchange = insertExchangeBlock(content, exchangeBlock);
 
     if (openClawChild && isCronSetupJob) {
       content = sliceSetupPromptForOpenClawChild(job, contentWithExchange);

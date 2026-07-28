@@ -23,9 +23,7 @@ local schedule is found; otherwise the web app can keep expecting cron runs.
 
 1. Install or refresh the skill so local audit/status commands are current:
 
-```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://followbrief.worldstatelabs.com}/api/skill/bootstrap)"
-```
+{{INCLUDE:install-skill}}
 
 2. Find the existing FollowBrief brief job(s) on this machine. Run the path for
 this machine's OS — run `uname` if unsure.
