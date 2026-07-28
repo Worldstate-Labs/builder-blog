@@ -1127,7 +1127,7 @@ async function lockCloudFetchCanonicalsForTransaction(
 ) {
   const orderedCanonicalKeys = [...new Set(canonicalKeys)].sort();
   for (const canonicalKey of orderedCanonicalKeys) {
-    await prisma.$queryRawUnsafe(
+    await prisma.$executeRawUnsafe(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
       canonicalKey,
     );

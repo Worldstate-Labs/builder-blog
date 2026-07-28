@@ -7,7 +7,7 @@ import {
   createCanonicalActivityPolicy,
   estimateCloudTaskRuntime,
   heartbeatCloudFetchRun,
-  leaseCloudFetchTasks,
+  leaseCloudFetchTasks as leaseCloudFetchTasksInternal,
   materializeDueCloudFetchQueue,
   nextCloudTaskFailureSchedule,
   nextCloudTaskSuccessSchedule,
@@ -22,6 +22,16 @@ const resetFenceQuery = (
   lastResetAt = new Date(0),
   startedAt = now,
 ) => query.includes("clock_timestamp") ? [{ now: startedAt }] : [{ lastResetAt }];
+
+const leaseCloudFetchTasks = (
+  options: Parameters<typeof leaseCloudFetchTasksInternal>[0],
+) => {
+  const prisma = options.prisma as unknown as {
+    $executeRawUnsafe?: (query: string, ...values: unknown[]) => Promise<number>;
+  };
+  prisma.$executeRawUnsafe ??= async () => 1;
+  return leaseCloudFetchTasksInternal(options);
+};
 
 const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTaskInput => ({
   id: overrides.id ?? "task",
@@ -690,7 +700,7 @@ test("leaseCloudFetchTasks does not emit a lone-failed DB exception for a canoni
 test("leaseCloudFetchTasks locks selected canonicals in stable order and rechecks activity before creating a run", async () => {
   const canonicalA = "BLOG:https://example.com/advisory-a";
   const canonicalZ = "BLOG:https://example.com/advisory-z";
-  const advisoryLockCalls: Array<{ query: string; values: unknown[] }> = [];
+  const advisoryLockCalls: Array<{ statement: string; values: unknown[] }> = [];
   let runCreates = 0;
   let claimAttempts = 0;
 
@@ -727,11 +737,14 @@ test("leaseCloudFetchTasks locks selected canonicals in stable order and recheck
 
   const prisma = {
     async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
-    async $queryRawUnsafe(query: string, ...values: unknown[]) {
-      if (query.includes("pg_advisory_xact_lock")) {
-        advisoryLockCalls.push({ query, values });
-      }
+    async $queryRawUnsafe(query: string) {
       return resetFenceQuery(query);
+    },
+    async $executeRawUnsafe(statement: string, ...values: unknown[]) {
+      if (statement.includes("pg_advisory_xact_lock")) {
+        advisoryLockCalls.push({ statement, values });
+      }
+      return 1;
     },
     cloudFetchConfig: {
       findUnique: async () => ({
@@ -810,9 +823,9 @@ test("leaseCloudFetchTasks locks selected canonicals in stable order and recheck
     [[canonicalA], [canonicalZ]],
   );
   for (const call of advisoryLockCalls) {
-    assert.match(call.query, /pg_advisory_xact_lock\(hashtextextended\(\$1, 0\)\)/);
-    assert.ok(!call.query.includes(canonicalA));
-    assert.ok(!call.query.includes(canonicalZ));
+    assert.match(call.statement, /pg_advisory_xact_lock\(hashtextextended\(\$1, 0\)\)/);
+    assert.ok(!call.statement.includes(canonicalA));
+    assert.ok(!call.statement.includes(canonicalZ));
   }
 });
 
