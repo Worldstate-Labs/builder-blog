@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   CloudSourceLogItem,
@@ -278,10 +279,9 @@ function UserCloudFetchLogPanel({
   cloudLog: UserCloudFetchLogData;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const sourceLabel = cloudLog.submittedSourceCount === 1 ? "source" : "sources";
-  const onTimeSourceCount = cloudLog.sources.filter((source) => source.deadlineStatus === "ON_TIME").length;
-  const onTimeSourceLabel = onTimeSourceCount === 1 ? "source" : "sources";
   const visibleSources = sourcesExpanded
     ? cloudLog.sources
     : cloudLog.sources.slice(0, USER_CLOUD_SOURCE_LIMIT);
@@ -303,15 +303,35 @@ function UserCloudFetchLogPanel({
             label="FollowBrief sources"
             value={<>{cloudLog.submittedSourceCount} <span>{sourceLabel}</span></>}
           />
-          <SourceFetchMetaItem
-            label="On time sources"
-            value={<>{onTimeSourceCount} <span>{onTimeSourceLabel}</span></>}
-          />
+          <div className="fb-hub-digest-meta-item source-fetch-status-item">
+            <dt>Status / log</dt>
+            <dd>
+              <button
+                aria-controls="user-cloud-source-details"
+                aria-expanded={detailsOpen}
+                className="fb-chip digest-status-toggle is-muted"
+                disabled={cloudLog.sources.length === 0}
+                onClick={() => setDetailsOpen((value) => !value)}
+                title={
+                  cloudLog.sources.length === 0
+                    ? "No source details available"
+                    : detailsOpen
+                      ? "Hide source details"
+                      : "Show source details"
+                }
+                type="button"
+              >
+                {cloudLog.submittedSourceCount} <span>{sourceLabel}</span>
+                <span aria-hidden="true" className="digest-status-toggle-hint">Details</span>
+                {detailsOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+              </button>
+            </dd>
+          </div>
         </dl>
       </div>
 
-      {cloudLog.sources.length > 0 ? (
-        <div className="user-cloud-source-list-shell">
+      {detailsOpen && cloudLog.sources.length > 0 ? (
+        <div className="user-cloud-source-list-shell" id="user-cloud-source-details">
           <ul
             className="cloud-source-list user-cloud-source-list"
             id="user-cloud-source-list"

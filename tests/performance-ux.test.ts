@@ -4083,7 +4083,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /<SourceSyncLogTabs/);
   assert.match(sourceSyncLogTabs, /value=\{<>\{cloudLog\.submittedSourceCount\} <span>\{sourceLabel\}<\/span><\/>\}/);
-  assert.match(sourceSyncLogTabs, /value=\{<>\{onTimeSourceCount\} <span>\{onTimeSourceLabel\}<\/span><\/>\}/);
+  assert.match(sourceSyncLogTabs, /<dt>Status \/ log<\/dt>[\s\S]*digest-status-toggle[\s\S]*digest-status-toggle-hint">Details/);
+  assert.match(sourceSyncLogTabs, /detailsOpen && cloudLog\.sources\.length > 0/);
   assert.doesNotMatch(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
   assert.match(buildersPage, /emptyTitle="No sources yet"/);

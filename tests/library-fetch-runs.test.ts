@@ -1562,10 +1562,8 @@ test("source sync log tabs default to FollowBrief before Agent", () => {
   assert.match(tabs, /FollowBrief fetch log[\s\S]*Agent fetch log/);
   assert.doesNotMatch(tabs, /FollowBrief sync log|Agent sync log|Cloud fetch log|Local Agent fetch log/);
   assert.doesNotMatch(tabs, /Latest submission/);
-  assert.match(tabs, /source\.deadlineStatus === "ON_TIME"/);
-  assert.match(tabs, /On time sources/);
-  assert.match(tabs, /onTimeSourceLabel/);
-  assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*FollowBrief sources[\s\S]*On time sources/);
+  assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*FollowBrief sources[\s\S]*Status \/ log/);
+  assert.doesNotMatch(tabs, /On time sources|onTimeSourceCount|onTimeSourceLabel/);
   assert.doesNotMatch(tabs, /No FollowBrief fetching yet/);
   assert.match(sourceLogItem, /Latest FollowBrief fetch log/);
   assert.doesNotMatch(tabs, /No cloud fetch submissions yet|Submit sources to Cloud|Submitted sources|Latest cloud fetch log/);
@@ -1580,6 +1578,24 @@ test("source sync log tabs default to FollowBrief before Agent", () => {
   assert.doesNotMatch(tabs, /function CloudSourceDetail/);
   assert.match(tabs, /deadlineStatusLabel/);
   assert.match(tabs, /RelativeTime/);
+});
+
+test("FollowBrief fetch log exposes source statuses through a details toggle", () => {
+  const tabs = source("src/components/SourceSyncLogTabs.tsx");
+
+  assert.match(tabs, /const \[detailsOpen, setDetailsOpen\] = useState\(false\)/);
+  assert.match(tabs, /aria-controls="user-cloud-source-details"/);
+  assert.match(tabs, /aria-expanded=\{detailsOpen\}/);
+  assert.match(tabs, /disabled=\{cloudLog\.sources\.length === 0\}/);
+  assert.match(tabs, /className="fb-chip digest-status-toggle is-muted"/);
+  assert.match(tabs, /\{cloudLog\.submittedSourceCount\} <span>\{sourceLabel\}<\/span>/);
+  assert.match(tabs, /className="digest-status-toggle-hint">Details<\/span>/);
+  assert.match(tabs, /detailsOpen \? <ChevronUp[\s\S]*: <ChevronDown/);
+  assert.match(tabs, /\{detailsOpen && cloudLog\.sources\.length > 0 \? \(/);
+  assert.match(tabs, /id="user-cloud-source-details"/);
+  assert.doesNotMatch(tabs, /setExpanded\(null\)[\s\S]*setDetailsOpen|setSourcesExpanded\(false\)[\s\S]*setDetailsOpen/);
+  const globals = source("src/app/globals.css");
+  assert.match(globals, /\.digest-status-toggle:disabled\s*{[\s\S]*cursor:\s*not-allowed[\s\S]*opacity:/);
 });
 
 test("FollowBrief fetch log reveals sources after the first five", () => {

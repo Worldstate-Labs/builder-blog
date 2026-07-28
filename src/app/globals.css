@@ -8433,6 +8433,11 @@ summary.library-section-summary::after {
   outline-offset: 2px;
 }
 
+.digest-status-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .digest-status-toggle-hint {
   color: var(--muted-strong);
   font-size: 0.6875rem;
