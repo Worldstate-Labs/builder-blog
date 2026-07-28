@@ -354,7 +354,7 @@ test("cloud fetch command is exposed and keeps worker-facing task shape", async 
   assert.match(sharedBudgetSource, /export function cloudDeadlineState/);
   assert.match(cliSource, /assign-fetch-tasks --tasks fetch-result\.json/);
   assert.match(cliSource, /merge-fetch-results --base fetch-result\.json/);
-  assert.match(cliSource, /split-sync-slices --tasks fetch-result\.json[\s\S]*source\|task\|cloud-run/);
+  assert.match(cliSource, /split-sync-slices --tasks fetch-result\.json[\s\S]*source\|task\|cloud-source\|cloud-run/);
   assert.match(cliSource, /heartbeat-cloud-fetch --cloud-run-id <id>/);
   assert.match(cliSource, /else if \(command === "fetch-cloud-library"\) await fetchCloudLibrary\(args\)/);
   assert.match(cliSource, /else if \(command === "assign-fetch-tasks"\) await assignFetchTasks\(args\)/);
@@ -401,10 +401,10 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /_crl_value" -gt 1000/);
   assert.match(runner, /merge-fetch-results/);
   assert.match(runner, /patch-cloud-fetch-plan/);
-  assert.match(runner, /SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-run"/);
+  assert.match(runner, /SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-source"/);
   assert.match(
     runner,
-    /sync_completed_checkpoints\(\) \{[\s\S]*SYNC_PAYLOAD_SLICE_GRANULARITY="task"[\s\S]*sync_payload_slices "\$_scc_tasks" "\$_scc_payload"/,
+    /sync_completed_checkpoints\(\) \{[\s\S]*if \[ "\$\{SYNC_BUILDERS_COMMAND:-\}" = "sync-cloud-builders" \]; then[\s\S]*SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-source"[\s\S]*else[\s\S]*SYNC_PAYLOAD_SLICE_GRANULARITY="task"[\s\S]*sync_payload_slices "\$_scc_tasks" "\$_scc_payload"/,
   );
   assert.match(
     runner,
@@ -580,6 +580,7 @@ test("cloud fetch plan patch payload groups cloud tasks by source and ignores pe
     fetchTasks: [
       {
         id: "cloud_post_1",
+        workerId: "worker-0",
         cloudSourceTaskId: "source_a",
         estimatedWorkSeconds: 4_200,
         executionBudgetSeconds: 6_900,
@@ -591,6 +592,10 @@ test("cloud fetch plan patch payload groups cloud tasks by source and ignores pe
         captionAvailability: "usable_captions",
         plannedExtractionMethod: "captions",
         estimateEvidence: { backend: "fallback", mediaDurationSeconds: 2_700 },
+        item: {
+          title: "A planned podcast episode",
+          url: "https://example.com/podcast/one",
+        },
       },
       {
         id: "cloud_post_2",
@@ -627,6 +632,9 @@ test("cloud fetch plan patch payload groups cloud tasks by source and ignores pe
         posts: [
           {
             postTaskId: "cloud_post_1",
+            title: "A planned podcast episode",
+            url: "https://example.com/podcast/one",
+            workerId: "worker-0",
             estimatedWorkSeconds: 4_200,
             executionBudgetSeconds: 6_900,
             workloadClass: "standard",

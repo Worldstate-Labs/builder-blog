@@ -596,6 +596,14 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /stage: "reconciled"/);
   assert.match(cli, /type: "source_checked"/);
   assert.match(cli, /type: "task_completed"/);
+  assert.match(
+    cli,
+    /async function fetchCloudLibrary[\s\S]*createFetchProgressState[\s\S]*onSourceProgress[\s\S]*seedFetchProgressPlannedTasks/,
+  );
+  assert.match(
+    cli,
+    /async function fetchCloudLibrary[\s\S]*stage: "leasing_cloud_sources"[\s\S]*stage: "scanning_sources"[\s\S]*stage: "tasks_planned"/,
+  );
   assert.doesNotMatch(cli, /model LibraryFetchProgress/);
 
   assert.match(panel, /type FetchJobProgress/);

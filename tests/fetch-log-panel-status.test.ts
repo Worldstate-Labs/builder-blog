@@ -1450,6 +1450,20 @@ test("planned ready tasks do not look like active summarizing work before worker
   );
 });
 
+test("legacy server-synced tasks cannot render summarize pending", () => {
+  const outcomes = fetchTaskLifecycleOutcomes({
+    id: "legacy_cloud_synced",
+    status: "synced",
+    contentStatus: "ready",
+    bodyChars: 1200,
+    summaryChars: 0,
+    headlineChars: 0,
+  });
+
+  assert.deepEqual(outcomes.summarize, { label: "Summarized", tone: "ok" });
+  assert.deepEqual(outcomes.sync, { label: "Synced", tone: "ok" });
+});
+
 test("unfinished task pills fall back to neutral not completed when the parent cannot progress", () => {
   const expected = { label: "not completed", tone: "idle" };
 

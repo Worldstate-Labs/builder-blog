@@ -107,6 +107,9 @@ const CloudFetchSyncPayloadSchema = z.object({
 
 const CloudFetchPlanPostSchema = z.object({
   postTaskId: z.string().min(1).max(500),
+  title: z.string().trim().min(1).max(500).nullable().optional(),
+  url: z.string().url().max(2048).nullable().optional(),
+  workerId: z.string().trim().min(1).max(160).nullable().optional(),
   estimatedWorkSeconds: z.number().int().min(0).max(7 * 24 * 60 * 60),
   executionBudgetSeconds: z.number().int().min(60 * 60).max(4 * 60 * 60),
   workloadClass: z.enum(["standard", "long_media"]),

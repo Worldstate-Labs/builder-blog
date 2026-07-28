@@ -65,6 +65,7 @@ import {
 } from "@/lib/source-library-metadata";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 import { loadUserCloudFetchLog } from "@/lib/user-cloud-fetch-log-data";
+import { loadUserContentStatsByEntityId } from "@/lib/user-content-builders";
 
 export const metadata: Metadata = { title: "Sources" };
 
@@ -90,6 +91,7 @@ type SharedAdminPostStatsByEntityId = Map<
   string,
   { count: number; latestPostCreatedAt: Date | null }
 >;
+type UserContentStatsByEntityId = SharedAdminPostStatsByEntityId;
 type FetchTabData = Awaited<ReturnType<typeof startFetchTabData>>;
 type FetchSyncData = Awaited<ReturnType<typeof loadFetchSyncData>>;
 type SourceLibraryData = Awaited<ReturnType<typeof loadSourceLibraryData>>;
@@ -450,11 +452,16 @@ async function loadSourceLibraryData(user: {
   const [
     latestPostCreatedAtByBuilderId,
     sharedAdminPostStatsByEntityId,
+    userContentStatsByEntityId,
     mergedSourceDefinitions,
     sourceCandidates,
   ] = await Promise.all([
     latestPostCreationTimes(poolBuilderIds),
     sharedAdminPostStatsForBuilders(poolBuilders),
+    loadUserContentStatsByEntityId({
+      userId: user.id,
+      logicalBuilderIds: poolBuilderIds,
+    }),
     getMergedSourceDefinitions(),
     ensureSourceCandidateLibraryFromAdminSources(),
   ]);
@@ -465,6 +472,7 @@ async function loadSourceLibraryData(user: {
     isPublicLibrary,
     latestPostCreatedAtByBuilderId,
     sharedAdminPostStatsByEntityId,
+    userContentStatsByEntityId,
     privateBuilders,
     sessionUserEmail: user.email,
     sessionUserName: user.name,
@@ -840,6 +848,7 @@ async function SourceLibrarySections({
               builder,
               latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
               sharedAdminPostStatsByEntityId: data.sharedAdminPostStatsByEntityId,
+              userContentStatsByEntityId: data.userContentStatsByEntityId,
               subscribed: data.subscribed.has(builder.id),
             }),
           )}
@@ -898,6 +907,7 @@ async function SourceLibrarySections({
                   builder,
                   latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
                   sharedAdminPostStatsByEntityId: data.sharedAdminPostStatsByEntityId,
+                  userContentStatsByEntityId: data.userContentStatsByEntityId,
                   subscribed: data.subscribed.has(builder.id),
                 }),
               )}
@@ -985,17 +995,35 @@ function builderListItem({
   builder,
   latestPostCreatedAt,
   sharedAdminPostStatsByEntityId,
+  userContentStatsByEntityId,
   subscribed,
 }: {
   allowRemove: boolean;
   builder: BuilderWithCount;
   latestPostCreatedAt: Date | null;
   sharedAdminPostStatsByEntityId: SharedAdminPostStatsByEntityId;
+  userContentStatsByEntityId: UserContentStatsByEntityId;
   subscribed: boolean;
 }): BuilderLibraryListItem {
   const sharedStats = sharedAdminPostStatsForBuilder(
     builder,
     sharedAdminPostStatsByEntityId,
+  );
+  const userStats = builder.entityId
+    ? userContentStatsByEntityId.get(builder.entityId) ?? null
+    : null;
+  const feedItemCount = Math.max(
+    builder._count.feedItems,
+    sharedStats?.count ?? 0,
+    userStats?.count ?? 0,
+  );
+  const latestContentDate = [
+    latestPostCreatedAt,
+    sharedStats?.latestPostCreatedAt ?? null,
+    userStats?.latestPostCreatedAt ?? null,
+  ].reduce<Date | null>(
+    (latest, value) => (!value || (latest && latest >= value) ? latest : value),
+    null,
   );
   return {
     id: builder.id,
@@ -1009,9 +1037,8 @@ function builderListItem({
     avatarUrl: builder.avatarUrl ?? null,
     avatarDataUrl: builder.avatarDataUrl ?? null,
     createdAt: builder.createdAt.toISOString(),
-    feedItemCount: sharedStats?.count ?? builder._count.feedItems,
-    latestPostCreatedAt:
-      (sharedStats?.latestPostCreatedAt ?? latestPostCreatedAt)?.toISOString() ?? null,
+    feedItemCount,
+    latestPostCreatedAt: latestContentDate?.toISOString() ?? null,
     subscribed,
     allowRemove,
   };

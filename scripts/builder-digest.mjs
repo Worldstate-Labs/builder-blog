@@ -594,7 +594,7 @@ function usage() {
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ [--assigned-only] [--complete-sources-only] --out library-agent-sync.json
   extract-long-media --fetch-task-id <id>
-  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task|cloud-run]
+  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task|cloud-source|cloud-run]
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
@@ -1418,6 +1418,8 @@ async function requestJsonOnce(url, options) {
           url: options.logUrl,
           status: response.status,
           code: "http_status",
+          responseCode: typeof data.code === "string" ? data.code : null,
+          retryable: typeof data.retryable === "boolean" ? data.retryable : null,
         },
       );
     }
@@ -1451,6 +1453,8 @@ function httpSyncError(message, details) {
   error.isHttpSyncError = true;
   error.httpStatus = details.status ?? null;
   error.httpSyncCode = details.code ?? "unknown";
+  error.httpResponseCode = details.responseCode ?? null;
+  error.httpRetryable = details.retryable ?? null;
   if (details.cause) error.cause = details.cause;
   return error;
 }
@@ -1466,14 +1470,37 @@ function httpUrlForLog(url) {
 
 function isRetryableHttpSyncError(error) {
   if (!error?.isHttpSyncError) return false;
+  if (typeof error.httpRetryable === "boolean") return error.httpRetryable;
   if (error.httpSyncCode === "timeout" || error.httpSyncCode === "network") return true;
   return [408, 429, 500, 502, 503, 504].includes(Number(error.httpStatus || 0));
+}
+
+/** @param {{status: number, responseCode?: string | null, retryable?: boolean | null}} input */
+export function classifyHttpSyncRetryForTest({
+  status,
+  responseCode = null,
+  retryable = null,
+} = { status: 0 }) {
+  return isRetryableHttpSyncError(httpSyncError("test", {
+    method: "POST",
+    url: "https://example.test/api",
+    status,
+    code: "http_status",
+    responseCode,
+    retryable,
+  }));
 }
 
 function httpSyncErrorSummary(error) {
   if (!error?.isHttpSyncError) return error instanceof Error ? error.message : String(error);
   if (error.httpSyncCode === "timeout") return "timeout";
-  if (error.httpStatus) return `HTTP ${error.httpStatus}`;
+  if (error.httpStatus) {
+    return [
+      `HTTP ${error.httpStatus}`,
+      error.httpResponseCode,
+      typeof error.httpRetryable === "boolean" ? `retryable=${error.httpRetryable}` : null,
+    ].filter(Boolean).join(" ");
+  }
   return error.httpSyncCode || "network";
 }
 
@@ -1813,17 +1840,19 @@ function upsertFetchProgressTask(progress, task) {
 }
 
 function seedFetchProgressPlannedTasks(progress, plannedTasks) {
-  if (!progress || !Array.isArray(plannedTasks)) return;
+  if (!progress || !Array.isArray(plannedTasks)) return 0;
   const existingById = new Map(
     (Array.isArray(progress.tasks) ? progress.tasks : [])
       .map((task) => [String(task?.id ?? task?.taskId ?? ""), task])
       .filter(([id]) => id),
   );
   const liveStatuses = new Set(["reading", "summarizing", "summarized", "synced", "skipped", "failed", "action_needed"]);
+  let newlyPlanned = 0;
   for (const task of plannedTasks) {
     const id = String(task?.id || fetchTaskId(task));
     if (!id) continue;
     const existing = existingById.get(id);
+    if (!existing) newlyPlanned += 1;
     const keepLiveStatus = existing?.status && liveStatuses.has(String(existing.status));
     upsertFetchProgressTask(progress, {
       id,
@@ -1849,6 +1878,7 @@ function seedFetchProgressPlannedTasks(progress, plannedTasks) {
       updatedAt: existing?.updatedAt ?? new Date().toISOString(),
     });
   }
+  return newlyPlanned;
 }
 
 async function writeFetchProgressState(progress) {
@@ -6272,8 +6302,27 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   attempts = [],
   longToolTimeoutMsResolver = null,
   heartbeat = null,
+  asrCapabilities = null,
 } = {}) {
   const probeOptions = { timeoutMsResolver: longToolTimeoutMsResolver };
+  const resolvedAsrCapabilities = asrCapabilities ?? await resolveLocalAsrCapabilities({
+    commandRunner,
+    timeoutMsResolver: longToolTimeoutMsResolver,
+    heartbeat,
+  });
+  if (resolvedAsrCapabilities.timedOut) {
+    attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+    return { text: "", reason: "extraction_exceeds_shard_timeout", asrCapabilities: resolvedAsrCapabilities };
+  }
+  if (resolvedAsrCapabilities.adapters.length === 0) {
+    attempts.push({
+      method: "local-asr",
+      status: "skipped",
+      reason: "asr_backend_unavailable",
+      evidence: resolvedAsrCapabilities.probes,
+    });
+    return { text: "", reason: "asr_backend_unavailable", asrCapabilities: resolvedAsrCapabilities };
+  }
   const ytDlpAvailable = await commandExists("yt-dlp", commandRunner, probeOptions);
   if (ytDlpAvailable == null) {
     attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
@@ -6348,7 +6397,11 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       return { text: "" };
     }
 
-    const asr = await transcribeLocalAudio(monoAudio, workDir, commandRunner, { longToolTimeoutMsResolver, heartbeat });
+    const asr = await transcribeLocalAudio(monoAudio, workDir, commandRunner, {
+      longToolTimeoutMsResolver,
+      heartbeat,
+      capabilities: resolvedAsrCapabilities,
+    });
     attempts.push({
       method: "local-asr",
       status: asr.text ? "ok" : (asr.reason === "extraction_exceeds_shard_timeout" ? "failed" : "skipped"),
@@ -6373,64 +6426,190 @@ export function fetchYouTubeLocalAsrForTest(videoUrl, options) {
   return fetchYouTubeLocalAsr(videoUrl, options);
 }
 
+async function resolveLocalAsrCapabilities({
+  commandRunner = runTool,
+  timeoutMsResolver = null,
+  heartbeat = null,
+} = {}) {
+  const adapters = [];
+  const probes = [];
+  const probeOptions = () => {
+    const remaining = typeof timeoutMsResolver === "function"
+      ? Number(timeoutMsResolver())
+      : Number.NaN;
+    if (Number.isFinite(remaining) && remaining <= 0) return null;
+    return {
+      timeoutMs: Number.isFinite(remaining)
+        ? Math.min(10_000, Math.max(1, Math.floor(remaining)))
+        : 10_000,
+      ...(heartbeat ? { heartbeat } : {}),
+    };
+  };
+  for (const moduleName of ["faster_whisper", "mlx_whisper"]) {
+    for (const python of ["python3", "python"]) {
+      const options = probeOptions();
+      if (!options) return { adapters, probes, timedOut: true };
+      const result = await commandRunner(
+        python,
+        ["-c", `import ${moduleName}`],
+        options,
+      );
+      probes.push({
+        adapter: moduleName.replace("_", "-"),
+        command: python,
+        available: Boolean(result.ok),
+        reason: result.ok ? null : commandFailureReason(result),
+      });
+      if (!result.ok) continue;
+      adapters.push({
+        id: moduleName === "faster_whisper" ? "faster-whisper" : "mlx-whisper",
+        moduleName,
+        python,
+      });
+      break;
+    }
+  }
+
+  const whisperOptions = probeOptions();
+  if (!whisperOptions) return { adapters, probes, timedOut: true };
+  const whisper = await commandRunner("whisper", ["--help"], whisperOptions);
+  const whisperAvailable = whisper.ok || String(whisper.stdout || "").trim().length > 0;
+  probes.push({
+    adapter: "whisper-cli",
+    command: "whisper",
+    available: whisperAvailable,
+    reason: whisperAvailable ? null : commandFailureReason(whisper),
+  });
+  if (whisperAvailable) adapters.push({ id: "whisper-cli", command: "whisper" });
+
+  const whisperCppModel = process.env.BUILDER_BLOG_WHISPER_CPP_MODEL?.trim();
+  if (whisperCppModel) {
+    const whisperCppOptions = probeOptions();
+    if (!whisperCppOptions) return { adapters, probes, timedOut: true };
+    const whisperCpp = await commandRunner("whisper-cli", ["--help"], whisperCppOptions);
+    const available = whisperCpp.ok || String(whisperCpp.stdout || "").trim().length > 0;
+    probes.push({
+      adapter: "whisper-cpp",
+      command: "whisper-cli",
+      available,
+      reason: available ? null : commandFailureReason(whisperCpp),
+    });
+    if (available) {
+      adapters.push({
+        id: "whisper-cpp",
+        command: "whisper-cli",
+        model: whisperCppModel,
+      });
+    }
+  }
+  return { adapters, probes, timedOut: false };
+}
+
+export function resolveLocalAsrCapabilitiesForTest(options) {
+  return resolveLocalAsrCapabilities(options);
+}
+
 async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool, options = {}) {
-  const faster = await transcribeWithPythonModule("faster_whisper", audioFile, commandRunner, options);
-  if (faster.text) return { ...faster, backend: "faster-whisper" };
-  if (faster.reason === "extraction_exceeds_shard_timeout") return faster;
-
-  const mlx = await transcribeWithPythonModule("mlx_whisper", audioFile, commandRunner, options);
-  if (mlx.text) return { ...mlx, backend: "mlx-whisper" };
-  if (mlx.reason === "extraction_exceeds_shard_timeout") return mlx;
-
-  const whisperAvailable = await commandExists("whisper", commandRunner, {
+  const capabilities = options.capabilities ?? await resolveLocalAsrCapabilities({
+    commandRunner,
     timeoutMsResolver: options.longToolTimeoutMsResolver,
   });
-  if (whisperAvailable == null) return { text: "", reason: "extraction_exceeds_shard_timeout" };
-  if (whisperAvailable) {
-    const model = process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
-    const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
-      ? Number(options.longToolTimeoutMsResolver())
-      : Number.NaN;
-    if (Number.isFinite(resolvedTimeoutValue) && resolvedTimeoutValue <= 0) {
-      return { text: "", reason: "extraction_exceeds_shard_timeout" };
+  if (capabilities.timedOut) return { text: "", reason: "extraction_exceeds_shard_timeout" };
+  const failures = [];
+  for (const adapter of capabilities.adapters) {
+    if (adapter.id === "faster-whisper" || adapter.id === "mlx-whisper") {
+      const moduleName = adapter.id === "faster-whisper" ? "faster_whisper" : "mlx_whisper";
+      const result = await transcribeWithPythonModule(moduleName, audioFile, commandRunner, {
+        ...options,
+        pythonCommand: adapter.python,
+      });
+      if (result.text) return { ...result, backend: adapter.id };
+      if (result.reason === "extraction_exceeds_shard_timeout") return result;
+      failures.push(result.reason);
+      continue;
     }
-    const resolvedTimeoutMs = Number.isFinite(resolvedTimeoutValue)
-      ? Math.max(1_000, Math.floor(resolvedTimeoutValue))
-      : null;
-    const result = await commandRunner(
-      "whisper",
-      [audioFile, "--model", model, "--output_format", "txt", "--output_dir", workDir, "--fp16", "False"],
-      options.heartbeat
-        ? {
-          timeoutMs: resolvedTimeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
-          heartbeat: options.heartbeat,
-        }
-        : {
-          timeoutMs: resolvedTimeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
-        },
-    );
-    if (result.ok) {
-      const txtFiles = (await readdir(workDir)).filter((file) => file.endsWith(".txt"));
-      for (const file of txtFiles) {
-        const text = await readFile(join(workDir, file), "utf8").catch(() => "");
-        if (cleanTranscriptText(text)) return { text, backend: "whisper-cli", reason: "whisper_cli_transcribed" };
+    if (adapter.id === "whisper-cli") {
+      const model = process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
+      const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
+        ? Number(options.longToolTimeoutMsResolver())
+        : Number.NaN;
+      if (Number.isFinite(resolvedTimeoutValue) && resolvedTimeoutValue <= 0) {
+        return { text: "", reason: "extraction_exceeds_shard_timeout" };
       }
+      const resolvedTimeoutMs = Number.isFinite(resolvedTimeoutValue)
+        ? Math.max(1_000, Math.floor(resolvedTimeoutValue))
+        : null;
+      const timeoutMs =
+        resolvedTimeoutMs ??
+        envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS);
+      const result = await commandRunner(
+        "whisper",
+        [
+          audioFile,
+          "--model",
+          model,
+          "--output_format",
+          "txt",
+          "--output_dir",
+          workDir,
+          "--fp16",
+          "False",
+        ],
+        {
+          timeoutMs,
+          ...(options.heartbeat ? { heartbeat: options.heartbeat } : {}),
+        },
+      );
+      if (result.ok) {
+        const txtFiles = (await readdir(workDir)).filter((file) => file.endsWith(".txt"));
+        for (const file of txtFiles) {
+          const text = await readFile(join(workDir, file), "utf8").catch(() => "");
+          if (cleanTranscriptText(text)) {
+            return { text, backend: "whisper-cli", reason: "whisper_cli_transcribed" };
+          }
+        }
+      }
+      failures.push(`whisper_cli_failed:${commandFailureReason(result)}`);
+      continue;
     }
-    return { text: "", reason: `whisper_cli_failed:${commandFailureReason(result)}` };
+    if (adapter.id === "whisper-cpp") {
+      const result = await commandRunner(
+        adapter.command,
+        ["-m", adapter.model, "-f", audioFile, "-otxt", "-of", join(workDir, "whisper-cpp")],
+        {
+          timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
+          ...(options.heartbeat ? { heartbeat: options.heartbeat } : {}),
+        },
+      );
+      if (result.ok) {
+        const text = await readFile(join(workDir, "whisper-cpp.txt"), "utf8").catch(() => "");
+        if (cleanTranscriptText(text)) return { text, backend: "whisper-cpp", reason: "whisper_cpp_transcribed" };
+      }
+      failures.push(`whisper_cpp_failed:${commandFailureReason(result)}`);
+    }
   }
-  return { text: "", reason: faster.reason || mlx.reason || "asr_backend_missing" };
+  return {
+    text: "",
+    reason: capabilities.adapters.length === 0
+      ? "asr_backend_unavailable"
+      : failures.filter(Boolean).join("|") || "asr_transcription_failed",
+  };
 }
 
 async function transcribeWithPythonModule(moduleName, audioFile, commandRunner = runTool, options = {}) {
   const script = moduleName === "faster_whisper"
     ? fasterWhisperPythonScript()
     : mlxWhisperPythonScript();
-  for (const python of ["python3", "python"]) {
-    const pythonAvailable = await commandExists(python, commandRunner, {
-      timeoutMsResolver: options.longToolTimeoutMsResolver,
-    });
-    if (pythonAvailable == null) return { text: "", reason: "extraction_exceeds_shard_timeout" };
-    if (!pythonAvailable) continue;
+  for (const python of options.pythonCommand ? [options.pythonCommand] : ["python3", "python"]) {
+    if (!options.pythonCommand) {
+      const pythonAvailable = await commandExists(python, commandRunner, {
+        timeoutMsResolver: options.longToolTimeoutMsResolver,
+      });
+      if (pythonAvailable == null) {
+        return { text: "", reason: "extraction_exceeds_shard_timeout" };
+      }
+      if (!pythonAvailable) continue;
+    }
     const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
       ? Number(options.longToolTimeoutMsResolver())
       : Number.NaN;
@@ -8821,6 +9000,40 @@ function splitKeyForCloudRun(task) {
   return runId ? `cloudRun:${runId}` : "cloudRun:missing";
 }
 
+function splitKeyForCloudSourceTaskRun(task) {
+  const runId = String(task?.cloudRunId || task?.builderSync?.cloudRunId || "").trim();
+  const sourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+  return runId && sourceTaskId
+    ? `cloudSource:${runId}:${sourceTaskId}`
+    : runId
+      ? `cloudRun:${runId}:missing-source`
+      : sourceTaskId
+        ? `cloudSource:missing-run:${sourceTaskId}`
+        : "cloudSource:missing";
+}
+
+export function splitCloudSyncPayloadBySourceTaskForTest(fetchResult, payload = {}) {
+  return splitSyncPayload(fetchResult, payload, {
+    keyForTask: splitKeyForCloudSourceTaskRun,
+    keyForCloudSource: splitKeyForCloudSourceTaskRun,
+  }).map((slice) => {
+    const firstTask = slice.tasks.fetchTasks[0] ?? slice.tasks.cloudSourceTasks[0] ?? {};
+    const cloudRunId = String(firstTask?.cloudRunId || firstTask?.builderSync?.cloudRunId || "").trim();
+    const cloudSourceTaskId = String(
+      firstTask?.cloudSourceTaskId || firstTask?.builderSync?.cloudSourceTaskId || "",
+    ).trim();
+    return {
+      ...slice,
+      cloudRunId,
+      cloudSourceTaskId,
+      payload: {
+        ...slice.payload,
+        cloudRunId,
+      },
+    };
+  });
+}
+
 function splitKeyForCloudSourceRun(task) {
   const runId = String(task?.cloudRunId || "").trim();
   return runId ? `cloudRun:${runId}` : "cloudRun:missing";
@@ -9058,7 +9271,9 @@ async function splitSyncSlices(args) {
   const payload = JSON.parse(await readFile(payloadFile, "utf8"));
   const slices = granularity === "cloud-run"
     ? splitCloudSyncPayloadByRunId(fetchResult, payload)
-    : splitSyncPayload(fetchResult, payload, { granularity });
+    : granularity === "cloud-source"
+      ? splitCloudSyncPayloadBySourceTaskForTest(fetchResult, payload)
+      : splitSyncPayload(fetchResult, payload, { granularity });
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
@@ -10189,6 +10404,9 @@ function cloudPlanPostPatch(task) {
     cloudSourceTaskId,
     post: {
       postTaskId,
+      ...(task?.item?.title ? { title: String(task.item.title).trim().slice(0, 500) } : {}),
+      ...(task?.item?.url ? { url: String(task.item.url).trim().slice(0, 2048) } : {}),
+      ...(task?.workerId ? { workerId: String(task.workerId).trim().slice(0, 160) } : {}),
       estimatedWorkSeconds: nonNegativeIntegerValue(task?.estimatedWorkSeconds, 0),
       executionBudgetSeconds: nonNegativeIntegerValue(task?.executionBudgetSeconds, 0),
       workloadClass: task?.workloadClass ?? null,
@@ -10855,6 +11073,13 @@ async function fetchCloudLibrary(args) {
     `local-cloud-runner:${RUN_HOSTNAME || "unknown"}`;
   const config = await readConfig();
   requireLoggedIn(config);
+  const fetchProgress =
+    (await readFetchProgressState()) ??
+    createFetchProgressState({
+      stage: "leasing_cloud_sources",
+      counters: { sourcesTotal: 0, sourcesChecked: 0 },
+      current: { source: null, task: null },
+    });
 
   if (webSyncDisabled()) {
     console.log(JSON.stringify(
@@ -10875,6 +11100,14 @@ async function fetchCloudLibrary(args) {
     return;
   }
 
+  await emitFetchJobProgress(config, fetchProgress, {
+    stage: "leasing_cloud_sources",
+    current: { source: null, task: null },
+    event: {
+      type: "leasing_cloud_sources",
+      message: "Requesting eligible cloud sources.",
+    },
+  });
   const lease = await postJson(
     `${config.appUrl}/api/admin/cloud-fetch/lease`,
     { limit: cloudLimit, leaseOwner, jobRunId: envJobRunId() },
@@ -10882,6 +11115,14 @@ async function fetchCloudLibrary(args) {
     { label: "cloud fetch lease", retries: 1 },
   );
   if (lease.status !== "ok" || !lease.runId || !Array.isArray(lease.tasks) || lease.tasks.length === 0) {
+    await emitFetchJobProgress(config, fetchProgress, {
+      stage: "waiting_for_cloud_sources",
+      current: { source: null, task: null },
+      event: {
+        type: "cloud_queue_empty",
+        message: "No eligible cloud sources are waiting for this worker.",
+      },
+    });
     console.log(JSON.stringify(
       {
         status: "ok",
@@ -10926,6 +11167,23 @@ async function fetchCloudLibrary(args) {
     });
     return builder;
   });
+  const checkedBeforeLease = Number(fetchProgress.counters?.sourcesChecked ?? 0);
+  const totalBeforeLease = Math.max(
+    checkedBeforeLease,
+    Number(fetchProgress.counters?.sourcesTotal ?? 0),
+  );
+  await emitFetchJobProgress(config, fetchProgress, {
+    stage: "scanning_sources",
+    counters: {
+      sourcesTotal: totalBeforeLease + builders.length,
+      sourcesChecked: checkedBeforeLease,
+    },
+    current: { source: builders[0]?.name ?? null, task: null },
+    event: {
+      type: "cloud_sources_leased",
+      message: `Leased ${builders.length} cloud source${builders.length === 1 ? "" : "s"}.`,
+    },
+  });
   const planned = await buildFetchTasksForBuilders({
     builders,
     context: {
@@ -10942,6 +11200,62 @@ async function fetchCloudLibrary(args) {
     config,
     defaultSummaryLanguage: null,
     cloudTaskMetadataByBuilderId,
+    onSourceProgress: async (builderStat) => {
+      const checked = Number(fetchProgress.counters?.sourcesChecked ?? 0) + 1;
+      const sourceStatus = builderStat.error
+        ? "failed"
+        : builderStat.fallback
+          ? "fallback"
+          : "checked";
+      await emitFetchJobProgress(config, fetchProgress, {
+        stage: "scanning_sources",
+        counters: {
+          sourcesChecked: checked,
+          candidatesFound:
+            Number(fetchProgress.counters?.candidatesFound ?? 0) +
+            builderStat.itemsFetched +
+            builderStat.tasksGenerated,
+        },
+        current: {
+          source: builders[checked - checkedBeforeLease]?.name ?? null,
+          task: null,
+        },
+        source: {
+          builderId: builderStat.builderId,
+          name: builderStat.name,
+          sourceType: builderStat.sourceType,
+          status: sourceStatus,
+          itemsFetched: builderStat.itemsFetched,
+          tasksGenerated: builderStat.tasksGenerated,
+          discoveryTasksGenerated: builderStat.discoveryTasksGenerated,
+          error: builderStat.error ?? null,
+        },
+        event: {
+          type: "source_checked",
+          builderId: builderStat.builderId,
+          status: sourceStatus,
+          reason: builderStat.error ?? builderStat.fallback?.reason ?? null,
+          message: sourceProgressMessage(builderStat),
+        },
+      });
+    },
+  });
+  const plannedPostTasks = planned.fetchTasks.filter(
+    (task) => !isCandidateDiscoveryFetchTask(task) && !isUserActionAgentWorkType(task?.agentWorkType),
+  );
+  const newlyPlannedTasks = seedFetchProgressPlannedTasks(fetchProgress, plannedPostTasks);
+  await emitFetchJobProgress(config, fetchProgress, {
+    stage: "tasks_planned",
+    counters: {
+      tasksPlanned:
+        Number(fetchProgress.counters?.tasksPlanned ?? 0) +
+        newlyPlannedTasks,
+    },
+    current: { source: null, task: plannedPostTasks[0]?.item?.title ?? null },
+    event: {
+      type: "tasks_planned",
+      message: `Planned ${plannedPostTasks.length} cloud post task${plannedPostTasks.length === 1 ? "" : "s"}.`,
+    },
   });
   console.log(JSON.stringify(
     {

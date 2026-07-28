@@ -2,6 +2,9 @@ type JsonRecord = Record<string, unknown>;
 
 export type CloudFetchExecutionPlanPostPatch = {
   postTaskId: string;
+  title?: string | null;
+  url?: string | null;
+  workerId?: string | null;
   estimatedWorkSeconds: number;
   executionBudgetSeconds: number;
   workloadClass: string;

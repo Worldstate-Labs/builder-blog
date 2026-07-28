@@ -17,6 +17,33 @@ const missingCommandRunner = async () => ({
   timedOut: false,
 });
 
+test("HTTP sync retries honor a server conflict's explicit retryability", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  assert.equal(
+    cli.classifyHttpSyncRetryForTest({
+      status: 409,
+      responseCode: "cloud_source_result_incomplete",
+      retryable: true,
+    }),
+    true,
+  );
+  assert.equal(
+    cli.classifyHttpSyncRetryForTest({
+      status: 409,
+      responseCode: "reset_fenced",
+      retryable: false,
+    }),
+    false,
+  );
+  assert.equal(
+    cli.classifyHttpSyncRetryForTest({
+      status: 503,
+    }),
+    true,
+  );
+});
+
 test("external local tools are terminated as a process group on timeout", () => {
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
 
@@ -2803,7 +2830,7 @@ test("long-media extraction refuses to spawn its first availability probe after 
   );
 });
 
-test("long-media availability probes cap their timeout to the remaining shard budget and probe maximum", async () => {
+test("long-media ASR availability probes cap their timeout to the remaining shard budget and probe maximum", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?probe-budget-cap=${Date.now()}`);
   const dir = await mkdtemp(join(tmpdir(), "followbrief-extract-long-media-probe-cap-"));
   const commands: Array<{ command: string; args: string[]; timeoutMs: number }> = [];
@@ -2814,22 +2841,7 @@ test("long-media availability probes cap their timeout to the remaining shard bu
       longToolTimeoutMsResolver: () => budgetMs.shift() ?? 0,
       commandRunner: async (command: string, args: string[], options: { timeoutMs: number }) => {
         commands.push({ command, args, timeoutMs: options.timeoutMs });
-        if (args[0] === "--version" || (command === "ffmpeg" && args[0] === "-version")) {
-          return command === "whisper"
-            ? { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false }
-            : { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
-        }
-        if (command === "yt-dlp") {
-          const template = args[args.indexOf("-o") + 1] || join(dir, "audio.%(ext)s");
-          await writeFile(template.replace("%(ext)s", "mp3"), "audio", "utf8");
-          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
-        }
-        if (command === "ffmpeg") {
-          assert.notEqual(args[args.length - 1], "-version");
-          await writeFile(args[args.length - 1], "wav", "utf8");
-          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
-        }
-        if (command === "python3" && args[0] === "-c") {
+        if ((command === "python3" || command === "python") && args[0] === "-c") {
           return {
             ok: false,
             code: 1,
@@ -2838,22 +2850,24 @@ test("long-media availability probes cap their timeout to the remaining shard bu
             timedOut: false,
           };
         }
+        if (command === "whisper" && args[0] === "--help") {
+          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+        }
         throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
       },
     });
 
-    const probes = commands.filter(({ args }) => args[0] === "--version" || args[0] === "-version");
     assert.deepEqual(
-      probes.map(({ command, timeoutMs }) => [command, timeoutMs]),
+      commands.map(({ command, timeoutMs }) => [command, timeoutMs]),
       [
-        ["yt-dlp", 10_000],
-        ["ffmpeg", 8_000],
-        ["python3", 7_000],
-        ["python3", 6_000],
-        ["whisper", 5_000],
+        ["python3", 10_000],
+        ["python", 8_000],
+        ["python3", 10_000],
+        ["python", 10_000],
+        ["whisper", 7_000],
       ],
     );
-    assert.deepEqual(budgetMs, []);
+    assert.equal(commands.some(({ command }) => command === "yt-dlp"), false);
     await assert.rejects(stat(cwdProbeArtifact), /ENOENT/);
   } finally {
     await execFileAsync("rm", ["-rf", dir]);
@@ -2871,6 +2885,11 @@ test("extract-long-media probes ffmpeg with -version so local ASR continues when
     const success = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
       attempts: successAttempts,
       longToolTimeoutMsResolver: () => 25_000,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
       commandRunner: async (command: string, args: string[]) => {
         successCommands.push(`${command} ${args.join(" ")}`.trim());
         if (command === "yt-dlp" && args[0] === "--version") {
@@ -2892,40 +2911,40 @@ test("extract-long-media probes ffmpeg with -version so local ASR continues when
           await writeFile(args[args.length - 1], "wav", "utf8");
           return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
         }
-        if (command === "python3" && args[0] === "--version") {
-          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
-        }
-        if (command === "python" && args[0] === "--version") {
-          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
-        }
-        if (command === "whisper" && args[0] === "--version") {
-          return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+        if (command === "python3" && args[0] === "-c") {
+          return { ok: false, code: 1, stdout: "", stderr: "ModuleNotFoundError: No module named 'faster_whisper'", timedOut: false };
         }
         throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
       },
     });
 
     assert.equal(success.text, "");
-    assert.equal(success.reason, "python_missing");
+    assert.equal(success.reason, "faster_whisper_missing");
     assert.deepEqual(
       successAttempts.map((attempt) => [attempt.method, attempt.status, attempt.reason]),
-      [["local-asr", "skipped", "python_missing"]],
+      [["local-asr", "skipped", "faster_whisper_missing"]],
     );
     assert.deepEqual(successCommands.slice(0, 5), [
       "yt-dlp --version",
       "ffmpeg -version",
       successCommands[2],
       successCommands[3],
-      "python3 --version",
+      successCommands[4],
     ]);
     assert.equal(successCommands[2].startsWith("yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K -o "), true);
     assert.equal(successCommands[3].startsWith("ffmpeg -y -i "), true);
     assert.equal(successCommands.includes("ffmpeg --version"), false);
-    assert.equal(successCommands.includes("whisper --version"), true);
+    assert.equal(successCommands[4].startsWith("python3 -c "), true);
+    assert.equal(successCommands.some((command) => command.startsWith("whisper ")), false);
 
     const missing = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
       attempts: missingAttempts,
       longToolTimeoutMsResolver: () => 25_000,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
       commandRunner: async (command: string, args: string[]) => {
         if (command === "yt-dlp" && args[0] === "--version") {
           return { ok: true, code: 0, stdout: "yt-dlp 2026.01.01\n", stderr: "", timedOut: false };
@@ -2959,6 +2978,11 @@ test("extract-long-media helper stops before ffmpeg once budget expires after do
     const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode-1.mp3", {
       attempts,
       longToolTimeoutMsResolver: () => budgetMs.shift() ?? 0,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
       commandRunner: async (command: string, args: string[], options: { timeoutMs: number }) => {
         commands.push(`${command} ${args.join(" ")}`.trim());
         timeouts.push(options.timeoutMs);
@@ -4688,6 +4712,125 @@ test("split-sync-slices can write cloud-run slices with per-slice run ids", asyn
   const secondPayload = JSON.parse(await readFile(join(outDir, "slice-001-payload.json"), "utf8"));
   assert.equal(firstPayload.cloudRunId, "run_1");
   assert.equal(secondPayload.cloudRunId, "run_2");
+});
+
+test("cloud source slicing keeps every post for one source in one terminal payload", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-slice=${Date.now()}`);
+  const fetchTasks = ["post_1", "post_2", "post_3", "post_4"].map((id, index) => ({
+    id,
+    cloudRunId: "run_1",
+    cloudSourceTaskId: "source_1",
+    workerId: `worker-${index}`,
+    agentWorkType: "fetch_post",
+    contentStatus: "requires_agent",
+    builderSync: { builderId: "builder_1" },
+    item: { url: `https://example.com/${id}` },
+  }));
+  const payload = {
+    builders: [
+      {
+        builderId: "builder_1",
+        items: fetchTasks.map((task) => ({
+          title: task.id,
+          rawJson: { fetchTaskId: task.id },
+        })),
+      },
+    ],
+    taskOutcomes: [],
+  };
+
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    { status: "ok", cloudRunId: "run_1", fetchTasks },
+    payload,
+  );
+
+  assert.equal(slices.length, 1);
+  assert.equal(slices[0].cloudRunId, "run_1");
+  assert.equal(slices[0].cloudSourceTaskId, "source_1");
+  assert.deepEqual(
+    slices[0].tasks.fetchTasks.map((task: { id: string }) => task.id),
+    ["post_1", "post_2", "post_3", "post_4"],
+  );
+  assert.equal(slices[0].payload.builders[0].items.length, 4);
+});
+
+test("regular personal sync task slicing remains one post per payload", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?personal-task-slice=${Date.now()}`);
+  const fetchTasks = ["post_1", "post_2"].map((id) => ({
+    id,
+    agentWorkType: "fetch_post",
+    contentStatus: "requires_agent",
+    builderSync: { builderId: "builder_1" },
+    item: { url: `https://example.com/${id}` },
+  }));
+  const slices = cli.splitSyncPayloadByTask(
+    { status: "ok", fetchTasks },
+    {
+      builders: [
+        {
+          builderId: "builder_1",
+          items: fetchTasks.map((task) => ({
+            title: task.id,
+            rawJson: { fetchTaskId: task.id },
+          })),
+        },
+      ],
+      taskOutcomes: [],
+    },
+  );
+
+  assert.equal(slices.length, 2);
+  assert.deepEqual(slices.map((slice: { tasks: { fetchTasks: Array<{ id: string }> } }) =>
+    slice.tasks.fetchTasks.map((task) => task.id)), [["post_1"], ["post_2"]]);
+});
+
+test("local ASR recognizes Whisper CLI through help and does not download without a backend", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-capability=${Date.now()}`);
+  const commands: string[] = [];
+  const commandRunner = async (command: string, args: string[]) => {
+    commands.push(`${command} ${args.join(" ")}`.trim());
+    if ((command === "python3" || command === "python") && args[0] === "-c") {
+      return { ok: false, code: 1, stdout: "", stderr: "ModuleNotFoundError", timedOut: false };
+    }
+    if (command === "whisper" && args[0] === "--help") {
+      return { ok: true, code: 0, stdout: "usage: whisper", stderr: "", timedOut: false };
+    }
+    if (command === "yt-dlp" && args[0] === "--version") {
+      return { ok: true, code: 0, stdout: "yt-dlp", stderr: "", timedOut: false };
+    }
+    if (command === "ffmpeg" && args[0] === "-version") {
+      return { ok: true, code: 0, stdout: "ffmpeg", stderr: "", timedOut: false };
+    }
+    throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
+  };
+
+  const capabilities = await cli.resolveLocalAsrCapabilitiesForTest({ commandRunner });
+  assert.deepEqual(capabilities.adapters.map((adapter: { id: string }) => adapter.id), ["whisper-cli"]);
+  assert.equal(commands.includes("whisper --help"), true);
+  assert.equal(commands.includes("whisper --version"), false);
+
+  commands.length = 0;
+  const noBackend = await cli.fetchYouTubeLocalAsrForTest("https://example.com/video", {
+    attempts: [],
+    commandRunner: async (command: string, args: string[]) => {
+      commands.push(`${command} ${args.join(" ")}`.trim());
+      if ((command === "python3" || command === "python") && args[0] === "-c") {
+        return { ok: false, code: 1, stdout: "", stderr: "ModuleNotFoundError", timedOut: false };
+      }
+      if (command === "whisper" && args[0] === "--help") {
+        return { ok: false, code: null, stdout: "", stderr: "command_not_found", timedOut: false };
+      }
+      if (command === "yt-dlp" && args[0] === "--version") {
+        return { ok: true, code: 0, stdout: "yt-dlp", stderr: "", timedOut: false };
+      }
+      if (command === "ffmpeg" && args[0] === "-version") {
+        return { ok: true, code: 0, stdout: "ffmpeg", stderr: "", timedOut: false };
+      }
+      throw new Error(`unexpected command: ${command} ${args.join(" ")}`);
+    },
+  });
+  assert.equal(noBackend.reason, "asr_backend_unavailable");
+  assert.equal(commands.some((command) => command.startsWith("yt-dlp -f ")), false);
 });
 
 test("merge-fetch-results appends repeated cloud leases into one local queue", async () => {

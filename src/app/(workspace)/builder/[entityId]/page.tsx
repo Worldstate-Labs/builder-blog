@@ -22,6 +22,7 @@ import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { RelativeTime } from "@/components/RelativeTime";
 import { prisma } from "@/lib/prisma";
+import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 
 export const metadata: Metadata = { title: "Source" };
 
@@ -101,7 +102,11 @@ export default async function BuilderDetailPage({ params }: Params) {
   // count so this page never reports global/private channel data the
   // current user cannot actually see.
   const channelIds = channels.map((c) => c.builderId);
-  const postBuilderIds = await postBuilderIdsForVisibleChannels(entityId, channels);
+  const visiblePostBuilderIds = await postBuilderIdsForVisibleChannels(entityId, channels);
+  const postBuilderIds = await resolveUserContentBuilderIds({
+    userId,
+    logicalBuilderIds: visiblePostBuilderIds,
+  });
   const dedupedItemCount = await countDedupedItemsForEntity(postBuilderIds);
 
   // BuilderEntity is the canonical creator; it may have multiple

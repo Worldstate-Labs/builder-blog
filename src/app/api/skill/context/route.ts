@@ -24,6 +24,7 @@ import {
   isOriginalContentLanguagePreference,
   normalizeSummaryLanguagePreference,
 } from "@/lib/language-preference";
+import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 
 const personalFetchedItemLimit = 5000;
 
@@ -175,6 +176,12 @@ export async function GET(request: Request) {
       .filter((sub) => activePoolBuilderIdSet.has(sub.builderId))
       .map((sub) => sub.builderId),
   );
+  const digestContentBuilderIds = isDigest
+    ? await resolveUserContentBuilderIds({
+        userId: user.id,
+        logicalBuilderIds: [...subscribedBuilderIdSet],
+      })
+    : [];
   const libraryFetchItemCounts = isLibrary && poolBuilderIds.length
     ? await prisma.feedItem.groupBy({
         by: ["builderId"],
@@ -266,6 +273,7 @@ export async function GET(request: Request) {
     ? await fetchDedupedFeedForEntities({
         userId: user.id,
         entityIds: subscribedEntityIds,
+        builderIds: digestContentBuilderIds,
         publishedAfter: lookbackCutoff,
         limit: digestCandidateLimit,
         excludeDigestedForUserId: regenerate ? null : user.id,

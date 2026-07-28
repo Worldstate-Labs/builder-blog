@@ -448,6 +448,86 @@ test("serializeCloudFetchRun tolerates malformed and legacy details while preser
   assert.equal(result.tasks[1]?.provisionalExecutionBudgetSeconds, null);
 });
 
+test("serializeCloudFetchRun preserves plan-only title, URL, and worker assignment before heartbeat", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "RUNNING",
+    finishedAt: null,
+    tasks: [
+      {
+        id: "rt_plan_identity",
+        builderId: "cb_plan_identity",
+        summaryLanguage: "en",
+        status: "RUNNING",
+        plannedPosts: 1,
+        syncedPosts: 0,
+        failedPosts: 0,
+        actualDurationSeconds: null,
+        failureReason: null,
+        details: {
+          executionPlan: {
+            posts: {
+              post_1: {
+                postTaskId: "post_1",
+                title: "Readable planned post",
+                url: "https://example.com/readable",
+                workerId: "worker-7",
+                estimatedWorkSeconds: 1200,
+                executionBudgetSeconds: 3600,
+                workloadClass: "standard",
+                budgetReason: "minimum_budget",
+                deadlineState: "on_time",
+              },
+            },
+          },
+        },
+        builder: { name: "Plan Identity Feed", sourceType: "blog" },
+      },
+    ],
+  });
+
+  assert.equal(result.tasks[0]?.posts[0]?.title, "Readable planned post");
+  assert.equal(result.tasks[0]?.posts[0]?.url, "https://example.com/readable");
+  assert.equal(result.tasks[0]?.posts[0]?.workerId, "worker-7");
+});
+
+test("terminal legacy sources render omitted plan posts as not completed instead of queued", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "FAILED",
+    tasks: [
+      {
+        id: "rt_legacy_partial_terminal",
+        builderId: "cb_legacy",
+        summaryLanguage: "en",
+        status: "FAILED",
+        plannedPosts: 1,
+        syncedPosts: 0,
+        failedPosts: 1,
+        actualDurationSeconds: 60,
+        failureReason: "worker_timeout",
+        details: {
+          executionPlan: {
+            posts: {
+              post_1: {
+                postTaskId: "post_1",
+                title: "Legacy omitted post",
+                executionBudgetSeconds: 3600,
+              },
+            },
+          },
+          posts: [],
+        },
+        builder: { name: "Legacy Feed", sourceType: "blog" },
+      },
+    ],
+  });
+
+  assert.equal(result.tasks[0]?.pendingPosts, 0);
+  assert.equal(result.tasks[0]?.posts[0]?.status, "failed");
+  assert.equal(result.tasks[0]?.posts[0]?.failureReason, "missing_terminal_outcome_legacy");
+});
+
 test("serializeCloudFetchRun exposes source tasks that generated no post tasks", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,

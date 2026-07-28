@@ -1713,7 +1713,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /headerHostLabel/);
   assert.doesNotMatch(builderDetailPage, /builder-detail-host/);
   assert.match(builderDetailPage, /<CountMeta label=\{headerItemCount === 1 \? "post" : "posts"\} value=\{headerItemCount\} \/>/);
-  assert.match(builderDetailPage, /const postBuilderIds = await postBuilderIdsForVisibleChannels\(entityId, channels\)/);
+  assert.match(builderDetailPage, /const visiblePostBuilderIds = await postBuilderIdsForVisibleChannels\(entityId, channels\)/);
+  assert.match(builderDetailPage, /logicalBuilderIds: visiblePostBuilderIds/);
   assert.match(builderDetailPage, /const dedupedItemCount = await countDedupedItemsForEntity\(postBuilderIds\)/);
   assert.match(builderDetailPage, /where: \{ builderId: \{ in: builderIds \} \}/);
   assert.doesNotMatch(builderDetailPage, /where: \{ builder: \{ entityId \} \}/);
@@ -2611,7 +2612,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.match(fetchLogPanel, /Unknown source type/);
   assert.match(fetchLogPanel, /Skipped: no content/);
-  assert.match(fetchLogPanel, /Untitled task/);
+  assert.doesNotMatch(fetchLogPanel, /Untitled task/);
+  assert.match(fetchLogPanel, /fetchTaskDisplayLabel/);
   assert.match(digestLogPanel, /Untitled candidate/);
   assert.doesNotMatch(fetchLogPanel, /Skipped — no content|sync-panel-detail-action-message">\s*—|sync-panel-task-banner-blurb">\s*—|\?\? "—"/);
   assert.doesNotMatch(digestLogPanel, /\?\? "—"/);
@@ -4092,7 +4094,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /Source is not in your source library\./);
   assert.doesNotMatch(feedItemsRoute, /Source is not in your library/);
   assert.match(buildersPage, /sharedAdminPostStatsForBuilders/);
-  assert.match(buildersPage, /feedItemCount: sharedStats\?\.count \?\? builder\._count\.feedItems/);
+  assert.match(buildersPage, /loadUserContentStatsByEntityId/);
+  assert.match(buildersPage, /const feedItemCount = Math\.max/);
+  assert.match(buildersPage, /userStats\?\.count \?\? 0/);
   assert.match(buildersPage, /owner: \{ email: \{ in: adminEmails\(\) \} \}/);
   assert.match(builderDetailPage, /postBuilderIdsForVisibleChannels/);
   assert.match(builderDetailPage, /ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS/);

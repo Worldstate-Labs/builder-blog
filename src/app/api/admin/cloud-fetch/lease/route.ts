@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cloudFetchConflictBody } from "@/lib/cloud-fetch-conflict";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
 import { leaseCloudFetchTasks } from "@/lib/cloud-source-scheduler";
 import { prisma } from "@/lib/prisma";
@@ -26,7 +27,11 @@ export async function POST(request: Request) {
   const jobRunId = typeof body?.jobRunId === "string" ? body.jobRunId.trim().slice(0, 160) : "";
   if (!jobRunId) {
     return NextResponse.json(
-      { error: "jobRunId is required; start a new cloud worker with the current runner." },
+      cloudFetchConflictBody({
+        code: "cloud_lease_expired",
+        message: "jobRunId is required; start a new cloud worker with the current runner.",
+        retryable: false,
+      }),
       { status: 409 },
     );
   }
@@ -40,7 +45,11 @@ export async function POST(request: Request) {
   });
   if (!jobRun) {
     return NextResponse.json(
-      { error: "This cloud worker lease was reset. Start a new cloud worker." },
+      cloudFetchConflictBody({
+        code: "reset_fenced",
+        message: "This cloud worker lease was reset. Start a new cloud worker.",
+        retryable: false,
+      }),
       { status: 409 },
     );
   }
@@ -54,7 +63,14 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof StaleWorkerWriteError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json(
+        cloudFetchConflictBody({
+          code: "reset_fenced",
+          message: error.message,
+          retryable: false,
+        }),
+        { status: error.statusCode },
+      );
     }
     throw error;
   }

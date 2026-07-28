@@ -30,6 +30,7 @@ import {
   requestWorkspaceRefresh,
 } from "@/lib/content-sync-events";
 import { decodeHtmlEntities } from "@/lib/decode-entities";
+import { fetchTaskDisplayLabel } from "@/lib/fetch-task-display";
 import {
   fetchFailureInfo,
   fetchFailureMessage,
@@ -3338,6 +3339,9 @@ function summarizeOutcome(
     if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
     return { label: "Pending", tone: "warn" };
   }
+  if (task.status === "synced") {
+    return { label: "Summarized", tone: "ok" };
+  }
   if (task.completedStage === "summarize" || isSummarized(task)) {
     return { label: "Summarized", tone: "ok" };
   }
@@ -4027,7 +4031,7 @@ export function TaskRow({
             {pillLabel}
           </span>
           <span className="sync-panel-task-title">
-            {displayText(task.title ?? task.url, "Untitled task")}
+            {displayText(fetchTaskDisplayLabel(task), "Post")}
           </span>
         </summary>
 

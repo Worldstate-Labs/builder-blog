@@ -10,6 +10,7 @@ import { sourceCandidateValue } from "@/lib/source-candidates";
 import { sourceLabelForType } from "@/lib/source-display";
 import { builderKindForSourceType, builderSourceLabel } from "@/lib/source-registry";
 import { cleanStructuredDigestItems, digestItemsSearchText } from "@/lib/structured-digest";
+import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 import {
   candidateSearchTerms,
   normalizeSearchMode,
@@ -72,6 +73,13 @@ export async function searchUserLibrary({
   const typeFilter = parsedQuery.type;
   const shouldSearchSources = !typeFilter || typeFilter === "builder";
   const poolBuilderIds = await activePoolBuilderIds(userId);
+  const contentBuilderIds =
+    typeFilter && typeFilter !== "feed"
+      ? poolBuilderIds
+      : await resolveUserContentBuilderIds({
+          userId,
+          logicalBuilderIds: poolBuilderIds,
+        });
   if (shouldSearchSources) {
     await ensureSourceCandidateSeeded();
   }
@@ -145,7 +153,7 @@ export async function searchUserLibrary({
     }),
     typeFilter && typeFilter !== "feed" ? Promise.resolve([]) : prisma.feedItem.findMany({
       where: {
-        builderId: { in: poolBuilderIds },
+        builderId: { in: contentBuilderIds },
         ...(hasCandidateTerms ? { OR: feedSearchConditions(terms) } : {}),
       },
       include: {

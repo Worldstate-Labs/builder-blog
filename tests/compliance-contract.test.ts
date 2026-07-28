@@ -191,8 +191,10 @@ test("official worker writes share the durable reset fence and reject stale runs
   assert.match(builders, /libraryFetchRun\.findFirst[\s\S]*createdAt:\s*true/);
   assert.match(builders, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*patchFetchRunForBuilderSync/);
   assert.match(builders, /BUILDER_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
-  assert.match(cloudSync, /cloudFetchRun\.findFirst[\s\S]*status:\s*"RUNNING"/);
-  assert.match(cloudSync, /cloudFetchRunTask[\s\S]*status:\s*"RUNNING"/);
+  assert.match(cloudSync, /cloudFetchRun\.findUnique[\s\S]*status:\s*true/);
+  assert.match(cloudSync, /run\.status !== "RUNNING"/);
+  assert.match(cloudSync, /classifyCloudFetchTerminalWrite/);
+  assert.match(source("src/lib/cloud-fetch-terminal-reconcile.ts"), /params\.status === "RUNNING"/);
   assert.match(cloudSync, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*applyCloudFetchTaskSyncResult/);
   assert.match(cloudSync, /CLOUD_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
 });

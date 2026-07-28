@@ -133,15 +133,16 @@ test("admin cloud fetch sync route uses admin auth and cloud sync status helper"
   assert.match(syncRoute, /syncBuilderFeedItems/);
   assert.match(syncRoute, /cloudSourceTask\.findMany/);
   assert.match(syncRoute, /allowedBuilderIds/);
-  assert.match(syncRoute, /reconcileTaskResultsWithFeedSync/);
-  assert.match(syncRoute, /taskOutcomes:\s*parsed\.data\.taskOutcomes/);
-  assert.match(syncRoute, /serverTaskOutcomes/);
+  assert.match(syncRoute, /validateTerminalCoverage/);
+  assert.match(syncRoute, /reconcileCloudFetchTerminalResult/);
+  assert.match(syncRoute, /sourceTaskOutcomes/);
+  assert.match(syncRoute, /requestDigest/);
   assert.match(syncRoute, /applyCloudFetchTaskSyncResult/);
   assert.match(syncRoute, /sourceTaskResult/);
   assert.match(syncRoute, /runSummary/);
   assert.match(syncRoute, /upsertSourceCandidateFromCloudBuilder/);
   assert.match(syncRoute, /syncCloudLanguageLibraryHub/);
-  assert.match(syncRoute, /taskResult\.status === "succeeded"/);
+  assert.match(syncRoute, /taskResult\.syncedPosts > 0/);
   assert.match(syncRoute, /feedSync/);
   assert.match(syncRoute, /loadCloudFetchSyncConfig/);
   assert.match(syncRoute, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
@@ -156,6 +157,9 @@ test("cloud fetch plan patch payload validates grouped post budgets and rejects 
         posts: [
           {
             postTaskId: "post_1",
+            title: "Post one",
+            url: "https://example.com/post-one",
+            workerId: "worker-0",
             estimatedWorkSeconds: 3_000,
             executionBudgetSeconds: 3_600,
             workloadClass: "standard",
@@ -169,6 +173,11 @@ test("cloud fetch plan patch payload validates grouped post budgets and rejects 
   });
 
   assert.equal(parsed.success, true);
+  if (parsed.success) {
+    assert.equal(parsed.data.plans[0]?.posts[0]?.title, "Post one");
+    assert.equal(parsed.data.plans[0]?.posts[0]?.url, "https://example.com/post-one");
+    assert.equal(parsed.data.plans[0]?.posts[0]?.workerId, "worker-0");
+  }
   if (!parsed.success) return;
   assert.equal(parsed.data.runId, "run_1");
   assert.equal(parsed.data.plans[0]?.posts[0]?.postTaskId, "post_1");
@@ -228,7 +237,10 @@ test("admin cloud fetch plan route requires admin auth, stale-write protection, 
 
   assert.match(route, /requireCloudFetchAdmin\(request\)/);
   assert.match(route, /parseCloudFetchPlanPatchPayload/);
-  assert.match(route, /where: \{ id: parsed\.data\.runId, status: "RUNNING" \}/);
+  assert.match(route, /cloud_run_not_running/);
+  assert.match(route, /cloud_source_already_finalized/);
+  assert.match(route, /cloud_source_finalize_race/);
+  assert.match(route, /cloudFetchConflictBody/);
   assert.match(route, /lockResetFenceForWorker\(tx, run\.startedAt\)/);
   assert.match(route, /lockCloudFetchRunTaskRows\(tx, \{ runId: run\.id, cloudSourceTaskIds: taskIds \}\)/);
   assert.match(route, /const runningTasks = await tx\.cloudFetchRunTask\.findMany/);
@@ -239,17 +251,26 @@ test("admin cloud fetch plan route requires admin auth, stale-write protection, 
 
   assert.match(syncRoute, /lockResetFenceForWorker\(tx, run\.startedAt\)/);
   assert.match(syncRoute, /lockCloudFetchRunTaskRows\(tx, \{ runId: run\.id, cloudSourceTaskIds: taskIds \}\)/);
-  assert.match(syncRoute, /const runningTasks = await tx\.cloudFetchRunTask\.findMany/);
+  assert.match(syncRoute, /const runTasks = await tx\.cloudFetchRunTask\.findMany/);
+});
+
+test("cloud conflict responses are machine-readable and preserve retryability", () => {
+  const conflict = source("src/lib/cloud-fetch-conflict.ts");
+  const cli = source("scripts/builder-digest.mjs");
+
+  assert.match(conflict, /code: error\.code/);
+  assert.match(conflict, /retryable: error\.retryable/);
+  assert.match(cli, /httpResponseCode = details\.responseCode/);
+  assert.match(cli, /httpRetryable = details\.retryable/);
+  assert.match(cli, /if \(typeof error\.httpRetryable === "boolean"\) return error\.httpRetryable/);
 });
 
 test("admin cloud fetch sync route keeps skipped post outcomes out of source failure counts", () => {
-  const syncRoute = source("src/app/api/admin/cloud-fetch/sync/route.ts");
+  const reconcile = source("src/lib/cloud-fetch-terminal-reconcile.ts");
 
-  assert.match(syncRoute, /deriveCloudFetchOutcomeSummary/);
-  assert.match(syncRoute, /observedPosts/);
-  assert.match(syncRoute, /sourceTaskOutcomes/);
-  assert.doesNotMatch(syncRoute, /sourceTaskOutcomes\.length,\s*\)/);
-  assert.doesNotMatch(syncRoute, /firstOutcomeReason = sourceTaskOutcomes/);
+  assert.match(reconcile, /post\.status === "skipped"/);
+  assert.match(reconcile, /post\.status === "failed" \|\| post\.status === "blocked"/);
+  assert.doesNotMatch(reconcile, /failedPosts = posts\.length/);
 });
 
 test("cloud fetch log surfaces do not render raw source-level failure reasons as red text", () => {

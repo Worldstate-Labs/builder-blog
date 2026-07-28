@@ -3,8 +3,18 @@ import {
   emptyBuilderFeedSyncResult,
   syncBuilderFeedItems,
   type BuilderFeedSyncInput,
-  type BuilderFeedSyncItemResult,
 } from "@/lib/builder-feed-sync";
+import {
+  CloudFetchConflictError,
+  cloudFetchConflictBody,
+} from "@/lib/cloud-fetch-conflict";
+import {
+  CloudSourceResultIncompleteError,
+  classifyCloudFetchTerminalWrite,
+  cloudFetchTerminalRequestDigest,
+  reconcileCloudFetchTerminalResult,
+  validateTerminalCoverage,
+} from "@/lib/cloud-fetch-terminal-reconcile";
 import { lockCloudFetchRunTaskRows } from "@/lib/cloud-fetch-run-task-lock";
 import { requireCloudFetchAdmin } from "@/lib/cloud-source-admin";
 import { parseCloudFetchSyncPayload } from "@/lib/cloud-source-contracts";
@@ -12,7 +22,6 @@ import {
   applyCloudFetchTaskSyncResult,
   loadCloudFetchSyncConfig,
 } from "@/lib/cloud-source-sync";
-import { deriveCloudFetchOutcomeSummary } from "@/lib/cloud-fetch-outcome-summary";
 import {
   syncCloudLanguageLibraryHub,
   upsertSourceCandidateFromCloudBuilder,
@@ -51,30 +60,58 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const submittedItems = submittedItemFacts(parsed.data.builders);
   let core;
   try {
     core = await prisma.$transaction(async (tx) => {
-      const run = await tx.cloudFetchRun.findFirst({
-        where: { id: parsed.data.cloudRunId, status: "RUNNING" },
-        select: { id: true, startedAt: true },
+      const run = await tx.cloudFetchRun.findUnique({
+        where: { id: parsed.data.cloudRunId },
+        select: {
+          id: true,
+          startedAt: true,
+          status: true,
+          tasksSucceeded: true,
+          tasksFailed: true,
+          usageTokens: true,
+          usageCostUsd: true,
+        },
       });
-      if (!run) throw new StaleWorkerWriteError();
+      if (!run) {
+        throw new CloudFetchConflictError(
+          "cloud_run_not_running",
+          "The cloud fetch run no longer exists.",
+          false,
+        );
+      }
       await lockResetFenceForWorker(tx, run.startedAt);
       await lockCloudFetchRunTaskRows(tx, { runId: run.id, cloudSourceTaskIds: taskIds });
 
-      const runningTasks = await tx.cloudFetchRunTask.findMany({
+      const runTasks = await tx.cloudFetchRunTask.findMany({
         where: {
           runId: run.id,
           cloudSourceTaskId: { in: taskIds },
-          status: "RUNNING",
         },
-        select: { cloudSourceTaskId: true },
+        select: {
+          cloudSourceTaskId: true,
+          builderId: true,
+          summaryLanguage: true,
+          status: true,
+          plannedPosts: true,
+          syncedPosts: true,
+          failedPosts: true,
+          actualDurationSeconds: true,
+          failureReason: true,
+          usageTokens: true,
+          usageCostUsd: true,
+          details: true,
+        },
       });
-      const runningTaskIds = new Set(
-        runningTasks.map((task) => task.cloudSourceTaskId),
-      );
-      if (taskIds.some((taskId) => !runningTaskIds.has(taskId))) {
-        throw new StaleWorkerWriteError();
+      const runTaskById = new Map(runTasks.map((task) => [task.cloudSourceTaskId, task]));
+      const missingRunTaskIds = taskIds.filter((taskId) => !runTaskById.has(taskId));
+      if (missingRunTaskIds.length > 0) {
+        throw new CloudSyncWriteError(
+          `Cloud run source task was not found: ${missingRunTaskIds.slice(0, 3).join(", ")}`,
+        );
       }
 
       const config = await loadCloudFetchSyncConfig(tx);
@@ -90,13 +127,81 @@ export async function POST(request: Request) {
         );
       }
 
-      const allowedBuilderIds = new Set(cloudTasks.map((task) => task.builderId));
+      const preparedResults = parsed.data.taskResults.map((taskResult) => {
+        const runTask = runTaskById.get(taskResult.cloudSourceTaskId)!;
+        const executionPlanPosts = executionPlanPostsForTerminalResult(
+          runTask.details,
+          taskResult,
+        );
+        const expectedPostTaskIds = Object.keys(executionPlanPosts);
+        if (expectedPostTaskIds.length === 0 && taskResult.plannedPosts > 0) {
+          throw new CloudSourceResultIncompleteError(
+            `Cloud source ${taskResult.cloudSourceTaskId} has no persisted execution plan.`,
+          );
+        }
+        return {
+          taskResult,
+          runTask,
+          executionPlanPosts,
+          expectedPostTaskIds,
+        };
+      });
+      validateTerminalCoverage({
+        expectedPostTaskIds: preparedResults.flatMap((entry) => entry.expectedPostTaskIds),
+        submittedPostTaskIds: submittedItems.map((item) => item.fetchTaskId),
+        outcomePostTaskIds: parsed.data.taskOutcomes.map((outcome) => outcome.fetchTaskId),
+      });
+
+      const activeResults = [];
+      const replayedTaskResults = [];
+      const activePostTaskIds = new Set<string>();
+      for (const prepared of preparedResults) {
+        const expectedIds = new Set(prepared.expectedPostTaskIds);
+        const sourceSubmittedItems = submittedItems.filter((item) => expectedIds.has(item.fetchTaskId));
+        const sourceTaskOutcomes = parsed.data.taskOutcomes.filter((outcome) =>
+          expectedIds.has(outcome.fetchTaskId),
+        );
+        const requestDigest = cloudFetchTerminalRequestDigest({
+          cloudSourceTaskId: prepared.taskResult.cloudSourceTaskId,
+          expectedPostTaskIds: prepared.expectedPostTaskIds,
+          submittedItems: sourceSubmittedItems,
+          taskOutcomes: sourceTaskOutcomes,
+        });
+        const write = classifyCloudFetchTerminalWrite({
+          status: prepared.runTask.status,
+          storedRequestDigest: stringValue(record(prepared.runTask.details)?.requestDigest),
+          requestDigest,
+        });
+        if (write.action === "replay") {
+          replayedTaskResults.push(storedTaskResult(prepared.runTask));
+          continue;
+        }
+        if (run.status !== "RUNNING") {
+          throw new CloudFetchConflictError(
+            "cloud_run_not_running",
+            `Cloud fetch run ${run.id} is ${String(run.status).toLowerCase()}.`,
+            false,
+          );
+        }
+        for (const id of prepared.expectedPostTaskIds) activePostTaskIds.add(id);
+        activeResults.push({
+          ...prepared,
+          sourceSubmittedItems,
+          sourceTaskOutcomes,
+        });
+      }
+
+      const activeSourceTaskIds = new Set(
+        activeResults.map((entry) => entry.taskResult.cloudSourceTaskId),
+      );
+      const activeCloudTasks = cloudTasks.filter((task) => activeSourceTaskIds.has(task.id));
+      const allowedBuilderIds = new Set(activeCloudTasks.map((task) => task.builderId));
       const summaryLanguageByBuilderId = new Map(
-        cloudTasks.map((task) => [task.builderId, task.summaryLanguage]),
+        activeCloudTasks.map((task) => [task.builderId, task.summaryLanguage]),
       );
       const feedSync = emptyBuilderFeedSyncResult();
       for (const [summaryLanguage, builders] of groupBuildersBySummaryLanguage({
-        builders: parsed.data.builders,
+        builders: filterBuildersByFetchTaskIds(parsed.data.builders, activePostTaskIds),
         fallbackSummaryLanguage: parsed.data.summaryLanguage,
         summaryLanguageByBuilderId,
       })) {
@@ -114,33 +219,59 @@ export async function POST(request: Request) {
         });
       }
 
-      const taskResults = [];
-      let runSummary = null;
+      const taskResults: Array<Record<string, unknown>> = [...replayedTaskResults];
+      let runSummary = {
+        runStatus: run.status,
+        tasksSucceeded: run.tasksSucceeded,
+        tasksFailed: run.tasksFailed,
+        tasksRunning: runTasks.filter((task) => task.status === "RUNNING").length,
+        usageTokens: run.usageTokens,
+        usageCostUsd: run.usageCostUsd == null ? null : Number(run.usageCostUsd),
+      };
       const successfulLanguages = new Set<string>();
       const successfulBuilderIds = new Set<string>();
-      const authoritativeTaskResults = reconcileTaskResultsWithFeedSync({
-        taskResults: parsed.data.taskResults,
-        itemResults: feedSync.itemResults,
-        taskOutcomes: parsed.data.taskOutcomes,
-      });
+      const authoritativeTaskResults = activeResults.map((entry) =>
+        reconcileCloudFetchTerminalResult({
+          cloudSourceTaskId: entry.taskResult.cloudSourceTaskId,
+          executionPlanPosts: entry.executionPlanPosts,
+          clientResult: entry.taskResult,
+          submittedItems: entry.sourceSubmittedItems,
+          itemResults: feedSync.itemResults.filter((itemResult) =>
+            entry.expectedPostTaskIds.includes(itemResult.fetchTaskId),
+          ),
+          taskOutcomes: entry.sourceTaskOutcomes,
+        }),
+      );
       for (const taskResult of authoritativeTaskResults) {
-        const syncedTask = await applyCloudFetchTaskSyncResult({
-          prisma: tx,
-          config,
-          result: {
-            runId: parsed.data.cloudRunId,
-            cloudSourceTaskId: taskResult.cloudSourceTaskId,
-            status: taskResult.status,
-            plannedPosts: taskResult.plannedPosts,
-            syncedPosts: taskResult.syncedPosts,
-            failedPosts: taskResult.failedPosts,
-            actualDurationSeconds: taskResult.actualDurationSeconds,
-            failureReason: taskResult.failureReason,
-            usageTokens: taskResult.usageTokens,
-            usageCostUsd: taskResult.usageCostUsd,
-            details: taskResult.details,
-          },
-        });
+        let syncedTask;
+        try {
+          syncedTask = await applyCloudFetchTaskSyncResult({
+            prisma: tx,
+            config,
+            result: {
+              runId: parsed.data.cloudRunId,
+              cloudSourceTaskId: taskResult.cloudSourceTaskId,
+              status: taskResult.status,
+              plannedPosts: taskResult.plannedPosts,
+              syncedPosts: taskResult.syncedPosts,
+              failedPosts: taskResult.failedPosts,
+              actualDurationSeconds: taskResult.actualDurationSeconds,
+              failureReason: taskResult.failureReason,
+              usageTokens: taskResult.usageTokens,
+              usageCostUsd: taskResult.usageCostUsd,
+              details: taskResult.details,
+            },
+          });
+        } catch (error) {
+          if (error instanceof StaleWorkerWriteError) {
+            throw new CloudFetchConflictError(
+              "cloud_source_finalize_race",
+              `Cloud source ${taskResult.cloudSourceTaskId} was finalized by another worker.`,
+              true,
+            );
+          }
+          throw error;
+        }
         taskResults.push({
           ...syncedTask.sourceTaskResult,
           builderId: syncedTask.builderId,
@@ -154,7 +285,7 @@ export async function POST(request: Request) {
           usageTokens: syncedTask.usageTokens,
           usageCostUsd: syncedTask.usageCostUsd,
         };
-        if (taskResult.status === "succeeded") {
+        if (taskResult.syncedPosts > 0) {
           successfulBuilderIds.add(syncedTask.builderId);
           successfulLanguages.add(syncedTask.summaryLanguage);
         }
@@ -170,7 +301,27 @@ export async function POST(request: Request) {
     }, CLOUD_SYNC_TRANSACTION_OPTIONS);
   } catch (error) {
     if (error instanceof StaleWorkerWriteError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json(
+        cloudFetchConflictBody({
+          code: "reset_fenced",
+          message: error.message,
+          retryable: false,
+        }),
+        { status: error.statusCode },
+      );
+    }
+    if (error instanceof CloudSourceResultIncompleteError) {
+      return NextResponse.json(
+        cloudFetchConflictBody({
+          code: error.code,
+          message: error.message,
+          retryable: error.retryable,
+        }),
+        { status: error.statusCode },
+      );
+    }
+    if (error instanceof CloudFetchConflictError) {
+      return NextResponse.json(cloudFetchConflictBody(error), { status: error.statusCode });
     }
     if (error instanceof CloudSyncWriteError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
@@ -238,107 +389,98 @@ function groupBuildersBySummaryLanguage({
   return groups;
 }
 
-function reconcileTaskResultsWithFeedSync({
-  taskResults,
-  itemResults,
-  taskOutcomes,
-}: {
-  taskResults: Array<{
-    cloudSourceTaskId: string;
-    status: "succeeded" | "partial" | "failed";
-    plannedPosts: number;
-    syncedPosts: number;
-    failedPosts: number;
-    actualDurationSeconds?: number | null;
-    failureReason?: string | null;
-    usageTokens?: number | null;
-    usageCostUsd?: number | null;
-    details: Record<string, unknown>;
-  }>;
-  itemResults: BuilderFeedSyncItemResult[];
-  taskOutcomes: Array<{
-    fetchTaskId: string;
-    status: "skipped" | "failed" | "blocked";
-    reason: string;
-  }>;
-}) {
-  const itemResultByFetchTaskId = new Map(
-    itemResults.map((itemResult) => [itemResult.fetchTaskId, itemResult]),
+function submittedItemFacts(builders: BuilderFeedSyncInput[]) {
+  return builders.flatMap((builder) =>
+    builder.items.flatMap((item) => {
+      const fetchTaskId = stringValue(record(item.rawJson)?.fetchTaskId);
+      return fetchTaskId
+        ? [{
+            fetchTaskId,
+            title: item.title,
+            url: item.url,
+            body: item.body,
+            summary: item.summary,
+            headline: item.headline,
+          }]
+        : [];
+    }),
   );
-  const taskOutcomeByFetchTaskId = new Map(
-    taskOutcomes.map((taskOutcome) => [taskOutcome.fetchTaskId, taskOutcome]),
-  );
-  return taskResults.map((taskResult) => {
-    const fetchTaskIds = Array.isArray(taskResult.details.fetchTaskIds)
-      ? taskResult.details.fetchTaskIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-      : [];
-    if (fetchTaskIds.length === 0) return taskResult;
+}
 
-    const serverResults = fetchTaskIds
-      .map((fetchTaskId) => itemResultByFetchTaskId.get(fetchTaskId))
-      .filter((itemResult): itemResult is BuilderFeedSyncItemResult => Boolean(itemResult));
-    const sourceTaskOutcomes = fetchTaskIds
-      .map((fetchTaskId) => taskOutcomeByFetchTaskId.get(fetchTaskId))
-      .filter((taskOutcome): taskOutcome is {
-        fetchTaskId: string;
-        status: "skipped" | "failed" | "blocked";
-        reason: string;
-      } => Boolean(taskOutcome));
-    if (serverResults.length === 0 && sourceTaskOutcomes.length === 0) return taskResult;
-
-    const serverSynced = serverResults.filter((itemResult) => itemResult.status === "synced").length;
-    const syncedPosts = serverResults.length > 0
-      ? Math.min(taskResult.syncedPosts, serverSynced)
-      : taskResult.syncedPosts;
-    const clientSyncedRejectedByServer = serverResults.length > 0
-      ? Math.max(0, taskResult.syncedPosts - serverSynced)
-      : 0;
-    const observedPosts = [
-      ...serverResults.map((itemResult) => ({
-        status: itemResult.status === "synced" ? "synced" : "failed",
-        reason: itemResult.reason,
-      })),
-      ...sourceTaskOutcomes,
-      ...Array.from({ length: clientSyncedRejectedByServer }, () => ({
-        status: "failed",
-        reason: "cloud_feed_sync_rejected",
-      })),
-    ];
-    const summary = deriveCloudFetchOutcomeSummary({
-      status: taskResult.status,
-      plannedPosts: taskResult.plannedPosts,
-      syncedPosts,
-      failedPosts: taskResult.failedPosts,
-      failureReason: taskResult.failureReason,
-      posts: observedPosts,
+function filterBuildersByFetchTaskIds(
+  builders: BuilderFeedSyncInput[],
+  fetchTaskIds: Set<string>,
+): BuilderFeedSyncInput[] {
+  return builders.flatMap((builder) => {
+    const items = builder.items.filter((item) => {
+      const id = stringValue(record(item.rawJson)?.fetchTaskId);
+      return Boolean(id && fetchTaskIds.has(id));
     });
-    const status = summary.status.toLowerCase() as "succeeded" | "partial" | "failed";
-
-    return {
-      ...taskResult,
-      status,
-      syncedPosts,
-      failedPosts: summary.failedPosts,
-      failureReason: summary.failureReason,
-      details: {
-        ...taskResult.details,
-        serverFeedSync: {
-          syncedPosts,
-          failedPosts: summary.failedPosts,
-          itemResults: serverResults.map((itemResult) => ({
-            fetchTaskId: itemResult.fetchTaskId,
-            status: itemResult.status,
-            ...(itemResult.reason ? { reason: itemResult.reason } : {}),
-          })),
-        },
-        serverTaskOutcomes: sourceTaskOutcomes.map((taskOutcome) => ({
-          fetchTaskId: taskOutcome.fetchTaskId,
-          status: taskOutcome.status,
-          reason: taskOutcome.reason,
-        })),
-      },
-    };
+    return items.length > 0 ? [{ ...builder, items }] : [];
   });
+}
+
+function executionPlanPostsForTerminalResult(
+  details: unknown,
+  taskResult: { details: Record<string, unknown> },
+) {
+  const persisted = record(record(details)?.executionPlan)?.posts;
+  if (persisted && typeof persisted === "object" && !Array.isArray(persisted)) {
+    return persisted as Record<string, Record<string, unknown>>;
+  }
+  const posts = Array.isArray(taskResult.details.posts) ? taskResult.details.posts : [];
+  const postById = new Map(
+    posts.flatMap((value) => {
+      const post = record(value);
+      const id = stringValue(post?.id ?? post?.postTaskId ?? post?.fetchTaskId);
+      return id && post ? [[id, post] as const] : [];
+    }),
+  );
+  const ids = Array.isArray(taskResult.details.fetchTaskIds)
+    ? taskResult.details.fetchTaskIds.map(stringValue).filter((id): id is string => Boolean(id))
+    : [];
+  return Object.fromEntries(ids.map((id) => [id, { postTaskId: id, ...(postById.get(id) ?? {}) }]));
+}
+
+function storedTaskResult(task: {
+  cloudSourceTaskId: string;
+  builderId: string;
+  summaryLanguage: string;
+  status: string;
+  plannedPosts: number;
+  syncedPosts: number;
+  failedPosts: number;
+  actualDurationSeconds: number | null;
+  failureReason: string | null;
+  usageTokens: number | null;
+  usageCostUsd: unknown;
+  details: unknown;
+}) {
+  return {
+    cloudSourceTaskId: task.cloudSourceTaskId,
+    status: task.status.toLowerCase(),
+    plannedPosts: task.plannedPosts,
+    syncedPosts: task.syncedPosts,
+    failedPosts: task.failedPosts,
+    actualDurationSeconds: task.actualDurationSeconds,
+    failureReason: task.failureReason,
+    usageTokens: task.usageTokens,
+    usageCostUsd: task.usageCostUsd == null ? null : Number(task.usageCostUsd),
+    details: record(task.details) ?? {},
+    builderId: task.builderId,
+    summaryLanguage: task.summaryLanguage,
+    replayed: true,
+  };
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function projectionError(kind: string, key: string, error: unknown) {

@@ -3,6 +3,7 @@ import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import { prisma } from "@/lib/prisma";
+import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 
 type Params = { params: Promise<{ builderId: string }> };
 
@@ -33,9 +34,14 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   try {
+    const contentBuilderIds = await resolveUserContentBuilderIds({
+      userId: session.user.id,
+      logicalBuilderIds: [builderId],
+    });
     const items = await fetchDedupedFeedForEntities({
       userId: session.user.id,
       entityIds: [builder.entityId],
+      builderIds: contentBuilderIds,
       limit: feedItemLimit,
     });
 

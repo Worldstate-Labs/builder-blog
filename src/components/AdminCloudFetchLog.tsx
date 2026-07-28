@@ -356,6 +356,7 @@ function postToFetchTaskLog(
     plannedExtractionMethod: post.plannedExtractionMethod,
     mustSucceedBy: post.mustSucceedBy,
     estimateEvidence: post.estimateEvidence,
+    completedStage: post.completedStage,
   };
 }
 

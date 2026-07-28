@@ -36,6 +36,7 @@ export type CloudFetchPostOutcome = {
   plannedExtractionMethod: string | null;
   mustSucceedBy: string | null;
   estimateEvidence: Record<string, unknown> | null;
+  completedStage?: "read" | "summarize";
 };
 
 export type CloudFetchWorkerUsage = {
@@ -404,7 +405,7 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
         : null;
   const details = record(task.details);
   const executionPlan = parseTaskExecutionPlan(task.details);
-  const posts = parseCloudTaskPosts(task.details);
+  const posts = parseCloudTaskPosts(task.details, task.status !== "RUNNING");
   const outcomeSummary = deriveCloudFetchOutcomeSummary({
     status: task.status,
     plannedPosts: task.plannedPosts,
@@ -447,7 +448,7 @@ export function serializeCloudFetchRunTask(task: CloudFetchRunTaskRow): CloudFet
 // The sync CLI stores each source's per-post outcomes under the task details
 // (same shape the per-user fetch log uses). Read defensively so a missing or
 // differently-shaped details blob just yields no per-post rows.
-function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
+function parseCloudTaskPosts(details: unknown, terminal = false): CloudFetchPostOutcome[] {
   const detailsRecord = record(details);
   const planPosts = executionPlanPosts(detailsRecord?.executionPlan);
   const raw = detailsRecord
@@ -464,6 +465,9 @@ function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
     const p = item as Record<string, unknown>;
     const rawJson = record(p.rawJson ?? p.raw_json);
     const id = str(p.id ?? p.fetchTaskId ?? p.fetch_task_id ?? rawJson?.fetchTaskId);
+    const completedStage = p.completedStage === "read" || p.completedStage === "summarize"
+      ? p.completedStage
+      : null;
     const post = applyExecutionPlanPostFallback(
       {
         id,
@@ -495,6 +499,7 @@ function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
         plannedExtractionMethod: str(p.plannedExtractionMethod ?? p.planned_extraction_method),
         mustSucceedBy: iso(p.mustSucceedBy ?? p.must_succeed_by),
         estimateEvidence: record(p.estimateEvidence ?? p.estimate_evidence),
+        ...(completedStage ? { completedStage } : {}),
       },
       id ? planPosts.get(id) : null,
     );
@@ -507,7 +512,14 @@ function parseCloudTaskPosts(details: unknown): CloudFetchPostOutcome[] {
 
   for (const [postTaskId, planPost] of planPosts) {
     if (postsById.has(postTaskId)) continue;
-    postsById.set(postTaskId, applyExecutionPlanPostFallback(emptyCloudPost(postTaskId), planPost));
+    const planOnlyPost = applyExecutionPlanPostFallback(emptyCloudPost(postTaskId), planPost);
+    postsById.set(postTaskId, terminal
+      ? {
+          ...planOnlyPost,
+          status: "failed",
+          failureReason: "missing_terminal_outcome_legacy",
+        }
+      : planOnlyPost);
   }
 
   return [...postsById.values(), ...anonymousPosts];
@@ -523,6 +535,9 @@ type ParsedExecutionPlan = {
 };
 
 type ParsedExecutionPlanPost = {
+  title: string | null;
+  url: string | null;
+  workerId: string | null;
   estimatedWorkSeconds: number | null;
   executionBudgetSeconds: number | null;
   workloadClass: string | null;
@@ -554,6 +569,9 @@ function executionPlanPosts(value: unknown): Map<string, ParsedExecutionPlanPost
     const post = record(rawPost);
     if (!postTaskId || !post) continue;
     parsed.set(postTaskId, {
+      title: str(post.title),
+      url: str(post.url),
+      workerId: str(post.workerId),
       estimatedWorkSeconds: num(post.estimatedWorkSeconds),
       executionBudgetSeconds: num(post.executionBudgetSeconds),
       workloadClass: str(post.workloadClass),
@@ -609,6 +627,9 @@ function applyExecutionPlanPostFallback(
   if (!planPost) return post;
   return {
     ...post,
+    title: post.title ?? planPost.title,
+    url: post.url ?? planPost.url,
+    workerId: post.workerId ?? planPost.workerId,
     estimatedWorkSeconds: post.estimatedWorkSeconds ?? planPost.estimatedWorkSeconds,
     executionBudgetSeconds: post.executionBudgetSeconds ?? planPost.executionBudgetSeconds,
     workloadClass: post.workloadClass ?? planPost.workloadClass,

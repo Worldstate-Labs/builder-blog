@@ -4,6 +4,7 @@ import {
   type RecommendationSortMode,
 } from "@/lib/recommendation-sort";
 import { canonicalPostUrl } from "@/lib/canonical-url";
+import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
@@ -325,10 +326,14 @@ export async function createRecommendationSnapshot({
   if (subscriptionBuilderIds.length === 0) {
     return { snapshot: null, unreadRemaining: 0, candidateCount: 0 };
   }
+  const contentBuilderIds = await resolveUserContentBuilderIds({
+    userId,
+    logicalBuilderIds: subscriptionBuilderIds,
+  });
 
   const rawCandidates: CandidateList = await prisma.feedItem.findMany({
     where: {
-      builderId: { in: subscriptionBuilderIds },
+      builderId: { in: contentBuilderIds },
       createdAt: { gte: cutoff },
       ...(sortMode === "recent" ? recentCursorWhere({ afterCursor, beforeCursor }) : {}),
     },

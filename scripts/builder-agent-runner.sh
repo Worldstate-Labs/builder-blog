@@ -3837,7 +3837,11 @@ sync_completed_checkpoints() {
     _scc_previous_failure_mode="$SYNC_PAYLOAD_FAILURE_MODE"
   fi
   SYNC_PAYLOAD_SYNCED_IDS_FILE="$_scc_synced_ids_file"
-  SYNC_PAYLOAD_SLICE_GRANULARITY="task"
+  if [ "${SYNC_BUILDERS_COMMAND:-}" = "sync-cloud-builders" ]; then
+    SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-source"
+  else
+    SYNC_PAYLOAD_SLICE_GRANULARITY="task"
+  fi
   SYNC_PAYLOAD_FAILURE_MODE=skip
   if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint" --partial-outcomes --results-dir "$_scc_results_dir"; then
     _scc_sync_ok=1
@@ -4519,7 +4523,7 @@ run_library_job() {
   SYNC_BUILDERS_COMMAND="$_sync_command"
   SYNC_BUILDERS_EXTRA_ARGS="$_sync_extra_args"
   if [ "$_sync_command" = "sync-cloud-builders" ]; then
-    SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-run"
+    SYNC_PAYLOAD_SLICE_GRANULARITY="cloud-source"
   else
     SYNC_PAYLOAD_SLICE_GRANULARITY="${SYNC_PAYLOAD_SLICE_GRANULARITY:-task}"
   fi
