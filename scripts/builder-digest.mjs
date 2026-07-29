@@ -5079,7 +5079,7 @@ async function fetchPersonalXBuilder(
   }
 
   const tweets = (await tweetResponse.json())?.data ?? [];
-  return tweets
+  const eligibleTweets = tweets
     .map((tweet) => {
       const url = `https://x.com/${handle}/status/${tweet.id}`;
       return {
@@ -5101,8 +5101,12 @@ async function fetchPersonalXBuilder(
     })
     .filter((item) => item.body.trim())
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
-    .slice(0, limit);
+    .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)));
+  return selectNewestChronologicalCandidates(
+    eligibleTweets,
+    limit,
+    (item) => item.publishedAt,
+  );
 }
 
 function xTokenRejected(status) {
@@ -5336,11 +5340,19 @@ async function commandExists(command, commandRunner = runTool, { timeoutMsResolv
 }
 
 function filterFetchedItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, fetchedItemKeys = new Set() }) {
-  return items
+  const eligibleItems = items
     .filter((item) => item?.kind && item?.externalId && item?.body && item?.url)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !fetchedItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)))
-    .slice(0, limit);
+    .filter((item) => !fetchedItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)));
+  return selectNewestChronologicalCandidates(
+    eligibleItems,
+    limit,
+    (item) => item.publishedAt,
+  );
+}
+
+export function filterFetchedItemsForTest(items, options) {
+  return filterFetchedItems(items, options);
 }
 
 function isAfterCutoff(value, cutoff) {

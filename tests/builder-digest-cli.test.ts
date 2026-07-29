@@ -136,6 +136,70 @@ test("chronological selector orders valid dates newest-first and keeps unknown d
   );
 });
 
+test("external fetch items select newest eligible candidates before limit", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const filtered = cli.filterFetchedItemsForTest(
+    [
+      {
+        kind: "ARTICLE",
+        externalId: "third-newest",
+        body: "Third newest body",
+        url: "https://example.com/third-newest",
+        publishedAt: "2026-07-25T10:00:00.000Z",
+      },
+      {
+        kind: "ARTICLE",
+        externalId: "old",
+        body: "Old body",
+        url: "https://example.com/old",
+        publishedAt: "2026-07-10T10:00:00.000Z",
+      },
+      {
+        kind: "ARTICLE",
+        externalId: "newest",
+        body: "Newest body",
+        url: "https://example.com/newest",
+        publishedAt: "2026-07-29T10:00:00.000Z",
+      },
+      {
+        kind: "ARTICLE",
+        externalId: "fetched",
+        body: "Fetched body",
+        url: "https://example.com/fetched",
+        publishedAt: "2026-07-28T10:00:00.000Z",
+      },
+      {
+        kind: "ARTICLE",
+        externalId: "second-newest",
+        body: "Second newest body",
+        url: "https://example.com/second-newest",
+        publishedAt: "2026-07-27T10:00:00.000Z",
+      },
+      {
+        kind: "ARTICLE",
+        externalId: "invalid-structure",
+        body: "",
+        url: "https://example.com/invalid-structure",
+        publishedAt: "2026-07-30T10:00:00.000Z",
+      },
+    ],
+    {
+      builderId: "builder_external",
+      cutoff: new Date("2026-07-20T00:00:00.000Z"),
+      limit: 2,
+      fetchedItemKeys: new Set(["builder_external:ARTICLE:fetched"]),
+    },
+  );
+
+  assert.deepEqual(
+    filtered.map((item: { externalId: string; url: string }) => [item.externalId, item.url]),
+    [
+      ["newest", "https://example.com/newest"],
+      ["second-newest", "https://example.com/second-newest"],
+    ],
+  );
+});
+
 test("personal blog fetcher drops feed entries that are listing pages", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(
@@ -6909,6 +6973,76 @@ test("x fetch returns action-needed task when the bearer token is rejected", asy
     assert.equal(result.agentTasks.length, 1);
     assert.equal(result.agentTasks[0].type, "x_token_invalid");
     assert.match(result.agentTasks[0].agentMessage, /HTTP 401/);
+  } finally {
+    if (previousToken === undefined) delete process.env.X_BEARER_TOKEN;
+    else process.env.X_BEARER_TOKEN = previousToken;
+  }
+});
+
+test("personal X fetcher selects newest eligible tweets before limit", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const previousToken = process.env.X_BEARER_TOKEN;
+  try {
+    process.env.X_BEARER_TOKEN = "test-token";
+    const result = await cli.fetchPersonalXBuilderForTest(
+      {
+        id: "builder_x",
+        kind: "X",
+        name: "Example X Source",
+        handle: "example",
+        sourceUrl: "https://x.com/example",
+      },
+      {
+        cutoff: null,
+        limit: 2,
+        agentModel: "test-model",
+        fetchedItemKeys: new Set(),
+        sources: {},
+        fetcher: async (url: string) => {
+          if (url.includes("/users/by/username/")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ data: { id: "user-123" } }),
+            };
+          }
+          if (url.includes("/tweets?")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                data: [
+                  {
+                    id: "old",
+                    text: "Oldest eligible tweet",
+                    created_at: "2026-07-21T12:00:00.000Z",
+                  },
+                  {
+                    id: "newest",
+                    text: "Newest eligible tweet",
+                    created_at: "2026-07-29T12:00:00.000Z",
+                  },
+                  {
+                    id: "second-newest",
+                    text: "Second newest eligible tweet",
+                    created_at: "2026-07-27T12:00:00.000Z",
+                  },
+                ],
+              }),
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        },
+      },
+    );
+
+    assert.deepEqual(
+      result.map((item: { externalId: string; url: string }) => [item.externalId, item.url]),
+      [
+        ["newest", "https://x.com/example/status/newest"],
+        ["second-newest", "https://x.com/example/status/second-newest"],
+      ],
+    );
   } finally {
     if (previousToken === undefined) delete process.env.X_BEARER_TOKEN;
     else process.env.X_BEARER_TOKEN = previousToken;
