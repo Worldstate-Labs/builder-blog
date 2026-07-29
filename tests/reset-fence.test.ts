@@ -58,6 +58,14 @@ test("new worker creation can lock the current fence without trusting a client c
   assert.match(client.queries[0], /FOR SHARE/);
 });
 
+test("stale worker write errors expose the reset-fenced API contract", () => {
+  const error = new StaleWorkerWriteError();
+
+  assert.equal(error.statusCode, 409);
+  assert.equal(error.responseCode, "agent_job_reset_fenced");
+  assert.equal(error.retryable, false);
+});
+
 test("RESET advances the durable fence before deleting generated state", async () => {
   process.env.DATABASE_URL ??= "postgresql://test:test@127.0.0.1:5432/test";
   const { resetFetchDigestState } = await import("../src/lib/fetch-digest-reset");

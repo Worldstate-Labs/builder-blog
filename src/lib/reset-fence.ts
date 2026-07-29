@@ -9,6 +9,8 @@ type ResetFenceClient = {
 
 export class StaleWorkerWriteError extends Error {
   readonly statusCode = 409;
+  readonly responseCode = "agent_job_reset_fenced";
+  readonly retryable = false;
 
   constructor() {
     super("This worker started before the latest global reset. Start a new run.");

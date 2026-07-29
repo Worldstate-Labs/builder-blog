@@ -487,7 +487,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof StaleWorkerWriteError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json(
+        { error: error.message, code: error.responseCode, retryable: error.retryable },
+        { status: error.statusCode },
+      );
     }
     if (error instanceof AgentJobWriteError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
