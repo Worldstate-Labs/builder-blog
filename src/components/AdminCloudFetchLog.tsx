@@ -28,6 +28,11 @@ import type {
   CloudWorkerHostStatus,
   CloudWorkerHostTask,
 } from "@/lib/cloud-fetch-run-log";
+import {
+  formatCloudWorkerTaskLabel,
+  resolveWorkerAssignment,
+  selectUnassignedWorkerTasks,
+} from "@/lib/cloud-worker-task-display";
 
 type CloudFetchRunsResponse = {
   leaseBatches?: CloudFetchRunLogItem[];
@@ -280,10 +285,6 @@ function statusClass(status: string | null): string {
   return "is-failed";
 }
 
-function taskLabel(task: CloudWorkerHostTask): string {
-  return task.title ?? task.url ?? task.id;
-}
-
 function emptySourceTaskMessage(task: CloudFetchRunLogTask): string {
   const status = String(task.status ?? "").toLowerCase();
   if (
@@ -480,7 +481,11 @@ function buildWorkerShardGroups(
 
   const groups = new Map<string, WorkerShardTask[]>();
   for (const entry of byTaskId.values()) {
-    const workerId = entry.task.workerId ?? entry.liveTask?.workerId ?? "No local worker assignment";
+    const workerId = resolveWorkerAssignment(
+      entry.task.workerId,
+      entry.liveTask?.workerId,
+    );
+    if (!workerId) continue;
     const list = groups.get(workerId) ?? [];
     list.push(entry);
     groups.set(workerId, list);
@@ -538,7 +543,14 @@ function WorkerHostPanel({
   usage: UsageSummary | null;
 }) {
   const progress = workerHost.progress;
-  const tasks = useMemo(() => sortedWorkerTasks(workerHost.tasks).slice(0, 20), [workerHost.tasks]);
+  const tasks = useMemo(
+    () =>
+      sortedWorkerTasks(selectUnassignedWorkerTasks(workerHost.tasks)).slice(
+        0,
+        20,
+      ),
+    [workerHost.tasks],
+  );
   const events = workerHost.recentEvents.slice(-5).reverse();
   const fallbackMetrics = useMemo(() => {
     const plannedPosts = leaseBatches.reduce((sum, batch) => sum + batch.plannedPosts, 0);
@@ -661,12 +673,14 @@ function WorkerHostPanel({
 
       <div className="cloud-worker-task-section">
         <div className="cloud-worker-task-section-head">
-          <h5>Post task queue</h5>
-          <span>{tasks.length} recent</span>
+          <h5>Waiting for assignment</h5>
+          <span>{tasks.length} waiting</span>
         </div>
         {tasks.length === 0 ? (
           <p className="cron-field-hint">
-            {runningWithoutHeartbeat ? "No post task heartbeat yet." : "No post task activity yet."}
+            {runningWithoutHeartbeat
+              ? "No post task heartbeat yet."
+              : "No tasks waiting for assignment."}
           </p>
         ) : (
           <ul className="cloud-worker-task-list">
@@ -676,7 +690,9 @@ function WorkerHostPanel({
                   {task.status ?? "queued"}
                 </span>
                 <span className="cloud-worker-task-main">
-                  <span className="cloud-worker-task-title">{taskLabel(task)}</span>
+                  <span className="cloud-worker-task-title">
+                    {formatCloudWorkerTaskLabel(task)}
+                  </span>
                   <span className="cloud-worker-task-meta">
                     <InlineParts
                       parts={[
@@ -875,7 +891,7 @@ export function AdminCloudFetchLog({
       <div className="cloud-source-deliveries-head">
         <h4>Worker lanes</h4>
         <p>
-          Each lane is one local worker slot. Expand it to inspect post tasks handled by that lane.
+          Each lane is one local worker slot. Assigned tasks appear here when a worker claims them.
         </p>
       </div>
 

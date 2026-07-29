@@ -631,6 +631,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "각 레인은 하나의 로컬 worker 슬롯입니다. 펼치면 해당 레인이 처리한 게시물 작업을 확인할 수 있습니다.",
     es: "Cada carril es un slot de worker local. Expándelo para inspeccionar las tareas de publicaciones que manejó ese carril.",
   },
+  "Each lane is one local worker slot. Assigned tasks appear here when a worker claims them.": {
+    "zh-CN": "每个通道是一个本地 worker 槽位。任务由 worker 领取后会显示在这里。",
+    "zh-TW": "每個通道是一個本機 worker 槽位。任務由 worker 領取後會顯示在這裡。",
+    ja: "各レーンは 1 つのローカル worker スロットです。worker が取得した割り当て済みタスクがここに表示されます。",
+    ko: "각 레인은 하나의 로컬 worker 슬롯입니다. worker가 가져간 할당 작업이 여기에 표시됩니다.",
+    es: "Cada carril es un slot de worker local. Las tareas asignadas aparecen aquí cuando un worker las toma.",
+  },
   "No worker lane assignments yet.": {
     "zh-CN": "还没有 worker 通道分配。",
     "zh-TW": "還沒有 worker 通道分配。",
@@ -1095,19 +1102,26 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "조치 필요",
     es: "Requiere acción",
   },
-  "Post task queue": {
-    "zh-CN": "帖子任务队列",
-    "zh-TW": "貼文任務佇列",
-    ja: "投稿タスクキュー",
-    ko: "게시물 작업 큐",
-    es: "Cola de tareas de publicaciones",
+  "Waiting for assignment": {
+    "zh-CN": "等待分配",
+    "zh-TW": "等待分派",
+    ja: "割り当て待ち",
+    ko: "할당 대기",
+    es: "En espera de asignación",
   },
-  "recent": {
-    "zh-CN": "最近",
-    "zh-TW": "最近",
-    ja: "最近",
-    ko: "최근",
-    es: "recientes",
+  "waiting": {
+    "zh-CN": "等待中",
+    "zh-TW": "等待中",
+    ja: "待機中",
+    ko: "대기 중",
+    es: "en espera",
+  },
+  "No tasks waiting for assignment.": {
+    "zh-CN": "没有等待分配的任务。",
+    "zh-TW": "沒有等待分派的任務。",
+    ja: "割り当て待ちのタスクはありません。",
+    ko: "할당을 기다리는 작업이 없습니다.",
+    es: "No hay tareas en espera de asignación.",
   },
   "queued": {
     "zh-CN": "排队中",

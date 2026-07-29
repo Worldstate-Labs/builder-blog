@@ -15028,9 +15028,8 @@ body {
 .cloud-worker-task-title {
   color: var(--ink);
   font-size: 0.8125rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .cloud-worker-task-meta,
 .cloud-worker-task-message {

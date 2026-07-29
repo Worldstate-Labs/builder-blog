@@ -147,8 +147,18 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /initialLeaseBatches/);
   assert.match(log, /workerHost/);
   assert.match(log, /leaseBatches/);
-  assert.match(log, /Post task queue/);
+  assert.match(log, /selectUnassignedWorkerTasks/);
+  assert.match(log, /formatCloudWorkerTaskLabel/);
+  assert.match(log, /resolveWorkerAssignment/);
+  assert.match(log, /Waiting for assignment/);
+  assert.match(log, /\{tasks\.length\} waiting/);
+  assert.match(log, /No tasks waiting for assignment\./);
   assert.match(log, /Worker lanes/);
+  assert.match(
+    log,
+    /Each lane is one local worker slot\. Assigned tasks appear here when a worker claims them\./,
+  );
+  assert.doesNotMatch(log, /No local worker assignment/);
   assert.match(log, /formatInlineUsage\(group\.usage\)/);
   assert.match(log, /formatInlineUsage\(usage\)/);
   assert.match(log, /Source deliveries/);
@@ -205,6 +215,15 @@ test("cloud worker host metrics wrap long stage and usage values", () => {
   assert.match(styles, /\.cloud-worker-host-metric strong \{[^}]*overflow-wrap: anywhere;/);
   assert.match(styles, /\.cloud-worker-host-metric strong \{[^}]*white-space: normal;/);
   assert.doesNotMatch(styles, /\.cloud-worker-host-metric strong \{[^}]*text-overflow: ellipsis;/);
+});
+
+test("cloud worker queue titles wrap instead of truncating readable labels", () => {
+  const styles = source("src/app/globals.css");
+  const rule = styles.match(/\.cloud-worker-task-title \{([^}]*)\}/)?.[1] ?? "";
+
+  assert.match(rule, /overflow-wrap: anywhere;/);
+  assert.match(rule, /white-space: normal;/);
+  assert.doesNotMatch(rule, /text-overflow: ellipsis;/);
 });
 
 test("cloud management timestamps use the shared relative time renderer", () => {
