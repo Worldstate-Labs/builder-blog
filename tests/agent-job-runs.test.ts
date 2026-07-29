@@ -868,6 +868,10 @@ test("runner exposes strict account-scoped cloud host lifecycle controls", () =>
   assert.match(runner, /verify_followbrief_current_pid/);
   assert.match(runner, /BUILDER_BLOG_STRICT_JOB_UPDATE/);
   assert.match(runner, /_target_update_code=0[\s\S]*job_run_update "\$@" \|\| _target_update_code=\$\?/);
+  assert.match(
+    runner,
+    /cloud_host_control_current_file\(\) \{[\s\S]*_chcc_update_code=0[\s\S]*strict_job_run_update_for_instance[\s\S]*\|\| _chcc_update_code=\$\?[\s\S]*\[\s*"\$_chcc_update_code"\s*-eq\s*"\$JOB_UPDATE_RESET_FENCED"\s*\]/,
+  );
 });
 
 test("production app defaults use the FollowBrief domain", () => {

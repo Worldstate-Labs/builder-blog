@@ -2688,10 +2688,12 @@ cloud_host_control_current_file() {
   case "$_chcc_action" in
     mark-replaced)
       if [ "$_chcc_exact_live" = "1" ]; then
-        if ! strict_job_run_update_for_instance \
+        _chcc_update_code=0
+        strict_job_run_update_for_instance \
           "$_chcc_instance" "$_chcc_started" "$_chcc_expected" \
           replaced "Cloud worker host replacement was confirmed by the admin." "worker_host_replace_requested" \
-          --stage "stopping"; then
+          --stage "stopping" || _chcc_update_code=$?
+        if [ "$_chcc_update_code" -ne 0 ]; then
           echo "Could not mark $_chcc_label worker $_chcc_instance as replaced; leaving it running and preserving its marker." >&2
           return 1
         fi
@@ -2716,14 +2718,20 @@ cloud_host_control_current_file() {
           echo "$_chcc_label worker pid $_chcc_pid is still active; preserving its marker." >&2
           return 75
         fi
-        if ! strict_job_run_update_for_instance \
+        _chcc_update_code=0
+        strict_job_run_update_for_instance \
           "$_chcc_instance" "$_chcc_started" "$_chcc_expected" \
           killed "Cloud worker host stopped by admin." "stop_cloud_worker_host" \
-          --stage "stopped"; then
+          --stage "stopped" || _chcc_update_code=$?
+        if [ "$_chcc_update_code" -ne 0 ] && [ "$_chcc_update_code" -ne "$JOB_UPDATE_RESET_FENCED" ]; then
           echo "Stopped $_chcc_label worker but could not record its terminal status; preserving its marker for retry." >&2
           return 1
         fi
         clear_current_file "$_chcc_file" "$_chcc_instance"
+        if [ "$_chcc_update_code" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+          echo "Reconciled reset-fenced $_chcc_label worker $_chcc_instance after confirming local shutdown."
+          return 0
+        fi
         echo "Stopped $_chcc_label worker $_chcc_instance."
         return 0
       fi
@@ -2740,14 +2748,20 @@ cloud_host_control_current_file() {
   else
     _chcc_stale_summary="Recorded Cloud worker exited before reporting a terminal state."
   fi
-  if ! strict_job_run_update_for_instance \
+  _chcc_update_code=0
+  strict_job_run_update_for_instance \
     "$_chcc_instance" "$_chcc_started" "$_chcc_expected" \
     stale "$_chcc_stale_summary" "$_chcc_stale_reason" \
-    --stage "stopped"; then
+    --stage "stopped" || _chcc_update_code=$?
+  if [ "$_chcc_update_code" -ne 0 ] && { [ "$_chcc_action" != "stop-current" ] || [ "$_chcc_update_code" -ne "$JOB_UPDATE_RESET_FENCED" ]; }; then
     echo "Could not reconcile stale $_chcc_label worker $_chcc_instance; preserving its marker." >&2
     return 1
   fi
   clear_current_file "$_chcc_file" "$_chcc_instance"
+  if [ "$_chcc_update_code" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+    echo "Reconciled reset-fenced stale $_chcc_label worker $_chcc_instance without signaling pid ${_chcc_pid:-unknown}."
+    return 0
+  fi
   echo "Reconciled stale $_chcc_label worker $_chcc_instance without signaling pid ${_chcc_pid:-unknown}."
 }
 

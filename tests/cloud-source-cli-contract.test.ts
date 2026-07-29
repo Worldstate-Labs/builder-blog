@@ -27,6 +27,19 @@ const regularLocalStopBlock = (text: string, job: string) => {
   return block;
 };
 
+const cloudHostControlHarnessPrelude = (runner: string, dir: string) => `set -eu
+JOB_STATE_DIR="${dir}/state"
+mkdir -p "$JOB_STATE_DIR"
+JOB_UPDATE_RESET_FENCED=78
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "clear_current_file")}
+${shellFunction(runner, "job_update_error_is_reset_fenced")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "cloud_host_control_current_file")}
+`;
+
 test("cloud slice sync discards only explicit terminal lease conflicts", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const classifier = shellFunction(runner, "sync_error_is_obsolete_cloud_slice");
@@ -2944,13 +2957,7 @@ test("cloud host control keeps the marker when an exact worker cannot be termina
     const script = join(dir, "check.sh");
     await writeFile(
       script,
-      `set -eu
-${shellFunction(runner, "json_get_number")}
-${shellFunction(runner, "json_get_string")}
-${shellFunction(runner, "clear_current_file")}
-${shellFunction(runner, "strict_job_run_update_for_instance")}
-${shellFunction(runner, "verify_followbrief_current_pid")}
-${shellFunction(runner, "cloud_host_control_current_file")}
+      `${cloudHostControlHarnessPrelude(runner, dir)}
 verify_followbrief_pid() { return 0; }
 terminate_process_tree() { return 1; }
 job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
@@ -3076,14 +3083,8 @@ test("cloud host control escalates the cached descendant set after the runner ro
     const script = join(dir, "check.sh");
     await writeFile(
       script,
-      `set -eu
-${shellFunction(runner, "json_get_number")}
-${shellFunction(runner, "json_get_string")}
-${shellFunction(runner, "clear_current_file")}
-${shellFunction(runner, "strict_job_run_update_for_instance")}
-${shellFunction(runner, "verify_followbrief_current_pid")}
+      `${cloudHostControlHarnessPrelude(runner, dir)}
 ${shellFunction(runner, "terminate_recorded_process_ids")}
-${shellFunction(runner, "cloud_host_control_current_file")}
 verify_calls=0
 verify_followbrief_pid() { verify_calls=$((verify_calls + 1)); [ "$verify_calls" -eq 1 ]; }
 process_tree_pids() { printf '4242\\n4343\\n'; }
@@ -3116,13 +3117,7 @@ test("cloud host control never kills a live pid that is not the recorded FollowB
     const script = join(dir, "check.sh");
     await writeFile(
       script,
-      `set -eu
-${shellFunction(runner, "json_get_number")}
-${shellFunction(runner, "json_get_string")}
-${shellFunction(runner, "clear_current_file")}
-${shellFunction(runner, "strict_job_run_update_for_instance")}
-${shellFunction(runner, "verify_followbrief_current_pid")}
-${shellFunction(runner, "cloud_host_control_current_file")}
+      `${cloudHostControlHarnessPrelude(runner, dir)}
 verify_followbrief_pid() { return 1; }
 kill() { return 0; }
 terminate_process_tree() { touch "${dir}/terminated"; return 0; }
@@ -3153,13 +3148,7 @@ test("cloud host control treats a matching runner argv with a different process 
     const script = join(dir, "check.sh");
     await writeFile(
       script,
-      `set -eu
-${shellFunction(runner, "json_get_number")}
-${shellFunction(runner, "json_get_string")}
-${shellFunction(runner, "clear_current_file")}
-${shellFunction(runner, "strict_job_run_update_for_instance")}
-${shellFunction(runner, "verify_followbrief_current_pid")}
-${shellFunction(runner, "cloud_host_control_current_file")}
+      `${cloudHostControlHarnessPrelude(runner, dir)}
 verify_followbrief_pid() { return 0; }
 process_start_epoch() { printf '200\\n'; }
 kill() { return 0; }
@@ -3178,6 +3167,124 @@ cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
   }
 });
 
+test("cloud host control reconciles a dead worker after an exact reset-fenced stop-current update", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-dead-reset-fenced-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-dead", workerPid: 5454, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_followbrief_pid() { return 1; }
+kill() { [ "$1" = "-0" ] && return 1; return 1; }
+terminate_process_tree() { printf 'terminated\\n' >> "${dir}/signals"; return 0; }
+job_run_update_for_instance() {
+  printf 'stale\\n' >> "${dir}/updates"
+  printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
+  return 1
+}
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    const result = await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    await assert.rejects(readFile(join(dir, "signals"), "utf8"));
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "stale");
+    assert.match(result.stdout, /reset-fenced stale cloud-library-host worker host-dead/i);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control reconciles an exact live worker after reset-fenced stop-current cleanup", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-live-reset-fenced-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-live", workerPid: 6464, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_calls=0
+verify_followbrief_pid() {
+  verify_calls=$((verify_calls + 1))
+  [ "$verify_calls" -eq 1 ]
+}
+process_tree_pids() { printf '6464\\n'; }
+terminate_process_tree() { printf 'terminate\\n' >> "${dir}/order"; return 0; }
+job_run_update_for_instance() {
+  printf 'update\\n' >> "${dir}/order"
+  printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
+  return 1
+}
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    const result = await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    assert.equal((await readFile(join(dir, "order"), "utf8")).trim(), "terminate\nupdate");
+    assert.match(result.stdout, /reset-fenced cloud-library-host worker host-live/i);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control reconciles a reused pid only after an exact reset-fenced stop-current update", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-reused-reset-fenced-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-reused-reset", workerPid: 6565, processStartEpoch: 100, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_followbrief_pid() { return 0; }
+process_start_epoch() { printf '200\\n'; }
+kill() {
+  if [ "$1" = "-0" ] && [ "$2" = "6565" ]; then
+    return 0
+  fi
+  printf '%s\\n' "$*" >> "${dir}/signals"
+  return 1
+}
+terminate_process_tree() { printf 'terminated\\n' >> "${dir}/signals"; return 0; }
+job_run_update_for_instance() {
+  printf 'stale\\n' >> "${dir}/updates"
+  printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
+  return 1
+}
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    const result = await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    await assert.rejects(readFile(join(dir, "signals"), "utf8"));
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "stale");
+    assert.match(result.stdout, /reset-fenced stale cloud-library-host worker host-reused-reset/i);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud host control preserves current.json when the terminal status update fails", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-status-"));
   try {
@@ -3191,13 +3298,7 @@ test("cloud host control preserves current.json when the terminal status update 
     const script = join(dir, "check.sh");
     await writeFile(
       script,
-      `set -eu
-${shellFunction(runner, "json_get_number")}
-${shellFunction(runner, "json_get_string")}
-${shellFunction(runner, "clear_current_file")}
-${shellFunction(runner, "strict_job_run_update_for_instance")}
-${shellFunction(runner, "verify_followbrief_current_pid")}
-${shellFunction(runner, "cloud_host_control_current_file")}
+      `${cloudHostControlHarnessPrelude(runner, dir)}
 verify_followbrief_pid() { return 1; }
 kill() { return 1; }
 terminate_process_tree() { return 0; }
@@ -3208,6 +3309,61 @@ cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
     );
     await assert.rejects(execFileAsync("sh", [script]));
     assert.equal(JSON.parse(await readFile(currentFile, "utf8")).instanceId, "host-3");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control keeps the marker for non-reset-fenced stop-current update failures", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-stop-current-failures-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-failure", workerPid: 6666, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_followbrief_pid() { return 1; }
+kill() { [ "$1" = "-0" ] && return 1; return 1; }
+stub_code=1
+stub_diagnostic=""
+assert_case() {
+  case_name="$1"
+  stub_code="$2"
+  stub_diagnostic="$3"
+  rm -f "${currentFile}"
+  printf '%s\\n' '${JSON.stringify({ instanceId: "host-failure", workerPid: 6666, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}' > "${currentFile}"
+  set +e
+  cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host >/dev/null 2>> "${dir}/errors"
+  actual_code=$?
+  set -e
+  [ "$actual_code" -ne 0 ] || {
+    echo "$case_name unexpectedly succeeded" >&2
+    exit 31
+  }
+  [ -r "${currentFile}" ] || {
+    echo "$case_name removed the marker" >&2
+    exit 32
+  }
+}
+job_run_update_for_instance() {
+  if [ -n "$stub_diagnostic" ]; then
+    printf '%s\\n' "$stub_diagnostic" > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
+  fi
+  return "$stub_code"
+}
+assert_case generic-409 17 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"other_conflict","retryable":false}'
+assert_case auth-401 18 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":401,"syncCode":"http_status","responseCode":"unauthorized","retryable":false}'
+assert_case missing-diagnostic 23 ''
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -3226,13 +3382,7 @@ test("mark-replaced records the live host without terminating it or clearing its
     const script = join(dir, "check.sh");
     await writeFile(
       script,
-      `set -eu
-${shellFunction(runner, "json_get_number")}
-${shellFunction(runner, "json_get_string")}
-${shellFunction(runner, "clear_current_file")}
-${shellFunction(runner, "strict_job_run_update_for_instance")}
-${shellFunction(runner, "verify_followbrief_current_pid")}
-${shellFunction(runner, "cloud_host_control_current_file")}
+      `${cloudHostControlHarnessPrelude(runner, dir)}
 verify_followbrief_pid() { return 0; }
 terminate_process_tree() { touch "${dir}/terminated"; return 0; }
 job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
@@ -3244,6 +3394,73 @@ cloud_host_control_current_file mark-replaced "${currentFile}" cloud-library-hos
     assert.equal(JSON.parse(await readFile(currentFile, "utf8")).instanceId, "host-4");
     await assert.rejects(readFile(join(dir, "terminated"), "utf8"));
     assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "replaced");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("mark-replaced never accepts reset-fenced reconciliation for live, dead, or reused workers", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-replace-reset-fenced-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_case=""
+verify_followbrief_pid() {
+  [ "$verify_case" = "live" ]
+}
+process_start_epoch() {
+  if [ "$verify_case" = "reused" ]; then
+    printf '200\\n'
+    return 0
+  fi
+  printf '100\\n'
+}
+kill() {
+  if [ "$1" = "-0" ] && [ "$2" = "7777" ]; then
+    [ "$verify_case" = "reused" ]
+    return $?
+  fi
+  printf '%s\\n' "$*" >> "${dir}/signals"
+  return 1
+}
+terminate_process_tree() { printf 'terminated\\n' >> "${dir}/signals"; return 0; }
+job_run_update_for_instance() {
+  printf '%s\\n' "$4" >> "${dir}/updates"
+  printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
+  return 1
+}
+assert_case() {
+  verify_case="$1"
+  rm -f "${dir}/signals" "${dir}/updates"
+  printf '%s\\n' "${2}" > "${currentFile}"
+  set +e
+  cloud_host_control_current_file mark-replaced "${currentFile}" cloud-library-host >/dev/null 2>> "${dir}/errors"
+  actual_code=$?
+  set -e
+  [ "$actual_code" -ne 0 ] || {
+    echo "$verify_case unexpectedly succeeded" >&2
+    exit 41
+  }
+  [ -r "${currentFile}" ] || {
+    echo "$verify_case removed the marker" >&2
+    exit 42
+  }
+  [ ! -e "${dir}/signals" ] || {
+    echo "$verify_case signaled another process" >&2
+    exit 43
+  }
+}
+assert_case live '${JSON.stringify({ instanceId: "host-live-reset", workerPid: 7777, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}'
+assert_case dead '${JSON.stringify({ instanceId: "host-dead-reset", workerPid: 7777, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}'
+assert_case reused '${JSON.stringify({ instanceId: "host-reused-reset", workerPid: 7777, processStartEpoch: 100, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}'
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
