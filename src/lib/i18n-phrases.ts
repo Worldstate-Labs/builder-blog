@@ -71,6 +71,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "요약 준비 완료",
     es: "Resúmenes listos",
   },
+  "Summary ready; waiting to sync": {
+    "zh-CN": "摘要已就绪，等待同步",
+    "zh-TW": "摘要已就緒，等待同步",
+    ja: "要約準備完了、同期待ち",
+    ko: "요약 준비 완료, 동기화 대기 중",
+    es: "Resumen listo; esperando sincronización",
+  },
   "Headlines ready": {
     "zh-CN": "标题已就绪",
     "zh-TW": "標題已就緒",

@@ -1490,6 +1490,27 @@ export function classifyHttpSyncRetryForTest({
   }));
 }
 
+function cliHttpErrorDiagnostic(error) {
+  if (!error?.isHttpSyncError) return null;
+  const boundedCode = (value) => {
+    if (typeof value !== "string") return null;
+    const cleaned = value.trim().replace(/[^a-zA-Z0-9_.-]/g, "_");
+    return cleaned ? cleaned.slice(0, 80) : null;
+  };
+  const numericStatus = Number(error.httpStatus);
+  return `FOLLOWBRIEF_ERROR ${JSON.stringify({
+    type: "http_sync",
+    status: Number.isInteger(numericStatus) && numericStatus > 0 ? numericStatus : null,
+    syncCode: boundedCode(error.httpSyncCode),
+    responseCode: boundedCode(error.httpResponseCode),
+    retryable: typeof error.httpRetryable === "boolean" ? error.httpRetryable : null,
+  })}`;
+}
+
+export function cliHttpErrorDiagnosticForTest(error) {
+  return cliHttpErrorDiagnostic(error);
+}
+
 function httpSyncErrorSummary(error) {
   if (!error?.isHttpSyncError) return error instanceof Error ? error.message : String(error);
   if (error.httpSyncCode === "timeout") return "timeout";
@@ -8900,8 +8921,8 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
     ? options.keyForCloudSource
     : splitKeyForCloudSourceGranularity;
   const slices = new Map();
-  const taskKeyById = new Map();
-  const taskById = new Map();
+  const taskMatchesById = new Map();
+  const taskMatches = [];
   const emittedItemTaskIds = new Set();
   const fetchTasks = extractFetchTasks(fetchResult);
   const cloudSourceTasks = extractCloudSourceTasks(fetchResult);
@@ -8909,8 +8930,11 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
   for (const task of fetchTasks) {
     const key = keyForTask(task);
     const id = taskIdForSync(task);
-    taskKeyById.set(id, key);
-    taskById.set(id, task);
+    const match = { id, key, task };
+    const matches = taskMatchesById.get(id) ?? [];
+    matches.push(match);
+    taskMatchesById.set(id, matches);
+    taskMatches.push(match);
     ensureSyncSlice(slices, key).fetchTasks.push(task);
   }
 
@@ -8920,51 +8944,71 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
 
   for (const outcome of fetchResult?.taskOutcomes ?? []) {
     if (!outcome?.fetchTaskId) continue;
-    const key = taskKeyById.get(String(outcome.fetchTaskId)) || `outcome:${outcome.fetchTaskId}`;
-    ensureSyncSlice(slices, key).plannedTaskOutcomes.push(outcome);
+    const matches = taskMatchesById.get(String(outcome.fetchTaskId)) ?? [];
+    const keys = matches.length > 0
+      ? [...new Set(matches.map((match) => match.key))]
+      : [`outcome:${outcome.fetchTaskId}`];
+    for (const key of keys) ensureSyncSlice(slices, key).plannedTaskOutcomes.push(outcome);
   }
 
   for (const expansion of fetchResult?.discoveryExpansions ?? []) {
     if (!expansion?.fetchTaskId) continue;
-    const key = taskKeyById.get(String(expansion.fetchTaskId)) || `discovery:${expansion.fetchTaskId}`;
-    ensureSyncSlice(slices, key).discoveryExpansions.push(expansion);
+    const matches = taskMatchesById.get(String(expansion.fetchTaskId)) ?? [];
+    const keys = matches.length > 0
+      ? [...new Set(matches.map((match) => match.key))]
+      : [`discovery:${expansion.fetchTaskId}`];
+    for (const key of keys) ensureSyncSlice(slices, key).discoveryExpansions.push(expansion);
   }
 
   for (const builder of payload?.builders ?? []) {
     for (const item of builder?.items ?? []) {
       const rawTaskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
-      const rawTask = rawTaskId ? taskById.get(rawTaskId) : null;
-      const matchedTask = rawTask && syncItemMatchesPlannedTask(builder, item, rawTask, rawTaskId)
-        ? { id: rawTaskId, task: rawTask }
-        : fetchTasks
-          .map((task) => ({ id: taskIdForSync(task), task }))
-          .find((candidate) => syncItemMatchesPlannedTask(builder, item, candidate.task, candidate.id));
-      const taskId = matchedTask?.id ?? rawTaskId;
-      const key = (taskId && taskKeyById.get(taskId)) || keyForTask(builderLikeTask(builder, item));
-      const taskForDedupe = matchedTask?.task ?? rawTask;
-      if (taskId && matchedTask && taskForDedupe?.agentWorkType !== "fetch_builder_fallback") {
-        const emittedKey = `${key}\u0000${taskId}`;
-        if (emittedItemTaskIds.has(emittedKey)) continue;
-        emittedItemTaskIds.add(emittedKey);
+      const rawMatches = rawTaskId ? taskMatchesById.get(rawTaskId) ?? [] : [];
+      const directMatches = rawMatches.filter((candidate) =>
+        syncItemMatchesPlannedTask(builder, item, candidate.task, candidate.id)
+      );
+      const matchedTasks = directMatches.length > 0
+        ? directMatches
+        : taskMatches.filter((candidate) =>
+            syncItemMatchesPlannedTask(builder, item, candidate.task, candidate.id)
+          );
+      const destinations = matchedTasks.length > 0
+        ? matchedTasks
+        : [{
+            id: rawTaskId,
+            key: rawMatches[0]?.key ?? keyForTask(builderLikeTask(builder, item)),
+            task: rawMatches[0]?.task ?? null,
+          }];
+      for (const matchedTask of destinations) {
+        const taskId = matchedTask?.id ?? rawTaskId;
+        const key = matchedTask.key;
+        if (taskId && matchedTask.task?.agentWorkType !== "fetch_builder_fallback") {
+          const emittedKey = `${key}\u0000${taskId}`;
+          if (emittedItemTaskIds.has(emittedKey)) continue;
+          emittedItemTaskIds.add(emittedKey);
+        }
+        const itemForSlice = taskId
+          ? {
+              ...item,
+              rawJson: {
+                ...(item.rawJson ?? {}),
+                fetchTaskId: taskId,
+              },
+            }
+          : item;
+        const slice = ensureSyncSlice(slices, key);
+        addBuilderItemToSlice(slice, builder, itemForSlice);
       }
-      const itemForSlice = taskId
-        ? {
-            ...item,
-            rawJson: {
-              ...(item.rawJson ?? {}),
-              fetchTaskId: taskId,
-            },
-          }
-        : item;
-      const slice = ensureSyncSlice(slices, key);
-      addBuilderItemToSlice(slice, builder, itemForSlice);
     }
   }
 
   for (const outcome of payload?.taskOutcomes ?? []) {
     if (!outcome?.fetchTaskId) continue;
-    const key = taskKeyById.get(String(outcome.fetchTaskId)) || `outcome:${outcome.fetchTaskId}`;
-    ensureSyncSlice(slices, key).taskOutcomes.push(outcome);
+    const matches = taskMatchesById.get(String(outcome.fetchTaskId)) ?? [];
+    const keys = matches.length > 0
+      ? [...new Set(matches.map((match) => match.key))]
+      : [`outcome:${outcome.fetchTaskId}`];
+    for (const key of keys) ensureSyncSlice(slices, key).taskOutcomes.push(outcome);
   }
 
   const metadata = copyPayloadMetadata(payload);
@@ -9262,8 +9306,13 @@ async function splitSyncSlices(args) {
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!payloadFile) throw new Error("Missing --file library-agent-sync.json");
   if (!outDir) throw new Error("Missing --out-dir sync-slices/");
-  if (granularity !== "source" && granularity !== "task" && granularity !== "cloud-run") {
-    throw new Error("--granularity must be source, task, or cloud-run");
+  if (
+    granularity !== "source"
+    && granularity !== "task"
+    && granularity !== "cloud-source"
+    && granularity !== "cloud-run"
+  ) {
+    throw new Error("--granularity must be source, task, cloud-source, or cloud-run");
   }
 
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
@@ -12615,6 +12664,8 @@ if (
   realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
 ) {
   main().catch((error) => {
+    const diagnostic = cliHttpErrorDiagnostic(error);
+    if (diagnostic) console.error(diagnostic);
     console.error(error instanceof Error ? error.message : String(error));
     if (error?.details) console.error(JSON.stringify(error.details, null, 2));
     process.exit(1);

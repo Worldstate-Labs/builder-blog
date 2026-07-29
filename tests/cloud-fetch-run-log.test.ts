@@ -223,6 +223,38 @@ test("serializeCloudFetchRun does not double-count skipped-only source tasks as 
   assert.equal(result.tasks[0]?.failureReason, null);
 });
 
+test("serializeCloudFetchRun does not hide expired zero-post source leases", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "FAILED",
+    tasksSucceeded: 0,
+    tasksFailed: 1,
+    tasks: [
+      {
+        id: "rt_expired",
+        builderId: "cb_expired",
+        summaryLanguage: "original",
+        status: "FAILED",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        startedAt: new Date("2026-07-28T10:00:00.000Z"),
+        finishedAt: new Date("2026-07-28T11:00:00.000Z"),
+        actualDurationSeconds: 3600,
+        failureReason: "cloud_lease_expired",
+        details: { posts: [] },
+        builder: { name: "Expired Source", sourceType: "x" },
+      },
+    ],
+  });
+
+  assert.equal(result.status, "FAILED");
+  assert.equal(result.tasksSucceeded, 0);
+  assert.equal(result.tasksFailed, 1);
+  assert.equal(result.tasks[0]?.status, "FAILED");
+  assert.equal(result.tasks[0]?.failureReason, "cloud_lease_expired");
+});
+
 test("task duration falls back to finished-started when actualDurationSeconds is null", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,

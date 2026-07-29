@@ -70,3 +70,37 @@ test("deriveCloudFetchOutcomeSummary keeps zero-post running source tasks runnin
   assert.equal(summary.status, "RUNNING");
   assert.equal(summary.pendingPosts, 0);
 });
+
+test("deriveCloudFetchOutcomeSummary preserves zero-post source failures", () => {
+  const summary = deriveCloudFetchOutcomeSummary({
+    status: "failed",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    failedPosts: 0,
+    failureReason: "cloud_lease_expired",
+    posts: [],
+  });
+
+  assert.deepEqual(summary, {
+    status: "FAILED",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    skippedPosts: 0,
+    failedPosts: 0,
+    pendingPosts: 0,
+    failureReason: "cloud_lease_expired",
+  });
+});
+
+test("deriveCloudFetchOutcomeSummary preserves successful zero-post discovery", () => {
+  const summary = deriveCloudFetchOutcomeSummary({
+    status: "succeeded",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    failedPosts: 0,
+    posts: [],
+  });
+
+  assert.equal(summary.status, "SUCCEEDED");
+  assert.equal(summary.failureReason, null);
+});

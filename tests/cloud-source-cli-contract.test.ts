@@ -27,6 +27,49 @@ const regularLocalStopBlock = (text: string, job: string) => {
   return block;
 };
 
+test("cloud slice sync discards only explicit terminal lease conflicts", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const classifier = shellFunction(runner, "sync_error_is_obsolete_cloud_slice");
+  const syncSlices = shellFunction(runner, "sync_payload_slices");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-slice-conflicts-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${classifier}
+assert_obsolete() {
+  printf '%s\\n' "$1" > "${dir}/error.log"
+  sync_error_is_obsolete_cloud_slice "${dir}/error.log"
+}
+assert_retryable() {
+  printf '%s\\n' "$1" > "${dir}/error.log"
+  if sync_error_is_obsolete_cloud_slice "${dir}/error.log"; then
+    exit 21
+  fi
+}
+assert_obsolete 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_run_not_running","retryable":false}'
+assert_obsolete 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_source_already_finalized","retryable":false}'
+assert_retryable 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"reset_fenced","retryable":false}'
+assert_retryable 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_source_result_incomplete","retryable":true}'
+assert_retryable 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_source_finalize_race","retryable":true}'
+assert_retryable 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":null,"syncCode":"network","responseCode":null,"retryable":null}'
+assert_retryable 'HTTP POST failed with cloud_run_not_running but no structured marker'
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    assert.match(
+      syncSlices,
+      /if sync_error_is_obsolete_cloud_slice "\$_slice_stderr"; then[\s\S]*append_task_ids_from_fetch_result "\$_slice_tasks" "\$_sps_synced_ids_file"[\s\S]*continue[\s\S]*fi[\s\S]*_sps_failures=/,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("assign-fetch-tasks stamps each cloud shard with its validated execution budget", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-shard-budgets-"));
   try {

@@ -1450,6 +1450,62 @@ test("planned ready tasks do not look like active summarizing work before worker
   );
 });
 
+test("completed live summaries override stale summarize phase labels while awaiting sync", () => {
+  const task = {
+    id: "fetch_post:source:summary-ready-live",
+    title: "Summary ready",
+    status: "pending",
+    contentStatus: "ready",
+    bodyChars: 1842,
+    bodyWords: 270,
+  };
+  const liveTask = {
+    id: task.id,
+    status: "summarized",
+    phase: "summarize",
+    workerId: "worker-2",
+    bodyChars: 1842,
+    bodyWords: 270,
+    summaryChars: 657,
+    summaryWords: 93,
+    headlineChars: 54,
+    headlineWords: 8,
+  };
+
+  assert.deepEqual(taskStatusPill(task, liveTask), { label: "syncing", tone: "warn" });
+  assert.deepEqual(fetchTaskLifecycleOutcomes(task, liveTask).summarize, {
+    label: "Ready to sync",
+    tone: "ok",
+  });
+  assert.deepEqual(fetchTaskLifecycleOutcomes(task, liveTask).sync, {
+    label: "Ready to sync",
+    tone: "warn",
+  });
+
+  const html = renderTaskRow(task, { liveTask });
+  assert.match(
+    html,
+    /<div class="sync-panel-task-banner is-warn">Summary ready; waiting to sync<\/div>/,
+  );
+  assert.doesNotMatch(html, />summarizing</);
+  assert.doesNotMatch(html, />Waiting to summarize</);
+
+  assert.deepEqual(
+    taskStatusPill(
+      {
+        ...task,
+        id: "fetch_post:source:translation-ready-live",
+        agentWorkType: "translate_summary_only",
+      },
+      {
+        ...liveTask,
+        id: "fetch_post:source:translation-ready-live",
+      },
+    ),
+    { label: "syncing", tone: "warn" },
+  );
+});
+
 test("legacy server-synced tasks cannot render summarize pending", () => {
   const outcomes = fetchTaskLifecycleOutcomes({
     id: "legacy_cloud_synced",

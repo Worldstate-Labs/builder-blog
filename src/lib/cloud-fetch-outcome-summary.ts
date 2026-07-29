@@ -54,7 +54,10 @@ export function deriveCloudFetchOutcomeSummary({
     skippedPosts: skipped,
     failedPosts: failed,
     pendingPosts: pending,
-    failureReason: failed > 0 ? firstFailureReason(posts) ?? cleanString(failureReason) : null,
+    failureReason:
+      normalizedStatus === "FAILED" || normalizedStatus === "PARTIAL"
+        ? firstFailureReason(posts) ?? cleanString(failureReason)
+        : null,
   };
 }
 
@@ -74,6 +77,12 @@ function normalizeSourceStatus({
   syncedPosts: number;
 }): CloudFetchOutcomeSummary["status"] {
   const normalized = String(rawStatus ?? "").toLowerCase();
+  if (plannedPosts === 0) {
+    if (normalized === "running") return "RUNNING";
+    if (normalized === "failed") return "FAILED";
+    if (normalized === "partial") return "PARTIAL";
+    return "SUCCEEDED";
+  }
   if (normalized === "running" && (pendingPosts > 0 || plannedPosts === 0)) return "RUNNING";
   if (failedPosts > 0) {
     return syncedPosts === 0 && skippedPosts === 0 && failedPosts >= plannedPosts

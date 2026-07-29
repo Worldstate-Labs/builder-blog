@@ -3697,6 +3697,17 @@ run_digest_job() {
 # the single sync payload and backfills a failed taskOutcome for any task a
 # worker never reported (crash/timeout), so the "every task ends in a terminal
 # state" validation contract holds even with partial worker failure.
+sync_error_is_obsolete_cloud_slice() {
+  _seio_error_file="${1:-}"
+  [ -s "$_seio_error_file" ] || return 1
+  grep -Fqx \
+    'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_run_not_running","retryable":false}' \
+    "$_seio_error_file" ||
+    grep -Fqx \
+      'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_source_already_finalized","retryable":false}' \
+      "$_seio_error_file"
+}
+
 sync_payload_slices() {
   _sps_tasks_file="$1"
   _sps_payload_file="$2"
@@ -3805,6 +3816,12 @@ NODE
     [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
     [ ! -s "$_slice_stderr" ] || cat "$_slice_stderr" >&2
     if [ "$_slice_code" -eq 0 ]; then
+      append_task_ids_from_fetch_result "$_slice_tasks" "$_sps_synced_ids_file"
+      continue
+    fi
+
+    if sync_error_is_obsolete_cloud_slice "$_slice_stderr"; then
+      echo "Discarding obsolete $_sps_label $_slice_name because its cloud lease is already terminal." >&2
       append_task_ids_from_fetch_result "$_slice_tasks" "$_sps_synced_ids_file"
       continue
     fi

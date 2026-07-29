@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -42,6 +42,25 @@ test("HTTP sync retries honor a server conflict's explicit retryability", async 
     }),
     true,
   );
+});
+
+test("CLI HTTP diagnostics expose bounded machine-readable conflict metadata", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const diagnostic = cli.cliHttpErrorDiagnosticForTest({
+    isHttpSyncError: true,
+    httpStatus: 409,
+    httpSyncCode: "http_status",
+    httpResponseCode: "cloud_run_not_running",
+    httpRetryable: false,
+    message: "must not leak https://example.test/api?token=secret-token",
+  });
+
+  assert.equal(
+    diagnostic,
+    'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_run_not_running","retryable":false}',
+  );
+  assert.doesNotMatch(diagnostic, /secret-token|example\.test/);
+  assert.ok(diagnostic.length < 300);
 });
 
 test("external local tools are terminated as a process group on timeout", () => {
@@ -4752,6 +4771,159 @@ test("cloud source slicing keeps every post for one source in one terminal paylo
     ["post_1", "post_2", "post_3", "post_4"],
   );
   assert.equal(slices[0].payload.builders[0].items.length, 4);
+});
+
+test("split-sync-slices accepts cloud-source through the real CLI command", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-source-cli-"));
+  try {
+    const tasksFile = join(dir, "tasks.json");
+    const payloadFile = join(dir, "payload.json");
+    const outDir = join(dir, "slices");
+    await writeFile(
+      tasksFile,
+      `${JSON.stringify({
+        status: "ok",
+        fetchTasks: [
+          {
+            id: "post_1",
+            cloudRunId: "run_1",
+            cloudSourceTaskId: "source_1",
+            builderId: "builder_1",
+            agentWorkType: "fetch_post",
+            contentStatus: "requires_agent",
+            builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+            item: { url: "https://example.com/post-1" },
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      payloadFile,
+      `${JSON.stringify({
+        builders: [
+          {
+            builderId: "builder_1",
+            cloudSourceTaskId: "source_1",
+            items: [
+              {
+                title: "Post one",
+                url: "https://example.com/post-1",
+                rawJson: { fetchTaskId: "post_1" },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      })}\n`,
+      "utf8",
+    );
+
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "split-sync-slices",
+        "--tasks",
+        tasksFile,
+        "--file",
+        payloadFile,
+        "--out-dir",
+        outDir,
+        "--granularity",
+        "cloud-source",
+      ],
+      { cwd: process.cwd() },
+    );
+
+    const result = JSON.parse(stdout);
+    assert.equal(result.granularity, "cloud-source");
+    assert.equal(result.slices.length, 1);
+    assert.equal(result.slices[0].key, "cloudSource:run_1:source_1");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud source slicing carries repeated-lease evidence to every matching run", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-retry=${Date.now()}`);
+  const repeatedTasks = ["run_1", "run_2"].flatMap((cloudRunId) => [
+    {
+      id: "post_summary",
+      cloudRunId,
+      cloudSourceTaskId: "source_1",
+      builderId: "builder_1",
+      agentWorkType: "fetch_post",
+      contentStatus: "requires_agent",
+      builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+      item: { url: "https://example.com/summary" },
+    },
+    {
+      id: "post_skipped",
+      cloudRunId,
+      cloudSourceTaskId: "source_1",
+      builderId: "builder_1",
+      agentWorkType: "fetch_post",
+      contentStatus: "requires_agent",
+      builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+      item: { url: "https://example.com/skipped" },
+    },
+  ]);
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    {
+      status: "ok",
+      fetchTasks: repeatedTasks,
+      taskOutcomes: [
+        {
+          fetchTaskId: "post_skipped",
+          status: "skipped",
+          reason: "no_substantive_content",
+        },
+      ],
+    },
+    {
+      builders: [
+        {
+          builderId: "builder_1",
+          cloudSourceTaskId: "source_1",
+          items: [
+            {
+              title: "Shared completed summary",
+              url: "https://example.com/summary",
+              rawJson: { fetchTaskId: "post_summary" },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [
+        {
+          fetchTaskId: "post_skipped",
+          status: "skipped",
+          reason: "no_substantive_content",
+        },
+      ],
+    },
+  ).sort((a: { cloudRunId: string }, b: { cloudRunId: string }) =>
+    a.cloudRunId.localeCompare(b.cloudRunId),
+  );
+
+  assert.deepEqual(slices.map((slice: { cloudRunId: string }) => slice.cloudRunId), [
+    "run_1",
+    "run_2",
+  ]);
+  for (const slice of slices) {
+    assert.deepEqual(
+      slice.tasks.fetchTasks.map((task: { id: string }) => task.id),
+      ["post_summary", "post_skipped"],
+    );
+    assert.equal(slice.payload.builders.length, 1);
+    assert.equal(slice.payload.builders[0].items.length, 1);
+    assert.equal(slice.payload.builders[0].items[0].rawJson.fetchTaskId, "post_summary");
+    assert.deepEqual(
+      slice.payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId),
+      ["post_skipped"],
+    );
+  }
 });
 
 test("regular personal sync task slicing remains one post per payload", async () => {

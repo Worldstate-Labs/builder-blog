@@ -3297,6 +3297,15 @@ function liveTaskHasHeadline(liveTask: FetchTaskProgress | null | undefined): bo
   return typeof liveTask?.headlineChars === "number" && liveTask.headlineChars > 0;
 }
 
+function liveTaskIsSummarized(liveTask: FetchTaskProgress | null | undefined): boolean {
+  const status = String(liveTask?.status ?? "").toLowerCase();
+  return (
+    status === "summarized" ||
+    status === "synced" ||
+    (liveTaskHasSummary(liveTask) && liveTaskHasHeadline(liveTask))
+  );
+}
+
 function hasSummary(task: FetchTaskLog): boolean {
   return typeof task.summaryChars === "number" && task.summaryChars > 0;
 }
@@ -3367,7 +3376,7 @@ function syncTaskOutcome(
   if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
     return { label: "Action needed", tone: "fail" };
   }
-  if (isSummarized(task) || task.completedStage === "summarize" || liveStatus === "summarized") {
+  if (isSummarized(task) || task.completedStage === "summarize" || liveTaskIsSummarized(liveTask)) {
     return { label: "Ready to sync", tone: "warn" };
   }
   return { label: "Pending", tone: "idle" };
@@ -3409,17 +3418,21 @@ export function taskStatusPill(
   }
   if (!parentCanProgress) return { label: NOT_COMPLETED_PILL_LABEL, tone: "idle" };
   if (isSummaryTranslationTask(task)) {
+    if (isSummarized(task) || liveTaskIsSummarized(liveTask)) {
+      return { label: "syncing", tone: "warn" };
+    }
     if (liveStatus === "summarizing" || livePhase === "summarize") {
       return { label: "summarizing", tone: "warn" };
     }
-    if (isSummarized(task) || liveStatus === "summarized") return { label: "syncing", tone: "warn" };
     return { label: "queued", tone: "idle" };
   }
   if (liveStatus === "reading" || livePhase === "read") return { label: "reading", tone: "warn" };
+  if (isSummarized(task) || liveTaskIsSummarized(liveTask)) {
+    return { label: "syncing", tone: "warn" };
+  }
   if (liveStatus === "summarizing" || livePhase === "summarize") {
     return { label: "summarizing", tone: "warn" };
   }
-  if (isSummarized(task) || liveStatus === "summarized") return { label: "syncing", tone: "warn" };
   if (hasReadSignal(task, liveTask)) return { label: "ready", tone: "idle" };
   return { label: "queued", tone: "idle" };
 }
@@ -3453,6 +3466,9 @@ function statusBanner(
   if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
   if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
   if (!parentCanProgress) return { label: NOT_COMPLETED_LABEL, tone: "idle" };
+  if (liveTaskIsSummarized(liveTask)) {
+    return { label: "Summary ready; waiting to sync", tone: "warn" };
+  }
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
   if (isSummaryTranslationTask(task) && isSummarized(task)) return { label: "Summarized", tone: "ok" };
@@ -3507,8 +3523,8 @@ function liveSummarizeOutcome(
 ): { label: string; tone: Tone } {
   const phase = String(liveTask?.phase ?? "").toLowerCase();
   const status = String(liveTask?.status ?? "").toLowerCase();
+  if (liveTaskIsSummarized(liveTask)) return { label: "Ready to sync", tone: "ok" };
   if (status === "summarizing" || phase === "summarize") return { label: "Summarizing", tone: "warn" };
-  if (status === "summarized") return { label: "Ready to sync", tone: "ok" };
   if (status === "failed") return { label: "Failed", tone: "fail" };
   if (status === "skipped") return { label: "Skipped", tone: "idle" };
   if (status === "action_needed") return { label: "Action needed", tone: "fail" };
