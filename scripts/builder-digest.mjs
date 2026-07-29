@@ -4276,7 +4276,7 @@ async function fetchPersonalBlogBuilder(
   const outcomes = [];
   const qualityStandards = genericMinimumContentQuality(sources, "blog");
 
-  for (const [discoveryIndex, article] of candidates.entries()) {
+  for (const article of candidates) {
     const articlePolicy = await sourceFetchPolicy(article.url, fetcher);
     if (!articlePolicy.allowed) continue;
     const articleResponse = await fetcher(article.url, {
@@ -4292,7 +4292,6 @@ async function fetchPersonalBlogBuilder(
         type: "agentTask",
         resultIndex: resolvedAgentTasks.push(agentTask) - 1,
         publishedAt: agentTask.item?.publishedAt,
-        discoveryIndex,
       });
       continue;
     }
@@ -4327,7 +4326,6 @@ async function fetchPersonalBlogBuilder(
         type: "agentTask",
         resultIndex: resolvedAgentTasks.push(agentTask) - 1,
         publishedAt: agentTask.item?.publishedAt,
-        discoveryIndex,
       });
       continue;
     }
@@ -4354,7 +4352,6 @@ async function fetchPersonalBlogBuilder(
       type: "item",
       resultIndex: resolvedItems.push(item) - 1,
       publishedAt,
-      discoveryIndex,
     });
   }
 
