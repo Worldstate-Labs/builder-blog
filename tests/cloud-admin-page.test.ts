@@ -152,6 +152,14 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /resolveWorkerAssignment/);
   assert.match(log, /Waiting for assignment/);
   assert.match(log, /\{tasks\.length\} waiting/);
+  assert.doesNotMatch(
+    log,
+    /selectUnassignedWorkerTasks\(workerHost\.tasks\)\)\.slice/,
+  );
+  assert.match(
+    log,
+    /skippedReasonSummary\(\s*workerHost\.tasks,\s*workerHost\.recentEvents,\s*skippedCount,\s*\)/,
+  );
   assert.match(log, /No tasks waiting for assignment\./);
   assert.match(log, /Worker lanes/);
   assert.match(

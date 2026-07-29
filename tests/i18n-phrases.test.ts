@@ -83,6 +83,20 @@ test("Sources page UI phrases translate while product and source names stay stab
   }
 });
 
+test("worker queue counts and generated task labels translate", () => {
+  const phrases: Array<[string, string]> = [
+    ["37 waiting", "37 个等待中"],
+    ["Tweet 20817322…582930", "推文 20817322…582930"],
+    ["Episode ffdR5fZTC5E", "单集 ffdR5fZTC5E"],
+    ["Post abcdefghijklmno", "帖子 abcdefghijklmno"],
+    ["Untitled post task", "未命名帖子任务"],
+  ];
+
+  for (const [source, expected] of phrases) {
+    assert.equal(translateUiPhrase("zh-CN", source), expected, source);
+  }
+});
+
 test("visible app TSX phrases have translations for supported non-English locales", () => {
   const locales = ["zh-CN", "zh-TW", "ja", "ko", "es"] as const;
   const files = execSync("rg --files src | rg '\\.(tsx)$'", { encoding: "utf8" })

@@ -30,11 +30,6 @@ function formatUrlLabel(value: string | null): string | null {
   }
 }
 
-function contentTypeLabel(value: string): string {
-  const label = value.toLowerCase().replace(/[_-]+/g, " ").trim();
-  return label ? `${label[0].toUpperCase()}${label.slice(1)}` : "Post";
-}
-
 function formatCompoundTaskId(value: string): string | null {
   const match = value.match(FETCH_POST_ID);
   if (!match) return null;
@@ -54,7 +49,7 @@ function formatCompoundTaskId(value: string): string | null {
   if (contentType === "PODCAST_EPISODE") {
     return `Episode ${shortenMiddle(externalId, 18)}`;
   }
-  return `${contentTypeLabel(contentType)} ${shortenMiddle(externalId, 18)}`;
+  return `Post ${shortenMiddle(externalId, 18)}`;
 }
 
 export function resolveWorkerAssignment(

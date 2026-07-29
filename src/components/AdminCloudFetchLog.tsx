@@ -544,11 +544,7 @@ function WorkerHostPanel({
 }) {
   const progress = workerHost.progress;
   const tasks = useMemo(
-    () =>
-      sortedWorkerTasks(selectUnassignedWorkerTasks(workerHost.tasks)).slice(
-        0,
-        20,
-      ),
+    () => sortedWorkerTasks(selectUnassignedWorkerTasks(workerHost.tasks)),
     [workerHost.tasks],
   );
   const events = workerHost.recentEvents.slice(-5).reverse();
@@ -595,7 +591,11 @@ function WorkerHostPanel({
   const localWorkers = workerHost.localWorkers != null ? workerHost.localWorkers : null;
   const usageText = formatInlineUsage(usage);
   const skippedCount = progress?.skipped ?? (fallbackMetrics.plannedPosts > 0 ? fallbackMetrics.skippedPosts : null);
-  const skippedSummary = skippedReasonSummary(tasks, workerHost.recentEvents, skippedCount);
+  const skippedSummary = skippedReasonSummary(
+    workerHost.tasks,
+    workerHost.recentEvents,
+    skippedCount,
+  );
 
   return (
     <section className="cloud-worker-host" aria-label="Worker host">

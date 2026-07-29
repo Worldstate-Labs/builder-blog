@@ -1123,6 +1123,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "할당을 기다리는 작업이 없습니다.",
     es: "No hay tareas en espera de asignación.",
   },
+  "Untitled post task": {
+    "zh-CN": "未命名帖子任务",
+    "zh-TW": "未命名貼文任務",
+    ja: "無題の投稿タスク",
+    ko: "제목 없는 게시물 작업",
+    es: "Tarea de publicación sin título",
+  },
   "queued": {
     "zh-CN": "排队中",
     "zh-TW": "佇列中",
@@ -5105,6 +5112,36 @@ const majorLocaleCoverageTranslations: Record<string, LocalePhraseMap> = {
 };
 
 const templateTranslations: PhraseTemplate[] = [
+  {
+    pattern: /^([0-9,]+) waiting$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const count = match[1];
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `${count} 个等待中`,
+        "zh-TW": `${count} 個等待中`,
+        ja: `${count} 件待機中`,
+        ko: `${count}개 대기 중`,
+        es: `${count} en espera`,
+      };
+      return values[locale];
+    },
+  },
+  {
+    pattern: /^(Tweet|Episode|Post) (.+)$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const labels: Record<
+        Exclude<UiLocale, "en">,
+        Record<string, string>
+      > = {
+        "zh-CN": { Tweet: "推文", Episode: "单集", Post: "帖子" },
+        "zh-TW": { Tweet: "推文", Episode: "單集", Post: "貼文" },
+        ja: { Tweet: "ポスト", Episode: "エピソード", Post: "投稿" },
+        ko: { Tweet: "게시물", Episode: "에피소드", Post: "게시물" },
+        es: { Tweet: "Publicación", Episode: "Episodio", Post: "Publicación" },
+      };
+      return `${labels[locale][match[1]]} ${match[2]}`;
+    },
+  },
   {
     pattern: /^(Follow|Unfollow) (.+)$/u,
     render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
