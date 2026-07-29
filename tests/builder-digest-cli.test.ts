@@ -117,6 +117,25 @@ test("personal blog fetcher keeps only article-like same-origin HTML links", asy
   );
 });
 
+test("chronological selector orders valid dates newest-first and keeps unknown dates stable", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const candidates = [
+    { id: "unknown-a", publishedAt: null },
+    { id: "older", publishedAt: "2026-07-20T00:00:00.000Z" },
+    { id: "newest-a", publishedAt: "2026-07-28T00:00:00.000Z" },
+    { id: "invalid", publishedAt: "not-a-date" },
+    { id: "newest-b", publishedAt: "2026-07-28T00:00:00.000Z" },
+    { id: "unknown-b" },
+  ];
+
+  assert.deepEqual(
+    cli.selectNewestChronologicalCandidates(candidates, 5).map(
+      (candidate: { id: string }) => candidate.id,
+    ),
+    ["newest-a", "newest-b", "older", "unknown-a", "invalid"],
+  );
+});
+
 test("personal blog fetcher drops feed entries that are listing pages", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(

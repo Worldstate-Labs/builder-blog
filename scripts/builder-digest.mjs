@@ -4219,6 +4219,35 @@ function robotsDirectivesDisallow(value) {
   );
 }
 
+export function selectNewestChronologicalCandidates(
+  candidates,
+  limit,
+  publishedAtForCandidate = (candidate) => candidate?.publishedAt,
+) {
+  const boundedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+  if (boundedLimit === 0) return [];
+  return candidates
+    .map((candidate, index) => {
+      const publishedAt = publishedAtForCandidate(candidate);
+      const timestamp = Date.parse(String(publishedAt || ""));
+      return {
+        candidate,
+        index,
+        hasDate: Number.isFinite(timestamp),
+        timestamp,
+      };
+    })
+    .sort((left, right) => {
+      if (left.hasDate && right.hasDate && left.timestamp !== right.timestamp) {
+        return right.timestamp - left.timestamp;
+      }
+      if (left.hasDate !== right.hasDate) return left.hasDate ? -1 : 1;
+      return left.index - right.index;
+    })
+    .slice(0, boundedLimit)
+    .map(({ candidate }) => candidate);
+}
+
 async function fetchPersonalBlogBuilder(
   builder,
   { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
@@ -4329,9 +4358,11 @@ async function fetchPersonalBlogBuilder(
     });
   }
 
-  const selectedOutcomes = outcomes
-    .sort(compareBlogFetchOutcomes)
-    .slice(0, Math.max(0, Math.floor(Number(limit) || 0)));
+  const selectedOutcomes = selectNewestChronologicalCandidates(
+    outcomes,
+    limit,
+    (outcome) => outcome.publishedAt,
+  );
   return {
     items: selectedOutcomes
       .filter((outcome) => outcome.type === "item")
@@ -4344,16 +4375,6 @@ async function fetchPersonalBlogBuilder(
 
 export function fetchPersonalBlogBuilderForTest(builder, options) {
   return fetchPersonalBlogBuilder(builder, options);
-}
-
-function compareBlogFetchOutcomes(left, right) {
-  const leftTime = Date.parse(String(left.publishedAt || ""));
-  const rightTime = Date.parse(String(right.publishedAt || ""));
-  const leftHasDate = Number.isFinite(leftTime);
-  const rightHasDate = Number.isFinite(rightTime);
-  if (leftHasDate && rightHasDate && leftTime !== rightTime) return rightTime - leftTime;
-  if (leftHasDate !== rightHasDate) return leftHasDate ? -1 : 1;
-  return left.discoveryIndex - right.discoveryIndex;
 }
 
 function blogAgentTaskForArticle(
