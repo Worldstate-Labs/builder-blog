@@ -4241,20 +4241,30 @@ async function fetchPersonalBlogBuilder(
   const discoveredCandidates = await discoverBlogArticleCandidates(indexBody, indexUrl, { fetcher, cutoff, limit });
   const candidates = discoveredCandidates
     .filter((article) => isAfterCutoff(article.publishedAt, cutoff))
-    .filter((article) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
-    .slice(0, limit);
-  const items = [];
-  const agentTasks = [];
+    .filter((article) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)));
+  const resolvedItems = [];
+  const resolvedAgentTasks = [];
+  const outcomes = [];
   const qualityStandards = genericMinimumContentQuality(sources, "blog");
 
-  for (const article of candidates) {
+  for (const [discoveryIndex, article] of candidates.entries()) {
     const articlePolicy = await sourceFetchPolicy(article.url, fetcher);
     if (!articlePolicy.allowed) continue;
     const articleResponse = await fetcher(article.url, {
       headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
     });
     if (!articleResponse.ok) {
-      agentTasks.push(blogAgentTaskForArticle(builder, article, { sources, agentModel, reason: `HTTP ${articleResponse.status}` }));
+      const agentTask = blogAgentTaskForArticle(
+        builder,
+        article,
+        { sources, agentModel, reason: `HTTP ${articleResponse.status}` },
+      );
+      outcomes.push({
+        type: "agentTask",
+        resultIndex: resolvedAgentTasks.push(agentTask) - 1,
+        publishedAt: agentTask.item?.publishedAt,
+        discoveryIndex,
+      });
       continue;
     }
 
@@ -4277,19 +4287,23 @@ async function fetchPersonalBlogBuilder(
       primaryContentAcquisitionVerified: Boolean(extracted.body?.trim()),
     });
     if (!body.trim() || !quality.ok) {
-      agentTasks.push(
-        blogAgentTaskForArticle(builder, article, {
-          sources,
-          agentModel,
-          extracted,
-          reason: quality.reason,
-          metrics: quality.metrics,
-        }),
-      );
+      const agentTask = blogAgentTaskForArticle(builder, article, {
+        sources,
+        agentModel,
+        extracted,
+        reason: quality.reason,
+        metrics: quality.metrics,
+      });
+      outcomes.push({
+        type: "agentTask",
+        resultIndex: resolvedAgentTasks.push(agentTask) - 1,
+        publishedAt: agentTask.item?.publishedAt,
+        discoveryIndex,
+      });
       continue;
     }
 
-    items.push({
+    const item = {
       kind: "BLOG_POST",
       externalId: article.url,
       title,
@@ -4306,14 +4320,40 @@ async function fetchPersonalBlogBuilder(
         url: article.url,
         publishedAt,
       },
+    };
+    outcomes.push({
+      type: "item",
+      resultIndex: resolvedItems.push(item) - 1,
+      publishedAt,
+      discoveryIndex,
     });
   }
 
-  return { items, agentTasks };
+  const selectedOutcomes = outcomes
+    .sort(compareBlogFetchOutcomes)
+    .slice(0, Math.max(0, Math.floor(Number(limit) || 0)));
+  return {
+    items: selectedOutcomes
+      .filter((outcome) => outcome.type === "item")
+      .map((outcome) => resolvedItems[outcome.resultIndex]),
+    agentTasks: selectedOutcomes
+      .filter((outcome) => outcome.type === "agentTask")
+      .map((outcome) => resolvedAgentTasks[outcome.resultIndex]),
+  };
 }
 
 export function fetchPersonalBlogBuilderForTest(builder, options) {
   return fetchPersonalBlogBuilder(builder, options);
+}
+
+function compareBlogFetchOutcomes(left, right) {
+  const leftTime = Date.parse(String(left.publishedAt || ""));
+  const rightTime = Date.parse(String(right.publishedAt || ""));
+  const leftHasDate = Number.isFinite(leftTime);
+  const rightHasDate = Number.isFinite(rightTime);
+  if (leftHasDate && rightHasDate && leftTime !== rightTime) return rightTime - leftTime;
+  if (leftHasDate !== rightHasDate) return leftHasDate ? -1 : 1;
+  return left.discoveryIndex - right.discoveryIndex;
 }
 
 function blogAgentTaskForArticle(

@@ -1049,6 +1049,187 @@ test("personal blog fetcher expands linked feeds before planning post fetches", 
   assert.equal(result.agentTasks.length, 0);
 });
 
+test("personal blog fetcher selects newest eligible articles after resolving pinned article dates", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "builder_claude_publish_order",
+    name: "Claude Blog",
+    kind: "BLOG",
+    sourceUrl: "https://claude.com/blog",
+    fetchUrl: "https://claude.com/blog",
+  };
+  const articles = [
+    {
+      slug: "pinned-old-one",
+      title: "Pinned old one",
+      publishedAt: "2026-06-18T07:00:00.000Z",
+    },
+    {
+      slug: "pinned-old-two",
+      title: "Pinned old two",
+      publishedAt: "2026-06-08T07:00:00.000Z",
+    },
+    {
+      slug: "recent-third",
+      title: "Recent third",
+      publishedAt: "2026-07-20T07:00:00.000Z",
+    },
+    {
+      slug: "recent-newest",
+      title: "Recent newest",
+      publishedAt: "2026-07-28T07:00:00.000Z",
+    },
+    {
+      slug: "recent-second",
+      title: "Recent second",
+      publishedAt: "2026-07-24T07:00:00.000Z",
+    },
+  ];
+  const articleByUrl = new Map(
+    articles.map((article) => [`https://claude.com/blog/${article.slug}`, article]),
+  );
+  const fetchedArticleUrls: string[] = [];
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: new Date("2026-06-29T07:00:00.000Z"),
+    limit: 2,
+    agentModel: "test-model",
+    fetchedItemKeys: new Set(),
+    sources: {},
+    fetcher: async (url: string) => {
+      if (url.endsWith("/robots.txt")) {
+        return new Response("User-agent: *\nAllow: /");
+      }
+      if (url === builder.fetchUrl) {
+        return new Response(
+          articles.map((article) => `<a href="/blog/${article.slug}">${article.title}</a>`).join("\n"),
+        );
+      }
+      const article = articleByUrl.get(url);
+      if (!article) return new Response("not found", { status: 404 });
+      fetchedArticleUrls.push(url);
+      return new Response(`
+        <html>
+          <head>
+            <script type="application/ld+json">
+              ${JSON.stringify({
+                "@type": "BlogPosting",
+                headline: article.title,
+                datePublished: article.publishedAt,
+              })}
+            </script>
+          </head>
+          <body>
+            <div class="u-rich-text-blog">
+              <p>This primary article explains a concrete product change with implementation context, operational tradeoffs, migration details, reliability considerations, and practical examples for teams adopting the feature.</p>
+              <p>It also documents expected behavior, important limitations, measurable outcomes, rollout guidance, compatibility notes, and follow-up work so readers can evaluate the announcement from the original source.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    },
+  });
+
+  assert.deepEqual(
+    result.items.map((item: { url: string }) => item.url),
+    [
+      "https://claude.com/blog/recent-newest",
+      "https://claude.com/blog/recent-second",
+    ],
+  );
+  assert.equal(result.agentTasks.length, 0);
+  assert.ok(fetchedArticleUrls.includes("https://claude.com/blog/recent-newest"));
+  assert.ok(fetchedArticleUrls.includes("https://claude.com/blog/recent-second"));
+});
+
+test("personal blog fetcher applies one shared newest-first limit to ready items and agent fallbacks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "builder_blog_shared_publish_limit",
+    name: "Claude Blog",
+    kind: "BLOG",
+    sourceUrl: "https://claude.com/blog",
+    fetchUrl: "https://claude.com/blog",
+  };
+  const articles = [
+    {
+      slug: "pinned-outside-window",
+      title: "Pinned outside window",
+      publishedAt: "2026-06-01T07:00:00.000Z",
+      body: "Old pinned article.",
+    },
+    {
+      slug: "eligible-oldest",
+      title: "Eligible oldest",
+      publishedAt: "2026-07-10T07:00:00.000Z",
+      body: "long",
+    },
+    {
+      slug: "newest-needs-agent",
+      title: "Newest needs agent",
+      publishedAt: "2026-07-28T07:00:00.000Z",
+      body: "Short teaser.",
+    },
+    {
+      slug: "second-newest-ready",
+      title: "Second newest ready",
+      publishedAt: "2026-07-24T07:00:00.000Z",
+      body: "long",
+    },
+  ];
+  const articleByUrl = new Map(
+    articles.map((article) => [`https://claude.com/blog/${article.slug}`, article]),
+  );
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: new Date("2026-06-29T07:00:00.000Z"),
+    limit: 2,
+    agentModel: "test-model",
+    fetchedItemKeys: new Set(),
+    sources: {},
+    fetcher: async (url: string) => {
+      if (url.endsWith("/robots.txt")) {
+        return new Response("User-agent: *\nAllow: /");
+      }
+      if (url === builder.fetchUrl) {
+        return new Response(
+          articles.map((article) => `<a href="/blog/${article.slug}">${article.title}</a>`).join("\n"),
+        );
+      }
+      const article = articleByUrl.get(url);
+      if (!article) return new Response("not found", { status: 404 });
+      const body = article.body === "long"
+        ? `
+          <p>This primary article explains a concrete product change with implementation context, operational tradeoffs, migration details, reliability considerations, and practical examples for teams adopting the feature.</p>
+          <p>It also documents expected behavior, important limitations, measurable outcomes, rollout guidance, compatibility notes, and follow-up work so readers can evaluate the announcement from the original source.</p>
+        `
+        : `<p>${article.body}</p>`;
+      return new Response(`
+        <html>
+          <head>
+            <script type="application/ld+json">
+              ${JSON.stringify({
+                "@type": "BlogPosting",
+                headline: article.title,
+                datePublished: article.publishedAt,
+              })}
+            </script>
+          </head>
+          <body><div class="u-rich-text-blog">${body}</div></body>
+        </html>
+      `);
+    },
+  });
+
+  assert.equal(result.items.length + result.agentTasks.length, 2);
+  assert.deepEqual(
+    result.agentTasks.map((task: { item: { url: string } }) => task.item.url),
+    ["https://claude.com/blog/newest-needs-agent"],
+  );
+  assert.deepEqual(
+    result.items.map((item: { url: string }) => item.url),
+    ["https://claude.com/blog/second-newest-ready"],
+  );
+});
+
 test("personal blog fetcher uses Claude JSON-LD and rich text body when available", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(
