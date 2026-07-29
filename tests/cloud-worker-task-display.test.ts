@@ -98,14 +98,14 @@ test("tweet and podcast ids use compact content labels", () => {
   );
 });
 
-test("unknown content types use a localizable generic post label", () => {
+test("unknown content types keep a readable type inside a localizable label", () => {
   assert.equal(
     formatCloudWorkerTaskLabel(
       task({
-        id: "fetch_post:source:VIDEO:abcdefghijklmno",
+        id: "fetch_post:source:LIVE_VIDEO:abcdefghijklmno",
       }),
     ),
-    "Post abcdefghijklmno",
+    "Post (Live Video) abcdefghijklmno",
   );
 });
 

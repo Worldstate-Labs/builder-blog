@@ -88,7 +88,7 @@ test("worker queue counts and generated task labels translate", () => {
     ["37 waiting", "37 个等待中"],
     ["Tweet 20817322…582930", "推文 20817322…582930"],
     ["Episode ffdR5fZTC5E", "单集 ffdR5fZTC5E"],
-    ["Post abcdefghijklmno", "帖子 abcdefghijklmno"],
+    ["Post (Live Video) abcdefghijklmno", "帖子（Live Video）abcdefghijklmno"],
     ["Untitled post task", "未命名帖子任务"],
   ];
 

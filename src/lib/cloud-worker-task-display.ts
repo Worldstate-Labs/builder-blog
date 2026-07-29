@@ -30,6 +30,15 @@ function formatUrlLabel(value: string | null): string | null {
   }
 }
 
+function formatContentType(value: string): string {
+  return value
+    .toLowerCase()
+    .split(/[_-]+/u)
+    .filter(Boolean)
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 function formatCompoundTaskId(value: string): string | null {
   const match = value.match(FETCH_POST_ID);
   if (!match) return null;
@@ -49,7 +58,7 @@ function formatCompoundTaskId(value: string): string | null {
   if (contentType === "PODCAST_EPISODE") {
     return `Episode ${shortenMiddle(externalId, 18)}`;
   }
-  return `Post ${shortenMiddle(externalId, 18)}`;
+  return `Post (${formatContentType(contentType)}) ${shortenMiddle(externalId, 18)}`;
 }
 
 export function resolveWorkerAssignment(

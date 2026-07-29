@@ -5127,6 +5127,19 @@ const templateTranslations: PhraseTemplate[] = [
     },
   },
   {
+    pattern: /^Post \((.+)\) (.+)$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `帖子（${match[1]}）${match[2]}`,
+        "zh-TW": `貼文（${match[1]}）${match[2]}`,
+        ja: `投稿（${match[1]}）${match[2]}`,
+        ko: `게시물(${match[1]}) ${match[2]}`,
+        es: `Publicación (${match[1]}) ${match[2]}`,
+      };
+      return values[locale];
+    },
+  },
+  {
     pattern: /^(Tweet|Episode|Post) (.+)$/u,
     render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
       const labels: Record<
