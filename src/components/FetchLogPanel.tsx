@@ -3442,10 +3442,15 @@ function statusBanner(
   liveTask?: FetchTaskProgress | null,
   parentCanProgress = true,
 ): { label: string; tone: Tone } {
+  const liveStatus = String(liveTask?.status ?? "").toLowerCase();
   if (isCandidateDiscoveryTask(task)) {
-    if (task.status === "synced") return { label: "Candidates discovered", tone: "ok" };
-    if (task.status === "failed") return { label: "Discovery failed", tone: "fail" };
-    if (task.status === "action_needed" || isBlocked(task)) {
+    if (task.status === "synced" || liveStatus === "synced") {
+      return { label: "Candidates discovered", tone: "ok" };
+    }
+    if (task.status === "failed" || liveStatus === "failed") {
+      return { label: "Discovery failed", tone: "fail" };
+    }
+    if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
       return { label: "Action needed", tone: "fail" };
     }
     if (!parentCanProgress) return { label: NOT_COMPLETED_LABEL, tone: "idle" };
@@ -3465,6 +3470,9 @@ function statusBanner(
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
   if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
+  if (liveStatus === "failed") return { label: "Failed", tone: "fail" };
+  if (liveStatus === "action_needed") return { label: "Action needed", tone: "fail" };
+  if (liveStatus === "skipped") return { label: "Skipped: no content", tone: "idle" };
   if (!parentCanProgress) return { label: NOT_COMPLETED_LABEL, tone: "idle" };
   if (liveTaskIsSummarized(liveTask)) {
     return { label: "Summary ready; waiting to sync", tone: "warn" };
@@ -3523,11 +3531,11 @@ function liveSummarizeOutcome(
 ): { label: string; tone: Tone } {
   const phase = String(liveTask?.phase ?? "").toLowerCase();
   const status = String(liveTask?.status ?? "").toLowerCase();
-  if (liveTaskIsSummarized(liveTask)) return { label: "Ready to sync", tone: "ok" };
-  if (status === "summarizing" || phase === "summarize") return { label: "Summarizing", tone: "warn" };
   if (status === "failed") return { label: "Failed", tone: "fail" };
   if (status === "skipped") return { label: "Skipped", tone: "idle" };
   if (status === "action_needed") return { label: "Action needed", tone: "fail" };
+  if (liveTaskIsSummarized(liveTask)) return { label: "Ready to sync", tone: "ok" };
+  if (status === "summarizing" || phase === "summarize") return { label: "Summarizing", tone: "warn" };
   return summarizeOutcome(task, liveTask);
 }
 

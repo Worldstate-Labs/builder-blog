@@ -1506,6 +1506,45 @@ test("completed live summaries override stale summarize phase labels while await
   );
 });
 
+test("live terminal failure overrides stale summary evidence in every task status surface", () => {
+  const task = {
+    id: "fetch_post:source:failed-after-summary",
+    title: "Failed after summary",
+    status: "pending",
+    contentStatus: "ready",
+    bodyChars: 1842,
+    bodyWords: 270,
+  };
+  const liveTask = {
+    id: task.id,
+    status: "failed",
+    phase: "summarize",
+    workerId: "worker-2",
+    reason: "task_sync_failed",
+    bodyChars: 1842,
+    bodyWords: 270,
+    summaryChars: 657,
+    summaryWords: 93,
+    headlineChars: 54,
+    headlineWords: 8,
+  };
+
+  assert.deepEqual(taskStatusPill(task, liveTask), { label: "failed", tone: "fail" });
+  assert.deepEqual(fetchTaskLifecycleOutcomes(task, liveTask).summarize, {
+    label: "Failed",
+    tone: "fail",
+  });
+  assert.deepEqual(fetchTaskLifecycleOutcomes(task, liveTask).sync, {
+    label: "Failed",
+    tone: "fail",
+  });
+
+  const html = renderTaskRow(task, { liveTask });
+  assert.match(html, /<div class="sync-panel-task-banner is-fail">Failed<\/div>/);
+  assert.doesNotMatch(html, /Summary ready; waiting to sync/);
+  assert.doesNotMatch(html, />syncing</);
+});
+
 test("legacy server-synced tasks cannot render summarize pending", () => {
   const outcomes = fetchTaskLifecycleOutcomes({
     id: "legacy_cloud_synced",
