@@ -163,6 +163,13 @@ test("external fetch items select newest eligible candidates before limit", asyn
       },
       {
         kind: "ARTICLE",
+        externalId: "already-fetched-newer",
+        body: "Already fetched newer body",
+        url: "https://example.com/already-fetched-newer",
+        publishedAt: "2026-07-30T10:00:00.000Z",
+      },
+      {
+        kind: "ARTICLE",
         externalId: "fetched",
         body: "Fetched body",
         url: "https://example.com/fetched",
@@ -187,7 +194,10 @@ test("external fetch items select newest eligible candidates before limit", asyn
       builderId: "builder_external",
       cutoff: new Date("2026-07-20T00:00:00.000Z"),
       limit: 2,
-      fetchedItemKeys: new Set(["builder_external:ARTICLE:fetched"]),
+      fetchedItemKeys: new Set([
+        cli.personalItemKey("builder_external", "ARTICLE", "already-fetched-newer"),
+        cli.personalItemKey("builder_external", "ARTICLE", "fetched"),
+      ]),
     },
   );
 
@@ -6996,7 +7006,7 @@ test("personal X fetcher selects newest eligible tweets before limit", async () 
         cutoff: null,
         limit: 2,
         agentModel: "test-model",
-        fetchedItemKeys: new Set(),
+        fetchedItemKeys: new Set([cli.personalItemKey("builder_x", "TWEET", "filtered-newest")]),
         sources: {},
         fetcher: async (url: string) => {
           if (url.includes("/users/by/username/")) {
@@ -7016,6 +7026,11 @@ test("personal X fetcher selects newest eligible tweets before limit", async () 
                     id: "old",
                     text: "Oldest eligible tweet",
                     created_at: "2026-07-21T12:00:00.000Z",
+                  },
+                  {
+                    id: "filtered-newest",
+                    text: "Filtered newest tweet",
+                    created_at: "2026-07-30T12:00:00.000Z",
                   },
                   {
                     id: "newest",
