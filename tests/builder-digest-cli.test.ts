@@ -1554,6 +1554,88 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
   );
 });
 
+test("personal YouTube fetcher selects newest eligible videos before limit", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = await cli.fetchPersonalYouTubeBuilderForTest(
+    {
+      id: "builder_youtube_chronological_limit",
+      name: "Chronological YouTube",
+      sourceUrl: "https://www.youtube.com/@chronological",
+      fetchUrl: "https://www.youtube.com/@chronological",
+    },
+    {
+      cutoff: new Date("2026-05-01T00:00:00.000Z"),
+      limit: 2,
+      agentModel: "gpt-test",
+      fetchedItemKeys: new Set(),
+      sources: {
+        youtube: {
+          contentQuality: {
+            minChars: 80,
+            minContentUnits: 24,
+            minLocalDiversity: 0.25,
+            maxTimestampDensity: 0.1,
+          },
+        },
+      },
+      commandRunner: missingCommandRunner,
+      fetcher: async (url: string) => {
+        const href = String(url);
+        if (href === "https://www.youtube.com/@chronological") {
+          return new Response('<html>{"externalId":"UCchronological0000000000"}</html>');
+        }
+        if (href.includes("/feeds/videos.xml")) {
+          return new Response(`
+            <feed>
+              <entry>
+                <yt:videoId>youtube-old</yt:videoId>
+                <title>Older video</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=youtube-old" />
+                <published>2026-05-22T10:00:00Z</published>
+                <media:description>Links only.</media:description>
+              </entry>
+              <entry>
+                <yt:videoId>youtube-newest</yt:videoId>
+                <title>Newest video</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=youtube-newest" />
+                <published>2026-05-24T10:00:00Z</published>
+                <media:description>Links only.</media:description>
+              </entry>
+              <entry>
+                <yt:videoId>youtube-second</yt:videoId>
+                <title>Second newest video</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=youtube-second" />
+                <published>2026-05-23T10:00:00Z</published>
+                <media:description>Links only.</media:description>
+              </entry>
+            </feed>
+          `);
+        }
+        if (
+          href === "https://www.youtube.com/watch?v=youtube-old" ||
+          href === "https://www.youtube.com/watch?v=youtube-newest" ||
+          href === "https://www.youtube.com/watch?v=youtube-second"
+        ) {
+          return new Response("<html><script>var ytInitialPlayerResponse = {};</script></html>");
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.equal(result.items.length, 0);
+  assert.deepEqual(
+    result.agentTasks.map((task: { item: { externalId: string; url: string } }) => [
+      task.item.externalId,
+      task.item.url,
+    ]),
+    [
+      ["youtube-newest", "https://www.youtube.com/watch?v=youtube-newest"],
+      ["youtube-second", "https://www.youtube.com/watch?v=youtube-second"],
+    ],
+  );
+});
+
 test("personal YouTube fetcher chooses Chinese captions when metadata strongly indicates Chinese", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const zhTranscript =
@@ -2802,6 +2884,65 @@ test("personal podcast fetcher parses RSS episodes as podcast items", async () =
   assert.equal(items[0].kind, "PODCAST_EPISODE");
   assert.equal(items[0].externalId, "episode-42");
   assert.equal(items[0].url, "https://pod.example.com/42");
+});
+
+test("personal podcast fetcher selects newest eligible episodes before limit", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const showNotes =
+    "Detailed show notes covering the episode topics, product lessons, architecture decisions, research takeaways, and operating constraints in enough depth to qualify as substantial RSS content. ".repeat(3);
+  const result = await cli.fetchPersonalPodcastBuilderForTest(
+    {
+      id: "builder_podcast_chronological_limit",
+      name: "Chronological Podcast",
+      sourceUrl: "https://pod.example.com/feed.xml",
+      fetchUrl: "https://pod.example.com/feed.xml",
+    },
+    {
+      cutoff: new Date("2026-05-01T00:00:00.000Z"),
+      limit: 2,
+      agentModel: "gpt-test",
+      fetchedItemKeys: new Set(),
+      fetcher: async (url: string) => {
+        if (String(url) === "https://pod.example.com/feed.xml") {
+          return new Response(`
+            <rss><channel>
+              <item>
+                <title>Older episode</title>
+                <guid>podcast-old</guid>
+                <link>https://pod.example.com/old</link>
+                <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+                <description><![CDATA[${showNotes}]]></description>
+              </item>
+              <item>
+                <title>Newest episode</title>
+                <guid>podcast-newest</guid>
+                <link>https://pod.example.com/newest</link>
+                <pubDate>Sun, 24 May 2026 10:00:00 GMT</pubDate>
+                <description><![CDATA[${showNotes}]]></description>
+              </item>
+              <item>
+                <title>Second newest episode</title>
+                <guid>podcast-second</guid>
+                <link>https://pod.example.com/second</link>
+                <pubDate>Sat, 23 May 2026 10:00:00 GMT</pubDate>
+                <description><![CDATA[${showNotes}]]></description>
+              </item>
+            </channel></rss>
+          `);
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.deepEqual(
+    result.items.map((item: { externalId: string; url: string }) => [item.externalId, item.url]),
+    [
+      ["podcast-newest", "https://pod.example.com/newest"],
+      ["podcast-second", "https://pod.example.com/second"],
+    ],
+  );
+  assert.equal(result.agentTasks.length, 0);
 });
 
 test("media duration parsing normalizes podcast duration text and numeric forms", async () => {

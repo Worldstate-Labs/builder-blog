@@ -3721,10 +3721,14 @@ async function fetchPersonalYouTubeBuilder(
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
   const { videos: fetchedVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl, fetcher);
-  const videos = fetchedVideos
+  const eligibleVideos = fetchedVideos
     .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
-    .filter((video) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
-    .slice(0, limit);
+    .filter((video) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)));
+  const videos = selectNewestChronologicalCandidates(
+    eligibleVideos,
+    limit,
+    (video) => video.publishedAt,
+  );
   const items = [];
   const agentTasks = [];
 
@@ -4429,10 +4433,14 @@ async function fetchPersonalPodcastBuilder(
   }
 
   const xml = await response.text();
-  const parsed = parsePodcastFeedItems(xml, feedUrl)
+  const eligibleItems = parsePodcastFeedItems(xml, feedUrl)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
-    .slice(0, limit);
+    .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)));
+  const parsed = selectNewestChronologicalCandidates(
+    eligibleItems,
+    limit,
+    (item) => item.publishedAt,
+  );
 
   const items = [];
   const agentTasks = [];
@@ -4469,6 +4477,10 @@ async function fetchPersonalPodcastBuilder(
   }
 
   return { items, agentTasks };
+}
+
+export function fetchPersonalPodcastBuilderForTest(builder, options) {
+  return fetchPersonalPodcastBuilder(builder, options);
 }
 
 async function fetchPersonalGithubTrendingBuilder(
