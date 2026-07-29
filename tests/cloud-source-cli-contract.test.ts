@@ -2966,6 +2966,103 @@ cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
   }
 });
 
+test("strict job updates classify only the exact reset-fenced diagnostic and clean up capture files", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-strict-job-update-reset-fenced-"));
+  try {
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+JOB_STATE_DIR="${dir}/state"
+mkdir -p "$JOB_STATE_DIR"
+JOB_UPDATE_RESET_FENCED=78
+${shellFunction(runner, "job_update_error_is_reset_fenced")}
+${shellFunction(runner, "strict_job_run_update_for_instance")}
+case_name=""
+stub_code=0
+stub_diagnostic=""
+job_run_update_for_instance() {
+  printf '%s\\n' "\${BUILDER_BLOG_JOB_UPDATE_ERROR_FILE:-}" > "${dir}/capture-path"
+  if [ -n "\${BUILDER_BLOG_JOB_UPDATE_ERROR_FILE:-}" ] && [ -n "$stub_diagnostic" ]; then
+    printf '%s\\n' "$stub_diagnostic" > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
+  fi
+  return "$stub_code"
+}
+assert_case() {
+  case_name="$1"
+  stub_code="$2"
+  stub_diagnostic="$3"
+  expected_code="$4"
+  prior_error_file="$5"
+  if [ "$prior_error_file" = "__unset__" ]; then
+    unset BUILDER_BLOG_JOB_UPDATE_ERROR_FILE
+  else
+    BUILDER_BLOG_JOB_UPDATE_ERROR_FILE="$prior_error_file"
+    export BUILDER_BLOG_JOB_UPDATE_ERROR_FILE
+  fi
+  set +e
+  strict_job_run_update_for_instance host-1 2026-07-20T00:00:00Z 2026-07-20T00:00:00Z stale summary reason --stage stopped
+  actual_code=$?
+  set -e
+  [ "$actual_code" -eq "$expected_code" ] || {
+    echo "$case_name returned $actual_code instead of $expected_code" >&2
+    exit 21
+  }
+  if [ "$prior_error_file" = "__unset__" ]; then
+    if [ "\${BUILDER_BLOG_JOB_UPDATE_ERROR_FILE+x}" = "x" ]; then
+      echo "$case_name unexpectedly left BUILDER_BLOG_JOB_UPDATE_ERROR_FILE set" >&2
+      exit 22
+    fi
+  else
+    [ "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE" = "$prior_error_file" ] || {
+      echo "$case_name did not restore BUILDER_BLOG_JOB_UPDATE_ERROR_FILE" >&2
+      exit 23
+    }
+  fi
+  capture_path="$(cat "${dir}/capture-path")"
+  [ -n "$capture_path" ] || {
+    echo "$case_name did not receive a per-call capture path" >&2
+    exit 24
+  }
+  [ ! -e "$capture_path" ] || {
+    echo "$case_name left capture file behind: $capture_path" >&2
+    exit 25
+  }
+}
+assert_case \
+  exact-reset-fenced \
+  1 \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' \
+  78 \
+  "${dir}/existing-error.log"
+assert_case \
+  retryable-conflict \
+  17 \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":true}' \
+  17 \
+  "__unset__"
+assert_case \
+  malformed-line \
+  19 \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409}' \
+  19 \
+  "${dir}/second-error.log"
+assert_case \
+  missing-diagnostic \
+  23 \
+  "" \
+  23 \
+  "__unset__"
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud host control escalates the cached descendant set after the runner root exits", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-descendants-"));
   try {

@@ -52,6 +52,7 @@ if [ "${BUILDER_BLOG_JOB_TMP_IS_RUN_DIR:-0}" = "1" ] && [ -n "${BUILDER_BLOG_JOB
   JOB_TMP_DIR="$BUILDER_BLOG_JOB_TMP_DIR"
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
+JOB_UPDATE_RESET_FENCED=78
 
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
 # runner so the per-user fetch log can distinguish scheduled jobs from
@@ -1942,25 +1943,48 @@ job_run_update() {
   if [ -n "$_usage_file" ]; then
     _usage_args="--usage-file"
   fi
-  if node "$AGENT_DIR/builder-digest.mjs" job-run-update \
-    --job-type "$(job_type_for_name)" \
-    --trigger "${BUILDER_BLOG_JOB_TRIGGER:-manual_cli}" \
-    --schedule-job "${BUILDER_BLOG_SCHEDULE_JOB:-}" \
-    --instance-id "${BUILDER_BLOG_JOB_RUN_ID:-}" \
-    --expected-at "${BUILDER_BLOG_EXPECTED_AT:-}" \
-    --started-at "${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}" \
-    --heartbeat-at "$(iso_now)" \
-    --status "$_status" \
-    --runtime "${BUILDER_BLOG_RUNTIME:-}" \
-    --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
-    --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
-    --local-workers "${MAX_PARALLEL_WORKERS:-}" \
-    --finished-at "$_finished" \
-    --summary "$_summary" \
-    --reason "$_reason" \
-    ${_usage_args:+"$_usage_args"} ${_usage_file:+"$_usage_file"} \
-    "$@" >/dev/null 2>&1; then
-    return 0
+  if [ -n "${BUILDER_BLOG_JOB_UPDATE_ERROR_FILE:-}" ]; then
+    if node "$AGENT_DIR/builder-digest.mjs" job-run-update \
+      --job-type "$(job_type_for_name)" \
+      --trigger "${BUILDER_BLOG_JOB_TRIGGER:-manual_cli}" \
+      --schedule-job "${BUILDER_BLOG_SCHEDULE_JOB:-}" \
+      --instance-id "${BUILDER_BLOG_JOB_RUN_ID:-}" \
+      --expected-at "${BUILDER_BLOG_EXPECTED_AT:-}" \
+      --started-at "${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}" \
+      --heartbeat-at "$(iso_now)" \
+      --status "$_status" \
+      --runtime "${BUILDER_BLOG_RUNTIME:-}" \
+      --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
+      --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
+      --local-workers "${MAX_PARALLEL_WORKERS:-}" \
+      --finished-at "$_finished" \
+      --summary "$_summary" \
+      --reason "$_reason" \
+      ${_usage_args:+"$_usage_args"} ${_usage_file:+"$_usage_file"} \
+      "$@" >/dev/null 2>"$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"; then
+      return 0
+    fi
+  else
+    if node "$AGENT_DIR/builder-digest.mjs" job-run-update \
+      --job-type "$(job_type_for_name)" \
+      --trigger "${BUILDER_BLOG_JOB_TRIGGER:-manual_cli}" \
+      --schedule-job "${BUILDER_BLOG_SCHEDULE_JOB:-}" \
+      --instance-id "${BUILDER_BLOG_JOB_RUN_ID:-}" \
+      --expected-at "${BUILDER_BLOG_EXPECTED_AT:-}" \
+      --started-at "${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}" \
+      --heartbeat-at "$(iso_now)" \
+      --status "$_status" \
+      --runtime "${BUILDER_BLOG_RUNTIME:-}" \
+      --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
+      --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
+      --local-workers "${MAX_PARALLEL_WORKERS:-}" \
+      --finished-at "$_finished" \
+      --summary "$_summary" \
+      --reason "$_reason" \
+      ${_usage_args:+"$_usage_args"} ${_usage_file:+"$_usage_file"} \
+      "$@" >/dev/null 2>&1; then
+      return 0
+    fi
   fi
   if [ "$_status" = "starting" ]; then
     echo "FollowBrief rejected the runtime job lease; refusing to start stale work." >&2
@@ -2590,20 +2614,46 @@ job_run_update_for_instance() {
 strict_job_run_update_for_instance() {
   _sjrui_had_strict=0
   _sjrui_saved_strict="${BUILDER_BLOG_STRICT_JOB_UPDATE:-}"
+  _sjrui_had_error_file=0
+  _sjrui_saved_error_file="${BUILDER_BLOG_JOB_UPDATE_ERROR_FILE:-}"
   if [ "${BUILDER_BLOG_STRICT_JOB_UPDATE+x}" = "x" ]; then
     _sjrui_had_strict=1
   fi
+  if [ "${BUILDER_BLOG_JOB_UPDATE_ERROR_FILE+x}" = "x" ]; then
+    _sjrui_had_error_file=1
+  fi
   BUILDER_BLOG_STRICT_JOB_UPDATE=1
   export BUILDER_BLOG_STRICT_JOB_UPDATE
+  _sjrui_error_file="$(mktemp "$JOB_STATE_DIR/job-update-error.XXXXXX")"
+  BUILDER_BLOG_JOB_UPDATE_ERROR_FILE="$_sjrui_error_file"
+  export BUILDER_BLOG_JOB_UPDATE_ERROR_FILE
   _sjrui_code=0
   job_run_update_for_instance "$@" || _sjrui_code=$?
+  if [ "$_sjrui_code" -ne 0 ] && job_update_error_is_reset_fenced "$_sjrui_error_file"; then
+    _sjrui_code="$JOB_UPDATE_RESET_FENCED"
+  fi
   if [ "$_sjrui_had_strict" = "1" ]; then
     BUILDER_BLOG_STRICT_JOB_UPDATE="$_sjrui_saved_strict"
     export BUILDER_BLOG_STRICT_JOB_UPDATE
   else
     unset BUILDER_BLOG_STRICT_JOB_UPDATE
   fi
+  if [ "$_sjrui_had_error_file" = "1" ]; then
+    BUILDER_BLOG_JOB_UPDATE_ERROR_FILE="$_sjrui_saved_error_file"
+    export BUILDER_BLOG_JOB_UPDATE_ERROR_FILE
+  else
+    unset BUILDER_BLOG_JOB_UPDATE_ERROR_FILE
+  fi
+  rm -f "$_sjrui_error_file"
   return "$_sjrui_code"
+}
+
+job_update_error_is_reset_fenced() {
+  _jueirf_file="${1:-}"
+  [ -s "$_jueirf_file" ] || return 1
+  grep -Fqx \
+    'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' \
+    "$_jueirf_file"
 }
 
 cloud_host_control_current_file() {

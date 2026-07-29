@@ -133,6 +133,19 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
 
   const runner = source("scripts/builder-agent-runner.sh");
   assert.match(runner, /LAST_AGENT_OUTPUT_FILE/);
+  assert.match(runner, /JOB_UPDATE_RESET_FENCED=78/);
+  assert.match(
+    runner,
+    /job_update_error_is_reset_fenced\(\) \{[\s\S]*grep -Fqx \\\n\s+'FOLLOWBRIEF_ERROR \{"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false\}'/,
+  );
+  assert.match(
+    runner,
+    /if \[ -n "\$\{BUILDER_BLOG_JOB_UPDATE_ERROR_FILE:-\}" \]; then[\s\S]*job-run-update[\s\S]*>\s*\/dev\/null 2>"\$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"[\s\S]*else[\s\S]*job-run-update[\s\S]*>\s*\/dev\/null 2>&1[\s\S]*fi/,
+  );
+  assert.match(
+    runner,
+    /strict_job_run_update_for_instance\(\) \{[\s\S]*BUILDER_BLOG_JOB_UPDATE_ERROR_FILE="\$_sjrui_error_file"[\s\S]*job_update_error_is_reset_fenced "\$_sjrui_error_file"[\s\S]*_sjrui_code="\$JOB_UPDATE_RESET_FENCED"/,
+  );
   assert.match(runner, /job_run_update failed "Runtime exited with code \$_code\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /job_run_update timed_out "Runtime reported a timeout\." "runtime_reported_timeout" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /job_run_update succeeded "Runtime completed successfully\." "runtime_finished" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/);
