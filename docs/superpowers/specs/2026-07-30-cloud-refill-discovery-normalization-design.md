@@ -83,12 +83,17 @@ another and make production debugging attributable to a specific lease batch.
 3. Normalize discovery tasks in that batch.
 4. Count ordinary post tasks.
 5. If there are no post tasks, sync terminal outcomes for the batch and leave
-   the worker queue drained.
-6. Otherwise merge the normalized batch into the accumulated result and make
-   the queue assignable.
+   the worker queue drained. Mark the current refill window exhausted exactly
+   as today; the persistent host may try again only after its existing
+   idle-poll/reset cycle. Do not add an immediate same-cycle refill loop.
+6. Otherwise make the normalized batch assignable. If the accumulated result
+   has no executable tasks, replace it with the refill batch so previously
+   synced terminal-only state is discarded. If executable accumulated work
+   exists, merge the refill batch into it.
 
 A terminal-only refill does not fail the persistent host. Existing refill
-limits and idle polling continue to bound subsequent lease attempts.
+limits, exhaustion state, and idle polling continue to bound subsequent lease
+attempts.
 
 ### Error semantics
 
@@ -114,7 +119,11 @@ Add contract coverage proving:
 - initial and refill batches both normalize before counting;
 - consecutive refills use isolated discovery artifact paths;
 - the helper rejects any normalized batch that still contains fallback tasks.
+- the discovery prompt and generated OpenClaw wrapper both use the explicit
+  discovery input/output environment variables.
+
+Namespaced discovery artifacts must be included in existing debug and recovery
+collection so a failed initial or refill normalization remains inspectable.
 
 Run the targeted cloud runner contract tests, Product Hunt/discovery CLI tests,
 shell syntax validation, type checking, and the broader relevant test suite.
-
