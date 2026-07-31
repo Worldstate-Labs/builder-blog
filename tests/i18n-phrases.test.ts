@@ -139,7 +139,6 @@ test("visible app TSX phrases have translations for supported non-English locale
     "Español (Spanish)",
     "FollowBrief",
     "Français (French)",
-    "Hermes",
     "GitHub",
     "GitHub Trending",
     "Google",

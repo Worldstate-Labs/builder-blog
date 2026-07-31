@@ -90,7 +90,7 @@ async function renderWithDefaults({
 test("renderAgentPrompt renders a one-time library prompt with normalized runtime, lookback, parallel workers, and exchange/account substitution", async () => {
   const content = await renderWithDefaults({
     job: "library-once",
-    options: { runtime: "hermes", force: true, fetchDays: 14, parallelWorkers: 7 },
+    options: { runtime: "openclaw", force: true, fetchDays: 14, parallelWorkers: 7 },
     exchange: {
       code: "bb_ec_renderer_library_once",
       accountEmail: "builder@example.com",
@@ -99,7 +99,7 @@ test("renderAgentPrompt renders a one-time library prompt with normalized runtim
   });
 
   assert.match(content, /builder@example\.com/);
-  assert.match(content, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-hermes\}"/);
+  assert.match(content, /BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-openclaw\}"/);
   assert.match(content, /BUILDER_BLOG_FETCH_DAYS="\$\{BUILDER_BLOG_FETCH_DAYS-14\}"/);
   assert.match(content, /BUILDER_BLOG_PARALLEL_WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-7\}"/);
   assert.match(content, /BUILDER_BLOG_FETCH_FORCE="\$\{BUILDER_BLOG_FETCH_FORCE---force\}"/);
@@ -379,4 +379,14 @@ test("route GET delegates OpenClaw child setup rendering for DB-free cron setup 
   assert.equal(response.headers.get("content-type"), "text/markdown; charset=utf-8");
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(content, rendered);
+});
+
+test("route GET rejects a removed Hermes runtime instead of rendering an unpinned prompt", async () => {
+  const request = new Request(
+    "https://followbrief.example/api/skill/jobs/library-once/skill.md?runtime=hermes",
+  );
+  const response = await getSkillJobPromptRoute(request, "library-once");
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "Runtime invalid" });
 });

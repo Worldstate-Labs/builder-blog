@@ -8,7 +8,7 @@ export const AGENT_PROMPT_LINK_PRIVACY_HEADERS = Object.freeze({
   "X-Robots-Tag": "noindex, nofollow, noarchive",
 });
 
-export type Runtime = "claude" | "codex" | "hermes" | "openclaw";
+export type Runtime = "claude" | "codex" | "openclaw";
 export type Frequency = "1h" | "daily" | "weekly";
 export type ExposedPromptJob =
   | "library-once"
@@ -28,7 +28,7 @@ export type AgentPromptRenderOptions = {
   parallelWorkers?: number;
 };
 
-const RUNTIMES: Runtime[] = ["claude", "codex", "hermes", "openclaw"];
+const RUNTIMES: Runtime[] = ["claude", "codex", "openclaw"];
 const FREQUENCIES: Frequency[] = ["1h", "daily", "weekly"];
 const JOB_ALLOWED_KEYS: Record<ExposedPromptJob, readonly (keyof AgentPromptRenderOptions)[]> = {
   "library-once": ["runtime", "force", "fetchDays", "parallelWorkers"],

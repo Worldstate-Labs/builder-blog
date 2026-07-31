@@ -114,6 +114,7 @@ test("cloud run actions component copies worker host and stop prompts via short 
   assert.match(actions, /body:\s*JSON\.stringify/);
   assert.match(actions, /body\?\.url/);
   assert.match(actions, /buildAgentPromptLinkInstruction\(url\)/);
+  assert.doesNotMatch(actions, /hermes|Hermes/);
   assert.match(instruction, /If browser access is blocked, use Node\.js fetch instead of curl/);
   assert.doesNotMatch(actions, /exchange-code/);
   assert.doesNotMatch(actions, /\/api\/skill\/jobs\//);

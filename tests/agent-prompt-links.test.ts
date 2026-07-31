@@ -39,8 +39,8 @@ test("parseAgentPromptLinkOptions accepts only the exposed jobs and their applic
     },
     {
       job: "digest-cron-setup",
-      input: { runtime: "hermes", frequency: "weekly", force: true, parallelWorkers: 3 },
-      expected: { runtime: "hermes", frequency: "weekly", force: true, parallelWorkers: 3 },
+      input: { runtime: "openclaw", frequency: "weekly", force: true, parallelWorkers: 3 },
+      expected: { runtime: "openclaw", frequency: "weekly", force: true, parallelWorkers: 3 },
     },
     {
       job: "library-cron-stop",
@@ -89,13 +89,17 @@ test("parseAgentPromptLinkOptions rejects non-objects, arrays, unknown keys, and
 });
 
 test("parseAgentPromptLinkOptions enforces runtime and frequency closed sets", () => {
-  for (const runtime of ["claude", "codex", "hermes", "openclaw"]) {
+  for (const runtime of ["claude", "codex", "openclaw"]) {
     assert.deepEqual(parseAgentPromptLinkOptions("digest-once", { runtime }), { runtime });
   }
   for (const frequency of ["1h", "daily", "weekly"]) {
     assert.deepEqual(parseAgentPromptLinkOptions("library-cron-setup", { frequency }), { frequency });
   }
 
+  assert.throws(
+    () => parseAgentPromptLinkOptions("digest-once", { runtime: "hermes" }),
+    /runtime/i,
+  );
   assert.throws(
     () => parseAgentPromptLinkOptions("digest-once", { runtime: "gpt5" }),
     /runtime/i,

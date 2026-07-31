@@ -476,24 +476,6 @@ run_with_openclaw() {
   return "$_openclaw_code"
 }
 
-run_with_hermes() {
-  _hermes_output="$(agent_output_file hermes)"
-  _hermes_usage="$(agent_usage_file hermes)"
-  LAST_AGENT_OUTPUT_FILE="$_hermes_output"
-  LAST_AGENT_USAGE_FILE="$_hermes_usage"
-  set +e
-  # Hermes disables its no-byte TTFB watchdog for large Codex contexts by
-  # default. A stalled backend stream would then outlive the worker progress
-  # deadline without retrying, so keep its supported reconnect watchdog on for
-  # FollowBrief jobs unless the operator explicitly overrides it.
-  HERMES_CODEX_TTFB_STRICT="${HERMES_CODEX_TTFB_STRICT:-1}" hermes chat -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
-  _hermes_code="$?"
-  set -e
-  capture_runtime_usage hermes "$_hermes_output" "$_hermes_usage"
-  cat "$_hermes_output"
-  return "$_hermes_code"
-}
-
 agent_output_file() {
   _runtime="$1"
   if [ -n "${BUILDER_BLOG_AGENT_OUTPUT_FILE:-}" ]; then
@@ -1025,29 +1007,9 @@ NODE
   return 1
 }
 
-run_with_hermes_unattended() {
-  _hermes_output="$(agent_output_file hermes)"
-  _hermes_usage="$(agent_usage_file hermes)"
-  LAST_AGENT_OUTPUT_FILE="$_hermes_output"
-  LAST_AGENT_USAGE_FILE="$_hermes_usage"
-  set +e
-  HERMES_CODEX_TTFB_STRICT="${HERMES_CODEX_TTFB_STRICT:-1}" hermes chat -Q --yolo --accept-hooks --source tool -q "$(cat "$PROMPT_FILE")" > "$_hermes_output" 2>&1
-  _hermes_code="$?"
-  set -e
-  capture_runtime_usage hermes "$_hermes_output" "$_hermes_usage"
-  cat "$_hermes_output"
-  if agent_output_has_timeout "$_hermes_output"; then
-    return 124
-  fi
-  if [ "$_hermes_code" -eq 0 ] && ! digest_output_completed "$_hermes_output"; then
-    return 1
-  fi
-  return "$_hermes_code"
-}
-
 run_shell_library_fallback() {
   echo "No local agent runtime found; running non-AI library fetch fallback." >&2
-  echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or hermes." >&2
+  echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, or openclaw." >&2
   refresh_skill_files
   RESULT_FILE="$JOB_TMP_DIR/library-fallback-fetch-result.json"
   node "$AGENT_DIR/builder-digest.mjs" fetch-personal --days "${BUILDER_BLOG_FETCH_DAYS:-30}" --limit 3 > "$RESULT_FILE"
@@ -1060,7 +1022,7 @@ if (fetchTasks > 0) {
   console.error(
     "Library fetch produced fetchTasks, but no local agent runtime is available to complete them.",
   );
-  console.error("Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND.");
+  console.error("Install/configure Codex, Claude Code, OpenClaw, or set BUILDER_BLOG_AGENT_COMMAND.");
   process.exit(78);
 }
 NODE
@@ -1165,8 +1127,18 @@ read_runtime_pin() {
 
 normalize_runtime() {
   case "${1:-}" in
-    claude|codex|hermes|openclaw) printf '%s\n' "$1" ;;
+    claude|codex|openclaw) printf '%s\n' "$1" ;;
     *) printf '%s\n' "" ;;
+  esac
+}
+
+validate_runtime() {
+  case "${1:-}" in
+    ""|claude|codex|openclaw) return 0 ;;
+    *)
+      echo "Unsupported FollowBrief runtime '$1'." >&2
+      exit 78
+      ;;
   esac
 }
 
@@ -1204,21 +1176,23 @@ case "$INCOMING_INTERVAL_MINUTES" in
 esac
 export INTERVAL_MINUTES="$RESOLVED_INTERVAL_MINUTES"
 
-# The resolved runtime is a single word: claude | codex | hermes | openclaw.
+# The resolved runtime is a single word: claude | codex | openclaw.
 # One-time prompts pass BUILDER_BLOG_AGENT_RUNTIME as a per-run override.
 # Otherwise read a runtime pin for this exact job (or the legacy global pin).
 # Do not fall back from one-time jobs to cron runtime pins.
 if [ "$INCOMING_RUNTIME_SET" = "1" ]; then
-  PINNED_RUNTIME="$(normalize_runtime "$INCOMING_RUNTIME")"
+  RAW_PINNED_RUNTIME="$INCOMING_RUNTIME"
 else
-  PINNED_RUNTIME="$(normalize_runtime "$(read_runtime_pin)")"
+  RAW_PINNED_RUNTIME="$(read_runtime_pin)"
 fi
+validate_runtime "$RAW_PINNED_RUNTIME"
+PINNED_RUNTIME="$(normalize_runtime "$RAW_PINNED_RUNTIME")"
 
 # Surface the resolved runtime to the CLI so the fetch-run record (and the web
 # fetch log) can label which agent ran it. The CLI also auto-detects
 # codex/claude from their own env, but the pin is authoritative and is the only
-# signal for hermes/openclaw. Empty for un-pinned interactive runs → the CLI
-# falls back to env detection.
+# signal for openclaw. Empty for un-pinned interactive runs falls back to env
+# detection.
 export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
 if [ -z "${BUILDER_BLOG_AGENT_MODEL:-}" ]; then
   case "$PINNED_RUNTIME" in
@@ -1921,8 +1895,7 @@ aggregate_runtime_usage_files() {
   for _usage_input in \
     "$JOB_TMP_DIR"/codex-agent-output.* \
     "$JOB_TMP_DIR"/claude-agent-output.* \
-    "$JOB_TMP_DIR"/openclaw-agent-output.* \
-    "$JOB_TMP_DIR"/hermes-agent-output.*
+    "$JOB_TMP_DIR"/openclaw-agent-output.*
   do
     [ -r "$_usage_input" ] || continue
     _usage_inputs="$_usage_inputs $(shell_quote "$_usage_input")"
@@ -2023,7 +1996,7 @@ verify_followbrief_pid() {
   # whose argv contains this script name (re-execs preserve it, and worker mode
   # only sets BUILDER_BLOG_WORKER_MODE=1 as an env var, which never appears in
   # `ps -o command=`). Matching the generic runtime commands (claude -p,
-  # openclaw, codex exec, hermes chat) here only produced false positives: a
+  # openclaw and codex exec here only produced false positives: a
   # recycled PID belonging to the user's own interactive runtime got accepted
   # and then killed/blocked. Anchor identity to this runner script alone.
   printf '%s' "$_args" | grep -qF "builder-agent-runner.sh" || return 1
@@ -2231,7 +2204,7 @@ NODE
 worker_log_has_runtime_auth_failure() {
   _wlhrf_log="${1:-}"
   [ -r "$_wlhrf_log" ] || return 1
-  if grep -Eq 'Codex auth is missing access_token|hermes auth.*re-authenticate|hermes model.*re-authenticate' "$_wlhrf_log"; then
+  if grep -Fq 'Codex auth is missing access_token' "$_wlhrf_log"; then
     return 0
   fi
   grep -Eq 'auth error code: token_expired|Provided authentication token is expired|"code"[[:space:]]*:[[:space:]]*"token_expired"' "$_wlhrf_log" || return 1
@@ -3211,8 +3184,7 @@ run_with_job_tracking() {
     "$JOB_TMP_DIR"/shards/results/shard-*-usage.jsonl \
     "$JOB_TMP_DIR"/codex-agent-output.* \
     "$JOB_TMP_DIR"/claude-agent-output.* \
-    "$JOB_TMP_DIR"/openclaw-agent-output.* \
-    "$JOB_TMP_DIR"/hermes-agent-output.* 2>/dev/null || true
+    "$JOB_TMP_DIR"/openclaw-agent-output.* 2>/dev/null || true
   export BUILDER_BLOG_WORKER_PID="$$"
   export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
   _run_started_epoch_seconds="$(job_started_epoch_seconds)"
@@ -3333,7 +3305,7 @@ run_selected_runtime() {
     # Interactive permission gates are kept (the user is at a TTY). A missing
     # binary falls back to the discovery chain rather than failing the run.
     case "$PINNED_RUNTIME" in
-      claude|codex|hermes|openclaw)
+      claude|codex|openclaw)
         if command -v "$PINNED_RUNTIME" >/dev/null 2>&1; then
           "run_with_$PINNED_RUNTIME"
           return "$?"
@@ -3360,10 +3332,6 @@ run_selected_runtime() {
         command -v codex >/dev/null 2>&1 || { echo "Pinned runtime 'codex' not on PATH for cron." >&2; exit 78; }
         run_with_codex_unattended
         ;;
-      hermes)
-        command -v hermes >/dev/null 2>&1 || { echo "Pinned runtime 'hermes' not on PATH for cron." >&2; exit 78; }
-        run_with_hermes_unattended
-        ;;
       openclaw)
         command -v openclaw >/dev/null 2>&1 || { echo "Pinned runtime 'openclaw' not on PATH for cron." >&2; exit 78; }
         run_with_openclaw_unattended
@@ -3381,17 +3349,15 @@ run_selected_runtime() {
       run_with_claude
     elif command -v openclaw >/dev/null 2>&1; then
       run_with_openclaw
-    elif command -v hermes >/dev/null 2>&1; then
-      run_with_hermes
     elif { [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "cloud-library-cron" ]; } && [ -z "${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}" ]; then
       run_shell_library_fallback
     elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "cloud-library-cron" ]; then
       echo "No local agent runtime found for FollowBrief library ${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-agent} work." >&2
-      echo "Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+      echo "Install/configure Codex, Claude Code, OpenClaw, or set BUILDER_BLOG_AGENT_COMMAND." >&2
       exit 78
     else
       echo "No local agent runtime found for FollowBrief digest generation." >&2
-      echo "Install/configure Codex, Claude Code, OpenClaw, Hermes, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+      echo "Install/configure Codex, Claude Code, OpenClaw, or set BUILDER_BLOG_AGENT_COMMAND." >&2
       echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
       exit 78
     fi

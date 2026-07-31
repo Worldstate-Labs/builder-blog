@@ -8,7 +8,7 @@ type ActiveToken = { id: string; name: string | null };
 const CLOUD_WORKER_HOST_JOB = "cloud-library-cron-setup";
 const CLOUD_WORKER_STOP_JOB = "cloud-library-cron-stop";
 type PromptJob = typeof CLOUD_WORKER_HOST_JOB | typeof CLOUD_WORKER_STOP_JOB;
-type Runtime = "claude" | "codex" | "hermes" | "openclaw";
+type Runtime = "claude" | "codex" | "openclaw";
 type PromptAction = "host" | "stop";
 type PromptLinkBody = {
   job: PromptJob;
@@ -22,7 +22,6 @@ type PromptLinkBody = {
 const RUNTIME_OPTIONS: { id: Runtime; label: string }[] = [
   { id: "codex", label: "Codex" },
   { id: "claude", label: "Claude Code" },
-  { id: "hermes", label: "Hermes" },
   { id: "openclaw", label: "OpenClaw" },
 ];
 

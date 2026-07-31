@@ -4,7 +4,7 @@ import { localAgentTimeoutSeconds } from "./local-agent-timeouts";
 import { expandSkillIncludes } from "./skill-includes";
 import { jobSkillFiles, type SkillJobName } from "./skill-job-files";
 
-export type AgentPromptRuntime = "claude" | "codex" | "hermes" | "openclaw";
+export type AgentPromptRuntime = "claude" | "codex" | "openclaw";
 export type AgentPromptFrequency = "1h" | "daily" | "weekly";
 
 export type ExistingCronRecord = {
@@ -60,7 +60,6 @@ type RenderAgentPromptDeps = {
 const runtimeLabels: Record<AgentPromptRuntime, string> = {
   claude: "Claude Code",
   codex: "Codex",
-  hermes: "Hermes",
   openclaw: "OpenClaw",
 };
 

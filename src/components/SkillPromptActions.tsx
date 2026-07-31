@@ -30,7 +30,7 @@ import { sourceLabelForType } from "@/lib/source-display";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
-type AgentRuntime = "claude" | "codex" | "hermes" | "openclaw";
+type AgentRuntime = "claude" | "codex" | "openclaw";
 type RuntimeType = "cloud" | "local";
 type StopFetchTarget = "cloud" | "local";
 
@@ -46,10 +46,6 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string }[] = [
   {
     id: "codex",
     label: "Codex",
-  },
-  {
-    id: "hermes",
-    label: "Hermes",
   },
   {
     id: "openclaw",

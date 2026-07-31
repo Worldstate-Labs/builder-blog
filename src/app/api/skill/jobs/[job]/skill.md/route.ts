@@ -49,9 +49,13 @@ export async function GET(request: Request, { params }: Params) {
   // permission flags can be exact for that runtime. Whitelisted to a
   // closed set so no shell metacharacters slip into the rendered md.
   const runtimeRaw = url.searchParams.get("runtime");
-  const runtimeAllowed = new Set(["claude", "codex", "hermes", "openclaw"] as const);
+  type SupportedRuntime = NonNullable<NormalizedAgentPromptRenderOptions["runtime"]>;
+  const runtimeAllowed = new Set<SupportedRuntime>(["claude", "codex", "openclaw"]);
+  if (runtimeRaw !== null && !runtimeAllowed.has(runtimeRaw as SupportedRuntime)) {
+    return NextResponse.json({ error: "Runtime invalid" }, { status: 400 });
+  }
   const runtime =
-    runtimeRaw && runtimeAllowed.has(runtimeRaw as (typeof runtimeAllowed extends Set<infer T> ? T : never))
+    runtimeRaw
       ? (runtimeRaw as NormalizedAgentPromptRenderOptions["runtime"])
       : null;
 

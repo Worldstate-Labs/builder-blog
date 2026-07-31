@@ -1,10 +1,45 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
+
+function runWithRemovedRuntime(source: "env" | "pin") {
+  const agentDir = mkdtempSync(join(tmpdir(), "followbrief-removed-runtime-"));
+  mkdirSync(join(agentDir, "jobs"), { recursive: true });
+  writeFileSync(join(agentDir, "jobs", "library-once.md"), "unused\n");
+  if (source === "pin") {
+    writeFileSync(join(agentDir, "runtime-library-once"), "hermes\n");
+  }
+
+  try {
+    return spawnSync("sh", [join(root, "scripts/builder-agent-runner.sh"), "library-once"], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        BUILDER_BLOG_ACCOUNT: "removed-runtime@example.com",
+        BUILDER_BLOG_AGENT_DIR: agentDir,
+        BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH: "1",
+        ...(source === "env" ? { BUILDER_BLOG_AGENT_RUNTIME: "hermes" } : {}),
+      },
+    });
+  } finally {
+    rmSync(agentDir, { recursive: true, force: true });
+  }
+}
+
+test("removed runtimes fail closed from both environment overrides and persisted pins", () => {
+  for (const source of ["env", "pin"] as const) {
+    const result = runWithRemovedRuntime(source);
+    assert.equal(result.status, 78, `${source}: ${result.stderr}`);
+    assert.match(result.stderr, /Unsupported FollowBrief runtime 'hermes'\./);
+  }
+});
 
 async function loadAgentJobRunsModule() {
   process.env.DATABASE_URL ??= "postgresql://postgres:postgres@127.0.0.1:5432/builder_blog_test";
@@ -124,11 +159,7 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /exitCode: exitCodeOrNull\(argValue\(args, "--exit-code", ""\)\)/);
   assert.match(cli, /runtimeUsageFromFile\(argValue\(args, "--usage-file", null\)\)/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
-  assert.match(cli, /hermes: "Hermes"/);
-  assert.match(cli, /case "Hermes":[\s\S]*return detectedHermesModel\(\)/);
-  assert.match(cli, /function detectedHermesModel\(\)/);
-  assert.match(cli, /process\.env\.HERMES_MODEL/);
-  assert.match(cli, /process\.env\.HERMES_CONFIG_PATH/);
+  assert.doesNotMatch(cli, /Hermes|HERMES_|detectedHermesModel/);
   assert.doesNotMatch(cli, /Gemini CLI|detectedGeminiModel|GEMINI_MODEL/);
 
   const runner = source("scripts/builder-agent-runner.sh");
@@ -745,7 +776,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /_codex_output="\$\(agent_output_file codex\)"/);
   assert.match(runner, /_claude_output="\$\(agent_output_file claude\)"/);
   assert.match(runner, /_openclaw_output="\$\(agent_output_file openclaw\)"/);
-  assert.match(runner, /_hermes_output="\$\(agent_output_file hermes\)"/);
+  assert.doesNotMatch(runner, /Hermes|HERMES_|run_with_hermes|agent_output_file hermes|hermes chat/);
   assert.doesNotMatch(runner, /agent-output-\$\$\.log/);
   assert.match(runner, /Request timed out before a response was generated/);
   assert.match(runner, /codex app-server turn idle timed out/);
@@ -810,9 +841,15 @@ test("runner supervises cron workers instead of skipping active old instances", 
     runner,
     /if ! terminate_process_tree "\$_pid" TERM 5; then\s+terminate_process_tree "\$_pid" KILL 3 \|\| true\s+fi\s+wait "\$_pid" 2>\/dev\/null \|\| true/,
   );
+  assert.doesNotMatch(runner, /hermes auth|hermes model/);
   assert.match(
     runner,
-    /Codex auth is missing access_token[\s\S]*hermes auth[\s\S]*hermes model/,
+    /if \[ "\$INCOMING_RUNTIME_SET" = "1" \]; then\s+RAW_PINNED_RUNTIME="\$INCOMING_RUNTIME"\s+else\s+RAW_PINNED_RUNTIME="\$\(read_runtime_pin\)"\s+fi/,
+  );
+  assert.match(runner, /validate_runtime "\$RAW_PINNED_RUNTIME"/);
+  assert.match(
+    runner,
+    /validate_runtime\(\) \{[\s\S]*claude\|codex\|openclaw[\s\S]*Unsupported FollowBrief runtime '\$1'\.[\s\S]*exit 78/,
   );
   assert.match(runner, /_claude_allowed_tools="Bash,Edit,Read,Write,Grep,Glob,WebFetch"/);
   assert.match(

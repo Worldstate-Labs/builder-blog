@@ -2578,7 +2578,7 @@ test("admin cloud host prompts coordinate account-safe replacement and stop befo
   assert.match(setupPrompt, /BUILDER_BLOG_ACCOUNT="\$EXISTING_ACCT"[\s\S]*BUILDER_BLOG_CLOUD_HOST_CONTROL=mark-replaced/);
   assert.match(setupPrompt, /launchctl kickstart[\s\S]*launchctl print/);
   assert.match(setupPrompt, /systemctl --user restart[\s\S]*systemctl --user is-active --quiet/);
-  assert.doesNotMatch(setupPrompt, /codex exec\|claude -p\|hermes chat\|openclaw/);
+  assert.doesNotMatch(setupPrompt, /codex exec\|claude -p\|openclaw/);
 
   const stopOwnerCheck = stopPrompt.indexOf("SERVICE_ACCOUNT");
   const stopService = stopPrompt.indexOf("SERVICE_ABSENT");
@@ -2591,7 +2591,7 @@ test("admin cloud host prompts coordinate account-safe replacement and stop befo
   assert.match(stopPrompt, /service belongs to another FollowBrief account/i);
   assert.match(stopPrompt, /loaded service owner cannot be proven/i);
   assert.match(stopPrompt, /systemctl is unavailable; service state cannot be proven/i);
-  assert.doesNotMatch(stopPrompt, /codex exec\|claude -p\|hermes chat\|openclaw/);
+  assert.doesNotMatch(stopPrompt, /codex exec\|claude -p\|openclaw/);
   assert.doesNotMatch(stopPrompt, /disable --now[^\n]*\|\| true/);
   assert.doesNotMatch(stopPrompt, /stop followbrief-cloud-library-host\.service[^\n]*\|\| true/);
 });

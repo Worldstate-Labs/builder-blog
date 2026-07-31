@@ -733,10 +733,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillJobRoute, /every day|every week/);
   assert.doesNotMatch(skillJobRoute, /every 30 minutes|every hour|every 12 hours|every 3 hours|every 6 hours/);
   assert.doesNotMatch(skillJobRoute, /"30m"|"3h"|"6h"|"12h"/);
-  assert.match(skillJobRoute, /new Set\(\["claude", "codex", "hermes", "openclaw"\](?: as const)?\)/);
-  assert.match(skillPromptSurface, /hermes: "Hermes"/);
-  assert.match(skillPromptActions, /id: "hermes"/);
-  assert.match(skillPromptActions, /label: "Hermes"/);
+  assert.match(
+    skillJobRoute,
+    /new Set(?:<SupportedRuntime>)?\(\["claude", "codex", "openclaw"\](?: as const)?\)/,
+  );
+  assert.doesNotMatch(skillPromptSurface, /hermes|Hermes/);
+  assert.doesNotMatch(skillPromptActions, /hermes|Hermes/);
   assert.doesNotMatch(`${skillJobRoute}\n${skillPromptActions}`, /Gemini CLI|id: "gemini"|gemini: "Gemini CLI"/);
   assert.match(skillPromptSurface, /openclaw: "OpenClaw"/);
   assert.match(skillPromptActions, /id: "openclaw"/);
@@ -1527,27 +1529,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /_timeout="\$\(job_timeout_seconds\)"/);
   assert.match(runner, /_whole_timeout="\$\(job_timeout_seconds\)"/);
   assert.doesNotMatch(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
-  assert.match(runner, /hermes chat -q/);
-  assert.match(
-    runner,
-    /HERMES_CODEX_TTFB_STRICT="\$\{HERMES_CODEX_TTFB_STRICT:-1\}" hermes chat -q/,
-  );
+  assert.doesNotMatch(runner, /hermes chat|run_with_hermes|HERMES_/);
   assert.doesNotMatch(runner, /gemini -p|run_with_gemini_unattended/);
   // Pinned-runtime dispatch for *-cron jobs: each runtime has an
   // _unattended variant with the matching allowlist / auto-approve
   // flags so cron never trips a permission prompt.
   assert.match(runner, /run_with_claude_unattended/);
   assert.match(runner, /run_with_codex_unattended/);
-  assert.match(runner, /run_with_hermes_unattended/);
   assert.match(runner, /run_with_openclaw_unattended/);
-  assert.match(runner, /hermes chat -Q --yolo --accept-hooks --source tool -q/);
-  assert.match(
-    runner,
-    /HERMES_CODEX_TTFB_STRICT="\$\{HERMES_CODEX_TTFB_STRICT:-1\}" hermes chat -Q --yolo --accept-hooks --source tool -q/,
-  );
   assert.match(runner, /--permission-mode acceptEdits/);
   assert.match(runner, /--full-auto/);
-  assert.match(runner, /--yolo/);
   // OpenClaw unattended runs rely on its default non-interactive policy and
   // must not rewrite the global exec approval file from a scheduled job.
   assert.match(runner, /openclaw agent --local/);

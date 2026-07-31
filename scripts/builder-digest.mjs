@@ -615,7 +615,7 @@ function usage() {
   cron-guard --job library-cron|digest-cron --owner-id <local-owner-id>
   fetch-status-audit
   digest-status-audit
-  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw|hermes] [--provider openai-codex] [--model gpt-5.4-mini] [--out runtime-usage.jsonl]
+  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw] [--provider openai-codex] [--model gpt-5.4-mini] [--out runtime-usage.jsonl]
   aggregate-runtime-usage --out runtime-usage.json runtime-output-1.log runtime-output-2.log
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
@@ -636,14 +636,13 @@ export function skillFetchTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
 
 function detectedAgentRuntime() {
   // The runner exports BUILDER_BLOG_RUNTIME with the pinned runtime for cron
-  // jobs. It's authoritative and covers hermes/openclaw, which the env sniff
+  // jobs. It's authoritative and covers OpenClaw, which the env sniff
   // below can't detect. Fall back to per-agent env signals for interactive
   // (un-pinned) runs.
   const pinned = process.env.BUILDER_BLOG_RUNTIME?.trim().toLowerCase();
   const pinnedLabels = {
     claude: "Claude Code",
     codex: "Codex",
-    hermes: "Hermes",
     openclaw: "OpenClaw",
   };
   if (pinned && pinnedLabels[pinned]) return pinnedLabels[pinned];
@@ -660,17 +659,14 @@ function detectedAgentModel(runtime = DEFAULT_AGENT_RUNTIME) {
   const override = process.env.BUILDER_BLOG_AGENT_MODEL?.trim();
   if (override) return override;
 
-  // Model detection must match the runtime — otherwise a Hermes run would report
-  // a model sniffed from Codex's config (e.g. "Hermes (model gpt-5.5)").
-  // Each runtime reads only its own sources; an unknown source yields "" so the
-  // label degrades to just the runtime name.
+  // Model detection must match the runtime. Each runtime reads only its own
+  // sources; an unknown source yields "" so the label degrades to just the
+  // runtime name.
   switch (runtime) {
     case "Codex":
       return detectedCodexModel();
     case "Claude Code":
       return process.env.ANTHROPIC_MODEL?.trim() || process.env.CLAUDE_MODEL?.trim() || "";
-    case "Hermes":
-      return detectedHermesModel();
     case "OpenClaw":
       return detectedOpenClawModel();
     default:
@@ -707,28 +703,6 @@ function detectedOpenClawModel() {
     const agentName = process.env.OPENCLAW_AGENT?.trim() || "main";
     const primary = agents?.[agentName]?.model?.primary ?? agents?.defaults?.model?.primary;
     return typeof primary === "string" ? primary.trim() : "";
-  } catch {
-    return "";
-  }
-}
-
-function detectedHermesModel() {
-  const envModel = process.env.HERMES_MODEL?.trim();
-  if (envModel) return envModel;
-
-  const hermesConfigPath =
-    process.env.HERMES_CONFIG_PATH?.trim() || join(homedir(), ".hermes", "config.yaml");
-  if (!existsSync(hermesConfigPath)) return "";
-  try {
-    const config = readFileSync(hermesConfigPath, "utf8");
-    let inModelBlock = false;
-    for (const line of config.split(/\r?\n/)) {
-      if (/^\S/.test(line)) inModelBlock = /^model:\s*(?:#.*)?$/.test(line);
-      if (!inModelBlock) continue;
-      const modelMatch = line.match(/^\s+default\s*:\s*["']?([^"'\n#]+)["']?/);
-      if (modelMatch?.[1]) return modelMatch[1].trim();
-    }
-    return "";
   } catch {
     return "";
   }
