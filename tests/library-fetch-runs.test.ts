@@ -55,9 +55,11 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   assert.match(schema, /intervalMinutes\s+Int/);
   assert.match(schema, /ownerId\s+String\?/);
   assert.match(schema, /ownerHeartbeatAt\s+DateTime\?/);
+  assert.match(schema, /model LibraryCronJob \{[\s\S]*\n\s*timeZone\s+String\?/);
   assert.match(schema, /@@index\(\[userId, status\]\)/);
   assert.match(schema, /@@index\(\[userId, ownerId\]\)/);
   assert.match(schema, /model DigestCronJob \{/);
+  assert.match(schema, /model DigestCronJob \{[\s\S]*\n\s*timeZone\s+String\?/);
   assert.match(schema, /regenerateDigest\s+Boolean\s+@default\(false\)/);
 });
 
@@ -82,11 +84,15 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
   assert.match(localCronOwnerMigration, /ALTER TABLE "DigestCronJob"[\s\S]*"ownerHeartbeatAt" TIMESTAMP\(3\)/);
   assert.match(localCronOwnerMigration, /CREATE INDEX "LibraryCronJob_userId_ownerId_idx"/);
   assert.match(localCronOwnerMigration, /CREATE INDEX "DigestCronJob_userId_ownerId_idx"/);
+  const localCronTimeZoneMigration = source("prisma/migrations/000090_local_cron_time_zone/migration.sql");
+  assert.match(localCronTimeZoneMigration, /ALTER TABLE "LibraryCronJob" ADD COLUMN "timeZone" TEXT;/);
+  assert.match(localCronTimeZoneMigration, /ALTER TABLE "DigestCronJob" ADD COLUMN "timeZone" TEXT;/);
 });
 
 test("skill fetch-runs route validates payload size and gates auth on user or bearer", () => {
   const route = source("src/app/api/skill/fetch-runs/route.ts");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const fetchPanel = source("src/components/FetchLogPanel.tsx");
   const patchRoute = source("src/app/api/skill/fetch-runs/[id]/route.ts");
   const mergeHelper = source("src/lib/fetch-run-details.ts");
   const cronRoute = source("src/app/api/skill/cron-jobs/route.ts");
@@ -113,6 +119,8 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /cronRuns/);
   assert.match(route, /libraryCronJob\.findUnique/);
   assert.match(route, /cronJob: cron/);
+  assert.match(route, /export type LibraryCronJobStatus = \{[\s\S]*timeZone: string \| null;/);
+  assert.match(route, /timeZone: cronJob\.timeZone,/);
   // PATCH may append discovery-expanded tasks, but only for builders already
   // present in this run's perBuilder snapshot.
   assert.match(patchRoute, /PlannedTaskSchema/);
@@ -190,6 +198,8 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(cronRoute, /digestCronJob\.upsert/);
   assert.match(cronRoute, /digestCronJob\.updateMany/);
   assert.match(cronRoute, /regenerateDigest/);
+  assert.match(fetchPanel, /export type LibraryCronJobStatus = \{[\s\S]*timeZone\?: string \| null;/);
+  assert.match(buildersPage, /timeZone: rawLibraryCronJob\.timeZone,/);
 });
 
 test("CLI emits a fetch-run record on both success and failure paths", () => {
@@ -206,6 +216,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /cron-guard/);
   assert.match(cli, /\/api\/skill\/cron-jobs/);
   assert.match(cli, /ownerId/);
+  assert.match(cli, /x-machine-time-zone/);
+  assert.match(cli, /Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone/);
   // Detects cron vs manual via the env variable exported by the runner.
   assert.match(cli, /BUILDER_BLOG_RUN_SOURCE/);
   // Success path logs the record after printing JSON to stdout.

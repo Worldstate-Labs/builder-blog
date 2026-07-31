@@ -20,6 +20,7 @@ const CronJobSchema = z.object({
   frequencyLabel: z.string().max(80).optional(),
   schedule: z.string().max(80).optional(),
   runtime: z.string().max(40).nullable().optional(),
+  timeZone: z.string().max(120).nullable().optional(),
   overrideFetched: z.boolean().optional(),
   regenerateDigest: z.boolean().optional(),
   startedAt: z.string().datetime().optional(),
@@ -46,6 +47,7 @@ type LocalCronJobRecord = {
   schedule: string;
   intervalMinutes: number;
   runtime: string | null;
+  timeZone: string | null;
   hostname: string | null;
   platform: string | null;
   ownerId: string | null;
@@ -66,6 +68,7 @@ function serializeCronJob(record: LocalCronJobRecord | null) {
     schedule: record.schedule,
     intervalMinutes: record.intervalMinutes,
     runtime: record.runtime,
+    timeZone: record.timeZone,
     hostname: record.hostname,
     platform: record.platform,
     ownerId: record.ownerId,
@@ -73,6 +76,16 @@ function serializeCronJob(record: LocalCronJobRecord | null) {
     ...(record.overrideFetched === undefined ? {} : { overrideFetched: record.overrideFetched }),
     ...(record.regenerateDigest === undefined ? {} : { regenerateDigest: record.regenerateDigest }),
   };
+}
+
+function normalizeTimeZone(value: string | null | undefined) {
+  const timeZone = String(value ?? "").trim();
+  if (!timeZone || timeZone.length > 120) return null;
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone }).resolvedOptions().timeZone;
+  } catch {
+    return null;
+  }
 }
 
 async function findCronJob(userId: string, job: "library-cron" | "digest-cron") {
@@ -185,11 +198,13 @@ export async function GET(request: Request) {
     });
   }
 
+  const validTimeZone = normalizeTimeZone(request.headers.get("x-machine-time-zone"));
   const data = {
     ownerId,
     ownerHeartbeatAt: new Date(),
     hostname: request.headers.get("x-machine-hostname"),
     platform: request.headers.get("x-machine-platform"),
+    timeZone: validTimeZone ?? current.timeZone ?? null,
   };
   const guarded = job === "digest-cron"
     ? await prisma.digestCronJob.updateMany({
@@ -260,6 +275,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "stopped", updated: stopped.count });
   }
 
+  const rawTimeZone = request.headers.get("x-machine-time-zone") ?? parsed.data.timeZone ?? null;
+  const validTimeZone = normalizeTimeZone(rawTimeZone);
+  const current = await findCronJob(user.id, parsed.data.job);
   const frequencyKey = parsed.data.frequencyKey ?? "";
   const frequency = Object.prototype.hasOwnProperty.call(cronFrequencies, frequencyKey)
     ? cronFrequencies[frequencyKey]
@@ -284,6 +302,7 @@ export async function POST(request: Request) {
         schedule: parsed.data.schedule,
         intervalMinutes: frequency.intervalMinutes,
         runtime: parsed.data.runtime || null,
+        timeZone: validTimeZone ?? current?.timeZone ?? null,
         regenerateDigest: Boolean(parsed.data.regenerateDigest),
         hostname: request.headers.get("x-machine-hostname"),
         platform: request.headers.get("x-machine-platform"),
@@ -299,6 +318,7 @@ export async function POST(request: Request) {
         schedule: parsed.data.schedule,
         intervalMinutes: frequency.intervalMinutes,
         runtime: parsed.data.runtime || null,
+        timeZone: validTimeZone,
         regenerateDigest: Boolean(parsed.data.regenerateDigest),
         hostname: request.headers.get("x-machine-hostname"),
         platform: request.headers.get("x-machine-platform"),
@@ -318,6 +338,7 @@ export async function POST(request: Request) {
         frequencyLabel: record.frequencyLabel,
         schedule: record.schedule,
         intervalMinutes: record.intervalMinutes,
+        timeZone: record.timeZone,
         regenerateDigest: record.regenerateDigest,
         ownerId: record.ownerId,
       },
@@ -339,6 +360,7 @@ export async function POST(request: Request) {
       schedule: parsed.data.schedule,
       intervalMinutes: frequency.intervalMinutes,
       runtime: parsed.data.runtime || null,
+      timeZone: validTimeZone ?? current?.timeZone ?? null,
       overrideFetched: Boolean(parsed.data.overrideFetched),
       hostname: request.headers.get("x-machine-hostname"),
       platform: request.headers.get("x-machine-platform"),
@@ -354,6 +376,7 @@ export async function POST(request: Request) {
       schedule: parsed.data.schedule,
       intervalMinutes: frequency.intervalMinutes,
       runtime: parsed.data.runtime || null,
+      timeZone: validTimeZone,
       overrideFetched: Boolean(parsed.data.overrideFetched),
       hostname: request.headers.get("x-machine-hostname"),
       platform: request.headers.get("x-machine-platform"),
@@ -373,6 +396,7 @@ export async function POST(request: Request) {
       frequencyLabel: record.frequencyLabel,
       schedule: record.schedule,
       intervalMinutes: record.intervalMinutes,
+      timeZone: record.timeZone,
       overrideFetched: record.overrideFetched,
       ownerId: record.ownerId,
     },

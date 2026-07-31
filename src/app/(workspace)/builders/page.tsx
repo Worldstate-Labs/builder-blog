@@ -626,6 +626,7 @@ async function loadFetchSyncData(user: {
         schedule: rawLibraryCronJob.schedule,
         intervalMinutes: rawLibraryCronJob.intervalMinutes,
         runtime: rawLibraryCronJob.runtime,
+        timeZone: rawLibraryCronJob.timeZone,
         overrideFetched: rawLibraryCronJob.overrideFetched,
         hostname: rawLibraryCronJob.hostname,
         platform: rawLibraryCronJob.platform,

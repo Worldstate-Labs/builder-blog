@@ -29,6 +29,10 @@ const MACHINE_HEADERS = (() => {
     const user = userInfo().username;
     if (user) headers["x-machine-user"] = String(user).slice(0, 80);
   } catch {}
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timeZone) headers["x-machine-time-zone"] = String(timeZone).slice(0, 120);
+  } catch {}
   return headers;
 })();
 

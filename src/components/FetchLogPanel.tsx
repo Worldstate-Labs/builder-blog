@@ -87,6 +87,7 @@ export type LibraryCronJobStatus = {
   schedule: string;
   intervalMinutes: number;
   runtime: string | null;
+  timeZone?: string | null;
   overrideFetched: boolean;
   hostname: string | null;
   platform: string | null;

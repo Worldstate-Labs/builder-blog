@@ -125,6 +125,7 @@ model LibraryCronJob {
   schedule         String
   intervalMinutes  Int
   runtime          String?
+  timeZone         String?
   overrideFetched  Boolean   @default(false)
   hostname         String?
   platform         String?
@@ -149,6 +150,7 @@ model DigestCronJob {
   schedule         String
   intervalMinutes  Int
   runtime          String?
+  timeZone         String?
   regenerateDigest Boolean   @default(false)
   hostname         String?
   platform         String?
