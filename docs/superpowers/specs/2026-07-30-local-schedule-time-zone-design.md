@@ -21,6 +21,12 @@ day or week after schedule installation.
 - Later daily and weekly windows remain at that local wall-clock time through
   daylight-saving transitions. Their UTC instants may therefore move by one
   hour.
+- If a spring-forward transition makes a scheduled local time nonexistent,
+  move that occurrence forward by the size of the DST gap while preserving its
+  minute (for example, `02:30` becomes `03:30`). If a fall-back transition
+  repeats a local time, use the earlier occurrence and execute the slot at most
+  once. This is the same `compatible` disambiguation used by modern zoned date
+  APIs.
 - A window becomes `Missed` only after its explicit expected instant plus the
   existing grace period, with no matching scheduled job run.
 
@@ -52,6 +58,8 @@ For daily and weekly schedules with a valid time zone:
    window.
 4. Add or subtract calendar days/weeks in the schedule time zone, not in the
    Vercel process time zone and not as fixed milliseconds.
+5. Apply the same gap/fold disambiguation when calculating historical, current,
+   and next windows.
 
 For sub-daily schedules, retain the existing fixed-interval behavior.
 
@@ -71,6 +79,11 @@ before the scheduler is installed.
 - Both platforms use the same local CLI to report the IANA zone.
 - The schedule anchor is normalized to minute precision because both local
   schedulers execute at minute precision.
+- The local runner derives scheduled `expectedAt` values from the same zoned
+  calendar rules instead of `anchor + N fixed UTC minutes`. This keeps server
+  matching correct after DST changes. Both invocations of a repeated fall-back
+  wall-clock time resolve to the same earlier canonical `expectedAt`, so the
+  existing last-fired guard suppresses a duplicate.
 
 No `CRON_TZ` directive is required. It is not consistently supported by all
 Linux cron implementations, while the existing product contract is explicitly
@@ -85,6 +98,10 @@ a schedule on the local machine.
 - Stopped schedules retain their last known time zone for diagnostics.
 - If explicit zoned conversion cannot be performed, calculation falls back to
   fixed interval timing rather than the server's wall clock.
+- The local `fetch-status-audit` and `digest-status-audit` calculations use the
+  same explicit-zone and first-window rules. They must not retain an independent
+  `startedAt + fixed interval` interpretation that can disagree with the web
+  status.
 
 ## Verification
 
@@ -94,7 +111,9 @@ Regression tests cover:
 - no false missed slot between setup validation and the first recurring window;
 - daily and weekly local wall-clock alignment;
 - UTC instant changes across a daylight-saving transition;
+- spring-forward gaps and fall-back folds;
 - legacy rows without a time zone;
 - invalid time zones;
 - cron status persistence and serialization;
-- macOS and Linux setup/runner contracts.
+- macOS and Linux setup/runner contracts, including canonical scheduled
+  `expectedAt` values and duplicate suppression.
