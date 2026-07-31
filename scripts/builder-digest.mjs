@@ -11249,6 +11249,9 @@ async function syncCloudBuilders(args) {
     },
   );
   const taskOutcomes = cloudSyncProgressOutcomes(result.taskResults);
+  const reconciledTaskCount = new Set(
+    taskOutcomes.map((outcome) => outcome.fetchTaskId),
+  ).size;
   const fetchProgress =
     (await readFetchProgressState()) ??
     createFetchProgressState({ stage: "syncing" });
@@ -11259,7 +11262,7 @@ async function syncCloudBuilders(args) {
   await emitFetchJobProgress(
     config,
     fetchProgress,
-    cloudSyncProgressUpdate(partialOutcomes, taskOutcomes.length),
+    cloudSyncProgressUpdate(partialOutcomes, reconciledTaskCount),
   );
   console.log(JSON.stringify(result, null, 2));
 }

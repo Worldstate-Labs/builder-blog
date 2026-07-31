@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile, spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -5643,6 +5645,148 @@ test("cloud sync response reconciles authoritative terminal outcomes into progre
         message: "Reconciled 5 authoritative post task outcomes.",
       },
     },
+  );
+});
+
+test("sync-cloud-builders command persists unique authoritative outcomes across partial and final responses", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-cloud-progress-sync-"));
+  const payloadFile = join(tmp, "cloud-agent-sync.json");
+  const tasksFile = join(tmp, "cloud-fetch-result.json");
+  const progressFile = join(tmp, "library-fetch-progress.json");
+  const task = {
+    id: "task_1",
+    type: "fetch_post",
+    cloudRunId: "cloud_run_1",
+    cloudSourceTaskId: "cloud_task_1",
+    builder: "Cloud source",
+    builderId: "cloud_builder_1",
+    sourceType: "blog",
+    item: {
+      kind: "BLOG_POST",
+      externalId: "post_1",
+      title: "Post 1",
+      url: "https://example.com/post-1",
+    },
+  };
+  await writeFile(
+    payloadFile,
+    `${JSON.stringify({
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: task.id,
+          status: "failed",
+          reason: "worker_missing_result",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      cloudRunId: "cloud_run_1",
+      fetchTasks: [task],
+      cloudSourceTasks: [
+        {
+          cloudRunId: "cloud_run_1",
+          cloudSourceTaskId: "cloud_task_1",
+          builderId: "cloud_builder_1",
+          name: "Cloud source",
+          sourceType: "blog",
+          summaryLanguage: "source",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  const requests: unknown[] = [];
+  const server = createServer((request, response) => {
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    request.on("end", () => {
+      requests.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({
+        status: "ok",
+        taskResults: [
+          {
+            details: {
+              posts: [
+                { id: task.id, status: "synced", workerId: "worker-0" },
+                { id: task.id, status: "synced", workerId: "worker-0" },
+              ],
+            },
+          },
+        ],
+      }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address() as AddressInfo;
+  const runSync = (extraArgs: string[] = []) =>
+    execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "sync-cloud-builders",
+        "--file",
+        payloadFile,
+        "--tasks",
+        tasksFile,
+        "--cloud-run-id",
+        "cloud_run_1",
+        ...extraArgs,
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          BUILDER_BLOG_AGENT_DIR: tmp,
+          BUILDER_BLOG_JOB_TMP_DIR: tmp,
+          BUILDER_BLOG_TOKEN: "test-token",
+          BUILDER_BLOG_URL: `http://127.0.0.1:${address.port}`,
+        },
+      },
+    );
+
+  try {
+    await runSync(["--partial-outcomes"]);
+    const partialProgress = JSON.parse(await readFile(progressFile, "utf8"));
+    assert.equal(partialProgress.stage, "workers_running");
+    assert.match(
+      partialProgress.recentEvents.at(-1).message,
+      /^Reconciled 1 authoritative post task outcome;/,
+    );
+
+    await runSync();
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+
+  const progress = JSON.parse(await readFile(progressFile, "utf8"));
+  assert.equal(requests.length, 2);
+  assert.equal(progress.stage, "reconciled");
+  assert.deepEqual(progress.counters, {
+    sourcesTotal: 0,
+    sourcesChecked: 0,
+    candidatesFound: 0,
+    tasksPlanned: 1,
+    tasksDone: 1,
+    synced: 1,
+    skipped: 0,
+    failed: 0,
+    actionNeeded: 0,
+  });
+  assert.equal(progress.tasks.length, 1);
+  assert.equal(progress.tasks[0].status, "synced");
+  assert.match(
+    progress.recentEvents.at(-1).message,
+    /^Reconciled 1 authoritative post task outcome\.$/,
   );
 });
 
