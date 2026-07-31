@@ -608,7 +608,8 @@ function usage() {
   sync-cloud-builders --file personal-builders.json --cloud-run-id <id> [--agent-model gpt-5.5]
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
   sync --file builder-blog-digest.json [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
-  schedule-spec --freq daily --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt]
+  schedule-spec --freq daily --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt] [--timezone-out timezone.txt]
+  schedule-due --freq daily|weekly|1h --interval-minutes 1440 --anchor-at 2026-07-30T05:25:09Z --schedule "anchor:25 22 * * *" [--time-zone America/Los_Angeles] [--now 2026-07-31T02:27:00Z]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq daily] [--schedule "0 8 * * *"]
   cron-state --job library-cron|digest-cron
   cron-guard --job library-cron|digest-cron --owner-id <local-owner-id>
@@ -12421,6 +12422,240 @@ function launchdScheduleForAnchor(freq, anchorDate) {
   }
 }
 
+function isoSecondString(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+function normalizeTimeZone(timeZone) {
+  const candidate = String(timeZone ?? "").trim();
+  if (!candidate) return null;
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: candidate }).resolvedOptions().timeZone;
+  } catch {
+    return null;
+  }
+}
+
+function resolvedLocalTimeZone() {
+  try {
+    return normalizeTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  } catch {
+    return null;
+  }
+}
+
+function parseCronSchedule(schedule) {
+  const expression = String(schedule || "").trim().replace(/^anchor:\s*/i, "");
+  const fields = expression.split(/\s+/);
+  if (fields.length < 5) return null;
+  const minute = Number(fields[0]);
+  const hour = Number(fields[1]);
+  if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
+  const weekdayField = Number(fields[4]);
+  const weekday =
+    Number.isInteger(weekdayField) && weekdayField >= 0 && weekdayField <= 7
+      ? weekdayField % 7
+      : null;
+  return { minute, hour, weekday };
+}
+
+function getZonedCalendarSchedule(cronJob) {
+  if (cronJob?.frequencyKey !== "daily" && cronJob?.frequencyKey !== "weekly") return null;
+  const timeZone = normalizeTimeZone(cronJob?.timeZone);
+  if (!timeZone) return null;
+  const parsed = parseCronSchedule(cronJob?.schedule);
+  return {
+    frequencyKey: cronJob.frequencyKey,
+    timeZone,
+    target: {
+      minute: parsed?.minute ?? 0,
+      hour: parsed?.hour ?? 8,
+      weekday: cronJob.frequencyKey === "weekly" ? (parsed?.weekday ?? 1) : null,
+    },
+  };
+}
+
+function getTimeZoneParts(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const values = Object.fromEntries(
+    formatter
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  };
+}
+
+function getTimeZoneDateParts(date, timeZone) {
+  const { year, month, day } = getTimeZoneParts(date, timeZone);
+  return { year, month, day };
+}
+
+function getTimeZoneOffsetMinutes(date, timeZone) {
+  const parts = getTimeZoneParts(date, timeZone);
+  const utcLike = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return (utcLike - Math.trunc(date.getTime() / 1000) * 1000) / 60_000;
+}
+
+function compareLocalDateTimes(left, right) {
+  return (
+    left.year - right.year ||
+    left.month - right.month ||
+    left.day - right.day ||
+    left.hour - right.hour ||
+    left.minute - right.minute
+  );
+}
+
+function addLocalDays(date, days) {
+  const next = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return {
+    year: next.getUTCFullYear(),
+    month: next.getUTCMonth() + 1,
+    day: next.getUTCDate(),
+  };
+}
+
+function weekdayForDate(date) {
+  return new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay();
+}
+
+function localDateTimeToUtcCompatible(date, hour, minute, timeZone) {
+  const naiveUtcMs = Date.UTC(date.year, date.month - 1, date.day, hour, minute, 0, 0);
+  const offsets = new Set();
+  for (let offsetHours = -36; offsetHours <= 36; offsetHours += 3) {
+    offsets.add(getTimeZoneOffsetMinutes(new Date(naiveUtcMs + offsetHours * 60 * 60_000), timeZone));
+  }
+  const candidates = [...offsets]
+    .filter((offset) => Number.isFinite(offset))
+    .map((offset) => {
+      const utcMs = naiveUtcMs - offset * 60_000;
+      const local = getTimeZoneParts(new Date(utcMs), timeZone);
+      return { utcMs, local };
+    })
+    .sort((left, right) => left.utcMs - right.utcMs);
+
+  const exact = candidates.find(({ local }) => (
+    local.year === date.year &&
+    local.month === date.month &&
+    local.day === date.day &&
+    local.hour === hour &&
+    local.minute === minute
+  ));
+  if (exact) return new Date(exact.utcMs);
+
+  const target = { ...date, hour, minute };
+  const shiftedForward = candidates
+    .filter(({ local }) => (
+      local.year === date.year &&
+      local.month === date.month &&
+      local.day === date.day &&
+      compareLocalDateTimes(local, target) > 0
+    ))
+    .sort((left, right) => compareLocalDateTimes(left.local, right.local) || left.utcMs - right.utcMs)[0];
+
+  if (shiftedForward) return new Date(shiftedForward.utcMs);
+  return new Date(candidates.at(-1)?.utcMs ?? naiveUtcMs);
+}
+
+function addZonedCalendarInterval(date, schedule, steps = 1) {
+  const localDate = getTimeZoneDateParts(date, schedule.timeZone);
+  const nextDate = addLocalDays(localDate, schedule.frequencyKey === "daily" ? steps : steps * 7);
+  return localDateTimeToUtcCompatible(nextDate, schedule.target.hour, schedule.target.minute, schedule.timeZone);
+}
+
+function floorZonedCalendarSchedule(now, schedule) {
+  const localNow = getTimeZoneParts(now, schedule.timeZone);
+  const candidateDate =
+    schedule.frequencyKey === "weekly"
+      ? addLocalDays(
+          localNow,
+          -((weekdayForDate(localNow) - (schedule.target.weekday ?? 1) + 7) % 7),
+        )
+      : getTimeZoneDateParts(now, schedule.timeZone);
+  let candidate = localDateTimeToUtcCompatible(
+    candidateDate,
+    schedule.target.hour,
+    schedule.target.minute,
+    schedule.timeZone,
+  );
+  if (candidate.getTime() > now.getTime()) {
+    candidate = addZonedCalendarInterval(candidate, schedule, -1);
+  }
+  return candidate;
+}
+
+function addScheduleIntervalLocal(date, cronJob, steps = 1) {
+  const zonedSchedule = getZonedCalendarSchedule(cronJob);
+  if (zonedSchedule) return addZonedCalendarInterval(date, zonedSchedule, steps);
+  return new Date(date.getTime() + Math.max(1, Number(cronJob?.intervalMinutes) || 0) * 60_000 * steps);
+}
+
+function firstExpectedScheduleLocal(cronJob) {
+  const startedAt = Date.parse(cronJob?.startedAt || "");
+  if (!Number.isFinite(startedAt)) return null;
+  const started = new Date(startedAt);
+  const zonedSchedule = getZonedCalendarSchedule(cronJob);
+  if (zonedSchedule) {
+    return addZonedCalendarInterval(floorZonedCalendarSchedule(started, zonedSchedule), zonedSchedule);
+  }
+  return addScheduleIntervalLocal(started, cronJob);
+}
+
+function floorToExpectedScheduleLocal(now, cronJob) {
+  const zonedSchedule = getZonedCalendarSchedule(cronJob);
+  if (zonedSchedule) return floorZonedCalendarSchedule(now, zonedSchedule);
+  const startedAt = Date.parse(cronJob?.startedAt || "");
+  const intervalMs = Math.max(1, Number(cronJob?.intervalMinutes) || 0) * 60_000;
+  const elapsed = now.getTime() - startedAt;
+  const slotIndex = Number.isFinite(elapsed) && elapsed > 0 ? Math.floor(elapsed / intervalMs) : 0;
+  return new Date(startedAt + slotIndex * intervalMs);
+}
+
+function toleranceMsForSchedule(cronJob) {
+  const intervalMs = Math.max(1, Number(cronJob?.intervalMinutes) || 0) * 60_000;
+  const maxToleranceMs = intervalMs >= 24 * 60 * 60 * 1000 ? 65 * 60 * 1000 : 5 * 60 * 1000;
+  return Math.min(maxToleranceMs, Math.max(0, intervalMs / 4));
+}
+
+function scheduleDueExpectedAt(cronJob, now = new Date()) {
+  const startedMs = Date.parse(cronJob?.startedAt || "");
+  const intervalMs = Math.max(1, Number(cronJob?.intervalMinutes) || 0) * 60_000;
+  if (!Number.isFinite(startedMs) || !Number.isFinite(intervalMs) || intervalMs <= 0) return null;
+
+  const zonedSchedule = getZonedCalendarSchedule(cronJob);
+  if (zonedSchedule) {
+    const firstExpected = firstExpectedScheduleLocal(cronJob);
+    if (!firstExpected) return null;
+    const candidate = floorToExpectedScheduleLocal(new Date(now.getTime() + toleranceMsForSchedule(cronJob)), cronJob);
+    if (candidate.getTime() < firstExpected.getTime()) return null;
+    return isoSecondString(candidate);
+  }
+
+  const toleranceMs = toleranceMsForSchedule(cronJob);
+  const elapsed = now.getTime() - startedMs;
+  if (elapsed + toleranceMs < intervalMs) return null;
+  const slotIndex = Math.floor((elapsed + toleranceMs) / intervalMs);
+  return isoSecondString(new Date(startedMs + slotIndex * intervalMs));
+}
+
 async function writeOptionalText(path, value) {
   if (!path) return;
   await mkdir(dirname(path), { recursive: true });
@@ -12437,16 +12672,18 @@ async function scheduleSpec(args) {
   }
 
   const anchorDate = new Date(anchorMs);
-  const anchorAt = anchorDate.toISOString().replace(".000Z", "Z");
+  const anchorAt = isoSecondString(anchorDate);
   const cron = cronExpressionForAnchor(freq, anchorDate);
   const launchdXml = launchdScheduleForAnchor(freq, anchorDate);
   const statusSchedule = `anchor:${cron}`;
+  const timeZone = resolvedLocalTimeZone();
 
   await writeOptionalText(argValue(args, "--cron-out"), cron);
   await writeOptionalText(argValue(args, "--launchd-out"), launchdXml);
   await writeOptionalText(argValue(args, "--status-out"), statusSchedule);
+  await writeOptionalText(argValue(args, "--timezone-out"), timeZone);
 
-  console.log(JSON.stringify({ status: "ok", freq, anchorAt, cron, statusSchedule, launchdXml }, null, 2));
+  console.log(JSON.stringify({ status: "ok", freq, anchorAt, cron, statusSchedule, launchdXml, timeZone }, null, 2));
 }
 
 function readLocalText(path) {
@@ -12467,7 +12704,7 @@ function parseLocalJson(path) {
 
 function normalizeIso(value) {
   const ms = Date.parse(String(value || ""));
-  return Number.isFinite(ms) ? new Date(ms).toISOString().replace(".000Z", "Z") : null;
+  return Number.isFinite(ms) ? isoSecondString(new Date(ms)) : null;
 }
 
 function pidIsAlive(pid) {
@@ -12487,18 +12724,60 @@ function relativeWindow(cronJob, now = new Date()) {
   if (!Number.isFinite(startedMs) || !Number.isFinite(intervalMs) || intervalMs <= 0) {
     return { latestExpectedAt: null, nextExpectedAt: null };
   }
+  if (getZonedCalendarSchedule(cronJob)) {
+    const firstExpected = firstExpectedScheduleLocal(cronJob);
+    if (!firstExpected) return { latestExpectedAt: null, nextExpectedAt: null };
+    if (now.getTime() < firstExpected.getTime()) {
+      return {
+        latestExpectedAt: null,
+        nextExpectedAt: isoSecondString(firstExpected),
+      };
+    }
+    const latest = floorToExpectedScheduleLocal(now, cronJob);
+    return {
+      latestExpectedAt: isoSecondString(latest),
+      nextExpectedAt: isoSecondString(addScheduleIntervalLocal(latest, cronJob)),
+    };
+  }
   const elapsed = now.getTime() - startedMs;
   if (elapsed < intervalMs) {
     return {
       latestExpectedAt: null,
-      nextExpectedAt: new Date(startedMs + intervalMs).toISOString().replace(".000Z", "Z"),
+      nextExpectedAt: isoSecondString(new Date(startedMs + intervalMs)),
     };
   }
   const slot = Math.floor(elapsed / intervalMs);
   return {
-    latestExpectedAt: new Date(startedMs + slot * intervalMs).toISOString().replace(".000Z", "Z"),
-    nextExpectedAt: new Date(startedMs + (slot + 1) * intervalMs).toISOString().replace(".000Z", "Z"),
+    latestExpectedAt: isoSecondString(new Date(startedMs + slot * intervalMs)),
+    nextExpectedAt: isoSecondString(new Date(startedMs + (slot + 1) * intervalMs)),
   };
+}
+
+export function relativeWindowForTest(cronJob, now = new Date()) {
+  return relativeWindow(cronJob, now);
+}
+
+async function scheduleDueCommand(args) {
+  const freq = normalizeScheduleFrequency(argValue(args, "--freq", "daily"));
+  const intervalMinutes = Number(argValue(args, "--interval-minutes", "0"));
+  const cronJob = {
+    frequencyKey: freq,
+    intervalMinutes,
+    startedAt: argValue(args, "--anchor-at"),
+    schedule: argValue(args, "--schedule", ""),
+    timeZone: argValue(args, "--time-zone", argValue(args, "--timezone")),
+  };
+  const nowArg = argValue(args, "--now");
+  const nowMs = nowArg ? Date.parse(nowArg) : Date.now();
+  if (!Number.isFinite(nowMs)) {
+    throw new Error("schedule-due requires a valid --now timestamp when provided");
+  }
+  const dueExpectedAt = scheduleDueExpectedAt(cronJob, new Date(nowMs));
+  if (!dueExpectedAt) {
+    process.exitCode = 1;
+    return;
+  }
+  console.log(dueExpectedAt);
 }
 
 async function fetchStatusAudit() {
@@ -12731,6 +13010,7 @@ async function main() {
   else if (command === "sync") await sync(args);
   else if (command === "cron-audit") await cronAudit(args);
   else if (command === "schedule-spec") await scheduleSpec(args);
+  else if (command === "schedule-due") await scheduleDueCommand(args);
   else if (command === "cron-status") await cronStatus(args);
   else if (command === "cron-state") await cronState(args);
   else if (command === "cron-guard") await cronGuard(args);

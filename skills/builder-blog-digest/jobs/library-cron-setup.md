@@ -332,7 +332,7 @@ printf '{{AGENT_RUNTIME}}\n' > "$AGENT_DIR/runtime-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_FORCE}}\n' > "$AGENT_DIR/fetch-force-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_DAYS}}\n' > "$AGENT_DIR/fetch-days-library-cron-$ACCOUNT_SLUG"
 printf '{{PARALLEL_WORKERS}}\n' > "$AGENT_DIR/parallel-library-cron-$ACCOUNT_SLUG"
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ANCHOR_FILE"
+date -u +"%Y-%m-%dT%H:%M:00Z" > "$ANCHOR_FILE"
 ANCHOR_AT="$(cat "$ANCHOR_FILE")"
 mkdir -p "$SCHEDULE_SPEC_DIR"
 node "$AGENT_DIR/builder-digest.mjs" schedule-spec \
@@ -340,7 +340,8 @@ node "$AGENT_DIR/builder-digest.mjs" schedule-spec \
   --anchor-file "$ANCHOR_FILE" \
   --cron-out "$SCHEDULE_SPEC_DIR/cron.txt" \
   --launchd-out "$SCHEDULE_SPEC_DIR/launchd.xml" \
-  --status-out "$SCHEDULE_SPEC_DIR/status.txt"
+  --status-out "$SCHEDULE_SPEC_DIR/status.txt" \
+  --timezone-out "$SCHEDULE_SPEC_DIR/timezone.txt"
 ```
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent

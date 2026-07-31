@@ -702,6 +702,13 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /Running scheduled window \$EXPECTED_AT as pid \$WORKER_PID/);
   assert.match(runner, /exec "\$0" "\$JOB_NAME"/);
   assert.match(runner, /set \+e[\s\S]*run_cron_worker[\s\S]*_code="\$\?"/);
+  assert.match(runner, /schedule_status_file\(\)/);
+  assert.match(runner, /schedule_timezone_file\(\)/);
+  assert.match(runner, /--schedule "\$_schedule_value"/);
+  assert.match(runner, /--time-zone "\$_schedule_time_zone"/);
+  assert.match(runner, /builder-digest\.mjs" schedule-due/);
+  assert.match(runner, /daily\|weekly/);
+  assert.match(runner, /node - "\$_anchor_file" "\$_interval_seconds"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /process_tree_pids/);

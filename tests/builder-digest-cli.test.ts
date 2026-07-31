@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFile, spawn } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,6 +16,18 @@ const missingCommandRunner = async () => ({
   stderr: "command_not_found",
   timedOut: false,
 });
+
+function runScheduleDue(args: string[], env: Record<string, string | undefined> = {}) {
+  return spawnSync(
+    process.execPath,
+    ["scripts/builder-digest.mjs", "schedule-due", ...args],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, ...env },
+      encoding: "utf8",
+    },
+  );
+}
 
 test("HTTP sync retries honor a server conflict's explicit retryability", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
@@ -5520,6 +5532,37 @@ test("schedule-spec emits anchor-aligned cron, launchd, and server schedule valu
   assert.doesNotMatch(launchd, /StartInterval/);
 });
 
+test("schedule-spec emits resolved IANA timezone metadata and writes timezone.txt", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-schedule-spec-timezone-"));
+  const anchorFile = join(tmp, "schedule-anchor-library-cron-user");
+  const timezoneOut = join(tmp, "timezone.txt");
+  await writeFile(anchorFile, "2026-06-21T13:15:22Z\n", "utf8");
+
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "schedule-spec",
+      "--freq",
+      "daily",
+      "--anchor-file",
+      anchorFile,
+      "--timezone-out",
+      timezoneOut,
+    ],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, TZ: "US/Pacific" },
+    },
+  );
+
+  const result = JSON.parse(stdout);
+  const timezone = (await readFile(timezoneOut, "utf8")).trim();
+
+  assert.equal(result.timeZone, "America/Los_Angeles");
+  assert.equal(timezone, "America/Los_Angeles");
+});
+
 test("schedule-spec supports temporary hourly local schedules", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-hourly-schedule-spec-"));
   const anchorFile = join(tmp, "schedule-anchor-library-cron-user");
@@ -5562,6 +5605,98 @@ test("schedule-spec supports temporary hourly local schedules", async () => {
   assert.match(launchd, /<key>StartCalendarInterval<\/key>/);
   assert.doesNotMatch(launchd, /<key>Hour<\/key>/);
   assert.match(launchd, /<key>Minute<\/key>\s*<integer>15<\/integer>/);
+});
+
+test("relative schedule windows use explicit timezone metadata for daily and weekly jobs", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  const laDaily = {
+    frequencyKey: "daily",
+    intervalMinutes: 1440,
+    schedule: "anchor:25 22 * * *",
+    startedAt: "2026-07-30T05:25:09.000Z",
+    platform: "darwin",
+    timeZone: "America/Los_Angeles",
+  };
+  const laWeekly = {
+    frequencyKey: "weekly",
+    intervalMinutes: 10080,
+    schedule: "anchor:0 8 * * 3",
+    startedAt: "2026-07-29T15:00:05.000Z",
+    platform: "linux",
+    timeZone: "America/Los_Angeles",
+  };
+
+  assert.deepEqual(
+    cli.relativeWindowForTest(laDaily, new Date("2026-07-31T02:27:00.000Z")),
+    {
+      latestExpectedAt: null,
+      nextExpectedAt: "2026-07-31T05:25:00Z",
+    },
+  );
+  assert.deepEqual(
+    cli.relativeWindowForTest(laWeekly, new Date("2026-07-30T12:00:00.000Z")),
+    {
+      latestExpectedAt: null,
+      nextExpectedAt: "2026-08-05T15:00:00Z",
+    },
+  );
+});
+
+test("schedule-due matches the shared server daily, DST, and weekly fixtures", () => {
+  const dailyNotDue = runScheduleDue([
+    "--freq", "daily",
+    "--interval-minutes", "1440",
+    "--anchor-at", "2026-07-30T05:25:09Z",
+    "--schedule", "anchor:25 22 * * *",
+    "--time-zone", "America/Los_Angeles",
+    "--now", "2026-07-31T02:27:00Z",
+  ], { TZ: "UTC" });
+  assert.notEqual(dailyNotDue.status, 0);
+  assert.equal((dailyNotDue.stdout ?? "").trim(), "");
+
+  const springForward = runScheduleDue([
+    "--freq", "daily",
+    "--interval-minutes", "1440",
+    "--anchor-at", "2026-03-07T10:30:00Z",
+    "--schedule", "anchor:30 2 * * *",
+    "--time-zone", "America/Los_Angeles",
+    "--now", "2026-03-08T10:45:00Z",
+  ], { TZ: "UTC" });
+  assert.equal(springForward.status, 0, springForward.stderr);
+  assert.equal(springForward.stdout.trim(), "2026-03-08T10:30:00Z");
+
+  const fallFoldEarlier = runScheduleDue([
+    "--freq", "daily",
+    "--interval-minutes", "1440",
+    "--anchor-at", "2026-10-31T08:30:00Z",
+    "--schedule", "anchor:30 1 * * *",
+    "--time-zone", "America/Los_Angeles",
+    "--now", "2026-11-01T08:45:00Z",
+  ], { TZ: "UTC" });
+  const fallFoldLater = runScheduleDue([
+    "--freq", "daily",
+    "--interval-minutes", "1440",
+    "--anchor-at", "2026-10-31T08:30:00Z",
+    "--schedule", "anchor:30 1 * * *",
+    "--time-zone", "America/Los_Angeles",
+    "--now", "2026-11-01T09:15:00Z",
+  ], { TZ: "UTC" });
+  assert.equal(fallFoldEarlier.status, 0, fallFoldEarlier.stderr);
+  assert.equal(fallFoldLater.status, 0, fallFoldLater.stderr);
+  assert.equal(fallFoldEarlier.stdout.trim(), "2026-11-01T08:30:00Z");
+  assert.equal(fallFoldLater.stdout.trim(), "2026-11-01T08:30:00Z");
+
+  const weeklyFirstRun = runScheduleDue([
+    "--freq", "weekly",
+    "--interval-minutes", "10080",
+    "--anchor-at", "2026-07-29T15:00:05Z",
+    "--schedule", "anchor:0 8 * * 3",
+    "--time-zone", "America/Los_Angeles",
+    "--now", "2026-08-05T15:03:00Z",
+  ], { TZ: "UTC" });
+  assert.equal(weeklyFirstRun.status, 0, weeklyFirstRun.stderr);
+  assert.equal(weeklyFirstRun.stdout.trim(), "2026-08-05T15:00:00Z");
 });
 
 test("sync-builders rejects empty builders when planned tasks are unaccounted", async () => {
