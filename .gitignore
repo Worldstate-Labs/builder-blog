@@ -25,6 +25,7 @@
 *.pem
 .omx/
 .playwright-mcp/
+.worktrees/
 
 # debug
 npm-debug.log*
