@@ -5475,6 +5475,175 @@ test("builder digest CLI exposes sync-cloud-builders command", () => {
   assert.match(script, /async function syncCloudBuilders/);
   assert.match(script, /command === "sync-cloud-builders"/);
   assert.match(script, /\/api\/admin\/cloud-fetch\/sync/);
+  assert.match(script, /args\.includes\("--partial-outcomes"\)/);
+  assert.match(script, /cloudSyncProgressOutcomes\(result\.taskResults\)/);
+  assert.match(script, /applyFetchProgressTaskOutcomes\(/);
+  assert.match(script, /emitFetchJobProgress\(/);
+  assert.match(script, /workers_running/);
+  assert.match(script, /reconciled/);
+});
+
+test("cloud sync response reconciles authoritative terminal outcomes into progress once", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const taskResults = [
+    {
+      details: {
+        posts: [
+          {
+            id: "post-synced",
+            status: "synced",
+            workerId: "worker-10",
+            bodyChars: 1842,
+            bodyWords: 301,
+            summaryChars: 657,
+            summaryWords: 93,
+            headlineChars: 41,
+            headlineWords: 7,
+          },
+          {
+            id: "post-skipped",
+            status: "skipped",
+            failureReason: "no_new_content",
+            workerId: "worker-11",
+          },
+          {
+            id: "post-blocked",
+            status: "blocked",
+            failureReason: "x_token_invalid",
+            workerId: "worker-12",
+          },
+          {
+            id: "post-action",
+            status: "action_needed",
+            failureReason: "login_required",
+            workerId: "worker-13",
+          },
+          {
+            id: "post-failed",
+            status: "failed",
+            failureReason: "cloud_feed_sync_rejected",
+            workerId: "worker-14",
+          },
+          {
+            id: "",
+            status: "synced",
+          },
+          {
+            id: "post-nonterminal",
+            status: "summarized",
+          },
+        ],
+      },
+    },
+    { details: null },
+  ];
+
+  const outcomes = cli.cloudSyncProgressOutcomesForTest(taskResults);
+
+  assert.deepEqual(outcomes, [
+    {
+      fetchTaskId: "post-synced",
+      status: "synced",
+      workerId: "worker-10",
+      bodyChars: 1842,
+      bodyWords: 301,
+      headlineChars: 41,
+      headlineWords: 7,
+      summaryChars: 657,
+      summaryWords: 93,
+    },
+    {
+      fetchTaskId: "post-skipped",
+      status: "skipped",
+      workerId: "worker-11",
+      failureReason: "no_new_content",
+    },
+    {
+      fetchTaskId: "post-blocked",
+      status: "action_needed",
+      workerId: "worker-12",
+      failureReason: "x_token_invalid",
+    },
+    {
+      fetchTaskId: "post-action",
+      status: "action_needed",
+      workerId: "worker-13",
+      failureReason: "login_required",
+    },
+    {
+      fetchTaskId: "post-failed",
+      status: "failed",
+      workerId: "worker-14",
+      failureReason: "cloud_feed_sync_rejected",
+    },
+  ]);
+
+  const progress = {
+    version: 1,
+    stage: "syncing",
+    counters: {
+      sourcesTotal: 2,
+      sourcesChecked: 2,
+      tasksPlanned: 5,
+      tasksDone: 0,
+      synced: 0,
+      skipped: 0,
+      failed: 0,
+      actionNeeded: 0,
+    },
+    current: {},
+    sources: [],
+    tasks: [],
+    recentEvents: [],
+    completedTaskIds: [],
+  };
+  const taskIds = outcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId);
+
+  cli.applyFetchProgressTaskOutcomes(progress, outcomes, taskIds);
+  cli.applyFetchProgressTaskOutcomes(progress, outcomes, taskIds);
+
+  assert.deepEqual(progress.counters, {
+    sourcesTotal: 2,
+    sourcesChecked: 2,
+    tasksPlanned: 5,
+    tasksDone: 5,
+    synced: 1,
+    skipped: 1,
+    failed: 1,
+    actionNeeded: 2,
+  });
+  assert.deepEqual(
+    progress.tasks.map((task: { id: string; status: string }) => [task.id, task.status]),
+    [
+      ["post-synced", "synced"],
+      ["post-skipped", "skipped"],
+      ["post-blocked", "action_needed"],
+      ["post-action", "action_needed"],
+      ["post-failed", "failed"],
+    ],
+  );
+  assert.deepEqual(
+    cli.cloudSyncProgressUpdateForTest(true, outcomes.length),
+    {
+      stage: "workers_running",
+      current: { task: null },
+      event: {
+        type: "checkpoint_synced",
+        message: "Synced 5 authoritative post task outcomes; waiting for remaining workers.",
+      },
+    },
+  );
+  assert.deepEqual(
+    cli.cloudSyncProgressUpdateForTest(false, outcomes.length),
+    {
+      stage: "reconciled",
+      current: {},
+      event: {
+        type: "reconciled",
+        message: "Reconciled 5 authoritative post task outcomes.",
+      },
+    },
+  );
 });
 
 test("builder digest CLI exposes lease-cloud-builders command", () => {

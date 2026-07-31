@@ -11100,9 +11100,93 @@ export function mergePlannedTasksForCloudSyncForTest(rawPlannedTasks = [], plann
   return combinedCloudSyncPlannedTasks(rawPlannedTasks, plannedTaskOutcomes);
 }
 
+const CLOUD_PROGRESS_TERMINAL_STATUS = new Map([
+  ["synced", "synced"],
+  ["skipped", "skipped"],
+  ["failed", "failed"],
+  ["blocked", "action_needed"],
+  ["action_needed", "action_needed"],
+]);
+
+function cloudSyncProgressOutcomes(taskResults = []) {
+  const outcomes = [];
+  const sizeKeys = [
+    "bodyChars",
+    "bodyWords",
+    "headlineChars",
+    "headlineWords",
+    "summaryChars",
+    "summaryWords",
+  ];
+  for (const taskResult of Array.isArray(taskResults) ? taskResults : []) {
+    const details =
+      taskResult?.details && typeof taskResult.details === "object" && !Array.isArray(taskResult.details)
+        ? taskResult.details
+        : null;
+    for (const rawPost of Array.isArray(details?.posts) ? details.posts : []) {
+      const post =
+        rawPost && typeof rawPost === "object" && !Array.isArray(rawPost)
+          ? rawPost
+          : null;
+      const fetchTaskId = typeof post?.id === "string" ? post.id.trim() : "";
+      const rawStatus = typeof post?.status === "string" ? post.status.trim().toLowerCase() : "";
+      const status = CLOUD_PROGRESS_TERMINAL_STATUS.get(rawStatus);
+      if (!fetchTaskId || !status) continue;
+      const outcome = { fetchTaskId, status };
+      const workerId = typeof post.workerId === "string" ? post.workerId.trim() : "";
+      const failureReason =
+        typeof post.failureReason === "string" ? post.failureReason.trim() : "";
+      if (workerId) outcome.workerId = workerId;
+      if (failureReason) outcome.failureReason = failureReason;
+      for (const key of sizeKeys) {
+        const value = post[key];
+        if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+          outcome[key] = value;
+        }
+      }
+      outcomes.push(outcome);
+    }
+  }
+  return outcomes;
+}
+
+export function cloudSyncProgressOutcomesForTest(taskResults = []) {
+  return cloudSyncProgressOutcomes(taskResults);
+}
+
+function cloudSyncProgressUpdate(partialOutcomes, outcomeCount) {
+  const count = Number.isFinite(Number(outcomeCount))
+    ? Math.max(0, Math.floor(Number(outcomeCount)))
+    : 0;
+  const noun = count === 1 ? "outcome" : "outcomes";
+  if (partialOutcomes) {
+    return {
+      stage: "workers_running",
+      current: { task: null },
+      event: {
+        type: "checkpoint_synced",
+        message: `Synced ${count} authoritative post task ${noun}; waiting for remaining workers.`,
+      },
+    };
+  }
+  return {
+    stage: "reconciled",
+    current: {},
+    event: {
+      type: "reconciled",
+      message: `Reconciled ${count} authoritative post task ${noun}.`,
+    },
+  };
+}
+
+export function cloudSyncProgressUpdateForTest(partialOutcomes, outcomeCount) {
+  return cloudSyncProgressUpdate(partialOutcomes, outcomeCount);
+}
+
 async function syncCloudBuilders(args) {
   const config = await readConfig();
   requireLoggedIn(config);
+  const partialOutcomes = args.includes("--partial-outcomes");
 
   const file = argValue(args, "--file");
   if (!file) throw new Error("Missing --file personal-builders.json");
@@ -11163,6 +11247,19 @@ async function syncCloudBuilders(args) {
       timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS,
       retries: 1,
     },
+  );
+  const taskOutcomes = cloudSyncProgressOutcomes(result.taskResults);
+  const fetchProgress =
+    (await readFetchProgressState()) ??
+    createFetchProgressState({ stage: "syncing" });
+  const taskIds = plannedTasks
+    .map((task) => String(task?.id || fetchTaskId(task) || "").trim())
+    .filter(Boolean);
+  applyFetchProgressTaskOutcomes(fetchProgress, taskOutcomes, taskIds);
+  await emitFetchJobProgress(
+    config,
+    fetchProgress,
+    cloudSyncProgressUpdate(partialOutcomes, taskOutcomes.length),
   );
   console.log(JSON.stringify(result, null, 2));
 }
