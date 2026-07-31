@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { buildWorkerShardGroupsForTest } from "../src/components/AdminCloudFetchLog";
+import type {
+  CloudFetchPostOutcome,
+  CloudFetchRunLogItem,
+  CloudWorkerHostTask,
+} from "../src/lib/cloud-fetch-run-log";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -181,7 +187,12 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /task\.plannedPosts === 0 &&[\s\S]*!task\.noGeneratedFetchTasks[\s\S]*!task\.finishedAt/);
   assert.match(log, /function formatPostOutcomeSummary\(\{[\s\S]*status/);
   assert.match(log, /planned > 0[\s\S]*Running without post tasks/);
-  assert.match(log, /function workerShardTaskStatus\([\s\S]*entry\.liveTask\?\.status \?\? entry\.task\.status/);
+  assert.doesNotMatch(log, /entry\.liveTask\?\.status \?\? entry\.task\.status/);
+  assert.match(log, /resolveCloudWorkerTaskStatus/);
+  assert.match(log, /summarizeCloudWorkerLaneStatuses/);
+  assert.match(log, /actionNeeded/);
+  assert.match(log, /ACTION NEEDED/);
+  assert.match(log, /SKIPPED/);
   assert.match(log, /No post tasks were generated for this source/);
   assert.match(log, /emptySourceTaskMessage/);
   assert.match(log, /tasksClaimed/);
@@ -202,6 +213,200 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
   assert.doesNotMatch(log, /<strong>Estimated<\/strong>/);
   assert.doesNotMatch(log, /<strong>P\(success\)<\/strong>/);
+});
+
+function cloudPost(
+  id: string,
+  status: string,
+  workerId: string,
+): CloudFetchPostOutcome {
+  return {
+    id,
+    title: id,
+    url: `https://example.com/${id}`,
+    contentStatus: "requires_agent",
+    agentWorkType: "fetch_post",
+    status,
+    failureReason: status === "failed" ? "sync_failed" : null,
+    fetchTool: "local agent",
+    agentRuntime: "codex",
+    model: "test-model",
+    bodyChars: null,
+    bodyWords: null,
+    headlineChars: null,
+    headlineWords: null,
+    summaryChars: status === "synced" ? 657 : null,
+    summaryWords: status === "synced" ? 93 : null,
+    readMethod: null,
+    summaryMethod: null,
+    hubSharedReuse: null,
+    workerId,
+    estimatedWorkSeconds: null,
+    executionBudgetSeconds: null,
+    workloadClass: null,
+    budgetReason: null,
+    deadlineState: null,
+    mediaDurationSeconds: null,
+    plannedExtractionMethod: null,
+    mustSucceedBy: null,
+    estimateEvidence: null,
+  };
+}
+
+function cloudBatch(
+  id: string,
+  startedAt: string,
+  posts: CloudFetchPostOutcome[],
+): CloudFetchRunLogItem {
+  const synced = posts.filter((post) => post.status === "synced").length;
+  const failed = posts.filter((post) => post.status === "failed").length;
+  const skipped = posts.filter((post) => post.status === "skipped").length;
+  return {
+    id,
+    leaseOwner: "local-cloud-runner:test-host",
+    startedAt,
+    finishedAt: null,
+    durationMs: null,
+    status: "RUNNING",
+    requestedLimit: 10,
+    tasksClaimed: 1,
+    tasksSucceeded: 0,
+    tasksFailed: 0,
+    tasksRunning: 1,
+    plannedPosts: posts.length,
+    syncedPosts: synced,
+    failedPosts: failed,
+    skippedPosts: skipped,
+    pendingPosts: Math.max(0, posts.length - synced - failed - skipped),
+    usageTokens: null,
+    usageCostUsd: null,
+    summary: null,
+    tasks: [
+      {
+        id: `${id}-source`,
+        builderId: "builder",
+        sourceName: "Source",
+        sourceType: "blog",
+        summaryLanguage: "source",
+        status: "RUNNING",
+        startedAt,
+        finishedAt: null,
+        plannedPosts: posts.length,
+        syncedPosts: synced,
+        failedPosts: failed,
+        skippedPosts: skipped,
+        pendingPosts: Math.max(0, posts.length - synced - failed - skipped),
+        durationMs: null,
+        estimatedDurationSeconds: null,
+        mustSucceedBy: null,
+        provisionalExecutionBudgetSeconds: null,
+        workloadClass: null,
+        budgetReason: null,
+        deadlineState: null,
+        successProbability: null,
+        usageTokens: null,
+        usageCostUsd: null,
+        failureReason: null,
+        posts,
+        workerUsages: [],
+        noGeneratedFetchTasks: false,
+      },
+    ],
+  };
+}
+
+function liveTask(
+  id: string,
+  status: string,
+  workerId: string,
+): CloudWorkerHostTask {
+  return {
+    id,
+    status,
+    phase: status === "summarized" ? "summarize" : status,
+    message: status === "summarized" ? "Summary ready; waiting for server sync." : status,
+    reason: null,
+    builder: "Source",
+    builderId: "builder",
+    sourceType: "blog",
+    title: id,
+    url: `https://example.com/${id}`,
+    workerId,
+    bodyChars: null,
+    bodyWords: null,
+    headlineChars: status === "summarized" ? 41 : null,
+    headlineWords: status === "summarized" ? 7 : null,
+    summaryChars: status === "summarized" ? 657 : null,
+    summaryWords: status === "summarized" ? 93 : null,
+    updatedAt: "2026-07-31T08:00:00.000Z",
+  };
+}
+
+test("worker lanes keep the newest persisted terminal result and suppress stale live overlays", () => {
+  const newest = cloudBatch(
+    "newest",
+    "2026-07-31T08:00:00.000Z",
+    [cloudPost("post-1", "synced", "worker-10")],
+  );
+  const older = cloudBatch(
+    "older",
+    "2026-07-31T07:00:00.000Z",
+    [cloudPost("post-1", "pending", "worker-10")],
+  );
+
+  const groups = buildWorkerShardGroupsForTest(
+    [newest, older],
+    [liveTask("post-1", "summarized", "worker-10")],
+  );
+
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].tasks.length, 1);
+  assert.equal(groups[0].tasks[0].task.status, "synced");
+  assert.equal(groups[0].tasks[0].liveTask, null);
+  assert.equal(groups[0].synced, 1);
+  assert.equal(groups[0].pending, 0);
+  assert.equal(groups[0].status, "synced");
+  assert.equal(groups[0].label, "SYNCED");
+  assert.equal(groups[0].updatedAt, null);
+});
+
+test("worker lanes count four durable syncs and one failure instead of stale heartbeat states", () => {
+  const posts = [
+    cloudPost("post-1", "synced", "worker-1"),
+    cloudPost("post-2", "synced", "worker-1"),
+    cloudPost("post-3", "synced", "worker-1"),
+    cloudPost("post-4", "synced", "worker-1"),
+    cloudPost("post-5", "failed", "worker-1"),
+  ];
+  const groups = buildWorkerShardGroupsForTest(
+    [cloudBatch("production-shape", "2026-07-31T08:00:00.000Z", posts)],
+    [
+      liveTask("post-3", "summarized", "worker-1"),
+      liveTask("post-4", "summarized", "worker-1"),
+    ],
+  );
+
+  assert.equal(groups.length, 1);
+  assert.deepEqual(
+    {
+      synced: groups[0].synced,
+      skipped: groups[0].skipped,
+      failed: groups[0].failed,
+      actionNeeded: groups[0].actionNeeded,
+      pending: groups[0].pending,
+      status: groups[0].status,
+      label: groups[0].label,
+    },
+    {
+      synced: 4,
+      skipped: 0,
+      failed: 1,
+      actionNeeded: 0,
+      pending: 0,
+      status: "partial",
+      label: "PARTIAL",
+    },
+  );
 });
 
 test("offline worker host presents its retained summary as historical", () => {

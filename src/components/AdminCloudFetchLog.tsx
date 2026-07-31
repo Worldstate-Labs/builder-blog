@@ -30,8 +30,13 @@ import type {
 } from "@/lib/cloud-fetch-run-log";
 import {
   formatCloudWorkerTaskLabel,
+  isCloudWorkerTerminalStatus,
+  normalizeCloudWorkerTaskStatus,
+  resolveCloudWorkerTaskStatus,
   resolveWorkerAssignment,
   selectUnassignedWorkerTasks,
+  summarizeCloudWorkerLaneStatuses,
+  type CloudWorkerLaneStatus,
 } from "@/lib/cloud-worker-task-display";
 
 type CloudFetchRunsResponse = {
@@ -127,6 +132,7 @@ function formatPostOutcomeSummary({
   failed,
   skipped,
   pending,
+  actionNeeded = 0,
   status,
 }: {
   synced: number;
@@ -134,6 +140,7 @@ function formatPostOutcomeSummary({
   failed: number;
   skipped: number;
   pending: number;
+  actionNeeded?: number;
   status?: string | null;
 }): string {
   const running = String(status ?? "").toLowerCase() === "running";
@@ -142,6 +149,7 @@ function formatPostOutcomeSummary({
       ? [`${synced.toLocaleString()}/${planned.toLocaleString()} synced`]
       : [running ? "Running without post tasks" : "No posts planned"];
   if (pending > 0) parts.push(`${pending.toLocaleString()} pending`);
+  if (actionNeeded > 0) parts.push(`${actionNeeded.toLocaleString()} action needed`);
   if (skipped > 0) parts.push(`${skipped.toLocaleString()} skipped`);
   if (failed > 0) parts.push(`${failed.toLocaleString()} failed`);
   return parts.join(" · ");
@@ -333,7 +341,7 @@ function postToFetchTaskLog(
     agentWorkType: post.agentWorkType,
     title: post.title,
     url: post.url,
-    status: post.status,
+    status: normalizeCloudWorkerTaskStatus(post.status),
     failureReason: post.failureReason,
     fetchTool: post.fetchTool,
     agentRuntime: post.agentRuntime,
@@ -370,6 +378,7 @@ function workerTaskToFetchTaskLog(task: CloudWorkerHostTask): FetchTaskLog {
     title: task.title,
     url: task.url,
     status: task.status,
+    failureReason: task.reason,
     bodyChars: task.bodyChars,
     bodyWords: task.bodyWords,
     headlineChars: task.headlineChars,
@@ -414,18 +423,20 @@ type WorkerShardGroup = {
   synced: number;
   failed: number;
   skipped: number;
+  actionNeeded: number;
   pending: number;
+  status: CloudWorkerLaneStatus;
+  label: "RUNNING" | "ACTION NEEDED" | "PARTIAL" | "FAILED" | "SYNCED" | "SKIPPED";
   updatedAt: string | null;
   usage: UsageSummary | null;
 };
 
-function workerShardTaskStatus(entry: WorkerShardTask): string | null {
-  const status = entry.liveTask?.status ?? entry.task.status;
-  return status ? status.toLowerCase() : null;
-}
-
 function allDeliveryPostTasks(leaseBatches: CloudFetchRunLogItem[]): FetchTaskLog[] {
-  return leaseBatches.flatMap((batch) =>
+  return [...leaseBatches]
+    .sort((a, b) =>
+      Date.parse(b.startedAt) - Date.parse(a.startedAt) || b.id.localeCompare(a.id),
+    )
+    .flatMap((batch) =>
     batch.tasks.flatMap((task) =>
       task.posts.map((post, index) => postToFetchTaskLog(post, task, index)),
     ),
@@ -468,14 +479,34 @@ function buildWorkerShardGroups(
   const usages = cloudWorkerUsageMap(leaseBatches);
   const byTaskId = new Map<string, WorkerShardTask>();
   for (const task of allDeliveryPostTasks(leaseBatches)) {
-    byTaskId.set(taskIdValue(task), { task, liveTask: null });
+    const id = taskIdValue(task);
+    if (!byTaskId.has(id)) {
+      byTaskId.set(id, {
+        task: {
+          ...task,
+          status: normalizeCloudWorkerTaskStatus(task.status),
+        },
+        liveTask: null,
+      });
+    }
   }
   for (const live of workerTasks) {
     const id = taskIdValue({ id: live.id });
     const existing = byTaskId.get(id);
+    const persistedStatus = existing?.task.status ?? null;
+    const effectiveStatus = resolveCloudWorkerTaskStatus(persistedStatus, live.status);
+    const suppressStaleLive =
+      existing != null &&
+      isCloudWorkerTerminalStatus(persistedStatus) &&
+      normalizeCloudWorkerTaskStatus(live.status) !==
+        normalizeCloudWorkerTaskStatus(persistedStatus);
     byTaskId.set(id, {
-      task: { ...(existing?.task ?? workerTaskToFetchTaskLog(live)), workerId: existing?.task.workerId ?? live.workerId },
-      liveTask: workerTaskToProgress(live),
+      task: {
+        ...(existing?.task ?? workerTaskToFetchTaskLog(live)),
+        status: effectiveStatus,
+        workerId: existing?.task.workerId ?? live.workerId,
+      },
+      liveTask: suppressStaleLive ? null : workerTaskToProgress(live),
     });
   }
 
@@ -493,22 +524,37 @@ function buildWorkerShardGroups(
 
   return [...groups.entries()]
     .map(([workerId, tasks]) => {
-      const synced = tasks.filter((entry) => workerShardTaskStatus(entry) === "synced").length;
-      const failed = tasks.filter((entry) => workerShardTaskStatus(entry) === "failed").length;
-      const skipped = tasks.filter((entry) => workerShardTaskStatus(entry) === "skipped").length;
-      const pending = Math.max(0, tasks.length - synced - failed - skipped);
+      const summary = summarizeCloudWorkerLaneStatuses(
+        tasks.map((entry) => ({
+          persistedStatus: entry.task.status,
+          liveStatus: entry.liveTask?.status,
+        })),
+      );
       const updatedAt = tasks
         .map((entry) => entry.liveTask?.updatedAt)
         .filter((value): value is string => Boolean(value))
         .sort()
         .at(-1) ?? null;
-      return { workerId, tasks, synced, failed, skipped, pending, updatedAt, usage: usages.get(workerId) ?? null };
+      return {
+        workerId,
+        tasks,
+        ...summary,
+        updatedAt,
+        usage: usages.get(workerId) ?? null,
+      };
     })
     .sort((a, b) => {
       const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
       const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
       return bTime - aTime || a.workerId.localeCompare(b.workerId);
     });
+}
+
+export function buildWorkerShardGroupsForTest(
+  leaseBatches: CloudFetchRunLogItem[],
+  workerTasks: CloudWorkerHostTask[],
+): WorkerShardGroup[] {
+  return buildWorkerShardGroups(leaseBatches, workerTasks);
 }
 
 function workerHostMeta(workerHost: CloudWorkerHostStatus): InlinePart[] {
@@ -912,8 +958,8 @@ export function AdminCloudFetchLog({
                   onClick={() => setExpandedShard(isOpen ? null : group.workerId)}
                 >
                   <span aria-hidden="true">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
-                  <span className={`cloud-status-chip ${statusClass(group.failed > 0 ? "partial" : group.pending > 0 ? "running" : "synced")}`}>
-                    {group.pending > 0 ? "RUNNING" : group.failed > 0 ? "PARTIAL" : "SYNCED"}
+                  <span className={`cloud-status-chip ${statusClass(group.status)}`}>
+                    {group.label}
                   </span>
                   <span className="cloud-fetch-log-time">{group.workerId}</span>
                   <span className="cloud-fetch-log-counts">
@@ -928,7 +974,8 @@ export function AdminCloudFetchLog({
                           failed: group.failed,
                           skipped: group.skipped,
                           pending: group.pending,
-                          status: group.pending > 0 ? "running" : group.failed > 0 ? "partial" : "synced",
+                          actionNeeded: group.actionNeeded,
+                          status: group.status,
                         }),
                         groupUsage,
                         group.updatedAt ? (
