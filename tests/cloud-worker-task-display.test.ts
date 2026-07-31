@@ -3,8 +3,11 @@ import test from "node:test";
 import {
   formatCloudWorkerTaskLabel,
   hasWorkerAssignment,
+  isCloudWorkerTerminalStatus,
+  resolveCloudWorkerTaskStatus,
   resolveWorkerAssignment,
   selectUnassignedWorkerTasks,
+  summarizeCloudWorkerLaneStatuses,
 } from "@/lib/cloud-worker-task-display";
 import type { CloudWorkerHostTask } from "@/lib/cloud-fetch-run-log";
 
@@ -120,4 +123,100 @@ test("malformed ids render a safe fallback", () => {
     formatCloudWorkerTaskLabel(task({ id: "not-a-fetch-task" })),
     "Untitled post task",
   );
+});
+
+test("persisted terminal outcomes override stale live worker statuses", () => {
+  assert.equal(resolveCloudWorkerTaskStatus("synced", "summarized"), "synced");
+  assert.equal(resolveCloudWorkerTaskStatus("failed", "running"), "failed");
+  assert.equal(resolveCloudWorkerTaskStatus("skipped", "queued"), "skipped");
+  assert.equal(resolveCloudWorkerTaskStatus("blocked", "summarized"), "action_needed");
+  assert.equal(resolveCloudWorkerTaskStatus("action_needed", "reading"), "action_needed");
+  assert.equal(resolveCloudWorkerTaskStatus("pending", "running"), "running");
+  assert.equal(resolveCloudWorkerTaskStatus("pending", "synced"), "synced");
+  assert.equal(resolveCloudWorkerTaskStatus(null, null), null);
+
+  assert.equal(isCloudWorkerTerminalStatus("synced"), true);
+  assert.equal(isCloudWorkerTerminalStatus("blocked"), true);
+  assert.equal(isCloudWorkerTerminalStatus("summarized"), false);
+});
+
+test("lane accounting matches four durable syncs plus one failure despite stale heartbeats", () => {
+  const summary = summarizeCloudWorkerLaneStatuses([
+    { persistedStatus: "synced", liveStatus: "synced" },
+    { persistedStatus: "synced", liveStatus: "synced" },
+    { persistedStatus: "synced", liveStatus: "summarized" },
+    { persistedStatus: "synced", liveStatus: "summarized" },
+    { persistedStatus: "failed", liveStatus: "failed" },
+  ]);
+
+  assert.deepEqual(summary, {
+    synced: 4,
+    skipped: 0,
+    failed: 1,
+    actionNeeded: 0,
+    pending: 0,
+    status: "partial",
+    label: "PARTIAL",
+  });
+});
+
+test("lane accounting labels complete, skipped, action-needed, failed, and running lanes distinctly", () => {
+  assert.deepEqual(
+    summarizeCloudWorkerLaneStatuses([
+      { persistedStatus: "synced", liveStatus: "summarized" },
+      { persistedStatus: "synced", liveStatus: "summarized" },
+    ]),
+    {
+      synced: 2,
+      skipped: 0,
+      failed: 0,
+      actionNeeded: 0,
+      pending: 0,
+      status: "synced",
+      label: "SYNCED",
+    },
+  );
+  assert.equal(
+    summarizeCloudWorkerLaneStatuses([
+      { persistedStatus: "skipped" },
+      { persistedStatus: "skipped" },
+    ]).label,
+    "SKIPPED",
+  );
+  assert.equal(
+    summarizeCloudWorkerLaneStatuses([
+      { persistedStatus: "action_needed" },
+      { persistedStatus: "synced" },
+    ]).label,
+    "ACTION NEEDED",
+  );
+  assert.equal(
+    summarizeCloudWorkerLaneStatuses([
+      { persistedStatus: "failed" },
+      { persistedStatus: "failed" },
+    ]).label,
+    "FAILED",
+  );
+  const running = summarizeCloudWorkerLaneStatuses([
+    { persistedStatus: "synced" },
+    { persistedStatus: "pending", liveStatus: "summarizing" },
+  ]);
+  assert.equal(running.label, "RUNNING");
+  assert.equal(running.pending, 1);
+
+  for (const [summary, expectedTotal] of [
+    [summarizeCloudWorkerLaneStatuses([{ persistedStatus: "skipped" }]), 1],
+    [summarizeCloudWorkerLaneStatuses([{ persistedStatus: "action_needed" }]), 1],
+    [summarizeCloudWorkerLaneStatuses([{ persistedStatus: "failed" }]), 1],
+    [running, 2],
+  ] as const) {
+    assert.equal(
+      summary.synced +
+        summary.skipped +
+        summary.failed +
+        summary.actionNeeded +
+        summary.pending,
+      expectedTotal,
+    );
+  }
 });

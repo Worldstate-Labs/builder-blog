@@ -1,6 +1,101 @@
 import type { CloudWorkerHostTask } from "@/lib/cloud-fetch-run-log";
 
 const FETCH_POST_ID = /^fetch_post:[^:]+:([^:]+):(.+)$/;
+const TERMINAL_TASK_STATUSES = new Set([
+  "synced",
+  "skipped",
+  "failed",
+  "action_needed",
+]);
+
+export type CloudWorkerLaneStatus =
+  | "running"
+  | "action_needed"
+  | "partial"
+  | "failed"
+  | "synced"
+  | "skipped";
+
+export type CloudWorkerLaneSummary = {
+  synced: number;
+  skipped: number;
+  failed: number;
+  actionNeeded: number;
+  pending: number;
+  status: CloudWorkerLaneStatus;
+  label: "RUNNING" | "ACTION NEEDED" | "PARTIAL" | "FAILED" | "SYNCED" | "SKIPPED";
+};
+
+export function normalizeCloudWorkerTaskStatus(
+  status: string | null | undefined,
+): string | null {
+  const normalized = status?.trim().toLowerCase();
+  if (!normalized) return null;
+  return normalized === "blocked" ? "action_needed" : normalized;
+}
+
+export function isCloudWorkerTerminalStatus(
+  status: string | null | undefined,
+): boolean {
+  const normalized = normalizeCloudWorkerTaskStatus(status);
+  return normalized != null && TERMINAL_TASK_STATUSES.has(normalized);
+}
+
+export function resolveCloudWorkerTaskStatus(
+  persistedStatus: string | null | undefined,
+  liveStatus: string | null | undefined,
+): string | null {
+  const persisted = normalizeCloudWorkerTaskStatus(persistedStatus);
+  if (isCloudWorkerTerminalStatus(persisted)) return persisted;
+  return normalizeCloudWorkerTaskStatus(liveStatus) ?? persisted;
+}
+
+export function summarizeCloudWorkerLaneStatuses(
+  tasks: Array<{
+    persistedStatus?: string | null;
+    liveStatus?: string | null;
+  }>,
+): CloudWorkerLaneSummary {
+  const statuses = tasks.map((task) =>
+    resolveCloudWorkerTaskStatus(task.persistedStatus, task.liveStatus),
+  );
+  const synced = statuses.filter((status) => status === "synced").length;
+  const skipped = statuses.filter((status) => status === "skipped").length;
+  const failed = statuses.filter((status) => status === "failed").length;
+  const actionNeeded = statuses.filter((status) => status === "action_needed").length;
+  const pending = statuses.length - synced - skipped - failed - actionNeeded;
+
+  if (pending > 0 || statuses.length === 0) {
+    return { synced, skipped, failed, actionNeeded, pending, status: "running", label: "RUNNING" };
+  }
+  if (actionNeeded > 0) {
+    return {
+      synced,
+      skipped,
+      failed,
+      actionNeeded,
+      pending,
+      status: "action_needed",
+      label: "ACTION NEEDED",
+    };
+  }
+  if (failed > 0) {
+    const allFailed = failed === statuses.length;
+    return {
+      synced,
+      skipped,
+      failed,
+      actionNeeded,
+      pending,
+      status: allFailed ? "failed" : "partial",
+      label: allFailed ? "FAILED" : "PARTIAL",
+    };
+  }
+  if (synced > 0) {
+    return { synced, skipped, failed, actionNeeded, pending, status: "synced", label: "SYNCED" };
+  }
+  return { synced, skipped, failed, actionNeeded, pending, status: "skipped", label: "SKIPPED" };
+}
 
 function safeDecode(value: string): string {
   try {
