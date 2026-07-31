@@ -235,3 +235,25 @@ test("missing or invalid time zones keep legacy daily and weekly anchor interval
     "2026-08-12T15:00:05.000Z",
   );
 });
+
+test("malformed zoned daily metadata keeps the legacy interval relative to startedAt", () => {
+  const malformedDaily = laDailyCronJob({ schedule: "anchor:not-a-cron" });
+
+  assert.equal(usesRelativeIntervalSchedule(malformedDaily), true);
+  assert.equal(firstExpectedSchedule(malformedDaily)?.toISOString(), "2026-07-31T05:25:09.000Z");
+  assert.equal(
+    floorToExpectedSchedule(new Date("2026-07-31T02:27:00.000Z"), malformedDaily).toISOString(),
+    "2026-07-30T05:25:09.000Z",
+  );
+});
+
+test("zoned weekly metadata without a real weekday keeps the legacy interval relative to startedAt", () => {
+  const malformedWeekly = laWeeklyCronJob({ schedule: "anchor:0 8 * * *" });
+
+  assert.equal(usesRelativeIntervalSchedule(malformedWeekly), true);
+  assert.equal(firstExpectedSchedule(malformedWeekly)?.toISOString(), "2026-08-05T15:00:05.000Z");
+  assert.equal(
+    addScheduleInterval(new Date("2026-08-05T15:00:05.000Z"), malformedWeekly).toISOString(),
+    "2026-08-12T15:00:05.000Z",
+  );
+});

@@ -300,6 +300,30 @@ test("zoned daily digest status before the first real run shows only the future 
   assert.equal(status.summary, "The schedule is active; no scheduled window has completed yet.");
 });
 
+test("malformed zoned daily metadata does not fabricate a missed digest window", () => {
+  const malformedCron = {
+    ...zonedDailyCron(),
+    schedule: "anchor:not-a-cron",
+  };
+  const result = buildDigestCronStatus(
+    malformedCron,
+    [],
+    [],
+    Date.parse("2026-07-31T02:27:00.000Z"),
+  );
+  const status = getDigestUpdateStatus(malformedCron, result.slots, []);
+
+  assert.equal(result.nextExpectedAt, "2026-07-31T05:25:09.000Z");
+  assert.deepEqual(
+    result.slots.map((slot) => ({
+      expectedAt: slot.expectedAt,
+      status: slot.status,
+    })),
+    [{ expectedAt: "2026-07-31T05:25:09.000Z", status: "waiting" }],
+  );
+  assert.equal(status.key, "waiting");
+});
+
 test("digest status control reports the latest failed job instead of idle", () => {
   const failedAt = new Date().toISOString();
   const setupJobRun = {
