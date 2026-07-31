@@ -27,12 +27,18 @@ const regularLocalLaunchdSetupBlock = (prompt: string, job: string) => {
 
 test("cron scheduler status changes leave local and server audit events", () => {
   const schema = source("prisma/schema.prisma");
+  const migration = source("prisma/migrations/000090_local_cron_time_zone/migration.sql");
   const cli = source("scripts/builder-digest.mjs");
   const cronJobsRoute = source("src/app/api/skill/cron-jobs/route.ts");
   const cronEventsRoute = source("src/app/api/skill/cron-events/route.ts");
+  const digestRuns = source("src/lib/digest-runs.ts");
 
   assert.match(schema, /cronJobStatusEvents\s+CronJobStatusEvent\[\]/);
   assert.match(schema, /model CronJobStatusEvent \{/);
+  assert.match(schema, /model LibraryCronJob \{[\s\S]*\n\s*timeZone\s+String\?/);
+  assert.match(schema, /model DigestCronJob \{[\s\S]*\n\s*timeZone\s+String\?/);
+  assert.match(migration, /ALTER TABLE "LibraryCronJob" ADD COLUMN "timeZone" TEXT;/);
+  assert.match(migration, /ALTER TABLE "DigestCronJob" ADD COLUMN "timeZone" TEXT;/);
   for (const field of [
     "userId",
     "job",
@@ -57,6 +63,14 @@ test("cron scheduler status changes leave local and server audit events", () => 
   assert.match(cronEventsRoute, /MAX_DETAILS_BYTES = 50_000/);
 
   assert.match(cronJobsRoute, /recordCronJobStatusEvent/);
+  assert.match(cronJobsRoute, /timeZone: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
+  assert.match(cronJobsRoute, /function normalizeTimeZone\(value: string \| null \| undefined\)/);
+  assert.match(cronJobsRoute, /const headerTimeZone = normalizeTimeZone\(request\.headers\.get\("x-machine-time-zone"\)\)/);
+  assert.match(cronJobsRoute, /const bodyTimeZone = normalizeTimeZone\(parsed\.data\.timeZone\)/);
+  assert.match(cronJobsRoute, /const validTimeZone = headerTimeZone \?\? bodyTimeZone/);
+  assert.match(cronJobsRoute, /Intl\.DateTimeFormat\("en-US", \{ timeZone \}\)/);
+  assert.match(cronJobsRoute, /timeZone: validTimeZone \?\? current\.timeZone \?\? null/);
+  assert.match(cronJobsRoute, /timeZone: validTimeZone,/);
   assert.match(cronJobsRoute, /eventType: "cron_status_applied"/);
   assert.match(cronJobsRoute, /"1h": \{ intervalMinutes: 60, label: "Hourly" \}/);
   assert.match(cronJobsRoute, /daily: \{ intervalMinutes: 1_440, label: "Daily" \}/);
@@ -73,6 +87,8 @@ test("cron scheduler status changes leave local and server audit events", () => 
   assert.match(cli, /cron_status_sync_succeeded/);
   assert.match(cli, /cron_status_sync_failed/);
   assert.match(cli, /local_scheduler_missing/);
+  assert.match(digestRuns, /export type DigestCronJobStatus = \{[\s\S]*timeZone\?: string \| null;/);
+  assert.match(digestRuns, /timeZone: cronJob\.timeZone \?\? null,/);
 });
 
 test("cron stop prompts audit scheduler mutations before web status sync", () => {

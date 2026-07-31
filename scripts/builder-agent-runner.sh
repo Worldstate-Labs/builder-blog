@@ -1352,6 +1352,18 @@ schedule_anchor_file() {
   printf '%s\n' "$AGENT_DIR/schedule-anchor-$JOB_NAME-$ACCOUNT_SLUG"
 }
 
+schedule_metadata_dir() {
+  printf '%s\n' "$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME-schedule"
+}
+
+schedule_status_file() {
+  printf '%s\n' "$(schedule_metadata_dir)/status.txt"
+}
+
+schedule_timezone_file() {
+  printf '%s\n' "$(schedule_metadata_dir)/timezone.txt"
+}
+
 scheduler_last_fired_file() {
   printf '%s\n' "$JOB_STATE_DIR/last-fired-expected-at"
 }
@@ -2418,6 +2430,31 @@ due_expected_at() {
     iso_now > "$_anchor_file"
     return 1
   fi
+
+  _schedule_file="$(schedule_status_file)"
+  _timezone_file="$(schedule_timezone_file)"
+  _freq_key=""
+  case "$RESOLVED_INTERVAL_MINUTES" in
+    1440) _freq_key="daily" ;;
+    10080) _freq_key="weekly" ;;
+  esac
+  case "$_freq_key" in
+    daily|weekly)
+      if [ -s "$_schedule_file" ] && [ -s "$_timezone_file" ]; then
+        _schedule_value="$(tr -d '\r' < "$_schedule_file" | sed -n '1p')"
+        _schedule_time_zone="$(tr -d '\r' < "$_timezone_file" | sed -n '1p')"
+        if [ -n "$_schedule_value" ] && [ -n "$_schedule_time_zone" ]; then
+          node "$AGENT_DIR/builder-digest.mjs" schedule-due \
+            --freq "$_freq_key" \
+            --interval-minutes "$RESOLVED_INTERVAL_MINUTES" \
+            --anchor-at "$(cat "$_anchor_file")" \
+            --schedule "$_schedule_value" \
+            --time-zone "$_schedule_time_zone"
+          return $?
+        fi
+      fi
+      ;;
+  esac
 
   node - "$_anchor_file" "$_interval_seconds" <<'NODE'
 const fs = require("fs");

@@ -190,6 +190,7 @@ export type LibraryCronJobStatus = {
   schedule: string;
   intervalMinutes: number;
   runtime: string | null;
+  timeZone: string | null;
   overrideFetched: boolean;
   hostname: string | null;
   platform: string | null;
@@ -294,6 +295,7 @@ export async function GET(request: Request) {
         schedule: cronJob.schedule,
         intervalMinutes: cronJob.intervalMinutes,
         runtime: cronJob.runtime,
+        timeZone: cronJob.timeZone,
         overrideFetched: cronJob.overrideFetched,
         hostname: cronJob.hostname,
         platform: cronJob.platform,

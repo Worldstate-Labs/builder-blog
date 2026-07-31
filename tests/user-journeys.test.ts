@@ -810,8 +810,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /--cron-out "\$SCHEDULE_SPEC_DIR\/cron\.txt"/);
   assert.match(libraryCronSetupPrompt, /--launchd-out "\$SCHEDULE_SPEC_DIR\/launchd\.xml"/);
   assert.match(libraryCronSetupPrompt, /--status-out "\$SCHEDULE_SPEC_DIR\/status\.txt"/);
+  assert.match(libraryCronSetupPrompt, /--timezone-out "\$SCHEDULE_SPEC_DIR\/timezone\.txt"/);
   assert.match(libraryCronSetupPrompt, /CRON_SCHEDULE_EXPR="\$\(cat "\$SCHEDULE_SPEC_DIR\/cron\.txt"\)"/);
   assert.match(libraryCronSetupPrompt, /LAUNCHD_SCHEDULE_XML="\$\(cat "\$SCHEDULE_SPEC_DIR\/launchd\.xml"\)"/);
+  assert.match(libraryCronSetupPrompt, /date -u \+"\%Y-\%m-\%dT\%H:\%M:00Z" > "\$ANCHOR_FILE"/);
   assert.doesNotMatch(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
@@ -829,6 +831,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /Stop before installing the schedule/);
   assert.match(libraryCronSetupPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /\{\{PARALLEL_WORKERS\}\}/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /CRON_TZ=/);
   assertOrderedText(libraryCronSetupPrompt, [
     "Create required directories and verify this account's local credential",
     "Account file not found for $ACCT",
@@ -839,8 +842,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
   assert.match(digestCronSetupPrompt, /schedule-spec/);
   assert.match(digestCronSetupPrompt, /--anchor-file "\$ANCHOR_FILE"/);
+  assert.match(digestCronSetupPrompt, /--timezone-out "\$SCHEDULE_SPEC_DIR\/timezone\.txt"/);
   assert.match(digestCronSetupPrompt, /CRON_SCHEDULE_EXPR="\$\(cat "\$SCHEDULE_SPEC_DIR\/cron\.txt"\)"/);
   assert.match(digestCronSetupPrompt, /LAUNCHD_SCHEDULE_XML="\$\(cat "\$SCHEDULE_SPEC_DIR\/launchd\.xml"\)"/);
+  assert.match(digestCronSetupPrompt, /date -u \+"\%Y-\%m-\%dT\%H:\%M:00Z" > "\$ANCHOR_FILE"/);
   assert.doesNotMatch(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
   assert.doesNotMatch(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
   assert.doesNotMatch(digestCronSetupPrompt, /<key>StartInterval<\/key>/);
@@ -851,6 +856,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /verify this account's local credential/);
   assert.match(digestCronSetupPrompt, /Account file not found for \$ACCT/);
   assert.match(digestCronSetupPrompt, /Stop before installing the schedule/);
+  assert.doesNotMatch(digestCronSetupPrompt, /CRON_TZ=/);
   assertOrderedText(digestCronSetupPrompt, [
     "Create required directories and verify this account's local credential",
     "Account file not found for $ACCT",

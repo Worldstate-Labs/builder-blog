@@ -65,6 +65,7 @@ export type DigestCronJobStatus = {
   schedule: string;
   intervalMinutes: number;
   runtime: string | null;
+  timeZone?: string | null;
   regenerateDigest: boolean;
   hostname: string | null;
   platform: string | null;
@@ -260,6 +261,7 @@ export function serializeDigestCronJob(
     schedule: string;
     intervalMinutes: number;
     runtime: string | null;
+    timeZone?: string | null;
     regenerateDigest: boolean;
     hostname: string | null;
     platform: string | null;
@@ -277,6 +279,7 @@ export function serializeDigestCronJob(
     schedule: cronJob.schedule,
     intervalMinutes: cronJob.intervalMinutes,
     runtime: cronJob.runtime,
+    timeZone: cronJob.timeZone ?? null,
     regenerateDigest: cronJob.regenerateDigest,
     hostname: cronJob.hostname,
     platform: cronJob.platform,
