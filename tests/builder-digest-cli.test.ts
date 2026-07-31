@@ -5629,7 +5629,7 @@ test("cloud sync response reconciles authoritative terminal outcomes into progre
       current: { task: null },
       event: {
         type: "checkpoint_synced",
-        message: "Synced 5 authoritative post task outcomes; waiting for remaining workers.",
+        message: "Reconciled 5 authoritative post task outcomes; waiting for remaining workers.",
       },
     },
   );

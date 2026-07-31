@@ -11165,7 +11165,7 @@ function cloudSyncProgressUpdate(partialOutcomes, outcomeCount) {
       current: { task: null },
       event: {
         type: "checkpoint_synced",
-        message: `Synced ${count} authoritative post task ${noun}; waiting for remaining workers.`,
+        message: `Reconciled ${count} authoritative post task ${noun}; waiting for remaining workers.`,
       },
     };
   }
