@@ -13,6 +13,7 @@
 ## File structure
 
 - Modify `scripts/builder-agent-runner.sh`: shared normalization helper, initial/refill integration, explicit path exports, namespaced debug/recovery artifacts.
+- Modify `scripts/builder-digest.mjs`: retain cloud run/source identity on discovery terminal outcomes so cloud sync can attribute them.
 - Modify `skills/builder-blog-digest/jobs/library-discovery.md`: consume explicit discovery input/output paths.
 - Modify `skills/builder-blog-digest/jobs/_fetch-task-discovery.md`: document the explicit output path rather than a fixed filename.
 - Modify `tests/cloud-source-cli-contract.test.ts`: shell contract and prompt-path regression coverage.
@@ -22,7 +23,7 @@
 **Files:**
 - Test: `tests/cloud-source-cli-contract.test.ts`
 
-- [ ] **Step 1: Add a failing discovery-only refill test**
+- [x] **Step 1: Add a failing discovery-only refill test**
 
 Add a shell contract test that extracts `fetch_more_cloud_sources`, supplies a
 refill containing one `candidate_discovery_fallback`, and stubs
@@ -31,14 +32,14 @@ Assert the helper receives the refill file and a `refill-1` scope before
 `library_fetch_task_count`, and assert the ready task replaces the stale
 zero-task accumulated result.
 
-- [ ] **Step 2: Add failing prompt-path assertions**
+- [x] **Step 2: Add failing prompt-path assertions**
 
 Assert the discovery prompt and include use
 `BUILDER_BLOG_DISCOVERY_TASKS_FILE` and
 `BUILDER_BLOG_DISCOVERY_RESULT_FILE`. Assert
 `openclaw_discovery_prompt_file` exports both variables.
 
-- [ ] **Step 3: Run the focused tests and confirm RED**
+- [x] **Step 3: Run the focused tests and confirm RED**
 
 Run:
 
@@ -53,11 +54,12 @@ prompt still hardcodes fixed filenames.
 
 **Files:**
 - Modify: `scripts/builder-agent-runner.sh`
+- Modify: `scripts/builder-digest.mjs`
 - Modify: `skills/builder-blog-digest/jobs/library-discovery.md`
 - Modify: `skills/builder-blog-digest/jobs/_fetch-task-discovery.md`
 - Test: `tests/cloud-source-cli-contract.test.ts`
 
-- [ ] **Step 1: Add `normalize_library_fetch_batch`**
+- [x] **Step 1: Add `normalize_library_fetch_batch`**
 
 Implement a shell helper accepting a fetch-result path and artifact scope. It
 must:
@@ -79,7 +81,11 @@ An agent-process failure is logged but does not fail the persistent host after
 successful expansion; unresolved entries become existing failed outcomes.
 Expansion or postcondition failure returns nonzero.
 
-- [ ] **Step 2: Route initial and refill batches through the helper**
+Ensure `candidateDiscoveryOutcome` retains `cloudRunId` and
+`cloudSourceTaskId` on its `plannedTask`; `sync_cloud_terminal_outcomes`
+requires those fields to attribute the failure to the leased source.
+
+- [x] **Step 2: Route initial and refill batches through the helper**
 
 Replace the inline initial discovery block with:
 
@@ -98,7 +104,7 @@ after obtaining/heartbeating the refill run ID and before
 batch exhausts the current refill window and syncs its outcomes. Preserve the
 existing replacement rule when accumulated executable task count is zero.
 
-- [ ] **Step 3: Make prompt paths explicit**
+- [x] **Step 3: Make prompt paths explicit**
 
 In `library-discovery.md`, derive:
 
@@ -111,12 +117,12 @@ Read and write those paths. Update `_fetch-task-discovery.md` to name
 `$DISCOVERY_RESULT_FILE`. Update the OpenClaw wrapper to export the two concrete
 paths.
 
-- [ ] **Step 4: Preserve namespaced diagnostics**
+- [x] **Step 4: Preserve namespaced diagnostics**
 
 Include `"$JOB_TMP_DIR"/discovery/*.err`, `*.out`, and `*.json` in the existing
 debug/recovery collection globs.
 
-- [ ] **Step 5: Add helper failure/outcome tests**
+- [x] **Step 5: Add helper failure/outcome tests**
 
 Add shell contract cases for:
 
@@ -127,7 +133,7 @@ Add shell contract cases for:
 - invalid expansion or leftover fallback returning nonzero;
 - distinct initial/refill artifact paths.
 
-- [ ] **Step 6: Run focused tests and confirm GREEN**
+- [x] **Step 6: Run focused tests and confirm GREEN**
 
 Run:
 
@@ -142,7 +148,7 @@ Expected: PASS.
 **Files:**
 - Verify all modified files.
 
-- [ ] **Step 1: Run Product Hunt/discovery CLI tests**
+- [x] **Step 1: Run Product Hunt/discovery CLI tests**
 
 ```bash
 npx tsx --test --test-name-pattern="Product Hunt|candidate discovery" tests/builder-digest-cli.test.ts
@@ -150,7 +156,7 @@ npx tsx --test --test-name-pattern="Product Hunt|candidate discovery" tests/buil
 
 Expected: PASS.
 
-- [ ] **Step 2: Run the full cloud runner contract**
+- [x] **Step 2: Run the full cloud runner contract**
 
 ```bash
 npx tsx --test tests/cloud-source-cli-contract.test.ts
@@ -158,7 +164,7 @@ npx tsx --test tests/cloud-source-cli-contract.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 3: Run static validation**
+- [x] **Step 3: Run static validation**
 
 ```bash
 sh -n scripts/builder-agent-runner.sh
@@ -168,9 +174,8 @@ git diff --check
 
 Expected: all commands exit 0.
 
-- [ ] **Step 4: Review the final diff**
+- [x] **Step 4: Review the final diff**
 
 Confirm the diff changes only the approved runner normalization, discovery
 prompt path contract, tests, and documentation. Confirm no unrelated worktree
 files are staged.
-

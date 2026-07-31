@@ -1505,7 +1505,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /export BUILDER_BLOG_SHARD_FILE=\$\(shell_quote "\$_ocp_shard_file"\)/);
   assert.match(runner, /export BUILDER_BLOG_SHARD_TIMEOUT_SECONDS=\$\(shell_quote "\$_ocp_timeout_seconds"\)/);
   assert.match(runner, /PROMPT_FILE="\$\(openclaw_worker_prompt_file "\$_slw_shard_name"/);
-  assert.match(runner, /PROMPT_FILE="\$\(openclaw_discovery_prompt_file "\$_result_file"/);
+  assert.match(
+    runner,
+    /PROMPT_FILE="\$\(openclaw_discovery_prompt_file "\$_nlfb_file" "\$_nlfb_result"\)/,
+  );
   assert.match(
     runner,
     /_digest_base_prompt="\$\(digest_agent_prompt_file "\$_digest_original_prompt" "\$_context_file" "\$_agent_output_file" "\$_item_count"/,
@@ -1587,7 +1590,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /run_library_job/);
   assert.match(runner, /library-once\|library-cron\)[\s\S]*run_library_job/);
   assert.doesNotMatch(runner, /MAX_PARALLEL_WORKERS" -ge 2[\s\S]*run_sharded_library/);
-  assert.match(runner, /followbrief-%s-%s-%s-discovery/);
+  assert.match(runner, /followbrief-%s-%s-%s-%s-discovery/);
   assert.match(runner, /OPENCLAW_SESSION_ID="\$\(printf 'followbrief-%s-%s-%s-%s'/);
   assert.match(cli, /if \(envAccount\)/);
   assert.match(cli, /if \(envToken\)/);

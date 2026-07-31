@@ -16,12 +16,12 @@ Fetch task boundary:
   `task.discoveryInstructions.prompt` and writing a strict JSON payload to:
 
 ```text
-$TMP_DIR/library-discovery-result.json
+$DISCOVERY_RESULT_FILE
 ```
 
   Shape:
   `{ candidateDiscoveries: [{ fetchTaskId, status, candidates?, reason?, evidence? }] }`.
   For `status="ok"`, include only verified candidates returned by the discovery
   prompt. For blocked/failed discovery, include `reason` and concrete
-  `evidence`. Stop after writing `library-discovery-result.json`; the runner
-  expands discovery results into normal post tasks before workers start.
+  `evidence`. Stop after writing `$DISCOVERY_RESULT_FILE`; the runner expands
+  discovery results into normal post tasks before workers start.

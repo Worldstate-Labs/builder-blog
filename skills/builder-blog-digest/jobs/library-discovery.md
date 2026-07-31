@@ -28,12 +28,16 @@ NODE
 }
 ACCOUNT_SLUG="$(account_slug "${BUILDER_BLOG_ACCOUNT:-default}")"
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron}"
-cat "$TMP_DIR/library-fetch-result.json"
+DISCOVERY_TASKS_FILE="${BUILDER_BLOG_DISCOVERY_TASKS_FILE:-$TMP_DIR/library-fetch-result.json}"
+DISCOVERY_RESULT_FILE="${BUILDER_BLOG_DISCOVERY_RESULT_FILE:-$TMP_DIR/library-discovery-result.json}"
+cat "$DISCOVERY_TASKS_FILE"
 ```
 
 2. Complete the discovery entries exactly as specified below.
 
 {{INCLUDE:fetch-task-discovery TMP_JOB="library-cron"}}
 
-3. Print one final JSON line and stop:
+3. Write the discovery payload to `$DISCOVERY_RESULT_FILE`.
+
+4. Print one final JSON line and stop:
 `{"discoveryDone": true}`.

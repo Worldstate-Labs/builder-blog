@@ -503,7 +503,7 @@ test("cloud library runner emits bounded summaries instead of full fetch and ass
 
   assert.match(runner, /print_compact_json_artifact_summary\(\)/);
   assert.match(runner, /print_compact_json_artifact_summary "fetch_sources" "\$_result_file"/);
-  assert.match(runner, /print_compact_json_artifact_summary "expand_discovery" "\$_result_file"/);
+  assert.match(runner, /print_compact_json_artifact_summary "expand_discovery" "\$_nlfb_file"/);
   assert.match(
     runner,
     /phase=assign_fetch_tasks status=%s round=%s assignedWorkers=%s pendingWork=%s artifact=%s\\n/,
@@ -1158,7 +1158,7 @@ grep '^cleanup|killed|runner_interrupted$' "${logPath}" >/dev/null || exit 24
   }
 });
 
-test("cloud library runner syncs planned-only zero-task outcomes once before returning no_update", async () => {
+test("cloud library runner syncs discovery-failed zero-task outcomes once before returning no_update", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
   const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
@@ -1202,6 +1202,7 @@ cloud_run_id_from_result() { printf 'cloud_run_1\\n'; }
 append_cloud_run_id() { :; }
 cloud_fetch_heartbeat() { :; }
 library_has_discovery_tasks() { return 1; }
+normalize_library_fetch_batch() { _discovery_failed=1; }
 library_fetch_task_count() { printf '0\\n'; }
 patch_current_fetch_plans() { printf 'patch\\n' >> "$UPDATES_LOG"; }
 reset_cloud_refill_window() { :; }
@@ -1462,6 +1463,234 @@ _cloud_refill_exhausted=0
 fetch_more_cloud_sources
 command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if((payload.taskOutcomes||[]).length!==0) process.exit(61); if((payload.fetchTasks||[]).length!==1) process.exit(62); if(payload.fetchTasks[0].id!=="ready_task") process.exit(63);' "${resultFile}"
 [ "$(grep -c . "${syncLog}")" = "1" ] || exit 52
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud discovery-only refill normalizes before counting and replaces stale zero-task state", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf("\npatch_current_fetch_plans() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-refill-discovery-"));
+  try {
+    const resultFile = join(dir, "cloud-fetch-result.json");
+    const normalizeLog = join(dir, "normalize.log");
+    const fakeNode = join(dir, "fake-node.sh");
+    await writeFile(
+      resultFile,
+      JSON.stringify({
+        cloudRunId: "cloud_run_initial",
+        fetchTasks: [],
+        taskOutcomes: [{ fetchTaskId: "already_synced", status: "failed" }],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      fakeNode,
+      `#!/bin/sh
+set -eu
+command="$2"
+case "$command" in
+  fetch-cloud-library)
+    printf '%s\\n' '{"cloudRunId":"cloud_run_refill","fetchTasks":[{"id":"candidate_discovery:product_hunt","agentWorkType":"candidate_discovery_fallback","cloudRunId":"cloud_run_refill","cloudSourceTaskId":"source_product_hunt"}],"taskOutcomes":[]}'
+    ;;
+  merge-fetch-results|sync-cloud-builders)
+    echo "unexpected command: $command" >&2
+    exit 41
+    ;;
+  *)
+    echo "unexpected command: $command" >&2
+    exit 42
+    ;;
+esac
+`,
+      "utf8",
+    );
+    await execFileAsync("chmod", ["+x", fakeNode]);
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+job_run_update() { :; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+append_cloud_run_id() { :; }
+cloud_fetch_heartbeat() { :; }
+cloud_run_id_from_result() {
+  command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(payload.cloudRunId||""));' "$1"
+  printf '\\n'
+}
+library_fetch_task_count() {
+  command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const tasks=Array.isArray(payload.fetchTasks)?payload.fetchTasks:[];process.stdout.write(String(tasks.filter((task)=>task.agentWorkType!=="candidate_discovery_fallback").length));' "$1"
+  printf '\\n'
+}
+normalize_library_fetch_batch() {
+  printf '%s|%s\\n' "$1" "$2" >> "${normalizeLog}"
+  command node -e 'const fs=require("fs");const file=process.argv[1];const payload=JSON.parse(fs.readFileSync(file,"utf8"));payload.fetchTasks=[{id:"ready_product_hunt",cloudRunId:payload.cloudRunId,cloudSourceTaskId:"source_product_hunt"}];fs.writeFileSync(file,JSON.stringify(payload));' "$1"
+}
+sync_cloud_terminal_outcomes() { echo "unexpected terminal sync" >&2; return 43; }
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+_sync_command=sync-cloud-builders
+_cloud_refill_exhausted=0
+_cloud_refill_count=0
+_cloud_refill_limit=10
+_cloud_refill_stop_at=9999999999
+_dynamic_queue_drained=1
+_result_file="${resultFile}"
+PATH="${dir}:$PATH"
+node() { "${fakeNode}" "$@"; }
+fetch_more_cloud_sources
+grep -F "${dir}/cloud-fetch-refill-1.json|refill-1" "${normalizeLog}" >/dev/null
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if((payload.taskOutcomes||[]).length!==0) process.exit(61);if(payload.fetchTasks?.[0]?.id!=="ready_product_hunt") process.exit(62);' "${resultFile}"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("discovery pre-pass uses explicit batch input and output paths", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const prompt = await readFile("skills/builder-blog-digest/jobs/library-discovery.md", "utf8");
+  const discoveryContract = await readFile(
+    "skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
+    "utf8",
+  );
+
+  assert.match(runner, /BUILDER_BLOG_DISCOVERY_TASKS_FILE/);
+  assert.match(runner, /BUILDER_BLOG_DISCOVERY_RESULT_FILE/);
+  assert.match(
+    shellFunction(runner, "openclaw_discovery_prompt_file"),
+    /export BUILDER_BLOG_DISCOVERY_TASKS_FILE=/,
+  );
+  assert.match(
+    shellFunction(runner, "openclaw_discovery_prompt_file"),
+    /export BUILDER_BLOG_DISCOVERY_RESULT_FILE=/,
+  );
+  assert.match(prompt, /BUILDER_BLOG_DISCOVERY_TASKS_FILE/);
+  assert.match(prompt, /BUILDER_BLOG_DISCOVERY_RESULT_FILE/);
+  assert.match(discoveryContract, /\$DISCOVERY_RESULT_FILE/);
+});
+
+test("batch discovery normalization settles blocked fallbacks with scoped artifacts", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const normalizeBatch = shellFunction(runner, "normalize_library_fetch_batch");
+  const hasDiscovery = shellFunction(runner, "library_has_discovery_tasks");
+  const dir = await mkdtemp(join(tmpdir(), "fb-normalize-discovery-batch-"));
+  try {
+    const tasksFile = join(dir, "cloud-fetch-refill-4.json");
+    const failedTasksFile = join(dir, "cloud-fetch-refill-5.json");
+    const expansionFailedTasksFile = join(dir, "cloud-fetch-refill-6.json");
+    const validResultAfterRuntimeFailureTasksFile = join(dir, "cloud-fetch-refill-7.json");
+    const envLog = join(dir, "discovery-env.log");
+    const discoveryFetchResult = {
+        status: "ok",
+        cloudRunId: "cloud_run_refill",
+        fetchTasks: [
+          {
+            id: "ready_existing",
+            agentWorkType: "fetch_post",
+            cloudRunId: "cloud_run_refill",
+            cloudSourceTaskId: "source_existing",
+          },
+          {
+            id: "candidate_discovery:product_hunt",
+            type: "candidate_discovery",
+            agentWorkType: "candidate_discovery_fallback",
+            builder: "Product Hunt Top Products",
+            builderId: "builder_product_hunt",
+            sourceType: "product_hunt_top_products",
+            cloudRunId: "cloud_run_refill",
+            cloudSourceTaskId: "source_product_hunt",
+            builderSync: {
+              builderId: "builder_product_hunt",
+              sourceType: "product_hunt_top_products",
+              cloudRunId: "cloud_run_refill",
+              cloudSourceTaskId: "source_product_hunt",
+            },
+            discovery: { sourceUrl: "https://www.producthunt.com/", limit: 5 },
+          },
+        ],
+        taskOutcomes: [],
+      };
+    await writeFile(tasksFile, JSON.stringify(discoveryFetchResult), "utf8");
+    await writeFile(failedTasksFile, JSON.stringify(discoveryFetchResult), "utf8");
+    await writeFile(expansionFailedTasksFile, JSON.stringify(discoveryFetchResult), "utf8");
+    await writeFile(
+      validResultAfterRuntimeFailureTasksFile,
+      JSON.stringify(discoveryFetchResult),
+      "utf8",
+    );
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${hasDiscovery}
+${normalizeBatch}
+job_run_update() { :; }
+print_compact_json_artifact_summary() { :; }
+run_selected_runtime() {
+  printf '%s|%s\\n' "$BUILDER_BLOG_DISCOVERY_TASKS_FILE" "$BUILDER_BLOG_DISCOVERY_RESULT_FILE" > "${envLog}"
+  if [ "$TEST_DISCOVERY_MODE" = "failed" ]; then
+    return 19
+  fi
+  cat > "$BUILDER_BLOG_DISCOVERY_RESULT_FILE" <<'JSON'
+{"candidateDiscoveries":[{"fetchTaskId":"candidate_discovery:product_hunt","status":"blocked","reason":"product_hunt_discovery_blocked","evidence":{"blocker":"Cloudflare challenge"}}]}
+JSON
+  if [ "$TEST_DISCOVERY_MODE" = "writes_then_fails" ]; then
+    return 19
+  fi
+}
+AGENT_DIR="${join(process.cwd(), "scripts")}"
+JOB_TMP_DIR="${dir}"
+PINNED_RUNTIME=codex
+ACCOUNT_SLUG=test-account
+JOB_NAME=cloud-library-cron
+BUILDER_BLOG_ACCOUNT=test@example.com
+_discovery_failed=0
+TEST_DISCOVERY_MODE=blocked
+export TEST_DISCOVERY_MODE
+normalize_library_fetch_batch "${tasksFile}" "refill-4"
+grep -F "${tasksFile}|${dir}/discovery/refill-4-result.json" "${envLog}" >/dev/null
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(payload.fetchTasks?.length!==1||payload.fetchTasks[0]?.id!=="ready_existing") process.exit(61);if(payload.taskOutcomes?.[0]?.status!=="blocked") process.exit(62);if(payload.taskOutcomes?.[0]?.plannedTask?.cloudSourceTaskId!=="source_product_hunt") process.exit(63);' "${tasksFile}"
+TEST_DISCOVERY_MODE=failed
+normalize_library_fetch_batch "${failedTasksFile}" "refill-5"
+[ "$_discovery_failed" -eq 1 ] || exit 64
+grep -F "${failedTasksFile}|${dir}/discovery/refill-5-result.json" "${envLog}" >/dev/null
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(payload.fetchTasks?.length!==1||payload.fetchTasks[0]?.id!=="ready_existing") process.exit(65);if(payload.taskOutcomes?.[0]?.status!=="failed") process.exit(66);if(payload.taskOutcomes?.[0]?.reason!=="candidate_discovery_result_missing") process.exit(67);if(payload.taskOutcomes?.[0]?.plannedTask?.cloudSourceTaskId!=="source_product_hunt") process.exit(68);' "${failedTasksFile}"
+TEST_DISCOVERY_MODE=blocked
+TEST_EXPANSION_MODE=failed
+export TEST_EXPANSION_MODE
+node() {
+  if [ "$TEST_EXPANSION_MODE" = "failed" ] && [ "$1" = "$AGENT_DIR/builder-digest.mjs" ]; then
+    return 23
+  fi
+  command node "$@"
+}
+set +e
+normalize_library_fetch_batch "${expansionFailedTasksFile}" "refill-6"
+normalization_code="$?"
+set -e
+[ "$normalization_code" -eq 23 ] || exit 69
+TEST_EXPANSION_MODE=ok
+TEST_DISCOVERY_MODE=writes_then_fails
+_discovery_failed=0
+normalize_library_fetch_batch "${validResultAfterRuntimeFailureTasksFile}" "refill-7"
+[ "$_discovery_failed" -eq 0 ] || exit 70
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(payload.taskOutcomes?.[0]?.status!=="blocked") process.exit(71);if(payload.taskOutcomes?.[0]?.reason!=="product_hunt_discovery_blocked") process.exit(72);' "${validResultAfterRuntimeFailureTasksFile}"
 `,
       "utf8",
     );

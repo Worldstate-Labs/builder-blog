@@ -325,6 +325,8 @@ block that reads or writes FollowBrief files:
 export BUILDER_BLOG_AGENT_DIR=$(shell_quote "$AGENT_DIR")
 export BUILDER_BLOG_ACCOUNT=$(shell_quote "${BUILDER_BLOG_ACCOUNT:-default}")
 export BUILDER_BLOG_JOB_TMP_DIR=$(shell_quote "$JOB_TMP_DIR")
+export BUILDER_BLOG_DISCOVERY_TASKS_FILE=$(shell_quote "$_ocp_fetch_result")
+export BUILDER_BLOG_DISCOVERY_RESULT_FILE=$(shell_quote "$_ocp_discovery_result")
 \`\`\`
 
 Original task instructions:
@@ -1706,7 +1708,9 @@ NODE
     "$JOB_TMP_DIR"/library-expand-discovery.err \
     "$JOB_TMP_DIR"/digest-prepare.err \
     "$JOB_TMP_DIR"/digest-render.err \
-    "$JOB_TMP_DIR"/digest-sync.err
+    "$JOB_TMP_DIR"/digest-sync.err \
+    "$JOB_TMP_DIR"/discovery/*.err \
+    "$JOB_TMP_DIR"/discovery/*.out
   do
     [ -e "$_debug_source" ] || continue
     copy_tail_file "$_debug_source" "$_debug_dir/errors/$(basename "$_debug_source")"
@@ -1716,6 +1720,7 @@ NODE
     "$JOB_TMP_DIR"/library-fetch-result.json \
     "$JOB_TMP_DIR"/library-fetch-expanded.json \
     "$JOB_TMP_DIR"/library-discovery-result.json \
+    "$JOB_TMP_DIR"/discovery/*.json \
     "$JOB_TMP_DIR"/completed-checkpoint-synced-task-ids.txt \
     "$JOB_TMP_DIR"/assigned-fetch-task-ids.txt \
     "$JOB_TMP_DIR"/active-fetch-group-keys.txt \
@@ -3593,6 +3598,104 @@ process.exit(tasks.some((task) => task && task.agentWorkType === "candidate_disc
 NODE
 }
 
+normalize_library_fetch_batch() {
+  _nlfb_file="${1:-}"
+  _nlfb_scope="${2:-batch}"
+  [ -n "$_nlfb_file" ] || return 64
+  if ! library_has_discovery_tasks "$_nlfb_file"; then
+    return 0
+  fi
+
+  _nlfb_safe_scope="$(printf '%s' "$_nlfb_scope" | tr -c 'a-zA-Z0-9_.-' '_')"
+  _nlfb_dir="$JOB_TMP_DIR/discovery"
+  _nlfb_result="$_nlfb_dir/$_nlfb_safe_scope-result.json"
+  _nlfb_expanded="$_nlfb_dir/$_nlfb_safe_scope-expanded.json"
+  _nlfb_agent_out="$_nlfb_dir/$_nlfb_safe_scope-agent.out"
+  _nlfb_agent_err="$_nlfb_dir/$_nlfb_safe_scope-agent.err"
+  _nlfb_expand_out="$_nlfb_dir/$_nlfb_safe_scope-expand.out"
+  _nlfb_expand_err="$_nlfb_dir/$_nlfb_safe_scope-expand.err"
+  mkdir -p "$_nlfb_dir"
+  rm -f "$_nlfb_result" "$_nlfb_expanded" "$_nlfb_agent_out" "$_nlfb_agent_err" "$_nlfb_expand_out" "$_nlfb_expand_err"
+
+  echo "Discovery entries present in $_nlfb_scope; running the discovery agent pre-pass."
+  job_run_update running "Expanding source candidate discovery for $_nlfb_scope." "discovery_started" \
+    --stage "expand_discovery"
+
+  if (
+    if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+      OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s-discovery' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_nlfb_safe_scope" | tr -c 'a-zA-Z0-9_.@+-' '_')"
+      export OPENCLAW_SESSION_ID
+    fi
+    BUILDER_BLOG_DISCOVERY_TASKS_FILE="$_nlfb_file"
+    BUILDER_BLOG_DISCOVERY_RESULT_FILE="$_nlfb_result"
+    BUILDER_BLOG_LIBRARY_AGENT_STAGE=discovery
+    export BUILDER_BLOG_DISCOVERY_TASKS_FILE BUILDER_BLOG_DISCOVERY_RESULT_FILE BUILDER_BLOG_LIBRARY_AGENT_STAGE
+    PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
+    if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+      PROMPT_FILE="$(openclaw_discovery_prompt_file "$_nlfb_file" "$_nlfb_result")"
+    fi
+    IS_CRON_JOB=1
+    run_selected_runtime
+  ) > "$_nlfb_agent_out" 2> "$_nlfb_agent_err"; then
+    _nlfb_agent_code=0
+  else
+    _nlfb_agent_code="$?"
+  fi
+  [ ! -s "$_nlfb_agent_err" ] || cat "$_nlfb_agent_err" >&2
+
+  if [ "$_nlfb_agent_code" -ne 0 ]; then
+    job_run_update running "Discovery agent exited nonzero; validating any result it produced." "discovery_agent_exited" \
+      --stage "expand_discovery" \
+      --exit-code "$_nlfb_agent_code"
+  fi
+  _nlfb_result_valid=0
+  if node - "$_nlfb_result" <<'NODE' >/dev/null 2>&1
+const fs = require("fs");
+try {
+  const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  process.exit(Array.isArray(payload?.candidateDiscoveries) ? 0 : 1);
+} catch {
+  process.exit(1);
+}
+NODE
+  then
+    _nlfb_result_valid=1
+  fi
+  if [ "$_nlfb_result_valid" -ne 1 ]; then
+    _discovery_failed=1
+    printf '%s\n' '{"candidateDiscoveries":[]}' > "$_nlfb_result"
+    job_run_update running "Discovery agent did not produce a valid result; settling fallback tasks as failed." "discovery_agent_failed" \
+      --stage "expand_discovery" \
+      --exit-code "$_nlfb_agent_code"
+  fi
+
+  if BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT:-}" \
+    node "$AGENT_DIR/builder-digest.mjs" expand-discovery \
+      --tasks "$_nlfb_file" \
+      --file "$_nlfb_result" \
+      --out "$_nlfb_expanded" > "$_nlfb_expand_out" 2> "$_nlfb_expand_err"; then
+    _nlfb_expand_code=0
+  else
+    _nlfb_expand_code="$?"
+  fi
+  [ ! -s "$_nlfb_expand_err" ] || cat "$_nlfb_expand_err" >&2
+  if [ "$_nlfb_expand_code" -ne 0 ]; then
+    job_run_update failed "Discovery expansion failed for $_nlfb_scope." "discovery_expand_failed" \
+      --stage "expand_discovery" \
+      --exit-code "$_nlfb_expand_code"
+    return "$_nlfb_expand_code"
+  fi
+
+  mv "$_nlfb_expanded" "$_nlfb_file"
+  if library_has_discovery_tasks "$_nlfb_file"; then
+    echo "Discovery normalization left fallback tasks in $_nlfb_scope." >&2
+    job_run_update failed "Discovery normalization left unresolved fallback tasks in $_nlfb_scope." "discovery_normalization_incomplete" \
+      --stage "expand_discovery"
+    return 65
+  fi
+  print_compact_json_artifact_summary "expand_discovery" "$_nlfb_file"
+}
+
 run_openclaw_library_preflight() {
   [ "$PINNED_RUNTIME" = "openclaw" ] || return 0
 
@@ -4354,9 +4457,20 @@ fetch_more_cloud_sources() {
     return 0
   fi
   cat "$_fmcs_file"
+  _fmcs_run_id="$(cloud_run_id_from_result "$_fmcs_file")"
+  append_cloud_run_id "$_fmcs_run_id"
+  cloud_fetch_heartbeat "$_fmcs_run_id"
+  if normalize_library_fetch_batch "$_fmcs_file" "refill-$_cloud_refill_count"; then
+    _fmcs_normalize_code=0
+  else
+    _fmcs_normalize_code="$?"
+  fi
+  if [ "$_fmcs_normalize_code" -ne 0 ]; then
+    _cloud_refill_exhausted=1
+    return "$_fmcs_normalize_code"
+  fi
   _fmcs_task_count="$(library_fetch_task_count "$_fmcs_file")" || _fmcs_task_count=0
   case "$_fmcs_task_count" in ''|*[!0-9]*) _fmcs_task_count=0 ;; esac
-  _fmcs_run_id="$(cloud_run_id_from_result "$_fmcs_file")"
   if [ "$_fmcs_task_count" -eq 0 ]; then
     if sync_cloud_terminal_outcomes "$_fmcs_file" "$_fmcs_run_id"; then
       :
@@ -4372,8 +4486,6 @@ fetch_more_cloud_sources() {
     _cloud_refill_exhausted=1
     return 0
   fi
-  append_cloud_run_id "$_fmcs_run_id"
-  cloud_fetch_heartbeat "$_fmcs_run_id"
   _existing_task_count="$(library_fetch_task_count "$_result_file")" || _existing_task_count=0
   case "$_existing_task_count" in ''|*[!0-9]*) _existing_task_count=0 ;; esac
   if [ "$_existing_task_count" -eq 0 ]; then
@@ -4721,49 +4833,13 @@ run_library_job() {
   fi
   export SYNC_BUILDERS_COMMAND SYNC_BUILDERS_EXTRA_ARGS SYNC_PAYLOAD_SLICE_GRANULARITY
 
-  if library_has_discovery_tasks "$_result_file"; then
-    echo "Discovery entries present; running the discovery agent pre-pass."
-    job_run_update running "Expanding source candidate discovery." "discovery_started" --stage "expand_discovery"
-    if ! ( if [ "$PINNED_RUNTIME" = "openclaw" ]; then
-             OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-discovery' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" | tr -c 'a-zA-Z0-9_.@+-' '_')"
-             export OPENCLAW_SESSION_ID
-           fi
-           PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
-           if [ "$PINNED_RUNTIME" = "openclaw" ]; then
-             PROMPT_FILE="$(openclaw_discovery_prompt_file "$_result_file" "$JOB_TMP_DIR/library-discovery-result.json")"
-           fi
-           BUILDER_BLOG_LIBRARY_AGENT_STAGE=discovery
-           export BUILDER_BLOG_LIBRARY_AGENT_STAGE
-           IS_CRON_JOB=1
-           run_selected_runtime ); then
-      echo "Discovery pre-pass failed; un-expanded discovery entries will be left out of post-task sync." >&2
-      _discovery_failed=1
-      job_run_update running "Discovery pre-pass failed; continuing with expanded post tasks available so far." "discovery_agent_failed" \
-        --stage "expand_discovery"
-    else
-      _discovery_result_file="$JOB_TMP_DIR/library-discovery-result.json"
-      _expanded_result_file="$JOB_TMP_DIR/library-fetch-expanded.json"
-      _expand_stderr="$JOB_TMP_DIR/library-expand-discovery.err"
-      set +e
-      BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT:-}" \
-      node "$AGENT_DIR/builder-digest.mjs" expand-discovery \
-        --tasks "$_result_file" \
-        --file "$_discovery_result_file" \
-        --out "$_expanded_result_file" > "$JOB_TMP_DIR/library-expand-discovery.out" 2> "$_expand_stderr"
-      _expand_code="$?"
-      set -e
-      [ ! -s "$_expand_stderr" ] || cat "$_expand_stderr" >&2
-      if [ "$_expand_code" -eq 0 ]; then
-        mv "$_expanded_result_file" "$_result_file"
-        print_compact_json_artifact_summary "expand_discovery" "$_result_file"
-      else
-        echo "Discovery expansion failed; un-expanded discovery entries will be left out of post-task sync." >&2
-        _discovery_failed=1
-        job_run_update running "Discovery expansion failed; continuing with original fetch result." "discovery_expand_failed" \
-          --stage "expand_discovery" \
-          --exit-code "$_expand_code"
-      fi
-    fi
+  if normalize_library_fetch_batch "$_result_file" "initial"; then
+    _normalize_code=0
+  else
+    _normalize_code="$?"
+  fi
+  if [ "$_normalize_code" -ne 0 ]; then
+    return "$_normalize_code"
   fi
 
   _task_count="$(library_fetch_task_count "$_result_file")" || {
@@ -4775,7 +4851,7 @@ run_library_job() {
   }
 
   if [ "$_task_count" -eq 0 ]; then
-    if [ "$_discovery_failed" -ne 0 ]; then
+    if [ "$_discovery_failed" -ne 0 ] && [ "$_sync_command" != "sync-cloud-builders" ]; then
       echo "Discovery failed before any post tasks could be planned." >&2
       job_run_update failed "Discovery failed before any post tasks could be planned." "discovery_failed" \
         --stage "expand_discovery"

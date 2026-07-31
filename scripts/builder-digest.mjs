@@ -4804,6 +4804,10 @@ export function expandCandidateDiscoveryFetchResult(
 
 function candidateDiscoveryOutcome(task, discoveryResult, { fallbackReason } = {}) {
   const status = discoveryResult?.status === "blocked" ? "blocked" : "failed";
+  const cloudRunId = String(task?.cloudRunId || task?.builderSync?.cloudRunId || "").trim();
+  const cloudSourceTaskId = String(
+    task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "",
+  ).trim();
   return {
     fetchTaskId: String(task?.id || candidateDiscoveryTaskId(task)),
     status,
@@ -4811,7 +4815,11 @@ function candidateDiscoveryOutcome(task, discoveryResult, { fallbackReason } = {
     ...(discoveryResult?.evidence && typeof discoveryResult.evidence === "object"
       ? { evidence: discoveryResult.evidence }
       : {}),
-    plannedTask: fetchTaskLogPatch(task, String(task?.id || candidateDiscoveryTaskId(task))),
+    plannedTask: {
+      ...fetchTaskLogPatch(task, String(task?.id || candidateDiscoveryTaskId(task))),
+      ...(cloudRunId ? { cloudRunId } : {}),
+      ...(cloudSourceTaskId ? { cloudSourceTaskId } : {}),
+    },
   };
 }
 
