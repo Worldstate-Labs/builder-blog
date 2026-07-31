@@ -156,4 +156,3 @@ Regression tests must cover:
 7. partial and final sync emit the correct progress stage;
 8. the full unit suite, lint, typecheck/build, and runtime trace verification
    remain green.
-
