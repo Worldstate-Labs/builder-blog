@@ -275,8 +275,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "stopped", updated: stopped.count });
   }
 
-  const rawTimeZone = request.headers.get("x-machine-time-zone") ?? parsed.data.timeZone ?? null;
-  const validTimeZone = normalizeTimeZone(rawTimeZone);
+  const headerTimeZone = normalizeTimeZone(request.headers.get("x-machine-time-zone"));
+  const bodyTimeZone = normalizeTimeZone(parsed.data.timeZone);
+  const validTimeZone = headerTimeZone ?? bodyTimeZone;
   const current = await findCronJob(user.id, parsed.data.job);
   const frequencyKey = parsed.data.frequencyKey ?? "";
   const frequency = Object.prototype.hasOwnProperty.call(cronFrequencies, frequencyKey)

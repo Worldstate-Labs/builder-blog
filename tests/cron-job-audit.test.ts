@@ -64,8 +64,10 @@ test("cron scheduler status changes leave local and server audit events", () => 
 
   assert.match(cronJobsRoute, /recordCronJobStatusEvent/);
   assert.match(cronJobsRoute, /timeZone: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
-  assert.match(cronJobsRoute, /const rawTimeZone = request\.headers\.get\("x-machine-time-zone"\) \?\? parsed\.data\.timeZone \?\? null/);
   assert.match(cronJobsRoute, /function normalizeTimeZone\(value: string \| null \| undefined\)/);
+  assert.match(cronJobsRoute, /const headerTimeZone = normalizeTimeZone\(request\.headers\.get\("x-machine-time-zone"\)\)/);
+  assert.match(cronJobsRoute, /const bodyTimeZone = normalizeTimeZone\(parsed\.data\.timeZone\)/);
+  assert.match(cronJobsRoute, /const validTimeZone = headerTimeZone \?\? bodyTimeZone/);
   assert.match(cronJobsRoute, /Intl\.DateTimeFormat\("en-US", \{ timeZone \}\)/);
   assert.match(cronJobsRoute, /timeZone: validTimeZone \?\? current\.timeZone \?\? null/);
   assert.match(cronJobsRoute, /timeZone: validTimeZone,/);
