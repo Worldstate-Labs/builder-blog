@@ -10851,6 +10851,21 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceT
       .filter((outcome) => outcome?.fetchTaskId)
       .map((outcome) => [String(outcome.fetchTaskId), outcome]),
   );
+  const discoveryFailureBySourceTaskId = new Map();
+  for (const outcome of Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []) {
+    if (!isCandidateDiscoveryOutcome(outcome)) continue;
+    const status = String(outcome?.status || "").trim().toLowerCase();
+    if (status !== "failed" && status !== "blocked" && status !== "action_needed") continue;
+    const task = outcome?.plannedTask;
+    const cloudSourceTaskId = String(
+      task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "",
+    ).trim();
+    if (!cloudSourceTaskId || discoveryFailureBySourceTaskId.has(cloudSourceTaskId)) continue;
+    discoveryFailureBySourceTaskId.set(cloudSourceTaskId, {
+      status,
+      reason: String(outcome?.reason || status || "candidate_discovery_failed").slice(0, 400),
+    });
+  }
   const workerUsages = Array.isArray(payload?.workerUsages) ? payload.workerUsages : [];
   const grouped = new Map();
   for (const sourceTask of Array.isArray(cloudSourceTasks) ? cloudSourceTasks : []) {
@@ -10872,6 +10887,12 @@ function buildCloudSyncTaskResults(plannedTasks = [], payload = {}, cloudSourceT
         ...(sourceTask?.sourceType ? { sourceType: sourceTask.sourceType } : {}),
       },
     });
+  }
+  for (const [cloudSourceTaskId, failure] of discoveryFailureBySourceTaskId) {
+    const group = grouped.get(cloudSourceTaskId);
+    if (!group) continue;
+    group.failureReason = failure.reason;
+    group.details.discoveryFailure = failure;
   }
   for (const task of plannedTasks) {
     if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
@@ -10959,7 +10980,10 @@ function summarizeCloudSyncSourceGroup(group) {
     failedFromPosts + Math.max(0, rawFailedPosts - failedFromPosts - skippedPosts),
   );
   const pendingPosts = Math.max(0, plannedPosts - syncedPosts - skippedPosts - failedPosts);
-  const status = failedPosts > 0
+  const sourceFailureReason = String(group?.failureReason || "").trim();
+  const status = plannedPosts === 0 && sourceFailureReason
+    ? "failed"
+    : failedPosts > 0
     ? syncedPosts === 0 && skippedPosts === 0 && failedPosts >= plannedPosts
       ? "failed"
       : "partial"
@@ -10972,8 +10996,8 @@ function summarizeCloudSyncSourceGroup(group) {
     syncedPosts,
     failedPosts,
     pendingPosts,
-    failureReason: failedPosts > 0
-      ? failedPostReasons[0] || String(group?.failureReason || "cloud_task_failed").trim()
+    failureReason: status === "failed" || status === "partial"
+      ? failedPostReasons[0] || sourceFailureReason || "cloud_task_failed"
       : null,
   };
 }
@@ -11036,10 +11060,14 @@ export function prepareCloudSyncPayloadForUpload(payload, cloudRunId, plannedTas
   const taskResults = Array.isArray(prepared.taskResults) && prepared.taskResults.length > 0
     ? prepared.taskResults
     : buildCloudSyncTaskResults(plannedTasks, prepared, scopedCloudSourceTasks);
+  const taskOutcomes = Array.isArray(prepared.taskOutcomes)
+    ? prepared.taskOutcomes.filter((outcome) => !isCandidateDiscoveryOutcome(outcome))
+    : prepared.taskOutcomes;
   return {
     ...prepared,
     cloudRunId: normalizedCloudRunId,
     taskResults,
+    ...(Array.isArray(taskOutcomes) ? { taskOutcomes } : {}),
   };
 }
 

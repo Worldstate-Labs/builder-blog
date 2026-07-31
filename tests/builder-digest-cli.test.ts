@@ -4657,6 +4657,73 @@ test("cloud sync task results include leased sources that generated no post task
   assert.equal(payload.taskResults[1].details.noGeneratedFetchTasks, true);
 });
 
+test("cloud sync settles failed candidate discovery at source level without uploading a post outcome", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const discoveryTask = {
+    id: "candidate_discovery:cloud_builder_1:product_hunt_top_products",
+    type: "candidate_discovery",
+    agentWorkType: "candidate_discovery_fallback",
+    cloudRunId: "cloud_run_1",
+    cloudSourceTaskId: "cloud_task_1",
+    builder: "Product Hunt Top Products",
+    builderId: "cloud_builder_1",
+    sourceType: "product_hunt_top_products",
+    builderSync: {
+      cloudSourceTaskId: "cloud_task_1",
+      builderId: "cloud_builder_1",
+      sourceType: "product_hunt_top_products",
+    },
+  };
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: discoveryTask.id,
+          status: "failed",
+          reason: "candidate_discovery_result_missing",
+          plannedTask: discoveryTask,
+        },
+      ],
+    },
+    "cloud_run_1",
+    [],
+    [
+      {
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_1",
+        builderId: "cloud_builder_1",
+        name: "Product Hunt Top Products",
+        sourceType: "product_hunt_top_products",
+        summaryLanguage: "zh-CN",
+      },
+    ],
+  );
+
+  assert.deepEqual(payload.taskOutcomes, []);
+  assert.equal(payload.taskResults.length, 1);
+  assert.deepEqual(
+    {
+      cloudSourceTaskId: payload.taskResults[0].cloudSourceTaskId,
+      status: payload.taskResults[0].status,
+      plannedPosts: payload.taskResults[0].plannedPosts,
+      syncedPosts: payload.taskResults[0].syncedPosts,
+      failedPosts: payload.taskResults[0].failedPosts,
+      failureReason: payload.taskResults[0].failureReason,
+    },
+    {
+      cloudSourceTaskId: "cloud_task_1",
+      status: "failed",
+      plannedPosts: 0,
+      syncedPosts: 0,
+      failedPosts: 0,
+      failureReason: "candidate_discovery_result_missing",
+    },
+  );
+  assert.equal(payload.taskResults[0].details.noGeneratedFetchTasks, true);
+  assert.equal(payload.taskResults[0].details.discoveryFailure.status, "failed");
+});
+
 test("cloud sync task results include planned-only failed outcomes and keep explicit planned tasks authoritative", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?planned-only-cloud-sync=${Date.now()}`);
   const mergedPlannedTasks = cli.mergePlannedTasksForCloudSyncForTest(
