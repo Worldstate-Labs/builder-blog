@@ -29,6 +29,25 @@ function activeCron(): DigestCronJobStatus {
   };
 }
 
+function zonedDailyCron(): DigestCronJobStatus {
+  return {
+    id: "cron_zoned_daily",
+    status: "active",
+    startedAt: "2026-07-30T05:25:09.000Z",
+    stoppedAt: null,
+    frequencyKey: "daily",
+    frequencyLabel: "every day at 10:25 PM",
+    schedule: "anchor:25 22 * * *",
+    intervalMinutes: 1440,
+    runtime: "codex",
+    timeZone: "America/Los_Angeles",
+    regenerateDigest: false,
+    hostname: "local",
+    platform: "darwin",
+    updatedAt: "2026-07-30T05:25:09.000Z",
+  };
+}
+
 function stoppedCron(): DigestCronJobStatus {
   return {
     ...activeCron(),
@@ -258,6 +277,27 @@ test("digest status control reports the latest active job instead of the waiting
 
   assert.equal(status.key, "building");
   assert.equal(status.label, "Running");
+});
+
+test("zoned daily digest status before the first real run shows only the future waiting slot", () => {
+  const result = buildDigestCronStatus(
+    zonedDailyCron(),
+    [],
+    [],
+    Date.parse("2026-07-31T02:27:00.000Z"),
+  );
+  const status = getDigestUpdateStatus(zonedDailyCron(), result.slots, []);
+
+  assert.equal(result.nextExpectedAt, "2026-07-31T05:25:00.000Z");
+  assert.deepEqual(
+    result.slots.map((slot) => ({
+      expectedAt: slot.expectedAt,
+      status: slot.status,
+    })),
+    [{ expectedAt: "2026-07-31T05:25:00.000Z", status: "waiting" }],
+  );
+  assert.equal(status.key, "waiting");
+  assert.equal(status.summary, "The schedule is active; no scheduled window has completed yet.");
 });
 
 test("digest status control reports the latest failed job instead of idle", () => {
