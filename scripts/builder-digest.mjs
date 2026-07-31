@@ -12465,13 +12465,15 @@ function getZonedCalendarSchedule(cronJob) {
   const timeZone = normalizeTimeZone(cronJob?.timeZone);
   if (!timeZone) return null;
   const parsed = parseCronSchedule(cronJob?.schedule);
+  if (!parsed) return null;
+  if (cronJob.frequencyKey === "weekly" && parsed.weekday === null) return null;
   return {
     frequencyKey: cronJob.frequencyKey,
     timeZone,
     target: {
-      minute: parsed?.minute ?? 0,
-      hour: parsed?.hour ?? 8,
-      weekday: cronJob.frequencyKey === "weekly" ? (parsed?.weekday ?? 1) : null,
+      minute: parsed.minute,
+      hour: parsed.hour,
+      weekday: cronJob.frequencyKey === "weekly" ? parsed.weekday : null,
     },
   };
 }

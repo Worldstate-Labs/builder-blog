@@ -5643,6 +5643,27 @@ test("relative schedule windows use explicit timezone metadata for daily and wee
   );
 });
 
+test("malformed daily timezone metadata falls back to legacy interval windows", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  const malformedDaily = {
+    frequencyKey: "daily",
+    intervalMinutes: 1440,
+    schedule: "anchor:not-a-cron",
+    startedAt: "2026-07-30T05:25:09.000Z",
+    platform: "darwin",
+    timeZone: "America/Los_Angeles",
+  };
+
+  assert.deepEqual(
+    cli.relativeWindowForTest(malformedDaily, new Date("2026-07-31T13:00:00.000Z")),
+    {
+      latestExpectedAt: "2026-07-31T05:25:09Z",
+      nextExpectedAt: "2026-08-01T05:25:09Z",
+    },
+  );
+});
+
 test("schedule-due matches the shared server daily, DST, and weekly fixtures", () => {
   const dailyNotDue = runScheduleDue([
     "--freq", "daily",
@@ -5697,6 +5718,20 @@ test("schedule-due matches the shared server daily, DST, and weekly fixtures", (
   ], { TZ: "UTC" });
   assert.equal(weeklyFirstRun.status, 0, weeklyFirstRun.stderr);
   assert.equal(weeklyFirstRun.stdout.trim(), "2026-08-05T15:00:00Z");
+});
+
+test("schedule-due falls back to legacy interval timing when daily schedule metadata is malformed", () => {
+  const malformedDaily = runScheduleDue([
+    "--freq", "daily",
+    "--interval-minutes", "1440",
+    "--anchor-at", "2026-07-30T05:25:09Z",
+    "--schedule", "anchor:not-a-cron",
+    "--time-zone", "America/Los_Angeles",
+    "--now", "2026-07-31T13:00:00Z",
+  ], { TZ: "UTC" });
+
+  assert.equal(malformedDaily.status, 0, malformedDaily.stderr);
+  assert.equal(malformedDaily.stdout.trim(), "2026-07-31T05:25:09Z");
 });
 
 test("sync-builders rejects empty builders when planned tasks are unaccounted", async () => {

@@ -708,6 +708,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /--time-zone "\$_schedule_time_zone"/);
   assert.match(runner, /builder-digest\.mjs" schedule-due/);
   assert.match(runner, /daily\|weekly/);
+  assert.match(
+    runner,
+    /if \[ -n "\$_schedule_value" \] && \[ -n "\$_schedule_time_zone" \]; then[\s\S]*schedule-due[\s\S]*return \$\?[\s\S]*fi[\s\S]*node - "\$_anchor_file" "\$_interval_seconds"/,
+  );
   assert.match(runner, /node - "\$_anchor_file" "\$_interval_seconds"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
