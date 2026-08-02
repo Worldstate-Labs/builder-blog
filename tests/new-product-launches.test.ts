@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   discoverNewProductLaunches,
@@ -12,6 +13,10 @@ const LOOKBACK_DAYS = 14;
 type DiscoveryResult = Awaited<ReturnType<typeof discoverNewProductLaunches>>;
 type Launch = DiscoveryResult["launches"][number];
 type DiscoveryFailure = DiscoveryResult["failures"][number];
+type RankCandidatesForTest = (
+  candidates: Array<Omit<Launch, "discussionUrl"> & { discussionUrl?: string }>,
+  options: { now: Date; lookbackDays: number },
+) => Launch[];
 
 type FixtureValue = Response | Error | Record<string, unknown> | unknown[] | string | number[];
 
@@ -250,6 +255,27 @@ function lobstersFeed(items: Array<{
           .join("\n")}
       </channel>
     </rss>`;
+}
+
+let rankCandidatesForTestPromise: Promise<RankCandidatesForTest> | null = null;
+
+async function loadRankCandidatesForTest() {
+  if (!rankCandidatesForTestPromise) {
+    rankCandidatesForTestPromise = (async () => {
+      const moduleSource = await readFile(
+        new URL("../scripts/new-product-launches.mjs", import.meta.url),
+        "utf8",
+      );
+      const instrumentedModule = await import(
+        `data:text/javascript;base64,${Buffer.from(
+          `${moduleSource}\nexport { rankCandidates as rankCandidatesForTest };`,
+        ).toString("base64")}`
+      );
+      return instrumentedModule.rankCandidatesForTest as RankCandidatesForTest;
+    })();
+  }
+
+  return rankCandidatesForTestPromise;
 }
 
 test("parses Show HN, DEV showdev, Hugging Face Spaces, and Lobsters", async () => {
@@ -551,6 +577,142 @@ test("ranks stably, caps each provider at two when alternatives exist, and retur
   assert.equal(
     result.launches.filter((launch: Launch) => launch.provider === "hn").length,
     2,
+  );
+});
+
+test("breaks equal-score ties by normalized URL and then provider item ID when URL is unavailable", async () => {
+  const equalScoreResult = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1203, 1201, 1202],
+      hnItems: {
+        "1203": hnItem({
+          id: 1203,
+          title: "Zulu Tie",
+          url: "https://zulu-tie.example/?utm_source=hn&b=2#a",
+          by: "ranker",
+          iso: daysAgo(1, 10),
+          score: 50,
+        }),
+        "1201": hnItem({
+          id: 1201,
+          title: "Alpha Tie",
+          url: "https://alpha-tie.example/?utm_source=hn&a=1#b",
+          by: "ranker",
+          iso: daysAgo(1, 10),
+          score: 50,
+        }),
+        "1202": hnItem({
+          id: 1202,
+          title: "Mike Tie",
+          url: "https://mike-tie.example/?utm_medium=social&c=3#c",
+          by: "ranker",
+          iso: daysAgo(1, 10),
+          score: 50,
+        }),
+      },
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+    limit: 3,
+  });
+
+  assert.deepEqual(
+    equalScoreResult.launches.map((launch: Launch) => ({
+      title: launch.title,
+      officialUrl: launch.officialUrl,
+      score: launch.rankEvidence.score,
+      freshness: launch.rankEvidence.freshnessScore,
+      corroboration: launch.rankEvidence.corroborationCount,
+    })),
+    [
+      {
+        title: "Alpha Tie",
+        officialUrl: "https://alpha-tie.example/?a=1",
+        score: equalScoreResult.launches[0].rankEvidence.score,
+        freshness: equalScoreResult.launches[0].rankEvidence.freshnessScore,
+        corroboration: 1,
+      },
+      {
+        title: "Mike Tie",
+        officialUrl: "https://mike-tie.example/?c=3",
+        score: equalScoreResult.launches[0].rankEvidence.score,
+        freshness: equalScoreResult.launches[0].rankEvidence.freshnessScore,
+        corroboration: 1,
+      },
+      {
+        title: "Zulu Tie",
+        officialUrl: "https://zulu-tie.example/?b=2",
+        score: equalScoreResult.launches[0].rankEvidence.score,
+        freshness: equalScoreResult.launches[0].rankEvidence.freshnessScore,
+        corroboration: 1,
+      },
+    ],
+  );
+  assert.equal(equalScoreResult.launches[0].rankEvidence.score, equalScoreResult.launches[1].rankEvidence.score);
+  assert.equal(equalScoreResult.launches[1].rankEvidence.score, equalScoreResult.launches[2].rankEvidence.score);
+  assert.equal(
+    equalScoreResult.launches[0].rankEvidence.freshnessScore,
+    equalScoreResult.launches[1].rankEvidence.freshnessScore,
+  );
+  assert.equal(
+    equalScoreResult.launches[1].rankEvidence.freshnessScore,
+    equalScoreResult.launches[2].rankEvidence.freshnessScore,
+  );
+
+  const rankCandidatesForTest = await loadRankCandidatesForTest();
+  const unavailableUrlCandidates: Array<Omit<Launch, "discussionUrl"> & { discussionUrl?: string }> = [
+    {
+      provider: "hn",
+      providerItemId: "b-item",
+      title: "Provider Item B",
+      description: "",
+      discussionUrl: undefined,
+      officialUrl: null,
+      author: "ranker",
+      publishedAt: daysAgo(1, 10),
+      engagement: 50,
+      tags: [],
+      providerUrls: [{ provider: "hn", url: "https://news.ycombinator.com/item?id=9992" }],
+      providerPayloads: [{ provider: "hn", payload: { id: "b-item" } }],
+      dedupKey: "hn:b-item",
+      rankEvidence: {
+        engagementPercentile: 0,
+        freshnessScore: 0,
+        corroborationCount: 1,
+        score: 0,
+        tieBreakKey: "",
+      },
+    },
+    {
+      provider: "hn",
+      providerItemId: "a-item",
+      title: "Provider Item A",
+      description: "",
+      discussionUrl: undefined,
+      officialUrl: null,
+      author: "ranker",
+      publishedAt: daysAgo(1, 10),
+      engagement: 50,
+      tags: [],
+      providerUrls: [{ provider: "hn", url: "https://news.ycombinator.com/item?id=9991" }],
+      providerPayloads: [{ provider: "hn", payload: { id: "a-item" } }],
+      dedupKey: "hn:a-item",
+      rankEvidence: {
+        engagementPercentile: 0,
+        freshnessScore: 0,
+        corroborationCount: 1,
+        score: 0,
+        tieBreakKey: "",
+      },
+    },
+  ];
+
+  assert.deepEqual(
+    rankCandidatesForTest(unavailableUrlCandidates, {
+      now: NOW,
+      lookbackDays: LOOKBACK_DAYS,
+    }).map((launch: Launch) => launch.providerItemId),
+    ["a-item", "b-item"],
   );
 });
 

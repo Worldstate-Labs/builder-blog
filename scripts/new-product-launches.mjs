@@ -529,7 +529,7 @@ function rankCandidates(candidates, { now, lookbackDays }) {
           corroborationScore * 0.15
         ).toFixed(6),
       );
-      const tieBreakKey = candidate.officialUrl || candidate.discussionUrl;
+      const tieBreakKey = candidate.officialUrl || candidate.discussionUrl || "";
 
       return {
         ...candidate,
