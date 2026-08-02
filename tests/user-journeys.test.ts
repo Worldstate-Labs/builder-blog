@@ -206,7 +206,7 @@ test("shared platform-maintained content resolution uses configured admin owners
     resolver,
     /entityId: \{ in: \[\.\.\.platformMaintainedEntityIds\] \}/,
   );
-  assert.match(
+  assert.doesNotMatch(
     resolver,
     /sourceType: \{ in: \[\.\.\.platformMaintainedSourceTypes\] \}/,
   );

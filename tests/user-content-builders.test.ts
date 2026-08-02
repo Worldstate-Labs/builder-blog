@@ -221,10 +221,22 @@ test("imported platform-maintained channels reach the matching admin producer", 
         ownerEmail: "admin@example.com",
       },
       {
-        id: "admin_blog",
+        id: "admin_wrong_type",
         entityId: "entity_launches",
         sourceType: "blog",
         ownerEmail: "admin@example.com",
+      },
+      {
+        id: "admin_wrong_entity",
+        entityId: "entity_other",
+        sourceType: "new_product_launches",
+        ownerEmail: "admin@example.com",
+      },
+      {
+        id: "member_launches",
+        entityId: "entity_launches",
+        sourceType: "New Product Launches",
+        ownerEmail: "member@example.com",
       },
     ];
 
@@ -239,7 +251,6 @@ test("imported platform-maintained channels reach the matching admin producer", 
               where?: {
                 id?: { in?: string[] };
                 entityId?: { in?: string[] };
-                sourceType?: { in?: string[] };
                 owner?: { email?: { in?: string[] } };
               };
             };
@@ -249,7 +260,6 @@ test("imported platform-maintained channels reach the matching admin producer", 
             if (input.where?.entityId?.in) {
               return builders.filter((builder) =>
                 input.where?.entityId?.in?.includes(builder.entityId) &&
-                input.where?.sourceType?.in?.includes("new_product_launches") &&
                 input.where?.owner?.email?.in?.includes(builder.ownerEmail),
               );
             }
@@ -270,16 +280,17 @@ test("imported platform-maintained channels reach the matching admin producer", 
       (builderQueries[1] as {
         where?: {
           entityId?: { in?: string[] };
-          sourceType?: { in?: string[] };
           owner?: { email?: { in?: string[] } };
         };
       }).where,
       {
         entityId: { in: ["entity_launches"] },
-        sourceType: { in: ["new_product_launches"] },
         owner: { email: { in: ["admin@example.com"] } },
       },
     );
+    assert.ok(!result.includes("admin_wrong_type"));
+    assert.ok(!result.includes("admin_wrong_entity"));
+    assert.ok(!result.includes("member_launches"));
   });
 });
 
@@ -295,7 +306,6 @@ test("private platform-maintained channels reach the same admin producer", async
               where?: {
                 id?: { in?: string[] };
                 entityId?: { in?: string[] };
-                sourceType?: { in?: string[] };
                 owner?: { email?: { in?: string[] } };
               };
             };
@@ -310,7 +320,6 @@ test("private platform-maintained channels reach the same admin producer", async
             }
             if (
               input.where?.entityId?.in?.includes("entity_launches") &&
-              input.where?.sourceType?.in?.includes("new_product_launches") &&
               input.where?.owner?.email?.in?.includes("admin@example.com")
             ) {
               return [
@@ -348,7 +357,6 @@ test("imported and private platform-maintained channels dedupe one canonical pos
               where?: {
                 id?: { in?: string[] };
                 entityId?: { in?: string[] };
-                sourceType?: { in?: string[] };
                 owner?: { email?: { in?: string[] } };
               };
             };
@@ -373,7 +381,6 @@ test("imported and private platform-maintained channels dedupe one canonical pos
             }
             if (
               input.where?.entityId?.in?.includes("entity_launches") &&
-              input.where?.sourceType?.in?.includes("new_product_launches") &&
               input.where?.owner?.email?.in?.includes("admin@example.com")
             ) {
               return [
@@ -482,7 +489,6 @@ test("different entities or source types are never joined to platform-maintained
               where?: {
                 id?: { in?: string[] };
                 entityId?: { in?: string[] };
-                sourceType?: { in?: string[] };
                 owner?: { email?: { in?: string[] } };
               };
             };
@@ -497,7 +503,6 @@ test("different entities or source types are never joined to platform-maintained
             }
             if (
               input.where?.entityId?.in?.includes("entity_1") &&
-              input.where?.sourceType?.in?.includes("new_product_launches") &&
               input.where?.owner?.email?.in?.includes("admin@example.com")
             ) {
               return [
@@ -537,7 +542,6 @@ test("platform-maintained admin producers compose with existing cloud-linked exp
               where?: {
                 id?: { in?: string[] };
                 entityId?: { in?: string[] };
-                sourceType?: { in?: string[] };
                 owner?: { email?: { in?: string[] } };
               };
             };
@@ -557,7 +561,6 @@ test("platform-maintained admin producers compose with existing cloud-linked exp
             }
             if (
               input.where?.entityId?.in?.includes("entity_launches") &&
-              input.where?.sourceType?.in?.includes("new_product_launches") &&
               input.where?.owner?.email?.in?.includes("admin@example.com")
             ) {
               return [
@@ -615,7 +618,6 @@ test("removing a reachable logical channel removes access without mutating share
             where?: {
               id?: { in?: string[] };
               entityId?: { in?: string[] };
-              sourceType?: { in?: string[] };
               owner?: { email?: { in?: string[] } };
             };
           };
@@ -644,7 +646,6 @@ test("removing a reachable logical channel removes access without mutating share
           }
           if (
             input.where?.entityId?.in?.includes("entity_launches") &&
-            input.where?.sourceType?.in?.includes("new_product_launches") &&
             input.where?.owner?.email?.in?.includes("admin@example.com")
           ) {
             return [

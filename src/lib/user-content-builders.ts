@@ -58,7 +58,6 @@ export async function resolveUserContentBuilderIds(params: {
 
   const platformMaintainedPairs = new Set<string>();
   const platformMaintainedEntityIds = new Set<string>();
-  const platformMaintainedSourceTypes = new Set<string>();
   for (const builder of logicalBuilders) {
     if (!requested.has(builder.id) || !builder.entityId) continue;
     if (!isPlatformMaintainedSourceType(builder.sourceType)) continue;
@@ -66,7 +65,6 @@ export async function resolveUserContentBuilderIds(params: {
     if (!normalizedSourceType) continue;
     platformMaintainedPairs.add(`${builder.entityId}:${normalizedSourceType}`);
     platformMaintainedEntityIds.add(builder.entityId);
-    platformMaintainedSourceTypes.add(normalizedSourceType);
   }
 
   const submissions = await prisma.cloudSourceSubmission.findMany({
@@ -87,7 +85,6 @@ export async function resolveUserContentBuilderIds(params: {
     const sharedPlatformBuilders = await prisma.builder.findMany({
       where: {
         entityId: { in: [...platformMaintainedEntityIds] },
-        sourceType: { in: [...platformMaintainedSourceTypes] },
         owner: { email: { in: adminEmails() } },
       },
       select: { id: true, entityId: true, sourceType: true },
