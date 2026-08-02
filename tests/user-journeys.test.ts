@@ -23,6 +23,7 @@ import {
   CloudSourceSelectionField,
   cloudSubmissionChooserState,
 } from "../src/components/SkillPromptActions";
+import { AdminSourceTypeManager } from "../src/components/AdminSourceTypeManager";
 import { isAdminEmail } from "../src/lib/admin";
 import {
   builderLibraryKey,
@@ -4107,6 +4108,64 @@ test("content config is per-user, seeded from a system default", () => {
     DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
     DEFAULT_DIGEST_PROMPTS.summarizeNewProductLaunch,
   );
+  const newProductLaunchesSettingsCard = renderToStaticMarkup(
+    createElement(AdminSourceTypeManager, {
+      canEditFetchingInstructions: true,
+      canEditQualityGates: true,
+      initialConfigs: [
+        {
+          sourceId: "new_product_launches",
+          label: "New Product Launches",
+          agentDefaultStatus: "requires_agent",
+          contentQuality: DEFAULT_SOURCE_CONFIGS.new_product_launches.contentQuality,
+          summaryPromptBody: DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
+          fetchPromptBody: DEFAULT_SOURCE_CONFIGS.new_product_launches.fetchPromptBody,
+          summaryStyle: DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryStyle,
+          updatedAt: "2026-08-02T00:00:00.000Z",
+          updatedBy: null,
+        },
+      ],
+    }),
+  );
+  assert.match(newProductLaunchesSettingsCard, /New Product Launches/);
+  assert.match(newProductLaunchesSettingsCard, /data-source="new_product_launches"/);
+  assert.equal(
+    (newProductLaunchesSettingsCard.match(/<p class="settings-section-title">Fetching<\/p>/g) ??
+      []).length,
+    1,
+  );
+  assert.equal(
+    (newProductLaunchesSettingsCard.match(
+      /<p class="settings-section-title">Summarization<\/p>/g,
+    ) ?? []).length,
+    1,
+  );
+  assert.equal(
+    (newProductLaunchesSettingsCard.match(
+      /<p class="settings-section-title">Quality gates<\/p>/g,
+    ) ?? []).length,
+    1,
+  );
+  assert.equal(
+    (newProductLaunchesSettingsCard.match(/class="settings-section-title"/g) ?? []).length,
+    3,
+  );
+  assert.match(newProductLaunchesSettingsCard, /Source-specific extraction instructions\./);
+  assert.match(
+    newProductLaunchesSettingsCard,
+    /Defines each post summary; the run prompt sets language\./,
+  );
+  assert.match(newProductLaunchesSettingsCard, /Filters content before Following or AI Brief\./);
+  assert.match(newProductLaunchesSettingsCard, /New Product Launches fetch prompt/);
+  assert.match(newProductLaunchesSettingsCard, /New Product Launches summary prompt/);
+  assert.match(newProductLaunchesSettingsCard, /Min chars/);
+  assert.match(newProductLaunchesSettingsCard, /Min content units/);
+  assert.match(newProductLaunchesSettingsCard, /Min local diversity/);
+  assert.match(newProductLaunchesSettingsCard, /Max timestamp density/);
+  assert.doesNotMatch(newProductLaunchesSettingsCard, /Provider|provider selector/i);
+  assert.doesNotMatch(newProductLaunchesSettingsCard, /Frequency/i);
+  assert.doesNotMatch(newProductLaunchesSettingsCard, /Lookback/i);
+  assert.doesNotMatch(newProductLaunchesSettingsCard, /Max launches/i);
 
   // Settings page shows source summary config to every user, but admin-only
   // fetch instructions and AI Brief assembly rules stay behind the admin gate.
@@ -4160,6 +4219,29 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /if \(canEditFetchingInstructions\) \{[\s\S]*patch\.fetchPromptBody =/);
   assert.match(srcManager, /canEditQualityGates/);
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
+  assert.match(srcManager, /settingsSourceTypeLabel/);
+  assert.match(srcManager, /if \(config\.sourceId === "blog"\) return "Blog \/ Article Feed"/);
+  assert.match(srcManager, /if \(config\.sourceId === "podcast"\) return "Podcast \/ Audio Feed"/);
+  assert.doesNotMatch(srcManager, /provider selector/i);
+  assert.doesNotMatch(srcManager, /Frequency/i);
+  assert.doesNotMatch(srcManager, /Lookback/i);
+  assert.doesNotMatch(srcManager, /Max launches/i);
+  assert.match(store, /function sourceConfigCopyData\(row: SourceTypeConfig\)/);
+  assert.match(store, /summaryPromptBody: row\.summaryPromptBody/);
+  assert.match(store, /fetchPromptBody: row\.fetchPromptBody/);
+  assert.match(store, /contentQuality: row\.contentQuality as object/);
+  assert.match(store, /summaryStyle: row\.summaryStyle/);
+  assert.match(store, /const have = new Set\(activeExisting\.map\(\(r\) => r\.sourceId\)\)/);
+  assert.match(
+    store,
+    /const missing = \[\.\.\.defaults\.values\(\)\]\.filter\(\(d\) => !have\.has\(d\.sourceId\)\)/,
+  );
+  assert.match(
+    store,
+    /data: missing\.map\(\(d\) => \(\{ userId, sourceId: d\.sourceId, \.\.\.sourceConfigCopyData\(d\) \}\)\)/,
+  );
+  assert.match(store, /skipDuplicates: true/);
+  assert.match(store, /return rows\.filter\(\(r\) => ACTIVE_SOURCE_IDS\.has\(r\.sourceId\)\)/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.doesNotMatch(digestForm, /Section/);
   assert.doesNotMatch(digestForm, /AI Brief prompts/);
