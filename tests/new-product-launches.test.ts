@@ -1,0 +1,674 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  discoverNewProductLaunches,
+  NewProductLaunchDiscoveryError,
+} from "../scripts/new-product-launches.mjs";
+
+const NOW = new Date("2026-08-02T12:00:00.000Z");
+const LOOKBACK_DAYS = 14;
+
+type DiscoveryResult = Awaited<ReturnType<typeof discoverNewProductLaunches>>;
+type Launch = DiscoveryResult["launches"][number];
+type DiscoveryFailure = DiscoveryResult["failures"][number];
+
+type FixtureValue = Response | Error | Record<string, unknown> | unknown[] | string | number[];
+
+type DiscoveryFixtures = {
+  hnStories?: FixtureValue;
+  hnItems?: Record<string, FixtureValue>;
+  devArticles?: FixtureValue;
+  hfSpaces?: FixtureValue;
+  lobstersShow?: FixtureValue;
+  lobstersAnnounce?: FixtureValue;
+};
+
+function daysAgo(days: number, hour = 12) {
+  return new Date(Date.UTC(2026, 7, 2 - days, hour, 0, 0)).toISOString();
+}
+
+function unixSeconds(iso: string) {
+  return Math.floor(new Date(iso).getTime() / 1000);
+}
+
+function jsonResponse(body: unknown, init: ResponseInit = {}) {
+  return new Response(JSON.stringify(body), {
+    ...init,
+    headers: { "content-type": "application/json", ...(init.headers || {}) },
+  });
+}
+
+function textResponse(body: string, init: ResponseInit = {}) {
+  return new Response(body, {
+    ...init,
+    headers: { "content-type": "text/plain; charset=utf-8", ...(init.headers || {}) },
+  });
+}
+
+function rssResponse(body: string, init: ResponseInit = {}) {
+  return new Response(body, {
+    ...init,
+    headers: { "content-type": "application/rss+xml; charset=utf-8", ...(init.headers || {}) },
+  });
+}
+
+function toResponse(value: FixtureValue | undefined, defaultValue: unknown) {
+  if (value instanceof Response) return value;
+  if (value instanceof Error) throw value;
+  if (typeof value === "string") return textResponse(value);
+  if (value !== undefined) return jsonResponse(value);
+  return jsonResponse(defaultValue);
+}
+
+function createFixtureFetcher(fixtures: DiscoveryFixtures = {}) {
+  return async (input: string | URL | Request) => {
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    const url = new URL(rawUrl);
+
+    if (
+      url.hostname === "hacker-news.firebaseio.com" &&
+      url.pathname === "/v0/showstories.json"
+    ) {
+      return toResponse(fixtures.hnStories, []);
+    }
+
+    if (
+      url.hostname === "hacker-news.firebaseio.com" &&
+      /^\/v0\/item\/\d+\.json$/.test(url.pathname)
+    ) {
+      const itemId = url.pathname.match(/\/(\d+)\.json$/)?.[1];
+      const item = itemId ? fixtures.hnItems?.[itemId] : undefined;
+      if (item instanceof Error) throw item;
+      if (item instanceof Response) return item;
+      return item !== undefined ? jsonResponse(item) : new Response("missing", { status: 404 });
+    }
+
+    if (url.hostname === "dev.to" && url.pathname === "/api/articles") {
+      return toResponse(fixtures.devArticles, []);
+    }
+
+    if (url.hostname === "huggingface.co" && url.pathname === "/api/spaces") {
+      return toResponse(fixtures.hfSpaces, []);
+    }
+
+    if (url.hostname === "lobste.rs" && url.pathname === "/t/show.rss") {
+      const body = fixtures.lobstersShow ?? "<rss><channel></channel></rss>";
+      if (body instanceof Error) throw body;
+      if (body instanceof Response) return body;
+      return rssResponse(String(body));
+    }
+
+    if (url.hostname === "lobste.rs" && url.pathname === "/t/announce.rss") {
+      const body = fixtures.lobstersAnnounce ?? "<rss><channel></channel></rss>";
+      if (body instanceof Error) throw body;
+      if (body instanceof Response) return body;
+      return rssResponse(String(body));
+    }
+
+    throw new Error(`Unexpected URL: ${url.href}`);
+  };
+}
+
+function hnItem({
+  id,
+  title,
+  url,
+  by,
+  iso,
+  score,
+  text,
+}: {
+  id: number;
+  title: string;
+  url?: string;
+  by: string;
+  iso: string;
+  score: number;
+  text?: string;
+}) {
+  return {
+    id,
+    type: "story",
+    title,
+    url,
+    by,
+    time: unixSeconds(iso),
+    score,
+    text,
+  };
+}
+
+function devArticle({
+  id,
+  title,
+  officialUrl,
+  discussionUrl,
+  author,
+  iso,
+  description,
+  reactions,
+  comments,
+  tags,
+}: {
+  id: number;
+  title: string;
+  officialUrl: string;
+  discussionUrl?: string;
+  author: string;
+  iso: string;
+  description: string;
+  reactions: number;
+  comments: number;
+  tags?: string[];
+}) {
+  return {
+    id,
+    title,
+    description,
+    url: discussionUrl ?? `https://dev.to/${author}/launch-${id}`,
+    canonical_url: officialUrl,
+    published_at: iso,
+    positive_reactions_count: reactions,
+    comments_count: comments,
+    tag_list: (tags ?? ["showdev"]).join(", "),
+    user: {
+      name: author,
+      username: author,
+    },
+  };
+}
+
+function hfSpace({
+  id,
+  title,
+  author,
+  iso,
+  likes,
+  trendingScore,
+  tags,
+  privateSpace = false,
+}: {
+  id: string;
+  title: string;
+  author: string;
+  iso: string;
+  likes: number;
+  trendingScore: number;
+  tags?: string[];
+  privateSpace?: boolean;
+}) {
+  return {
+    id,
+    name: id.split("/")[1],
+    title,
+    author,
+    createdAt: iso,
+    likes,
+    trendingScore,
+    private: privateSpace,
+    tags: tags ?? ["demo"],
+    cardData: {
+      title,
+      short_description: `${title} short description`,
+      tags: tags ?? ["demo"],
+    },
+  };
+}
+
+function lobstersFeed(items: Array<{
+  title: string;
+  discussionUrl: string;
+  officialUrl?: string;
+  author: string;
+  iso: string;
+  guid: string;
+  description?: string;
+}>) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0">
+      <channel>
+        ${items
+          .map((item) => {
+            const official = item.officialUrl
+              ? `<a href="${item.officialUrl}">${item.title}</a>`
+              : "";
+            return `<item>
+              <title>${item.title}</title>
+              <link>${item.discussionUrl}</link>
+              <guid>${item.guid}</guid>
+              <pubDate>${new Date(item.iso).toUTCString()}</pubDate>
+              <author>${item.author}</author>
+              <description><![CDATA[${official}${item.description ?? ""}]]></description>
+            </item>`;
+          })
+          .join("\n")}
+      </channel>
+    </rss>`;
+}
+
+test("parses Show HN, DEV showdev, Hugging Face Spaces, and Lobsters", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [101],
+      hnItems: {
+        "101": hnItem({
+          id: 101,
+          title: "Ship Alpha",
+          url: "https://alpha.example/?utm_source=hn&utm_medium=social#hero",
+          by: "alice",
+          iso: daysAgo(1),
+          score: 55,
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 201,
+          title: "Show DEV: Ship Beta",
+          officialUrl: "https://beta.example/product?utm_campaign=launch&a=2&z=1",
+          discussionUrl: "https://dev.to/beta/showdev-ship-beta-201",
+          author: "beta",
+          iso: daysAgo(2),
+          description: "Beta is live for builders.",
+          reactions: 41,
+          comments: 7,
+          tags: ["showdev", "launch"],
+        }),
+      ],
+      hfSpaces: [
+        hfSpace({
+          id: "carol/gamma-space",
+          title: "Gamma Space",
+          author: "carol",
+          iso: daysAgo(3),
+          likes: 28,
+          trendingScore: 91,
+          tags: ["agents", "demo"],
+        }),
+      ],
+      lobstersShow: lobstersFeed([
+        {
+          title: "Delta Demo",
+          discussionUrl: "https://lobste.rs/s/delta123/delta_demo",
+          officialUrl: "https://delta.example/launch?ref=lobsters&utm_source=rss",
+          author: "dan",
+          iso: daysAgo(4),
+          guid: "delta-123",
+          description: " Discussing the public launch.",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(result.failures.length, 0);
+  assert.equal(result.launches.length, 4);
+
+  const byTitle = new Map<string, Launch>(
+    result.launches.map((launch: Launch) => [launch.title, launch]),
+  );
+
+  assert.equal(byTitle.get("Ship Alpha")?.officialUrl, "https://alpha.example/");
+  assert.equal(byTitle.get("Ship Alpha")?.discussionUrl, "https://news.ycombinator.com/item?id=101");
+  assert.equal(byTitle.get("Show DEV: Ship Beta")?.officialUrl, "https://beta.example/product?a=2&z=1");
+  assert.equal(byTitle.get("Show DEV: Ship Beta")?.discussionUrl, "https://dev.to/beta/showdev-ship-beta-201");
+  assert.equal(
+    byTitle.get("Gamma Space")?.officialUrl,
+    "https://huggingface.co/spaces/carol/gamma-space",
+  );
+  assert.equal(
+    byTitle.get("Delta Demo")?.officialUrl,
+    "https://delta.example/launch",
+  );
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.provider).sort(),
+    ["dev", "hn", "huggingface", "lobsters"],
+  );
+});
+
+test("drops candidates outside lookback and malformed or private destinations", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [301, 302, 303],
+      hnItems: {
+        "301": hnItem({
+          id: 301,
+          title: "Too Old",
+          url: "https://old.example/?utm_source=hn",
+          by: "oldtimer",
+          iso: daysAgo(30),
+          score: 80,
+        }),
+        "302": hnItem({
+          id: 302,
+          title: "Future Ship",
+          url: "https://future.example/?utm_source=hn",
+          by: "future",
+          iso: "2026-08-06T12:00:00.000Z",
+          score: 90,
+        }),
+        "303": hnItem({
+          id: 303,
+          title: "Private Ship",
+          url: "http://127.0.0.1:4000/secret",
+          by: "local",
+          iso: daysAgo(1),
+          score: 90,
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 401,
+          title: "Show DEV: Valid Launch",
+          officialUrl: "https://valid.example/path?utm_medium=dev&b=2&a=1",
+          author: "valid",
+          iso: daysAgo(1),
+          description: "Valid public launch.",
+          reactions: 11,
+          comments: 2,
+        }),
+      ],
+      hfSpaces: [
+        hfSpace({
+          id: "demo/private-space",
+          title: "Private Space",
+          author: "demo",
+          iso: daysAgo(1),
+          likes: 50,
+          trendingScore: 99,
+          privateSpace: true,
+        }),
+      ],
+      lobstersAnnounce: lobstersFeed([
+        {
+          title: "Malformed Destination",
+          discussionUrl: "https://lobste.rs/s/malformed123/malformed_destination",
+          officialUrl: "javascript:alert('xss')",
+          author: "rss",
+          iso: daysAgo(2),
+          guid: "lobsters-malformed",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(result.failures.length, 0);
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.title),
+    ["Show DEV: Valid Launch"],
+  );
+  assert.equal(result.launches[0].officialUrl, "https://valid.example/path?a=1&b=2");
+});
+
+test("merges one launch found by multiple providers and retains provenance", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [501],
+      hnItems: {
+        "501": hnItem({
+          id: 501,
+          title: "Merged Launch",
+          url: "https://merge.example/app?utm_source=hn&b=2&a=1#story",
+          by: "alice",
+          iso: daysAgo(1),
+          score: 60,
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 601,
+          title: "Show DEV: Merged Launch",
+          officialUrl: "https://merge.example/app?b=2&utm_campaign=dev&a=1",
+          discussionUrl: "https://dev.to/merge/showdev-merged-launch-601",
+          author: "merge",
+          iso: daysAgo(2),
+          description: "Merged launch description from DEV.",
+          reactions: 37,
+          comments: 5,
+        }),
+      ],
+      lobstersShow: lobstersFeed([
+        {
+          title: "Merged Launch on Lobsters",
+          discussionUrl: "https://lobste.rs/s/merge123/merged_launch",
+          officialUrl: "https://merge.example/app?a=1&b=2&utm_medium=rss",
+          author: "rss",
+          iso: daysAgo(3),
+          guid: "merge-lobsters",
+          description: " Same product, different discussion.",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(result.failures.length, 0);
+  assert.equal(result.launches.length, 1);
+
+  const [launch] = result.launches;
+  assert.equal(launch.officialUrl, "https://merge.example/app?a=1&b=2");
+  assert.equal(launch.rankEvidence.corroborationCount, 3);
+  assert.deepEqual(
+    launch.providerUrls.map((entry) => entry.provider).sort(),
+    ["dev", "hn", "lobsters"],
+  );
+  assert.deepEqual(
+    launch.providerPayloads.map((entry) => entry.provider).sort(),
+    ["dev", "hn", "lobsters"],
+  );
+});
+
+test("ranks stably, caps each provider at two when alternatives exist, and returns five", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [701, 702, 703],
+      hnItems: {
+        "701": hnItem({
+          id: 701,
+          title: "Alpha Index",
+          url: "https://alpha-rank.example/?utm_source=hn",
+          by: "ranker",
+          iso: daysAgo(1, 15),
+          score: 120,
+        }),
+        "702": hnItem({
+          id: 702,
+          title: "Beta Index",
+          url: "https://beta-rank.example/?utm_source=hn",
+          by: "ranker",
+          iso: daysAgo(1, 14),
+          score: 100,
+        }),
+        "703": hnItem({
+          id: 703,
+          title: "Gamma Index",
+          url: "https://gamma-rank.example/?utm_source=hn",
+          by: "ranker",
+          iso: daysAgo(1, 13),
+          score: 90,
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 801,
+          title: "Delta Index",
+          officialUrl: "https://delta-rank.example/?utm_medium=dev",
+          author: "delta",
+          iso: daysAgo(2),
+          description: "Delta launch.",
+          reactions: 12,
+          comments: 3,
+        }),
+      ],
+      hfSpaces: [
+        hfSpace({
+          id: "rank/echo-space",
+          title: "Echo Space",
+          author: "rank",
+          iso: daysAgo(2),
+          likes: 8,
+          trendingScore: 15,
+          tags: ["rank"],
+        }),
+      ],
+      lobstersAnnounce: lobstersFeed([
+        {
+          title: "Foxtrot Launch",
+          discussionUrl: "https://lobste.rs/s/foxtrot123/foxtrot_launch",
+          officialUrl: "https://zulu-rank.example/?utm_source=lobsters",
+          author: "lob",
+          iso: daysAgo(2),
+          guid: "foxtrot-rank",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+    limit: 9,
+  });
+
+  assert.equal(result.failures.length, 0);
+  assert.equal(result.launches.length, 5);
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.title),
+    [
+      "Alpha Index",
+      "Beta Index",
+      "Delta Index",
+      "Echo Space",
+      "Foxtrot Launch",
+    ],
+  );
+  assert.equal(
+    result.launches.filter((launch: Launch) => launch.provider === "hn").length,
+    2,
+  );
+});
+
+test("continues after partial provider failure", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: new Response("upstream error", { status: 503 }),
+      devArticles: [
+        devArticle({
+          id: 901,
+          title: "Show DEV: Survives Partial Failure",
+          officialUrl: "https://partial.example/?utm_source=dev",
+          author: "partial",
+          iso: daysAgo(1),
+          description: "Still eligible.",
+          reactions: 7,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.title),
+    ["Show DEV: Survives Partial Failure"],
+  );
+  assert.equal(result.failures.length, 1);
+  assert.equal(result.failures[0].provider, "hn");
+  assert.equal(result.failures[0].category, "http");
+  assert.match(result.failures[0].reason, /503/);
+});
+
+test("throws a typed discovery error only when all providers fail", async () => {
+  await assert.rejects(
+    () =>
+      discoverNewProductLaunches({
+        fetcher: createFixtureFetcher({
+          hnStories: new Response("bad gateway", { status: 502 }),
+          devArticles: new Error("socket hang up"),
+          hfSpaces: new Response("{", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+          lobstersShow: new Error("rss unavailable"),
+          lobstersAnnounce: new Error("rss unavailable"),
+        }),
+        now: NOW,
+        lookbackDays: LOOKBACK_DAYS,
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof NewProductLaunchDiscoveryError);
+      const discoveryError = error as NewProductLaunchDiscoveryError;
+      assert.equal(discoveryError.name, "NewProductLaunchDiscoveryError");
+      assert.equal(discoveryError.failures.length, 4);
+      assert.deepEqual(
+        discoveryError.failures
+          .map((failure: DiscoveryFailure) => failure.provider)
+          .sort(),
+        ["dev", "hn", "huggingface", "lobsters"],
+      );
+      return true;
+    },
+  );
+});
+
+test("returns an empty successful result when providers succeed with no eligible launch", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1001],
+      hnItems: {
+        "1001": hnItem({
+          id: 1001,
+          title: "Future Only",
+          url: "https://future-only.example/?utm_source=hn",
+          by: "future",
+          iso: "2026-08-10T12:00:00.000Z",
+          score: 99,
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 1002,
+          title: "Show DEV: Localhost Only",
+          officialUrl: "http://localhost:3000/private",
+          author: "devonly",
+          iso: daysAgo(1),
+          description: "Not public.",
+          reactions: 9,
+          comments: 2,
+        }),
+      ],
+      hfSpaces: [
+        hfSpace({
+          id: "empty/private-space",
+          title: "Hidden Space",
+          author: "empty",
+          iso: daysAgo(1),
+          likes: 10,
+          trendingScore: 10,
+          privateSpace: true,
+        }),
+      ],
+      lobstersAnnounce: lobstersFeed([
+        {
+          title: "Malformed Link Only",
+          discussionUrl: "https://lobste.rs/s/empty123/malformed_link_only",
+          officialUrl: "notaurl",
+          author: "empty",
+          iso: daysAgo(1),
+          guid: "empty-malformed",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(result.failures.length, 0);
+  assert.deepEqual(result.launches, []);
+});
