@@ -234,22 +234,26 @@ function lobstersFeed(items: Array<{
   iso: string;
   guid: string;
   description?: string;
+  commentsUrl?: string | null;
+  descriptionHref?: string;
 }>) {
   return `<?xml version="1.0" encoding="UTF-8"?>
     <rss version="2.0">
       <channel>
         ${items
           .map((item) => {
-            const official = item.officialUrl
-              ? `<a href="${item.officialUrl}">${item.title}</a>`
+            const fallbackHref = item.descriptionHref ?? item.officialUrl ?? item.discussionUrl;
+            const linkedText = fallbackHref
+              ? `<a href="${fallbackHref}">${item.title}</a>`
               : "";
             return `<item>
               <title>${item.title}</title>
-              <link>${item.discussionUrl}</link>
+              <link>${item.officialUrl ?? item.discussionUrl}</link>
+              ${item.commentsUrl === null ? "" : `<comments>${item.commentsUrl ?? item.discussionUrl}</comments>`}
               <guid>${item.guid}</guid>
               <pubDate>${new Date(item.iso).toUTCString()}</pubDate>
               <author>${item.author}</author>
-              <description><![CDATA[${official}${item.description ?? ""}]]></description>
+              <description><![CDATA[${linkedText}${item.description ?? ""}]]></description>
             </item>`;
           })
           .join("\n")}
@@ -350,11 +354,86 @@ test("parses Show HN, DEV showdev, Hugging Face Spaces, and Lobsters", async () 
   );
   assert.equal(
     byTitle.get("Delta Demo")?.officialUrl,
-    "https://delta.example/launch",
+    "https://delta.example/launch?ref=lobsters",
+  );
+  assert.equal(
+    byTitle.get("Delta Demo")?.discussionUrl,
+    "https://lobste.rs/s/delta123/delta_demo",
   );
   assert.deepEqual(
     result.launches.map((launch: Launch) => launch.provider).sort(),
     ["dev", "hn", "huggingface", "lobsters"],
+  );
+});
+
+test("uses Lobsters link/comments fields first and falls back to description links only when needed", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      lobstersShow: lobstersFeed([
+        {
+          title: "Live Contract",
+          officialUrl: "https://live-contract.example/product?source=lobsters&utm_source=rss",
+          discussionUrl: "https://lobste.rs/s/live123/live_contract",
+          author: "rss",
+          iso: daysAgo(1),
+          guid: "live-contract",
+          description: " Live-shaped RSS item.",
+        },
+        {
+          title: "Fallback Official",
+          officialUrl: "https://lobste.rs/s/fallback1/fallback_official",
+          commentsUrl: "https://lobste.rs/s/fallback1/fallback_official",
+          discussionUrl: "https://lobste.rs/s/fallback1/fallback_official",
+          descriptionHref: "https://fallback-official.example/story?src=lobsters&utm_medium=rss",
+          author: "rss",
+          iso: daysAgo(1),
+          guid: "fallback-official",
+          description: " Missing external link field.",
+        },
+        {
+          title: "Fallback Discussion",
+          officialUrl: "https://fallback-discussion.example/story?ref=lobsters&utm_campaign=feed",
+          commentsUrl: null,
+          discussionUrl: "https://lobste.rs/s/fallback2/fallback_discussion",
+          descriptionHref: "https://lobste.rs/s/fallback2/fallback_discussion",
+          author: "rss",
+          iso: daysAgo(1),
+          guid: "fallback-discussion",
+          description: " Missing comments field.",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  const byTitle = new Map<string, Launch>(
+    result.launches.map((launch: Launch) => [launch.title, launch]),
+  );
+
+  assert.equal(
+    byTitle.get("Live Contract")?.officialUrl,
+    "https://live-contract.example/product?source=lobsters",
+  );
+  assert.equal(
+    byTitle.get("Live Contract")?.discussionUrl,
+    "https://lobste.rs/s/live123/live_contract",
+  );
+  assert.equal(
+    byTitle.get("Fallback Official")?.officialUrl,
+    "https://fallback-official.example/story?src=lobsters",
+  );
+  assert.equal(
+    byTitle.get("Fallback Official")?.discussionUrl,
+    "https://lobste.rs/s/fallback1/fallback_official",
+  );
+  assert.equal(
+    byTitle.get("Fallback Discussion")?.officialUrl,
+    "https://fallback-discussion.example/story?ref=lobsters",
+  );
+  assert.equal(
+    byTitle.get("Fallback Discussion")?.discussionUrl,
+    "https://lobste.rs/s/fallback2/fallback_discussion",
   );
 });
 
@@ -432,6 +511,32 @@ test("drops candidates outside lookback and malformed or private destinations", 
     ["Show DEV: Valid Launch"],
   );
   assert.equal(result.launches[0].officialUrl, "https://valid.example/path?a=1&b=2");
+});
+
+test("retains semantic ref source and src params while removing analytics params", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1501],
+      hnItems: {
+        "1501": hnItem({
+          id: 1501,
+          title: "Source Params",
+          url: "https://source-params.example/?source=hn&src=card&ref=launch&utm_source=hn&fbclid=123",
+          by: "param",
+          iso: daysAgo(1),
+          score: 20,
+        }),
+      },
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(result.launches.length, 1);
+  assert.equal(
+    result.launches[0].officialUrl,
+    "https://source-params.example/?ref=launch&source=hn&src=card",
+  );
 });
 
 test("merges one launch found by multiple providers and retains provenance", async () => {
@@ -747,6 +852,33 @@ test("continues after partial provider failure", async () => {
   assert.match(result.failures[0].reason, /503/);
 });
 
+test("keeps successful HN stories when one item request fails", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1801, 1802],
+      hnItems: {
+        "1801": hnItem({
+          id: 1801,
+          title: "HN Survives Item Failure",
+          url: "https://hn-success.example/?utm_source=hn",
+          by: "hn",
+          iso: daysAgo(1),
+          score: 42,
+        }),
+        "1802": new Error("item failed"),
+      },
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.title),
+    ["HN Survives Item Failure"],
+  );
+  assert.equal(result.failures.length, 0);
+});
+
 test("throws a typed discovery error only when all providers fail", async () => {
   await assert.rejects(
     () =>
@@ -907,4 +1039,36 @@ test("rejects bracketed IPv6 loopback, private, link-local, and unspecified host
   assert.equal(isPrivateHostnameForTest("[::ffff:10.0.0.8]"), true);
   assert.equal(isPrivateHostnameForTest("[::ffff:192.168.1.10]"), true);
   assert.equal(isPrivateHostnameForTest("[2607:f8b0:4005:805::200e]"), false);
+});
+
+test("rejects reserved and non-global IPv4 ranges", () => {
+  const cases = [
+    ["10.0.0.1", true],
+    ["100.64.0.1", true],
+    ["100.127.255.254", true],
+    ["127.0.0.1", true],
+    ["169.254.1.1", true],
+    ["172.16.0.1", true],
+    ["192.0.0.1", true],
+    ["192.0.2.1", true],
+    ["192.88.99.1", true],
+    ["192.168.1.1", true],
+    ["198.18.0.1", true],
+    ["198.19.255.1", true],
+    ["198.51.100.5", true],
+    ["203.0.113.9", true],
+    ["224.0.0.1", true],
+    ["240.0.0.1", true],
+    ["255.255.255.255", true],
+    ["8.8.8.8", false],
+    ["1.1.1.1", false],
+  ] as const;
+
+  for (const [hostname, expected] of cases) {
+    assert.equal(
+      isPrivateHostnameForTest(hostname),
+      expected,
+      `${hostname} expected private=${expected}`,
+    );
+  }
 });

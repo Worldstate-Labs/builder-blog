@@ -8,16 +8,11 @@ const FETCH_USER_AGENT = "BuilderBlogLaunchDiscovery/1.0 (+https://followbrief.w
 const PROVIDER_ORDER = ["hn", "dev", "huggingface", "lobsters"];
 const TRACKING_PARAM_NAMES = new Set([
   "fbclid",
+  "dclid",
   "gclid",
-  "igshid",
+  "msclkid",
   "mc_cid",
   "mc_eid",
-  "ref",
-  "source",
-  "src",
-  "si",
-  "spm",
-  "trk",
   "utm_campaign",
   "utm_content",
   "utm_id",
@@ -175,7 +170,7 @@ async function fetchHnLaunches({ fetcher, timeoutMs }) {
   const boundedIds = Array.isArray(storyIds)
     ? storyIds.filter((value) => Number.isFinite(Number(value))).slice(0, 12)
     : [];
-  const items = await Promise.all(
+  const itemResults = await Promise.allSettled(
     boundedIds.map((id) =>
       fetchJson(
         fetcher,
@@ -187,6 +182,9 @@ async function fetchHnLaunches({ fetcher, timeoutMs }) {
       ),
     ),
   );
+  const items = itemResults
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value);
 
   return items.flatMap((item) => {
     if (!item || item.type !== "story" || !item.id || !item.title) return [];
@@ -364,10 +362,17 @@ async function fetchLobstersLaunches({ fetcher, timeoutMs }) {
 function parseLobstersFeed(xml) {
   assertXmlDocument(xml, "lobsters");
   return extractXmlBlocks(xml, "item").flatMap((block) => {
-    const discussionUrl = normalizePublicHttpUrl(tagText(block, "link"));
-    const officialUrl = normalizePublicHttpUrl(
-      extractFirstHref(tagText(block, "description")),
-    );
+    const description = tagText(block, "description");
+    const linkUrl = normalizePublicHttpUrl(tagText(block, "link"));
+    const commentsUrl = normalizePublicHttpUrl(tagText(block, "comments"));
+    const fallbackUrl = normalizePublicHttpUrl(extractFirstHref(description));
+    const discussionUrl =
+      commentsUrl ||
+      selectLobstersDiscussionUrl(linkUrl) ||
+      selectLobstersDiscussionUrl(fallbackUrl);
+    const officialUrl =
+      selectExternalStoryUrl(linkUrl) ||
+      selectExternalStoryUrl(fallbackUrl);
     const publishedAt = normalizedDate(
       tagText(block, "pubDate") || tagText(block, "published"),
     );
@@ -386,7 +391,7 @@ function parseLobstersFeed(xml) {
         provider: "lobsters",
         providerItemId,
         title,
-        description: stripHtml(tagText(block, "description") || "").slice(0, 500),
+        description: stripHtml(description || "").slice(0, 500),
         discussionUrl,
         officialUrl,
         author,
@@ -740,12 +745,38 @@ function isPrivateIpv4Hostname(hostname) {
     return true;
   }
 
-  const [first, second] = octets;
+  const [first, second, third] = octets;
   if (first === 10 || first === 127 || first === 0) return true;
+  if (first === 100 && second >= 64 && second <= 127) return true;
   if (first === 169 && second === 254) return true;
   if (first === 172 && second >= 16 && second <= 31) return true;
+  if (first === 192 && second === 0 && third === 0) return true;
+  if (first === 192 && second === 0 && third === 2) return true;
+  if (first === 192 && second === 88 && third === 99) return true;
   if (first === 192 && second === 168) return true;
+  if (first === 198 && (second === 18 || second === 19)) return true;
+  if (first === 198 && second === 51 && third === 100) return true;
+  if (first === 203 && second === 0 && third === 113) return true;
+  if (first >= 224) return true;
   return false;
+}
+
+function selectLobstersDiscussionUrl(url) {
+  return isLobstersDiscussionUrl(url) ? url : null;
+}
+
+function selectExternalStoryUrl(url) {
+  return url && !isLobstersDiscussionUrl(url) ? url : null;
+}
+
+function isLobstersDiscussionUrl(url) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === "lobste.rs" && parsed.pathname.startsWith("/s/");
+  } catch {
+    return false;
+  }
 }
 
 function isPrivateIpv6Hostname(hostname) {
