@@ -35,6 +35,18 @@ test("platform-maintained launch candidate is detected before generic website fa
   });
 });
 
+test("platform-maintained launch candidate uses the exact curated tuple", () => {
+  const source = readFileSync(
+    join(process.cwd(), "src/lib/source-candidate-library.ts"),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /\{\s*name: "New Product Launches", sourceType: "new_product_launches", sourceUrl: "https:\/\/followbrief\.worldstatelabs\.com\/\?source=new-product-launches", fetchUrl: null, handle: null \}/,
+  );
+});
+
 test("manual sources absent from the primary candidate library are upserted into the backup candidate library", async () => {
   const now = new Date("2026-07-10T12:00:00.000Z");
   const prisma = {

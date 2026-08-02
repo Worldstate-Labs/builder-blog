@@ -71,7 +71,7 @@
         "BLOG_POST"
       ],
       "urlPatterns": [
-        "followbrief\\.worldstatelabs\\.com/\\?source=new-product-launches(?:\\s|[&#]|$)"
+        "(^|\\s)https://followbrief\\.worldstatelabs\\.com/\\?source=new-product-launches(?=\\s|$)"
       ],
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {

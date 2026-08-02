@@ -3799,6 +3799,22 @@ test("source registry centralizes current source categories", () => {
     })?.id,
     "new_product_launches",
   );
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches&utm_source=test",
+      fetchUrl: null,
+    })?.id,
+    "website",
+  );
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches#hash",
+      fetchUrl: null,
+    })?.id,
+    "website",
+  );
   assert.equal(builderKindForSourceType("new_product_launches"), BuilderKind.WEBSITE);
   assert.equal(
     builderSourceLabel({
