@@ -169,7 +169,7 @@ function devArticle({
 }: {
   id: number;
   title: string;
-  officialUrl: string;
+  officialUrl?: string | null;
   discussionUrl?: string;
   author: string;
   iso: string;
@@ -183,7 +183,7 @@ function devArticle({
     title,
     description,
     url: discussionUrl ?? `https://dev.to/${author}/launch-${id}`,
-    canonical_url: officialUrl,
+    canonical_url: officialUrl ?? null,
     published_at: iso,
     positive_reactions_count: reactions,
     comments_count: comments,
@@ -523,6 +523,68 @@ test("drops candidates outside lookback and malformed or private destinations", 
     ["Show DEV: Valid Launch"],
   );
   assert.equal(result.launches[0].officialUrl, "https://valid.example/path?a=1&b=2");
+});
+
+test("keeps discussion-only launches when HN, DEV, and Lobsters omit official URLs", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1301],
+      hnItems: {
+        "1301": hnItem({
+          id: 1301,
+          title: "Ask HN: Ship Without Site",
+          by: "hnmaker",
+          iso: daysAgo(1),
+          score: 44,
+          text: "Public launch discussion without a separate product URL yet.",
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 1302,
+          title: "Show DEV: Discussion Only Launch",
+          officialUrl: null,
+          discussionUrl: "https://dev.to/devrel/discussion-only-launch-1302",
+          author: "devrel",
+          iso: daysAgo(2),
+          description: "Launch details are only in the DEV discussion for now.",
+          reactions: 12,
+          comments: 3,
+        }),
+      ],
+      lobstersShow: lobstersFeed([
+        {
+          title: "Lobsters Discussion Launch",
+          discussionUrl: "https://lobste.rs/s/discuss1303/discussion_only_launch",
+          author: "lobster",
+          iso: daysAgo(3),
+          guid: "lobsters-discussion-only",
+          description: "Discussion-only launch thread.",
+          commentsUrl: "https://lobste.rs/s/discuss1303/discussion_only_launch",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(result.failures.length, 0);
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => [launch.provider, launch.title, launch.officialUrl]),
+    [
+      ["hn", "Ask HN: Ship Without Site", null],
+      ["dev", "Show DEV: Discussion Only Launch", null],
+      ["lobsters", "Lobsters Discussion Launch", null],
+    ],
+  );
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.discussionUrl),
+    [
+      "https://news.ycombinator.com/item?id=1301",
+      "https://dev.to/devrel/discussion-only-launch-1302",
+      "https://lobste.rs/s/discuss1303/discussion_only_launch",
+    ],
+  );
 });
 
 test("retains semantic ref source and src params while removing analytics params", async () => {

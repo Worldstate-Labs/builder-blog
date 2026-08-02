@@ -3647,10 +3647,7 @@ function hasFetchedCanonicalOrLegacyDatedItem(
 }
 
 function stableLaunchExternalId(candidate) {
-  const identity =
-    usageString(candidate?.officialUrl) ||
-    usageString(candidate?.discussionUrl) ||
-    `${usageString(candidate?.provider) || "provider"}:${usageString(candidate?.providerItemId) || "item"}`;
+  const identity = usageString(candidate?.officialUrl) || `${usageString(candidate?.provider) || "provider"}:${usageString(candidate?.providerItemId) || "item"}`;
   return `new-product-launches:${identity}`;
 }
 

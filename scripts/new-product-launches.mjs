@@ -196,9 +196,10 @@ async function fetchHnLaunches({ fetcher, timeoutMs }) {
   return items.flatMap((item) => {
     if (!item || item.type !== "story" || !item.id || !item.title) return [];
 
-    const officialUrl = normalizePublicHttpUrl(item.url);
+    const rawOfficialUrl = normalizedString(item.url);
+    const officialUrl = rawOfficialUrl ? normalizePublicHttpUrl(rawOfficialUrl) : null;
     const publishedAt = fromUnixSeconds(item.time);
-    if (!officialUrl || !publishedAt) return [];
+    if ((rawOfficialUrl && !officialUrl) || !publishedAt) return [];
 
     return [
       createCandidate({
@@ -238,10 +239,11 @@ async function fetchDevLaunches({ fetcher, timeoutMs }) {
 
   return articles.flatMap((article) => {
     const discussionUrl = normalizePublicHttpUrl(article?.url);
-    const officialUrl = normalizePublicHttpUrl(article?.canonical_url);
-    if (!discussionUrl || !officialUrl) return [];
-    if (sameNormalizedUrl(discussionUrl, officialUrl)) return [];
-    if (new URL(officialUrl).hostname === "dev.to") return [];
+    const rawOfficialUrl = normalizedString(article?.canonical_url);
+    const officialUrl = rawOfficialUrl ? normalizePublicHttpUrl(rawOfficialUrl) : null;
+    if (!discussionUrl || (rawOfficialUrl && !officialUrl)) return [];
+    if (officialUrl && sameNormalizedUrl(discussionUrl, officialUrl)) return [];
+    if (officialUrl && new URL(officialUrl).hostname === "dev.to") return [];
 
     const publishedAt = normalizedDate(
       article?.published_at || article?.published_timestamp,
@@ -370,10 +372,12 @@ function parseLobstersFeed(xml) {
   assertXmlDocument(xml, "lobsters");
   return extractXmlBlocks(xml, "item").flatMap((block) => {
     const description = tagText(block, "description");
-    const linkUrl = normalizePublicHttpUrl(tagText(block, "link"));
+    const rawLinkUrl = normalizedString(tagText(block, "link"));
+    const linkUrl = normalizePublicHttpUrl(rawLinkUrl);
     const commentsUrl = normalizePublicHttpUrl(tagText(block, "comments"));
     const fallbackUrl = normalizePublicHttpUrl(extractFirstHref(description));
     const primaryLinkIsExternal = Boolean(selectExternalStoryUrl(linkUrl));
+    if (!primaryLinkIsExternal && selectExternalStoryUrl(fallbackUrl)) return [];
     const discussionUrl =
       commentsUrl ||
       (primaryLinkIsExternal ? selectLobstersDiscussionUrl(fallbackUrl) : selectLobstersDiscussionUrl(linkUrl));
@@ -383,7 +387,7 @@ function parseLobstersFeed(xml) {
     );
     const providerItemId = normalizedString(tagText(block, "guid")) || discussionUrl;
     const title = stripHtml(tagText(block, "title") || "").trim();
-    if (!discussionUrl || !officialUrl || !publishedAt || !providerItemId || !title) {
+    if ((rawLinkUrl && !linkUrl) || !discussionUrl || !publishedAt || !providerItemId || !title) {
       return [];
     }
 

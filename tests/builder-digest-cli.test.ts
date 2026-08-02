@@ -9754,6 +9754,7 @@ test("buildFetchTasksForBuilders converts shared new product launches into requi
       launches: [
         launchCandidate(),
         launchCandidate({
+          provider: "lobsters",
           providerItemId: "102",
           title: "ConsoleKit",
           officialUrl: null,
@@ -9863,7 +9864,7 @@ test("buildFetchTasksForBuilders converts shared new product launches into requi
 
       assert.equal(
         secondTask.item.externalId,
-        "new-product-launches:https://lobste.rs/s/consolekit/demo",
+        "new-product-launches:lobsters:102",
       );
       assert.equal(secondTask.item.url, "https://lobste.rs/s/consolekit/demo");
     }
@@ -9876,6 +9877,62 @@ test("buildFetchTasksForBuilders converts shared new product launches into requi
     { lookbackDays: 14, limit: 5 },
     { lookbackDays: 14, limit: 5 },
   ]);
+});
+
+test("buildFetchTasksForBuilders uses provider identity to dedupe discussion-only launches across discussion URL changes", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?launch-dedup=${Date.now()}`);
+  const planned = await cli.buildFetchTasksForBuilders({
+    builders: [newProductLaunchesBuilder()],
+    context: {
+      ...newProductLaunchesContext(),
+      personalFetchedItems: [
+        {
+          builderId: "builder_launches",
+          kind: "BLOG_POST",
+          externalId: "new-product-launches:lobsters:102",
+          publishedAt: "2026-08-01T12:00:00.000Z",
+        },
+      ],
+    },
+    force: false,
+    days: 14,
+    limit: 1,
+    runStartedAt: new Date("2026-08-02T08:00:00.000Z"),
+    sourceOptionsBySourceId: {
+      new_product_launches: {
+        discover: async () => ({
+          launches: [
+            launchCandidate({
+              provider: "lobsters",
+              providerItemId: "102",
+              title: "ConsoleKit",
+              officialUrl: null,
+              discussionUrl: "https://lobste.rs/s/consolekit/demo-updated",
+              providerUrls: [
+                { provider: "lobsters", url: "https://lobste.rs/s/consolekit/demo-updated" },
+              ],
+              rankEvidence: {
+                engagementPercentile: 0.7,
+                freshnessScore: 0.75,
+                corroborationCount: 1,
+                score: 0.6975,
+                tieBreakKey: "https://lobste.rs/s/consolekit/demo-updated",
+              },
+            }),
+          ],
+          failures: [],
+        }),
+      },
+    },
+  });
+
+  assert.equal(planned.errorCount, 0);
+  assert.equal(planned.fetchTasks.length, 0);
+  assert.equal(planned.agentTasks.length, 0);
+  assert.equal(planned.tasksGenerated, 0);
+  assert.equal(planned.taskOutcomes.length, 0);
+  assert.equal(planned.builderStats.get("builder_launches")?.tasksGenerated, 0);
+  assert.equal(planned.builderStats.get("builder_launches")?.error, undefined);
 });
 
 test("buildFetchTasksForBuilders treats empty new product launch discovery as a successful no-op", async () => {
