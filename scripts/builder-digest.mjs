@@ -11,6 +11,7 @@ import {
   cloudShardExecutionBudget as sharedCloudShardExecutionBudget,
   normalizeCloudShardBudgetPolicy,
 } from "./cloud-shard-budget.mjs";
+import { discoverNewProductLaunches } from "./new-product-launches.mjs";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -572,6 +573,7 @@ const DEFAULT_APP_URL = "https://followbrief.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
 const DEFAULT_PERSONAL_FETCH_DAYS = 30;
+const MAX_NEW_PRODUCT_LAUNCH_FETCH_LIMIT = 5;
 // Single source of truth for source metadata lives in config/sources.json.
 // This map only carries the per-source fetcher function — the part that can't be
 // expressed as JSON. Source id is the join key with sources.json.
@@ -580,6 +582,7 @@ const FETCH_FN_BY_SOURCE_ID = {
   blog: fetchPersonalBlogBuilder,
   github_trending: fetchPersonalGithubTrendingBuilder,
   product_hunt_top_products: fetchPersonalProductHuntTopProductsBuilder,
+  new_product_launches: fetchPersonalNewProductLaunchesBuilder,
   youtube: fetchPersonalYouTubeBuilder,
   podcast: fetchPersonalPodcastBuilder,
   website: fetchPersonalWebsiteBuilder,
@@ -2189,6 +2192,7 @@ export async function buildFetchTasksForBuilders({
   defaultSummaryLanguage = null,
   cloudTaskMetadataByBuilderId = new Map(),
   onSourceProgress = null,
+  sourceOptionsBySourceId = {},
 } = {}) {
   const sources = context?.sources ?? {};
   const commonFetchRules = context?.commonFetchRules ?? context?.digest?.commonFetchRules ?? DEFAULT_FETCH_GUIDANCE;
@@ -2275,10 +2279,13 @@ export async function buildFetchTasksForBuilders({
       const builderCutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
       const fetched = await source.fetch(builder, {
         cutoff: builderCutoff,
+        days,
         limit,
+        now: runStartedAt,
         agentModel,
         fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
         sources: languageSources,
+        ...(sourceOptionsBySourceId?.[source.id] ?? {}),
       });
       const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
       const filteredItems = filterFinalFetchedItemsByCutoff(items, builderCutoff);
@@ -2658,6 +2665,7 @@ export function summarizeFetchTasksForLog(fetchTasks) {
 }
 
 function isRecoverableFetchFallback(task) {
+  if (task?.sourceType === "new_product_launches") return false;
   return (
     task?.contentStatus === "requires_agent" &&
     (task?.agentWorkType === "candidate_discovery_fallback" ||
@@ -3337,6 +3345,7 @@ function fetchTaskFromAgentTask(
   if (task.captionAvailability) out.captionAvailability = task.captionAvailability;
   if (task.plannedExtractionMethod) out.plannedExtractionMethod = task.plannedExtractionMethod;
   if (task.estimateEvidence) out.estimateEvidence = task.estimateEvidence;
+  if (task.sourceConfigSnapshot) out.sourceConfigSnapshot = task.sourceConfigSnapshot;
   if (Array.isArray(task.youtubeExtractionAttempts)) out.youtubeExtractionAttempts = task.youtubeExtractionAttempts;
   if (Array.isArray(task.podcastExtractionAttempts)) out.podcastExtractionAttempts = task.podcastExtractionAttempts;
   return out;
@@ -3614,6 +3623,14 @@ function hasFetchedCanonicalOrLegacyDatedItem(
     }
   }
   return false;
+}
+
+function stableLaunchExternalId(candidate) {
+  const identity =
+    usageString(candidate?.officialUrl) ||
+    usageString(candidate?.discussionUrl) ||
+    `${usageString(candidate?.provider) || "provider"}:${usageString(candidate?.providerItemId) || "item"}`;
+  return `new-product-launches:${identity}`;
 }
 
 function personalFetchedItemsForContext(context) {
@@ -4584,6 +4601,37 @@ export function fetchPersonalProductHuntTopProductsBuilderForTest(builder, optio
   return fetchPersonalProductHuntTopProductsBuilder(builder, options);
 }
 
+async function fetchPersonalNewProductLaunchesBuilder(
+  builder,
+  {
+    days = DEFAULT_PERSONAL_FETCH_DAYS,
+    agentModel,
+    fetchedItemKeys = new Set(),
+    sources = {},
+    now = new Date(),
+    discover = discoverNewProductLaunches,
+  } = {},
+) {
+  const { launches } = await discover({
+    now,
+    lookbackDays: days,
+    limit: MAX_NEW_PRODUCT_LAUNCH_FETCH_LIMIT,
+  });
+  const candidates = launches.filter(
+    (candidate) =>
+      !fetchedItemKeys.has(
+        personalItemKey(builder.id, "BLOG_POST", stableLaunchExternalId(candidate)),
+      ),
+  );
+
+  return {
+    items: [],
+    agentTasks: candidates.map((candidate) =>
+      newProductLaunchAgentTaskForCandidate(builder, candidate, { sources, agentModel }),
+    ),
+  };
+}
+
 export function parseProductHuntTopProductCandidates(
   html,
   leaderboardUrl = PRODUCT_HUNT_TOP_PRODUCTS_URL,
@@ -4679,6 +4727,64 @@ function productHuntAgentTaskForProduct(builder, product, { sources = {}, agentM
     sourceType: "product_hunt_top_products",
     item,
     minimumContentQuality: genericMinimumContentQuality(sources, "product_hunt_top_products"),
+  };
+  return { ...task, id: agentTaskId(task) };
+}
+
+function newProductLaunchAgentTaskForCandidate(builder, candidate, { sources = {}, agentModel } = {}) {
+  const sourceConfig = sources?.new_product_launches ?? null;
+  const publishedAt = normalizedDate(candidate?.publishedAt);
+  const providerUrls = Array.isArray(candidate?.providerUrls)
+    ? candidate.providerUrls
+        .filter((entry) => typeof entry?.provider === "string" && typeof entry?.url === "string")
+        .map((entry) => ({ provider: entry.provider, url: entry.url }))
+    : [];
+  const rawJson = {
+    source: "new-product-launches",
+    builderId: builder.id,
+    builderName: builder.name,
+    provider: usageString(candidate?.provider) || null,
+    providerItemId: usageString(candidate?.providerItemId) || null,
+    title: usageString(candidate?.title) || null,
+    description: usageString(candidate?.description) || "",
+    discussionUrl: usageString(candidate?.discussionUrl) || null,
+    officialUrl: usageString(candidate?.officialUrl) || null,
+    author: usageString(candidate?.author) || null,
+    publishedAt,
+    engagement: usageNumber(candidate?.engagement) ?? 0,
+    tags: Array.isArray(candidate?.tags)
+      ? candidate.tags.map((tag) => String(tag).trim()).filter(Boolean)
+      : [],
+    providers: providerUrls,
+    rankEvidence: candidate?.rankEvidence && typeof candidate.rankEvidence === "object"
+      ? {
+          engagementPercentile: usageNumber(candidate.rankEvidence.engagementPercentile) ?? 0,
+          freshnessScore: usageNumber(candidate.rankEvidence.freshnessScore) ?? 0,
+          corroborationCount: usageNumber(candidate.rankEvidence.corroborationCount) ?? 0,
+          score: usageNumber(candidate.rankEvidence.score) ?? 0,
+          tieBreakKey: usageString(candidate.rankEvidence.tieBreakKey) || "",
+        }
+      : null,
+    fetchTool: skillFetchTool("New product launch planner", agentModel),
+  };
+  const item = {
+    kind: "BLOG_POST",
+    externalId: stableLaunchExternalId(candidate),
+    title: usageString(candidate?.title) || null,
+    url: usageString(candidate?.officialUrl) || usageString(candidate?.discussionUrl) || "",
+    publishedAt,
+    sourceName: builder.name,
+    description: usageString(candidate?.description) || "",
+    rawJson,
+  };
+  const task = {
+    type: "new_product_launch_report",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "new_product_launches",
+    item,
+    minimumContentQuality: genericMinimumContentQuality(sources, "new_product_launches"),
+    ...(sourceConfig ? { sourceConfigSnapshot: compactSourceConfigSnapshot(sourceConfig) } : {}),
   };
   return { ...task, id: agentTaskId(task) };
 }

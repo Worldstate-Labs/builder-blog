@@ -9580,6 +9580,263 @@ test("cloud planning finalizes caught fetcher failures with minimum budget and n
   }
 });
 
+function newProductLaunchesSourceConfig() {
+  return {
+    id: "new_product_launches",
+    label: "New Product Launches",
+    contentQuality: {
+      minChars: 200,
+      minContentUnits: 20,
+    },
+    summaryPrompt: {
+      language: "zh",
+      body: "Summarize the supplied launch facts in Chinese.",
+      style: "blog_or_document",
+    },
+    fetchPrompt: {
+      body: "Fetch the supporting launch details from the supplied URL.",
+    },
+  };
+}
+
+function newProductLaunchesContext() {
+  return {
+    language: "zh",
+    subscriptions: [],
+    personalFetchedItems: [],
+    latestPersonalFetchedItems: [],
+    sources: {
+      new_product_launches: newProductLaunchesSourceConfig(),
+    },
+  };
+}
+
+function newProductLaunchesBuilder() {
+  return {
+    id: "builder_launches",
+    scope: "PERSONAL",
+    kind: "WEBSITE",
+    sourceType: "new_product_launches",
+    name: "New Product Launches",
+    sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+    fetchUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+  };
+}
+
+function launchCandidate(overrides: Record<string, unknown> = {}) {
+  return {
+    provider: "dev",
+    providerItemId: "101",
+    title: "LaunchPad",
+    description: "Structured launch facts for LaunchPad.",
+    discussionUrl: "https://dev.to/launches/launchpad",
+    officialUrl: "https://launchpad.example/product?a=1&b=2",
+    author: "launchpad-team",
+    publishedAt: "2026-07-31T12:00:00.000Z",
+    engagement: 87,
+    tags: ["showdev", "launch"],
+    providerUrls: [
+      { provider: "dev", url: "https://dev.to/launches/launchpad" },
+      { provider: "hn", url: "https://news.ycombinator.com/item?id=424242" },
+    ],
+    rankEvidence: {
+      engagementPercentile: 0.9,
+      freshnessScore: 0.8,
+      corroborationCount: 2,
+      score: 0.845,
+      tieBreakKey: "https://launchpad.example/product?a=1&b=2",
+    },
+    ...overrides,
+  };
+}
+
+test("buildFetchTasksForBuilders converts shared new product launches into requires-agent blog post tasks for manual and cron runs", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?launch-plan=${Date.now()}`);
+  const calls: Array<{ limit: number; lookbackDays: number }> = [];
+  const discover = async ({ lookbackDays, limit }: { lookbackDays: number; limit: number }) => {
+    calls.push({ lookbackDays, limit });
+    return {
+      launches: [
+        launchCandidate(),
+        launchCandidate({
+          providerItemId: "102",
+          title: "ConsoleKit",
+          officialUrl: null,
+          discussionUrl: "https://lobste.rs/s/consolekit/demo",
+          publishedAt: "2026-07-30T12:00:00.000Z",
+          providerUrls: [{ provider: "lobsters", url: "https://lobste.rs/s/consolekit/demo" }],
+          rankEvidence: {
+            engagementPercentile: 0.7,
+            freshnessScore: 0.75,
+            corroborationCount: 1,
+            score: 0.6975,
+            tieBreakKey: "https://lobste.rs/s/consolekit/demo",
+          },
+        }),
+      ],
+      failures: [],
+    };
+  };
+  const runStartedAt = new Date("2026-08-02T08:00:00.000Z");
+  const runSources = ["manual", "cron"] as const;
+  const previousRunSource = process.env.BUILDER_BLOG_RUN_SOURCE;
+
+  try {
+    for (const runSource of runSources) {
+      process.env.BUILDER_BLOG_RUN_SOURCE = runSource;
+      const planned = await cli.buildFetchTasksForBuilders({
+        builders: [newProductLaunchesBuilder()],
+        context: newProductLaunchesContext(),
+        force: true,
+        days: 14,
+        limit: 1,
+        runStartedAt,
+        sourceOptionsBySourceId: {
+          new_product_launches: { discover },
+        },
+      });
+
+      assert.equal(planned.errorCount, 0);
+      assert.equal(planned.taskOutcomes.length, 0);
+      assert.equal(planned.fetchTasks.length, 2);
+      assert.equal(planned.tasksGenerated, 2);
+      assert.equal(planned.agentTasks.length, 2);
+      assert.equal(planned.builderStats.get("builder_launches")?.tasksGenerated, 2);
+      assert.equal(planned.builderStats.get("builder_launches")?.error, undefined);
+
+      const [firstTask, secondTask] = planned.fetchTasks as Array<{
+        agentWorkType: string;
+        contentStatus: string;
+        sourceType: string;
+        sourceConfigSnapshot: unknown;
+        item: {
+          kind: string;
+          externalId: string;
+          url: string;
+          rawJson: {
+            provider: string;
+            providerItemId: string;
+            officialUrl: string | null;
+            discussionUrl: string;
+            providers: Array<{ provider: string; url: string }>;
+            rankEvidence: { score: number; tieBreakKey: string };
+          };
+        };
+      }>;
+
+      assert.equal(firstTask.agentWorkType, "new_product_launch_report");
+      assert.equal(firstTask.contentStatus, "requires_agent");
+      assert.equal(firstTask.sourceType, "new_product_launches");
+      assert.deepEqual(firstTask.sourceConfigSnapshot, {
+        id: "new_product_launches",
+        label: "New Product Launches",
+        contentQuality: {
+          minChars: 200,
+          minContentUnits: 20,
+        },
+        summaryPrompt: {
+          language: "zh",
+          body: "Summarize the supplied launch facts in Chinese.",
+          style: "blog_or_document",
+        },
+        fetchPrompt: {
+          body: "Fetch the supporting launch details from the supplied URL.",
+        },
+      });
+      assert.equal(firstTask.item.kind, "BLOG_POST");
+      assert.equal(
+        firstTask.item.externalId,
+        "new-product-launches:https://launchpad.example/product?a=1&b=2",
+      );
+      assert.equal(firstTask.item.url, "https://launchpad.example/product?a=1&b=2");
+      assert.equal(firstTask.item.rawJson.provider, "dev");
+      assert.equal(firstTask.item.rawJson.providerItemId, "101");
+      assert.equal(
+        firstTask.item.rawJson.officialUrl,
+        "https://launchpad.example/product?a=1&b=2",
+      );
+      assert.equal(firstTask.item.rawJson.discussionUrl, "https://dev.to/launches/launchpad");
+      assert.deepEqual(firstTask.item.rawJson.providers, [
+        { provider: "dev", url: "https://dev.to/launches/launchpad" },
+        { provider: "hn", url: "https://news.ycombinator.com/item?id=424242" },
+      ]);
+      assert.equal(firstTask.item.rawJson.rankEvidence.score, 0.845);
+      assert.equal(
+        firstTask.item.rawJson.rankEvidence.tieBreakKey,
+        "https://launchpad.example/product?a=1&b=2",
+      );
+
+      assert.equal(
+        secondTask.item.externalId,
+        "new-product-launches:https://lobste.rs/s/consolekit/demo",
+      );
+      assert.equal(secondTask.item.url, "https://lobste.rs/s/consolekit/demo");
+    }
+  } finally {
+    if (previousRunSource === undefined) delete process.env.BUILDER_BLOG_RUN_SOURCE;
+    else process.env.BUILDER_BLOG_RUN_SOURCE = previousRunSource;
+  }
+
+  assert.deepEqual(calls, [
+    { lookbackDays: 14, limit: 5 },
+    { lookbackDays: 14, limit: 5 },
+  ]);
+});
+
+test("buildFetchTasksForBuilders treats empty new product launch discovery as a successful no-op", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?launch-empty=${Date.now()}`);
+  const planned = await cli.buildFetchTasksForBuilders({
+    builders: [newProductLaunchesBuilder()],
+    context: newProductLaunchesContext(),
+    force: true,
+    days: 21,
+    limit: 1,
+    runStartedAt: new Date("2026-08-02T08:00:00.000Z"),
+    sourceOptionsBySourceId: {
+      new_product_launches: {
+        discover: async () => ({
+          launches: [],
+          failures: [],
+        }),
+      },
+    },
+  });
+
+  assert.equal(planned.errorCount, 0);
+  assert.equal(planned.fetchTasks.length, 0);
+  assert.equal(planned.agentTasks.length, 0);
+  assert.equal(planned.taskOutcomes.length, 0);
+  assert.equal(planned.builderStats.get("builder_launches")?.error, undefined);
+});
+
+test("buildFetchTasksForBuilders records all-provider launch discovery failures as builder errors", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?launch-failure=${Date.now()}`);
+  const planned = await cli.buildFetchTasksForBuilders({
+    builders: [newProductLaunchesBuilder()],
+    context: newProductLaunchesContext(),
+    force: true,
+    days: 30,
+    limit: 1,
+    runStartedAt: new Date("2026-08-02T08:00:00.000Z"),
+    sourceOptionsBySourceId: {
+      new_product_launches: {
+        discover: async () => {
+          const error = new Error("All launch discovery providers failed");
+          error.name = "NewProductLaunchDiscoveryError";
+          throw error;
+        },
+      },
+    },
+  });
+
+  assert.equal(planned.errorCount, 1);
+  assert.equal(planned.taskOutcomes.length, 0);
+  assert.equal(planned.fetchTasks.length, 1);
+  assert.equal(planned.builderStats.get("builder_launches")?.error, "All launch discovery providers failed");
+  assert.equal(planned.builderStats.get("builder_launches")?.tasksGenerated, 1);
+  assert.equal(planned.fetchTasks[0].agentWorkType, "fetch_builder_fallback");
+});
+
 test("merge-task-results checkpoint exclusions keep repeated cloud task ids run-scoped", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-cloud-exclude-"));
   const resultsDir = join(tmp, "results");
