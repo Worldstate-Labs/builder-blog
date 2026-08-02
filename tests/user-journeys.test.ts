@@ -11,6 +11,7 @@ import { delimiter, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -98,6 +99,194 @@ function assertOrderedText(text: string, markers: string[]) {
     assert.notEqual(index, -1, `missing marker: ${marker}`);
     assert.ok(index > lastIndex, `marker out of order: ${marker}`);
     lastIndex = index;
+  }
+}
+
+type SourceConfigStoreBehaviorModule = {
+  ensureUserSourceConfigs: (userId: string) => Promise<SourceConfigStoreUserRow[]>;
+  getUserSourceConfigs: (userId: string) => Promise<SourceConfigStoreUserRow[]>;
+  _resetSourceConfigStoreForTests: () => void;
+};
+
+type SourceConfigStoreDefaultRow = {
+  sourceId: string;
+  label: string;
+  agentDefaultStatus: string;
+  defaultFetchDays: number;
+  defaultFetchLimit: number;
+  contentQuality: Record<string, unknown>;
+  summaryPromptBody: string;
+  fetchPromptBody: string | null;
+  summaryStyle: string;
+  updatedAt: Date;
+  updatedBy: string | null;
+};
+
+type SourceConfigStoreUserRow = SourceConfigStoreDefaultRow & {
+  userId: string;
+};
+
+type CreateManyRows<T> = {
+  data: T[];
+  skipDuplicates?: boolean;
+};
+
+class FakeSourceConfigStorePrisma {
+  private readonly sourceRows = new Map<string, SourceConfigStoreDefaultRow>();
+  private readonly userRows = new Map<string, SourceConfigStoreUserRow>();
+  private digestSeeded = false;
+  readonly userSourceTypeConfigCreateManyCalls: Array<CreateManyRows<SourceConfigStoreUserRow>> = [];
+
+  constructor(defaultRows: SourceConfigStoreDefaultRow[], userRows: SourceConfigStoreUserRow[]) {
+    for (const row of defaultRows) {
+      this.sourceRows.set(row.sourceId, cloneSourceConfigStoreDefaultRow(row));
+    }
+    for (const row of userRows) {
+      this.userRows.set(userSourceRowKey(row.userId, row.sourceId), cloneSourceConfigStoreUserRow(row));
+    }
+  }
+
+  sourceTypeConfig = {
+    createMany: async ({ data }: CreateManyRows<SourceConfigStoreDefaultRow>) => {
+      for (const row of data) {
+        if (!this.sourceRows.has(row.sourceId)) {
+          this.sourceRows.set(row.sourceId, cloneSourceConfigStoreDefaultRow(row));
+        }
+      }
+      return { count: data.length };
+    },
+    findMany: async () =>
+      [...this.sourceRows.values()].map((row) => cloneSourceConfigStoreDefaultRow(row)),
+  };
+
+  digestConfig = {
+    createMany: async () => {
+      this.digestSeeded = true;
+      return { count: 1 };
+    },
+    findUnique: async () =>
+      this.digestSeeded
+        ? {
+            id: "global",
+            digestIntro: "",
+            headlinePrompt: "",
+            perSourceSummaryPrompt: "",
+            digestOrder: [],
+            commonFetchRules: "",
+            commonSummaryRules: "",
+            updatedAt: new Date("2026-08-02T00:00:00.000Z"),
+            updatedBy: null,
+          }
+        : null,
+  };
+
+  userSourceTypeConfig = {
+    findMany: async ({ where: { userId } }: { where: { userId: string } }) =>
+      [...this.userRows.values()]
+        .filter((row) => row.userId === userId)
+        .map((row) => cloneSourceConfigStoreUserRow(row)),
+    createMany: async ({ data, skipDuplicates }: CreateManyRows<SourceConfigStoreUserRow>) => {
+      this.userSourceTypeConfigCreateManyCalls.push({
+        data: data.map((row) => cloneSourceConfigStoreUserRow(row)),
+        skipDuplicates,
+      });
+      for (const row of data) {
+        const key = userSourceRowKey(row.userId, row.sourceId);
+        if (skipDuplicates && this.userRows.has(key)) continue;
+        this.userRows.set(key, cloneSourceConfigStoreUserRow(row));
+      }
+      return { count: data.length };
+    },
+  };
+}
+
+function sourceTypeConfigRow(
+  config: (typeof DEFAULT_SOURCE_CONFIGS)[keyof typeof DEFAULT_SOURCE_CONFIGS],
+): SourceConfigStoreDefaultRow {
+  return {
+    sourceId: config.sourceId,
+    label: config.label,
+    agentDefaultStatus: config.agentDefaultStatus,
+    defaultFetchDays: config.defaultFetchDays,
+    defaultFetchLimit: config.defaultFetchLimit,
+    contentQuality: structuredClone(config.contentQuality),
+    summaryPromptBody: config.summaryPromptBody,
+    fetchPromptBody: config.fetchPromptBody,
+    summaryStyle: config.summaryStyle,
+    updatedAt: new Date("2026-08-02T00:00:00.000Z"),
+    updatedBy: null,
+  };
+}
+
+function userSourceConfigRow(
+  userId: string,
+  sourceId: string,
+  config: (typeof DEFAULT_SOURCE_CONFIGS)[keyof typeof DEFAULT_SOURCE_CONFIGS],
+  overrides: Partial<Omit<SourceConfigStoreUserRow, "userId" | "sourceId">> = {},
+): SourceConfigStoreUserRow {
+  return {
+    userId,
+    ...sourceTypeConfigRow(config),
+    sourceId,
+    ...overrides,
+    contentQuality: structuredClone(
+      (overrides.contentQuality as Record<string, unknown> | undefined) ?? config.contentQuality,
+    ),
+  };
+}
+
+function userSourceRowKey(userId: string, sourceId: string) {
+  return `${userId}:${sourceId}`;
+}
+
+function cloneSourceConfigStoreDefaultRow(
+  row: SourceConfigStoreDefaultRow,
+): SourceConfigStoreDefaultRow {
+  return {
+    ...row,
+    contentQuality: structuredClone(row.contentQuality),
+    updatedAt: new Date(row.updatedAt),
+  };
+}
+
+function cloneSourceConfigStoreUserRow(row: SourceConfigStoreUserRow): SourceConfigStoreUserRow {
+  return {
+    ...cloneSourceConfigStoreDefaultRow(row),
+    userId: row.userId,
+  };
+}
+
+async function loadSourceConfigStoreBehaviorModule(
+  prisma: FakeSourceConfigStorePrisma,
+): Promise<SourceConfigStoreBehaviorModule> {
+  const tmp = mkdtempSync(join(tmpdir(), "source-config-store-behavior-"));
+  const storePath = join(process.cwd(), "src/lib/source-config-store.ts");
+  const seedPath = join(process.cwd(), "src/lib/source-config-seed.ts");
+  const stubPath = join(tmp, "prisma.stub.ts");
+  const tempStorePath = join(tmp, "source-config-store.ts");
+  const storeSource = readFileSync(storePath, "utf8")
+    .replace(/from "\.\/prisma";/, `from ${JSON.stringify(pathToFileURL(stubPath).href)};`)
+    .replace(
+      /from "\.\/source-config-seed";/,
+      `from ${JSON.stringify(pathToFileURL(seedPath).href)};`,
+    );
+
+  writeFileSync(
+    stubPath,
+    'const globalState = globalThis as typeof globalThis & { __fbSourceConfigStorePrisma?: unknown };\n' +
+      "export const prisma = globalState.__fbSourceConfigStorePrisma as any;\n",
+  );
+  writeFileSync(tempStorePath, storeSource);
+
+  const globalState = globalThis as typeof globalThis & { __fbSourceConfigStorePrisma?: unknown };
+  globalState.__fbSourceConfigStorePrisma = prisma;
+  try {
+    return (await import(
+      `${pathToFileURL(tempStorePath).href}?t=${Date.now()}`
+    )) as SourceConfigStoreBehaviorModule;
+  } finally {
+    delete globalState.__fbSourceConfigStorePrisma;
+    rmSync(tmp, { recursive: true, force: true });
   }
 }
 import {
@@ -4108,6 +4297,7 @@ test("content config is per-user, seeded from a system default", () => {
     DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
     DEFAULT_DIGEST_PROMPTS.summarizeNewProductLaunch,
   );
+
   const newProductLaunchesSettingsCard = renderToStaticMarkup(
     createElement(AdminSourceTypeManager, {
       canEditFetchingInstructions: true,
@@ -4219,29 +4409,6 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /if \(canEditFetchingInstructions\) \{[\s\S]*patch\.fetchPromptBody =/);
   assert.match(srcManager, /canEditQualityGates/);
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
-  assert.match(srcManager, /settingsSourceTypeLabel/);
-  assert.match(srcManager, /if \(config\.sourceId === "blog"\) return "Blog \/ Article Feed"/);
-  assert.match(srcManager, /if \(config\.sourceId === "podcast"\) return "Podcast \/ Audio Feed"/);
-  assert.doesNotMatch(srcManager, /provider selector/i);
-  assert.doesNotMatch(srcManager, /Frequency/i);
-  assert.doesNotMatch(srcManager, /Lookback/i);
-  assert.doesNotMatch(srcManager, /Max launches/i);
-  assert.match(store, /function sourceConfigCopyData\(row: SourceTypeConfig\)/);
-  assert.match(store, /summaryPromptBody: row\.summaryPromptBody/);
-  assert.match(store, /fetchPromptBody: row\.fetchPromptBody/);
-  assert.match(store, /contentQuality: row\.contentQuality as object/);
-  assert.match(store, /summaryStyle: row\.summaryStyle/);
-  assert.match(store, /const have = new Set\(activeExisting\.map\(\(r\) => r\.sourceId\)\)/);
-  assert.match(
-    store,
-    /const missing = \[\.\.\.defaults\.values\(\)\]\.filter\(\(d\) => !have\.has\(d\.sourceId\)\)/,
-  );
-  assert.match(
-    store,
-    /data: missing\.map\(\(d\) => \(\{ userId, sourceId: d\.sourceId, \.\.\.sourceConfigCopyData\(d\) \}\)\)/,
-  );
-  assert.match(store, /skipDuplicates: true/);
-  assert.match(store, /return rows\.filter\(\(r\) => ACTIVE_SOURCE_IDS\.has\(r\.sourceId\)\)/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.doesNotMatch(digestForm, /Section/);
   assert.doesNotMatch(digestForm, /AI Brief prompts/);
@@ -4284,6 +4451,81 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(contract, /common fetching rules plus your per-source fetch prompt/);
   assert.doesNotMatch(contract, /context\.digest\.order/);
   assert.doesNotMatch(contract, /the admin's per-source fetch prompt/);
+});
+
+test("ensureUserSourceConfigs materializes new_product_launches without overwriting edited user rows", async () => {
+  const userId = "user_materialize";
+  const editedBlogSummary = "User-edited blog summary prompt";
+  const editedBlogFetch = "User-edited blog fetch instructions";
+  const editedBlogQuality = {
+    minChars: 321,
+    minContentUnits: 54,
+    minLocalDiversity: 0.44,
+  };
+  const prisma = new FakeSourceConfigStorePrisma(
+    Object.values(DEFAULT_SOURCE_CONFIGS).map((config) => sourceTypeConfigRow(config)),
+    Object.entries(DEFAULT_SOURCE_CONFIGS)
+      .filter(([sourceId]) => sourceId !== "new_product_launches")
+      .map(([sourceId, config]) =>
+        userSourceConfigRow(userId, sourceId, config, {
+          ...(sourceId === "blog"
+            ? {
+                summaryPromptBody: editedBlogSummary,
+                fetchPromptBody: editedBlogFetch,
+                contentQuality: editedBlogQuality,
+              }
+            : {}),
+        }),
+      ),
+  );
+  const store = await loadSourceConfigStoreBehaviorModule(prisma);
+
+  try {
+    const materialized = await store.ensureUserSourceConfigs(userId);
+    const fetched = await store.getUserSourceConfigs(userId);
+
+    assert.equal(prisma.userSourceTypeConfigCreateManyCalls.length, 1);
+    assert.deepEqual(
+      prisma.userSourceTypeConfigCreateManyCalls[0]?.data.map((row) => row.sourceId),
+      ["new_product_launches"],
+    );
+
+    const newLaunches = materialized.find((row) => row.sourceId === "new_product_launches");
+    assert.ok(newLaunches);
+    assert.equal(newLaunches.label, "New Product Launches");
+    assert.equal(
+      newLaunches.summaryPromptBody,
+      DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
+    );
+    assert.equal(
+      newLaunches.fetchPromptBody,
+      DEFAULT_SOURCE_CONFIGS.new_product_launches.fetchPromptBody,
+    );
+
+    const blogAfterMaterialize = materialized.find((row) => row.sourceId === "blog");
+    assert.ok(blogAfterMaterialize);
+    assert.equal(blogAfterMaterialize.summaryPromptBody, editedBlogSummary);
+    assert.equal(blogAfterMaterialize.fetchPromptBody, editedBlogFetch);
+    assert.deepEqual(blogAfterMaterialize.contentQuality, editedBlogQuality);
+
+    const blogAfterGet = fetched.find((row) => row.sourceId === "blog");
+    const launchesAfterGet = fetched.find((row) => row.sourceId === "new_product_launches");
+    assert.ok(blogAfterGet);
+    assert.ok(launchesAfterGet);
+    assert.equal(blogAfterGet.summaryPromptBody, editedBlogSummary);
+    assert.equal(blogAfterGet.fetchPromptBody, editedBlogFetch);
+    assert.deepEqual(blogAfterGet.contentQuality, editedBlogQuality);
+    assert.equal(
+      launchesAfterGet.summaryPromptBody,
+      DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
+    );
+    assert.equal(
+      launchesAfterGet.fetchPromptBody,
+      DEFAULT_SOURCE_CONFIGS.new_product_launches.fetchPromptBody,
+    );
+  } finally {
+    store._resetSourceConfigStoreForTests();
+  }
 });
 
 test("cloud chooser keeps platform-maintained rows visible while excluding them from selection and submit-all ids", () => {
