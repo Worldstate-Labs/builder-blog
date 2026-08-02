@@ -60,6 +60,20 @@ producing BLOG_POST items and requiring Agent work. Add one curated candidate
 entry with a fixed name, source value, icon, and canonical public URL so every
 owner's Builder resolves to the same BuilderEntity.
 
+The fixed candidate tuple is:
+
+- name: `New Product Launches`;
+- source type: `new_product_launches`;
+- source URL/value:
+  `https://followbrief.worldstatelabs.com/?source=new-product-launches`;
+- fetch URL: `null` because discovery uses the custom provider adapters;
+- handle: `null`;
+- source icon: Lucide `PackageOpen` through the existing SourceBadge mapping.
+
+The source registry URL pattern and fixed-source input map must recognize this
+exact URL. Query normalization must preserve the `source=new-product-launches`
+identity so it cannot collide with a generic FollowBrief website Builder.
+
 The fixed source value is not an upstream fetch endpoint. The custom discovery
 handler ignores the Builder URL and calls the four provider endpoints directly.
 The fixed value exists only to provide stable input, deduplication, and entity
@@ -224,10 +238,12 @@ The cloud submission chooser shows the source as maintained and disables its
 checkbox. Submit-all calculations, the 20-source limit, and server-side
 submission selection count only eligible sources.
 
-The server rejects an explicitly submitted platform-maintained Builder with a
-stable validation reason instead of silently creating a CloudSourceSubmission,
-CloudSourceTask, or language-library copy. Existing cloud source scheduling,
-leases, submitter accounting, and zero-submitter cleanup are untouched.
+The server rejects an explicitly submitted platform-maintained Builder with
+HTTP 400 and `{ error, code: "platform_managed_source" }` instead of silently
+creating a CloudSourceSubmission, CloudSourceTask, or language-library copy.
+The human error states that FollowBrief already maintains the source. Existing
+cloud source scheduling, leases, submitter accounting, and zero-submitter
+cleanup are untouched.
 
 ## Settings
 
