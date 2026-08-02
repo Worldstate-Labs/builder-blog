@@ -291,7 +291,7 @@ async function fetchDevLaunches({ fetcher, timeoutMs }) {
 async function fetchHuggingFaceLaunches({ fetcher, timeoutMs }) {
   const spaces = await fetchJson(
     fetcher,
-    "https://huggingface.co/api/spaces?sort=createdAt&direction=-1&limit=12",
+    "https://huggingface.co/api/spaces?sort=trendingScore&direction=-1&limit=50",
     {
       timeoutMs,
       provider: "huggingface",
@@ -305,6 +305,9 @@ async function fetchHuggingFaceLaunches({ fetcher, timeoutMs }) {
     const providerItemId = normalizedString(space?.id);
     const publishedAt = normalizedDate(space?.createdAt || space?.created_at);
     if (!providerItemId || !publishedAt) return [];
+
+    const engagement = finiteNumber(space?.likes) + finiteNumber(space?.trendingScore);
+    if (engagement <= 0) return [];
 
     const officialUrl = normalizePublicHttpUrl(
       `https://huggingface.co/spaces/${providerItemId}`,
@@ -327,7 +330,7 @@ async function fetchHuggingFaceLaunches({ fetcher, timeoutMs }) {
         officialUrl,
         author: normalizedString(space?.author),
         publishedAt,
-        engagement: finiteNumber(space?.likes) + finiteNumber(space?.trendingScore),
+        engagement,
         tags: normalizeTags(space?.tags || space?.cardData?.tags),
         payload: {
           id: space.id ?? null,

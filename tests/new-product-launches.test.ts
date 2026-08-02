@@ -372,6 +372,56 @@ test("parses Show HN, DEV showdev, Hugging Face Spaces, and Lobsters", async () 
   );
 });
 
+test("requests trending Hugging Face Spaces and ignores zero-signal uploads", async () => {
+  const requestedUrls: string[] = [];
+  const fixtureFetcher = createFixtureFetcher({
+    hfSpaces: [
+      hfSpace({
+        id: "noise/empty-space",
+        title: "Empty Space",
+        author: "noise",
+        iso: daysAgo(0),
+        likes: 0,
+        trendingScore: 0,
+      }),
+      hfSpace({
+        id: "signal/useful-space",
+        title: "Useful Space",
+        author: "signal",
+        iso: daysAgo(1),
+        likes: 12,
+        trendingScore: 7,
+      }),
+    ],
+  });
+
+  const result = await discoverNewProductLaunches({
+    fetcher: async (input) => {
+      const rawUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      requestedUrls.push(rawUrl);
+      return fixtureFetcher(input);
+    },
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  const huggingFaceUrl = new URL(
+    requestedUrls.find((url) => url.startsWith("https://huggingface.co/api/spaces"))!,
+  );
+  assert.equal(huggingFaceUrl.searchParams.get("sort"), "trendingScore");
+  assert.equal(huggingFaceUrl.searchParams.get("direction"), "-1");
+  assert.equal(huggingFaceUrl.searchParams.get("limit"), "50");
+  assert.deepEqual(
+    result.launches.filter((launch) => launch.provider === "huggingface").map((launch) => launch.title),
+    ["Useful Space"],
+  );
+});
+
 test("uses Lobsters link/comments fields first and falls back to description links only when needed", async () => {
   const result = await discoverNewProductLaunches({
     fetcher: createFixtureFetcher({
