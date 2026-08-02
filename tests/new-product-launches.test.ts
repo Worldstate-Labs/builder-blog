@@ -44,6 +44,12 @@ function jsonResponse(body: unknown, init: ResponseInit = {}) {
   });
 }
 
+function abortError(message = "aborted") {
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
 function textResponse(body: string, init: ResponseInit = {}) {
   return new Response(body, {
     ...init,
@@ -923,6 +929,148 @@ test("reports an HN provider failure when showstories ids exist but every item r
   ]);
 });
 
+test("preserves a homogeneous timeout aggregate when all HN item requests time out", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1951, 1952],
+      hnItems: {
+        "1951": abortError("timeout 1"),
+        "1952": abortError("timeout 2"),
+      },
+      devArticles: [
+        devArticle({
+          id: 1953,
+          title: "Show DEV: Timeout Aggregate Survived",
+          officialUrl: "https://timeout-aggregate.example/?utm_source=dev",
+          author: "dev",
+          iso: daysAgo(1),
+          description: "DEV still succeeds.",
+          reactions: 4,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(result.failures, [
+    {
+      provider: "hn",
+      category: "timeout",
+      reason: "timeout",
+    },
+  ]);
+});
+
+test("preserves a homogeneous safe http aggregate when all HN item requests fail with the same status", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1961, 1962],
+      hnItems: {
+        "1961": new Response("down", { status: 503 }),
+        "1962": new Response("down", { status: 503 }),
+      },
+      devArticles: [
+        devArticle({
+          id: 1963,
+          title: "Show DEV: HTTP Aggregate Survived",
+          officialUrl: "https://http-aggregate.example/?utm_source=dev",
+          author: "dev",
+          iso: daysAgo(1),
+          description: "DEV still succeeds.",
+          reactions: 4,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(result.failures, [
+    {
+      provider: "hn",
+      category: "http",
+      reason: "http_503",
+    },
+  ]);
+});
+
+test("preserves a homogeneous invalid_json aggregate when all HN item requests return malformed JSON", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1971, 1972],
+      hnItems: {
+        "1971": new Response("{", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+        "1972": new Response("{", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      },
+      devArticles: [
+        devArticle({
+          id: 1973,
+          title: "Show DEV: JSON Aggregate Survived",
+          officialUrl: "https://json-aggregate.example/?utm_source=dev",
+          author: "dev",
+          iso: daysAgo(1),
+          description: "DEV still succeeds.",
+          reactions: 4,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(result.failures, [
+    {
+      provider: "hn",
+      category: "parse",
+      reason: "invalid_json",
+    },
+  ]);
+});
+
+test("falls back to network_error when all HN item failures are mixed", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1981, 1982],
+      hnItems: {
+        "1981": abortError("timeout"),
+        "1982": new Response("down", { status: 503 }),
+      },
+      devArticles: [
+        devArticle({
+          id: 1983,
+          title: "Show DEV: Mixed Aggregate Survived",
+          officialUrl: "https://mixed-aggregate.example/?utm_source=dev",
+          author: "dev",
+          iso: daysAgo(1),
+          description: "DEV still succeeds.",
+          reactions: 4,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(result.failures, [
+    {
+      provider: "hn",
+      category: "network",
+      reason: "network_error",
+    },
+  ]);
+});
+
 test("throws a typed discovery error only when all providers fail", async () => {
   await assert.rejects(
     () =>
@@ -930,8 +1078,8 @@ test("throws a typed discovery error only when all providers fail", async () => 
         fetcher: createFixtureFetcher({
           hnStories: [2001, 2002],
           hnItems: {
-            "2001": new Error("hn item failed"),
-            "2002": new Error("hn item failed"),
+            "2001": abortError("timeout"),
+            "2002": abortError("timeout"),
           },
           devArticles: new Error("socket hang up"),
           hfSpaces: new Response("{", {
@@ -951,9 +1099,14 @@ test("throws a typed discovery error only when all providers fail", async () => 
       assert.equal(discoveryError.failures.length, 4);
       assert.deepEqual(
         discoveryError.failures
-          .map((failure: DiscoveryFailure) => failure.provider)
-          .sort(),
-        ["dev", "hn", "huggingface", "lobsters"],
+          .map((failure: DiscoveryFailure) => [failure.provider, failure.reason])
+          .sort((left, right) => left[0].localeCompare(right[0])),
+        [
+          ["dev", "network_error"],
+          ["hn", "timeout"],
+          ["huggingface", "invalid_json"],
+          ["lobsters", "network_error"],
+        ],
       );
       return true;
     },

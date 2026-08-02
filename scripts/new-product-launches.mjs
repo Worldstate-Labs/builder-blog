@@ -183,7 +183,11 @@ async function fetchHnLaunches({ fetcher, timeoutMs }) {
     ),
   );
   if (boundedIds.length > 0 && itemResults.every((result) => result.status === "rejected")) {
-    throw networkError("hn");
+    throw aggregateHnItemFailures(
+      itemResults
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason),
+    );
   }
   const items = itemResults
     .filter((result) => result.status === "fulfilled")
@@ -666,6 +670,36 @@ function networkError(provider) {
   error.category = "network";
   error.reason = "network_error";
   return error;
+}
+
+function safeCategorizedError(provider, category, reason) {
+  const error = new Error(`${provider} ${reason}`);
+  error.category = category;
+  error.reason = reason;
+  return error;
+}
+
+function aggregateHnItemFailures(reasons) {
+  const categorized = reasons.map((reason) => categorizeDiscoveryError(reason));
+  if (categorized.length === 0) return networkError("hn");
+
+  const [firstFailure] = categorized;
+  const homogeneous = categorized.every(
+    (failure) =>
+      failure.category === firstFailure.category && failure.reason === firstFailure.reason,
+  );
+  if (!homogeneous) return networkError("hn");
+
+  if (firstFailure.reason === "timeout") {
+    return safeCategorizedError("hn", "timeout", "timeout");
+  }
+  if (firstFailure.reason === "invalid_json") {
+    return safeCategorizedError("hn", "parse", "invalid_json");
+  }
+  if (/^http_\d{3}$/.test(firstFailure.reason)) {
+    return safeCategorizedError("hn", "http", firstFailure.reason);
+  }
+  return networkError("hn");
 }
 
 function timeoutError(provider, timeoutMs) {
