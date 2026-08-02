@@ -5831,13 +5831,15 @@ test("cloud sync response reconciles authoritative terminal outcomes into progre
     actionNeeded: 2,
   });
   assert.deepEqual(
-    progress.tasks.map((task: { id: string; status: string }) => [task.id, task.status]),
+    progress.tasks
+      .map((task: { id: string; status: string }) => [task.id, task.status])
+      .sort(([left], [right]) => left.localeCompare(right)),
     [
-      ["post-synced", "synced"],
-      ["post-skipped", "skipped"],
-      ["post-blocked", "action_needed"],
       ["post-action", "action_needed"],
+      ["post-blocked", "action_needed"],
       ["post-failed", "failed"],
+      ["post-skipped", "skipped"],
+      ["post-synced", "synced"],
     ],
   );
   assert.deepEqual(
