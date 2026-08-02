@@ -79,6 +79,9 @@ function summaryPromptBodyForSourceId(sourceId: string): string {
   if (sourceId === "product_hunt_top_products") {
     return DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct;
   }
+  if (sourceId === "new_product_launches") {
+    return DEFAULT_DIGEST_PROMPTS.summarizeNewProductLaunch;
+  }
   const style = summaryStyleForSourceId(sourceId);
   if (style === "x_twitter") return DEFAULT_DIGEST_PROMPTS.summarizeTweets;
   if (style === "podcast_or_video") return DEFAULT_DIGEST_PROMPTS.summarizePodcast;
@@ -89,6 +92,9 @@ function fetchPromptBodyForSourceId(sourceId: string): string | null {
   if (sourceId === "github_trending") return DEFAULT_DIGEST_PROMPTS.fetchGithubTrendingRepo;
   if (sourceId === "product_hunt_top_products") {
     return DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct;
+  }
+  if (sourceId === "new_product_launches") {
+    return DEFAULT_DIGEST_PROMPTS.fetchNewProductLaunch;
   }
   if (sourceId === "youtube") return DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript;
   if (sourceId === "podcast") return DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio;
@@ -133,6 +139,7 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
     "blog",
     "github_trending",
     "product_hunt_top_products",
+    "new_product_launches",
     "youtube",
     "podcast",
     "website",

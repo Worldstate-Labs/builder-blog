@@ -73,6 +73,14 @@ const BASE_POLICIES: Record<string, RawContentPolicy> = {
     hubRawSharing: false,
     notes: "Retain structured product facts and summary, not raw Product Hunt HTML/comments.",
   },
+  new_product_launches: {
+    sourceType: "new_product_launches",
+    processingRaw: "allowed",
+    durableRawMode: "facts_only",
+    durableRawMaxChars: 8000,
+    hubRawSharing: false,
+    notes: "Retain structured launch facts and cited links, not raw supporting-page content.",
+  },
   youtube: {
     sourceType: "youtube",
     processingRaw: "allowed",
@@ -217,6 +225,7 @@ export function inferRawContentKind(
   if (source === "website") return "page";
   if (source === "github_trending") return "repo_facts";
   if (source === "product_hunt_top_products") return "product_facts";
+  if (source === "new_product_launches") return "launch_facts";
   return "raw_content";
 }
 
@@ -345,6 +354,7 @@ function methodForSourceType(
   if (sourceType === "website") return "website-html-extract";
   if (sourceType === "github_trending") return "github-trending-investigation";
   if (sourceType === "product_hunt_top_products") return "product-hunt-structured-facts";
+  if (sourceType === "new_product_launches") return "new-product-launch-structured-facts";
   return "local-agent-fetch";
 }
 
@@ -352,6 +362,7 @@ function providerForSourceType(sourceType: string) {
   if (sourceType === "x") return "x";
   if (sourceType === "youtube") return "youtube";
   if (sourceType === "product_hunt_top_products") return "product-hunt";
+  if (sourceType === "new_product_launches") return "followbrief";
   if (sourceType === "github_trending") return "github";
   if (sourceType === "podcast") return "podcast-rss";
   if (sourceType === "blog") return "blog";
@@ -365,6 +376,7 @@ function defaultRightsBasis(sourceType: string, rawContentKind: string) {
   if (sourceType === "podcast" && rawContentKind === "transcript") {
     return "user-directed-local-processing";
   }
+  if (sourceType === "new_product_launches") return "structured-facts-only";
   if (sourceType === "product_hunt_top_products") return "structured-facts-only";
   return "public-source-user-directed";
 }

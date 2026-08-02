@@ -3844,7 +3844,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);
   assert.match(
     source("src/components/LibraryHubImportForm.tsx"),
-    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
+    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"new_product_launches"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
   );
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /BuilderFeedItems/);
@@ -4165,7 +4165,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /function normalizeBuilderSourceType/);
   assert.match(
     buildersPage,
-    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
+    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"new_product_launches"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
   );
   assert.doesNotMatch(buildersPage, /const kindCmp = a\.kind\.localeCompare\(b\.kind\)/);
   assert.match(builderLibraryList, /className="builder-library-source-list"/);
@@ -4410,8 +4410,23 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(sourceInputs, /export const FIXED_SOURCE_VALUE_BY_ID/);
   assert.match(sourceInputs, /github_trending/);
   assert.match(sourceInputs, /product_hunt_top_products/);
+  assert.match(sourceInputs, /new_product_launches/);
+  assert.match(sourceInputs, /followbrief\.worldstatelabs\.com\/\?source=new-product-launches/);
   assert.match(sourceInputs, /export function placeholderForSourceId/);
   assert.match(sourceInputs, /export function addSourcePlaceholderForSourceId/);
+  assert.match(source("src/lib/platform-maintained-sources.ts"), /PLATFORM_MAINTAINED_SOURCE_TYPE_IDS/);
+  assert.match(source("src/lib/platform-maintained-sources.ts"), /new_product_launches/);
+  assert.match(source("src/lib/source-icons.ts"), /PackageOpen/);
+  assert.match(source("src/lib/source-icons.ts"), /new_product_launches/);
+  assert.match(source("src/lib/source-display.ts"), /new_product_launches:\s*"New Product Launches"/);
+  assert.match(
+    source("src/components/DigestHeadlineSummary.tsx"),
+    /"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"new_product_launches"[\s\S]*"website"/,
+  );
+  assert.match(
+    source("src/components/BuilderLibraryList.tsx"),
+    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"new_product_launches"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
+  );
   assert.match(sourceInputs, /Apple Podcasts URL or podcast RSS feed/);
   assert.match(sourceInputs, /Type source name or Apple Podcasts\/RSS feed/);
   assert.doesNotMatch(sourceInputs, /podcasts\.apple\.com\/\.\.\.|id\.\.\./);
@@ -4485,7 +4500,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /function sourceFormOrderRank\(sourceId: string\)/);
   assert.match(
     buildersPage,
-    /const order = \[[\s\S]*"podcast"[\s\S]*"blog"[\s\S]*"youtube"[\s\S]*"x"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"website"[\s\S]*\]/,
+    /const order = \[[\s\S]*"podcast"[\s\S]*"blog"[\s\S]*"youtube"[\s\S]*"x"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"new_product_launches"[\s\S]*"website"[\s\S]*\]/,
   );
   const privateLibraryPanel = source("src/components/PrivateLibraryPanel.tsx");
   assert.match(privateLibraryPanel, /useId/);
@@ -5006,6 +5021,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(globals, /\.source-badge\[data-source="youtube"\] \.source-badge-mark\s*{[\s\S]*color:\s*var\(--on-danger\)/);
   assert.match(globals, /\.source-badge\[data-source="blog"\] \.source-badge-mark,[\s\S]*color:\s*var\(--on-accent\)/);
   assert.match(globals, /\.source-badge\[data-source="product_hunt_top_products"\] \.source-badge-mark\s*{[\s\S]*color:\s*var\(--on-warm\)/);
+  assert.match(globals, /\.source-badge\[data-source="new_product_launches"\] \.source-badge-mark/);
   assert.match(globals, /\.source-badge\[data-source="website"\] \.source-badge-mark\s*{[\s\S]*color:\s*var\(--on-muted-strong\)/);
   assert.match(postCard, /const showOriginalAction = Boolean\(post\.url\)/);
   assert.match(postCard, /const showMetaSourceBadge = showSourceBadge && !showOriginalAction/);

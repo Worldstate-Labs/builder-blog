@@ -3738,6 +3738,11 @@ summary.library-section-summary::after {
   color: var(--on-warm);
 }
 
+.source-badge[data-source="new_product_launches"] .source-badge-mark {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
 .source-badge[data-source="website"] .source-badge-mark {
   background: var(--muted-strong);
   color: var(--on-muted-strong);

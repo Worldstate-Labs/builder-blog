@@ -25,6 +25,16 @@ test("curated source candidates do not trigger source-type switch suggestions", 
   assert.deepEqual(warnings, []);
 });
 
+test("platform-maintained launch candidate is detected before generic website fallback", () => {
+  const fixedUrl = "https://followbrief.worldstatelabs.com/?source=new-product-launches";
+
+  assert.equal(crossTypeWarning("new_product_launches", fixedUrl), null);
+  assert.deepEqual(crossTypeWarning("website", fixedUrl), {
+    suggestId: "new_product_launches",
+    message: "This looks like a New Product Launches URL. Switch source type?",
+  });
+});
+
 test("manual sources absent from the primary candidate library are upserted into the backup candidate library", async () => {
   const now = new Date("2026-07-10T12:00:00.000Z");
   const prisma = {

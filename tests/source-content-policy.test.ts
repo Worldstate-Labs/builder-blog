@@ -107,3 +107,20 @@ test("durable body storage never falls back to summary when body is absent", () 
   assert.equal(prepared.rawRetained, false);
   assert.equal(((prepared.rawJson as Record<string, unknown>).rawContentPolicy as Record<string, unknown>).bodyStored, false);
 });
+
+test("new product launches retain structured launch facts without raw supporting payloads", () => {
+  const prepared = prepareFeedItemStorage({
+    sourceType: "new_product_launches",
+    body: "Product: LaunchPad\nOfficial URL: https://launchpad.example\nWhy it matters: Confirmed launch details only.",
+    summary: "Launch summary.",
+    rawJson: {
+      html: "<main>raw launch page</main>",
+      supportingPageText: "Raw supporting page text.",
+    },
+  });
+
+  assert.equal(prepared.policy.durableRawMode, "facts_only");
+  assert.match(prepared.body, /^Product: LaunchPad/);
+  assert.equal(prepared.rawRetained, true);
+  assert.equal((prepared.rawJson as Record<string, unknown>).html, "[removed raw content]");
+});

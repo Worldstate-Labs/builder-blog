@@ -824,6 +824,7 @@ function sourceTypeRank(sourceType: string) {
     "blog",
     "github_trending",
     "product_hunt_top_products",
+    "new_product_launches",
     "youtube",
     "podcast",
     "x",

@@ -722,6 +722,7 @@ function sourceFormOrderRank(sourceId: string) {
     "x",
     "github_trending",
     "product_hunt_top_products",
+    "new_product_launches",
     "website",
   ];
   const index = order.indexOf(sourceId);
@@ -1180,6 +1181,7 @@ function sourceTypeSortRank(sourceType: string) {
     "blog",
     "github_trending",
     "product_hunt_top_products",
+    "new_product_launches",
     "youtube",
     "podcast",
     "x",

@@ -73,6 +73,8 @@ import {
   crossTypeWarning,
   detectSourceTypeFromValue,
 } from "../src/lib/source-value-detect";
+import { FIXED_SOURCE_VALUE_BY_ID } from "../src/lib/source-inputs";
+import { sourceLabelForType } from "../src/lib/source-display";
 
 function assertOrderedText(text: string, markers: string[]) {
   let lastIndex = -1;
@@ -150,11 +152,31 @@ test("admin-fetch-only source types are normalized and explicit", () => {
   assert.deepEqual(ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS, [
     "github_trending",
     "product_hunt_top_products",
+    "new_product_launches",
   ]);
   assert.equal(isAdminFetchOnlySourceType("github_trending"), true);
   assert.equal(isAdminFetchOnlySourceType("Product Hunt Top Products"), true);
+  assert.equal(isAdminFetchOnlySourceType("new_product_launches"), true);
   assert.equal(normalizeAdminFetchOnlySourceType("GitHub-Trending"), "github_trending");
   assert.equal(isAdminFetchOnlySourceType("blog"), false);
+});
+
+test("platform-maintained source types are normalized and explicit", async () => {
+  const platformMaintainedSources = await import("../src/lib/platform-maintained-sources");
+
+  assert.deepEqual(platformMaintainedSources.PLATFORM_MAINTAINED_SOURCE_TYPE_IDS, [
+    "new_product_launches",
+  ]);
+  assert.equal(
+    platformMaintainedSources.isPlatformMaintainedSourceType("New-Product-Launches"),
+    true,
+  );
+  assert.equal(isAdminFetchOnlySourceType("new_product_launches"), true);
+  assert.equal(
+    FIXED_SOURCE_VALUE_BY_ID.new_product_launches,
+    "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+  );
+  assert.equal(sourceLabelForType("new_product_launches"), "New Product Launches");
 });
 
 test("manual builder input derives canonical fields from one handle or URL", async () => {
@@ -232,6 +254,21 @@ test("manual builder input derives canonical fields from one handle or URL", asy
     sourceUrl: "https://www.producthunt.com/",
     fetchUrl: "https://www.producthunt.com/",
   });
+
+  const newProductLaunchesResult = await resolvePersonalBuilderInput({
+    displayName: "",
+    sourceType: "new_product_launches",
+    sourceValue: "https://example.com/ignored",
+  });
+  assert.ok(newProductLaunchesResult.ok);
+  assert.deepEqual(newProductLaunchesResult.value, {
+    kind: BuilderKind.WEBSITE,
+    sourceType: "new_product_launches",
+    name: "New Product Launches",
+    handle: null,
+    sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+    fetchUrl: null,
+  });
 });
 
 test("Blog / Article Feed input accepts article feed URLs as the blog source type", async () => {
@@ -274,6 +311,12 @@ test("source value detection recognizes feed-shaped URLs for automatic source sw
   assert.equal(detectSourceTypeFromValue("https://youtube.com/@openai"), "youtube");
   assert.equal(detectSourceTypeFromValue("https://github.com/trending?since=daily"), "github_trending");
   assert.equal(detectSourceTypeFromValue("https://www.producthunt.com/"), "product_hunt_top_products");
+  assert.equal(
+    detectSourceTypeFromValue(
+      "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+    ),
+    "new_product_launches",
+  );
   assert.equal(detectSourceTypeFromValue("https://example.com/feed.xml"), "blog");
   assert.equal(detectSourceTypeFromValue("https://example.com/rss"), "blog");
   assert.equal(detectSourceTypeFromValue("https://example.com/?format=atom"), "blog");
@@ -281,6 +324,13 @@ test("source value detection recognizes feed-shaped URLs for automatic source sw
   assert.equal(detectSourceTypeFromValue("https://example.com"), "website");
   assert.equal(detectSourceTypeFromValue("https://podcasts.apple.com/us/podcast/example/id123"), "podcast");
   assert.equal(crossTypeWarning("podcast", "https://podcast.example.com/rss"), null);
+  assert.equal(
+    crossTypeWarning(
+      "new_product_launches",
+      "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+    ),
+    null,
+  );
   assert.deepEqual(crossTypeWarning("website", "https://example.com/feed.xml"), {
     suggestId: "blog",
     message: "This looks like a Blog / Article Feed URL. Switch source type?",
@@ -2399,6 +2449,7 @@ test("digest generation user path exposes source-specific prompt instructions", 
     [
       "digestIntro",
       "fetchGithubTrendingRepo",
+      "fetchNewProductLaunch",
       "fetchPodcastAudio",
       "fetchProductHuntTopProduct",
       "fetchYouTubeTranscript",
@@ -2406,6 +2457,7 @@ test("digest generation user path exposes source-specific prompt instructions", 
       "perSourceSummary",
       "summarizeBlogs",
       "summarizeGithubTrendingRepo",
+      "summarizeNewProductLaunch",
       "summarizePodcast",
       "summarizeProductHuntTopProduct",
       "summarizeTweets",
@@ -2430,6 +2482,23 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /5\. If a field is hidden/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Use the product's official website and web search/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Hacker News, Reddit/);
+  assert.equal(
+    DEFAULT_DIGEST_PROMPTS.fetchNewProductLaunch,
+    `# New Product Launch Fetch Prompt
+
+Use the structured launch facts supplied in task.item.rawJson. Inspect the official
+product or repository URL when present and at most one directly linked supporting page.
+Return primary product content with source URLs. Do not browse Product Hunt and do not
+perform open-ended product research.`,
+  );
+  assert.equal(
+    DEFAULT_DIGEST_PROMPTS.summarizeNewProductLaunch,
+    `# New Product Launch Summary Prompt
+
+Summarize one supplied launch in the run-selected language. Include product name, what
+it does, intended user, why it is notable based on supplied evidence, launch links, and
+date. Separate confirmed facts from inference and preserve direct URLs.`,
+  );
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /creator\/manual captions/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Do not use the OpenAI API/);
   assert.match(
@@ -3710,6 +3779,27 @@ test("source registry centralizes current source categories", () => {
     "product_hunt_top_products",
   );
   assert.equal(builderKindForSourceType("product_hunt_top_products"), BuilderKind.WEBSITE);
+  assert.deepEqual(sourceDefinitionForType("new_product_launches")?.feedItemKinds, [
+    FeedItemKind.BLOG_POST,
+  ]);
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: "new_product_launches",
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      fetchUrl: null,
+    })?.staticLabel,
+    "New Product Launches",
+  );
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      fetchUrl: null,
+    })?.id,
+    "new_product_launches",
+  );
+  assert.equal(builderKindForSourceType("new_product_launches"), BuilderKind.WEBSITE);
   assert.equal(
     builderSourceLabel({
       kind: BuilderKind.BLOG,
@@ -3919,8 +4009,18 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(store, /client\(\)\.\$transaction\(/);
   assert.equal(DEFAULT_SOURCE_CONFIGS.github_trending.defaultFetchLimit, 3);
   assert.equal(DEFAULT_SOURCE_CONFIGS.product_hunt_top_products.defaultFetchLimit, 3);
+  assert.equal(DEFAULT_SOURCE_CONFIGS.new_product_launches.defaultFetchLimit, 3);
   assert.equal(DEFAULT_SOURCE_CONFIGS.github_trending.defaultFetchDays, 30);
   assert.equal(DEFAULT_SOURCE_CONFIGS.product_hunt_top_products.defaultFetchDays, 30);
+  assert.equal(DEFAULT_SOURCE_CONFIGS.new_product_launches.defaultFetchDays, 30);
+  assert.equal(
+    DEFAULT_SOURCE_CONFIGS.new_product_launches.fetchPromptBody,
+    DEFAULT_DIGEST_PROMPTS.fetchNewProductLaunch,
+  );
+  assert.equal(
+    DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
+    DEFAULT_DIGEST_PROMPTS.summarizeNewProductLaunch,
+  );
 
   // Settings page shows source summary config to every user, but admin-only
   // fetch instructions and AI Brief assembly rules stay behind the admin gate.

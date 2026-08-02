@@ -64,6 +64,22 @@
       }
     },
     {
+      "id": "new_product_launches",
+      "label": "New Product Launches",
+      "builderKind": "WEBSITE",
+      "feedItemKinds": [
+        "BLOG_POST"
+      ],
+      "urlPatterns": [
+        "followbrief\\.worldstatelabs\\.com/\\?source=new-product-launches(?:\\s|[&#]|$)"
+      ],
+      "agentDefaultStatus": "requires_agent",
+      "contentQuality": {
+        "minChars": 500,
+        "minContentUnits": 60
+      }
+    },
+    {
       "id": "youtube",
       "label": "YouTube",
       "builderKind": "PODCAST",

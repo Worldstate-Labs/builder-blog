@@ -50,6 +50,9 @@ export const GITHUB_TRENDING_SOURCE_ID = "github_trending";
 export const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 export const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
 export const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
+export const NEW_PRODUCT_LAUNCHES_SOURCE_ID = "new_product_launches";
+export const NEW_PRODUCT_LAUNCHES_URL =
+  "https://followbrief.worldstatelabs.com/?source=new-product-launches";
 
 /**
  * Resolve, validate, and auto-correct the user's AddBuilderForm input.
@@ -73,6 +76,9 @@ export async function resolvePersonalBuilderInput(input: {
   }
   if (sourceType === PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID) {
     return resolveProductHuntTopProducts(input.displayName);
+  }
+  if (sourceType === NEW_PRODUCT_LAUNCHES_SOURCE_ID) {
+    return resolveNewProductLaunches(input.displayName);
   }
 
   // Cross-type mismatch: user is in X mode but pasted a YouTube URL,
@@ -288,6 +294,20 @@ function resolveProductHuntTopProducts(displayName: string): Resolution {
       handle: null,
       sourceUrl: PRODUCT_HUNT_TOP_PRODUCTS_URL,
       fetchUrl: PRODUCT_HUNT_TOP_PRODUCTS_URL,
+    },
+  };
+}
+
+function resolveNewProductLaunches(displayName: string): Resolution {
+  return {
+    ok: true,
+    value: {
+      kind: builderKindForSourceType(NEW_PRODUCT_LAUNCHES_SOURCE_ID),
+      sourceType: NEW_PRODUCT_LAUNCHES_SOURCE_ID,
+      name: displayName.trim() || "New Product Launches",
+      handle: null,
+      sourceUrl: NEW_PRODUCT_LAUNCHES_URL,
+      fetchUrl: null,
     },
   };
 }

@@ -13,6 +13,7 @@ const DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = [
   "x",
   "github_trending",
   "product_hunt_top_products",
+  "new_product_launches",
   "website",
 ];
 

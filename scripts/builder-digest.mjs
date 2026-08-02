@@ -9952,6 +9952,7 @@ const DEFAULT_DIGEST_SOURCE_ORDER = [
   "x",
   "github_trending",
   "product_hunt_top_products",
+  "new_product_launches",
   "website",
 ];
 
@@ -9967,6 +9968,7 @@ function digestSectionLabel(sourceType, context = {}) {
         blog: "Blog",
         github_trending: "GitHub Trending",
         product_hunt_top_products: "Product Hunt Top Products",
+        new_product_launches: "New Product Launches",
         youtube: "YouTube",
         podcast: "Podcast RSS",
         website: "Website",
@@ -9976,6 +9978,7 @@ function digestSectionLabel(sourceType, context = {}) {
         blog: "Blog",
         github_trending: "GitHub Trending",
         product_hunt_top_products: "Product Hunt Top Products",
+        new_product_launches: "New Product Launches",
         youtube: "YouTube",
         podcast: "Podcast RSS",
         website: "Website",

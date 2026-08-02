@@ -186,6 +186,17 @@ Rules:
 - In "What the project does", explain the actual product/library/agent/tool and who would use it.
 - In "Why it is gaining stars quickly", separate confirmed causes from reasonable inference. Do not overstate weak evidence.
 - Preserve the repository URL and any important supporting URLs from the body.`,
+  fetchNewProductLaunch: `# New Product Launch Fetch Prompt
+
+Use the structured launch facts supplied in task.item.rawJson. Inspect the official
+product or repository URL when present and at most one directly linked supporting page.
+Return primary product content with source URLs. Do not browse Product Hunt and do not
+perform open-ended product research.`,
+  summarizeNewProductLaunch: `# New Product Launch Summary Prompt
+
+Summarize one supplied launch in the run-selected language. Include product name, what
+it does, intended user, why it is notable based on supplied evidence, launch links, and
+date. Separate confirmed facts from inference and preserve direct URLs.`,
   fetchProductHuntTopProduct: `# Product Hunt Top Product Fetch Prompt
 
 You are extracting exactly one Product Hunt top-products task for FollowBrief.

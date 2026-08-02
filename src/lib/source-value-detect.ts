@@ -1,3 +1,5 @@
+import { NEW_PRODUCT_LAUNCHES_URL } from "./source-inputs";
+
 /**
  * Cross-platform detection helpers shared by the server-side validator
  * (`personal-builder-input.ts`) and the client-side inline preview
@@ -23,6 +25,7 @@ export type DetectedSourceId =
   | "blog"
   | "github_trending"
   | "product_hunt_top_products"
+  | "new_product_launches"
   | "youtube"
   | "podcast"
   | "website";
@@ -32,6 +35,7 @@ export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
   blog: "Blog / Article Feed",
   github_trending: "GitHub Trending",
   product_hunt_top_products: "Product Hunt Top Products",
+  new_product_launches: "New Product Launches",
   youtube: "YouTube",
   podcast: "Podcast / Audio Feed",
   website: "Website",
@@ -48,6 +52,7 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   const v = value.trim().toLowerCase();
   if (!v) return null;
 
+  if (v === NEW_PRODUCT_LAUNCHES_URL.toLowerCase()) return "new_product_launches";
   if (/(^|\/\/)(www\.)?(x|twitter)\.com(?:\/|[?#]|$)/.test(v)) return "x";
   if (/(^|\/\/)github\.com\/trending(\?|\/|$)/.test(v)) return "github_trending";
   if (/(^|\/\/)(www\.)?producthunt\.com\/?(?:[?#]|$)/.test(v)) {

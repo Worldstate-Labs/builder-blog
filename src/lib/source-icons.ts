@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { GitFork, Globe, Play, Podcast, Rocket, Rss, X } from "lucide-react";
+import { GitFork, Globe, PackageOpen, Play, Podcast, Rocket, Rss, X } from "lucide-react";
 
 // Canonical mapping from source-type id to its lucide icon. Imported by
 // SourceBadge (display chip on rows / detail headers) and the source-type
@@ -7,6 +7,7 @@ import { GitFork, Globe, Play, Podcast, Rocket, Rss, X } from "lucide-react";
 export const sourceIcons: Record<string, ComponentType<{ className?: string }>> = {
   blog: Rss,
   github_trending: GitFork,
+  new_product_launches: PackageOpen,
   podcast: Podcast,
   product_hunt_top_products: Rocket,
   website: Globe,

@@ -1,6 +1,7 @@
 export const ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS = [
   "github_trending",
   "product_hunt_top_products",
+  "new_product_launches",
 ] as const;
 
 const ADMIN_FETCH_ONLY_SOURCE_TYPE_SET = new Set<string>(

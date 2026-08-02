@@ -6290,18 +6290,23 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
   const cli = await import("../scripts/builder-digest.mjs");
   const context = {
     ...digestRenderContext(),
-    digest: { order: ["github_trending", "product_hunt_top_products", "website"] },
+    digest: { order: ["github_trending", "product_hunt_top_products", "new_product_launches", "website"] },
     sources: {
       github_trending: { id: "github_trending", label: "GitHub Trending" },
       product_hunt_top_products: {
         id: "product_hunt_top_products",
         label: "Product Hunt Top Products",
       },
+      new_product_launches: {
+        id: "new_product_launches",
+        label: "New Product Launches",
+      },
       website: { id: "website", label: "Website" },
     },
     subscriptionEntities: [
       { id: "entity_github", name: "GitHub Trending" },
       { id: "entity_ph", name: "Product Hunt Top Products" },
+      { id: "entity_launches", name: "New Product Launches" },
     ],
     items: [
       {
@@ -6336,6 +6341,22 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
           sourceUrl: "https://www.producthunt.com/",
         },
       },
+      {
+        ...digestRenderContext().items[0],
+        id: "feed_launches",
+        entityId: "entity_launches",
+        title: "Launch roundup",
+        url: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+        sourceName: "New Product Launches",
+        builder: {
+          ...digestRenderContext().items[0].builder,
+          id: "builder_launches",
+          entityId: "entity_launches",
+          name: "New Product Launches",
+          sourceType: "new_product_launches",
+          sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+        },
+      },
     ],
   };
   const rendered = cli.renderStructuredDigest(context, {
@@ -6344,12 +6365,14 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
     postSummaries: [
       { feedItemId: "feed_github", summary: "GitHub summary." },
       { feedItemId: "feed_ph", summary: "Product Hunt summary." },
+      { feedItemId: "feed_launches", summary: "Launch summary." },
     ],
   });
 
   assert.deepEqual(rendered.items.map((item) => item.section.label), [
     "GitHub Trending",
     "Product Hunt Top Products",
+    "New Product Launches",
   ]);
 });
 
@@ -6389,6 +6412,10 @@ test("render-digest applies default source order to digest sections and headline
         id: "product_hunt_top_products",
         label: "Product Hunt Top Products",
       },
+      new_product_launches: {
+        id: "new_product_launches",
+        label: "New Product Launches",
+      },
       website: { id: "website", label: "Website" },
     },
     subscriptionEntities: [
@@ -6399,10 +6426,18 @@ test("render-digest applies default source order to digest sections and headline
       { id: "entity_x", name: "X Source" },
       { id: "entity_github", name: "GitHub Trending" },
       { id: "entity_ph", name: "Product Hunt Top Products" },
+      { id: "entity_launches", name: "New Product Launches" },
       { id: "entity_site", name: "Website Source" },
     ],
     items: [
       item("feed_site", "entity_site", "Website Source", "website", "Website update"),
+      item(
+        "feed_launches",
+        "entity_launches",
+        "New Product Launches",
+        "new_product_launches",
+        "Launch update",
+      ),
       item("feed_ph", "entity_ph", "Product Hunt Top Products", "product_hunt_top_products", "Product update"),
       item("feed_github", "entity_github", "GitHub Trending", "github_trending", "Repo update"),
       item("feed_x", "entity_x", "X Source", "x", "X update"),
@@ -6415,7 +6450,7 @@ test("render-digest applies default source order to digest sections and headline
   const rendered = cli.renderStructuredDigest(context, {
     headlineSummary: [
       "- Website Source: website headline",
-      "- Product Hunt Top Products and GitHub Trending: market headline",
+      "- New Product Launches and Product Hunt Top Products and GitHub Trending: market headline",
       "- X Source: x headline",
       "- Blog Source: blog headline",
       "- Video Source: youtube headline",
@@ -6437,6 +6472,7 @@ test("render-digest applies default source order to digest sections and headline
     "X/Twitter",
     "GitHub Trending",
     "Product Hunt Top Products",
+    "New Product Launches",
     "Website",
   ]);
   assert.deepEqual(rendered.headlineSummary.split("\n"), [
@@ -6445,9 +6481,19 @@ test("render-digest applies default source order to digest sections and headline
     "- Video Source: youtube headline",
     "- Blog Source: blog headline",
     "- X Source: x headline",
-    "- Product Hunt Top Products and GitHub Trending: market headline",
+    "- New Product Launches and Product Hunt Top Products and GitHub Trending: market headline",
     "- Website Source: website headline",
   ]);
+});
+
+test("builder digest source contract places new product launches after Product Hunt", () => {
+  const script = readFileSync(join(process.cwd(), "scripts/builder-digest.mjs"), "utf8");
+
+  assert.match(
+    script,
+    /const DEFAULT_DIGEST_SOURCE_ORDER = \[[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"new_product_launches"[\s\S]*"website"[\s\S]*\]/,
+  );
+  assert.match(script, /new_product_launches:\s*"New Product Launches"/);
 });
 
 function digestRenderContext() {

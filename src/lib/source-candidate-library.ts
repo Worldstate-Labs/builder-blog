@@ -27,6 +27,7 @@ const EXISTING_CURATED_AI_SOURCE_CANDIDATES: CuratedSourceCandidate[] = [
   { name: "Claude Blog", sourceType: "blog", sourceUrl: "https://claude.com/blog" },
   { name: "GitHub Trending", sourceType: "github_trending", sourceUrl: "https://github.com/trending?since=daily", fetchUrl: "https://github.com/trending?since=daily" },
   { name: "Product Hunt Top Products", sourceType: "product_hunt_top_products", sourceUrl: "https://www.producthunt.com/", fetchUrl: "https://www.producthunt.com/" },
+  { name: "New Product Launches", sourceType: "new_product_launches", sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches" },
   { name: "Anthropic News", sourceType: "blog", sourceUrl: "https://www.anthropic.com/news" },
   { name: "Google DeepMind Blog", sourceType: "blog", sourceUrl: "https://deepmind.google/blog/" },
   { name: "Google Research Blog", sourceType: "blog", sourceUrl: "https://research.google/blog/" },

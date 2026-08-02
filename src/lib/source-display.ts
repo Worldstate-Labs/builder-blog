@@ -17,6 +17,7 @@ export function sourceLabelForType(sourceType: string | null | undefined) {
   const labels: Record<string, string> = {
     blog: "Blog / Article Feed",
     github_trending: "GitHub Trending",
+    new_product_launches: "New Product Launches",
     podcast: "Podcast / Audio Feed",
     product_hunt_top_products: "Product Hunt Top Products",
     website: "Website",
