@@ -187,6 +187,35 @@ test("platform-maintained source types are normalized and explicit", async () =>
   assert.equal(sourceLabelForType("new_product_launches"), "New Product Launches");
 });
 
+test("shared platform-maintained content resolution uses configured admin ownership and source-type matching", () => {
+  const resolver = readFileSync("src/lib/user-content-builders.ts", "utf8");
+
+  assert.match(
+    resolver,
+    /import \{ adminEmails \} from "@\/lib\/admin";/,
+  );
+  assert.match(
+    resolver,
+    /import \{[\s\S]*isPlatformMaintainedSourceType[\s\S]*normalizePlatformMaintainedSourceType[\s\S]*\} from "@\/lib\/platform-maintained-sources";/,
+  );
+  assert.match(
+    resolver,
+    /const contentBuilderIds = new Set\(logicalBuilderIds\)/,
+  );
+  assert.match(
+    resolver,
+    /entityId: \{ in: \[\.\.\.platformMaintainedEntityIds\] \}/,
+  );
+  assert.match(
+    resolver,
+    /sourceType: \{ in: \[\.\.\.platformMaintainedSourceTypes\] \}/,
+  );
+  assert.match(
+    resolver,
+    /owner: \{ email: \{ in: adminEmails\(\) \} \}/,
+  );
+});
+
 test("personal builder input reuses the shared new product launches constants", () => {
   const source = readFileSync("src/lib/personal-builder-input.ts", "utf8");
 

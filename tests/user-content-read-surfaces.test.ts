@@ -21,8 +21,10 @@ test("source cards and detail pages include mapped cloud content", () => {
 
   assert.match(libraryPage, /loadUserContentStatsByEntityId/);
   assert.match(libraryPage, /userContentStatsByEntityId/);
+  assert.match(libraryPage, /logicalBuilderIds:\s*poolBuilderIds/);
   assert.match(detailPage, /resolveUserContentBuilderIds/);
   assert.match(detailPage, /logicalBuilderIds:\s*visiblePostBuilderIds/);
+  assert.match(detailPage, /countDedupedItemsForEntity\(postBuilderIds\)/);
 });
 
 test("digest, search, and recommendations use the same explicit content entitlement", () => {
@@ -31,10 +33,13 @@ test("digest, search, and recommendations use the same explicit content entitlem
   const recommendations = source("src/lib/recommendations.ts");
 
   assert.match(contextRoute, /resolveUserContentBuilderIds/);
+  assert.match(contextRoute, /logicalBuilderIds:\s*\[\.\.\.subscribedBuilderIdSet\]/);
   assert.match(contextRoute, /builderIds:\s*digestContentBuilderIds/);
   assert.match(search, /resolveUserContentBuilderIds/);
+  assert.match(search, /logicalBuilderIds:\s*poolBuilderIds/);
   assert.match(search, /builderId:\s*\{\s*in:\s*contentBuilderIds\s*\}/);
   assert.match(recommendations, /resolveUserContentBuilderIds/);
+  assert.match(recommendations, /logicalBuilderIds:\s*subscriptionBuilderIds/);
   assert.match(recommendations, /builderId:\s*\{\s*in:\s*contentBuilderIds\s*\}/);
 });
 

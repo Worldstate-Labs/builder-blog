@@ -845,6 +845,8 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(recommendations, /\.\.\.existing/);
   assert.match(recommendations, /items: \{ some: \{\} \}/);
   assert.match(recommendations, /const subscriptionBuilderIds = subscriptions\.map/);
+  assert.match(recommendations, /const contentBuilderIds = await resolveUserContentBuilderIds\({[\s\S]*logicalBuilderIds: subscriptionBuilderIds/);
+  assert.match(recommendations, /builderId: \{ in: contentBuilderIds \}/);
   assert.match(recommendations, /snapshotReasonPrefix\(sortMode\)/);
   assert.match(recommendations, /subscription-recent:/);
   assert.match(recommendations, /rankRecommendationResults/);
