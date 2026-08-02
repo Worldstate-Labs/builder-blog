@@ -53,6 +53,7 @@ const promptRuntimeTraceFiles = [
 ];
 const completeAgentRuntimeTraceFiles = [
   "./scripts/builder-digest.mjs",
+  "./scripts/new-product-launches.mjs",
   "./scripts/builder-agent-runner.sh",
   "./scripts/cloud-shard-budget.mjs",
   "./scripts/install-agent-skill-bundle.cjs",

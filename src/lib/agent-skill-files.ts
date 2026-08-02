@@ -76,6 +76,12 @@ export const agentSkillFiles = {
     contentType: "text/javascript; charset=utf-8",
     mode: 0o755,
   },
+  "new-product-launches.mjs": {
+    sourcePath: "scripts/new-product-launches.mjs",
+    target: "new-product-launches.mjs",
+    contentType: "text/javascript; charset=utf-8",
+    mode: 0o644,
+  },
   "cloud-shard-budget.mjs": {
     sourcePath: "scripts/cloud-shard-budget.mjs",
     target: "cloud-shard-budget.mjs",

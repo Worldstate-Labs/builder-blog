@@ -18,6 +18,7 @@ const PROMPT_RUNTIME_ASSETS = [
 ] as const;
 const COMPLETE_AGENT_RUNTIME_ASSETS = [
   "./scripts/builder-digest.mjs",
+  "./scripts/new-product-launches.mjs",
   "./scripts/builder-agent-runner.sh",
   "./scripts/cloud-shard-budget.mjs",
   "./scripts/install-agent-skill-bundle.cjs",

@@ -73,6 +73,7 @@ test("server builds one deterministic bundle covering the complete installed run
   const targets = new Set(first.files.map((file: BundleEntry) => file.target));
   for (const target of [
     "builder-digest.mjs",
+    "new-product-launches.mjs",
     "cloud-shard-budget.mjs",
     "builder-agent-runner.sh",
     "install-agent-skill-bundle.cjs",
@@ -95,6 +96,21 @@ test("server builds one deterministic bundle covering the complete installed run
     const bytes = Buffer.from(file.contentBase64, "base64");
     assert.ok(bytes.length > 0, `${file.name} must not be empty`);
     assert.equal(sha256(bytes), file.sha256, `${file.name} hash must match`);
+  }
+
+  for (const file of first.files as BundleEntry[]) {
+    if (!/\.[cm]?js$/.test(file.target)) continue;
+    const source = Buffer.from(file.contentBase64, "base64").toString("utf8");
+    const relativeImports = [
+      ...source.matchAll(/(?:from\s+|import\s+)["'](\.\.?\/[^"']+)["']/g),
+    ];
+    for (const [, relativeImport] of relativeImports) {
+      const importedTarget = join(dirname(file.target), relativeImport);
+      assert.ok(
+        targets.has(importedTarget),
+        `${file.target} imports ${importedTarget}, which must be installed in the same bundle`,
+      );
+    }
   }
 });
 

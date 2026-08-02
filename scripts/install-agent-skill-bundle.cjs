@@ -23,6 +23,7 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 const ALLOWED_MODES = new Set([0o644, 0o755]);
 const REQUIRED_TARGETS = Object.freeze([
   "builder-digest.mjs",
+  "new-product-launches.mjs",
   "cloud-shard-budget.mjs",
   "builder-agent-runner.sh",
   "install-agent-skill-bundle.cjs",

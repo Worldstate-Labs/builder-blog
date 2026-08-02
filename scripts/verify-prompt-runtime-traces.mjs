@@ -19,6 +19,7 @@ const installerAsset = resolve(
 );
 const completeAgentRuntimeAssets = [
   resolve(projectRoot, "scripts/builder-digest.mjs"),
+  resolve(projectRoot, "scripts/new-product-launches.mjs"),
   resolve(projectRoot, "scripts/builder-agent-runner.sh"),
   resolve(projectRoot, "scripts/cloud-shard-budget.mjs"),
   installerAsset,
