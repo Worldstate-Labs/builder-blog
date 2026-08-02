@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   discoverNewProductLaunches,
+  isPrivateHostnameForTest,
   NewProductLaunchDiscoveryError,
 } from "../scripts/new-product-launches.mjs";
 
@@ -671,4 +672,77 @@ test("returns an empty successful result when providers succeed with no eligible
 
   assert.equal(result.failures.length, 0);
   assert.deepEqual(result.launches, []);
+});
+
+test("failure records use allowlisted reasons and never leak secret-looking error text", async () => {
+  const secretText =
+    "Authorization: Bearer top-secret api-key=abc123 response body={\"token\":\"shh\"}";
+
+  const partialResult = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: new Error(secretText),
+      devArticles: [
+        devArticle({
+          id: 1101,
+          title: "Show DEV: Safe Launch",
+          officialUrl: "https://safe.example/product?utm_source=dev",
+          author: "safe",
+          iso: daysAgo(1),
+          description: "Still succeeds.",
+          reactions: 8,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.equal(partialResult.failures.length, 1);
+  assert.deepEqual(partialResult.failures[0], {
+    provider: "hn",
+    category: "network",
+    reason: "network_error",
+  });
+  assert.doesNotMatch(JSON.stringify(partialResult.failures), /bearer|api-key|body|token|abc123/i);
+
+  await assert.rejects(
+    () =>
+      discoverNewProductLaunches({
+        fetcher: createFixtureFetcher({
+          hnStories: new Error(secretText),
+          devArticles: new Error(secretText),
+          hfSpaces: new Error(secretText),
+          lobstersShow: new Error(secretText),
+          lobstersAnnounce: new Error(secretText),
+        }),
+        now: NOW,
+        lookbackDays: LOOKBACK_DAYS,
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof NewProductLaunchDiscoveryError);
+      const discoveryError = error as NewProductLaunchDiscoveryError;
+      assert.deepEqual(
+        discoveryError.failures.map((failure: DiscoveryFailure) => failure.reason).sort(),
+        ["network_error", "network_error", "network_error", "network_error"],
+      );
+      assert.doesNotMatch(
+        JSON.stringify(discoveryError.failures),
+        /bearer|api-key|body|token|abc123/i,
+      );
+      return true;
+    },
+  );
+});
+
+test("rejects bracketed IPv6 loopback, private, link-local, and unspecified hostnames", () => {
+  assert.equal(isPrivateHostnameForTest("[::1]"), true);
+  assert.equal(isPrivateHostnameForTest("[::]"), true);
+  assert.equal(isPrivateHostnameForTest("[fc00::1]"), true);
+  assert.equal(isPrivateHostnameForTest("[fd00::1]"), true);
+  assert.equal(isPrivateHostnameForTest("[fe80::1]"), true);
+  assert.equal(isPrivateHostnameForTest("[::ffff:127.0.0.1]"), true);
+  assert.equal(isPrivateHostnameForTest("[::ffff:10.0.0.8]"), true);
+  assert.equal(isPrivateHostnameForTest("[::ffff:192.168.1.10]"), true);
+  assert.equal(isPrivateHostnameForTest("[2607:f8b0:4005:805::200e]"), false);
 });

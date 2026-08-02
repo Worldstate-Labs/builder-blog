@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { isIP } from "node:net";
+
 const MAX_LAUNCHES = 5;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const FETCH_USER_AGENT = "BuilderBlogLaunchDiscovery/1.0 (+https://followbrief.worldstatelabs.com/)";
@@ -360,6 +362,7 @@ async function fetchLobstersLaunches({ fetcher, timeoutMs }) {
 }
 
 function parseLobstersFeed(xml) {
+  assertXmlDocument(xml, "lobsters");
   return extractXmlBlocks(xml, "item").flatMap((block) => {
     const discussionUrl = normalizePublicHttpUrl(tagText(block, "link"));
     const officialUrl = normalizePublicHttpUrl(
@@ -631,15 +634,10 @@ async function timedFetch(fetcher, url, { timeoutMs, provider, headers }) {
 }
 
 function categorizeDiscoveryError(error) {
-  if (error?.category && error?.reason) {
-    return { category: error.category, reason: error.reason };
-  }
-  if (error?.name === "AbortError") {
-    return { category: "timeout", reason: "Request timed out" };
-  }
+  const category = allowlistedFailureCategory(error?.category, error?.name);
   return {
-    category: "network",
-    reason: sanitizeReason(error?.message || String(error || "Unknown discovery failure")),
+    category,
+    reason: allowlistedFailureReason(error, category),
   };
 }
 
@@ -661,8 +659,14 @@ function timeoutError(provider, timeoutMs) {
   const error = new Error(`${provider} timed out after ${timeoutMs}ms`);
   error.name = "AbortError";
   error.category = "timeout";
-  error.reason = `Timed out after ${timeoutMs}ms`;
+  error.reason = "timeout";
   return error;
+}
+
+function assertXmlDocument(xml, provider) {
+  if (!/(<rss[\s>]|<feed[\s>])/i.test(String(xml || ""))) {
+    throw parseError(provider, "invalid_xml");
+  }
 }
 
 function normalizePublicHttpUrl(value) {
@@ -710,17 +714,28 @@ function isTrackingParam(name) {
 }
 
 function isPrivateHostname(hostname) {
-  const lower = String(hostname || "").trim().toLowerCase();
+  const lower = normalizeHostname(hostname);
   if (!lower) return true;
   if (lower === "localhost" || lower.endsWith(".local") || lower.endsWith(".internal")) {
     return true;
   }
-  if (lower === "::1" || lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80:")) {
-    return true;
-  }
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(lower)) return false;
 
-  const octets = lower.split(".").map((part) => Number(part));
+  const ipVersion = isIP(lower);
+  if (ipVersion === 4) return isPrivateIpv4Hostname(lower);
+  if (ipVersion === 6) return isPrivateIpv6Hostname(lower);
+  return false;
+}
+
+function normalizeHostname(hostname) {
+  return String(hostname || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .split("%")[0];
+}
+
+function isPrivateIpv4Hostname(hostname) {
+  const octets = hostname.split(".").map((part) => Number(part));
   if (octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
     return true;
   }
@@ -731,6 +746,113 @@ function isPrivateHostname(hostname) {
   if (first === 172 && second >= 16 && second <= 31) return true;
   if (first === 192 && second === 168) return true;
   return false;
+}
+
+function isPrivateIpv6Hostname(hostname) {
+  const hextets = parseIpv6Hextets(hostname);
+  if (!hextets) return true;
+  if (hextets.every((part) => part === 0)) return true;
+  if (hextets.slice(0, 7).every((part) => part === 0) && hextets[7] === 1) return true;
+  if ((hextets[0] & 0xfe00) === 0xfc00) return true;
+  if ((hextets[0] & 0xffc0) === 0xfe80) return true;
+  if (isIpv4MappedIpv6(hextets)) {
+    return isPrivateIpv4Hostname(ipv4FromMappedIpv6Hextets(hextets));
+  }
+  return false;
+}
+
+function parseIpv6Hextets(hostname) {
+  const normalized = normalizeHostname(hostname);
+  if (!normalized) return null;
+
+  let working = normalized;
+  if (working.includes(".")) {
+    const lastColon = working.lastIndexOf(":");
+    if (lastColon === -1) return null;
+    const ipv4Tail = working.slice(lastColon + 1);
+    if (!isIP(ipv4Tail) || isIP(ipv4Tail) !== 4) return null;
+    const ipv4Hextets = ipv4Tail
+      .split(".")
+      .map((part) => Number(part))
+      .reduce((result, octet, index, octets) => {
+        if (index % 2 === 0) {
+          result.push((octet << 8) | octets[index + 1]);
+        }
+        return result;
+      }, []);
+    working = `${working.slice(0, lastColon)}:${ipv4Hextets
+      .map((part) => part.toString(16))
+      .join(":")}`;
+  }
+
+  const doubleColonParts = working.split("::");
+  if (doubleColonParts.length > 2) return null;
+  const left = doubleColonParts[0]
+    ? doubleColonParts[0].split(":").filter(Boolean)
+    : [];
+  const right = doubleColonParts[1]
+    ? doubleColonParts[1].split(":").filter(Boolean)
+    : [];
+  const hasDoubleColon = doubleColonParts.length === 2;
+  const missingCount = 8 - (left.length + right.length);
+  if ((!hasDoubleColon && missingCount !== 0) || missingCount < 0) return null;
+
+  const segments = [
+    ...left,
+    ...Array.from({ length: hasDoubleColon ? missingCount : 0 }, () => "0"),
+    ...right,
+  ];
+  if (segments.length !== 8) return null;
+
+  const hextets = segments.map((segment) => {
+    if (!/^[0-9a-f]{1,4}$/i.test(segment)) return Number.NaN;
+    return Number.parseInt(segment, 16);
+  });
+  return hextets.every((part) => Number.isInteger(part) && part >= 0 && part <= 0xffff)
+    ? hextets
+    : null;
+}
+
+function isIpv4MappedIpv6(hextets) {
+  return (
+    hextets[0] === 0 &&
+    hextets[1] === 0 &&
+    hextets[2] === 0 &&
+    hextets[3] === 0 &&
+    hextets[4] === 0 &&
+    hextets[5] === 0xffff
+  );
+}
+
+function ipv4FromMappedIpv6Hextets(hextets) {
+  return [
+    hextets[6] >> 8,
+    hextets[6] & 0xff,
+    hextets[7] >> 8,
+    hextets[7] & 0xff,
+  ].join(".");
+}
+
+function allowlistedFailureCategory(category, errorName) {
+  if (category === "http" || category === "parse" || category === "timeout") return category;
+  if (errorName === "AbortError") return "timeout";
+  return "network";
+}
+
+function allowlistedFailureReason(error, category) {
+  if (category === "timeout") return "timeout";
+  if (category === "network") return "network_error";
+  if (category === "parse") {
+    return error?.reason === "invalid_xml" ? "invalid_xml" : "invalid_json";
+  }
+  if (category === "http") {
+    const safeStatus = Number(error?.status ?? String(error?.reason || "").match(/\d{3}/)?.[0]);
+    if (Number.isInteger(safeStatus) && safeStatus >= 400 && safeStatus <= 599) {
+      return `http_${safeStatus}`;
+    }
+    return "http_error";
+  }
+  return "network_error";
 }
 
 function sameNormalizedUrl(left, right) {
@@ -855,12 +977,8 @@ function normalizedString(value) {
   return text || null;
 }
 
-function sanitizeReason(value) {
-  return String(value || "Unknown discovery failure")
-    .replace(/\s+/g, " ")
-    .replace(/https?:\/\/\S+/gi, "[url]")
-    .slice(0, 160)
-    .trim();
+export function isPrivateHostnameForTest(hostname) {
+  return isPrivateHostname(hostname);
 }
 
 function clampPositiveInteger(value, fallback, min, max) {
