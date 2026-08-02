@@ -582,6 +582,9 @@ test("library fetch candidates are recomputed from followed sources every run", 
   assert.match(contextRoute, /if \(builder\.ownerUserId === user\.id\) return true/);
   assert.match(contextRoute, /return fetchedItemCountForBuilder\(builder\) === 0/);
   assert.match(contextRoute, /libraryFetchBuilders: annotatedLibraryFetchBuilders/);
+  assert.match(contextRoute, /platformMaintainedBuilders:/);
+  assert.match(contextRoute, /fetchDisabledReason: "platform_maintained_source"/);
+  assert.match(contextRoute, /maintenance: "followbrief"/);
   assert.match(contextRoute, /libraryFetchSelection/);
   // The subscriptions array must redact other users' internal ownerUserId,
   // matching the libraryBuilders annotation, so a follower of an imported
@@ -591,6 +594,7 @@ test("library fetch candidates are recomputed from followed sources every run", 
     /\.map\(\(b\) => \(b\.ownerUserId === user\.id \? b : \{ \.\.\.b, ownerUserId: null \}\)\)/,
   );
   assert.match(cli, /Array\.isArray\(context\.libraryFetchBuilders\)/);
+  assert.match(cli, /context\.platformMaintainedBuilders/);
   assert.match(cli, /return context\.libraryFetchBuilders/);
 });
 

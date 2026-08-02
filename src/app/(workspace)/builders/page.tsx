@@ -63,6 +63,7 @@ import {
   getSourceLibraryMetadataByOwnerIds,
   type SourceLibraryMetadata as SourceLibraryMetadataValue,
 } from "@/lib/source-library-metadata";
+import { isPlatformMaintainedSourceType } from "@/lib/platform-maintained-sources";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
 import { loadUserCloudFetchLog } from "@/lib/user-cloud-fetch-log-data";
 import { loadUserContentStatsByEntityId } from "@/lib/user-content-builders";
@@ -1031,6 +1032,9 @@ function builderListItem({
     id: builder.id,
     entityId: builder.entityId,
     kind: builder.kind,
+    maintenance: isPlatformMaintainedSourceType(builder.sourceType)
+      ? "followbrief"
+      : undefined,
     sourceType: builder.sourceType,
     name: builder.name,
     handle: builder.handle,

@@ -3898,6 +3898,101 @@ test("personal fetcher uses the server-computed real-time library fetch candidat
   );
 });
 
+test("personal fetcher keeps FollowBrief-maintained launch sources observational for non-admin users", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = {
+    libraryBuilders: [
+      {
+        id: "builder_launches_private",
+        scope: "PERSONAL",
+        kind: "WEBSITE",
+        sourceType: "new_product_launches",
+        name: "Private launches",
+        sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+        ownerUserId: null,
+        fetchDisabledReason: "platform_maintained_source",
+      },
+      {
+        id: "builder_blog_1",
+        scope: "PERSONAL",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Owned blog",
+        sourceUrl: "https://example.com/blog",
+      },
+    ],
+    libraryFetchBuilders: [
+      {
+        id: "builder_blog_1",
+        scope: "PERSONAL",
+        kind: "BLOG",
+        sourceType: "blog",
+        name: "Owned blog",
+        sourceUrl: "https://example.com/blog",
+      },
+    ],
+    platformMaintainedBuilders: [
+      {
+        id: "builder_launches_private",
+        scope: "PERSONAL",
+        kind: "WEBSITE",
+        sourceType: "new_product_launches",
+        name: "Private launches",
+        sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      },
+    ],
+  };
+
+  assert.deepEqual(
+    cli.personalBuildersForFetch(context).map((builder: { id: string }) => builder.id),
+    ["builder_blog_1"],
+  );
+  assert.deepEqual(cli.platformMaintainedBuilderStatsForFetch(context), [
+    {
+      builderId: "builder_launches_private",
+      name: "Private launches",
+      sourceType: "new_product_launches",
+      maintenance: "followbrief",
+      itemsFetched: 0,
+      tasksGenerated: 0,
+      discoveryTasksGenerated: 0,
+    },
+  ]);
+});
+
+test("personal fetcher treats admin launch sources as normal local work instead of maintenance rows", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = {
+    libraryBuilders: [
+      {
+        id: "builder_launches_admin",
+        scope: "PERSONAL",
+        kind: "WEBSITE",
+        sourceType: "new_product_launches",
+        name: "Admin launches",
+        sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      },
+    ],
+    libraryFetchBuilders: [
+      {
+        id: "builder_launches_admin",
+        scope: "PERSONAL",
+        kind: "WEBSITE",
+        sourceType: "new_product_launches",
+        name: "Admin launches",
+        sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      },
+    ],
+    platformMaintainedBuilders: [],
+  };
+
+  assert.deepEqual(
+    cli.personalBuildersForFetch(context).map((builder: { id: string }) => builder.id),
+    ["builder_launches_admin"],
+  );
+  assert.deepEqual(cli.platformMaintainedBuilderStatsForFetch(context), []);
+});
+
 test("library fetch reconciliation defaults to the job-specific tmp directory", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const previousJobTmp = process.env.BUILDER_BLOG_JOB_TMP_DIR;

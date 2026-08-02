@@ -1343,6 +1343,56 @@ test("fetch run stats count encoded and decoded forms of one post task once", ()
   assert.equal(stats.synced, 1);
 });
 
+test("fetch run stats exclude FollowBrief-maintained observational builders from source counts", () => {
+  const stats = fetchRunStats({
+    details: {
+      perBuilder: [
+        {
+          builderId: "builder_launches_private",
+          name: "Private launches",
+          sourceType: "new_product_launches",
+          maintenance: "followbrief",
+          itemsFetched: 0,
+          tasksGenerated: 0,
+          discoveryTasksGenerated: 0,
+        },
+        {
+          builderId: "builder_blog_1",
+          name: "Owned blog",
+          sourceType: "blog",
+          itemsFetched: 1,
+          tasksGenerated: 1,
+        },
+      ],
+      fetchTasks: [
+        {
+          id: "fetch_post:blog:owned",
+          builderId: "builder_blog_1",
+          sourceType: "blog",
+          contentStatus: "ready",
+          status: "synced",
+          bodyChars: 900,
+          summaryChars: 120,
+          headlineChars: 42,
+        },
+      ],
+    },
+    liveProgress: null,
+  });
+
+  assert.equal(stats.sourcesScanned, 1);
+  assert.equal(stats.sourcesTotal, 1);
+  assert.equal(stats.planned, 1);
+  assert.equal(stats.read, 1);
+  assert.equal(stats.summaries, 1);
+  assert.equal(stats.headlines, 1);
+  assert.equal(stats.summarized, 1);
+  assert.equal(stats.synced, 1);
+  assert.equal(stats.skipped, 0);
+  assert.equal(stats.failed, 0);
+  assert.equal(stats.actionNeeded, 0);
+});
+
 test("live job progress can backfill job-only post task details", () => {
   const details = fetchDetailsForTaskDisplay({}, {
     stage: "workers_running",

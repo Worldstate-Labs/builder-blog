@@ -98,8 +98,10 @@ type PerBuilder = {
   builderId?: string;
   name?: string;
   sourceType?: string;
+  maintenance?: "followbrief";
   itemsFetched?: number;
   tasksGenerated?: number;
+  discoveryTasksGenerated?: number;
   fallback?: {
     kind?: string;
     message?: string;
@@ -586,6 +588,7 @@ export function fetchRunStats({
 }): FetchRunStats {
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
   const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
+  const countedPerBuilder = perBuilder.filter((builder) => builder.maintenance !== "followbrief");
   const counters = liveProgress?.counters ?? {};
   const liveTasks = dedupeFetchProgressTasks(liveProgress?.tasks ?? []);
   const plannedTasks = fetchTasks.filter(isPlannedPostTask);
@@ -642,10 +645,10 @@ export function fetchRunStats({
   return {
     sourcesScanned:
       counters.sourcesChecked ??
-      (perBuilder.length > 0 ? perBuilder.length : run?.buildersAttempted ?? 0),
+      (countedPerBuilder.length > 0 ? countedPerBuilder.length : run?.buildersAttempted ?? 0),
     sourcesTotal:
       counters.sourcesTotal ??
-      (run?.buildersAttempted ?? perBuilder.length),
+      (run?.buildersAttempted ?? countedPerBuilder.length),
     planned,
     read,
     summaries,

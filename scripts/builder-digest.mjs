@@ -2429,6 +2429,8 @@ async function fetchPersonal(args) {
       (context.subscriptions ?? []).map((builder) => builder.id),
     );
     const personalBuilders = personalBuildersForFetch(context);
+    const platformMaintainedPerBuilder = platformMaintainedBuilderStatsForFetch(context);
+    perBuilder = [...platformMaintainedPerBuilder];
     buildersAttempted = personalBuilders.length;
     await emitFetchJobProgress(config, fetchProgress, {
       stage: "scanning_sources",
@@ -2471,7 +2473,7 @@ async function fetchPersonal(args) {
         errorCount: 0,
         summary: "No personal builders to fetch.",
         details: {
-          perBuilder: [],
+          perBuilder,
           userActions: [],
           localErrors: [],
           cliFlags,
@@ -2561,7 +2563,7 @@ async function fetchPersonal(args) {
       }
     }
 
-    perBuilder = [...planned.builderStats.values()];
+    perBuilder = [...platformMaintainedPerBuilder, ...planned.builderStats.values()];
     ({ slimFetchTasks } = summarizeFetchTasksForLog(fetchTasks));
 
     const payload = { status: "ok", localErrors, summaryLanguage: context.language ?? "zh", fetchTasks };
@@ -3526,6 +3528,18 @@ export function personalBuildersForFetch(context) {
   return (context.libraryBuilders ?? []).filter(
     (builder) => builder.scope === "PERSONAL",
   );
+}
+
+export function platformMaintainedBuilderStatsForFetch(context) {
+  return (context.platformMaintainedBuilders ?? []).map((builder) => ({
+    builderId: builder.id,
+    name: builder.name,
+    sourceType: builder.sourceType,
+    maintenance: "followbrief",
+    itemsFetched: 0,
+    tasksGenerated: 0,
+    discoveryTasksGenerated: 0,
+  }));
 }
 
 export function defaultLibraryFetchResultFileForTest() {

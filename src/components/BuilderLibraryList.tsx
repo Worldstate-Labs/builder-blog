@@ -24,7 +24,9 @@ import {
 } from "@/lib/builder-library-events";
 import type { SourceCandidate } from "@/lib/source-candidates";
 
-export type BuilderLibraryListItem = BuilderLibraryEventItem;
+export type BuilderLibraryListItem = BuilderLibraryEventItem & {
+  maintenance?: "followbrief";
+};
 
 const COLLAPSED_SOURCE_LIMIT = 4;
 
@@ -440,6 +442,9 @@ function BuilderInfo({
 }) {
   const sourceHref = builder.sourceUrl || builder.fetchUrl;
   const sourceLabel = sourceHref ? sourceOriginLabel(sourceHref) : null;
+  const provenance = builder.maintenance === "followbrief"
+    ? "Maintained by FollowBrief"
+    : null;
   return (
     <div className="builder-library-info">
       <div className="builder-library-info-head">
@@ -454,7 +459,7 @@ function BuilderInfo({
           <div className="builder-library-name">{builder.name}</div>
         )}
       </div>
-      {sourceLabel || children ? (
+      {sourceLabel || provenance || children ? (
         <div className="builder-library-meta">
           {sourceHref && sourceLabel ? (
             <a
@@ -466,6 +471,9 @@ function BuilderInfo({
             >
               {sourceLabel}
             </a>
+          ) : null}
+          {provenance ? (
+            <span className="builder-library-source-provenance">{provenance}</span>
           ) : null}
           {children}
         </div>

@@ -4,6 +4,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { BuilderLibraryList } from "../src/components/BuilderLibraryList";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -303,6 +306,57 @@ test("fetch and brief log dialogs show task-level usage summaries", () => {
   assert.match(usageComponent, /formatUsageTokens\(usage\.totalTokens\)/);
   assert.match(usageComponent, /formatUsageCost\(usage\)/);
   assert.match(css, /\.sync-panel-usage-summary/);
+});
+
+test("builder library rows show FollowBrief maintenance provenance without fetch prompts", () => {
+  const html = renderToStaticMarkup(
+    createElement(BuilderLibraryList, {
+      builders: [
+        {
+          id: "builder_launches_private",
+          entityId: "entity_launches",
+          kind: "WEBSITE",
+          sourceType: "new_product_launches",
+          name: "Private launches",
+          handle: null,
+          sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+          fetchUrl: null,
+          avatarUrl: null,
+          avatarDataUrl: null,
+          createdAt: "2026-08-02T00:00:00.000Z",
+          feedItemCount: 0,
+          latestPostCreatedAt: null,
+          subscribed: true,
+          allowRemove: true,
+          maintenance: "followbrief",
+        },
+        {
+          id: "builder_launches_imported",
+          entityId: "entity_launches",
+          kind: "WEBSITE",
+          sourceType: "new_product_launches",
+          name: "Imported launches",
+          handle: null,
+          sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+          fetchUrl: null,
+          avatarUrl: null,
+          avatarDataUrl: null,
+          createdAt: "2026-08-01T00:00:00.000Z",
+          feedItemCount: 4,
+          latestPostCreatedAt: "2026-08-02T00:00:00.000Z",
+          subscribed: true,
+          allowRemove: false,
+          maintenance: "followbrief",
+        },
+      ] as never,
+      emptyBody: "No sources yet.",
+    }),
+  );
+
+  assert.equal((html.match(/Maintained by FollowBrief/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /Fetch sources/);
+  assert.doesNotMatch(html, /Local Agent/);
+  assert.doesNotMatch(html, /Submit to FollowBrief/);
 });
 
 test("builder sync endpoint durably patches fetch-run outcomes server-side", () => {

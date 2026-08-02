@@ -24,6 +24,7 @@ import {
   isOriginalContentLanguagePreference,
   normalizeSummaryLanguagePreference,
 } from "@/lib/language-preference";
+import { isPlatformMaintainedSourceType } from "@/lib/platform-maintained-sources";
 import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 
 const personalFetchedItemLimit = 5000;
@@ -198,9 +199,16 @@ export async function GET(request: Request) {
   );
   const fetchedItemCountForBuilder = (builder: (typeof libraryBuilders)[number]) =>
     fetchedItemCountByBuilderId.get(builder.id) ?? builder.itemCount ?? 0;
+  const platformMaintainedBuilders = isLibrary && !userIsAdmin
+    ? libraryBuilders.filter((builder) =>
+        subscribedBuilderIdSet.has(builder.id) &&
+        isPlatformMaintainedSourceType(builder.sourceType)
+      )
+    : [];
   const libraryFetchBuilders = isLibrary
     ? libraryBuilders.filter((builder) => {
         if (!subscribedBuilderIdSet.has(builder.id)) return false;
+        if (!userIsAdmin && isPlatformMaintainedSourceType(builder.sourceType)) return false;
         if (!userIsAdmin && isAdminFetchOnlySourceType(builder.sourceType)) return false;
         if (builder.ownerUserId === user.id) return true;
         return fetchedItemCountForBuilder(builder) === 0;
@@ -219,8 +227,19 @@ export async function GET(request: Request) {
   // other users' internal IDs through the API.
   const personalBuilderIdSet = new Set(personalBuilderIds);
   const annotateLibraryBuilder = (builder: (typeof libraryBuilders)[number]) => {
+    const platformMaintainedForUser =
+      !userIsAdmin && isPlatformMaintainedSourceType(builder.sourceType);
     const adminFetchOnlyForUser =
       !userIsAdmin && isAdminFetchOnlySourceType(builder.sourceType);
+    if (platformMaintainedForUser) {
+      return {
+        ...builder,
+        ...(personalBuilderIdSet.has(builder.id) ? { scope: "PERSONAL" as const } : {}),
+        ownerUserId: null,
+        fetchDisabledReason: "platform_maintained_source" as const,
+        maintenance: "followbrief" as const,
+      };
+    }
     if (personalBuilderIdSet.has(builder.id) && !adminFetchOnlyForUser) {
       return { ...builder, scope: "PERSONAL" as const };
     }
@@ -236,6 +255,10 @@ export async function GET(request: Request) {
       ? "followed_personal"
       : "followed_imported_empty",
     fetchedItemCount: fetchedItemCountForBuilder(builder),
+  }));
+  const annotatedPlatformMaintainedBuilders = platformMaintainedBuilders.map((builder) => ({
+    ...annotateLibraryBuilder(builder),
+    maintenance: "followbrief" as const,
   }));
 
   // Subscriptions are per-channel; derive the entity set from the builder's entityId.
@@ -426,6 +449,7 @@ export async function GET(request: Request) {
     },
     libraryBuilders: annotatedLibraryBuilders,
     libraryFetchBuilders: annotatedLibraryFetchBuilders,
+    platformMaintainedBuilders: annotatedPlatformMaintainedBuilders,
     libraryFetchSelection: {
       rule:
         "fetch followed personal sources; fetch followed imported sources only when they have no fetched posts; admin-fetch-only source types are fetched by admin and shared by entity",
