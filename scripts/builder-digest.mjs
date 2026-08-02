@@ -11,10 +11,7 @@ import {
   cloudShardExecutionBudget as sharedCloudShardExecutionBudget,
   normalizeCloudShardBudgetPolicy,
 } from "./cloud-shard-budget.mjs";
-import {
-  discoverNewProductLaunches,
-  NewProductLaunchDiscoveryError,
-} from "./new-product-launches.mjs";
+import { discoverNewProductLaunches } from "./new-product-launches.mjs";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -2321,7 +2318,7 @@ export async function buildFetchTasksForBuilders({
       const message = error instanceof Error ? error.message : String(error);
       if (
         builderStat.sourceType === "new_product_launches" &&
-        error instanceof NewProductLaunchDiscoveryError
+        isAllProvidersLaunchDiscoveryFailure(error)
       ) {
         builderStat.error = message;
         errorCount += 1;
@@ -3641,6 +3638,21 @@ function stableLaunchExternalId(candidate) {
     usageString(candidate?.discussionUrl) ||
     `${usageString(candidate?.provider) || "provider"}:${usageString(candidate?.providerItemId) || "item"}`;
   return `new-product-launches:${identity}`;
+}
+
+function isAllProvidersLaunchDiscoveryFailure(error) {
+  if (!error || typeof error !== "object") return false;
+  if (error.name !== "NewProductLaunchDiscoveryError") return false;
+  if (error.code !== "ALL_PROVIDERS_FAILED") return false;
+  if (error.failures == null) return true;
+  if (!Array.isArray(error.failures) || error.failures.length === 0) return false;
+  return error.failures.every((failure) =>
+    failure &&
+    typeof failure === "object" &&
+    usageString(failure.provider) &&
+    usageString(failure.category) &&
+    usageString(failure.reason),
+  );
 }
 
 function personalFetchedItemsForContext(context) {

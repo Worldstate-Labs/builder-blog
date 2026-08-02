@@ -9811,7 +9811,9 @@ test("buildFetchTasksForBuilders treats empty new product launch discovery as a 
 
 test("buildFetchTasksForBuilders records all-provider launch discovery failures as builder errors", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?launch-failure=${Date.now()}`);
-  const { NewProductLaunchDiscoveryError } = await import("../scripts/new-product-launches.mjs");
+  const { NewProductLaunchDiscoveryError } = await import(
+    `../scripts/new-product-launches.mjs?alt-identity=${Date.now()}`
+  );
   const planned = await cli.buildFetchTasksForBuilders({
     builders: [newProductLaunchesBuilder()],
     context: newProductLaunchesContext(),
@@ -9841,6 +9843,38 @@ test("buildFetchTasksForBuilders records all-provider launch discovery failures 
   assert.equal(planned.builderStats.get("builder_launches")?.tasksGenerated, 0);
   assert.equal(planned.builderStats.get("builder_launches")?.discoveryTasksGenerated, 0);
   assert.equal(planned.builderStats.get("builder_launches")?.fallback, undefined);
+});
+
+test("buildFetchTasksForBuilders keeps ordinary launch discovery errors on the existing fallback path", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?launch-nonterminal=${Date.now()}`);
+  const planned = await cli.buildFetchTasksForBuilders({
+    builders: [newProductLaunchesBuilder()],
+    context: newProductLaunchesContext(),
+    force: true,
+    days: 30,
+    limit: 1,
+    runStartedAt: new Date("2026-08-02T08:00:00.000Z"),
+    sourceOptionsBySourceId: {
+      new_product_launches: {
+        discover: async () => {
+          throw new Error("single provider timed out");
+        },
+      },
+    },
+  });
+
+  assert.equal(planned.errorCount, 0);
+  assert.equal(planned.agentTasks.length, 1);
+  assert.equal(planned.taskOutcomes.length, 0);
+  assert.equal(planned.fetchTasks.length, 1);
+  assert.equal(planned.fetchTasks[0].agentWorkType, "fetch_builder_fallback");
+  assert.equal(planned.builderStats.get("builder_launches")?.error, undefined);
+  assert.equal(planned.builderStats.get("builder_launches")?.tasksGenerated, 1);
+  assert.equal(planned.builderStats.get("builder_launches")?.fallback?.kind, "fetch_builder_fallback");
+  assert.equal(
+    planned.builderStats.get("builder_launches")?.fallback?.reason,
+    "single provider timed out",
+  );
 });
 
 test("merge-task-results checkpoint exclusions keep repeated cloud task ids run-scoped", async () => {
