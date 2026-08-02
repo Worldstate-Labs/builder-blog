@@ -11,7 +11,10 @@ import {
   cloudShardExecutionBudget as sharedCloudShardExecutionBudget,
   normalizeCloudShardBudgetPolicy,
 } from "./cloud-shard-budget.mjs";
-import { discoverNewProductLaunches } from "./new-product-launches.mjs";
+import {
+  discoverNewProductLaunches,
+  NewProductLaunchDiscoveryError,
+} from "./new-product-launches.mjs";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -2316,6 +2319,14 @@ export async function buildFetchTasksForBuilders({
       builderStat.sourceType = source.id;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (
+        builderStat.sourceType === "new_product_launches" &&
+        error instanceof NewProductLaunchDiscoveryError
+      ) {
+        builderStat.error = message;
+        errorCount += 1;
+        continue;
+      }
       const task = buildPersonalFetchErrorTask(builder, {
         builderSync: fallbackBuilderSync,
         error,
@@ -2665,7 +2676,6 @@ export function summarizeFetchTasksForLog(fetchTasks) {
 }
 
 function isRecoverableFetchFallback(task) {
-  if (task?.sourceType === "new_product_launches") return false;
   return (
     task?.contentStatus === "requires_agent" &&
     (task?.agentWorkType === "candidate_discovery_fallback" ||
