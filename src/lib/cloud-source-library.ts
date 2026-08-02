@@ -447,6 +447,9 @@ export async function submitUserPrivateLibraryToCloud(params: {
   const submissionSources = selectedBuilderIds
     ? privateSources.filter((source) => selectedBuilderIds.has(source.builderId))
     : eligibleSubmissionSources;
+  if (selectedBuilderIds && submissionSources.length !== selectedBuilderIds.size) {
+    throw new CloudSourceSubmissionError("Some selected sources are not in your library.");
+  }
   if (
     selectedBuilderIds &&
     submissionSources.some((source) => isPlatformMaintainedSourceType(source.builder.sourceType))
@@ -456,9 +459,6 @@ export async function submitUserPrivateLibraryToCloud(params: {
       400,
       "platform_managed_source",
     );
-  }
-  if (selectedBuilderIds && submissionSources.length !== selectedBuilderIds.size) {
-    throw new CloudSourceSubmissionError("Some selected sources are not in your library.");
   }
   if (!selectedBuilderIds && eligibleSubmissionSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT) {
     throw new CloudSourceSubmissionError(

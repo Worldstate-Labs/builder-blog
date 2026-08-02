@@ -414,6 +414,126 @@ test("explicitly selected platform-maintained sources fail before any cloud rows
   assert.equal(writes.builderCopies, 0);
 });
 
+test("mixed explicit selection with owned maintained and missing source returns generic ownership failure before any writes", async () => {
+  const writes = {
+    cloudLanguageLibraryReads: 0,
+    cloudLanguageLibraryWrites: 0,
+    submissionWrites: 0,
+    taskWrites: 0,
+    builderCopies: 0,
+  };
+
+  const prisma = {
+    builderPoolEntry: {
+      async findMany() {
+        return [
+          {
+            builderId: "builder_blog_1",
+            builder: {
+              id: "builder_blog_1",
+              ownerUserId: "user_1",
+              kind: "BLOG",
+              sourceType: "blog",
+              name: "Blog 1",
+              handle: null,
+              sourceUrl: "https://example.com/blog.xml",
+              fetchUrl: null,
+              avatarUrl: null,
+              avatarDataUrl: null,
+              bio: null,
+            },
+          },
+          {
+            builderId: "builder_launches",
+            builder: {
+              id: "builder_launches",
+              ownerUserId: "user_1",
+              kind: "WEBSITE",
+              sourceType: "new_product_launches",
+              name: "Launches",
+              handle: null,
+              sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+              fetchUrl: null,
+              avatarUrl: null,
+              avatarDataUrl: null,
+              bio: null,
+            },
+          },
+        ];
+      },
+    },
+    cloudLanguageLibrary: {
+      async findUnique() {
+        writes.cloudLanguageLibraryReads += 1;
+        return null;
+      },
+      async upsert() {
+        writes.cloudLanguageLibraryWrites += 1;
+        return {};
+      },
+      async update() {
+        writes.cloudLanguageLibraryWrites += 1;
+        return {};
+      },
+    },
+    cloudSourceSubmission: {
+      async findMany() {
+        return [];
+      },
+      async upsert() {
+        writes.submissionWrites += 1;
+        return {};
+      },
+      async updateMany() {
+        writes.submissionWrites += 1;
+        return { count: 0 };
+      },
+    },
+    cloudSourceTask: {
+      async findMany() {
+        return [];
+      },
+      async upsert() {
+        writes.taskWrites += 1;
+        return {};
+      },
+      async updateMany() {
+        writes.taskWrites += 1;
+        return { count: 0 };
+      },
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      submitUserPrivateLibraryToCloud({
+        userId: "user_1",
+        frequency: "DAILY",
+        summaryLanguage: "en",
+        builderIds: ["builder_launches", "builder_missing"],
+        prisma: prisma as never,
+        copyBuilderUpsert: async () => {
+          writes.builderCopies += 1;
+          return { id: "cloud_builder" };
+        },
+        syncHub: async () => ({ entry: {} as never, builderCount: 0 }),
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof CloudSourceSubmissionError);
+      assert.equal(error.message, "Some selected sources are not in your library.");
+      assert.equal(error.status, 400);
+      assert.equal((error as CloudSourceSubmissionError).code, null);
+      return true;
+    },
+  );
+
+  assert.equal(writes.cloudLanguageLibraryReads, 0);
+  assert.equal(writes.cloudLanguageLibraryWrites, 0);
+  assert.equal(writes.submissionWrites, 0);
+  assert.equal(writes.taskWrites, 0);
+  assert.equal(writes.builderCopies, 0);
+});
+
 test("cloud language hub entries stay internal to cloud reuse", () => {
   const hub = source("src/lib/library-hub.ts");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
@@ -670,6 +790,12 @@ test("cloud source submission route serializes typed platform-managed selection 
   assert.match(route, /if \(error instanceof CloudSourceSubmissionError\)/);
   assert.match(route, /code: error\.code/);
   assert.match(route, /status: error\.status/);
+});
+
+test("cloud source submission route only includes code for typed selection failures", () => {
+  const route = source("src/app/api/cloud-library/source-submissions/route.ts");
+
+  assert.match(route, /\.\.\.\(error\.code \? \{ code: error\.code \} : \{\}\)/);
 });
 
 test("cloud scheduler is work-conserving: releases by nextAttemptAt, no latest-bucket deferral", () => {
