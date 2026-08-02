@@ -732,6 +732,14 @@ export function SkillPromptActions({
     router.refresh();
   }
 
+  const showAccessKeyPrompt = showStartActions && activeTokens.length === 0;
+  const visibleStatus =
+    showAccessKeyPrompt && status?.kind === "info" && status.text === missingAccessMessage
+      ? null
+      : status;
+  const showStatusRegion =
+    showStopButton || (showStartActions && !showAccessKeyPrompt) || visibleStatus !== null;
+
   return (
     <div className={compactOnly ? "skill-prompt-compact" : "fb-skill"}>
       {!compactOnly ? (
@@ -769,31 +777,31 @@ export function SkillPromptActions({
         </button>
       ) : null}
 
-      {showStartActions ? (
-        activeTokens.length === 0 ? (
-          <div aria-live="polite" className="skill-prompt-access-required" role="status">
-            <KeyRound aria-hidden="true" className="skill-prompt-access-icon" />
-            <span className="skill-prompt-access-copy">
-              <span className="skill-prompt-access-title">Access key required</span>
-              <span className="skill-prompt-access-body">
-                Add an access key to set up Local Agent runs.
-              </span>
+      {showAccessKeyPrompt ? (
+        <div aria-live="polite" className="skill-prompt-access-required" role="status">
+          <KeyRound aria-hidden="true" className="skill-prompt-access-icon" />
+          <span className="skill-prompt-access-copy">
+            <span className="skill-prompt-access-title">Access key required</span>
+            <span className="skill-prompt-access-body">
+              Add an access key to set up Local Agent runs.
             </span>
-            <Link className="fb-btn dark compact" href="/settings">
-              Open Settings
-            </Link>
-          </div>
-        ) : (
-          <span aria-live="polite" className="skill-prompt-status">
-            {status ? (
-              status.kind === "info" ? (
-                <span className="skill-prompt-status-text">{status.text}</span>
-              ) : (
-                <span className="skill-prompt-status-text is-error">{status.text}</span>
-              )
-            ) : null}
           </span>
-        )
+          <Link className="fb-btn dark compact" href="/settings">
+            Open Settings
+          </Link>
+        </div>
+      ) : null}
+
+      {showStatusRegion ? (
+        <span aria-live="polite" className="skill-prompt-status">
+          {visibleStatus ? (
+            visibleStatus.kind === "info" ? (
+              <span className="skill-prompt-status-text">{visibleStatus.text}</span>
+            ) : (
+              <span className="skill-prompt-status-text is-error">{visibleStatus.text}</span>
+            )
+          ) : null}
+        </span>
       ) : null}
 
       {showStartActions && cronConfigOpen ? (

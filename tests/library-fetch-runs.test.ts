@@ -6,7 +6,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { BuilderLibraryList } from "../src/components/BuilderLibraryList";
+import { SkillPromptActions } from "../src/components/SkillPromptActions";
 import {
   cloudSubmissionSourcesForBuilders,
   fetchSyncSupportingCopy,
@@ -413,6 +415,36 @@ test("fetch action controls gate start actions separately from stop affordances"
   assert.match(skillPromptActions, /showStopButton \? \(/);
   assert.match(skillPromptActions, /\{showStartActions && cronConfigOpen \?/);
   assert.match(skillPromptActions, /\{showStartActions \? \(\s*<TokenPickerDialog/);
+});
+
+test("stop-only skill prompt actions still render a live feedback region", () => {
+  const router = {
+    back() {},
+    forward() {},
+    refresh() {},
+    push() {},
+    replace() {},
+    prefetch() {},
+  };
+  const html = renderToStaticMarkup(
+    createElement(
+      AppRouterContext.Provider,
+      { value: router as never },
+      createElement(SkillPromptActions, {
+        context: "library",
+        compactOnly: true,
+        showStartActions: false,
+        localFetchActive: true,
+        showStop: true,
+        tokens: [],
+      }),
+    ),
+  );
+
+  assert.match(html, /class="skill-prompt-status"/);
+  assert.match(html, /aria-live="polite"/);
+  assert.match(html, />Stop fetching</);
+  assert.doesNotMatch(html, /Access key required/);
 });
 
 test("builder sync endpoint durably patches fetch-run outcomes server-side", () => {
