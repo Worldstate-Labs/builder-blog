@@ -182,6 +182,9 @@ async function fetchHnLaunches({ fetcher, timeoutMs }) {
       ),
     ),
   );
+  if (boundedIds.length > 0 && itemResults.every((result) => result.status === "rejected")) {
+    throw networkError("hn");
+  }
   const items = itemResults
     .filter((result) => result.status === "fulfilled")
     .map((result) => result.value);
@@ -366,13 +369,11 @@ function parseLobstersFeed(xml) {
     const linkUrl = normalizePublicHttpUrl(tagText(block, "link"));
     const commentsUrl = normalizePublicHttpUrl(tagText(block, "comments"));
     const fallbackUrl = normalizePublicHttpUrl(extractFirstHref(description));
+    const primaryLinkIsExternal = Boolean(selectExternalStoryUrl(linkUrl));
     const discussionUrl =
       commentsUrl ||
-      selectLobstersDiscussionUrl(linkUrl) ||
-      selectLobstersDiscussionUrl(fallbackUrl);
-    const officialUrl =
-      selectExternalStoryUrl(linkUrl) ||
-      selectExternalStoryUrl(fallbackUrl);
+      (primaryLinkIsExternal ? selectLobstersDiscussionUrl(fallbackUrl) : selectLobstersDiscussionUrl(linkUrl));
+    const officialUrl = selectExternalStoryUrl(linkUrl);
     const publishedAt = normalizedDate(
       tagText(block, "pubDate") || tagText(block, "published"),
     );
@@ -660,6 +661,13 @@ function parseError(provider, reason) {
   return error;
 }
 
+function networkError(provider) {
+  const error = new Error(`${provider} network failure`);
+  error.category = "network";
+  error.reason = "network_error";
+  return error;
+}
+
 function timeoutError(provider, timeoutMs) {
   const error = new Error(`${provider} timed out after ${timeoutMs}ms`);
   error.name = "AbortError";
@@ -721,7 +729,12 @@ function isTrackingParam(name) {
 function isPrivateHostname(hostname) {
   const lower = normalizeHostname(hostname);
   if (!lower) return true;
-  if (lower === "localhost" || lower.endsWith(".local") || lower.endsWith(".internal")) {
+  if (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower.endsWith(".local") ||
+    lower.endsWith(".internal")
+  ) {
     return true;
   }
 
@@ -782,14 +795,22 @@ function isLobstersDiscussionUrl(url) {
 function isPrivateIpv6Hostname(hostname) {
   const hextets = parseIpv6Hextets(hostname);
   if (!hextets) return true;
+  if (!isGlobalUnicastIpv6(hextets)) return true;
   if (hextets.every((part) => part === 0)) return true;
   if (hextets.slice(0, 7).every((part) => part === 0) && hextets[7] === 1) return true;
   if ((hextets[0] & 0xfe00) === 0xfc00) return true;
   if ((hextets[0] & 0xffc0) === 0xfe80) return true;
+  if ((hextets[0] & 0xffc0) === 0xfec0) return true;
+  if (hextets[0] === 0x2001 && hextets[1] === 0x0db8) return true;
+  if (hextets[0] === 0x0100 && hextets.slice(1, 4).every((part) => part === 0)) return true;
   if (isIpv4MappedIpv6(hextets)) {
     return isPrivateIpv4Hostname(ipv4FromMappedIpv6Hextets(hextets));
   }
   return false;
+}
+
+function isGlobalUnicastIpv6(hextets) {
+  return (hextets[0] & 0xe000) === 0x2000;
 }
 
 function parseIpv6Hextets(hostname) {

@@ -380,17 +380,6 @@ test("uses Lobsters link/comments fields first and falls back to description lin
           description: " Live-shaped RSS item.",
         },
         {
-          title: "Fallback Official",
-          officialUrl: "https://lobste.rs/s/fallback1/fallback_official",
-          commentsUrl: "https://lobste.rs/s/fallback1/fallback_official",
-          discussionUrl: "https://lobste.rs/s/fallback1/fallback_official",
-          descriptionHref: "https://fallback-official.example/story?src=lobsters&utm_medium=rss",
-          author: "rss",
-          iso: daysAgo(1),
-          guid: "fallback-official",
-          description: " Missing external link field.",
-        },
-        {
           title: "Fallback Discussion",
           officialUrl: "https://fallback-discussion.example/story?ref=lobsters&utm_campaign=feed",
           commentsUrl: null,
@@ -420,14 +409,6 @@ test("uses Lobsters link/comments fields first and falls back to description lin
     "https://lobste.rs/s/live123/live_contract",
   );
   assert.equal(
-    byTitle.get("Fallback Official")?.officialUrl,
-    "https://fallback-official.example/story?src=lobsters",
-  );
-  assert.equal(
-    byTitle.get("Fallback Official")?.discussionUrl,
-    "https://lobste.rs/s/fallback1/fallback_official",
-  );
-  assert.equal(
     byTitle.get("Fallback Discussion")?.officialUrl,
     "https://fallback-discussion.example/story?ref=lobsters",
   );
@@ -435,6 +416,31 @@ test("uses Lobsters link/comments fields first and falls back to description lin
     byTitle.get("Fallback Discussion")?.discussionUrl,
     "https://lobste.rs/s/fallback2/fallback_discussion",
   );
+});
+
+test("excludes Lobsters announce items when both primary URLs are internal and only description has an external href", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      lobstersAnnounce: lobstersFeed([
+        {
+          title: "Fourteener Lobsters",
+          officialUrl: "https://lobste.rs/s/fourteen123/fourteener_lobsters",
+          commentsUrl: "https://lobste.rs/s/fourteen123/fourteener_lobsters",
+          discussionUrl: "https://lobste.rs/s/fourteen123/fourteener_lobsters",
+          descriptionHref: "https://fourteener.example/post?source=announce&utm_source=rss",
+          author: "rss",
+          iso: daysAgo(1),
+          guid: "fourteener-lobsters",
+          description: " Internal announce item with an arbitrary external description link.",
+        },
+      ]),
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(result.launches, []);
+  assert.equal(result.failures.length, 0);
 });
 
 test("drops candidates outside lookback and malformed or private destinations", async () => {
@@ -879,12 +885,54 @@ test("keeps successful HN stories when one item request fails", async () => {
   assert.equal(result.failures.length, 0);
 });
 
+test("reports an HN provider failure when showstories ids exist but every item request fails", async () => {
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({
+      hnStories: [1901, 1902],
+      hnItems: {
+        "1901": new Error("item exploded"),
+        "1902": new Error("item exploded"),
+      },
+      devArticles: [
+        devArticle({
+          id: 1903,
+          title: "Show DEV: HN Failed But DEV Survived",
+          officialUrl: "https://dev-survived.example/?utm_source=dev",
+          author: "dev",
+          iso: daysAgo(1),
+          description: "DEV still succeeds.",
+          reactions: 5,
+          comments: 1,
+        }),
+      ],
+    }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+  });
+
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.title),
+    ["Show DEV: HN Failed But DEV Survived"],
+  );
+  assert.deepEqual(result.failures, [
+    {
+      provider: "hn",
+      category: "network",
+      reason: "network_error",
+    },
+  ]);
+});
+
 test("throws a typed discovery error only when all providers fail", async () => {
   await assert.rejects(
     () =>
       discoverNewProductLaunches({
         fetcher: createFixtureFetcher({
-          hnStories: new Response("bad gateway", { status: 502 }),
+          hnStories: [2001, 2002],
+          hnItems: {
+            "2001": new Error("hn item failed"),
+            "2002": new Error("hn item failed"),
+          },
           devArticles: new Error("socket hang up"),
           hfSpaces: new Response("{", {
             status: 200,
@@ -1062,6 +1110,32 @@ test("rejects reserved and non-global IPv4 ranges", () => {
     ["255.255.255.255", true],
     ["8.8.8.8", false],
     ["1.1.1.1", false],
+  ] as const;
+
+  for (const [hostname, expected] of cases) {
+    assert.equal(
+      isPrivateHostnameForTest(hostname),
+      expected,
+      `${hostname} expected private=${expected}`,
+    );
+  }
+});
+
+test("rejects *.localhost and non-global IPv6 ranges while allowing global unicast", () => {
+  const cases = [
+    ["api.localhost", true],
+    ["dev.api.localhost", true],
+    ["[::1]", true],
+    ["[::]", true],
+    ["[fe80::1]", true],
+    ["[fc00::1]", true],
+    ["[fd00::1]", true],
+    ["[fec0::1]", true],
+    ["[ff02::1]", true],
+    ["[100::1]", true],
+    ["[2001:db8::1]", true],
+    ["[2607:f8b0:4005:805::200e]", false],
+    ["[2001:4860:4860::8888]", false],
   ] as const;
 
   for (const [hostname, expected] of cases) {
