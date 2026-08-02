@@ -2413,6 +2413,12 @@ test("sync upload payload applies launch-facts acquisition policy for new produc
               fetchTaskId: "task-launch",
               officialUrl: "https://launchpad.example",
               supportingPageText: "Raw supporting page text.",
+              supportingPageBody: "Raw supporting page body.",
+              supportingPageMarkdown: "# Raw supporting page markdown",
+              supportingPageContent: "Raw supporting page content.",
+              supportingPageUrl: "https://launchpad.example/docs",
+              sourceUrls: ["https://launchpad.example", "https://launchpad.example/docs"],
+              launchDate: "2026-08-02",
             },
           },
         ],
@@ -2427,6 +2433,16 @@ test("sync upload payload applies launch-facts acquisition policy for new produc
   assert.equal(item.rawJson.acquisition.provider, "followbrief");
   assert.equal(item.rawJson.acquisition.method, "new-product-launch-structured-facts");
   assert.equal(item.rawJson.acquisition.rightsBasis, "structured-facts-only");
+  assert.equal(item.rawJson.supportingPageText, "[removed raw content]");
+  assert.equal(item.rawJson.supportingPageBody, "[removed raw content]");
+  assert.equal(item.rawJson.supportingPageMarkdown, "[removed raw content]");
+  assert.equal(item.rawJson.supportingPageContent, "[removed raw content]");
+  assert.equal(item.rawJson.supportingPageUrl, "https://launchpad.example/docs");
+  assert.deepEqual(item.rawJson.sourceUrls, [
+    "https://launchpad.example",
+    "https://launchpad.example/docs",
+  ]);
+  assert.equal(item.rawJson.launchDate, "2026-08-02");
 });
 
 test("sync upload payload never stores summary as durable body when item body is absent", async () => {
