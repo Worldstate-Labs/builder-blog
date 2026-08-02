@@ -11672,6 +11672,7 @@ function syncContentPolicyFor(sourceType, rawContentKind) {
   if (source === "website") return { durableRawMode: "excerpt", durableRawMaxChars: 12_000 };
   if (source === "github_trending") return { durableRawMode: "facts_only", durableRawMaxChars: 8000 };
   if (source === "product_hunt_top_products") return { durableRawMode: "facts_only", durableRawMaxChars: 8000 };
+  if (source === "new_product_launches") return { durableRawMode: "facts_only", durableRawMaxChars: 8000 };
   if (source === "youtube") return { durableRawMode: "none", durableRawMaxChars: 0 };
   if (source === "podcast" && rawContentKind === "transcript") {
     return { durableRawMode: "none", durableRawMaxChars: 0 };
@@ -11715,6 +11716,7 @@ function inferSyncRawContentKind(sourceType, rawJson) {
   if (source === "website") return "page";
   if (source === "github_trending") return "repo_facts";
   if (source === "product_hunt_top_products") return "product_facts";
+  if (source === "new_product_launches") return "launch_facts";
   return "raw_content";
 }
 
@@ -11747,11 +11749,13 @@ function methodForSyncSourceType(sourceType, rawContentKind, rawJson) {
   if (source === "website") return "website-html-extract";
   if (source === "github_trending") return "github-trending-investigation";
   if (source === "product_hunt_top_products") return "product-hunt-structured-facts";
+  if (source === "new_product_launches") return "new-product-launch-structured-facts";
   return "local-agent-fetch";
 }
 
 function providerForSyncSourceType(sourceType) {
   const source = normalizeSourceType(sourceType);
+  if (source === "new_product_launches") return "followbrief";
   if (source === "product_hunt_top_products") return "product-hunt";
   if (source === "github_trending") return "github";
   if (source === "podcast") return "podcast-rss";
@@ -11765,6 +11769,7 @@ function rightsBasisForSyncSourceType(sourceType, rawContentKind) {
   if (source === "podcast" && rawContentKind === "transcript") {
     return "user-directed-local-processing";
   }
+  if (source === "new_product_launches") return "structured-facts-only";
   if (source === "product_hunt_top_products") return "structured-facts-only";
   return "public-source-user-directed";
 }

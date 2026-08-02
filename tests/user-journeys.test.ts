@@ -49,7 +49,11 @@ import {
   canonicalPersonalSourceUrl,
   personalSourceIdentityKeys,
 } from "../src/lib/personal-source-identity";
-import { resolvePersonalBuilderInput } from "../src/lib/personal-builder-input";
+import {
+  NEW_PRODUCT_LAUNCHES_SOURCE_ID,
+  NEW_PRODUCT_LAUNCHES_URL,
+  resolvePersonalBuilderInput,
+} from "../src/lib/personal-builder-input";
 import {
   candidateSearchTerms,
   didYouMeanSearch,
@@ -73,7 +77,11 @@ import {
   crossTypeWarning,
   detectSourceTypeFromValue,
 } from "../src/lib/source-value-detect";
-import { FIXED_SOURCE_VALUE_BY_ID } from "../src/lib/source-inputs";
+import {
+  FIXED_SOURCE_VALUE_BY_ID,
+  NEW_PRODUCT_LAUNCHES_SOURCE_ID as SHARED_NEW_PRODUCT_LAUNCHES_SOURCE_ID,
+  NEW_PRODUCT_LAUNCHES_URL as SHARED_NEW_PRODUCT_LAUNCHES_URL,
+} from "../src/lib/source-inputs";
 import { sourceLabelForType } from "../src/lib/source-display";
 
 function assertOrderedText(text: string, markers: string[]) {
@@ -177,6 +185,21 @@ test("platform-maintained source types are normalized and explicit", async () =>
     "https://followbrief.worldstatelabs.com/?source=new-product-launches",
   );
   assert.equal(sourceLabelForType("new_product_launches"), "New Product Launches");
+});
+
+test("personal builder input reuses the shared new product launches constants", () => {
+  const source = readFileSync("src/lib/personal-builder-input.ts", "utf8");
+
+  assert.equal(NEW_PRODUCT_LAUNCHES_SOURCE_ID, SHARED_NEW_PRODUCT_LAUNCHES_SOURCE_ID);
+  assert.equal(NEW_PRODUCT_LAUNCHES_URL, SHARED_NEW_PRODUCT_LAUNCHES_URL);
+  assert.match(
+    source,
+    /import \{[\s\S]*NEW_PRODUCT_LAUNCHES_SOURCE_ID,[\s\S]*NEW_PRODUCT_LAUNCHES_URL[\s\S]*\} from "@\/lib\/source-inputs";/,
+  );
+  assert.doesNotMatch(
+    source,
+    /export const NEW_PRODUCT_LAUNCHES_SOURCE_ID = "new_product_launches"|export const NEW_PRODUCT_LAUNCHES_URL =/,
+  );
 });
 
 test("manual builder input derives canonical fields from one handle or URL", async () => {

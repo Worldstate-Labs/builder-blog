@@ -3,11 +3,19 @@ import { builderKindForSourceType } from "@/lib/source-registry";
 import { normalizeHandle } from "@/lib/builder-keys";
 import { toSafeAvatarUrl, type BuilderEnrichment } from "@/lib/builder-enrichment";
 import {
+  NEW_PRODUCT_LAUNCHES_SOURCE_ID,
+  NEW_PRODUCT_LAUNCHES_URL,
+} from "@/lib/source-inputs";
+import {
   crossTypeWarning,
   isLikelyEpisodeOrPostUrl,
   podcastHostnameRejection,
   type DetectedSourceId,
 } from "@/lib/source-value-detect";
+export {
+  NEW_PRODUCT_LAUNCHES_SOURCE_ID,
+  NEW_PRODUCT_LAUNCHES_URL,
+} from "@/lib/source-inputs";
 
 export type PersonalBuilderInput = {
   kind: BuilderKind;
@@ -50,9 +58,6 @@ export const GITHUB_TRENDING_SOURCE_ID = "github_trending";
 export const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 export const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
 export const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
-export const NEW_PRODUCT_LAUNCHES_SOURCE_ID = "new_product_launches";
-export const NEW_PRODUCT_LAUNCHES_URL =
-  "https://followbrief.worldstatelabs.com/?source=new-product-launches";
 
 /**
  * Resolve, validate, and auto-correct the user's AddBuilderForm input.

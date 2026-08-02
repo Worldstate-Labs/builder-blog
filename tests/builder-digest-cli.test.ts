@@ -2391,6 +2391,44 @@ test("sync upload payload keeps Product Hunt durable facts body instead of summa
   assert.equal(item.rawJson.rawContentPolicy.bodyStored, true);
 });
 
+test("sync upload payload applies launch-facts acquisition policy for new product launches", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareSyncPayloadForUpload({
+    builders: [
+      {
+        builderId: "builder_launches",
+        kind: "WEBSITE",
+        sourceType: "new_product_launches",
+        name: "New Product Launches",
+        items: [
+          {
+            kind: "BLOG_POST",
+            externalId: "launch1",
+            title: "Launch",
+            body: "Product: LaunchPad\nOfficial URL: https://launchpad.example\nWhy it matters: Confirmed launch details only.",
+            summary: "Launch summary.",
+            headline: "LaunchPad ships publicly",
+            url: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+            rawJson: {
+              fetchTaskId: "task-launch",
+              officialUrl: "https://launchpad.example",
+              supportingPageText: "Raw supporting page text.",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const item = payload.builders[0].items[0];
+  assert.match(item.body, /^Product: LaunchPad/);
+  assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "facts_only");
+  assert.equal(item.rawJson.rawContentPolicy.rawContentKind, "launch_facts");
+  assert.equal(item.rawJson.acquisition.provider, "followbrief");
+  assert.equal(item.rawJson.acquisition.method, "new-product-launch-structured-facts");
+  assert.equal(item.rawJson.acquisition.rightsBasis, "structured-facts-only");
+});
+
 test("sync upload payload never stores summary as durable body when item body is absent", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const payload = cli.prepareSyncPayloadForUpload({

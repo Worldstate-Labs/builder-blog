@@ -116,11 +116,30 @@ test("new product launches retain structured launch facts without raw supporting
     rawJson: {
       html: "<main>raw launch page</main>",
       supportingPageText: "Raw supporting page text.",
+      supportingPageBody: "Raw supporting page body.",
+      supportingPageMarkdown: "# Raw supporting page markdown",
+      supportingPageContent: "Raw supporting page content.",
+      supportingPageUrl: "https://launchpad.example/docs",
+      officialUrl: "https://launchpad.example",
+      sourceUrls: ["https://launchpad.example", "https://launchpad.example/docs"],
+      launchDate: "2026-08-02",
     },
   });
+  const rawJson = prepared.rawJson as Record<string, unknown>;
 
   assert.equal(prepared.policy.durableRawMode, "facts_only");
   assert.match(prepared.body, /^Product: LaunchPad/);
   assert.equal(prepared.rawRetained, true);
-  assert.equal((prepared.rawJson as Record<string, unknown>).html, "[removed raw content]");
+  assert.equal(rawJson.html, "[removed raw content]");
+  assert.equal(rawJson.supportingPageText, "[removed raw content]");
+  assert.equal(rawJson.supportingPageBody, "[removed raw content]");
+  assert.equal(rawJson.supportingPageMarkdown, "[removed raw content]");
+  assert.equal(rawJson.supportingPageContent, "[removed raw content]");
+  assert.equal(rawJson.supportingPageUrl, "https://launchpad.example/docs");
+  assert.equal(rawJson.officialUrl, "https://launchpad.example");
+  assert.deepEqual(rawJson.sourceUrls, [
+    "https://launchpad.example",
+    "https://launchpad.example/docs",
+  ]);
+  assert.equal(rawJson.launchDate, "2026-08-02");
 });
