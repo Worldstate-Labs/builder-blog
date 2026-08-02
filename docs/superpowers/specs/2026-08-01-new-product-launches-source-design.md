@@ -237,7 +237,7 @@ admin regular fetch is the producer.
 
 Platform-maintained sources are ineligible for FollowBrief cloud submission.
 The cloud submission chooser shows the source as maintained and disables its
-checkbox. Submit-all calculations, the 20-source limit, and server-side
+checkbox. Submit-all calculations, the existing 30-source limit, and server-side
 submission selection count only eligible sources.
 
 The server rejects an explicitly submitted platform-maintained Builder with
