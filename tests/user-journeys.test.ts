@@ -12,11 +12,17 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { BuilderKind, FeedItemKind } from "@prisma/client";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS,
   isAdminFetchOnlySourceType,
   normalizeAdminFetchOnlySourceType,
 } from "../src/lib/admin-fetch-only-sources";
+import {
+  CloudSourceSelectionField,
+  cloudSubmissionChooserState,
+} from "../src/components/SkillPromptActions";
 import { isAdminEmail } from "../src/lib/admin";
 import {
   builderLibraryKey,
@@ -682,9 +688,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /optimisticCloudActive/);
   assert.match(skillPromptActions, /CLOUD_SOURCE_SUBMISSION_LIMIT/);
   assert.match(skillPromptActions, /CloudSourceSelectionField/);
+  assert.match(skillPromptActions, /Maintained by FollowBrief/);
+  assert.match(skillPromptActions, /platformMaintained/);
   assert.match(skillPromptActions, /cloud-submit-source-list/);
   assert.match(skillPromptActions, /You can choose up to \$\{CLOUD_SOURCE_SUBMISSION_LIMIT\} sources for FollowBrief\./);
   assert.match(skillPromptActions, /builderIds: cloudSelectedBuilderIds/);
+  assert.match(skillPromptActions, /initialSelectedBuilderIds/);
+  assert.match(skillPromptActions, /submitAllBuilderIds/);
+  assert.match(buildersPage, /platformMaintained: isPlatformMaintainedSourceType\(builder\.sourceType\)/);
   assert.match(skillPromptActions, /StopScheduleDialog/);
   assert.doesNotMatch(skillPromptActions, /Choose which Fetch sources runtime to stop/);
   assert.match(skillPromptActions, /Stop the server-authorized recurring schedule\./);
@@ -4191,4 +4202,48 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(contract, /common fetching rules plus your per-source fetch prompt/);
   assert.doesNotMatch(contract, /context\.digest\.order/);
   assert.doesNotMatch(contract, /the admin's per-source fetch prompt/);
+});
+
+test("cloud chooser keeps platform-maintained rows visible while excluding them from selection and submit-all ids", () => {
+  const chooser = cloudSubmissionChooserState([
+    {
+      id: "builder_launches",
+      name: "Launches",
+      handle: null,
+      sourceType: "new_product_launches",
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+      platformMaintained: true,
+    },
+    {
+      id: "builder_blog",
+      name: "Blog",
+      handle: null,
+      sourceType: "blog",
+      sourceUrl: "https://example.com/blog.xml",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+      platformMaintained: false,
+    },
+  ]);
+
+  assert.equal(chooser.sources.length, 2);
+  assert.deepEqual(chooser.initialSelectedBuilderIds, ["builder_blog"]);
+  assert.deepEqual(chooser.submitAllBuilderIds, ["builder_blog"]);
+  assert.equal(chooser.eligibleSourceCount, 1);
+
+  const html = renderToStaticMarkup(
+    createElement(CloudSourceSelectionField, {
+      sources: chooser.sources,
+      selectedBuilderIds: chooser.initialSelectedBuilderIds,
+      onChange() {},
+    }),
+  );
+
+  assert.match(html, /Maintained by FollowBrief/);
+  assert.match(html, /builder_launches/);
+  assert.match(html, /disabled=""/);
 });

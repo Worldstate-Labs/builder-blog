@@ -74,7 +74,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof CloudSourceSubmissionError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        {
+          error: error.message,
+          ...(error.code ? { code: error.code } : {}),
+        },
+        { status: error.status },
+      );
     }
     const message = error instanceof Error ? error.message : "Cloud source submission failed.";
     return NextResponse.json({ error: message }, { status: 400 });

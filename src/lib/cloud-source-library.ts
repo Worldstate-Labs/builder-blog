@@ -9,6 +9,7 @@ import {
   displayLanguagePreference,
   normalizeSummaryLanguagePreference,
 } from "@/lib/language-preference";
+import { isPlatformMaintainedSourceType } from "@/lib/platform-maintained-sources";
 
 const CLOUD_SOURCE_CANDIDATE_SEED = "cloud_source_library";
 const CLOUD_SYSTEM_USER_EMAIL_DOMAIN = "followbrief.system";
@@ -62,11 +63,13 @@ type CloudSourceCandidatePrisma = {
 
 export class CloudSourceSubmissionError extends Error {
   status: number;
+  code: string | null;
 
-  constructor(message: string, status = 400) {
+  constructor(message: string, status = 400, code: string | null = null) {
     super(message);
     this.name = "CloudSourceSubmissionError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -438,16 +441,29 @@ export async function submitUserPrivateLibraryToCloud(params: {
     throw new CloudSourceSubmissionError("Add at least one private source before submitting to Cloud.");
   }
   const selectedBuilderIds = params.builderIds ? new Set(params.builderIds) : null;
-  if (!selectedBuilderIds && privateSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT) {
+  const eligibleSubmissionSources = privateSources.filter(
+    (source) => !isPlatformMaintainedSourceType(source.builder.sourceType),
+  );
+  const submissionSources = selectedBuilderIds
+    ? privateSources.filter((source) => selectedBuilderIds.has(source.builderId))
+    : eligibleSubmissionSources;
+  if (
+    selectedBuilderIds &&
+    submissionSources.some((source) => isPlatformMaintainedSourceType(source.builder.sourceType))
+  ) {
+    throw new CloudSourceSubmissionError(
+      "FollowBrief already maintains this source.",
+      400,
+      "platform_managed_source",
+    );
+  }
+  if (selectedBuilderIds && submissionSources.length !== selectedBuilderIds.size) {
+    throw new CloudSourceSubmissionError("Some selected sources are not in your library.");
+  }
+  if (!selectedBuilderIds && eligibleSubmissionSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT) {
     throw new CloudSourceSubmissionError(
       `Select up to ${CLOUD_SOURCE_SUBMISSION_LIMIT} sources before submitting to Cloud.`,
     );
-  }
-  const submissionSources = selectedBuilderIds
-    ? privateSources.filter((source) => selectedBuilderIds.has(source.builderId))
-    : privateSources;
-  if (selectedBuilderIds && submissionSources.length !== selectedBuilderIds.size) {
-    throw new CloudSourceSubmissionError("Some selected sources are not in your library.");
   }
   if (submissionSources.length === 0) {
     throw new CloudSourceSubmissionError("Select at least one source before submitting to Cloud.");

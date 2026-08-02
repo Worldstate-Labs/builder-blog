@@ -7,6 +7,10 @@ import {
   normalizeCloudSourceSubmissionInput,
   parseCloudFetchPlanPatchPayload,
 } from "../src/lib/cloud-source-contracts";
+import {
+  CloudSourceSubmissionError,
+  submitUserPrivateLibraryToCloud,
+} from "../src/lib/cloud-source-library";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -77,6 +81,337 @@ test("cloud source library submission copies only private sources to language ow
   assert.match(library, /activeCloudBuilderIds/);
   assert.match(library, /builderIds: activeCloudBuilderIds/);
   assert.match(library, /languagesToSync/);
+});
+
+test("submit-all excludes platform-maintained sources and does not count them against the submission limit", async () => {
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = previousDatabaseUrl ?? "postgresql://followbrief:followbrief@127.0.0.1:5432/followbrief_test";
+  const copyCalls: string[] = [];
+  const submissionUpserts: unknown[] = [];
+  const taskUpserts: unknown[] = [];
+  const eligibleSources = Array.from(
+    { length: CLOUD_SOURCE_SUBMISSION_LIMIT - 2 },
+    (_, index) => ({
+      builderId: `builder_blog_${index}`,
+      builder: {
+        id: `builder_blog_${index}`,
+        ownerUserId: "user_1",
+        kind: "BLOG",
+      sourceType: "blog",
+      name: `Blog ${index}`,
+      handle: null,
+      sourceUrl: `https://example.com/blog/${index}.xml`,
+      fetchUrl: null,
+        avatarUrl: null,
+        avatarDataUrl: null,
+        bio: null,
+      },
+    }),
+  );
+  eligibleSources.push(
+    {
+      builderId: "builder_github_trending",
+      builder: {
+        id: "builder_github_trending",
+        ownerUserId: "user_1",
+        kind: "WEBSITE",
+        sourceType: "github_trending",
+        name: "GitHub Trending",
+        handle: null,
+        sourceUrl: "https://github.com/trending",
+        fetchUrl: null,
+        avatarUrl: null,
+        avatarDataUrl: null,
+        bio: null,
+      },
+    },
+    {
+      builderId: "builder_product_hunt",
+      builder: {
+        id: "builder_product_hunt",
+        ownerUserId: "user_1",
+        kind: "WEBSITE",
+        sourceType: "product_hunt_top_products",
+        name: "Product Hunt",
+        handle: null,
+        sourceUrl: "https://www.producthunt.com/",
+        fetchUrl: null,
+        avatarUrl: null,
+        avatarDataUrl: null,
+        bio: null,
+      },
+    },
+  );
+  const maintainedSource = {
+    builderId: "builder_launches",
+    builder: {
+      id: "builder_launches",
+      ownerUserId: "user_1",
+      kind: "WEBSITE",
+      sourceType: "new_product_launches",
+      name: "Launches",
+      handle: null,
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+      bio: null,
+    },
+  };
+
+  const prisma = {
+    builderPoolEntry: {
+      async findMany() {
+        return [...eligibleSources, maintainedSource];
+      },
+    },
+    user: {
+      async upsert() {
+        return {
+          id: "cloud_owner_en",
+          email: "cloud-source-en@followbrief.system",
+          name: "FollowBrief Cloud - English",
+        };
+      },
+    },
+    builder: {
+      async findMany(args: { where?: { id?: { in?: string[] } } }) {
+        const requestedIds = args.where?.id?.in ?? eligibleSources.map((source) => source.builderId);
+        return requestedIds.map((id) => ({ id }));
+      },
+      async update() {
+        return {};
+      },
+    },
+    cloudLanguageLibrary: {
+      async findUnique() {
+        return {
+          id: "cloud_library_en",
+          summaryLanguage: "en",
+          ownerUserId: "cloud_owner_en",
+          hubEntryId: null,
+          enabled: true,
+          owner: {
+            id: "cloud_owner_en",
+            email: "cloud-source-en@followbrief.system",
+            name: "FollowBrief Cloud - English",
+          },
+          hubEntry: null,
+        };
+      },
+      async upsert() {
+        return {
+          id: "cloud_library_en",
+          summaryLanguage: "en",
+          ownerUserId: "cloud_owner_en",
+          hubEntryId: null,
+          enabled: true,
+          owner: {
+            id: "cloud_owner_en",
+            email: "cloud-source-en@followbrief.system",
+            name: "FollowBrief Cloud - English",
+          },
+          hubEntry: null,
+        };
+      },
+      async update() {
+        return {};
+      },
+    },
+    libraryHubEntry: {
+      async upsert() {
+        return { id: "hub_en" };
+      },
+    },
+    libraryHubItem: {
+      async deleteMany() {
+        return { count: 0 };
+      },
+      async createMany() {
+        return { count: 0 };
+      },
+    },
+    cloudSourceSubmission: {
+      async findMany(args: { where?: { userId?: string; summaryLanguage?: string; cloudBuilderId?: string } }) {
+        if (args.where?.cloudBuilderId) {
+          return [
+            {
+              frequency: "DAILY",
+              submittedAt: new Date("2026-08-02T00:00:00.000Z"),
+            },
+          ];
+        }
+        return [];
+      },
+      async upsert(args: unknown) {
+        submissionUpserts.push(args);
+        return {};
+      },
+      async updateMany() {
+        return { count: 0 };
+      },
+    },
+    cloudSourceTask: {
+      async findMany() {
+        return [];
+      },
+      async upsert(args: unknown) {
+        taskUpserts.push(args);
+        return {};
+      },
+      async updateMany() {
+        return { count: 0 };
+      },
+    },
+  };
+
+  try {
+    const result = await submitUserPrivateLibraryToCloud({
+      userId: "user_1",
+      frequency: "DAILY",
+      summaryLanguage: "en",
+      prisma: prisma as never,
+      copyBuilderUpsert: async ({ sourceType, name }) => {
+        copyCalls.push(`${sourceType}:${name}`);
+        return { id: `cloud_${name.replace(/\s+/g, "_")}` };
+      },
+      syncHub: async () => ({ entry: {} as never, builderCount: 0 }),
+    });
+
+    assert.equal(result.sourcesSubmitted, CLOUD_SOURCE_SUBMISSION_LIMIT);
+    assert.equal(copyCalls.length, CLOUD_SOURCE_SUBMISSION_LIMIT);
+    assert.equal(submissionUpserts.length, CLOUD_SOURCE_SUBMISSION_LIMIT);
+    assert.equal(taskUpserts.length, CLOUD_SOURCE_SUBMISSION_LIMIT);
+    assert.equal(copyCalls.some((call) => call.startsWith("new_product_launches:")), false);
+    assert.equal(copyCalls.some((call) => call.startsWith("github_trending:")), true);
+    assert.equal(copyCalls.some((call) => call.startsWith("product_hunt_top_products:")), true);
+  } finally {
+    if (previousDatabaseUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = previousDatabaseUrl;
+    }
+  }
+});
+
+test("explicitly selected platform-maintained sources fail before any cloud rows are written", async () => {
+  const writes = {
+    cloudLanguageLibraryReads: 0,
+    cloudLanguageLibraryWrites: 0,
+    submissionWrites: 0,
+    taskWrites: 0,
+    builderCopies: 0,
+  };
+
+  const prisma = {
+    builderPoolEntry: {
+      async findMany() {
+        return [
+          {
+            builderId: "builder_blog_1",
+            builder: {
+              id: "builder_blog_1",
+              ownerUserId: "user_1",
+              kind: "BLOG",
+              sourceType: "blog",
+              name: "Blog 1",
+              handle: null,
+              sourceUrl: "https://example.com/blog.xml",
+              fetchUrl: null,
+              avatarUrl: null,
+              avatarDataUrl: null,
+              bio: null,
+            },
+          },
+          {
+            builderId: "builder_launches",
+            builder: {
+              id: "builder_launches",
+              ownerUserId: "user_1",
+              kind: "WEBSITE",
+              sourceType: "new_product_launches",
+              name: "Launches",
+              handle: null,
+              sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+              fetchUrl: null,
+              avatarUrl: null,
+              avatarDataUrl: null,
+              bio: null,
+            },
+          },
+        ];
+      },
+    },
+    cloudLanguageLibrary: {
+      async findUnique() {
+        writes.cloudLanguageLibraryReads += 1;
+        return null;
+      },
+      async upsert() {
+        writes.cloudLanguageLibraryWrites += 1;
+        return {};
+      },
+      async update() {
+        writes.cloudLanguageLibraryWrites += 1;
+        return {};
+      },
+    },
+    cloudSourceSubmission: {
+      async findMany() {
+        return [];
+      },
+      async upsert() {
+        writes.submissionWrites += 1;
+        return {};
+      },
+      async updateMany() {
+        writes.submissionWrites += 1;
+        return { count: 0 };
+      },
+    },
+    cloudSourceTask: {
+      async findMany() {
+        return [];
+      },
+      async upsert() {
+        writes.taskWrites += 1;
+        return {};
+      },
+      async updateMany() {
+        writes.taskWrites += 1;
+        return { count: 0 };
+      },
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      submitUserPrivateLibraryToCloud({
+        userId: "user_1",
+        frequency: "DAILY",
+        summaryLanguage: "en",
+        builderIds: ["builder_blog_1", "builder_launches"],
+        prisma: prisma as never,
+        copyBuilderUpsert: async () => {
+          writes.builderCopies += 1;
+          return { id: "cloud_builder" };
+        },
+        syncHub: async () => ({ entry: {} as never, builderCount: 0 }),
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof CloudSourceSubmissionError);
+      assert.equal(error.message, "FollowBrief already maintains this source.");
+      assert.equal(error.status, 400);
+      assert.equal((error as CloudSourceSubmissionError & { code?: string }).code, "platform_managed_source");
+      return true;
+    },
+  );
+
+  assert.equal(writes.cloudLanguageLibraryReads, 0);
+  assert.equal(writes.cloudLanguageLibraryWrites, 0);
+  assert.equal(writes.submissionWrites, 0);
+  assert.equal(writes.taskWrites, 0);
+  assert.equal(writes.builderCopies, 0);
 });
 
 test("cloud language hub entries stay internal to cloud reuse", () => {
@@ -327,6 +662,14 @@ test("cloud submission route lets the user stop their active cloud fetch submiss
   assert.match(route, /stopUserCloudSourceSubmissions\(\{ userId \}\)/);
   assert.match(route, /stoppedSources/);
   assert.match(route, /cancelledQueuedTasks/);
+});
+
+test("cloud source submission route serializes typed platform-managed selection errors", () => {
+  const route = source("src/app/api/cloud-library/source-submissions/route.ts");
+
+  assert.match(route, /if \(error instanceof CloudSourceSubmissionError\)/);
+  assert.match(route, /code: error\.code/);
+  assert.match(route, /status: error\.status/);
 });
 
 test("cloud scheduler is work-conserving: releases by nextAttemptAt, no latest-bucket deferral", () => {

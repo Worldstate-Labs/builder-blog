@@ -107,7 +107,32 @@ export type CloudSubmissionSource = {
   fetchUrl: string | null;
   avatarUrl: string | null;
   avatarDataUrl: string | null;
+  platformMaintained: boolean;
 };
+export type CloudSubmissionChooserState = {
+  sources: CloudSubmissionSource[];
+  eligibleSourceCount: number;
+  initialSelectedBuilderIds: string[];
+  submitAllBuilderIds: string[];
+};
+
+function cloudSubmissionEligibleSources(sources: CloudSubmissionSource[]) {
+  return sources.filter((source) => !source.platformMaintained);
+}
+
+export function cloudSubmissionChooserState(
+  sources: CloudSubmissionSource[],
+): CloudSubmissionChooserState {
+  const eligibleSources = cloudSubmissionEligibleSources(sources);
+  const submitAllBuilderIds = eligibleSources.map((source) => source.id);
+  return {
+    sources,
+    eligibleSourceCount: eligibleSources.length,
+    initialSelectedBuilderIds: submitAllBuilderIds.slice(0, CLOUD_SOURCE_SUBMISSION_LIMIT),
+    submitAllBuilderIds,
+  };
+}
+
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
 const CLIPBOARD_WRITE_TIMEOUT_MS = 2_000;
 const PROMPT_LINK_REQUEST_TIMEOUT_MS = 15_000;
@@ -1327,7 +1352,7 @@ function cloudSubmissionSourceMeta(source: CloudSubmissionSource) {
   return source.sourceUrl ?? source.fetchUrl ?? source.handle ?? "";
 }
 
-function CloudSourceSelectionField({
+export function CloudSourceSelectionField({
   sources,
   selectedBuilderIds,
   onChange,
@@ -1340,13 +1365,19 @@ function CloudSourceSelectionField({
   const selectedCount = selectedBuilderIds.length;
 
   function toggleSource(id: string) {
+    const source = sources.find((candidate) => candidate.id === id);
+    if (!source || source.platformMaintained) return;
     const nextSelected = new Set(selectedSet);
     if (nextSelected.has(id)) {
       nextSelected.delete(id);
     } else if (nextSelected.size < CLOUD_SOURCE_SUBMISSION_LIMIT) {
       nextSelected.add(id);
     }
-    onChange(sources.filter((source) => nextSelected.has(source.id)).map((source) => source.id));
+    onChange(
+      sources
+        .filter((candidate) => !candidate.platformMaintained && nextSelected.has(candidate.id))
+        .map((candidate) => candidate.id),
+    );
   }
 
   return (
@@ -1365,10 +1396,12 @@ function CloudSourceSelectionField({
       <div className="cloud-submit-source-list" role="group" aria-label="Sources for FollowBrief">
         {sources.map((source) => {
           const checked = selectedSet.has(source.id);
-          const disabled = !checked && selectedCount >= CLOUD_SOURCE_SUBMISSION_LIMIT;
+          const disabled =
+            source.platformMaintained || (!checked && selectedCount >= CLOUD_SOURCE_SUBMISSION_LIMIT);
           const meta = cloudSubmissionSourceMeta(source);
           return (
             <label
+              data-builder-id={source.id}
               className={`cloud-submit-source-row${checked ? " is-selected" : ""}${
                 disabled ? " is-disabled" : ""
               }`}
@@ -1391,6 +1424,7 @@ function CloudSourceSelectionField({
                 <span className="cloud-submit-source-meta">
                   {sourceLabelForType(source.sourceType)}
                   {meta ? ` · ${meta}` : ""}
+                  {source.platformMaintained ? " · Maintained by FollowBrief" : ""}
                 </span>
               </span>
             </label>
@@ -1446,12 +1480,16 @@ function CronConfigDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cloudSubmitMessage, setCloudSubmitMessage] = useState<string | null>(null);
-  const initialCloudSelectedBuilderIds = useMemo(
-    () => cloudSubmissionSources.slice(0, CLOUD_SOURCE_SUBMISSION_LIMIT).map((source) => source.id),
+  const {
+    eligibleSourceCount,
+    initialSelectedBuilderIds,
+    submitAllBuilderIds,
+  } = useMemo(
+    () => cloudSubmissionChooserState(cloudSubmissionSources),
     [cloudSubmissionSources],
   );
   const [cloudSelectedBuilderIds, setCloudSelectedBuilderIds] = useState<string[]>(
-    initialCloudSelectedBuilderIds,
+    initialSelectedBuilderIds,
   );
   const [cloudExisting, setCloudExisting] = useState<{
     hasActiveSubmission: boolean;
@@ -1462,12 +1500,14 @@ function CronConfigDialog({
   } | null>(null);
   const dialogConfig = PROMPT_CONFIG[context];
   const isCloudMode = context === "library" && runtimeType === "cloud";
-  const needsCloudSourceSelection =
-    isCloudMode && cloudSubmissionSources.length > CLOUD_SOURCE_SUBMISSION_LIMIT;
+  const needsCloudSourceSelection = isCloudMode && eligibleSourceCount > CLOUD_SOURCE_SUBMISSION_LIMIT;
+  const cloudSubmitBuilderIds = needsCloudSourceSelection
+    ? cloudSelectedBuilderIds
+    : submitAllBuilderIds;
   const cloudSelectionInvalid =
-    needsCloudSourceSelection &&
-    (cloudSelectedBuilderIds.length === 0 ||
-      cloudSelectedBuilderIds.length > CLOUD_SOURCE_SUBMISSION_LIMIT);
+    isCloudMode &&
+    (cloudSubmitBuilderIds.length === 0 ||
+      cloudSubmitBuilderIds.length > CLOUD_SOURCE_SUBMISSION_LIMIT);
   // One submission per user: when a prior submission exists, the submit becomes
   // an explicit overwrite.
   const cloudSubmitLabel = submitting

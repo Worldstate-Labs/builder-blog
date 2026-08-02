@@ -3725,3 +3725,18 @@ test("cloud rollback smoke exercises the DB flow inside one rolled-back transact
   assert.match(script, /remainingUsers/);
   assert.match(prompt, /smoke-cloud-source-fetch-rollback\.mts --language zh/);
 });
+
+test("cloud submission contract keeps platform-maintained sources visible in the chooser but server-rejected when explicitly selected", async () => {
+  const route = await readFile("src/app/api/cloud-library/source-submissions/route.ts", "utf8");
+  const library = await readFile("src/lib/cloud-source-library.ts", "utf8");
+  const skillPromptActions = await readFile("src/components/SkillPromptActions.tsx", "utf8");
+  const buildersPage = await readFile("src/app/(workspace)/builders/page.tsx", "utf8");
+
+  assert.match(library, /platform_managed_source/);
+  assert.match(library, /FollowBrief already maintains this source\./);
+  assert.match(route, /code: error\.code/);
+  assert.match(skillPromptActions, /Maintained by FollowBrief/);
+  assert.match(skillPromptActions, /platformMaintained/);
+  assert.match(skillPromptActions, /submitAllBuilderIds/);
+  assert.match(buildersPage, /platformMaintained: isPlatformMaintainedSourceType\(builder\.sourceType\)/);
+});

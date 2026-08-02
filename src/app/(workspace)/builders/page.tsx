@@ -583,22 +583,36 @@ async function loadFetchSyncData(user: {
         fetchUrl: builder.fetchUrl,
         avatarUrl: builder.avatarUrl,
         avatarDataUrl: builder.avatarDataUrl,
+        platformMaintained: isPlatformMaintainedSourceType(builder.sourceType),
         ownerUserId: builder.ownerUserId,
       }));
+  const cloudSubmissionSourceIndexById = new Map(
+    personalCloudSubmissionCandidates.map((builder, index) => [builder.id, index]),
+  );
   const cloudSubmissionSources: CloudSubmissionSource[] = cloudSubmissionSourcesForBuilders(
     personalCloudSubmissionCandidates,
-  ).map((builder) => ({
-    id: builder.id,
-    name: builder.name,
-    handle: builder.handle,
-    sourceType: builder.sourceType,
-    sourceUrl: builder.sourceUrl,
-    fetchUrl: builder.fetchUrl,
-    avatarUrl: builder.avatarUrl,
-    avatarDataUrl: builder.avatarDataUrl,
-  }));
+  );
+  for (const builder of personalCloudSubmissionCandidates) {
+    if (!builder.platformMaintained) continue;
+    cloudSubmissionSources.push({
+      id: builder.id,
+      name: builder.name,
+      handle: builder.handle,
+      sourceType: builder.sourceType,
+      sourceUrl: builder.sourceUrl,
+      fetchUrl: builder.fetchUrl,
+      avatarUrl: builder.avatarUrl,
+      avatarDataUrl: builder.avatarDataUrl,
+      platformMaintained: isPlatformMaintainedSourceType(builder.sourceType),
+    });
+  }
+  cloudSubmissionSources.sort(
+    (a, b) =>
+      (cloudSubmissionSourceIndexById.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+      (cloudSubmissionSourceIndexById.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+  );
   const hasFetchActionSources = hasFetchActionSourcesForBuilders(
-    rawCloudSubmissionSources.map(({ builder }) => builder),
+    cloudSubmissionSources,
   );
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
