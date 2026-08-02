@@ -395,6 +395,7 @@ export function SkillPromptActions({
   summaryLanguage = null,
   digestMaxPostAgeDays = null,
   compactOnly = false,
+  showStartActions = true,
   showStop = true,
 }: {
   activeSchedule?: ActiveScheduleInfo | null;
@@ -410,6 +411,7 @@ export function SkillPromptActions({
   // dialogs; persisted via /api/settings/digest-max-age.
   digestMaxPostAgeDays?: number | null;
   compactOnly?: boolean;
+  showStartActions?: boolean;
   showStop?: boolean;
 }) {
   const config = PROMPT_CONFIG[context];
@@ -738,18 +740,20 @@ export function SkillPromptActions({
           {promptDialogDescription(context)}
         </div>
       ) : null}
-      <button
-        className="fb-btn dark compact"
-        onClick={() => copyCommand("cron")}
-        type="button"
-      >
-        {copiedTarget === "cron" || copiedTarget === "once" ? (
-          <Check aria-hidden="true" />
-        ) : (
-          <CalendarClock aria-hidden="true" />
-        )}
-        {copiedTarget === "cron" || copiedTarget === "once" ? "Copied" : config.cronLabel}
-      </button>
+      {showStartActions ? (
+        <button
+          className="fb-btn dark compact"
+          onClick={() => copyCommand("cron")}
+          type="button"
+        >
+          {copiedTarget === "cron" || copiedTarget === "once" ? (
+            <Check aria-hidden="true" />
+          ) : (
+            <CalendarClock aria-hidden="true" />
+          )}
+          {copiedTarget === "cron" || copiedTarget === "once" ? "Copied" : config.cronLabel}
+        </button>
+      ) : null}
       {showStopButton ? (
         <button
           className="fb-btn light compact"
@@ -765,32 +769,34 @@ export function SkillPromptActions({
         </button>
       ) : null}
 
-      {activeTokens.length === 0 ? (
-        <div aria-live="polite" className="skill-prompt-access-required" role="status">
-          <KeyRound aria-hidden="true" className="skill-prompt-access-icon" />
-          <span className="skill-prompt-access-copy">
-            <span className="skill-prompt-access-title">Access key required</span>
-            <span className="skill-prompt-access-body">
-              Add an access key to set up Local Agent runs.
+      {showStartActions ? (
+        activeTokens.length === 0 ? (
+          <div aria-live="polite" className="skill-prompt-access-required" role="status">
+            <KeyRound aria-hidden="true" className="skill-prompt-access-icon" />
+            <span className="skill-prompt-access-copy">
+              <span className="skill-prompt-access-title">Access key required</span>
+              <span className="skill-prompt-access-body">
+                Add an access key to set up Local Agent runs.
+              </span>
             </span>
+            <Link className="fb-btn dark compact" href="/settings">
+              Open Settings
+            </Link>
+          </div>
+        ) : (
+          <span aria-live="polite" className="skill-prompt-status">
+            {status ? (
+              status.kind === "info" ? (
+                <span className="skill-prompt-status-text">{status.text}</span>
+              ) : (
+                <span className="skill-prompt-status-text is-error">{status.text}</span>
+              )
+            ) : null}
           </span>
-          <Link className="fb-btn dark compact" href="/settings">
-            Open Settings
-          </Link>
-        </div>
-      ) : (
-        <span aria-live="polite" className="skill-prompt-status">
-          {status ? (
-            status.kind === "info" ? (
-              <span className="skill-prompt-status-text">{status.text}</span>
-            ) : (
-              <span className="skill-prompt-status-text is-error">{status.text}</span>
-            )
-          ) : null}
-        </span>
-      )}
+        )
+      ) : null}
 
-      {cronConfigOpen ? (
+      {showStartActions && cronConfigOpen ? (
         <CronConfigDialog
           open={cronConfigOpen}
           context={context}
@@ -808,28 +814,30 @@ export function SkillPromptActions({
         />
       ) : null}
 
-      <TokenPickerDialog
-        open={pickerTarget !== null}
-        target={pickerTarget}
-        tokens={activeTokens}
-        onCancel={() => {
-          setPickerTarget(null);
-          pendingExtrasRef.current = null;
-        }}
-        onConfirm={async (tokenId) => {
-          const target = pickerTarget;
-          const extras = pendingExtrasRef.current ?? {
-            cron: null,
-            runtime: RUNTIME_OPTIONS[0].id,
-            force: false,
-            fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
-            parallelWorkers: DEFAULT_PARALLEL_WORKERS,
-          };
-          setPickerTarget(null);
-          pendingExtrasRef.current = null;
-          if (target) await copyForToken(target, tokenId, extras);
-        }}
-      />
+      {showStartActions ? (
+        <TokenPickerDialog
+          open={pickerTarget !== null}
+          target={pickerTarget}
+          tokens={activeTokens}
+          onCancel={() => {
+            setPickerTarget(null);
+            pendingExtrasRef.current = null;
+          }}
+          onConfirm={async (tokenId) => {
+            const target = pickerTarget;
+            const extras = pendingExtrasRef.current ?? {
+              cron: null,
+              runtime: RUNTIME_OPTIONS[0].id,
+              force: false,
+              fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+              parallelWorkers: DEFAULT_PARALLEL_WORKERS,
+            };
+            setPickerTarget(null);
+            pendingExtrasRef.current = null;
+            if (target) await copyForToken(target, tokenId, extras);
+          }}
+        />
+      ) : null}
 
       <StopScheduleDialog
         open={stopDialogOpen}

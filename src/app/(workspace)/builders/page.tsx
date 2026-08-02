@@ -49,6 +49,10 @@ import {
 import { getDigestRuns, serializeDigestCronJob } from "@/lib/digest-runs";
 import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
 import {
+  cloudSubmissionSourcesForBuilders,
+  hasFetchActionSourcesForBuilders,
+} from "@/lib/fetch-action-sources";
+import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
   ensureAdminCommunityLibrary,
@@ -531,9 +535,7 @@ async function loadFetchSyncData(user: {
     prisma.builderPoolEntry.findMany({
       where: {
         userId: user.id,
-        origin: BuilderPoolOrigin.PERSONAL_SYNC,
         removedAt: null,
-        builder: { ownerUserId: user.id },
       },
       orderBy: { createdAt: "asc" },
       select: {
@@ -547,6 +549,7 @@ async function loadFetchSyncData(user: {
             fetchUrl: true,
             avatarUrl: true,
             avatarDataUrl: true,
+            ownerUserId: true,
           },
         },
       },
@@ -566,17 +569,35 @@ async function loadFetchSyncData(user: {
     querySize: FETCH_RUN_QUERY_SIZE,
   });
   const activeTokens = serializeAgentTokens(rawTokens);
-  const cloudSubmissionSources: CloudSubmissionSource[] = rawCloudSubmissionSources.map(
-    ({ builder }) => ({
-      id: builder.id,
-      name: builder.name,
-      handle: builder.handle,
-      sourceType: builder.sourceType,
-      sourceUrl: builder.sourceUrl,
-      fetchUrl: builder.fetchUrl,
-      avatarUrl: builder.avatarUrl,
-      avatarDataUrl: builder.avatarDataUrl,
-    }),
+  const personalCloudSubmissionCandidates: Array<CloudSubmissionSource & { ownerUserId: string | null }> =
+    rawCloudSubmissionSources
+      .map(({ builder }) => builder)
+      .filter((builder) => builder.ownerUserId === user.id)
+      .map((builder) => ({
+        id: builder.id,
+        name: builder.name,
+        handle: builder.handle,
+        sourceType: builder.sourceType,
+        sourceUrl: builder.sourceUrl,
+        fetchUrl: builder.fetchUrl,
+        avatarUrl: builder.avatarUrl,
+        avatarDataUrl: builder.avatarDataUrl,
+        ownerUserId: builder.ownerUserId,
+      }));
+  const cloudSubmissionSources: CloudSubmissionSource[] = cloudSubmissionSourcesForBuilders(
+    personalCloudSubmissionCandidates,
+  ).map((builder) => ({
+    id: builder.id,
+    name: builder.name,
+    handle: builder.handle,
+    sourceType: builder.sourceType,
+    sourceUrl: builder.sourceUrl,
+    fetchUrl: builder.fetchUrl,
+    avatarUrl: builder.avatarUrl,
+    avatarDataUrl: builder.avatarDataUrl,
+  }));
+  const hasFetchActionSources = hasFetchActionSourcesForBuilders(
+    rawCloudSubmissionSources.map(({ builder }) => builder),
   );
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
@@ -646,6 +667,7 @@ async function loadFetchSyncData(user: {
     isAdmin: user.isAdmin,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
+    hasFetchActionSources,
     cloudSubmissionSources,
     cloudFetchLog,
     userId: user.id,
@@ -787,6 +809,7 @@ async function FetchSyncSection({
           compactOnly
           context="library"
           localFetchActive={showStopLibraryCron}
+          showStartActions={data.hasFetchActionSources}
           showStop={showStopFetching}
           tokens={data.activeTokens}
           summaryLanguage={data.summaryLanguage}

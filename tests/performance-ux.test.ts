@@ -6143,3 +6143,21 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.doesNotMatch(searchPage, /target=\{titleIsExternal \? "_blank" : undefined\}/);
   assert.match(searchPage, /<OriginalSourceAction/);
 });
+
+test("maintained launch sources are temporarily omitted from fetch action selection until disabled chooser rows land", () => {
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const skillPromptActions = source("src/components/SkillPromptActions.tsx");
+  const helper = source("src/lib/fetch-action-sources.ts");
+
+  assert.match(helper, /isPlatformMaintainedSourceType/);
+  assert.match(helper, /export function cloudSubmissionSourcesForBuilders/);
+  assert.match(helper, /return builders\.filter\(\(builder\) => isFetchActionEligibleSource\(builder\)\)/);
+  assert.match(helper, /export function hasFetchActionSourcesForBuilders/);
+  assert.match(helper, /return builders\.some\(\(builder\) => isFetchActionEligibleSource\(builder\)\)/);
+  assert.match(buildersPage, /const cloudSubmissionSources: CloudSubmissionSource\[] = cloudSubmissionSourcesForBuilders\(/);
+  assert.match(buildersPage, /const hasFetchActionSources = hasFetchActionSourcesForBuilders\(/);
+  assert.match(buildersPage, /showStartActions=\{data\.hasFetchActionSources\}/);
+  assert.match(skillPromptActions, /showStartActions = true/);
+  assert.match(skillPromptActions, /showStartActions \? \(/);
+  assert.doesNotMatch(skillPromptActions, /disabled maintained chooser|platform maintained chooser/);
+});

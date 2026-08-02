@@ -7,6 +7,10 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BuilderLibraryList } from "../src/components/BuilderLibraryList";
+import {
+  cloudSubmissionSourcesForBuilders,
+  hasFetchActionSourcesForBuilders,
+} from "../src/lib/fetch-action-sources";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -357,6 +361,52 @@ test("builder library rows show FollowBrief maintenance provenance without fetch
   assert.doesNotMatch(html, /Fetch sources/);
   assert.doesNotMatch(html, /Local Agent/);
   assert.doesNotMatch(html, /Submit to FollowBrief/);
+});
+
+test("builders page omits platform-maintained sources from temporary cloud submission selection", () => {
+  const sources = cloudSubmissionSourcesForBuilders([
+    {
+      id: "builder_launches_private",
+      name: "Private launches",
+      handle: null,
+      sourceType: "new_product_launches",
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+    },
+    {
+      id: "builder_blog_1",
+      name: "Owned blog",
+      handle: null,
+      sourceType: "blog",
+      sourceUrl: "https://example.com/blog",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+    },
+  ]);
+
+  assert.deepEqual(sources.map((source) => source.id), ["builder_blog_1"]);
+  assert.equal(hasFetchActionSourcesForBuilders([{ sourceType: "new_product_launches" }]), false);
+  assert.equal(
+    hasFetchActionSourcesForBuilders([
+      { sourceType: "new_product_launches" },
+      { sourceType: "blog" },
+    ]),
+    true,
+  );
+});
+
+test("fetch action controls gate start actions separately from stop affordances", () => {
+  const skillPromptActions = source("src/components/SkillPromptActions.tsx");
+
+  assert.match(skillPromptActions, /showStartActions = true/);
+  assert.match(skillPromptActions, /\{showStartActions \? \(/);
+  assert.match(skillPromptActions, /onClick=\{\(\) => copyCommand\("cron"\)\}/);
+  assert.match(skillPromptActions, /showStopButton \? \(/);
+  assert.match(skillPromptActions, /\{showStartActions && cronConfigOpen \?/);
+  assert.match(skillPromptActions, /\{showStartActions \? \(\s*<TokenPickerDialog/);
 });
 
 test("builder sync endpoint durably patches fetch-run outcomes server-side", () => {
@@ -1604,6 +1654,9 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /cloudFetchActive=\{showStopCloudFetch\}/);
   assert.match(buildersPage, /localFetchActive=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /showStop=\{showStopFetching\}/);
+  assert.match(buildersPage, /showStartActions=\{data\.hasFetchActionSources\}/);
+  assert.match(buildersPage, /cloudSubmissionSourcesForBuilders/);
+  assert.match(buildersPage, /hasFetchActionSourcesForBuilders/);
   assert.match(buildersPage, /libraryCronJob\?\.status === "active" \|\|[\s\S]*hasStoppedLocalScheduleActivity/);
   assert.match(buildersPage, /cloudLog=\{data\.cloudFetchLog\}/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
