@@ -592,6 +592,7 @@ async function loadFetchSyncData(user: {
   const cloudSubmissionSources: CloudSubmissionSource[] = cloudSubmissionSourcesForBuilders(
     personalCloudSubmissionCandidates,
   );
+  const fetchActionSourceBuilders = rawCloudSubmissionSources.map(({ builder }) => builder);
   for (const builder of personalCloudSubmissionCandidates) {
     if (!builder.platformMaintained) continue;
     cloudSubmissionSources.push({
@@ -612,7 +613,7 @@ async function loadFetchSyncData(user: {
       (cloudSubmissionSourceIndexById.get(b.id) ?? Number.MAX_SAFE_INTEGER),
   );
   const hasFetchActionSources = hasFetchActionSourcesForBuilders(
-    cloudSubmissionSources,
+    fetchActionSourceBuilders,
   );
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,

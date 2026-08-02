@@ -6145,7 +6145,7 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /<OriginalSourceAction/);
 });
 
-test("maintained launch sources are temporarily omitted from fetch action selection until disabled chooser rows land", () => {
+test("fetch action selection keeps cloud submission personal-only while start actions use reachable non-maintained sources", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const skillPromptActions = source("src/components/SkillPromptActions.tsx");
   const helper = source("src/lib/fetch-action-sources.ts");
@@ -6159,9 +6159,10 @@ test("maintained launch sources are temporarily omitted from fetch action select
   assert.match(helper, /return hasFetchActionSources[\s\S]*"Choose FollowBrief or your own agent to fetch and summarize sources\."[\s\S]*: null/);
   assert.match(buildersPage, /const cloudSubmissionSources: CloudSubmissionSource\[] = cloudSubmissionSourcesForBuilders\(/);
   assert.match(buildersPage, /const hasFetchActionSources = hasFetchActionSourcesForBuilders\(/);
+  assert.match(buildersPage, /rawCloudSubmissionSources\.map\(\(\{ builder \}\) => builder\)/);
   assert.match(buildersPage, /showStartActions=\{data\.hasFetchActionSources\}/);
   assert.match(buildersPage, /fetchSyncSupportingCopy\(data\.hasFetchActionSources\)/);
   assert.match(skillPromptActions, /showStartActions = true/);
   assert.match(skillPromptActions, /showStartActions \? \(/);
-  assert.doesNotMatch(skillPromptActions, /disabled maintained chooser|platform maintained chooser/);
+  assert.match(skillPromptActions, /Maintained by FollowBrief/);
 });

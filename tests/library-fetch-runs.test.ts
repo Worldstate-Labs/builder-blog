@@ -366,7 +366,9 @@ test("builder library rows show FollowBrief maintenance provenance without fetch
   assert.doesNotMatch(html, /Submit to FollowBrief/);
 });
 
-test("builders page omits platform-maintained sources from temporary cloud submission selection", () => {
+test("fetch action helpers keep cloud submission personal-only while start actions use any reachable non-maintained source", () => {
+  const importedOrdinary = { sourceType: "blog", origin: "HUB_IMPORT" };
+  const importedMaintained = { sourceType: "new_product_launches", origin: "HUB_IMPORT" };
   const sources = cloudSubmissionSourcesForBuilders([
     {
       id: "builder_launches_private",
@@ -391,11 +393,36 @@ test("builders page omits platform-maintained sources from temporary cloud submi
   ]);
 
   assert.deepEqual(sources.map((source) => source.id), ["builder_blog_1"]);
+  assert.equal(
+    hasFetchActionSourcesForBuilders([
+      { sourceType: "blog" },
+    ]),
+    true,
+  );
+  assert.equal(
+    hasFetchActionSourcesForBuilders([
+      importedOrdinary,
+    ]),
+    true,
+  );
   assert.equal(hasFetchActionSourcesForBuilders([{ sourceType: "new_product_launches" }]), false);
+  assert.equal(
+    hasFetchActionSourcesForBuilders([
+      importedMaintained,
+    ]),
+    false,
+  );
   assert.equal(
     hasFetchActionSourcesForBuilders([
       { sourceType: "new_product_launches" },
       { sourceType: "blog" },
+    ]),
+    true,
+  );
+  assert.equal(
+    hasFetchActionSourcesForBuilders([
+      importedMaintained,
+      importedOrdinary,
     ]),
     true,
   );
