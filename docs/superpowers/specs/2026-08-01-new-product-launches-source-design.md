@@ -83,7 +83,9 @@ validation and does not collide with another fixed source.
 Add the same special-source handling used by GitHub Trending and Product Hunt
 to source input resolution, placeholders, display labels, icons, and source
 ordering. A user should be able to add the candidate without typing or editing
-a URL.
+a URL. In every existing hard-coded source-order list, place
+`new_product_launches` immediately after `product_hunt_top_products`; this adds
+the new entry without changing the relative order of any existing source type.
 
 The admin-owned Builder is shared through the existing featured FollowBrief
 source library and is automatically imported under the library's current
