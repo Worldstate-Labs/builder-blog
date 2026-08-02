@@ -4080,7 +4080,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /className="sources-sync-section sources-sync-panel library-section-panel"/);
   assert.match(buildersPage, /className="library-section-summary library-section-summary--static"[\s\S]*id="source-syncing-section-title"/);
-  assert.match(buildersPage, /Choose FollowBrief or your own agent to fetch and summarize sources\./);
+  assert.match(buildersPage, /fetchSyncSupportingCopy\(data\.hasFetchActionSources\)/);
+  assert.doesNotMatch(buildersPage, /<p className="library-section-copy">\s*Choose FollowBrief or your own agent to fetch and summarize sources\.\s*<\/p>/);
   assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
   assert.match(buildersPage, /Source syncing/);
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
@@ -6154,9 +6155,12 @@ test("maintained launch sources are temporarily omitted from fetch action select
   assert.match(helper, /return builders\.filter\(\(builder\) => isFetchActionEligibleSource\(builder\)\)/);
   assert.match(helper, /export function hasFetchActionSourcesForBuilders/);
   assert.match(helper, /return builders\.some\(\(builder\) => isFetchActionEligibleSource\(builder\)\)/);
+  assert.match(helper, /export function fetchSyncSupportingCopy/);
+  assert.match(helper, /return hasFetchActionSources[\s\S]*"Choose FollowBrief or your own agent to fetch and summarize sources\."[\s\S]*: null/);
   assert.match(buildersPage, /const cloudSubmissionSources: CloudSubmissionSource\[] = cloudSubmissionSourcesForBuilders\(/);
   assert.match(buildersPage, /const hasFetchActionSources = hasFetchActionSourcesForBuilders\(/);
   assert.match(buildersPage, /showStartActions=\{data\.hasFetchActionSources\}/);
+  assert.match(buildersPage, /fetchSyncSupportingCopy\(data\.hasFetchActionSources\)/);
   assert.match(skillPromptActions, /showStartActions = true/);
   assert.match(skillPromptActions, /showStartActions \? \(/);
   assert.doesNotMatch(skillPromptActions, /disabled maintained chooser|platform maintained chooser/);

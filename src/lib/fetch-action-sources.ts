@@ -21,3 +21,11 @@ export function hasFetchActionSourcesForBuilders(
 ) {
   return builders.some((builder) => isFetchActionEligibleSource(builder));
 }
+
+export function fetchSyncSupportingCopy(
+  hasFetchActionSources: boolean,
+) {
+  return hasFetchActionSources
+    ? "Choose FollowBrief or your own agent to fetch and summarize sources."
+    : null;
+}

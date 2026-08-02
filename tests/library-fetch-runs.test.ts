@@ -9,6 +9,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { BuilderLibraryList } from "../src/components/BuilderLibraryList";
 import {
   cloudSubmissionSourcesForBuilders,
+  fetchSyncSupportingCopy,
   hasFetchActionSourcesForBuilders,
 } from "../src/lib/fetch-action-sources";
 
@@ -395,6 +396,11 @@ test("builders page omits platform-maintained sources from temporary cloud submi
       { sourceType: "blog" },
     ]),
     true,
+  );
+  assert.equal(fetchSyncSupportingCopy(false), null);
+  assert.equal(
+    fetchSyncSupportingCopy(true),
+    "Choose FollowBrief or your own agent to fetch and summarize sources.",
   );
 });
 
@@ -1657,6 +1663,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /showStartActions=\{data\.hasFetchActionSources\}/);
   assert.match(buildersPage, /cloudSubmissionSourcesForBuilders/);
   assert.match(buildersPage, /hasFetchActionSourcesForBuilders/);
+  assert.match(buildersPage, /fetchSyncSupportingCopy\(data\.hasFetchActionSources\)/);
   assert.match(buildersPage, /libraryCronJob\?\.status === "active" \|\|[\s\S]*hasStoppedLocalScheduleActivity/);
   assert.match(buildersPage, /cloudLog=\{data\.cloudFetchLog\}/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);

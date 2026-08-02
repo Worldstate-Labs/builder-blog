@@ -50,6 +50,7 @@ import { getDigestRuns, serializeDigestCronJob } from "@/lib/digest-runs";
 import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
 import {
   cloudSubmissionSourcesForBuilders,
+  fetchSyncSupportingCopy,
   hasFetchActionSourcesForBuilders,
 } from "@/lib/fetch-action-sources";
 import {
@@ -798,9 +799,11 @@ async function FetchSyncSection({
           <h2 id="source-syncing-section-title" className="fb-section-heading">
             Source syncing
           </h2>
-          <p className="library-section-copy">
-            Choose FollowBrief or your own agent to fetch and summarize sources.
-          </p>
+          {fetchSyncSupportingCopy(data.hasFetchActionSources) ? (
+            <p className="library-section-copy">
+              {fetchSyncSupportingCopy(data.hasFetchActionSources)}
+            </p>
+          ) : null}
         </div>
         <SkillPromptActions
           activeSchedule={data.libraryCronJob}
