@@ -5,7 +5,7 @@
 
 ## Goal
 
-Add an opt-in `New Product Launches` source type that gives users five recent,
+Add a shared `New Product Launches` source type that gives users five recent,
 high-signal product launches per admin fetch run without requiring those users
 to fetch the source themselves.
 
@@ -18,8 +18,9 @@ reads; it does not become a crawler or a long-running worker.
 
 - The source type ID is `new_product_launches`; its display label is
   `New Product Launches`.
-- Users add the source explicitly from the candidate source library. It is not
-  part of the automatically imported FollowBrief source library.
+- The admin-owned Builder is part of the FollowBrief source library and follows
+  its existing default-import behavior. Users may also add the same source to
+  their private library; imported and private channels may coexist.
 - The admin owns and follows the canonical producer Builder. The admin's
   regular library fetch schedule determines when it runs.
 - Frequency and lookback are fetch-job settings, not source-type settings.
@@ -28,7 +29,8 @@ reads; it does not become a crawler or a long-running worker.
 - Discovery uses Show HN, DEV `#showdev`, Hugging Face Spaces, and Lobsters.
   Product Hunt is not used, and GitHub Trending remains a separate source.
 - A non-admin user's fetch plan and logs retain the source row and label it
-  `Maintained by FollowBrief`; no local or cloud fetch task is created for it.
+  `Maintained by FollowBrief`; no local fetch task or cloud submission is
+  created for it.
 - Settings use the existing source-type card only: Fetching instructions,
   Summarization instructions, and Quality gates. No provider, frequency,
   lookback, or per-run-count controls are added.
@@ -41,15 +43,17 @@ Cloud queue APIs are a control plane for an admin-managed local
 `systemd --user`. A prior server-side crawler was deliberately removed so that
 fetching remains Agent-side.
 
-The new source therefore follows the existing `github_trending` and
-`product_hunt_top_products` admin-fetch-only pattern rather than the cloud
-submission lifecycle. Cloud submission is driven by user demand, language
-libraries, submitter deadlines, and zero-submitter cleanup; those semantics do
-not fit a platform-maintained opt-in source.
+The new source uses the existing admin-fetch-only execution boundary and adds a
+narrow platform-maintained classification for shared-read, UI, and cloud
+submission behavior. Existing `github_trending`, `product_hunt_top_products`,
+and all other source types retain their current behavior. Cloud submission is
+driven by user demand, language libraries, submitter deadlines, and
+zero-submitter cleanup; those semantics do not fit this platform-maintained
+source.
 
 ## Source Identity and Ownership
 
-### Registry and candidate library
+### Registry, candidate library, and imported/private coexistence
 
 Add `new_product_launches` to the static source registry as a WEBSITE source
 producing BLOG_POST items and requiring Agent work. Add one curated candidate
@@ -67,26 +71,39 @@ to source input resolution, placeholders, display labels, icons, and source
 ordering. A user should be able to add the candidate without typing or editing
 a URL.
 
+The admin-owned Builder is shared through the existing featured FollowBrief
+source library and is automatically imported under the library's current
+rules. The candidate entry remains available so a user may also create a
+private Builder for the same source. The personal duplicate check remains
+owner-scoped, so an imported admin Builder does not block that add. Both
+Builders resolve to the same BuilderEntity but remain separate channels in the
+private and imported UI sections.
+
 ### Admin producer
 
 The admin adds and follows the source in the admin's personal library. The
 admin's regular one-time or recurring library fetch includes the Builder and
 writes FeedItems to that admin-owned Builder.
 
+Existing admin personal-library synchronization publishes this Builder into
+the FollowBrief source library without a new exception or filtering rule.
+
 No migration may assume a production admin user ID. Registry/config defaults
 and the candidate entry are seeded by code; creation of the producer Builder is
 an explicit admin operation after deployment.
 
-### Opt-in, not featured
+### Platform-maintained classification
 
-Introduce an explicit opt-in platform-source classification containing
-`new_product_launches`. Admin personal-library synchronization must exclude
-this classification when it computes the featured FollowBrief source library's
-items and expected item count. The Builder remains in the admin's private
-library and remains eligible for the admin's regular fetch.
+Introduce `PLATFORM_MAINTAINED_SOURCE_TYPE_IDS` containing only
+`new_product_launches`. Use this classification only where this source needs
+behavior beyond the existing source contract: shared admin-content resolution,
+the maintenance label, and cloud-submission exclusion. Also add the source to
+the existing admin-fetch-only list so non-admin local fetches skip it.
 
-This exclusion is source-type-specific. Existing featured sources and existing
-admin-fetch-only behavior must not change.
+Do not infer platform maintenance from the entire admin-fetch-only list. That
+would change existing Product Hunt and GitHub Trending behavior. Every new
+cross-cutting conditional must preserve byte-for-byte-equivalent outcomes for
+all pre-existing source types.
 
 ## Fetch Pipeline
 
@@ -157,15 +174,18 @@ The existing Quality gates validate the fetched primary content before sync.
 ## Shared Read Model
 
 Add `new_product_launches` to the admin-fetch-only source list. Non-admin
-library context must never put it in `libraryFetchBuilders`, even when the user
-owns the logical Builder and that Builder has zero local FeedItems. Personal
-sync must continue rejecting uploaded FeedItems for this source type.
+library context must never put it in `libraryFetchBuilders`, whether the
+logical channel is the imported admin Builder or a user-owned private Builder
+with zero local FeedItems. Personal sync must reject uploaded FeedItems for
+this source type.
 
 Extend the central user-content Builder resolver so that, for a logical
-admin-fetch-only Builder, it includes matching admin-owned Builders with the
-same BuilderEntity and source type. Authorization remains opt-in: admin-owned
-content is added only when the user already has the logical Builder in their
-pool/subscriptions.
+platform-maintained Builder, it includes matching admin-owned Builders with the
+same BuilderEntity and source type. Authorization is still based on
+reachability: admin-owned content is added only when the user already has an
+imported or private logical Builder in their pool/subscriptions. A user who has
+removed the imported library and has not added the source privately gains no
+content access through this resolver.
 
 This single resolver must make shared admin posts available consistently to:
 
@@ -174,8 +194,10 @@ This single resolver must make shared admin posts available consistently to:
 - source search and feed-item APIs;
 - source detail and source-list counts.
 
-Existing cloud-linked Builder resolution remains unchanged and composes with
-the new admin-owned resolution. FeedItems are not copied to each user.
+When imported and private channels coexist, feed reads use the same canonical
+entity/content dedup contract and return each post once. Existing cloud-linked
+Builder resolution remains unchanged and composes with the new admin-owned
+resolution. FeedItems are not copied to each user.
 
 Removing the source deletes or deactivates only the user's own pool,
 subscription, and channel state. It never deletes the admin Builder or shared
@@ -183,9 +205,10 @@ FeedItems.
 
 ## Fetch Plan and Log UX
 
-The source remains visible in a non-admin user's library and fetch planning UI.
-It is rendered as `Maintained by FollowBrief` and is excluded from planned,
-running, synced, failed, and deadline counts for work owned by that user.
+The source remains visible in a non-admin user's imported library and, when
+manually added, in the private library as a second channel. Both rows are
+rendered as `Maintained by FollowBrief` and excluded from planned, running,
+synced, failed, and deadline counts for work owned by that user.
 
 If the admin producer has not fetched any posts yet, the user sees an empty
 source with the same maintenance label. The UI must not suggest running a local
@@ -260,15 +283,18 @@ constant five.
 ### Ownership and visibility tests
 
 - Admin can fetch and sync this source.
-- A non-admin who adds it receives no local fetch task and sees
+- A non-admin with the imported channel receives no local fetch task and sees
   `Maintained by FollowBrief` in plans/logs.
+- Adding a private channel for the same source is allowed; private and imported
+  rows coexist while shared posts appear once in Following and AI Brief.
 - Following, AI Brief, search, feed API, detail, and source counts all expose the
-  matching admin FeedItems after opt-in.
-- A user without the source cannot gain access through the shared resolver.
+  matching admin FeedItems through either reachable channel.
+- A user who has neither imported nor privately added the source cannot gain
+  access through the shared resolver.
 - Removing a user's source does not affect the producer Builder or another
   user.
-- The source is absent from default FollowBrief source-library imports even
-  after admin personal-library synchronization.
+- Admin personal-library synchronization includes the source in the FollowBrief
+  source library and existing default-import behavior remains unchanged.
 - Cloud submit-all and selected-submit paths exclude or reject it and create no
   cloud task rows.
 
@@ -291,7 +317,10 @@ constant five.
 3. Run an admin one-time regular fetch and verify five or fewer validated posts.
 4. Confirm the admin recurring library schedule is active at the desired
    library frequency.
-5. Add the source as a non-admin test user and verify immediate shared posts,
-   maintenance labeling, no local/cloud work, and AI Brief/Following access.
+5. Verify a non-admin default import sees the source and shared posts with no
+   local/cloud work.
+6. Add the same source to that user's private library and verify both channel
+   rows, one deduped content stream, maintenance labeling, and AI
+   Brief/Following access.
 
 No production data backfill or destructive migration is required.
