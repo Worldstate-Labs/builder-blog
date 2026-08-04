@@ -30,7 +30,12 @@ export async function resetUserFetchDigestState(
     async (tx) => {
       const lastResetAt = await lockResetFenceForReset(tx, fenceId);
       const personalPostFilter = {
-        feedItem: { builder: { ownerUserId: normalizedUserId } },
+        feedItem: {
+          builder: {
+            ownerUserId: normalizedUserId,
+            cloudSourceTask: null,
+          },
+        },
       };
       const [recommendationReferences, readReferences, favoriteReferences] =
         await Promise.all([
@@ -67,7 +72,12 @@ export async function resetUserFetchDigestState(
         where: { userId: normalizedUserId },
       });
       const deletedFeedItems = await tx.feedItem.deleteMany({
-        where: { builder: { ownerUserId: normalizedUserId } },
+        where: {
+          builder: {
+            ownerUserId: normalizedUserId,
+            cloudSourceTask: null,
+          },
+        },
       });
       const deletedLibraryFetchRuns = await tx.libraryFetchRun.deleteMany({
         where: { userId: normalizedUserId },
@@ -85,7 +95,10 @@ export async function resetUserFetchDigestState(
         },
       });
       const resetBuilders = await tx.builder.updateMany({
-        where: { ownerUserId: normalizedUserId },
+        where: {
+          ownerUserId: normalizedUserId,
+          cloudSourceTask: null,
+        },
         data: {
           itemCount: 0,
           lastFetchedAt: null,

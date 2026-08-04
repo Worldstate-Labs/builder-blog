@@ -148,13 +148,13 @@ test("account API resets only session-owned generated fetch and brief state", ()
   assert.match(handler, /confirmation[\s\S]*RESET/);
 
   assert.match(helper, /resetUserFetchDigestState/);
-  assert.match(helper, /feedItem\.deleteMany\([\s\S]*ownerUserId: normalizedUserId/);
+  assert.match(helper, /feedItem\.deleteMany\([\s\S]*ownerUserId: normalizedUserId[\s\S]*cloudSourceTask: null/);
   assert.match(helper, /libraryFetchRun\.deleteMany\([\s\S]*userId: normalizedUserId/);
   assert.match(helper, /digestRun\.deleteMany\([\s\S]*userId: normalizedUserId/);
   assert.match(helper, /digest\.deleteMany\([\s\S]*userId: normalizedUserId/);
   assert.match(helper, /digestedItem\.deleteMany\([\s\S]*userId: normalizedUserId/);
   assert.match(helper, /agentJobRun\.deleteMany\([\s\S]*userId: normalizedUserId[\s\S]*FETCH_DIGEST_JOB_TYPES/);
-  assert.doesNotMatch(helper, /cloudFetch|cloudSource|cloudLanguage|user\.count/);
+  assert.doesNotMatch(helper, /tx\.cloud(?:Fetch|Source|Language)|user\.count/);
 });
 
 test("every authenticated account sees a personal generated-data reset panel", () => {

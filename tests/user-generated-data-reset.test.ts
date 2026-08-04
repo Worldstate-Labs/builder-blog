@@ -281,7 +281,7 @@ test("personal reset advances its fence first and mutates only user-owned genera
     where: { userId: "user_a" },
   });
   assert.deepEqual(argsFor(fixture.operations, "feedItem.deleteMany"), {
-    where: { builder: { ownerUserId: "user_a" } },
+    where: { builder: { ownerUserId: "user_a", cloudSourceTask: null } },
   });
   for (const model of ["libraryFetchRun", "digest", "digestRun", "digestedItem"] as const) {
     assert.deepEqual(argsFor(fixture.operations, `${model}.deleteMany`), {
@@ -295,7 +295,7 @@ test("personal reset advances its fence first and mutates only user-owned genera
     },
   });
   assert.deepEqual(argsFor(fixture.operations, "builder.updateMany"), {
-    where: { ownerUserId: "user_a" },
+    where: { ownerUserId: "user_a", cloudSourceTask: null },
     data: {
       itemCount: 0,
       lastFetchedAt: null,
@@ -319,7 +319,11 @@ test("personal reset checks every cross-user post reference before deleting", as
 
   await resetUserFetchDigestState("user_a", fixture.client as never);
 
-  const personalPostFilter = { feedItem: { builder: { ownerUserId: "user_a" } } };
+  const personalPostFilter = {
+    feedItem: {
+      builder: { ownerUserId: "user_a", cloudSourceTask: null },
+    },
+  };
   assert.deepEqual(argsFor(fixture.operations, "recommendationSnapshotItem.count"), {
     where: {
       ...personalPostFilter,
