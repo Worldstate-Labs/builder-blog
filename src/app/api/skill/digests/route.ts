@@ -9,7 +9,11 @@ import {
 } from "@/lib/language-preference";
 import { cleanStructuredDigestItems } from "@/lib/structured-digest";
 import { getUserFromBearer } from "@/lib/tokens";
-import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
+import {
+  lockResetFenceForWorker,
+  StaleWorkerWriteError,
+  userResetFenceId,
+} from "@/lib/reset-fence";
 
 const DIGEST_SYNC_TRANSACTION_OPTIONS = {
   maxWait: 10_000,
@@ -116,7 +120,7 @@ async function syncDigest(request: Request) {
       select: { createdAt: true },
     });
     if (!jobRun) throw new StaleWorkerWriteError();
-    await lockResetFenceForWorker(tx, jobRun.createdAt);
+    await lockResetFenceForWorker(tx, jobRun.createdAt, userResetFenceId(user.id));
 
     let periodStart = parsed.data.periodStart
       ? new Date(parsed.data.periodStart)

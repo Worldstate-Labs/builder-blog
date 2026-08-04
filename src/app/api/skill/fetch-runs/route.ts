@@ -9,7 +9,11 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
-import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
+import {
+  lockResetFenceForWorker,
+  StaleWorkerWriteError,
+  userResetFenceId,
+} from "@/lib/reset-fence";
 
 // Cap details payload at ~1000 KB serialized. A full library run legitimately
 // stores a per-post outcome row for every planned task plus the per-source
@@ -126,7 +130,7 @@ export async function POST(request: Request) {
         select: { createdAt: true },
       });
       if (!jobRun) throw new StaleWorkerWriteError();
-      await lockResetFenceForWorker(tx, jobRun.createdAt);
+      await lockResetFenceForWorker(tx, jobRun.createdAt, userResetFenceId(user.id));
       return tx.libraryFetchRun.create({
         data: {
           userId: user.id,

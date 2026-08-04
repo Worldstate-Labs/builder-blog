@@ -17,7 +17,11 @@ import {
   digestMaxPostAgeDays,
 } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
-import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
+import {
+  lockResetFenceForWorker,
+  StaleWorkerWriteError,
+  userResetFenceId,
+} from "@/lib/reset-fence";
 import { getUserFromBearer } from "@/lib/tokens";
 import {
   displayLanguagePreference,
@@ -393,7 +397,7 @@ export async function GET(request: Request) {
           select: { createdAt: true },
         });
         if (!jobRun) throw new StaleWorkerWriteError();
-        await lockResetFenceForWorker(tx, jobRun.createdAt);
+        await lockResetFenceForWorker(tx, jobRun.createdAt, userResetFenceId(user.id));
         return tx.digestRun.create({
           data: {
             userId: user.id,

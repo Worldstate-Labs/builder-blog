@@ -11,7 +11,11 @@ import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { MAX_FETCH_TASK_ID } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
-import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
+import {
+  lockResetFenceForWorker,
+  StaleWorkerWriteError,
+  userResetFenceId,
+} from "@/lib/reset-fence";
 
 // Mirror of the POST route's cap — details still has to fit comfortably.
 // A full library run's fetch log holds a per-post outcome row for every
@@ -153,7 +157,7 @@ export async function PATCH(request: Request, { params }: Params) {
         },
       });
       if (!run) return null;
-      await lockResetFenceForWorker(tx, run.createdAt);
+      await lockResetFenceForWorker(tx, run.createdAt, userResetFenceId(user.id));
 
       // mergeFetchRunDetails preserves statuses in TERMINAL_FETCH_TASK_STATUSES
       // when a late plannedTasks patch arrives after terminal outcomes.

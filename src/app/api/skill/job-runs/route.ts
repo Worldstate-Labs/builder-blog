@@ -11,9 +11,11 @@ import {
 } from "@/lib/fetch-progress-merge";
 import {
   databaseClockNow,
+  GLOBAL_RESET_FENCE_ID,
   lockResetFenceForNewWorker,
   lockResetFenceForWorker,
   StaleWorkerWriteError,
+  userResetFenceId,
 } from "@/lib/reset-fence";
 
 const MAX_DETAILS_BYTES = 50_000;
@@ -392,6 +394,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
+  const resetFenceId = parsed.data.jobType === "cloud-library-fetch"
+    ? GLOBAL_RESET_FENCE_ID
+    : userResetFenceId(user.id);
   const startedAt = new Date(parsed.data.startedAt);
   let record;
   try {
@@ -406,12 +411,12 @@ export async function POST(request: Request) {
         select: { id: true, details: true, status: true, finishedAt: true, exitCode: true, signal: true, stage: true, summary: true, createdAt: true },
       });
       if (existingRun) {
-        await lockResetFenceForWorker(tx, existingRun.createdAt);
+        await lockResetFenceForWorker(tx, existingRun.createdAt, resetFenceId);
       } else {
         if (parsed.data.status !== "starting") {
           throw new StaleWorkerWriteError();
         }
-        await lockResetFenceForNewWorker(tx);
+        await lockResetFenceForNewWorker(tx, resetFenceId);
         newRunCreatedAt = await databaseClockNow(tx);
       }
       const now = new Date();

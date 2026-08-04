@@ -180,6 +180,8 @@ test("official worker writes share the durable reset fence and reject stale runs
   const fetchRunPatch = source("src/app/api/skill/fetch-runs/[id]/route.ts");
   const jobRuns = source("src/app/api/skill/job-runs/route.ts");
   const builders = source("src/app/api/skill/builders/route.ts");
+  const digestContext = source("src/app/api/skill/context/route.ts");
+  const digests = source("src/app/api/skill/digests/route.ts");
   const cloudSync = source("src/app/api/admin/cloud-fetch/sync/route.ts");
 
   assert.match(schema, /model ResetFence \{[\s\S]*lastResetAt\s+DateTime/);
@@ -190,6 +192,10 @@ test("official worker writes share the durable reset fence and reject stale runs
   assert.match(jobRuns, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*agentJobRun\.(?:create|update)/);
   assert.match(builders, /libraryFetchRun\.findFirst[\s\S]*createdAt:\s*true/);
   assert.match(builders, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*patchFetchRunForBuilderSync/);
+  for (const personalRoute of [fetchRuns, fetchRunPatch, builders, digestContext, digests]) {
+    assert.match(personalRoute, /userResetFenceId\(user\.id\)/);
+  }
+  assert.match(jobRuns, /parsed\.data\.jobType === "cloud-library-fetch"[\s\S]*GLOBAL_RESET_FENCE_ID[\s\S]*userResetFenceId\(user\.id\)/);
   assert.match(builders, /BUILDER_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
   assert.match(cloudSync, /cloudFetchRun\.findUnique[\s\S]*status:\s*true/);
   assert.match(cloudSync, /run\.status !== "RUNNING"/);
@@ -197,6 +203,7 @@ test("official worker writes share the durable reset fence and reject stale runs
   assert.match(source("src/lib/cloud-fetch-terminal-reconcile.ts"), /params\.status === "RUNNING"/);
   assert.match(cloudSync, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*applyCloudFetchTaskSyncResult/);
   assert.match(cloudSync, /CLOUD_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
+  assert.doesNotMatch(cloudSync, /userResetFenceId/);
 });
 
 test("source library sharing explains Hub visibility before publishing", () => {

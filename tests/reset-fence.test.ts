@@ -188,15 +188,17 @@ test("cloud scheduler and digest writers serialize every generated-state mutatio
   assert.match(leaseRoute, /instanceId: jobRunId/);
   assert.match(leaseRoute, /workerStartedAt: jobRun\.createdAt/);
   assert.match(cli, /cloud fetch lease[\s\S]*jobRunId: envJobRunId\(\)/);
-  assert.match(context, /\$transaction[\s\S]*jobType:\s*"digest-build"[\s\S]*createdAt:\s*true[\s\S]*lockResetFenceForWorker\(tx, jobRun\.createdAt\)[\s\S]*digestRun\.create/);
+  assert.match(context, /\$transaction[\s\S]*jobType:\s*"digest-build"[\s\S]*createdAt:\s*true[\s\S]*lockResetFenceForWorker\(tx, jobRun\.createdAt, userResetFenceId\(user\.id\)\)[\s\S]*digestRun\.create/);
   assert.match(context, /Failed to record DigestRun for digest prepare[\s\S]*Could not prepare a durable Brief run[\s\S]*status:\s*500/);
   assert.match(digests, /digestRun\.findFirst[\s\S]*jobRunId[\s\S]*agentJobRun\.findFirst[\s\S]*createdAt:\s*true/);
-  assert.match(digests, /lockResetFenceForWorker\(tx, jobRun\.createdAt\)/);
+  assert.match(digests, /lockResetFenceForWorker\(tx, jobRun\.createdAt, userResetFenceId\(user\.id\)\)/);
   assert.match(digests, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*digest\.create[\s\S]*digestedItem\.upsert[\s\S]*digestRun\.updateMany/);
   // The prepared->synced transition is an atomic guarded claim: only the sync
   // that still sees status "prepared" wins, so concurrent syncs of the same
   // run cannot both create a Digest.
   assert.match(digests, /digestRun\.updateMany\([\s\S]*status:\s*"prepared"[\s\S]*\}\);\s*if \(synced\.count === 0\) throw new StaleWorkerWriteError\(\)/);
+  assert.doesNotMatch(scheduler, /userResetFenceId/);
+  assert.doesNotMatch(leaseRoute, /userResetFenceId/);
 });
 
 function source(path: string) {
