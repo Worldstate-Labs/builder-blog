@@ -22,7 +22,11 @@ import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { parseSkillBuilderSyncPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
 import type { Prisma } from "@prisma/client";
-import { lockResetFenceForWorker, StaleWorkerWriteError } from "@/lib/reset-fence";
+import {
+  lockResetFenceForWorker,
+  StaleWorkerWriteError,
+  userResetFenceId,
+} from "@/lib/reset-fence";
 
 type ItemResult = BuilderFeedSyncItemResult;
 
@@ -108,7 +112,7 @@ export async function POST(request: Request) {
       if (!run) {
         throw new StaleWorkerWriteError();
       }
-      await lockResetFenceForWorker(tx, run.createdAt);
+      await lockResetFenceForWorker(tx, run.createdAt, userResetFenceId(user.id));
       await syncBuilderFeedItems({
         prisma: tx,
         builders: parsed.data.builders,

@@ -4,13 +4,13 @@ import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
-import { AdminMaintenancePanel } from "@/components/AdminMaintenancePanel";
 import { AdminSourceCandidateLibraries } from "@/components/AdminSourceCandidateLibraries";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AccountDataPanel } from "@/components/AccountDataPanel";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { AgentTokenPanelSkeleton } from "@/components/AgentTokenPanelSkeleton";
 import { CountMeta } from "@/components/Count";
+import { GeneratedDataResetPanel } from "@/components/GeneratedDataResetPanel";
 import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { SettingsRulesSkeleton } from "@/components/SettingsRulesSkeleton";
@@ -52,7 +52,7 @@ export default async function SettingsPage() {
             <AgentTokenSlot userId={userId} />
           </Suspense>
           <AccountDataPanel />
-          {isAdmin ? <AdminMaintenancePanel /> : null}
+          <GeneratedDataResetPanel />
         </div>
 
         <Suspense fallback={<SettingsRulesSkeleton showDigestRules={isAdmin} />}>

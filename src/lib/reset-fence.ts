@@ -1,11 +1,20 @@
-const GLOBAL_RESET_FENCE_ID = "global";
+export const GLOBAL_RESET_FENCE_ID = "global";
+
+const RESET_FENCE_EPOCH = new Date(0);
 
 type ResetFenceClient = {
   $queryRawUnsafe(query: string, ...values: unknown[]): Promise<unknown>;
   resetFence: {
+    upsert?(args: unknown): Promise<{ lastResetAt: Date }>;
     update(args: unknown): Promise<{ lastResetAt: Date }>;
   };
 };
+
+export function userResetFenceId(userId: string) {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) throw new Error("A user ID is required for a personal reset fence.");
+  return `user:${normalizedUserId}`;
+}
 
 export class StaleWorkerWriteError extends Error {
   readonly statusCode = 409;
@@ -13,7 +22,7 @@ export class StaleWorkerWriteError extends Error {
   readonly retryable = false;
 
   constructor() {
-    super("This worker started before the latest global reset. Start a new run.");
+    super("This worker started before the latest reset. Start a new run.");
     this.name = "StaleWorkerWriteError";
   }
 }
@@ -21,22 +30,27 @@ export class StaleWorkerWriteError extends Error {
 export async function lockResetFenceForWorker(
   client: ResetFenceClient,
   startedAt: Date,
+  fenceId = GLOBAL_RESET_FENCE_ID,
 ) {
-  const lastResetAt = await lockResetFenceForNewWorker(client);
+  const lastResetAt = await lockResetFenceForNewWorker(client, fenceId);
   if (startedAt.getTime() <= lastResetAt.getTime()) {
     throw new StaleWorkerWriteError();
   }
   return lastResetAt;
 }
 
-export async function lockResetFenceForNewWorker(client: ResetFenceClient) {
+export async function lockResetFenceForNewWorker(
+  client: ResetFenceClient,
+  fenceId = GLOBAL_RESET_FENCE_ID,
+) {
+  await ensureResetFenceExists(client, fenceId);
   const rows = await client.$queryRawUnsafe(
     'SELECT "lastResetAt" FROM "ResetFence" WHERE "id" = $1 FOR SHARE',
-    GLOBAL_RESET_FENCE_ID,
+    fenceId,
   ) as Array<{ lastResetAt: Date }>;
   const lastResetAt = rows[0]?.lastResetAt;
   if (!lastResetAt) {
-    throw new Error("Global reset fence is not initialized.");
+    throw new Error(`Reset fence ${fenceId} is not initialized.`);
   }
   return lastResetAt;
 }
@@ -52,16 +66,34 @@ export async function databaseClockNow(client: ResetFenceClient) {
 
 export async function lockResetFenceForReset(
   client: ResetFenceClient,
+  fenceId = GLOBAL_RESET_FENCE_ID,
 ) {
+  await ensureResetFenceExists(client, fenceId);
   await client.$queryRawUnsafe(
     'SELECT "id" FROM "ResetFence" WHERE "id" = $1 FOR UPDATE',
-    GLOBAL_RESET_FENCE_ID,
+    fenceId,
   );
   const lastResetAt = await databaseClockNow(client);
   const fence = await client.resetFence.update({
-    where: { id: GLOBAL_RESET_FENCE_ID },
+    where: { id: fenceId },
     data: { lastResetAt },
     select: { lastResetAt: true },
   });
   return fence.lastResetAt;
+}
+
+async function ensureResetFenceExists(
+  client: ResetFenceClient,
+  fenceId: string,
+) {
+  if (fenceId === GLOBAL_RESET_FENCE_ID) return;
+  if (!client.resetFence.upsert) {
+    throw new Error(`Reset fence ${fenceId} cannot be initialized.`);
+  }
+  await client.resetFence.upsert({
+    where: { id: fenceId },
+    create: { id: fenceId, lastResetAt: RESET_FENCE_EPOCH },
+    update: {},
+    select: { lastResetAt: true },
+  });
 }

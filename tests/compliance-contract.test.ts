@@ -131,46 +131,57 @@ test("settings exposes account data export and deletion controls backed by scope
   assert.match(deleteRoute, /maxAge:\s*0/);
 });
 
-test("admin settings can reset all fetch and brief generated state through one shared helper", () => {
-  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
-  const panel = assertFile("src/components/AdminMaintenancePanel.tsx");
-  const route = assertFile("src/app/api/admin/maintenance/fetch-digest-reset/route.ts");
+test("account API resets only session-owned generated fetch and brief state", () => {
+  const routePath = join(root, "src/app/api/account/generated-data/reset/route.ts");
+  const oldRoutePath = join(root, "src/app/api/admin/maintenance/fetch-digest-reset/route.ts");
+  const route = assertFile("src/app/api/account/generated-data/reset/route.ts");
+  const handler = assertFile("src/lib/account-generated-data-reset-route.ts");
   const helper = assertFile("src/lib/fetch-digest-reset.ts");
-  const script = assertFile("scripts/clear-fetch-digest-state.mts");
 
-  assert.match(settingsPage, /isAdmin \? <AdminMaintenancePanel \/> : null/);
-  assert.match(panel, /Reset all fetch and brief state/);
-  assert.match(panel, /\/api\/admin\/maintenance\/fetch-digest-reset/);
-  assert.match(panel, /RESET/);
+  assert.equal(existsSync(routePath), true);
+  assert.equal(existsSync(oldRoutePath), false);
+  assert.match(route, /createAccountGeneratedDataResetPost\(\)/);
+  assert.doesNotMatch(route, /isAdminEmail|userId|email|scope/);
+  assert.match(handler, /getCurrentSession/);
+  assert.match(handler, /const userId = session\?\.user\?\.id/);
+  assert.match(handler, /dependencies\.reset\(userId\)/);
+  assert.match(handler, /confirmation[\s\S]*RESET/);
+
+  assert.match(helper, /resetUserFetchDigestState/);
+  assert.match(helper, /feedItem\.deleteMany\([\s\S]*ownerUserId: normalizedUserId[\s\S]*cloudSourceTask: null/);
+  assert.match(helper, /libraryFetchRun\.deleteMany\([\s\S]*userId: normalizedUserId/);
+  assert.match(helper, /digestRun\.deleteMany\([\s\S]*userId: normalizedUserId/);
+  assert.match(helper, /digest\.deleteMany\([\s\S]*userId: normalizedUserId/);
+  assert.match(helper, /digestedItem\.deleteMany\([\s\S]*userId: normalizedUserId/);
+  assert.match(helper, /agentJobRun\.deleteMany\([\s\S]*userId: normalizedUserId[\s\S]*FETCH_DIGEST_JOB_TYPES/);
+  assert.doesNotMatch(helper, /tx\.cloud(?:Fetch|Source|Language)|user\.count/);
+});
+
+test("every authenticated account sees a personal generated-data reset panel", () => {
+  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
+  const panel = assertFile("src/components/GeneratedDataResetPanel.tsx");
+
+  assert.equal(existsSync(join(root, "src/components/AdminMaintenancePanel.tsx")), false);
+  assert.match(settingsPage, /<GeneratedDataResetPanel \/>/);
+  assert.doesNotMatch(settingsPage, /isAdmin \? <GeneratedDataResetPanel \/>/);
+  assert.match(panel, /Generated data/);
+  assert.match(panel, /Reset fetch and AI Brief data/);
+  assert.match(panel, /\/api\/account\/generated-data\/reset/);
   assert.match(panel, /contentSyncStateChanged/);
   assert.match(panel, /window\.dispatchEvent\(new Event\(contentSyncStateChanged\)\)/);
-  assert.match(panel, /deletedCloudQueueItems/);
-  assert.match(panel, /deletedCloudRunTasks/);
-  assert.match(panel, /deletedCloudRuns/);
-  assert.match(panel, /deletedCloudAgentJobRuns/);
+  assert.match(panel, /useI18n/);
+  assert.match(panel, /translateUiPhrase/);
+  assert.doesNotMatch(panel, /Admin maintenance|every user|all fetch|Cloud work|deletedCloud|users:/);
+});
 
-  assert.match(route, /getCurrentSession\(\)/);
-  assert.match(route, /isAdminEmail\(session\.user\.email\)/);
-  assert.match(route, /resetFetchDigestState\(\)/);
-  assert.match(route, /confirmation[\s\S]*RESET/);
+test("maintenance reset requires one account target and uses the personal helper", () => {
+  const script = assertFile("scripts/reset-user-fetch-digest-state.mts");
 
-  assert.match(helper, /feedItem\.deleteMany/);
-  assert.match(helper, /libraryFetchRun\.deleteMany/);
-  assert.match(helper, /digestRun\.deleteMany/);
-  assert.match(helper, /digest\.deleteMany/);
-  assert.match(helper, /digestedItem\.deleteMany/);
-  assert.match(helper, /agentJobRun\.deleteMany/);
-  assert.match(helper, /jobType:\s*\{\s*in:\s*\[\s*"library-fetch",\s*"digest-build"\s*\]/);
-  assert.match(helper, /cloudFetchQueueItem\.deleteMany/);
-  assert.match(helper, /cloudFetchRunTask\.deleteMany/);
-  assert.match(helper, /cloudFetchRun\.deleteMany/);
-  assert.match(helper, /jobType:\s*"cloud-library-fetch"/);
-  assert.match(helper, /cloudSourceTask\.updateMany/);
-  assert.match(helper, /lockResetFenceForReset/);
-  assert.match(helper, /builder\.updateMany[\s\S]*lastFetchedAt:\s*null/);
-  assert.match(helper, /builder\.updateMany[\s\S]*status:\s*"IDLE"/);
-  assert.match(helper, /maxWait:\s*60_000/);
-  assert.match(script, /resetFetchDigestState/);
+  assert.equal(existsSync(join(root, "scripts/clear-fetch-digest-state.mts")), false);
+  assert.match(script, /parseUserResetTarget/);
+  assert.match(script, /resolveUserResetTarget/);
+  assert.match(script, /resetUserFetchDigestState\(userId/);
+  assert.doesNotMatch(script, /resetFetchDigestState|for all users|user\.count/);
 });
 
 test("official worker writes share the durable reset fence and reject stale runs", () => {
@@ -180,6 +191,8 @@ test("official worker writes share the durable reset fence and reject stale runs
   const fetchRunPatch = source("src/app/api/skill/fetch-runs/[id]/route.ts");
   const jobRuns = source("src/app/api/skill/job-runs/route.ts");
   const builders = source("src/app/api/skill/builders/route.ts");
+  const digestContext = source("src/app/api/skill/context/route.ts");
+  const digests = source("src/app/api/skill/digests/route.ts");
   const cloudSync = source("src/app/api/admin/cloud-fetch/sync/route.ts");
 
   assert.match(schema, /model ResetFence \{[\s\S]*lastResetAt\s+DateTime/);
@@ -190,6 +203,10 @@ test("official worker writes share the durable reset fence and reject stale runs
   assert.match(jobRuns, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*agentJobRun\.(?:create|update)/);
   assert.match(builders, /libraryFetchRun\.findFirst[\s\S]*createdAt:\s*true/);
   assert.match(builders, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*patchFetchRunForBuilderSync/);
+  for (const personalRoute of [fetchRuns, fetchRunPatch, builders, digestContext, digests]) {
+    assert.match(personalRoute, /userResetFenceId\(user\.id\)/);
+  }
+  assert.match(jobRuns, /parsed\.data\.jobType === "cloud-library-fetch"[\s\S]*GLOBAL_RESET_FENCE_ID[\s\S]*userResetFenceId\(user\.id\)/);
   assert.match(builders, /BUILDER_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
   assert.match(cloudSync, /cloudFetchRun\.findUnique[\s\S]*status:\s*true/);
   assert.match(cloudSync, /run\.status !== "RUNNING"/);
@@ -197,6 +214,7 @@ test("official worker writes share the durable reset fence and reject stale runs
   assert.match(source("src/lib/cloud-fetch-terminal-reconcile.ts"), /params\.status === "RUNNING"/);
   assert.match(cloudSync, /\$transaction[\s\S]*lockResetFenceForWorker[\s\S]*syncBuilderFeedItems[\s\S]*applyCloudFetchTaskSyncResult/);
   assert.match(cloudSync, /CLOUD_SYNC_TRANSACTION_OPTIONS[\s\S]*maxWait:\s*60_000[\s\S]*timeout:\s*60_000/);
+  assert.doesNotMatch(cloudSync, /userResetFenceId/);
 });
 
 test("source library sharing explains Hub visibility before publishing", () => {

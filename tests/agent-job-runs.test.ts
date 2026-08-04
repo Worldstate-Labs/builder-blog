@@ -140,10 +140,11 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(route, /agentJobRun\.update/);
   assert.match(route, /agentJobRun\.create/);
   assert.match(route, /parsed\.data\.status !== "starting"/);
-  assert.match(route, /lockResetFenceForNewWorker\(tx\)/);
-  assert.match(route, /lockResetFenceForNewWorker\(tx\)[\s\S]*newRunCreatedAt = await databaseClockNow\(tx\)/);
+  assert.match(route, /parsed\.data\.jobType === "cloud-library-fetch"[\s\S]*GLOBAL_RESET_FENCE_ID[\s\S]*userResetFenceId\(user\.id\)/);
+  assert.match(route, /lockResetFenceForNewWorker\(tx, resetFenceId\)/);
+  assert.match(route, /lockResetFenceForNewWorker\(tx, resetFenceId\)[\s\S]*newRunCreatedAt = await databaseClockNow\(tx\)/);
   assert.match(route, /createdAt: newRunCreatedAt!/);
-  assert.match(route, /lockResetFenceForWorker\(tx, existingRun\.createdAt\)/);
+  assert.match(route, /lockResetFenceForWorker\(tx, existingRun\.createdAt, resetFenceId\)/);
   assert.match(
     route,
     /if \(error instanceof StaleWorkerWriteError\) \{[\s\S]*NextResponse\.json\(\s*\{ error: error\.message, code: error\.responseCode, retryable: error\.retryable \},[\s\S]*\{ status: error\.statusCode \},/,
@@ -198,12 +199,12 @@ test("server-issued job leases fence fetch writes without trusting runner clocks
   assert.match(fetchRuns, /jobType: "library-fetch"/);
   assert.match(fetchRuns, /const jobRunId = parsed\.data\.jobRunId/);
   assert.match(fetchRuns, /instanceId: jobRunId/);
-  assert.match(fetchRuns, /lockResetFenceForWorker\(tx, jobRun\.createdAt\)/);
+  assert.match(fetchRuns, /lockResetFenceForWorker\(tx, jobRun\.createdAt, userResetFenceId\(user\.id\)\)/);
   assert.doesNotMatch(fetchRuns, /lockResetFenceForWorker\(tx, startedAt\)/);
   assert.match(fetchRunPatch, /select: \{[\s\S]*createdAt: true/);
-  assert.match(fetchRunPatch, /lockResetFenceForWorker\(tx, run\.createdAt\)/);
+  assert.match(fetchRunPatch, /lockResetFenceForWorker\(tx, run\.createdAt, userResetFenceId\(user\.id\)\)/);
   assert.match(builders, /select: \{ id: true, details: true, createdAt: true \}/);
-  assert.match(builders, /lockResetFenceForWorker\(tx, run\.createdAt\)/);
+  assert.match(builders, /lockResetFenceForWorker\(tx, run\.createdAt, userResetFenceId\(user\.id\)\)/);
 });
 
 test("agent job run floor helper keeps the visible window and linked older instances", async () => {
