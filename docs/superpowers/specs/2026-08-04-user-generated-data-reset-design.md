@@ -39,8 +39,7 @@ needs the same ownership boundary as the data.
 - Resetting the shared Cloud library or its scheduler.
 - Deleting a user's account, source library, subscriptions, or local schedules.
 - Revoking agent tokens or stopping future scheduled jobs.
-- Clearing reads, favorites, recommendations, preferences, imports, or Hub
-  sharing.
+- Clearing reads, favorites, preferences, imports, or Hub sharing.
 - Adding a database model or migration solely for personal reset fences.
 
 ## Ownership Rules
@@ -51,6 +50,7 @@ needs the same ownership boundary as the data.
 | Personal `Builder` fetch counters/status | Reset |
 | `LibraryFetchRun` where `userId` is the user | Delete |
 | `Digest`, `DigestRun`, and `DigestedItem` where `userId` is the user | Delete |
+| `RecommendationSnapshot` rows where `userId` is the user | Delete as derived cache |
 | `AgentJobRun` where `userId` is the user and job type is `library-fetch` or `digest-build` | Delete |
 | Personal sources, subscriptions, cron jobs, tokens, reads, favorites, settings, imports, Hub records | Keep |
 | Shared Cloud builders and `FeedItem` rows | Keep |
@@ -61,6 +61,16 @@ needs the same ownership boundary as the data.
 Deleting a personal `FeedItem` must not delete reads or favorites. Existing
 foreign keys already preserve those records by setting their optional
 `feedItemId` provenance to null.
+
+Recommendation snapshots are derived from generated posts and are reset only
+for the current user so the UI cannot retain cards pointing at deleted posts.
+Because `RecommendationSnapshotItem.feedItemId` cascades on post deletion, the
+helper must also enforce the existing ownership invariant before deleting:
+target personal posts must not be referenced by another user's recommendation
+snapshot, read provenance, or favorite provenance. If such a cross-user
+reference exists, abort the transaction rather than mutate another user's
+record. Valid application data should never violate this invariant because
+personal builder content is not entitled to another user.
 
 ## UI Design
 
@@ -120,8 +130,15 @@ All deletes and updates must be scoped explicitly:
 - `feedItem.deleteMany({ where: { builder: { ownerUserId: userId } } })`
 - `builder.updateMany({ where: { ownerUserId: userId }, ... })`
 - run, digest, marker, and personal Agent job deletes use `where.userId`
+- recommendation snapshot deletion uses `where.userId`
 - Agent job deletion also limits `jobType` to `library-fetch` and
   `digest-build`
+
+Before deleting personal feed items, count cross-user recommendation, read, and
+favorite references to those rows. Any nonzero count is an ownership-integrity
+failure and aborts the atomic reset. This defense-in-depth check turns an
+otherwise implicit foreign-key cascade into an explicit guarantee that another
+user's rows cannot change.
 
 The helper must not query, delete, or update Cloud source, queue, run, or task
 tables. It must not count all users. Its summary contains only personal counts
@@ -199,7 +216,8 @@ Behavior-level tests must prove:
    target, validates `RESET`, and reports failures safely;
 4. reset helper calls include the expected `userId`/`ownerUserId` predicates;
 5. the helper does not touch shared Cloud tables or `cloud-library-fetch` jobs;
-6. user A reset leaves representative user B rows untouched;
+6. user A reset leaves representative user B rows untouched and aborts on a
+   cross-user post reference instead of cascading it;
 7. personal fence IDs are stable, initialized safely, and independent;
 8. a stale personal worker is rejected only by its own user's fence;
 9. Cloud workers continue to use the global fence;
@@ -218,6 +236,8 @@ tests; then run lint, TypeScript, the full test suite, and a production build.
 - Another user's generated state is unchanged.
 - Shared Cloud library state and Cloud workers are unchanged.
 - Sources, subscriptions, schedules, tokens, reads, and favorites are unchanged.
+- The current user's derived recommendation snapshots are cleared; another
+  user's recommendation snapshots are unchanged.
 - A personal job started before reset cannot recreate cleared state.
 - A job for another user or the global Cloud worker is not fenced.
 - No web or script path can accidentally reset every user.
