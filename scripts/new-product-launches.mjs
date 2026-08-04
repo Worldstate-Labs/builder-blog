@@ -62,6 +62,7 @@ const TRACKING_PARAM_NAMES = new Set([
  *   lookbackDays: number,
  *   limit?: number,
  *   timeoutMs?: number,
+ *   excludeCandidate?: (candidate: NormalizedLaunchCandidate) => boolean,
  * }} LaunchDiscoveryOptions
  */
 
@@ -100,6 +101,7 @@ export async function discoverNewProductLaunches({
   lookbackDays,
   limit = 5,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  excludeCandidate = () => false,
 } = {}) {
   const resolvedNow = now instanceof Date ? new Date(now.getTime()) : new Date(now);
   if (!Number.isFinite(resolvedNow.getTime())) {
@@ -151,9 +153,12 @@ export async function discoverNewProductLaunches({
     now: resolvedNow,
     lookbackDays: resolvedLookbackDays,
   });
+  const availableCandidates = rankedCandidates.filter(
+    (candidate) => !excludeCandidate(candidate),
+  );
 
   return {
-    launches: diversifyByPrimaryProvider(rankedCandidates, resolvedLimit),
+    launches: diversifyByPrimaryProvider(availableCandidates, resolvedLimit),
     failures,
   };
 }

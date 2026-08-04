@@ -809,6 +809,41 @@ test("ranks stably, caps each provider at two when alternatives exist, and retur
   );
 });
 
+test("excludes fetched launches before selecting the top five", async () => {
+  const storyIds = [1301, 1302, 1303, 1304, 1305, 1306, 1307];
+  const hnItems = Object.fromEntries(
+    storyIds.map((id, index) => [
+      String(id),
+      hnItem({
+        id,
+        title: `Launch ${index + 1}`,
+        url: `https://launch-${index + 1}.example/`,
+        by: "ranker",
+        iso: daysAgo(1),
+        score: 100 - index * 10,
+      }),
+    ]),
+  );
+  const fetchedUrls = new Set([
+    "https://launch-1.example/",
+    "https://launch-2.example/",
+  ]);
+
+  const result = await discoverNewProductLaunches({
+    fetcher: createFixtureFetcher({ hnStories: storyIds, hnItems }),
+    now: NOW,
+    lookbackDays: LOOKBACK_DAYS,
+    limit: 5,
+    excludeCandidate: (candidate: Launch) =>
+      candidate.officialUrl !== null && fetchedUrls.has(candidate.officialUrl),
+  });
+
+  assert.deepEqual(
+    result.launches.map((launch: Launch) => launch.title),
+    ["Launch 3", "Launch 4", "Launch 5", "Launch 6", "Launch 7"],
+  );
+});
+
 test("breaks equal-score ties by normalized URL and then provider item ID when URL is unavailable", async () => {
   const equalScoreResult = await discoverNewProductLaunches({
     fetcher: createFixtureFetcher({

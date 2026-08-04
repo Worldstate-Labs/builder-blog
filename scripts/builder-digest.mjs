@@ -4649,13 +4649,17 @@ async function fetchPersonalNewProductLaunchesBuilder(
     now,
     lookbackDays: days,
     limit: MAX_NEW_PRODUCT_LAUNCH_FETCH_LIMIT,
+    excludeCandidate: (candidate) =>
+      fetchedItemKeys.has(
+        personalItemKey(builder.id, "BLOG_POST", stableLaunchExternalId(candidate)),
+      ),
   });
   const candidates = launches.filter(
     (candidate) =>
       !fetchedItemKeys.has(
         personalItemKey(builder.id, "BLOG_POST", stableLaunchExternalId(candidate)),
       ),
-  );
+  ).slice(0, MAX_NEW_PRODUCT_LAUNCH_FETCH_LIMIT);
 
   return {
     items: [],

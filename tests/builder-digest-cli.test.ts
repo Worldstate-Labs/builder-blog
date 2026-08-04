@@ -9881,6 +9881,64 @@ test("buildFetchTasksForBuilders converts shared new product launches into requi
   ]);
 });
 
+test("buildFetchTasksForBuilders backfills fetched launches to keep five new tasks", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?launch-backfill=${Date.now()}`);
+  const rankedCandidates = Array.from({ length: 7 }, (_, index) =>
+    launchCandidate({
+      providerItemId: String(201 + index),
+      title: `Launch ${index + 1}`,
+      officialUrl: `https://launch-${index + 1}.example/`,
+      discussionUrl: `https://dev.to/launches/launch-${index + 1}`,
+      rankEvidence: {
+        engagementPercentile: 1 - index * 0.1,
+        freshnessScore: 0.9,
+        corroborationCount: 1,
+        score: 1 - index * 0.1,
+        tieBreakKey: `https://launch-${index + 1}.example/`,
+      },
+    }),
+  );
+  const planned = await cli.buildFetchTasksForBuilders({
+    builders: [newProductLaunchesBuilder()],
+    context: {
+      ...newProductLaunchesContext(),
+      personalFetchedItems: rankedCandidates.slice(0, 2).map((candidate) => ({
+        builderId: "builder_launches",
+        kind: "BLOG_POST",
+        externalId: `new-product-launches:${candidate.officialUrl}`,
+        publishedAt: "2026-07-01T12:00:00.000Z",
+      })),
+    },
+    force: false,
+    days: 14,
+    limit: 1,
+    runStartedAt: new Date("2026-08-02T08:00:00.000Z"),
+    sourceOptionsBySourceId: {
+      new_product_launches: {
+        discover: async ({
+          limit,
+          excludeCandidate,
+        }: {
+          limit: number;
+          excludeCandidate?: (candidate: ReturnType<typeof launchCandidate>) => boolean;
+        }) => ({
+          launches: rankedCandidates
+            .filter((candidate) => !excludeCandidate?.(candidate))
+            .slice(0, limit),
+          failures: [],
+        }),
+      },
+    },
+  });
+
+  assert.equal(planned.errorCount, 0);
+  assert.equal(planned.fetchTasks.length, 5);
+  assert.deepEqual(
+    planned.fetchTasks.map((task: { item: { title: string } }) => task.item.title),
+    ["Launch 3", "Launch 4", "Launch 5", "Launch 6", "Launch 7"],
+  );
+});
+
 test("buildFetchTasksForBuilders uses provider identity to dedupe discussion-only launches across discussion URL changes", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?launch-dedup=${Date.now()}`);
   const planned = await cli.buildFetchTasksForBuilders({
