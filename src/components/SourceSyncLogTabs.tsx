@@ -12,6 +12,7 @@ import {
   type LibraryFetchRunListItem,
 } from "@/components/FetchLogPanel";
 import { RelativeTime } from "@/components/RelativeTime";
+import { WorkspaceTopTabsView } from "@/components/WorkspaceTopTabsView";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import {
   contentSyncStateChanged,
@@ -197,38 +198,25 @@ export function SourceSyncLogTabs({
 
   return (
     <div className="source-sync-log-tabs">
-      <div className="source-sync-log-tabs-head">
-        <div
-          aria-label="Sync log type"
-          className="fb-segmented-tabs source-sync-log-tablist"
-          role="tablist"
-        >
-          <button
-            aria-controls="source-sync-cloud-log-panel"
-            aria-selected={selected === "cloud"}
-            className="fb-btn compact"
-            id="source-sync-cloud-log-tab"
-            onClick={() => selectLogTab("cloud")}
-            role="tab"
-            tabIndex={selected === "cloud" ? 0 : -1}
-            type="button"
-          >
-            <LogTabLabel label="FollowBrief fetch log" unread={cloudHasUnread} />
-          </button>
-          <button
-            aria-controls="source-sync-local-log-panel"
-            aria-selected={selected === "local"}
-            className="fb-btn compact"
-            id="source-sync-local-log-tab"
-            onClick={() => selectLogTab("local")}
-            role="tab"
-            tabIndex={selected === "local" ? 0 : -1}
-            type="button"
-          >
-            <LogTabLabel label="Agent fetch log" unread={localHasUnread} />
-          </button>
-        </div>
-      </div>
+      <WorkspaceTopTabsView<SyncLogTab>
+        ariaLabel="Sync log type"
+        items={[
+          {
+            value: "cloud",
+            label: <LogTabLabel label="FollowBrief fetch log" unread={cloudHasUnread} />,
+            panelId: "source-sync-cloud-log-panel",
+            tabId: "source-sync-cloud-log-tab",
+          },
+          {
+            value: "local",
+            label: <LogTabLabel label="Agent fetch log" unread={localHasUnread} />,
+            panelId: "source-sync-local-log-panel",
+            tabId: "source-sync-local-log-tab",
+          },
+        ]}
+        onSelect={selectLogTab}
+        selectedValue={selected}
+      />
 
       <section
         aria-labelledby="source-sync-cloud-log-tab"

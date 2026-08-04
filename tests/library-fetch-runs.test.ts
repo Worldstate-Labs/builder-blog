@@ -1766,10 +1766,14 @@ test("builders page mounts the fetch log inside the sync header section", () => 
 test("source sync log tabs default to FollowBrief before Agent", () => {
   const tabs = source("src/components/SourceSyncLogTabs.tsx");
   const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
+  const workspaceTabs = source("src/components/WorkspaceTopTabsView.tsx");
 
-  assert.match(tabs, /role="tablist"/);
+  assert.match(tabs, /import \{ WorkspaceTopTabsView \}/);
+  assert.match(tabs, /<WorkspaceTopTabsView<SyncLogTab>/);
+  assert.match(workspaceTabs, /role="tablist"/);
   assert.match(tabs, /useState<SyncLogTab>\("cloud"\)/);
   assert.match(tabs, /FollowBrief fetch log[\s\S]*Agent fetch log/);
+  assert.doesNotMatch(tabs, /source-sync-log-tablist|fb-segmented-tabs/);
   assert.doesNotMatch(tabs, /FollowBrief sync log|Agent sync log|Cloud fetch log|Local Agent fetch log/);
   assert.doesNotMatch(tabs, /Latest submission/);
   assert.match(tabs, /Fetch frequency[\s\S]*Language[\s\S]*FollowBrief sources[\s\S]*Status \/ log/);

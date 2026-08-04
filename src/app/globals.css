@@ -6578,15 +6578,6 @@ summary.library-section-summary::after {
   gap: 0.85rem;
 }
 
-.source-sync-log-tabs-head {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.source-sync-log-tablist .fb-btn {
-  white-space: nowrap;
-}
-
 .source-sync-log-tab-label {
   align-items: center;
   display: inline-flex;
@@ -14211,18 +14202,6 @@ body {
 
   .sources-sync-panel > .library-section-body {
     padding: 0.85rem;
-  }
-
-  .source-sync-log-tabs-head,
-  .source-sync-log-tablist {
-    width: 100%;
-  }
-
-  .source-sync-log-tablist .fb-btn {
-    flex: 1 1 0;
-    justify-content: center;
-    min-width: 0;
-    white-space: normal;
   }
 
   .sources-sync-panel .skill-prompt-compact {
