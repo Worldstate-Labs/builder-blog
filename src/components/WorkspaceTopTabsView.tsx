@@ -40,6 +40,7 @@ export type WorkspaceTopTabsViewProps<TValue extends string = string> = {
   onSelect?: (value: TValue) => void;
   selectedValue: TValue;
   linkComponent?: WorkspaceTopTabLinkComponent;
+  variant?: "primary" | "secondary";
 };
 
 export function WorkspaceTopTabsView<TValue extends string>({
@@ -48,7 +49,12 @@ export function WorkspaceTopTabsView<TValue extends string>({
   onSelect,
   selectedValue,
   linkComponent: LinkComponent = DefaultLink,
+  variant = "primary",
 }: WorkspaceTopTabsViewProps<TValue>) {
+  const tabsClassName = variant === "secondary"
+    ? "fb-segmented-tabs workspace-top-tabs is-secondary"
+    : "fb-segmented-tabs workspace-top-tabs";
+
   function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
     const navigableKeys = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
     if (!navigableKeys.has(event.key)) return;
@@ -78,7 +84,7 @@ export function WorkspaceTopTabsView<TValue extends string>({
   return (
     <div className="workspace-top-tabs-row">
       <div
-        className="fb-segmented-tabs workspace-top-tabs"
+        className={tabsClassName}
         role="tablist"
         aria-label={ariaLabel}
         onKeyDown={handleTabKeyDown}

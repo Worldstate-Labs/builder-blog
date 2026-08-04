@@ -216,6 +216,7 @@ export function SourceSyncLogTabs({
         ]}
         onSelect={selectLogTab}
         selectedValue={selected}
+        variant="secondary"
       />
 
       <section

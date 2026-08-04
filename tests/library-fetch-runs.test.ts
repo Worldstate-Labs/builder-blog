@@ -1767,10 +1767,18 @@ test("source sync log tabs default to FollowBrief before Agent", () => {
   const tabs = source("src/components/SourceSyncLogTabs.tsx");
   const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
   const workspaceTabs = source("src/components/WorkspaceTopTabsView.tsx");
+  const styles = source("src/app/globals.css");
 
   assert.match(tabs, /import \{ WorkspaceTopTabsView \}/);
   assert.match(tabs, /<WorkspaceTopTabsView<SyncLogTab>/);
+  assert.match(tabs, /variant="secondary"/);
+  assert.match(workspaceTabs, /variant\?: "primary" \| "secondary"/);
+  assert.match(workspaceTabs, /variant = "primary"/);
   assert.match(workspaceTabs, /role="tablist"/);
+  assert.match(
+    styles,
+    /\.workspace-top-tabs\.is-secondary\.fb-segmented-tabs \.fb-btn \{[\s\S]*font-size: 0\.8125rem;[\s\S]*min-height: 2\.25rem;/,
+  );
   assert.match(tabs, /useState<SyncLogTab>\("cloud"\)/);
   assert.match(tabs, /FollowBrief fetch log[\s\S]*Agent fetch log/);
   assert.doesNotMatch(tabs, /source-sync-log-tablist|fb-segmented-tabs/);

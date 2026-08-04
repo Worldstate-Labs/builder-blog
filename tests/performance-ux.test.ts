@@ -1586,7 +1586,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(workspaceTopTabsView, /tabs\[nextIndex\]\?\.focus\(\)/);
   assert.match(workspaceTopTabsView, /if \(onSelect\) \{[\s\S]*onSelect\(items\[nextIndex\]!\.value\)/);
   assert.match(workspaceTopTabsView, /className="workspace-top-tabs-row"/);
-  assert.match(workspaceTopTabsView, /className="fb-segmented-tabs workspace-top-tabs"/);
+  assert.match(workspaceTopTabsView, /"fb-segmented-tabs workspace-top-tabs is-secondary"/);
+  assert.match(workspaceTopTabsView, /: "fb-segmented-tabs workspace-top-tabs"/);
   assert.doesNotMatch(workspaceTopTabsView, /<nav[\s\S]*role="tablist"/);
   assert.match(workspaceTopTabsView, /className: "fb-btn compact"/);
   assert.doesNotMatch(dashboardTabs, /fb-tabs|fb-tab|fb-m-segctl|fb-m-seg/);

@@ -5674,6 +5674,22 @@ summary.library-section-summary::after {
   color: var(--accent-strong);
 }
 
+.workspace-top-tabs.is-secondary.fb-segmented-tabs .fb-btn {
+  font-size: 0.8125rem;
+  font-weight: 680;
+  min-height: 2.25rem;
+  padding-inline: 0.65rem;
+}
+
+.workspace-top-tabs.is-secondary.fb-segmented-tabs .fb-btn[aria-selected="true"],
+.workspace-top-tabs.is-secondary.fb-segmented-tabs .fb-btn[data-active="true"],
+.workspace-top-tabs.is-secondary.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
+.workspace-top-tabs.is-secondary.fb-segmented-tabs .fb-btn[data-active="true"]:hover {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--accent);
+  font-weight: 760;
+}
+
 .fb-btn.danger {
   background: var(--danger);
   border-color: transparent;
@@ -14131,6 +14147,12 @@ body {
     position: absolute;
     transform: translateX(-50%);
     width: 100%;
+  }
+
+  .workspace-top-tabs.is-secondary.fb-segmented-tabs .fb-btn {
+    font-size: 0.8125rem;
+    min-height: 2.25rem;
+    padding-inline: 0.375rem;
   }
 
   .fb-panel {
