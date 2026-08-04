@@ -1,4 +1,4 @@
-import { CircleStop, Clock3, Languages } from "lucide-react";
+import { CircleStop, Clock3, Globe } from "lucide-react";
 import type { SourceLibraryMetadata as SourceLibraryMetadataValue } from "@/lib/source-library-metadata";
 
 export function SourceLibraryMetadata({
@@ -27,7 +27,7 @@ export function SourceLibraryMetadata({
         className="source-library-metadata-item"
         role="group"
       >
-        <Languages aria-hidden="true" size={16} />
+        <Globe aria-hidden="true" size={16} />
         <span>{metadata.languageLabel}</span>
       </span>
     </div>

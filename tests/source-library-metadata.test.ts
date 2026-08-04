@@ -213,7 +213,7 @@ test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", 
   assert.match(activeHtml, /aria-label="Language: 繁體中文"/);
   assert.equal(activeHtml.match(/role="group"/g)?.length ?? 0, 2);
   assert.match(activeHtml, /lucide-clock3/);
-  assert.match(activeHtml, /lucide-languages/);
+  assert.match(activeHtml, /lucide-globe/);
   assert.equal(activeHtml.match(/aria-hidden="true"/g)?.length ?? 0, 2);
   assert.doesNotMatch(activeHtml, />Build frequency<|>Frequency<|>Language</);
 
@@ -221,6 +221,6 @@ test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", 
   assert.match(stoppedHtml, /aria-label="Language: 日本語"/);
   assert.equal(stoppedHtml.match(/role="group"/g)?.length ?? 0, 2);
   assert.match(stoppedHtml, /lucide-circle-stop/);
-  assert.match(stoppedHtml, /lucide-languages/);
+  assert.match(stoppedHtml, /lucide-globe/);
   assert.equal(stoppedHtml.match(/aria-hidden="true"/g)?.length ?? 0, 2);
 });
