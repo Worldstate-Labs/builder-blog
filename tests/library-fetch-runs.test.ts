@@ -371,6 +371,26 @@ test("fetch action helpers keep cloud submission personal-only while start actio
   const importedMaintained = { sourceType: "new_product_launches", origin: "HUB_IMPORT" };
   const sources = cloudSubmissionSourcesForBuilders([
     {
+      id: "builder_github_trending",
+      name: "GitHub Trending",
+      handle: null,
+      sourceType: "github_trending",
+      sourceUrl: "https://github.com/trending",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+    },
+    {
+      id: "builder_product_hunt",
+      name: "Product Hunt Top Products",
+      handle: null,
+      sourceType: "product_hunt_top_products",
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+    },
+    {
       id: "builder_launches_private",
       name: "Private launches",
       handle: null,
@@ -406,6 +426,11 @@ test("fetch action helpers keep cloud submission personal-only while start actio
     true,
   );
   assert.equal(hasFetchActionSourcesForBuilders([{ sourceType: "new_product_launches" }]), false);
+  assert.equal(hasFetchActionSourcesForBuilders([{ sourceType: "github_trending" }]), false);
+  assert.equal(
+    hasFetchActionSourcesForBuilders([{ sourceType: "product_hunt_top_products" }]),
+    false,
+  );
   assert.equal(
     hasFetchActionSourcesForBuilders([
       importedMaintained,

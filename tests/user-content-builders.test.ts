@@ -294,6 +294,77 @@ test("imported platform-maintained channels reach the matching admin producer", 
   });
 });
 
+test("GitHub Trending and Product Hunt channels reach their matching admin producers", async () => {
+  await withAdminEmails("admin@example.com", async () => {
+    const builders = [
+      {
+        id: "member_github",
+        entityId: "entity_github",
+        sourceType: "GitHub Trending",
+        ownerEmail: "member@example.com",
+      },
+      {
+        id: "admin_github",
+        entityId: "entity_github",
+        sourceType: "github_trending",
+        ownerEmail: "admin@example.com",
+      },
+      {
+        id: "member_product_hunt",
+        entityId: "entity_product_hunt",
+        sourceType: "Product Hunt Top Products",
+        ownerEmail: "member@example.com",
+      },
+      {
+        id: "admin_product_hunt",
+        entityId: "entity_product_hunt",
+        sourceType: "product-hunt-top-products",
+        ownerEmail: "admin@example.com",
+      },
+    ];
+
+    const result = await resolveUserContentBuilderIds({
+      userId: "user_1",
+      logicalBuilderIds: ["member_github", "member_product_hunt"],
+      prisma: {
+        builder: {
+          async findMany(args: unknown) {
+            const input = args as {
+              where?: {
+                id?: { in?: string[] };
+                entityId?: { in?: string[] };
+                owner?: { email?: { in?: string[] } };
+              };
+            };
+            if (input.where?.id?.in) {
+              return builders.filter((builder) => input.where?.id?.in?.includes(builder.id));
+            }
+            if (input.where?.entityId?.in) {
+              return builders.filter((builder) =>
+                input.where?.entityId?.in?.includes(builder.entityId) &&
+                input.where?.owner?.email?.in?.includes(builder.ownerEmail),
+              );
+            }
+            return [];
+          },
+        },
+        cloudSourceSubmission: {
+          async findMany() {
+            return [];
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(result.sort(), [
+      "admin_github",
+      "admin_product_hunt",
+      "member_github",
+      "member_product_hunt",
+    ]);
+  });
+});
+
 test("private platform-maintained channels reach the same admin producer", async () => {
   await withAdminEmails("admin@example.com", async () => {
     const result = await resolveUserContentBuilderIds({

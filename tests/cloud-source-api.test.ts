@@ -278,13 +278,13 @@ test("submit-all excludes platform-maintained sources and does not count them ag
       syncHub: async () => ({ entry: {} as never, builderCount: 0 }),
     });
 
-    assert.equal(result.sourcesSubmitted, CLOUD_SOURCE_SUBMISSION_LIMIT);
-    assert.equal(copyCalls.length, CLOUD_SOURCE_SUBMISSION_LIMIT);
-    assert.equal(submissionUpserts.length, CLOUD_SOURCE_SUBMISSION_LIMIT);
-    assert.equal(taskUpserts.length, CLOUD_SOURCE_SUBMISSION_LIMIT);
+    assert.equal(result.sourcesSubmitted, CLOUD_SOURCE_SUBMISSION_LIMIT - 2);
+    assert.equal(copyCalls.length, CLOUD_SOURCE_SUBMISSION_LIMIT - 2);
+    assert.equal(submissionUpserts.length, CLOUD_SOURCE_SUBMISSION_LIMIT - 2);
+    assert.equal(taskUpserts.length, CLOUD_SOURCE_SUBMISSION_LIMIT - 2);
     assert.equal(copyCalls.some((call) => call.startsWith("new_product_launches:")), false);
-    assert.equal(copyCalls.some((call) => call.startsWith("github_trending:")), true);
-    assert.equal(copyCalls.some((call) => call.startsWith("product_hunt_top_products:")), true);
+    assert.equal(copyCalls.some((call) => call.startsWith("github_trending:")), false);
+    assert.equal(copyCalls.some((call) => call.startsWith("product_hunt_top_products:")), false);
   } finally {
     if (previousDatabaseUrl === undefined) {
       delete process.env.DATABASE_URL;

@@ -4416,8 +4416,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(sourceInputs, /followbrief\.worldstatelabs\.com\/\?source=new-product-launches/);
   assert.match(sourceInputs, /export function placeholderForSourceId/);
   assert.match(sourceInputs, /export function addSourcePlaceholderForSourceId/);
-  assert.match(source("src/lib/platform-maintained-sources.ts"), /PLATFORM_MAINTAINED_SOURCE_TYPE_IDS/);
-  assert.match(source("src/lib/platform-maintained-sources.ts"), /new_product_launches/);
+  assert.match(
+    source("src/lib/platform-maintained-sources.ts"),
+    /PLATFORM_MAINTAINED_SOURCE_TYPE_IDS = ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS/,
+  );
   assert.match(source("src/lib/source-icons.ts"), /PackageOpen/);
   assert.match(source("src/lib/source-icons.ts"), /new_product_launches/);
   assert.match(source("src/lib/source-display.ts"), /new_product_launches:\s*"New Product Launches"/);

@@ -369,8 +369,18 @@ test("platform-maintained source types are normalized and explicit", async () =>
   const platformMaintainedSources = await import("../src/lib/platform-maintained-sources");
 
   assert.deepEqual(platformMaintainedSources.PLATFORM_MAINTAINED_SOURCE_TYPE_IDS, [
+    "github_trending",
+    "product_hunt_top_products",
     "new_product_launches",
   ]);
+  assert.equal(
+    platformMaintainedSources.isPlatformMaintainedSourceType("GitHub Trending"),
+    true,
+  );
+  assert.equal(
+    platformMaintainedSources.isPlatformMaintainedSourceType("Product-Hunt-Top-Products"),
+    true,
+  );
   assert.equal(
     platformMaintainedSources.isPlatformMaintainedSourceType("New-Product-Launches"),
     true,
