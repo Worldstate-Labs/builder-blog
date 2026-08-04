@@ -54,10 +54,11 @@
 
 - [ ] Build a fake Prisma transaction client in the new test and add failing tests that require `resetUserFetchDigestState(userId, client)` to scope every mutation by `userId` or `builder.ownerUserId`.
 - [ ] Add failing tests that current-user recommendation snapshots are deleted, Agent jobs are limited to `library-fetch`/`digest-build`, and no Cloud model client is read or mutated.
+- [ ] Add failing negative assertions that preserved current-user models are never deleted or updated: `LibraryCronJob`, `DigestCronJob`, `AgentToken`, `Subscription`, `FeedRead`, `FeedFavorite`, `LibraryImport`, `LibraryHubEntry`, `LibraryHubItem`, and `DigestPipelineShare`.
 - [ ] Add failing tests for the cross-user ownership guard covering recommendation snapshot items, read provenance, and favorite provenance; any nonzero count must abort before destructive mutations commit.
 - [ ] Add a two-user regression fixture/fake proving reset A leaves representative B rows and counts unchanged.
 - [ ] Run `npx tsx --test tests/user-generated-data-reset.test.ts tests/reset-fence.test.ts` and confirm failure against the global helper.
-- [ ] Implement `resetUserFetchDigestState(userId, client = prisma)` in one bounded transaction: acquire the exclusive personal fence, run all cross-user reference counts, delete only user-owned derived rows, reset only personal builders, and return only personal counts plus `lastResetAt`.
+- [ ] Implement `resetUserFetchDigestState(userId, client = prisma)` in one bounded transaction: acquire the exclusive personal fence, run all cross-user reference counts, delete only user-owned derived rows, reset only personal builders, and return only personal counts plus `lastResetAt`. Keep the preserved current-user model list above completely outside the mutation set.
 - [ ] Remove the all-users helper/export and all Cloud-table operations from this module.
 - [ ] Re-run the focused tests and confirm atomic ownership behavior passes.
 - [ ] Commit with a Lore message documenting the ownership guard and preserved state.
@@ -132,4 +133,3 @@
 - [ ] Inspect `git diff --check`, `git status --short`, and the complete branch diff for accidental Cloud/global changes.
 - [ ] Request an independent code review focused on ownership predicates, fence selection, cross-user cascades, route trust boundaries, and test adequacy; fix and re-run affected checks if any issue is found.
 - [ ] Record any environment-only validation gap honestly; do not claim production database concurrency was exercised unless it was.
-
