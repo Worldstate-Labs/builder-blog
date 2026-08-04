@@ -46,8 +46,8 @@ needs the same ownership boundary as the data.
 
 | State | Personal reset action |
 | --- | --- |
-| `FeedItem` rows attached to a `Builder` whose `ownerUserId` is the user | Delete |
-| Personal `Builder` fetch counters/status | Reset |
+| `FeedItem` rows attached to a non-Cloud `Builder` whose `ownerUserId` is the user | Delete |
+| Non-Cloud personal `Builder` fetch counters/status | Reset |
 | `LibraryFetchRun` where `userId` is the user | Delete |
 | `Digest`, `DigestRun`, and `DigestedItem` where `userId` is the user | Delete |
 | `RecommendationSnapshot` rows where `userId` is the user | Delete as derived cache |
@@ -125,10 +125,12 @@ Replace the global web helper with:
 resetUserFetchDigestState(userId: string, client: PrismaClient = prisma)
 ```
 
-All deletes and updates must be scoped explicitly:
+All deletes and updates must be scoped explicitly. Cloud language libraries use
+system-owned `Builder` rows, so `ownerUserId` alone is not a sufficient personal
+boundary; personal builder filters must also require `cloudSourceTask: null`:
 
-- `feedItem.deleteMany({ where: { builder: { ownerUserId: userId } } })`
-- `builder.updateMany({ where: { ownerUserId: userId }, ... })`
+- `feedItem.deleteMany({ where: { builder: { ownerUserId: userId, cloudSourceTask: null } } })`
+- `builder.updateMany({ where: { ownerUserId: userId, cloudSourceTask: null }, ... })`
 - run, digest, marker, and personal Agent job deletes use `where.userId`
 - recommendation snapshot deletion uses `where.userId`
 - Agent job deletion also limits `jobType` to `library-fetch` and
