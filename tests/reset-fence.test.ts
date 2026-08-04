@@ -2,11 +2,81 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  GLOBAL_RESET_FENCE_ID,
   lockResetFenceForReset,
   lockResetFenceForWorker,
   lockResetFenceForNewWorker,
   StaleWorkerWriteError,
+  userResetFenceId,
 } from "../src/lib/reset-fence";
+
+test("personal reset fence IDs are stable and cannot collapse to an empty user", () => {
+  assert.equal(userResetFenceId("user_a"), "user:user_a");
+  assert.equal(userResetFenceId(" user_a "), "user:user_a");
+  assert.throws(() => userResetFenceId("   "), /user ID is required/i);
+});
+
+test("personal fences initialize lazily and remain isolated from each other", async () => {
+  const initial = new Date(0);
+  const fences = new Map<string, Date>();
+  const upserts: string[] = [];
+  const locks: string[] = [];
+  const client = {
+    async $queryRawUnsafe<T>(query: string, fenceId?: unknown) {
+      if (query.includes("FOR SHARE")) {
+        locks.push(String(fenceId));
+        return [{ lastResetAt: fences.get(String(fenceId)) }] as T;
+      }
+      return [] as T;
+    },
+    resetFence: {
+      async upsert(args: {
+        where: { id: string };
+        create: { id: string; lastResetAt: Date };
+      }) {
+        upserts.push(args.where.id);
+        if (!fences.has(args.where.id)) {
+          fences.set(args.where.id, args.create.lastResetAt);
+        }
+        return { lastResetAt: fences.get(args.where.id) ?? initial };
+      },
+      async update() {
+        throw new Error("not used");
+      },
+    },
+  };
+
+  assert.equal(
+    (await lockResetFenceForNewWorker(client, userResetFenceId("user_a"))).getTime(),
+    initial.getTime(),
+  );
+  assert.equal(
+    (await lockResetFenceForNewWorker(client, userResetFenceId("user_b"))).getTime(),
+    initial.getTime(),
+  );
+  assert.deepEqual(upserts, ["user:user_a", "user:user_b"]);
+  assert.deepEqual(locks, ["user:user_a", "user:user_b"]);
+});
+
+test("the default global fence remains compatible and is never lazily recreated", async () => {
+  const lastResetAt = new Date("2026-07-14T04:00:00.000Z");
+  const client = fenceClient(lastResetAt);
+
+  assert.equal(await lockResetFenceForNewWorker(client), lastResetAt);
+  assert.equal(client.upserts.length, 0);
+  assert.equal(client.fenceIds[0], GLOBAL_RESET_FENCE_ID);
+});
+
+test("personal reset advances only its selected fence", async () => {
+  const personalFence = userResetFenceId("user_a");
+  const client = scopedResetClient();
+
+  await lockResetFenceForReset(client, personalFence);
+
+  assert.deepEqual(client.upserts, [personalFence]);
+  assert.deepEqual(client.locks, [personalFence]);
+  assert.deepEqual(client.updates, [personalFence]);
+});
 
 test("RESET timestamps the fence only after acquiring its exclusive lock", async () => {
   let lockResolvedAt = 0;
@@ -64,6 +134,8 @@ test("stale worker write errors expose the reset-fenced API contract", () => {
   assert.equal(error.statusCode, 409);
   assert.equal(error.responseCode, "agent_job_reset_fenced");
   assert.equal(error.retryable, false);
+  assert.match(error.message, /latest reset/);
+  assert.doesNotMatch(error.message, /global reset/);
 });
 
 test("RESET advances the durable fence before deleting generated state", async () => {
@@ -132,18 +204,26 @@ function source(path: string) {
 }
 
 function fenceClient(lastResetAt: Date) {
-  return {
+  const client = {
     queries: [] as string[],
-    async $queryRawUnsafe<T>(query: string) {
+    fenceIds: [] as string[],
+    upserts: [] as string[],
+    async $queryRawUnsafe<T>(query: string, fenceId?: unknown) {
       this.queries.push(query);
+      if (fenceId) this.fenceIds.push(String(fenceId));
       return [{ lastResetAt }] as T;
     },
     resetFence: {
+      async upsert(args: { where: { id: string } }) {
+        client.upserts.push(args.where.id);
+        return { lastResetAt };
+      },
       async update() {
         return { lastResetAt };
       },
     },
   };
+  return client;
 }
 
 function fakeResetTransaction(calls: string[]) {
@@ -212,4 +292,29 @@ function fakeResetTransaction(calls: string[]) {
       },
     },
   };
+}
+
+function scopedResetClient() {
+  const now = new Date("2026-07-14T04:00:00.000Z");
+  const client = {
+    upserts: [] as string[],
+    locks: [] as string[],
+    updates: [] as string[],
+    async $queryRawUnsafe<T>(query: string, fenceId?: unknown) {
+      if (query.includes("clock_timestamp")) return [{ now }] as T;
+      client.locks.push(String(fenceId));
+      return [{ id: fenceId }] as T;
+    },
+    resetFence: {
+      async upsert(args: { where: { id: string } }) {
+        client.upserts.push(args.where.id);
+        return { lastResetAt: new Date(0) };
+      },
+      async update(args: { where: { id: string }; data: { lastResetAt: Date } }) {
+        client.updates.push(args.where.id);
+        return { lastResetAt: args.data.lastResetAt };
+      },
+    },
+  };
+  return client;
 }
