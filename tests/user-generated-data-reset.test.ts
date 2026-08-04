@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 process.env.DATABASE_URL ??= "postgresql://test:test@127.0.0.1:5432/test";
@@ -34,6 +36,122 @@ const cloudModels = [
   "cloudFetchRunTask",
   "cloudLanguageLibrary",
 ] as const;
+
+test("account reset route replaces the global admin reset endpoint", () => {
+  const root = process.cwd();
+  const accountRoute = join(root, "src/app/api/account/generated-data/reset/route.ts");
+  const adminRoute = join(root, "src/app/api/admin/maintenance/fetch-digest-reset/route.ts");
+
+  assert.equal(existsSync(accountRoute), true);
+  assert.equal(existsSync(adminRoute), false);
+  const route = readFileSync(accountRoute, "utf8");
+  assert.match(route, /export const dynamic = "force-dynamic"/);
+  assert.match(route, /export const POST =/);
+  assert.doesNotMatch(route, /isAdminEmail|userId|email|scope/);
+});
+
+test("account reset handler requires authentication", async () => {
+  const { createAccountGeneratedDataResetPost } = await import(
+    "../src/lib/account-generated-data-reset-route"
+  );
+  let resetCalls = 0;
+  const post = createAccountGeneratedDataResetPost({
+    getSession: async () => null,
+    reset: async () => {
+      resetCalls += 1;
+      throw new Error("must not run");
+    },
+    logError: () => undefined,
+  });
+
+  const response = await post(resetRequest({ confirmation: "RESET" }));
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "Unauthorized" });
+  assert.equal(resetCalls, 0);
+});
+
+test("account reset handler requires exact RESET after trimming", async () => {
+  const { createAccountGeneratedDataResetPost } = await import(
+    "../src/lib/account-generated-data-reset-route"
+  );
+  let resetCalls = 0;
+  const post = createAccountGeneratedDataResetPost({
+    getSession: async () => ({ user: { id: "session-user" } }),
+    reset: async () => {
+      resetCalls += 1;
+      throw new Error("must not run");
+    },
+    logError: () => undefined,
+  });
+
+  for (const confirmation of ["reset", "RESET!", "", null]) {
+    const response = await post(resetRequest({ confirmation }));
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Type RESET to confirm." });
+  }
+  assert.equal(resetCalls, 0);
+});
+
+test("account reset handler derives the only target from the session", async () => {
+  const { createAccountGeneratedDataResetPost } = await import(
+    "../src/lib/account-generated-data-reset-route"
+  );
+  const targets: string[] = [];
+  const summary = {
+    resetBuilders: 1,
+    deletedFeedItems: 2,
+    deletedLibraryFetchRuns: 3,
+    deletedDigests: 4,
+    deletedDigestRuns: 5,
+    deletedDigestedItems: 6,
+    deletedRecommendationSnapshots: 7,
+    deletedAgentJobRuns: 8,
+    lastResetAt: "2026-08-04T12:00:00.000Z",
+  };
+  const post = createAccountGeneratedDataResetPost({
+    getSession: async () => ({ user: { id: "session-user" } }),
+    reset: async (userId) => {
+      targets.push(userId);
+      return summary;
+    },
+    logError: () => undefined,
+  });
+
+  const response = await post(resetRequest({
+    confirmation: "  RESET  ",
+    userId: "other-user",
+    email: "other@example.com",
+    ownerUserId: "other-owner",
+    scope: "global",
+  }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(targets, ["session-user"]);
+  assert.deepEqual(await response.json(), { status: "reset", summary });
+});
+
+test("account reset handler hides internal reset failures", async () => {
+  const { createAccountGeneratedDataResetPost } = await import(
+    "../src/lib/account-generated-data-reset-route"
+  );
+  const logged: unknown[] = [];
+  const post = createAccountGeneratedDataResetPost({
+    getSession: async () => ({ user: { id: "session-user" } }),
+    reset: async () => {
+      throw new Error("database password leaked");
+    },
+    logError: (...values) => logged.push(values),
+  });
+
+  const response = await post(resetRequest({ confirmation: "RESET" }));
+  const body = await response.json();
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(body, { error: "Could not reset generated data." });
+  assert.doesNotMatch(JSON.stringify(body), /password leaked/);
+  assert.equal(logged.length, 1);
+});
 
 test("personal reset advances its fence first and mutates only user-owned generated state", async () => {
   const { resetUserFetchDigestState } = await import("../src/lib/fetch-digest-reset");
@@ -241,4 +359,12 @@ function argsFor(operations: Operation[], name: string) {
   const operation = operations.find((candidate) => operationName(candidate) === name);
   assert.ok(operation, `Missing operation ${name}`);
   return operation.args;
+}
+
+function resetRequest(body: unknown) {
+  return new Request("http://localhost/api/account/generated-data/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
