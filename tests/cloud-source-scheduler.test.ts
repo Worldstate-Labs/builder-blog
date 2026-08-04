@@ -241,7 +241,7 @@ test("a scheduler invocation that began before RESET cannot recreate queue state
 
   await assert.rejects(
     materializeDueCloudFetchQueue({ prisma: prisma as never, now }),
-    /started before the latest global reset/,
+    /started before the latest reset/,
   );
   assert.equal(queueCreates, 0);
 });

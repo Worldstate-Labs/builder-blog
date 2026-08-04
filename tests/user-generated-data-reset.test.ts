@@ -240,7 +240,8 @@ test("repository has no unattended all-user generated-data reset script", () => 
 });
 
 test("maintenance script rejects a missing target before initializing the database", () => {
-  const { DATABASE_URL: _databaseUrl, ...env } = process.env;
+  const env = { ...process.env };
+  delete env.DATABASE_URL;
   const result = spawnSync(
     join(process.cwd(), "node_modules/.bin/tsx"),
     [join(process.cwd(), "scripts/reset-user-fetch-digest-state.mts")],
