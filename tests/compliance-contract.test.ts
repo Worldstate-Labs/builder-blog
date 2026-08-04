@@ -174,6 +174,16 @@ test("every authenticated account sees a personal generated-data reset panel", (
   assert.doesNotMatch(panel, /Admin maintenance|every user|all fetch|Cloud work|deletedCloud|users:/);
 });
 
+test("maintenance reset requires one account target and uses the personal helper", () => {
+  const script = assertFile("scripts/reset-user-fetch-digest-state.mts");
+
+  assert.equal(existsSync(join(root, "scripts/clear-fetch-digest-state.mts")), false);
+  assert.match(script, /parseUserResetTarget/);
+  assert.match(script, /resolveUserResetTarget/);
+  assert.match(script, /resetUserFetchDigestState\(userId/);
+  assert.doesNotMatch(script, /resetFetchDigestState|for all users|user\.count/);
+});
+
 test("official worker writes share the durable reset fence and reject stale runs", () => {
   const schema = source("prisma/schema.prisma");
   const resetFence = assertFile("src/lib/reset-fence.ts");

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 process.env.DATABASE_URL ??= "postgresql://test:test@127.0.0.1:5432/test";
@@ -172,6 +173,83 @@ test("personal reset summary reports only current-account generated counts", asy
 
   assert.equal(message, "Reset 8 sources. Deleted 21 posts, 3 briefs, and 5 logs.");
   assert.doesNotMatch(message, /users?|Cloud|queue|work records/i);
+});
+
+test("maintenance target parser requires exactly one explicit account selector", async () => {
+  const { parseUserResetTarget } = await import(
+    "../src/lib/user-generated-data-reset-target"
+  );
+
+  assert.deepEqual(parseUserResetTarget(["--user-id", "user_a"]), {
+    kind: "userId",
+    value: "user_a",
+  });
+  assert.deepEqual(parseUserResetTarget(["--email", "person@example.com"]), {
+    kind: "email",
+    value: "person@example.com",
+  });
+  for (const args of [
+    [],
+    ["--user-id"],
+    ["--user-id", "user_a", "--email", "person@example.com"],
+    ["--user-id", "user_a", "--user-id", "user_b"],
+    ["--all"],
+  ]) {
+    assert.throws(() => parseUserResetTarget(args), /exactly one --user-id or --email/i);
+  }
+});
+
+test("maintenance target resolver fails closed for unknown or ambiguous accounts", async () => {
+  const { resolveUserResetTarget } = await import(
+    "../src/lib/user-generated-data-reset-target"
+  );
+
+  await assert.rejects(
+    resolveUserResetTarget(
+      { kind: "userId", value: "missing" },
+      userLookup([]) as never,
+    ),
+    /matched no account/i,
+  );
+  await assert.rejects(
+    resolveUserResetTarget(
+      { kind: "email", value: "duplicate@example.com" },
+      userLookup([{ id: "a" }, { id: "b" }]) as never,
+    ),
+    /matched multiple accounts/i,
+  );
+  assert.equal(
+    await resolveUserResetTarget(
+      { kind: "email", value: "person@example.com" },
+      userLookup([{ id: "user_a" }]) as never,
+    ),
+    "user_a",
+  );
+});
+
+test("repository has no unattended all-user generated-data reset script", () => {
+  const root = process.cwd();
+  const oldScript = join(root, "scripts/clear-fetch-digest-state.mts");
+  const script = join(root, "scripts/reset-user-fetch-digest-state.mts");
+
+  assert.equal(existsSync(oldScript), false);
+  assert.equal(existsSync(script), true);
+  const source = readFileSync(script, "utf8");
+  assert.match(source, /resetUserFetchDigestState\(userId/);
+  assert.doesNotMatch(source, /resetFetchDigestState|for all users|--all/i);
+});
+
+test("maintenance script rejects a missing target before initializing the database", () => {
+  const { DATABASE_URL: _databaseUrl, ...env } = process.env;
+  const result = spawnSync(
+    join(process.cwd(), "node_modules/.bin/tsx"),
+    [join(process.cwd(), "scripts/reset-user-fetch-digest-state.mts")],
+    { encoding: "utf8", env },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /exactly one --user-id or --email/i);
+  assert.doesNotMatch(result.stderr, /DATABASE_URL/);
 });
 
 test("personal reset advances its fence first and mutates only user-owned generated state", async () => {
@@ -388,4 +466,14 @@ function resetRequest(body: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function userLookup(rows: Array<{ id: string }>) {
+  return {
+    user: {
+      async findMany() {
+        return rows;
+      },
+    },
+  };
 }
