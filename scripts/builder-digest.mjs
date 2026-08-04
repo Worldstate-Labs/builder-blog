@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { appendFile, mkdir, mkdtemp, readdir, readFile, rm, stat as fsStat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readdir, readFile, rename, rm, stat as fsStat, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir, hostname, platform, release, userInfo } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   cloudDeadlineState as sharedCloudDeadlineState,
   cloudShardExecutionBudget as sharedCloudShardExecutionBudget,
@@ -40,7 +40,7 @@ const MACHINE_HEADERS = (() => {
 // Bump when the CLI emits a meaningfully different fetch-run record
 // shape or behavior. The server stores this verbatim so the user can
 // see which CLI build produced a given run.
-const CLI_VERSION = "0.6.0";
+const CLI_VERSION = "0.7.0";
 
 // Cached for fetch-run logging so a single CLI run shares one host /
 // platform identity across success and failure paths.
@@ -91,6 +91,33 @@ function envRetryDelaysMs(name, fallback) {
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 function agentDir() {
   return process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
+}
+
+async function writeJsonAtomically(file, value) {
+  await mkdir(dirname(file), { recursive: true });
+  const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  await rename(temporary, file);
+}
+
+async function readJsonFile(file, fallback = null) {
+  try {
+    return JSON.parse(await readFile(file, "utf8"));
+  } catch {
+    return fallback;
+  }
+}
+
+async function resolveCommandPath(command) {
+  const value = String(command || "").trim();
+  if (!value) return null;
+  if (value.includes("/") && existsSync(value)) return value;
+  for (const directory of String(process.env.PATH || "").split(":")) {
+    if (!directory) continue;
+    const candidate = join(directory, value);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
 }
 function accountsDir() {
   return join(agentDir(), "accounts");
@@ -573,7 +600,7 @@ const DEFAULT_APP_URL = "https://followbrief.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
 const DEFAULT_PERSONAL_FETCH_DAYS = 30;
-const MAX_NEW_PRODUCT_LAUNCH_FETCH_LIMIT = 5;
+const MAX_NEW_PRODUCT_LAUNCH_FETCH_LIMIT = 3;
 // Single source of truth for source metadata lives in config/sources.json.
 // This map only carries the per-source fetcher function — the part that can't be
 // expressed as JSON. Source id is the join key with sources.json.
@@ -599,6 +626,8 @@ function usage() {
   assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ [--assigned-only] [--complete-sources-only] --out library-agent-sync.json
+  prepare-managed-media --tasks fetch-result.json [--out fetch-result.json] [--artifact-root managed-media/]
+  asr-doctor
   extract-long-media --fetch-task-id <id>
   split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/ [--granularity source|task|cloud-source|cloud-run]
   fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--tasks-out failed-tasks.json] [--exclude-task-ids-file synced-ids.txt] [--reason slice_sync_failed] [--message "..."]
@@ -3315,6 +3344,9 @@ function buildBuilderFallbackTask(
     minimumContentQuality: minimumContentQualityForSource(sourceType, sources),
     summaryInstructions: singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
     fetchInstructions,
+    ...(sourceType === "youtube" || sourceType === "podcast" || sourceType === "video"
+      ? { managedMediaPolicy: "runner_owned_per_post_only" }
+      : {}),
     fallbackReason: error?.message || String(error || "Personal fetcher failed"),
   };
   task.id = fetchTaskId({ builderId: builder.id, builder: builder.name, item });
@@ -3395,6 +3427,7 @@ async function writeLongMediaProgressHeartbeat(fetchTaskIdValue, task, overrides
     title: overrides.title ?? existing.title ?? task?.item?.title ?? null,
     builder: overrides.builder ?? existing.builder ?? task?.builder ?? task?.builderSync?.name ?? null,
     sourceType: overrides.sourceType ?? existing.sourceType ?? task?.sourceType ?? null,
+    workerId: overrides.workerId ?? existing.workerId ?? null,
     bodyChars: overrides.bodyChars ?? existing.bodyChars ?? (typeof task?.item?.body === "string" ? task.item.body.length : 0),
     ...(overrides.summaryChars != null || existing.summaryChars != null
       ? { summaryChars: overrides.summaryChars ?? existing.summaryChars }
@@ -3407,9 +3440,11 @@ async function writeLongMediaProgressHeartbeat(fetchTaskIdValue, task, overrides
 // Fallback extraction guidance used only when an older server does not provide
 // an admin-editable common fetch prompt in the skill context.
 export const DEFAULT_FETCH_GUIDANCE = [
-  "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to pick any",
-  "extraction method available: web fetch, local CLI tools (yt-dlp, curl,",
-  "ffmpeg, headless browser, etc.), transcription APIs - anything you have.",
+  "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to obtain",
+  "primary page or API content with methods available to the model worker.",
+  "Managed YouTube and podcast speech transcription is prepared by the",
+  "FollowBrief runner before model work. A model worker must never launch,",
+  "replace, or install machine-level media download or transcription tools.",
   "Keep trying available methods until real primary content that meets",
   "`task.minimumContentQuality` is obtained, or no method remains.",
   "Primary content means content from `task.item.url`, the same origin, or a",
@@ -3419,6 +3454,21 @@ export const DEFAULT_FETCH_GUIDANCE = [
   "write a structured failed taskOutcome with reason `primary_content_unavailable`",
   "and evidence describing the blocked URL and attempted methods.",
 ].join("\n");
+
+function managedMediaExecutionBoundary(sourceId) {
+  const normalized = String(sourceId || "").trim().toLowerCase();
+  if (normalized !== "youtube" && normalized !== "podcast" && normalized !== "video") {
+    return "";
+  }
+  return [
+    "Execution boundary (enforced by FollowBrief):",
+    "The FollowBrief runner owns managed speech transcription before this model task.",
+    "Never install or invoke media download, conversion, or speech-to-text tools.",
+    "For a `ready` task, summarize only the supplied body and preserve its provenance.",
+    "For `fetch_builder_fallback`, limit work to discovering canonical post URLs and",
+    "page/feed/caption content; do not download or transcribe audio or video.",
+  ].join("\n");
+}
 
 // Build the per-source extraction instructions the agent literally
 // follows when a fetchTask is `requires_agent`. Always returns a
@@ -3436,6 +3486,7 @@ export function singlePostFetchInstructions(
     ? commonFetchRules
     : DEFAULT_FETCH_GUIDANCE;
   const hasCustom = typeof body === "string" && body.trim().length > 0;
+  const executionBoundary = managedMediaExecutionBoundary(sourceId);
   if (hasCustom) {
     return {
       scope: "single_post",
@@ -3448,6 +3499,7 @@ export function singlePostFetchInstructions(
         "",
         `Source-specific fetching rules (${label}):`,
         body,
+        ...(executionBoundary ? ["", executionBoundary] : []),
       ].join("\n"),
     };
   }
@@ -3459,6 +3511,7 @@ export function singlePostFetchInstructions(
       "",
       "Common fetching rules:",
       common,
+      ...(executionBoundary ? ["", executionBoundary] : []),
     ].join("\n"),
   };
 }
@@ -4476,9 +4529,8 @@ async function fetchPersonalPodcastBuilder(
   for (const item of parsed) {
     // Partition by show-notes substance. Episodes with substantial body
     // copy ship as regular items. Episodes whose RSS body is a one-line
-    // tagline, ad copy, or empty go to the agent as a fallback fetch
-    // task carrying the audio enclosure URL — the agent decides whether
-    // to ASR the audio per the per-source fetchPrompt.
+    // tagline, ad copy, or empty become managed-media tasks carrying the
+    // enclosure URL. The runner prepares ASR before model summarization.
     if (podcastShowNotesAreSubstantial(item.body)) {
       items.push({
         kind: item.kind,
@@ -5093,8 +5145,8 @@ export function parsePodcastFeedItems(xml, feedUrl) {
       };
     })
     // Keep episodes with at least an externalId + URL even if the body is
-    // empty — the agent fallback path handles thin/missing show notes by
-    // transcribing the audio enclosure.
+    // empty — the runner handles thin/missing show notes by preparing a
+    // transcript from the audio enclosure before model work.
     .filter((item) => item.externalId && (item.url || item.enclosureUrl));
 }
 
@@ -6527,15 +6579,36 @@ except Exception as exc:
 `;
 }
 
-// Reserved for worker-side long-media transcription; personal-source planning
-// must not invoke this path during discovery.
+// Shared deterministic media primitive. Personal-source planning only creates
+// tasks; the runner invokes this before model workers start.
 async function fetchYouTubeLocalAsr(videoUrl, {
   commandRunner = runTool,
   attempts = [],
   longToolTimeoutMsResolver = null,
   heartbeat = null,
   asrCapabilities = null,
+  toolPaths = null,
+  workDir: requestedWorkDir = null,
+  preserveWorkDir = false,
 } = {}) {
+  if (requestedWorkDir) {
+    const savedTranscript = cleanTranscriptText(
+      await readFile(join(requestedWorkDir, "transcript.txt"), "utf8").catch(() => ""),
+    );
+    const savedState = await readJsonFile(join(requestedWorkDir, "state.json"));
+    if (savedTranscript && savedState?.status === "completed") {
+      return {
+        text: savedTranscript,
+        transcriptSource: "local-speech-to-text",
+        captionLanguageCode: "",
+        inferredSourceLanguage: "",
+        captionSelectionReason: savedState.backend || null,
+        backend: savedState.backend || null,
+        reason: "resumed_completed_transcript",
+        attempts,
+      };
+    }
+  }
   const probeOptions = { timeoutMsResolver: longToolTimeoutMsResolver };
   const resolvedAsrCapabilities = asrCapabilities ?? await resolveLocalAsrCapabilities({
     commandRunner,
@@ -6555,28 +6628,38 @@ async function fetchYouTubeLocalAsr(videoUrl, {
     });
     return { text: "", reason: "asr_backend_unavailable", asrCapabilities: resolvedAsrCapabilities };
   }
-  const ytDlpAvailable = await commandExists("yt-dlp", commandRunner, probeOptions);
+  const ytDlpCommand = toolPaths?.downloader || "yt-dlp";
+  const ffmpegCommand = toolPaths?.decoder || "ffmpeg";
+  const ytDlpAvailable = await commandExists(ytDlpCommand, commandRunner, probeOptions);
   if (ytDlpAvailable == null) {
     attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
     return { text: "", reason: "extraction_exceeds_shard_timeout" };
   }
   if (!ytDlpAvailable) {
     attempts.push({ method: "local-asr", status: "skipped", reason: "yt-dlp_missing" });
-    return { text: "" };
+    return { text: "", reason: "yt-dlp_missing" };
   }
-  const ffmpegAvailable = await commandExists("ffmpeg", commandRunner, { ...probeOptions, versionArgs: ["-version"] });
+  const ffmpegAvailable = await commandExists(ffmpegCommand, commandRunner, { ...probeOptions, versionArgs: ["-version"] });
   if (ffmpegAvailable == null) {
     attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
     return { text: "", reason: "extraction_exceeds_shard_timeout" };
   }
   if (!ffmpegAvailable) {
     attempts.push({ method: "local-asr", status: "skipped", reason: "ffmpeg_missing" });
-    return { text: "" };
+    return { text: "", reason: "ffmpeg_missing" };
   }
 
   const asrRoot = join(jobTmpDir("library-cron"), "youtube-asr");
   await mkdir(asrRoot, { recursive: true });
-  const workDir = await mkdtemp(join(asrRoot, "run-"));
+  const workDir = requestedWorkDir || await mkdtemp(join(asrRoot, "run-"));
+  await mkdir(workDir, { recursive: true });
+  const keepWorkDir = preserveWorkDir || Boolean(requestedWorkDir);
+  const writeState = async (state) => {
+    await writeJsonAtomically(join(workDir, "state.json"), {
+      ...state,
+      updatedAt: new Date().toISOString(),
+    });
+  };
   try {
     const longToolOptions = (envName, fallback) => {
       const resolvedTimeoutValue = typeof longToolTimeoutMsResolver === "function"
@@ -6591,44 +6674,61 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       return heartbeat ? { timeoutMs, heartbeat } : { timeoutMs };
     };
     const rawTemplate = join(workDir, "audio.%(ext)s");
-    const downloadOptions = longToolOptions(
-      "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
-      DEFAULT_YOUTUBE_ASR_TIMEOUT_MS,
-    );
-    if (!downloadOptions) {
-      attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
-      return { text: "", reason: "extraction_exceeds_shard_timeout" };
+    let files = await readdir(workDir);
+    let audioFile = files
+      .map((file) => join(workDir, file))
+      .find((file) => basename(file).startsWith("audio.") && basename(file) !== "audio-mono.wav");
+    if (!audioFile) {
+      const downloadOptions = longToolOptions(
+        "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
+        DEFAULT_YOUTUBE_ASR_TIMEOUT_MS,
+      );
+      if (!downloadOptions) {
+        attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+        return { text: "", reason: "extraction_exceeds_shard_timeout" };
+      }
+      await writeState({ status: "downloading", sourceUrl: videoUrl });
+      const download = await commandRunner(
+        ytDlpCommand,
+        ["-f", "ba", "-x", "--audio-format", "mp3", "--audio-quality", "64K", "-o", rawTemplate, videoUrl],
+        downloadOptions,
+      );
+      if (!download.ok) {
+        const reason = `audio_download:${commandFailureReason(download)}`;
+        attempts.push({ method: "local-asr", status: "failed", reason });
+        await writeState({ status: "failed", stage: "download", reason });
+        return { text: "", reason };
+      }
+      files = await readdir(workDir);
+      audioFile = files
+        .map((file) => join(workDir, file))
+        .find((file) => basename(file).startsWith("audio.") && basename(file) !== "audio-mono.wav");
     }
-    const download = await commandRunner(
-      "yt-dlp",
-      ["-f", "ba", "-x", "--audio-format", "mp3", "--audio-quality", "64K", "-o", rawTemplate, videoUrl],
-      downloadOptions,
-    );
-    if (!download.ok) {
-      attempts.push({ method: "local-asr", status: "failed", reason: `audio_download:${commandFailureReason(download)}` });
-      return { text: "" };
-    }
-    const files = await readdir(workDir);
-    const audioFile = files.map((file) => join(workDir, file)).find((file) => basename(file).startsWith("audio."));
     if (!audioFile) {
       attempts.push({ method: "local-asr", status: "failed", reason: "audio_download_missing_file" });
-      return { text: "" };
+      return { text: "", reason: "audio_download_missing_file" };
     }
     const monoAudio = join(workDir, "audio-mono.wav");
-    const convertOptions = longToolOptions(
-      "BUILDER_BLOG_YOUTUBE_AUDIO_CONVERT_TIMEOUT_MS",
-      DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS,
-    );
-    if (!convertOptions) {
-      attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
-      return { text: "", reason: "extraction_exceeds_shard_timeout" };
-    }
-    const convert = await commandRunner("ffmpeg", ["-y", "-i", audioFile, "-ac", "1", "-ar", "16000", monoAudio], convertOptions);
-    if (!convert.ok) {
-      attempts.push({ method: "local-asr", status: "failed", reason: `audio_convert:${commandFailureReason(convert)}` });
-      return { text: "" };
+    if (!existsSync(monoAudio)) {
+      const convertOptions = longToolOptions(
+        "BUILDER_BLOG_YOUTUBE_AUDIO_CONVERT_TIMEOUT_MS",
+        DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS,
+      );
+      if (!convertOptions) {
+        attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+        return { text: "", reason: "extraction_exceeds_shard_timeout" };
+      }
+      await writeState({ status: "preparing_audio", sourceUrl: videoUrl });
+      const convert = await commandRunner(ffmpegCommand, ["-y", "-i", audioFile, "-ac", "1", "-ar", "16000", monoAudio], convertOptions);
+      if (!convert.ok) {
+        const reason = `audio_convert:${commandFailureReason(convert)}`;
+        attempts.push({ method: "local-asr", status: "failed", reason });
+        await writeState({ status: "failed", stage: "prepare_audio", reason });
+        return { text: "", reason };
+      }
     }
 
+    await writeState({ status: "transcribing", sourceUrl: videoUrl });
     const asr = await transcribeLocalAudio(monoAudio, workDir, commandRunner, {
       longToolTimeoutMsResolver,
       heartbeat,
@@ -6640,17 +6740,25 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       reason: asr.reason,
       backend: asr.backend || null,
     });
-    if (!asr.text) return { text: "", reason: asr.reason };
+    if (!asr.text) {
+      await writeState({ status: "failed", stage: "transcribe", reason: asr.reason || "asr_transcription_failed" });
+      return { text: "", reason: asr.reason };
+    }
+    const transcript = cleanTranscriptText(asr.text);
+    await writeFile(join(workDir, "transcript.txt"), `${transcript}\n`, { encoding: "utf8", mode: 0o600 });
+    await writeState({ status: "completed", backend: asr.backend || null, sourceUrl: videoUrl });
     return {
-      text: cleanTranscriptText(asr.text),
+      text: transcript,
       transcriptSource: "local-speech-to-text",
       captionLanguageCode: "",
       inferredSourceLanguage: "",
       captionSelectionReason: asr.backend,
+      backend: asr.backend || null,
+      reason: asr.reason || null,
       attempts,
     };
   } finally {
-    await rm(workDir, { recursive: true, force: true }).catch(() => {});
+    if (!keepWorkDir) await rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -6741,6 +6849,102 @@ export function resolveLocalAsrCapabilitiesForTest(options) {
   return resolveLocalAsrCapabilities(options);
 }
 
+async function runAsrDoctor({
+  capabilities = null,
+  commandRunner = runTool,
+  commandPathResolver = resolveCommandPath,
+  now = new Date(),
+  profilePath = join(agentDir(), "asr-machine-profile.json"),
+} = {}) {
+  const resolvedCapabilities = capabilities ?? await resolveLocalAsrCapabilities({ commandRunner });
+  const downloaderPath = await commandPathResolver("yt-dlp");
+  const decoderPath = await commandPathResolver("ffmpeg");
+  const adapter = resolvedCapabilities.adapters?.[0] ?? null;
+  const adapterCommand = adapter
+    ? adapter.python || adapter.command || (adapter.id === "whisper-cli" ? "whisper" : null)
+    : null;
+  const adapterPath = adapterCommand ? await commandPathResolver(adapterCommand) : null;
+  const missing = [
+    ...(!downloaderPath ? ["yt-dlp"] : []),
+    ...(!decoderPath ? ["ffmpeg"] : []),
+    ...(!adapter || !adapterPath ? ["local-asr-backend"] : []),
+  ];
+  const profile = {
+    version: 1,
+    status: missing.length === 0 ? "ready" : "missing_capability",
+    verifiedAt: now.toISOString(),
+    platform: RUN_PLATFORM || platform(),
+    hostname: RUN_HOSTNAME,
+    downloader: downloaderPath ? { command: "yt-dlp", path: downloaderPath } : null,
+    decoder: decoderPath ? { command: "ffmpeg", path: decoderPath } : null,
+    asr: adapter && adapterPath
+      ? {
+        backend: adapter.id,
+        command: adapterPath,
+        model: adapter.model || process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || null,
+        realtimeFactor: mediaRealtimeFactorForBackend(adapter.id),
+      }
+      : null,
+    missing,
+    probes: Array.isArray(resolvedCapabilities.probes) ? resolvedCapabilities.probes : [],
+  };
+  await writeJsonAtomically(profilePath, profile);
+  return profile;
+}
+
+function mediaRealtimeFactorForBackend(backend) {
+  const policy = installedLocalAgentTimeoutPolicy();
+  const factors = policy?.mediaEstimation?.backendAsrRealtimeFactors ?? {};
+  const normalized = String(backend || "").replace(/-/g, "_");
+  const value = Number(factors[backend] ?? factors[normalized]);
+  if (Number.isFinite(value) && value > 0) return value;
+  return Number(policy?.mediaEstimation?.conservativeFallbackAsrRealtimeFactor) || 1.25;
+}
+
+export function runAsrDoctorForTest(options) {
+  return runAsrDoctor(options);
+}
+
+async function asrDoctorCommand() {
+  const profile = await runAsrDoctor();
+  console.log(JSON.stringify(profile, null, 2));
+  if (profile.status !== "ready") process.exitCode = 2;
+}
+
+function capabilitiesFromAsrProfile(profile) {
+  if (profile?.version !== 1 || profile?.status !== "ready") return null;
+  const downloader = String(profile?.downloader?.path || "").trim();
+  const decoder = String(profile?.decoder?.path || "").trim();
+  const backend = String(profile?.asr?.backend || "").trim();
+  const command = String(profile?.asr?.command || "").trim();
+  if (!downloader || !decoder || !backend || !command) return null;
+  if (![downloader, decoder, command].every((path) => existsSync(path))) return null;
+  let adapter;
+  if (backend === "faster-whisper" || backend === "mlx-whisper") {
+    adapter = {
+      id: backend,
+      moduleName: backend === "faster-whisper" ? "faster_whisper" : "mlx_whisper",
+      python: command,
+    };
+  } else if (backend === "whisper-cli") {
+    adapter = { id: backend, command, model: profile?.asr?.model || null };
+  } else if (backend === "whisper-cpp" && profile?.asr?.model) {
+    adapter = { id: backend, command, model: String(profile.asr.model) };
+  } else {
+    return null;
+  }
+  return {
+    capabilities: { adapters: [adapter], probes: profile.probes ?? [], timedOut: false },
+    toolPaths: { downloader, decoder },
+  };
+}
+
+async function readReadyAsrMachineProfile(
+  profilePath = join(agentDir(), "asr-machine-profile.json"),
+) {
+  return capabilitiesFromAsrProfile(await readJsonFile(profilePath));
+}
+
 async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool, options = {}) {
   const capabilities = options.capabilities ?? await resolveLocalAsrCapabilities({
     commandRunner,
@@ -6761,7 +6965,7 @@ async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool,
       continue;
     }
     if (adapter.id === "whisper-cli") {
-      const model = process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
+      const model = adapter.model || process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
       const resolvedTimeoutValue = typeof options.longToolTimeoutMsResolver === "function"
         ? Number(options.longToolTimeoutMsResolver())
         : Number.NaN;
@@ -6775,7 +6979,7 @@ async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool,
         resolvedTimeoutMs ??
         envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS);
       const result = await commandRunner(
-        "whisper",
+        adapter.command || "whisper",
         [
           audioFile,
           "--model",
@@ -7033,6 +7237,358 @@ async function extractLongMedia(args) {
     text: result.text || "",
     attemptedMethods: attempts,
     ...basePayload,
+  }, null, 2));
+}
+
+function isManagedMediaTask(task) {
+  const sourceType = String(task?.sourceType || "").trim().toLowerCase();
+  return (
+    task?.contentStatus === "requires_agent" &&
+    task?.plannedExtractionMethod === "audio_transcription" &&
+    (sourceType === "youtube" || sourceType === "podcast" || sourceType === "video")
+  );
+}
+
+function managedMediaUrl(task) {
+  const rawJson = objectRecord(task?.item?.rawJson);
+  return String(
+    rawJson.enclosureUrl || task?.item?.enclosureUrl || task?.item?.url || "",
+  ).trim();
+}
+
+function managedMediaArtifactDir(root, task) {
+  const id = String(task?.id || fetchTaskId(task));
+  const hash = createHash("sha256").update(id).digest("hex");
+  return join(root, hash);
+}
+
+function managedMediaCapabilityFailure(reason) {
+  return new Set([
+    "asr_backend_unavailable",
+    "faster_whisper_missing",
+    "mlx_whisper_missing",
+    "python_missing",
+    "yt-dlp_missing",
+    "ffmpeg_missing",
+  ]).has(String(reason || ""));
+}
+
+function managedMediaBudgetSeconds(task) {
+  const candidates = [
+    task?.executionBudgetSeconds,
+    process.env.BUILDER_BLOG_MANAGED_MEDIA_TIMEOUT_SECONDS,
+    process.env.BUILDER_BLOG_AGENT_TIMEOUT_SECONDS,
+  ];
+  for (const candidate of candidates) {
+    const value = Number(candidate);
+    if (Number.isFinite(value) && value > 0) return Math.floor(value);
+  }
+  return 12 * 60 * 60;
+}
+
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function withMachineAsrLock(action, {
+  lockDir = join(agentDir(), "tmp", "managed-asr.lock"),
+  timeoutMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_TIMEOUT_MS || 4 * 60 * 60 * 1000),
+  staleAfterMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_STALE_MS || 10 * 60 * 1000),
+  heartbeatIntervalMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_HEARTBEAT_MS || 30_000),
+  onWait = null,
+} = {}) {
+  const startedAt = Date.now();
+  const leaseStaleAfterMs = Number.isFinite(staleAfterMs) && staleAfterMs > 0
+    ? Math.floor(staleAfterMs)
+    : 10 * 60 * 1000;
+  const leaseHeartbeatIntervalMs = Number.isFinite(heartbeatIntervalMs) && heartbeatIntervalMs > 0
+    ? Math.max(1, Math.min(Math.floor(heartbeatIntervalMs), Math.max(1, Math.floor(leaseStaleAfterMs / 2))))
+    : Math.min(30_000, Math.max(1, Math.floor(leaseStaleAfterMs / 2)));
+  const ownerToken = randomUUID();
+  const ownerPath = join(lockDir, "owner.json");
+  let heartbeatTimer = null;
+  let heartbeatChain = Promise.resolve();
+
+  const ownerTimestampMs = (owner) => {
+    const timestamp = Date.parse(String(owner?.heartbeatAt || owner?.acquiredAt || ""));
+    return Number.isFinite(timestamp) ? timestamp : null;
+  };
+  const lockDirectoryAgeMs = async () => {
+    try {
+      return Math.max(0, Date.now() - (await fsStat(lockDir)).mtimeMs);
+    } catch {
+      return Number.POSITIVE_INFINITY;
+    }
+  };
+  const ownerLeaseIsStale = async (owner) => {
+    const timestamp = ownerTimestampMs(owner);
+    if (timestamp !== null) return Date.now() - timestamp >= leaseStaleAfterMs;
+    return (await lockDirectoryAgeMs()) >= leaseStaleAfterMs;
+  };
+  const ownerIdentity = (owner) => owner?.token
+    ? `token:${owner.token}`
+    : owner
+      ? `legacy:${owner.pid || ""}:${owner.acquiredAt || ""}:${owner.heartbeatAt || ""}`
+      : "missing";
+  const reclaimStaleLockDirectory = async (expectedOwner) => {
+    const currentOwner = await readJsonFile(ownerPath);
+    if (ownerIdentity(currentOwner) !== ownerIdentity(expectedOwner)) return false;
+    if (
+      currentOwner
+        ? processIsAlive(Number(currentOwner.pid)) && !(await ownerLeaseIsStale(currentOwner))
+        : !(await ownerLeaseIsStale(currentOwner))
+    ) return false;
+    const stalePath = `${lockDir}.stale-${process.pid}-${randomUUID()}`;
+    try {
+      // Cleanup targets the quarantined directory rather than whichever owner
+      // may later acquire the canonical lock path.
+      await rename(lockDir, stalePath);
+    } catch (error) {
+      if (error?.code === "ENOENT") return false;
+      throw error;
+    }
+    await rm(stalePath, { recursive: true, force: true });
+    return true;
+  };
+
+  await mkdir(dirname(lockDir), { recursive: true });
+  while (true) {
+    try {
+      await mkdir(lockDir);
+      const acquiredAt = new Date().toISOString();
+      await writeJsonAtomically(ownerPath, {
+        pid: process.pid,
+        token: ownerToken,
+        hostname: RUN_HOSTNAME,
+        acquiredAt,
+        heartbeatAt: acquiredAt,
+      });
+      break;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const owner = await readJsonFile(ownerPath);
+      if (
+        (!owner && await ownerLeaseIsStale(owner)) ||
+        (owner && (!processIsAlive(Number(owner.pid)) || await ownerLeaseIsStale(owner)))
+      ) {
+        await reclaimStaleLockDirectory(owner);
+        continue;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        const timeout = new Error("managed_asr_lock_timeout");
+        timeout.code = "MANAGED_ASR_LOCK_TIMEOUT";
+        throw timeout;
+      }
+      if (typeof onWait === "function") await onWait(owner);
+      await sleep(2_000);
+    }
+  }
+
+  const refreshHeartbeat = () => {
+    heartbeatChain = heartbeatChain
+      .then(async () => {
+        const owner = await readJsonFile(ownerPath);
+        if (owner?.token !== ownerToken) return;
+        await writeJsonAtomically(ownerPath, {
+          ...owner,
+          heartbeatAt: new Date().toISOString(),
+        });
+      })
+      .catch(() => {});
+  };
+  heartbeatTimer = setInterval(refreshHeartbeat, leaseHeartbeatIntervalMs);
+  heartbeatTimer.unref?.();
+
+  try {
+    return await action();
+  } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    await heartbeatChain;
+    const owner = await readJsonFile(ownerPath);
+    if (owner?.token === ownerToken) {
+      await rm(lockDir, { recursive: true, force: true });
+    }
+  }
+}
+
+export function withMachineAsrLockForTest(action, options) {
+  return withMachineAsrLock(action, options);
+}
+
+async function transcribeManagedMediaTask(task, { artifactDir }) {
+  const sourceUrl = managedMediaUrl(task);
+  if (!sourceUrl) return { text: "", reason: "managed_media_url_missing", attempts: [] };
+  await mkdir(artifactDir, { recursive: true });
+  const startedAt = Date.now();
+  const budgetMs = managedMediaBudgetSeconds(task) * 1000;
+  const remainingMs = () => Math.max(0, budgetMs - (Date.now() - startedAt));
+  const attempts = [];
+  const profiled = await readReadyAsrMachineProfile();
+  const progress = (status, phase, message) => writeLongMediaProgressHeartbeat(
+    String(task?.id || fetchTaskId(task)),
+    task,
+    { status, phase, message, workerId: "followbrief-runner" },
+  );
+  await progress("reading", "managed_media", "Waiting for the FollowBrief media runner.");
+  return withMachineAsrLock(
+    async () => {
+      await progress("reading", "managed_media", "Preparing local speech transcript.");
+      return fetchYouTubeLocalAsr(sourceUrl, {
+        commandRunner: runTool,
+        attempts,
+        longToolTimeoutMsResolver: remainingMs,
+        heartbeat: {
+          intervalMs: longMediaHeartbeatIntervalMs(),
+          onHeartbeat: () => progress(
+            "reading",
+            "managed_media",
+            "Preparing local speech transcript.",
+          ),
+        },
+        asrCapabilities: profiled?.capabilities ?? null,
+        toolPaths: profiled?.toolPaths ?? null,
+        workDir: artifactDir,
+        preserveWorkDir: true,
+      });
+    },
+    {
+      onWait: async () => {
+        await writeJsonAtomically(join(artifactDir, "state.json"), {
+          status: "waiting_for_machine_asr",
+          sourceUrl,
+          updatedAt: new Date().toISOString(),
+        });
+        await progress("reading", "managed_media", "Waiting for another local transcription to finish.");
+      },
+    },
+  ).then(async (result) => {
+    await progress(
+      result?.text ? "fetched" : "failed",
+      result?.text ? "summarize" : "completed",
+      result?.text ? "Transcript prepared; waiting for summarization." : `Media preparation failed: ${result?.reason || "unknown"}`,
+    );
+    return { ...result, attempts };
+  });
+}
+
+async function prepareManagedMediaTasks(fetchResult, {
+  artifactRoot = join(jobTmpDir("library-once"), "managed-media"),
+  transcribeTask = transcribeManagedMediaTask,
+} = {}) {
+  const fetchTasks = Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [];
+  const retainedTasks = [];
+  const taskOutcomes = Array.isArray(fetchResult?.taskOutcomes)
+    ? [...fetchResult.taskOutcomes]
+    : [];
+  let preparedCount = 0;
+  let blockedCount = 0;
+  let failedCount = 0;
+
+  await mkdir(artifactRoot, { recursive: true });
+  for (const task of fetchTasks) {
+    if (!isManagedMediaTask(task)) {
+      retainedTasks.push(task);
+      continue;
+    }
+    const artifactDir = managedMediaArtifactDir(artifactRoot, task);
+    let result;
+    try {
+      result = await transcribeTask(task, { artifactDir });
+    } catch (error) {
+      result = {
+        text: "",
+        reason: error?.code === "MANAGED_ASR_LOCK_TIMEOUT"
+          ? "managed_asr_lock_timeout"
+          : "managed_media_preparation_failed",
+        attempts: [],
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+    const transcript = cleanTranscriptText(result?.text || "");
+    if (transcript) {
+      const rawJson = objectRecord(task?.item?.rawJson);
+      retainedTasks.push({
+        ...task,
+        contentStatus: "ready",
+        agentWorkType: "summarize_prepared_media",
+        plannedExtractionMethod: "managed_local_asr",
+        item: {
+          ...task.item,
+          body: transcript,
+          rawJson: {
+            ...rawJson,
+            transcriptSource: result.transcriptSource || "local-speech-to-text",
+            managedMedia: {
+              backend: result.backend || result.captionSelectionReason || null,
+              preparedAt: new Date().toISOString(),
+              artifact: "transcript.txt",
+              attempts: result.attempts || [],
+            },
+          },
+        },
+      });
+      preparedCount += 1;
+      continue;
+    }
+
+    const reason = String(result?.reason || "managed_media_preparation_failed").slice(0, 400);
+    const blocked = managedMediaCapabilityFailure(reason);
+    taskOutcomes.push({
+      fetchTaskId: String(task?.id || fetchTaskId(task)),
+      status: blocked ? "blocked" : "failed",
+      reason: blocked ? "asr_capability_missing" : reason,
+      evidence: {
+        managedBy: "followbrief-runner",
+        sourceReason: reason,
+        attemptedMethods: result?.attempts || [],
+        artifactDirectory: basename(artifactDir),
+        ...(result?.error ? { error: String(result.error).slice(0, 500) } : {}),
+      },
+      plannedTask: task,
+    });
+    if (blocked) blockedCount += 1;
+    else failedCount += 1;
+  }
+
+  return {
+    ...fetchResult,
+    fetchTasks: retainedTasks,
+    taskOutcomes,
+    managedMediaPreparation: {
+      prepared: preparedCount,
+      blocked: blockedCount,
+      failed: failedCount,
+    },
+  };
+}
+
+export function prepareManagedMediaTasksForTest(fetchResult, options) {
+  return prepareManagedMediaTasks(fetchResult, options);
+}
+
+async function prepareManagedMediaCommand(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const outFile = argValue(args, "--out", tasksFile);
+  const artifactRoot = argValue(
+    args,
+    "--artifact-root",
+    join(jobTmpDir("library-once"), "managed-media"),
+  );
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!outFile) throw new Error("Missing --out fetch-result.json");
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const prepared = await prepareManagedMediaTasks(fetchResult, { artifactRoot });
+  await writeJsonAtomically(outFile, prepared);
+  console.log(JSON.stringify({
+    status: "ok",
+    artifact: outFile,
+    ...prepared.managedMediaPreparation,
   }, null, 2));
 }
 
@@ -8201,6 +8757,14 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     }
     return target;
   };
+
+  for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
+    if (!outcome?.fetchTaskId || isCandidateDiscoveryOutcome(outcome)) continue;
+    const id = String(outcome.fetchTaskId);
+    if (accounted.has(id)) continue;
+    accounted.add(id);
+    taskOutcomes.push(outcome);
+  }
 
   for (const task of planned) {
     if (!isDeterministicSyncFetchTask(task)) continue;
@@ -10800,7 +11364,13 @@ async function syncBuilders(args) {
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
-  const { plannedTasks, plannedTaskOutcomes, discoveryExpansions, summaryLanguage } = await readPlannedFetchResult(tasksFile);
+  const {
+    plannedTasks: rawPlannedTasks,
+    plannedTaskOutcomes,
+    discoveryExpansions,
+    summaryLanguage,
+  } = await readPlannedFetchResult(tasksFile);
+  const plannedTasks = combinedCloudSyncPlannedTasks(rawPlannedTasks, plannedTaskOutcomes);
   const workerUsages = await readShardWorkerUsages(argValue(args, "--results-dir", null), plannedTasks);
   payload.summaryLanguage ??= summaryLanguage ?? null;
   payload = prepareSyncReadyPayload(payload, plannedTasks);
@@ -11222,8 +11792,7 @@ function plannedTaskOutcomeForCloudSync(outcome) {
   if (!task || typeof task !== "object") return null;
   const outcomeTaskId = String(outcome?.fetchTaskId || "").trim();
   const taskId = String(task?.id || "").trim();
-  const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
-  if (!taskId || taskId !== outcomeTaskId || !cloudSourceTaskId) return null;
+  if (!taskId || taskId !== outcomeTaskId) return null;
   return task;
 }
 
@@ -12384,7 +12953,11 @@ function taskWithShardWorkerId(task, workerIds) {
 
 export function fetchRunPlannedTaskPatches(fetchResult, options = {}) {
   const workerIds = shardWorkerIdByTaskId(options.shardPlans ?? []);
-  return extractFetchTasks(fetchResult)
+  const plannedTasks = combinedCloudSyncPlannedTasks(
+    extractFetchTasks(fetchResult),
+    Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [],
+  );
+  return plannedTasks
     .filter((task) => !isCandidateDiscoveryFetchTask(task))
     .map((task) => {
       const id = String(task?.id || fetchTaskId(task));
@@ -13263,6 +13836,8 @@ async function main() {
   else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
   else if (command === "extract-long-media") await extractLongMedia(args);
+  else if (command === "prepare-managed-media") await prepareManagedMediaCommand(args);
+  else if (command === "asr-doctor") await asrDoctorCommand();
   else if (command === "append-fetch-run-terminal-task-ids") await appendFetchRunTerminalTaskIds(args);
   else if (command === "split-sync-slices") await splitSyncSlices(args);
   else if (command === "fail-sync-slice") await failSyncSlice(args);

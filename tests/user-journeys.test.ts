@@ -1256,6 +1256,10 @@ test("web app serves the agent skill and setup command", () => {
     "skills/builder-blog-digest/jobs/_install-skill.md",
     "utf8",
   );
+  const asrCapabilitySetup = readFileSync(
+    "skills/builder-blog-digest/jobs/_asr-capability-setup.md",
+    "utf8",
+  );
   // Summary language is no longer hardcoded to Chinese — the contract defers to
   // the per-run language stated in summaryInstructions.prompt, which is what
   // lets the account-wide summary-language setting actually take effect.
@@ -1272,6 +1276,10 @@ test("web app serves the agent skill and setup command", () => {
       .replace(
         /\{\{INCLUDE:install-skill\}\}/g,
         installSkill.replace(/^\s*<!--[\s\S]*?-->\s*/, "").trim(),
+      )
+      .replace(
+        /\{\{INCLUDE:asr-capability-setup\}\}/g,
+        asrCapabilitySetup.replace(/^\s*<!--[\s\S]*?-->\s*/, "").trim(),
       )
       .replace(
         /\{\{INCLUDE:fetch-task-discovery TMP_JOB="([^"]*)"\}\}/g,
@@ -2357,9 +2365,9 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
 
   // YouTube extraction strategy moved out of the contract into the source prompt.
   assert.doesNotMatch(contract, /silent screen recording/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Only if no usable captions\/transcript are available/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Prefer faster-whisper or MLX Whisper/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Do not use the OpenAI API/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /FollowBrief runner prepares local speech/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /must not choose\s+or launch machine transcription tools/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /faster-whisper|MLX Whisper|OpenAI API/i);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /estimate this\s+video's duration/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /local_asr_duration_exceeded/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /worker budget/);
@@ -2770,7 +2778,8 @@ it does, intended user, why it is notable based on supplied evidence, launch lin
 date. Separate confirmed facts from inference and preserve direct URLs.`,
   );
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /creator\/manual captions/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Do not use the OpenAI API/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /OpenAI API|whisper|ffmpeg|yt-dlp/i);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /FollowBrief runner prepares local speech/);
   assert.match(
     DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct,
     /user-selected output language/,
@@ -4272,6 +4281,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcRoute, /getUserSourceConfigs\(userId\)/);
   assert.match(srcRoute, /getAllSourceConfigs\(\)/);
   assert.match(srcRoute, /Quality gates can only be changed by an admin/);
+  assert.match(srcRoute, /Fetching instructions can only be changed by an admin/);
   assert.match(srcRoute, /contentQuality: defaultBySourceId\.get\(config\.sourceId\)\?\.contentQuality/);
   assert.match(srcRoute, /updateUserSourceConfig\b/);
   assert.match(srcRoute, /isAdminEmail\(session\.user\.email\)/);
@@ -4303,6 +4313,9 @@ test("content config is per-user, seeded from a system default", () => {
     DEFAULT_SOURCE_CONFIGS.new_product_launches.fetchPromptBody,
     DEFAULT_DIGEST_PROMPTS.fetchNewProductLaunch,
   );
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /download|Whisper|ffmpeg|yt-dlp/i);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /faster-whisper|MLX Whisper|whisper CLI/i);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /FollowBrief runner/i);
   assert.equal(
     DEFAULT_SOURCE_CONFIGS.new_product_launches.summaryPromptBody,
     DEFAULT_DIGEST_PROMPTS.summarizeNewProductLaunch,
@@ -4330,7 +4343,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(newProductLaunchesSettingsCard, /New Product Launches/);
   assert.match(newProductLaunchesSettingsCard, /data-source="new_product_launches"/);
   assert.equal(
-    (newProductLaunchesSettingsCard.match(/<p class="settings-section-title">Fetching<\/p>/g) ??
+    (newProductLaunchesSettingsCard.match(/<p class="settings-section-title">Content extraction<\/p>/g) ??
       []).length,
     1,
   );
@@ -4350,7 +4363,10 @@ test("content config is per-user, seeded from a system default", () => {
     (newProductLaunchesSettingsCard.match(/class="settings-section-title"/g) ?? []).length,
     3,
   );
-  assert.match(newProductLaunchesSettingsCard, /Source-specific extraction instructions\./);
+  assert.match(
+    newProductLaunchesSettingsCard,
+    /Source-specific primary-content and provenance guidance\./,
+  );
   assert.match(
     newProductLaunchesSettingsCard,
     /Defines each post summary; the run prompt sets language\./,

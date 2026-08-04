@@ -7,7 +7,7 @@ type JsonRecord = Record<string, unknown>;
 
 type ClientTaskResult = {
   cloudSourceTaskId: string;
-  status: "succeeded" | "partial" | "failed";
+  status: "succeeded" | "partial" | "failed" | "deferred";
   plannedPosts: number;
   syncedPosts: number;
   failedPosts: number;
@@ -158,12 +158,21 @@ export function reconcileCloudFetchTerminalResult(params: {
 
   const syncedPosts = posts.filter((post) => post.status === "synced").length;
   const skippedPosts = posts.filter((post) => post.status === "skipped").length;
-  const failedPosts = posts.filter((post) =>
-    post.status === "failed" || post.status === "blocked" || post.status === "action_needed",
+  const deferredPosts = posts.filter((post) =>
+    post.status === "blocked" && post.failureReason === "asr_capability_missing",
   ).length;
+  const failedPosts = posts.filter((post) =>
+    post.status === "failed" ||
+    post.status === "action_needed" ||
+    (post.status === "blocked" && post.failureReason !== "asr_capability_missing"),
+  ).length;
+  // Keep the source on the short capability-retry cadence even when other posts
+  // synced. Those posts are idempotently deduplicated when the deferred media is retried.
   const status = posts.length === 0
     ? params.clientResult.status
-    : failedPosts === 0
+    : deferredPosts > 0 && failedPosts === 0
+      ? "deferred"
+      : failedPosts === 0
       ? "succeeded"
       : syncedPosts > 0 || skippedPosts > 0
         ? "partial"
@@ -186,6 +195,7 @@ export function reconcileCloudFetchTerminalResult(params: {
     plannedPosts: posts.length,
     syncedPosts,
     skippedPosts,
+    deferredPosts,
     failedPosts,
     actualDurationSeconds: params.clientResult.actualDurationSeconds ?? null,
     failureReason,

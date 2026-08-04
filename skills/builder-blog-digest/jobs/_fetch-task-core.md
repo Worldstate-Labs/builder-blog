@@ -52,12 +52,12 @@ How to execute each `fetchTask`:
   - For `requires_agent`, follow `task.fetchInstructions.prompt` as the
     authoritative extraction guide. This string is always present and is either
     the common fetching rules plus your per-source fetch prompt (when
-    configured), or just the common fetching rules for that source (use
-    task.item.url, task.sourceType, task.agentWorkType, and any available
-    method — web fetch, local CLI tools
-    yt-dlp/curl/ffmpeg, transcription APIs, headless browser, anything you have
-    — until real primary content meeting task.minimumContentQuality is
-    obtained). Do not override the prompt with your own heuristics. Do not stop
+    configured), or just the common fetching rules for that source. Use
+    task.item.url, task.sourceType, task.agentWorkType, and available page/API
+    retrieval methods until real primary content meeting
+    task.minimumContentQuality is obtained. Managed YouTube/podcast audio
+    transcription is runner-owned and is never a `requires_agent` operation.
+    Do not override the prompt with your own heuristics. Do not stop
     just because one extraction method fails; stop only if no available method
     can obtain real primary content for a task, then write the tried methods and
     concrete blocker {{REPORT_TARGET}} and skip it.
@@ -72,15 +72,16 @@ How to execute each `fetchTask`:
   caches may live outside this directory. Per-job content artifacts from this
   run must stay under `$BUILDER_BLOG_JOB_TMP_DIR`: audio/video downloads,
   subtitles, transcripts, browser profiles, screenshots, page dumps, and scratch
-  files. Do not write those per-job artifacts to `/tmp`, `/var/folders`,
+  files. Model workers are forbidden from creating the managed-media artifacts,
+  but the boundary still applies to any accidental or diagnostic output. Do not write those per-job
+  artifacts to `/tmp`, `/var/folders`,
   `~/Downloads`, `~/.cache`, another account/job directory, or global scratch.
   Do not read or reuse local artifacts from other accounts, other job types, or
   global scratch directories.
-  Never read from `~/.builder-blog/tmp/accounts/<other account>`,
-  `~/.builder-blog/tmp/whisper`, or another account's transcript/audio cache. If
-  a useful artifact exists outside the current account/job boundary, treat it as
-  unavailable and fetch or transcribe the task inside the current scratch path,
-  or report a terminal task outcome with concrete evidence.
+  Never read from `~/.builder-blog/tmp/accounts/<other account>` or another
+  account's content cache. If a useful artifact exists outside the current
+  account/job boundary, treat it as unavailable and fetch the page inside the
+  current scratch path, or report a terminal task outcome with concrete evidence.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive acceptance:
   `minChars`, `minContentUnits`, and optional density/diversity gates such as
@@ -112,9 +113,9 @@ How to execute each `fetchTask`:
   from the upload according to source type.
 - For every output item, include `rawJson.fetchTaskId`. For `requires_agent`,
   also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
-  `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`; for YouTube
-  include `rawJson.transcriptSource="agent-transcript"` unless a better primary
-  transcript source is used. Also include `rawJson.acquisition` when known:
+  `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. Preserve the
+  runner-provided transcript provenance for ready media tasks. Also include
+  `rawJson.acquisition` when known:
   `{ provider, method, processedLocally: true, rawPersistedRequested,
   rightsBasis }`.
 

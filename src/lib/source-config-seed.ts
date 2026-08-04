@@ -28,11 +28,9 @@ export type SourceTypeConfigShape = {
   defaultFetchLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
-  /// Optional per-source fetch prompt. Surfaced to the agent in
-  /// fallback fetch tasks so it can decide HOW to acquire content
-  /// (e.g. for podcast: try show notes first, else download audio +
-  /// Whisper transcribe). Null means "no agent instructions; CLI
-  /// deterministic behavior is authoritative".
+  /// Optional per-source content extraction guidance. Surfaced to the agent in
+  /// fallback page/API tasks so it can apply source semantics and provenance
+  /// rules. Machine-level managed media execution remains deterministic.
   fetchPromptBody: string | null;
   summaryStyle: SourceSummaryStyle;
 };
@@ -48,7 +46,8 @@ export type DigestConfigShape = {
 };
 
 export const DEFAULT_COMMON_FETCH_RULES = [
-  "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to pick any extraction method available: web fetch, local CLI tools (yt-dlp, curl, ffmpeg, headless browser, etc.), transcription APIs - anything you have.",
+  "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to obtain primary page or API content with the methods available to the model worker.",
+  "Managed YouTube and podcast speech transcription is prepared by the FollowBrief runner before model work. Never launch or replace that machine-level media pipeline from a source prompt.",
   "",
   "Keep trying available methods until real primary content that meets `task.minimumContentQuality` is obtained, or no method remains.",
   "",

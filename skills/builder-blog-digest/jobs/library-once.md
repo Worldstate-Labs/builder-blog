@@ -18,6 +18,11 @@ Execution contract:
 
 {{INCLUDE:install-skill}}
 
+Before step 2, check the runner-owned managed-media capability. Dependency
+installation is interactive and optional for this private one-time run:
+
+{{INCLUDE:asr-capability-setup}}
+
 2. Run one source fetch through the FollowBrief runner:
 
 ```bash

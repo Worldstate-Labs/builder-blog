@@ -87,6 +87,12 @@ export async function PATCH(request: Request) {
       { status: 403 },
     );
   }
+  if (!isAdmin && patch.fetchPromptBody !== undefined) {
+    return NextResponse.json(
+      { error: "Fetching instructions can only be changed by an admin." },
+      { status: 403 },
+    );
+  }
   try {
     const update = isAdmin
       ? updateUserSourceConfigAndDefault

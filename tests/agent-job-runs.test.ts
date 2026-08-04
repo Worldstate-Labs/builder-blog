@@ -882,7 +882,9 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(workerPrompt, /\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/progress\/<hash>\.json/);
   assert.match(workerPrompt, /under the `progress\/`[\s\S]*subdirectory/);
   assert.match(workerPrompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
-  assert.match(workerPrompt, /extraction_exceeds_shard_timeout/);
+  assert.match(workerPrompt, /Managed long-media extraction is owned by the FollowBrief runner/);
+  assert.match(workerPrompt, /Never start audio\/video download or speech-to-text work/);
+  assert.doesNotMatch(workerPrompt, /extract-long-media|extraction_exceeds_shard_timeout/);
   assert.match(workerPrompt, /Do NOT use any subagent, nested agent, secondary session, or delegation/);
   assert.match(workerPrompt, /including Claude Task\/subagent tools,[\s\S]*`codex exec`, `claude -p`, `openclaw agent`/);
 });

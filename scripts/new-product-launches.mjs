@@ -2,6 +2,7 @@
 
 import { isIP } from "node:net";
 
+const DEFAULT_LAUNCHES = 3;
 const MAX_LAUNCHES = 5;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const FETCH_USER_AGENT = "BuilderBlogLaunchDiscovery/1.0 (+https://followbrief.worldstatelabs.com/)";
@@ -99,7 +100,7 @@ export async function discoverNewProductLaunches({
   fetcher = fetch,
   now = new Date(),
   lookbackDays,
-  limit = 5,
+  limit = DEFAULT_LAUNCHES,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   excludeCandidate = () => false,
 } = {}) {
@@ -115,7 +116,7 @@ export async function discoverNewProductLaunches({
 
   const resolvedLimit = Math.min(
     MAX_LAUNCHES,
-    Math.max(1, Math.floor(Number(limit) || MAX_LAUNCHES)),
+    Math.max(1, Math.floor(Number(limit) || DEFAULT_LAUNCHES)),
   );
   const resolvedTimeoutMs = clampPositiveInteger(timeoutMs, DEFAULT_TIMEOUT_MS, 1_000, 60_000);
   const cutoff = new Date(

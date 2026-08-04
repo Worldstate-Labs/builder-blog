@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile, spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
@@ -839,6 +839,7 @@ test("sync payload can carry a durable fetch-run plan patch", async () => {
   assert.ok(fetchRun);
   assert.equal(fetchRun.id, "fetch_run_1");
   assert.equal(fetchRun.plannedTasks.length, 1);
+  const plannedTask = fetchRun.plannedTasks[0] as Record<string, unknown>;
   assert.deepEqual(
     Object.fromEntries(
       [
@@ -851,7 +852,7 @@ test("sync payload can carry a durable fetch-run plan patch", async () => {
         "status",
         "contentStatus",
         "agentWorkType",
-      ].map((key) => [key, fetchRun.plannedTasks[0][key]]),
+      ].map((key) => [key, plannedTask[key]]),
     ),
     {
       id: "fetch_post:product-hunt:workclaw",
@@ -2016,6 +2017,315 @@ test("personal YouTube fetcher plans worker fallback without audio download or l
   );
 });
 
+test("managed media preparation rewrites successful ASR tasks to ready before model work", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?prepare-media-ready=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-ready-"));
+  try {
+    const fetchResult = {
+      summaryLanguage: "zh",
+      fetchTasks: [
+        {
+          id: "youtube-task",
+          type: "youtube_transcription",
+          sourceType: "youtube",
+          contentStatus: "requires_agent",
+          agentWorkType: "youtube_transcription",
+          plannedExtractionMethod: "audio_transcription",
+          item: {
+            title: "Long video",
+            url: "https://www.youtube.com/watch?v=abc123xyz00",
+            body: "",
+            rawJson: {},
+          },
+        },
+        {
+          id: "blog-task",
+          sourceType: "blog",
+          contentStatus: "requires_agent",
+          agentWorkType: "blog_article_fetch",
+          item: { title: "Article", url: "https://example.com/article" },
+        },
+      ],
+      taskOutcomes: [],
+    };
+
+    const prepared = await cli.prepareManagedMediaTasksForTest(fetchResult, {
+      artifactRoot: dir,
+      transcribeTask: async () => ({
+        text: "A complete deterministic transcript with enough primary content.",
+        transcriptSource: "local-speech-to-text",
+        backend: "faster-whisper",
+        attempts: [{ method: "local-asr", status: "ok", backend: "faster-whisper" }],
+      }),
+    });
+
+    assert.equal(prepared.fetchTasks.length, 2);
+    const media = prepared.fetchTasks[0];
+    assert.equal(media.contentStatus, "ready");
+    assert.equal(media.agentWorkType, "summarize_prepared_media");
+    assert.match(media.item.body, /deterministic transcript/);
+    assert.equal(media.item.rawJson.transcriptSource, "local-speech-to-text");
+    assert.equal(media.item.rawJson.managedMedia.backend, "faster-whisper");
+    assert.equal(prepared.fetchTasks[1], fetchResult.fetchTasks[1]);
+    assert.deepEqual(prepared.taskOutcomes, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed media preparation blocks only ASR-dependent tasks when capability is missing", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?prepare-media-blocked=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-blocked-"));
+  try {
+    const mediaTask = {
+      id: "podcast-task",
+      type: "podcast_audio_transcription",
+      sourceType: "podcast",
+      contentStatus: "requires_agent",
+      agentWorkType: "podcast_audio_transcription",
+      plannedExtractionMethod: "audio_transcription",
+      cloudSourceTaskId: "cloud-source-task",
+      item: {
+        title: "Long episode",
+        url: "https://pod.example.com/episode",
+        rawJson: { enclosureUrl: "https://cdn.example.com/episode.mp3" },
+      },
+    };
+    const ordinaryTask = {
+      id: "article-task",
+      sourceType: "blog",
+      contentStatus: "requires_agent",
+      agentWorkType: "blog_article_fetch",
+      item: { title: "Article", url: "https://example.com/article" },
+    };
+
+    const prepared = await cli.prepareManagedMediaTasksForTest(
+      { fetchTasks: [mediaTask, ordinaryTask], taskOutcomes: [] },
+      {
+        artifactRoot: dir,
+        transcribeTask: async () => ({
+          text: "",
+          reason: "asr_backend_unavailable",
+          attempts: [{ method: "local-asr", status: "skipped", reason: "asr_backend_unavailable" }],
+        }),
+      },
+    );
+
+    assert.deepEqual(prepared.fetchTasks, [ordinaryTask]);
+    assert.equal(prepared.taskOutcomes.length, 1);
+    assert.equal(prepared.taskOutcomes[0].fetchTaskId, "podcast-task");
+    assert.equal(prepared.taskOutcomes[0].status, "blocked");
+    assert.equal(prepared.taskOutcomes[0].reason, "asr_capability_missing");
+    assert.equal(prepared.taskOutcomes[0].plannedTask.id, "podcast-task");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed media preparation treats a removed profiled ASR package as missing capability", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?prepare-media-stale-profile=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-stale-profile-"));
+  try {
+    const mediaTask = {
+      id: "youtube-stale-profile",
+      type: "youtube_audio_transcription",
+      sourceType: "youtube",
+      contentStatus: "requires_agent",
+      agentWorkType: "youtube_audio_transcription",
+      plannedExtractionMethod: "audio_transcription",
+      item: { title: "Video", url: "https://youtube.com/watch?v=stale123456" },
+    };
+
+    const prepared = await cli.prepareManagedMediaTasksForTest(
+      { fetchTasks: [mediaTask], taskOutcomes: [] },
+      {
+        artifactRoot: dir,
+        transcribeTask: async () => ({
+          text: "",
+          reason: "faster_whisper_missing",
+          attempts: [
+            { method: "local-asr", status: "skipped", reason: "faster_whisper_missing" },
+          ],
+        }),
+      },
+    );
+
+    assert.deepEqual(prepared.fetchTasks, []);
+    assert.equal(prepared.taskOutcomes[0].status, "blocked");
+    assert.equal(prepared.taskOutcomes[0].reason, "asr_capability_missing");
+    assert.equal(prepared.managedMediaPreparation.blocked, 1);
+    assert.equal(prepared.managedMediaPreparation.failed, 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runner-owned ASR supplies runTool's structured heartbeat contract", async () => {
+  const cli = await readFile("scripts/builder-digest.mjs", "utf8");
+  const managedTranscription = cli.slice(
+    cli.indexOf("async function transcribeManagedMediaTask"),
+    cli.indexOf("async function prepareManagedMediaTasks"),
+  );
+
+  assert.match(managedTranscription, /heartbeat:\s*\{[\s\S]*intervalMs:[\s\S]*onHeartbeat:/);
+  assert.doesNotMatch(managedTranscription, /heartbeat:\s*\(\)\s*=>/);
+});
+
+test("machine ASR lock reclaims a stale lease even when the PID has been reused", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-stale-lock=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-stale-lock-"));
+  const lockDir = join(dir, "managed-asr.lock");
+  try {
+    await mkdir(lockDir, { recursive: true });
+    await writeFile(join(lockDir, "owner.json"), JSON.stringify({
+      pid: process.pid,
+      token: "stale-owner",
+      acquiredAt: "2026-08-04T00:00:00.000Z",
+      heartbeatAt: "2026-08-04T00:00:00.000Z",
+    }), "utf8");
+
+    let actionRan = false;
+    await cli.withMachineAsrLockForTest(
+      async () => {
+        actionRan = true;
+      },
+      {
+        lockDir,
+        timeoutMs: 250,
+        staleAfterMs: 1,
+        heartbeatIntervalMs: 5,
+      },
+    );
+
+    assert.equal(actionRan, true);
+    assert.equal(existsSync(lockDir), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("ASR doctor writes a versioned absolute-path machine profile", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-doctor=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-doctor-"));
+  const profilePath = join(dir, "asr-machine-profile.json");
+  try {
+    const result = await cli.runAsrDoctorForTest({
+      profilePath,
+      now: new Date("2026-08-04T12:00:00.000Z"),
+      commandPathResolver: async (command: string) => ({
+        "yt-dlp": "/opt/followbrief/bin/yt-dlp",
+        ffmpeg: "/opt/followbrief/bin/ffmpeg",
+        python3: "/opt/followbrief/bin/python3",
+      } as Record<string, string>)[command] ?? null,
+      capabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+    });
+
+    assert.equal(result.status, "ready");
+    const profile = JSON.parse(await readFile(profilePath, "utf8"));
+    assert.equal(profile.version, 1);
+    assert.equal(profile.verifiedAt, "2026-08-04T12:00:00.000Z");
+    assert.equal(profile.downloader.path, "/opt/followbrief/bin/yt-dlp");
+    assert.equal(profile.decoder.path, "/opt/followbrief/bin/ffmpeg");
+    assert.equal(profile.asr.backend, "faster-whisper");
+    assert.equal(profile.asr.command, "/opt/followbrief/bin/python3");
+    assert.ok(profile.platform);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR executes the machine profile's absolute tool paths", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-profile-paths=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-profile-paths-"));
+  const commands: string[] = [];
+  const downloader = "/opt/followbrief/bin/yt-dlp";
+  const decoder = "/opt/followbrief/bin/ffmpeg";
+  const python = "/opt/followbrief/asr-venv/bin/python3";
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode.mp3", {
+      workDir: dir,
+      preserveWorkDir: true,
+      toolPaths: { downloader, decoder },
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python }],
+        probes: [],
+        timedOut: false,
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push(`${command} ${args.join(" ")}`);
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command === downloader) {
+          const outputIndex = args.indexOf("-o");
+          await writeFile(args[outputIndex + 1].replace("%(ext)s", "mp3"), "audio", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command === decoder) {
+          await writeFile(args[args.length - 1], "wav", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command === python) {
+          return {
+            ok: true,
+            code: 0,
+            stdout: JSON.stringify({ text: "Transcript from the profiled ASR backend." }),
+            stderr: "",
+            timedOut: false,
+          };
+        }
+        throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(result.text, "Transcript from the profiled ASR backend.");
+    assert.deepEqual(commands.map((command) => command.split(" ")[0]), [
+      downloader,
+      decoder,
+      downloader,
+      decoder,
+      python,
+    ]);
+    assert.equal(commands.some((command) => /^(yt-dlp|ffmpeg|python3)\b/.test(command)), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR reuses a completed transcript artifact without running tools again", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-resume=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-resume-"));
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "transcript.txt"), "Previously completed transcript.", "utf8");
+    await writeFile(
+      join(dir, "state.json"),
+      JSON.stringify({ status: "completed", backend: "faster-whisper" }),
+      "utf8",
+    );
+    const commands: string[] = [];
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode.mp3", {
+      workDir: dir,
+      preserveWorkDir: true,
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push(`${command} ${args.join(" ")}`);
+        return missingCommandRunner();
+      },
+    });
+
+    assert.equal(result.text, "Previously completed transcript.");
+    assert.equal(result.backend, "faster-whisper");
+    assert.equal(result.reason, "resumed_completed_transcript");
+    assert.deepEqual(commands, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("personal YouTube fetcher falls back to agent when caption language is ambiguous", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const result = await cli.fetchPersonalYouTubeBuilderForTest(
@@ -2776,12 +3086,19 @@ test("singlePostFetchInstructions prepends common fetching rules", async () => {
   assert.match(youtube.prompt, /Try available extraction methods/);
   assert.match(youtube.prompt, /Source-specific fetching rules \(YouTube\):/);
   assert.match(youtube.prompt, /Use captions first, then transcribe audio/);
+  assert.match(youtube.prompt, /Execution boundary \(enforced by FollowBrief\):/);
+  assert.match(youtube.prompt, /Never install or invoke media download, conversion, or speech-to-text tools/);
+  assert.ok(
+    youtube.prompt.indexOf("Execution boundary (enforced by FollowBrief):") >
+      youtube.prompt.indexOf("Use captions first, then transcribe audio."),
+  );
 
   const blog = cli.singlePostFetchInstructions("blog", sources, commonFetchRules);
   assert.equal(blog.isDefault, true);
   assert.match(blog.prompt, /Common fetching rules:/);
   assert.match(blog.prompt, /Try available extraction methods/);
   assert.doesNotMatch(blog.prompt, /Source-specific fetching rules/);
+  assert.doesNotMatch(blog.prompt, /Execution boundary \(enforced by FollowBrief\)/);
 });
 
 test("default fetch guidance forbids secondary-source replacement content", async () => {
@@ -3459,7 +3776,7 @@ test("extract-long-media probes ffmpeg with -version so local ASR continues when
     });
 
     assert.equal(missing.text, "");
-    assert.equal(missing.reason, undefined);
+    assert.equal(missing.reason, "ffmpeg_missing");
     assert.deepEqual(
       missingAttempts.map((attempt) => [attempt.method, attempt.status, attempt.reason]),
       [["local-asr", "skipped", "ffmpeg_missing"]],
@@ -4072,7 +4389,7 @@ test("YouTube local ASR work directory stays inside the job tmp tree", async () 
   const cli = await readFile("scripts/builder-digest.mjs", "utf8");
   assert.match(cli, /const asrRoot = join\(jobTmpDir\("library-cron"\), "youtube-asr"\)/);
   assert.match(cli, /await mkdir\(asrRoot, \{ recursive: true \}\)/);
-  assert.match(cli, /const workDir = await mkdtemp\(join\(asrRoot, "run-"\)\)/);
+  assert.match(cli, /const workDir = requestedWorkDir \|\| await mkdtemp\(join\(asrRoot, "run-"\)\)/);
   assert.doesNotMatch(cli, /mkdtemp\(join\(tmpdir\(\), "followbrief-youtube-asr-"\)\)/);
 });
 
@@ -9876,12 +10193,12 @@ test("buildFetchTasksForBuilders converts shared new product launches into requi
   }
 
   assert.deepEqual(calls, [
-    { lookbackDays: 14, limit: 5 },
-    { lookbackDays: 14, limit: 5 },
+    { lookbackDays: 14, limit: 3 },
+    { lookbackDays: 14, limit: 3 },
   ]);
 });
 
-test("buildFetchTasksForBuilders backfills fetched launches to keep five new tasks", async () => {
+test("buildFetchTasksForBuilders backfills fetched launches to keep three new tasks", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?launch-backfill=${Date.now()}`);
   const rankedCandidates = Array.from({ length: 7 }, (_, index) =>
     launchCandidate({
@@ -9932,10 +10249,10 @@ test("buildFetchTasksForBuilders backfills fetched launches to keep five new tas
   });
 
   assert.equal(planned.errorCount, 0);
-  assert.equal(planned.fetchTasks.length, 5);
+  assert.equal(planned.fetchTasks.length, 3);
   assert.deepEqual(
     planned.fetchTasks.map((task: { item: { title: string } }) => task.item.title),
-    ["Launch 3", "Launch 4", "Launch 5", "Launch 6", "Launch 7"],
+    ["Launch 3", "Launch 4", "Launch 5"],
   );
 });
 

@@ -724,7 +724,9 @@ test("admin cloud fetch sync route keeps skipped post outcomes out of source fai
   const reconcile = source("src/lib/cloud-fetch-terminal-reconcile.ts");
 
   assert.match(reconcile, /post\.status === "skipped"/);
-  assert.match(reconcile, /post\.status === "failed" \|\| post\.status === "blocked"/);
+  assert.match(reconcile, /post\.status === "failed" \|\|/);
+  assert.match(reconcile, /post\.status === "blocked" && post\.failureReason !== "asr_capability_missing"/);
+  assert.match(reconcile, /deferredPosts > 0 && failedPosts === 0/);
   assert.doesNotMatch(reconcile, /failedPosts = posts\.length/);
 });
 

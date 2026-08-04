@@ -41,11 +41,12 @@ type Status = SaveStatusState;
 
 const FETCH_PROMPT_PLACEHOLDER = [
   "Example:",
-  "Use the supplied item URL to fetch the full primary content.",
+  "Define what counts as primary content for this source.",
   "",
   "- Prefer official transcripts, captions, article body text, or show notes.",
   "- Do not use title, description, or page metadata as the item body.",
   "- Record the extraction method in rawJson.contentSource or rawJson.transcriptSource.",
+  "- Machine-level managed media tools are controlled by the FollowBrief runner.",
 ].join("\n");
 
 const SUMMARY_PROMPT_PLACEHOLDER = [
@@ -267,9 +268,9 @@ function SourceTypeCard({
         {canEditFetchingInstructions ? (
           <Section
             step="01"
-            title="Fetching"
+            title="Content extraction"
             optional
-            description="Source-specific extraction instructions."
+            description="Source-specific primary-content and provenance guidance."
           >
             <OptionalMarkdownField
               ariaLabel={`${displayLabel} fetch prompt`}

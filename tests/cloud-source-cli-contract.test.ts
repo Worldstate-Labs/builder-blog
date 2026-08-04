@@ -765,7 +765,7 @@ test("cloud library runner reports cloud plan patch failures instead of swallowi
 
 test("cloud planned-only outcome sync detects valid work and preserves failure codes", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
   const end = runner.indexOf("\ncloud_run_id_from_result() {", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
@@ -916,6 +916,73 @@ if sync_cloud_terminal_outcomes "${valid}" cloud_run_1; then exit 25; else code=
       "utf8",
     );
     await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("personal planned-only outcome sync preserves runner-owned ASR blockers", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
+  const end = runner.indexOf("\nsync_cloud_terminal_outcomes() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-personal-planned-only-helper-"));
+  try {
+    const valid = join(dir, "valid.json");
+    const empty = join(dir, "empty.json");
+    const invalid = join(dir, "invalid.json");
+    const syncLog = join(dir, "sync.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(valid, JSON.stringify({
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "podcast_task",
+        status: "blocked",
+        reason: "asr_capability_missing",
+        plannedTask: {
+          id: "podcast_task",
+          builderId: "builder_podcast",
+          sourceType: "podcast",
+          item: { title: "Episode", url: "https://example.com/episode" },
+        },
+      }],
+    }));
+    await writeFile(empty, JSON.stringify({ fetchTasks: [], taskOutcomes: [] }));
+    await writeFile(invalid, "{");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+_sync_command=sync-builders
+AGENT_DIR="${dir}"
+SYNC_LOG="${syncLog}"
+SYNC_EXIT_CODE=0
+: > "$SYNC_LOG"
+node() {
+  if [ "$1" = "-" ]; then command node "$@"; return "$?"; fi
+  printf '%s\n' "$*" >> "$SYNC_LOG"
+  return "$SYNC_EXIT_CODE"
+}
+sync_personal_terminal_outcomes "${valid}"
+[ "$(grep -c 'sync-builders' "${syncLog}")" = "1" ] || exit 21
+sync_personal_terminal_outcomes "${empty}"
+[ "$(grep -c 'sync-builders' "${syncLog}")" = "1" ] || exit 22
+if sync_personal_terminal_outcomes "${invalid}"; then exit 23; else code="$?"; fi
+[ "$code" = "2" ] || exit 24
+SYNC_EXIT_CODE=17
+if sync_personal_terminal_outcomes "${valid}"; then exit 25; else code="$?"; fi
+[ "$code" = "17" ] || exit 26
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    assert.match(
+      runner,
+      /if sync_personal_terminal_outcomes "\$_result_file"; then[\s\S]*sync_cloud_terminal_outcomes "\$_result_file" "\$_cloud_run_id"/,
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -1160,7 +1227,7 @@ grep '^cleanup|killed|runner_interrupted$' "${logPath}" >/dev/null || exit 24
 
 test("cloud library runner syncs discovery-failed zero-task outcomes once before returning no_update", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
   const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
@@ -1239,7 +1306,7 @@ grep "no_update" "$UPDATES_LOG" >/dev/null
 
 test("cloud library runner skips planned-only sync when zero-task result has no syncable outcomes", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
   const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
@@ -1291,7 +1358,7 @@ run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json 
 
 test("cloud library runner surfaces planned-only sync failure in zero-task runs", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
   const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
@@ -1343,7 +1410,7 @@ run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json 
 
 test("cloud refill syncs planned-only outcomes once and replaces stale zero-task state before later executable work", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
   const end = runner.indexOf("\npatch_current_fetch_plans() {", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
@@ -2418,19 +2485,49 @@ test("library worker prompt forbids background task work", async () => {
   assert.doesNotMatch(prompt, /Use the FollowBrief skill/);
   assert.match(prompt, /Do NOT start background commands or tool calls/);
   assert.match(prompt, /run_in_background/);
-  assert.match(prompt, /Long[\s\S]*transcription[\s\S]*must run in the[\s\S]*foreground/);
-  assert.match(prompt, /BUILDER_BLOG_SHARD_TIMEOUT_SECONDS/);
-  assert.match(prompt, /extraction_exceeds_shard_timeout/);
-  assert.match(prompt, /extract-long-media/);
-  assert.match(prompt, /Do not hand-roll yt-dlp, ffmpeg, whisper, or fixed-timeout shell commands/);
-  assert.match(prompt, /estimatedWorkSeconds\/executionBudgetSeconds/);
-  assert.match(prompt, /media duration/);
-  assert.match(prompt, /attempted methods/);
+  assert.match(prompt, /managed long-media extraction[\s\S]*FollowBrief runner/i);
+  assert.doesNotMatch(prompt, /extract-long-media/);
+  assert.doesNotMatch(prompt, /yt-dlp|ffmpeg|whisper/i);
+  assert.doesNotMatch(prompt, /extraction_exceeds_shard_timeout/);
   assert.doesNotMatch(prompt, /cat "\$BUILDER_BLOG_SHARD_FILE"/);
   assert.match(prompt, /compact task queue/);
   assert.match(prompt, /process one task at a time/);
   assert.match(prompt, /Started reading this task/);
   assert.match(prompt, /TASK_FILE="\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/task-\$TASK_HASH\.json"/);
+});
+
+test("runner prepares managed media before assigning any model workers", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const runStart = runner.indexOf("run_library_job() {");
+  const runEnd = runner.indexOf("\nrun_digest_job() {", runStart);
+  const runLibraryJob = runner.slice(runStart, runEnd === -1 ? undefined : runEnd);
+
+  assert.match(runLibraryJob, /prepare_managed_media_batch[\s\\]*"\$_result_file"[\s\\]*"initial"/);
+  assert.ok(
+    runLibraryJob.indexOf("prepare_managed_media_batch")
+      < runLibraryJob.indexOf('assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"'),
+  );
+  assert.match(runner, /prepare_managed_media_batch[\s\\]*"\$_fmcs_file"[\s\\]*"refill-\$_cloud_refill_count"/);
+  assert.match(runner, /builder-digest\.mjs" prepare-managed-media/);
+});
+
+test("fetch setup prompts run the ASR doctor before unattended media work", async () => {
+  const setup = await readFile(
+    "skills/builder-blog-digest/jobs/_asr-capability-setup.md",
+    "utf8",
+  );
+  for (const file of [
+    "skills/builder-blog-digest/jobs/library-once.md",
+    "skills/builder-blog-digest/jobs/library-cron-setup.md",
+    "skills/builder-blog-digest/jobs/cloud-library-cron-setup.md",
+  ]) {
+    const prompt = (await readFile(file, "utf8")).replace(
+      "{{INCLUDE:asr-capability-setup}}",
+      setup,
+    );
+    assert.match(prompt, /builder-digest\.mjs" asr-doctor/);
+    assert.match(prompt, /Do not install[\s\S]*unattended/i);
+  }
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {

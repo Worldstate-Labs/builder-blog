@@ -8,6 +8,20 @@ type PhraseTemplate = {
 };
 
 const phraseTranslations: Record<string, LocalePhraseMap> = {
+  "Content extraction": {
+    "zh-CN": "内容提取",
+    "zh-TW": "內容擷取",
+    ja: "コンテンツ抽出",
+    ko: "콘텐츠 추출",
+    es: "Extracción de contenido",
+  },
+  "Source-specific primary-content and provenance guidance.": {
+    "zh-CN": "按信息源设置的正文内容与来源依据说明。",
+    "zh-TW": "按資訊源設定的正文內容與來源依據說明。",
+    ja: "ソース固有の本文コンテンツと出典情報に関するガイダンスです。",
+    ko: "소스별 본문 콘텐츠 및 출처 정보 지침입니다.",
+    es: "Orientación específica de la fuente sobre contenido principal y procedencia.",
+  },
   "Runtime type": {
     "zh-CN": "运行类型",
     "zh-TW": "執行類型",

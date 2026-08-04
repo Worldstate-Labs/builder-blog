@@ -3416,6 +3416,48 @@ console.log(tasks.filter((task) => task?.agentWorkType !== "candidate_discovery_
 NODE
 }
 
+sync_personal_terminal_outcomes() {
+  _spto_file="${1:-}"
+  [ "$_sync_command" = "sync-builders" ] || return 0
+  [ -n "$_spto_file" ] || return 0
+  if node - "$_spto_file" <<'NODE' >/dev/null 2>&1
+const fs = require("fs");
+const file = process.argv[2];
+let result;
+try {
+  result = JSON.parse(fs.readFileSync(file, "utf8"));
+} catch {
+  process.exit(2);
+}
+const tasks = Array.isArray(result.fetchTasks) ? result.fetchTasks : [];
+if (tasks.some((task) => task?.agentWorkType !== "candidate_discovery_fallback")) process.exit(1);
+const outcomes = Array.isArray(result.taskOutcomes) ? result.taskOutcomes : [];
+const hasSyncable = outcomes.some((outcome) => {
+  const task = outcome?.plannedTask;
+  if (!task || typeof task !== "object") return false;
+  const outcomeTaskId = String(outcome?.fetchTaskId || "").trim();
+  const taskId = String(task?.id || "").trim();
+  const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+  return Boolean(taskId && taskId === outcomeTaskId && !cloudSourceTaskId);
+});
+process.exit(hasSyncable ? 0 : 1);
+NODE
+  then
+    :
+  else
+    _spto_check_code="$?"
+    case "$_spto_check_code" in
+      1) return 0 ;;
+      *) return "$_spto_check_code" ;;
+    esac
+  fi
+  echo "Source planning produced terminal outcomes without fetch tasks; syncing them now."
+  node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+    --file "$_spto_file" \
+    --tasks "$_spto_file" \
+    ${_sync_extra_args:-}
+}
+
 sync_cloud_terminal_outcomes() {
   _scto_file="${1:-}"
   [ "$_sync_command" = "sync-cloud-builders" ] || return 0
@@ -3660,6 +3702,53 @@ NODE
     return 65
   fi
   print_compact_json_artifact_summary "expand_discovery" "$_nlfb_file"
+}
+
+prepare_managed_media_batch() {
+  _pmmb_file="${1:-}"
+  _pmmb_scope="${2:-batch}"
+  _pmmb_progress_dir="${3:-}"
+  [ -n "$_pmmb_file" ] || return 64
+  _pmmb_count="$(grep -c '"plannedExtractionMethod"[[:space:]]*:[[:space:]]*"audio_transcription"' "$_pmmb_file" 2>/dev/null || true)"
+  case "$_pmmb_count" in ''|*[!0-9]*) _pmmb_count=0 ;; esac
+  [ "$_pmmb_count" -gt 0 ] || return 0
+
+  _pmmb_safe_scope="$(printf '%s' "$_pmmb_scope" | tr -c 'a-zA-Z0-9_.-' '_')"
+  _pmmb_summary="$JOB_TMP_DIR/managed-media-$_pmmb_safe_scope.json"
+  _pmmb_artifacts="$JOB_TMP_DIR/managed-media/$_pmmb_safe_scope"
+  echo "Preparing $_pmmb_count managed long-media task(s) before starting model workers."
+  job_run_update running "Preparing long-media primary content." "managed_media_started" \
+    --stage "prepare_managed_media"
+  set +e
+  BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_pmmb_progress_dir" \
+    node "$AGENT_DIR/builder-digest.mjs" prepare-managed-media \
+      --tasks "$_pmmb_file" \
+      --out "$_pmmb_file" \
+      --artifact-root "$_pmmb_artifacts" > "$_pmmb_summary" &
+  _pmmb_pid="$!"
+  while kill -0 "$_pmmb_pid" 2>/dev/null; do
+    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
+      --tasks "$_pmmb_file" \
+      --results-dir "$(dirname "$_pmmb_progress_dir")" \
+      --stage "prepare_managed_media" >/dev/null 2>&1 || true
+    sleep 2
+  done
+  wait "$_pmmb_pid"
+  _pmmb_code="$?"
+  set -e
+  node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
+    --tasks "$_pmmb_file" \
+    --results-dir "$(dirname "$_pmmb_progress_dir")" \
+    --stage "prepare_managed_media" >/dev/null 2>&1 || true
+  if [ "$_pmmb_code" -ne 0 ]; then
+    job_run_update failed "Managed long-media preparation failed." "managed_media_failed" \
+      --stage "prepare_managed_media" \
+      --exit-code "$_pmmb_code"
+    return "$_pmmb_code"
+  fi
+  cat "$_pmmb_summary"
+  job_run_update running "Managed long-media preparation finished." "managed_media_finished" \
+    --stage "prepare_managed_media"
 }
 
 run_openclaw_library_preflight() {
@@ -4435,6 +4524,21 @@ fetch_more_cloud_sources() {
     _cloud_refill_exhausted=1
     return "$_fmcs_normalize_code"
   fi
+  _fmcs_results_dir="${_results_dir:-$JOB_TMP_DIR/shards/results}"
+  if grep -q '"plannedExtractionMethod"[[:space:]]*:[[:space:]]*"audio_transcription"' "$_fmcs_file" 2>/dev/null; then
+    node "$AGENT_DIR/builder-digest.mjs" patch-cloud-fetch-plan \
+      --tasks "$_fmcs_file" || true
+  fi
+  if prepare_managed_media_batch \
+    "$_fmcs_file" \
+    "refill-$_cloud_refill_count" \
+    "$_fmcs_results_dir/shard-runner-managed-media-checkpoints"; then
+    :
+  else
+    _pmmb_refill_code="$?"
+    _cloud_refill_exhausted=1
+    return "$_pmmb_refill_code"
+  fi
   _fmcs_task_count="$(library_fetch_task_count "$_fmcs_file")" || _fmcs_task_count=0
   case "$_fmcs_task_count" in ''|*[!0-9]*) _fmcs_task_count=0 ;; esac
   if [ "$_fmcs_task_count" -eq 0 ]; then
@@ -4808,6 +4912,16 @@ run_library_job() {
     return "$_normalize_code"
   fi
 
+  # Publish the complete pre-worker plan before deterministic media work starts,
+  # so the web log can show the current source and runner-owned ASR progress.
+  if grep -q '"plannedExtractionMethod"[[:space:]]*:[[:space:]]*"audio_transcription"' "$_result_file" 2>/dev/null; then
+    patch_current_fetch_plans
+  fi
+  prepare_managed_media_batch \
+    "$_result_file" \
+    "initial" \
+    "$_results_dir/shard-runner-managed-media-checkpoints" || return "$?"
+
   _task_count="$(library_fetch_task_count "$_result_file")" || {
     _count_code="$?"
     job_run_update failed "Fetch result could not be read." "fetch_result_invalid" \
@@ -4824,6 +4938,15 @@ run_library_job() {
       return 65
     fi
     patch_current_fetch_plans
+    if sync_personal_terminal_outcomes "$_result_file"; then
+      :
+    else
+      _spto_code="$?"
+      job_run_update failed "Source task outcomes could not be synced." "terminal_outcome_sync_failed" \
+        --stage "sync_terminal_outcomes" \
+        --exit-code "$_spto_code"
+      return "$_spto_code"
+    fi
     if sync_cloud_terminal_outcomes "$_result_file" "$_cloud_run_id"; then
       :
     else

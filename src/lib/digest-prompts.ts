@@ -47,35 +47,26 @@ the key insights without watching the full episode.
   channel page when an episode URL is available.`,
   fetchPodcastAudio: `# Podcast Fetch Prompt
 
-You are fetching one podcast episode for FollowBrief. Decide which
-content to send back as the item body using the inputs supplied with
-the task (episode title, episode URL, audio enclosure URL, and the show
-notes text extracted from the RSS \`<item>\`).
+You are handling one podcast episode for FollowBrief. Decide what qualifies as
+primary content using the episode title, episode URL, enclosure metadata, and
+show notes extracted from the RSS \`<item>\`.
 
-## Decision
+## Primary content
 
 1. If show notes are substantial — ≥ 500 characters of body copy, with
    paragraph structure or speaker bullets, not just a one-line tagline,
    ad copy, or a list of social handles — use the show notes verbatim
    as the item body.
-2. Otherwise, fall back to audio:
-   - Download the audio enclosure to a temp file under the current job temp
-     directory when one is available.
-   - Run OpenAI Whisper (or another local ASR you have configured) on
-     the audio to produce a full transcript.
-   - Use the transcript as the item body. Mark \`rawJson.transcriptSource\`
-     as \`openai-audio-transcription\` (or the equivalent string for your
-     ASR) so the server's content-quality checks accept it.
-   - After the transcript is uploaded, DELETE the audio file and the
-     raw transcript from the temp dir. Do not persist either to disk
-     beyond the current task.
+2. Otherwise, the FollowBrief runner prepares the episode transcript before a
+   model worker starts. A model worker must use that runner-provided body and
+   provenance exactly; machine tool choice is not controlled by this prompt.
 
 ## Output rules
 
 - The item URL must be the specific episode page (RSS \`<link>\` or the
   podcast platform's per-episode URL). Never link to the channel page.
-- Do not invent a transcript when none can be produced; fail the task
-  with a clear reason instead.
+- Do not invent a transcript when none is supplied; report the task with a
+  clear reason instead.
 - Do not summarize at this stage — that happens in a later step. Send
   the full transcript (or full show-notes block) as the body.`,
   fetchYouTubeTranscript: `# YouTube Fetch Prompt
@@ -83,28 +74,25 @@ notes text extracted from the RSS \`<item>\`).
 You are fetching one YouTube video for FollowBrief. Apply these rules to
 this video only; never infer one video's content from another video.
 
-Primary content is the video's transcript. Use the fastest reliable local
-method available before doing heavier transcription:
+Primary content is the video's transcript. FollowBrief resolves it before
+model summarization:
 
-1. Try captions first. Prefer creator/manual captions over auto captions.
-   Use yt-dlp metadata/subtitle output, YouTube caption tracks, or
-   youtube-transcript-api if available. If multiple languages are present,
-   use only strong evidence to choose the original spoken language:
+1. Prefer creator/manual captions over auto captions. If multiple languages
+   are present, use only strong evidence to choose the original spoken language:
    caption/translation metadata, dominant language in the video/channel
    metadata, or a small sample of candidate captions. Do not default to
    English just because it is available. If source language remains unclear,
    report the task as blocked/failed with the available caption languages.
-2. Only if no usable captions/transcript are available, use local speech
-   transcription. Prefer faster-whisper or MLX Whisper when installed; fall
-   back to the local whisper CLI if that is the only ASR backend available.
-   Do not use the OpenAI API for this task.
+2. If captions are unavailable, the FollowBrief runner prepares local speech
+   transcription before a model worker starts. A model worker must not choose
+   or launch machine transcription tools.
 
 Never use video frames, screenshots, thumbnails, OCR, the title, or the
 description as primary content.
 
-Output the full transcript as the item body and set rawJson.transcriptSource
-to the actual source, such as "youtube-captions", "local-speech-to-text", or
-"agent-transcript". If no transcript can be produced, fail or skip the task
+Output the full transcript as the item body and preserve the runner-provided
+rawJson.transcriptSource, such as "youtube-captions" or
+"local-speech-to-text". If no transcript can be produced, fail or skip the task
 with concrete per-video evidence. Do not summarize at this stage.`,
   summarizeBlogs: `# Blog Post Summary Prompt
 

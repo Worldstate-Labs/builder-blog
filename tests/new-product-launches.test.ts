@@ -341,6 +341,7 @@ test("parses Show HN, DEV showdev, Hugging Face Spaces, and Lobsters", async () 
     }),
     now: NOW,
     lookbackDays: LOOKBACK_DAYS,
+    limit: 4,
   });
 
   assert.equal(result.failures.length, 0);
@@ -722,7 +723,7 @@ test("merges one launch found by multiple providers and retains provenance", asy
   );
 });
 
-test("ranks stably, caps each provider at two when alternatives exist, and returns five", async () => {
+test("ranks stably and returns the top three launches by default", async () => {
   const result = await discoverNewProductLaunches({
     fetcher: createFixtureFetcher({
       hnStories: [701, 702, 703],
@@ -788,19 +789,16 @@ test("ranks stably, caps each provider at two when alternatives exist, and retur
     }),
     now: NOW,
     lookbackDays: LOOKBACK_DAYS,
-    limit: 9,
   });
 
   assert.equal(result.failures.length, 0);
-  assert.equal(result.launches.length, 5);
+  assert.equal(result.launches.length, 3);
   assert.deepEqual(
     result.launches.map((launch: Launch) => launch.title),
     [
       "Alpha Index",
       "Beta Index",
       "Delta Index",
-      "Echo Space",
-      "Foxtrot Launch",
     ],
   );
   assert.equal(
@@ -809,7 +807,7 @@ test("ranks stably, caps each provider at two when alternatives exist, and retur
   );
 });
 
-test("excludes fetched launches before selecting the top five", async () => {
+test("excludes fetched launches before selecting the top three", async () => {
   const storyIds = [1301, 1302, 1303, 1304, 1305, 1306, 1307];
   const hnItems = Object.fromEntries(
     storyIds.map((id, index) => [
@@ -833,14 +831,14 @@ test("excludes fetched launches before selecting the top five", async () => {
     fetcher: createFixtureFetcher({ hnStories: storyIds, hnItems }),
     now: NOW,
     lookbackDays: LOOKBACK_DAYS,
-    limit: 5,
+    limit: 3,
     excludeCandidate: (candidate: Launch) =>
       candidate.officialUrl !== null && fetchedUrls.has(candidate.officialUrl),
   });
 
   assert.deepEqual(
     result.launches.map((launch: Launch) => launch.title),
-    ["Launch 3", "Launch 4", "Launch 5", "Launch 6", "Launch 7"],
+    ["Launch 3", "Launch 4", "Launch 5"],
   );
 });
 

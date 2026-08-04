@@ -30,6 +30,12 @@ command -v "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" || {
 }
 ```
 
+Before inspecting or replacing the shared Cloud host, check its runner-owned
+managed-media capability. A Cloud host must pass this check; dependency
+installation requires explicit consent:
+
+{{INCLUDE:asr-capability-setup}}
+
 3. Check whether a local cloud worker host or active cloud worker is already running.
 This step also resolves the owner of the shared service. It refuses to proceed
 when a loaded service owner cannot be proven.

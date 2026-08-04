@@ -93,6 +93,65 @@ test("cloud sync marks a successful leased task and advances the next deadline w
   assert.equal(prisma.cloudFetchRun.updateCalls[0].data.usageCostUsd, 0.42);
 });
 
+test("cloud sync releases a capability-deferred task without increasing failures", async () => {
+  const now = new Date("2026-06-27T10:00:00.000Z");
+  const prisma = fakeCloudSyncPrisma({
+    task: {
+      id: "task_asr",
+      builderId: "builder_asr",
+      summaryLanguage: "en",
+      effectiveFrequency: "DAILY",
+      consecutiveFailures: 4,
+      durationSampleCount: 0,
+      estimatedTokenCost: null,
+      tokenSampleCount: 0,
+      estimatedPostYield: null,
+      postYieldSampleCount: 0,
+      successSampleCount: 0,
+    },
+    runTasks: [
+      {
+        runId: "run_asr",
+        cloudSourceTaskId: "task_asr",
+        status: "RUNNING",
+        usageTokens: null,
+        usageCostUsd: null,
+      },
+    ],
+  });
+
+  const result = await applyCloudFetchTaskSyncResult({
+    prisma,
+    now,
+    config: {
+      schedulingLeadMinutes: 120,
+      retryBaseMinutes: 30,
+      failureCircuitBreakerThreshold: 5,
+    },
+    result: {
+      runId: "run_asr",
+      cloudSourceTaskId: "task_asr",
+      status: "deferred",
+      plannedPosts: 1,
+      syncedPosts: 0,
+      failedPosts: 0,
+      failureReason: "asr_capability_missing",
+      details: { deferredCapability: "local_asr" },
+    },
+  });
+
+  assert.equal(result.sourceTaskResult.status, "deferred");
+  assert.equal(prisma.cloudFetchRunTask.updateManyCalls[0].data.status, "SUCCEEDED");
+  assert.equal(prisma.cloudFetchQueueItem.updateManyCalls[0].data.status, "CANCELLED");
+  assert.equal(prisma.cloudSourceTask.updateCalls[0].data.consecutiveFailures, 4);
+  assert.equal("circuitBreakerUntil" in prisma.cloudSourceTask.updateCalls[0].data, false);
+  assert.equal("circuitBreakerReason" in prisma.cloudSourceTask.updateCalls[0].data, false);
+  assert.equal(
+    (prisma.cloudSourceTask.updateCalls[0].data.nextAttemptAt as Date).toISOString(),
+    "2026-06-27T10:30:00.000Z",
+  );
+});
+
 test("cloud sync marks failures with backoff and keeps a mixed run partial", async () => {
   const now = new Date("2026-06-27T10:00:00.000Z");
   const prisma = fakeCloudSyncPrisma({

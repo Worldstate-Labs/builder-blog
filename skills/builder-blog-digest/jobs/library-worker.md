@@ -21,15 +21,14 @@ combined payload, repairs validation failures if needed, and syncs it with
   required shard checkpoint/result files for this worker and will be treated as
   no checkpoint progress.
 - Do NOT start background commands or tool calls (`run_in_background`, shell
-  `&`, `nohup`, `disown`, detached tmux/screen, etc.) for task work. Long
-  downloads, transcription, browser work, and extraction must run in the
-  foreground and finish before you exit. A task is not complete until you have
-  written its sync item or terminal `taskOutcomes` entry.
-- For supported YouTube/podcast long-media transcription, use the deterministic
-  helper
-  `node "$BUILDER_BLOG_AGENT_DIR/builder-digest.mjs" extract-long-media --fetch-task-id "$FETCH_TASK_ID"`.
-  Do not hand-roll yt-dlp, ffmpeg, whisper, or fixed-timeout shell commands
-  for those tasks, and do not wrap them in your own background loops.
+  `&`, `nohup`, `disown`, detached tmux/screen, etc.) for task work. Browser
+  work and page extraction must run in the foreground and finish before you
+  exit. A task is not complete until you have written its sync item or terminal
+  `taskOutcomes` entry.
+- Managed long-media extraction is owned by the FollowBrief runner before this
+  worker starts. A supported YouTube/podcast task that reaches this worker with
+  `contentStatus: "ready"` already contains its final primary body. Summarize it
+  only. Never start audio/video download or speech-to-text work from this worker.
 
 Agent discretion boundary: use the exact shard paths and JSON shapes specified
 below. The shard file can be hundreds of KB because it includes all task bodies
@@ -120,9 +119,8 @@ that titles/descriptions are never primary content.
 Ordering and checkpointing (protects finished work from the shard timeout —
 the runner kills a worker that exceeds it, and only what is already in the
 result file survives):
-- Complete CHEAP tasks first: all `ready` tasks (body provided, summary only),
-  then light extractions (web articles), and only then heavy extractions
-  (audio/video downloads, transcription).
+- Complete `ready` tasks first (body provided, summary only), then web-page
+  extractions.
 - For `agentWorkType: "translate_summary_only"` tasks, do NOT fetch the URL,
   download media, transcribe audio/video, or use `item.body` as source
   content. Translate only `task.summaryTranslation.sourceSummary` into the
@@ -141,24 +139,9 @@ result file survives):
   everything into one final write: if you are terminated mid-task, every
   previously finished task must already be on disk so the runner's merge can
   keep it.
-- Before starting a long foreground operation (media download, audio/video
-  transcription, browser automation, or other extraction that can run for many
-  minutes), compare the expected remaining work with
-  `$BUILDER_BLOG_SHARD_TIMEOUT_SECONDS` when it is set. Use concrete evidence:
-  media duration, failed download attempts, sampled transcription speed, and
-  elapsed time. If the task cannot reasonably finish inside the shard budget
-  with time left to write checkpoints and the result file, do not keep trying.
-  Write a terminal `taskOutcomes` entry for that fetchTaskId instead, with
-  status `failed`, reason `extraction_exceeds_shard_timeout`, and evidence that
-  includes estimatedWorkSeconds/executionBudgetSeconds, media duration,
-  duration/speed estimates, and attempted methods.
-- If several fetch tasks point at the same unavailable or too-expensive source
-  item, write one terminal outcome per fetchTaskId. Do not leave duplicate
-  tasks uncovered just because they share the same URL or video ID.
-- If a long foreground tool times out or fails and no remaining method can
-  finish within the shard budget, immediately write the per-task checkpoint and
-  full shard result with that terminal outcome. Do not leave only a progress
-  checkpoint while deciding what to do next.
+- If several fetch tasks point at the same unavailable source item, write one
+  terminal outcome per fetchTaskId. Do not leave duplicate tasks uncovered just
+  because they share the same URL.
 
 Task checkpoint shape:
 

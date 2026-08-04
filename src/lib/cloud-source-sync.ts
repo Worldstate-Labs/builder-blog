@@ -9,7 +9,7 @@ import {
   type CloudFetchFrequencyKey,
 } from "@/lib/cloud-source-scheduler";
 
-export type CloudFetchTaskSyncStatus = "succeeded" | "partial" | "failed";
+export type CloudFetchTaskSyncStatus = "succeeded" | "partial" | "failed" | "deferred";
 
 export type CloudFetchTaskSyncResult = {
   runId: string;
@@ -123,14 +123,21 @@ export async function applyCloudFetchTaskSyncResult(params: {
     throw new Error(`Cloud source task ${params.result.cloudSourceTaskId} was not found.`);
   }
 
+  const deferred = params.result.status === "deferred";
   const succeeded = params.result.status === "succeeded" || params.result.status === "partial";
   const partial = params.result.status === "partial";
-  const runTaskStatus = partial
+  const runTaskStatus = deferred
+    ? CloudFetchRunStatus.SUCCEEDED
+    : partial
     ? CloudFetchRunStatus.PARTIAL
     : succeeded
       ? CloudFetchRunStatus.SUCCEEDED
       : CloudFetchRunStatus.FAILED;
-  const queueStatus = succeeded ? CloudFetchQueueStatus.SUCCEEDED : CloudFetchQueueStatus.FAILED;
+  const queueStatus = deferred
+    ? CloudFetchQueueStatus.CANCELLED
+    : succeeded
+      ? CloudFetchQueueStatus.SUCCEEDED
+      : CloudFetchQueueStatus.FAILED;
   const taskFailureReason = params.result.failureReason?.trim() || "cloud_sync_failed";
   const failureReason = params.result.status === "succeeded" ? null : taskFailureReason;
   const existingRunTask = (
@@ -193,7 +200,13 @@ export async function applyCloudFetchTaskSyncResult(params: {
   await params.prisma.cloudSourceTask.update({
     where: { id: params.result.cloudSourceTaskId },
     data: {
-      ...(succeeded
+      ...(deferred
+        ? {
+            nextAttemptAt: new Date(now.getTime() + params.config.retryBaseMinutes * 60_000),
+            lastAttemptAt: now,
+            consecutiveFailures: task.consecutiveFailures,
+          }
+        : succeeded
         ? nextCloudTaskSuccessSchedule({
             now,
             effectiveFrequency: task.effectiveFrequency,
@@ -208,13 +221,15 @@ export async function applyCloudFetchTaskSyncResult(params: {
             mustSucceedBy: task.mustSucceedBy ?? null,
             executionBudgetSeconds: failureExecutionBudgetSeconds,
           })),
-      ...nextCloudTaskRuntimeStats({
-        task,
-        actualDurationSeconds: params.result.actualDurationSeconds,
-        usageTokens: params.result.usageTokens,
-        syncedPosts: params.result.syncedPosts,
-        succeeded,
-      }),
+      ...(!deferred
+        ? nextCloudTaskRuntimeStats({
+            task,
+            actualDurationSeconds: params.result.actualDurationSeconds,
+            usageTokens: params.result.usageTokens,
+            syncedPosts: params.result.syncedPosts,
+            succeeded,
+          })
+        : {}),
     },
   });
 

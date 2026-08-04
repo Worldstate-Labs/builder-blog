@@ -131,6 +131,84 @@ test("terminal reconciliation derives every post and aggregate from server-accep
   assert.match(result.requestDigest, /^[a-f0-9]{64}$/);
 });
 
+test("terminal reconciliation defers an all-ASR-capability-blocked source", () => {
+  const result = reconcileCloudFetchTerminalResult({
+    cloudSourceTaskId: "source_asr",
+    executionPlanPosts: {
+      post_1: planPosts.post_1,
+      post_2: planPosts.post_2,
+    },
+    clientResult: {
+      cloudSourceTaskId: "source_asr",
+      status: "failed",
+      plannedPosts: 2,
+      syncedPosts: 0,
+      failedPosts: 2,
+      failureReason: "asr_capability_missing",
+      details: {},
+    },
+    submittedItems: [],
+    itemResults: [],
+    taskOutcomes: [
+      { fetchTaskId: "post_1", status: "blocked", reason: "asr_capability_missing" },
+      { fetchTaskId: "post_2", status: "blocked", reason: "asr_capability_missing" },
+    ],
+  });
+
+  assert.equal(result.status, "deferred");
+  assert.equal(result.failedPosts, 0);
+  assert.equal(result.deferredPosts, 2);
+  assert.equal(result.failureReason, "asr_capability_missing");
+  assert.deepEqual(result.details.posts.map((post) => post.status), ["blocked", "blocked"]);
+});
+
+test("terminal reconciliation keeps a partly synced source deferred when ASR capability is missing", () => {
+  const result = reconcileCloudFetchTerminalResult({
+    cloudSourceTaskId: "source_mixed_asr",
+    executionPlanPosts: {
+      post_1: planPosts.post_1,
+      post_2: planPosts.post_2,
+    },
+    clientResult: {
+      cloudSourceTaskId: "source_mixed_asr",
+      status: "partial",
+      plannedPosts: 2,
+      syncedPosts: 1,
+      failedPosts: 1,
+      failureReason: "asr_capability_missing",
+      details: {},
+    },
+    submittedItems: [
+      {
+        fetchTaskId: "post_1",
+        title: "Accepted post",
+        url: "https://example.com/accepted",
+        body: "Original body",
+        summary: "A complete accepted summary.",
+        headline: "Accepted headline",
+      },
+    ],
+    itemResults: [
+      {
+        fetchTaskId: "post_1",
+        kind: "BLOG_POST",
+        externalId: "accepted",
+        status: "synced",
+      },
+    ],
+    taskOutcomes: [
+      { fetchTaskId: "post_2", status: "blocked", reason: "asr_capability_missing" },
+    ],
+  });
+
+  assert.equal(result.status, "deferred");
+  assert.equal(result.syncedPosts, 1);
+  assert.equal(result.deferredPosts, 1);
+  assert.equal(result.failedPosts, 0);
+  assert.equal(result.failureReason, "asr_capability_missing");
+  assert.deepEqual(result.details.posts.map((post) => post.status), ["synced", "blocked"]);
+});
+
 test("terminal reconciliation rejects incomplete evidence before any feed write can begin", () => {
   assert.throws(
     () =>

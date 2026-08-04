@@ -45,6 +45,12 @@ fi
 
 {{SOURCE_CREDENTIAL_PREP}}
 
+Before checking or changing schedule ownership, check the runner-owned
+managed-media capability. Dependency installation is interactive and optional
+for this private schedule:
+
+{{INCLUDE:asr-capability-setup}}
+
 3. Before changing anything, check FollowBrief's server state for this
 account's library fetch cron, then check whether the schedule already exists on
 this machine. The server check detects another machine that may already own the

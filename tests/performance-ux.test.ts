@@ -1206,7 +1206,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /Defines each post summary; the run prompt sets language/);
   assert.doesNotMatch(adminSourceTypeManager, /How each post becomes a summary|How each post from this source is written as a per-post summary|one-time or scheduled run prompt|Output language comes from the run prompt|Language comes from the run prompt/);
-  assert.match(adminSourceTypeManager, /Source-specific extraction instructions\./);
+  assert.match(
+    adminSourceTypeManager,
+    /Source-specific primary-content and provenance guidance\./,
+  );
   assert.doesNotMatch(adminSourceTypeManager, /needs agent extraction|Extra instructions for this source type when Fetch sources needs Local Agent extraction|Adds source-specific instructions for Local Agent extraction/);
   assert.match(adminSourceTypeManager, /Filters content before Following or AI Brief/);
   assert.match(adminSourceTypeManager, /Drop posts shorter than this/);

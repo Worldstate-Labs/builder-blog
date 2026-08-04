@@ -19,6 +19,7 @@ import { join } from "node:path";
 
 const FRAGMENTS: Record<string, string> = {
   "install-skill": "skills/builder-blog-digest/jobs/_install-skill.md",
+  "asr-capability-setup": "skills/builder-blog-digest/jobs/_asr-capability-setup.md",
   "fetch-task-discovery": "skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
   "fetch-task-core": "skills/builder-blog-digest/jobs/_fetch-task-core.md",
   "fetch-task-syncing": "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
