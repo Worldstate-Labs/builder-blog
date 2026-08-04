@@ -54,7 +54,7 @@
 
 - [ ] Build a fake Prisma transaction client in the new test and add failing tests that require `resetUserFetchDigestState(userId, client)` to scope every mutation by `userId` or `builder.ownerUserId`.
 - [ ] Add failing tests that current-user recommendation snapshots are deleted, Agent jobs are limited to `library-fetch`/`digest-build`, and no Cloud model client is read or mutated.
-- [ ] Add failing negative assertions that preserved current-user models are never deleted or updated: `LibraryCronJob`, `DigestCronJob`, `AgentToken`, `Subscription`, `FeedRead`, `FeedFavorite`, `LibraryImport`, `LibraryHubEntry`, `LibraryHubItem`, and `DigestPipelineShare`.
+- [ ] Add failing negative assertions that preserved current-user models are never deleted or updated: `LibraryCronJob`, `DigestCronJob`, `AgentToken`, `Subscription`, `FeedRead`, `FeedFavorite`, `LibraryImport`, `DigestPipelineImport`, `LibraryHubEntry`, `LibraryHubItem`, `DigestPipelineShare`, `UserFeedPreference`, `UserSourceTypeConfig`, `UserDigestConfig`, `UserChannelPreference`, and `UserLibraryVisibility`.
 - [ ] Add failing tests for the cross-user ownership guard covering recommendation snapshot items, read provenance, and favorite provenance; any nonzero count must abort before destructive mutations commit.
 - [ ] Add a two-user regression fixture/fake proving reset A leaves representative B rows and counts unchanged.
 - [ ] Run `npx tsx --test tests/user-generated-data-reset.test.ts tests/reset-fence.test.ts` and confirm failure against the global helper.
