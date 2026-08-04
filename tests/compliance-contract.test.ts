@@ -157,6 +157,23 @@ test("account API resets only session-owned generated fetch and brief state", ()
   assert.doesNotMatch(helper, /cloudFetch|cloudSource|cloudLanguage|user\.count/);
 });
 
+test("every authenticated account sees a personal generated-data reset panel", () => {
+  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
+  const panel = assertFile("src/components/GeneratedDataResetPanel.tsx");
+
+  assert.equal(existsSync(join(root, "src/components/AdminMaintenancePanel.tsx")), false);
+  assert.match(settingsPage, /<GeneratedDataResetPanel \/>/);
+  assert.doesNotMatch(settingsPage, /isAdmin \? <GeneratedDataResetPanel \/>/);
+  assert.match(panel, /Generated data/);
+  assert.match(panel, /Reset fetch and AI Brief data/);
+  assert.match(panel, /\/api\/account\/generated-data\/reset/);
+  assert.match(panel, /contentSyncStateChanged/);
+  assert.match(panel, /window\.dispatchEvent\(new Event\(contentSyncStateChanged\)\)/);
+  assert.match(panel, /useI18n/);
+  assert.match(panel, /translateUiPhrase/);
+  assert.doesNotMatch(panel, /Admin maintenance|every user|all fetch|Cloud work|deletedCloud|users:/);
+});
+
 test("official worker writes share the durable reset fence and reject stale runs", () => {
   const schema = source("prisma/schema.prisma");
   const resetFence = assertFile("src/lib/reset-fence.ts");

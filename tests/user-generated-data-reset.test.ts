@@ -153,6 +153,27 @@ test("account reset handler hides internal reset failures", async () => {
   assert.equal(logged.length, 1);
 });
 
+test("personal reset summary reports only current-account generated counts", async () => {
+  const { generatedDataResetSummary } = await import(
+    "../src/lib/generated-data-reset-summary"
+  );
+
+  const message = generatedDataResetSummary({
+    resetBuilders: 8,
+    deletedFeedItems: 21,
+    deletedLibraryFetchRuns: 2,
+    deletedDigests: 3,
+    deletedDigestRuns: 1,
+    deletedDigestedItems: 4,
+    deletedRecommendationSnapshots: 5,
+    deletedAgentJobRuns: 2,
+    lastResetAt: "2026-08-04T12:00:00.000Z",
+  });
+
+  assert.equal(message, "Reset 8 sources. Deleted 21 posts, 3 briefs, and 5 logs.");
+  assert.doesNotMatch(message, /users?|Cloud|queue|work records/i);
+});
+
 test("personal reset advances its fence first and mutates only user-owned generated state", async () => {
   const { resetUserFetchDigestState } = await import("../src/lib/fetch-digest-reset");
   const fixture = resetClient();

@@ -8,6 +8,55 @@ type PhraseTemplate = {
 };
 
 const phraseTranslations: Record<string, LocalePhraseMap> = {
+  "Generated data": {
+    "zh-CN": "生成的数据",
+    "zh-TW": "產生的資料",
+    ja: "生成データ",
+    ko: "생성된 데이터",
+    es: "Datos generados",
+  },
+  "Delete posts, fetch logs, AI Briefs, brief logs, and personal Agent run records generated for your account. Sources, subscriptions, schedules, reads, and favorites are kept.": {
+    "zh-CN": "删除为你的账号生成的帖子、抓取日志、AI Brief、brief 日志和个人 Agent 运行记录。信息源、订阅、计划任务、阅读记录和收藏会保留。",
+    "zh-TW": "刪除為你的帳號產生的貼文、擷取日誌、AI Brief、brief 日誌和個人 Agent 執行記錄。資訊源、訂閱、排程、閱讀記錄和收藏會保留。",
+    ja: "アカウント用に生成された投稿、取得ログ、AI Brief、brief ログ、個人 Agent 実行記録を削除します。ソース、購読、スケジュール、既読、お気に入りは保持されます。",
+    ko: "계정에 생성된 게시물, 가져오기 로그, AI Brief, brief 로그 및 개인 Agent 실행 기록을 삭제합니다. 소스, 구독, 일정, 읽기 기록 및 즐겨찾기는 유지됩니다.",
+    es: "Elimina publicaciones, registros de obtención, AI Briefs, registros de brief y ejecuciones personales de Agent generados para tu cuenta. Se conservan las fuentes, suscripciones, programaciones, lecturas y favoritos.",
+  },
+  "Reset fetch and AI Brief data": {
+    "zh-CN": "重置抓取和 AI Brief 数据",
+    "zh-TW": "重設擷取和 AI Brief 資料",
+    ja: "取得データと AI Brief データをリセット",
+    ko: "가져오기 및 AI Brief 데이터 재설정",
+    es: "Restablecer datos de obtención y AI Brief",
+  },
+  "Reset your generated data?": {
+    "zh-CN": "重置你的生成数据？",
+    "zh-TW": "重設你的產生資料？",
+    ja: "生成データをリセットしますか？",
+    ko: "생성된 데이터를 재설정할까요?",
+    es: "¿Restablecer tus datos generados?",
+  },
+  "This deletes generated posts, fetch logs, AI Briefs, brief logs, inclusion markers, and personal Agent run records for your account only. Sources, subscriptions, schedules, reads, and favorites are kept. Type RESET to continue.": {
+    "zh-CN": "这只会删除你账号的生成帖子、抓取日志、AI Brief、brief 日志、收录标记和个人 Agent 运行记录。信息源、订阅、计划任务、阅读记录和收藏会保留。输入 RESET 继续。",
+    "zh-TW": "這只會刪除你帳號的產生貼文、擷取日誌、AI Brief、brief 日誌、收錄標記和個人 Agent 執行記錄。資訊源、訂閱、排程、閱讀記錄和收藏會保留。輸入 RESET 繼續。",
+    ja: "このアカウントの生成済み投稿、取得ログ、AI Brief、brief ログ、取り込みマーカー、個人 Agent 実行記録のみを削除します。ソース、購読、スケジュール、既読、お気に入りは保持されます。続行するには RESET と入力してください。",
+    ko: "이 계정의 생성된 게시물, 가져오기 로그, AI Brief, brief 로그, 포함 표시 및 개인 Agent 실행 기록만 삭제합니다. 소스, 구독, 일정, 읽기 기록 및 즐겨찾기는 유지됩니다. 계속하려면 RESET을 입력하세요.",
+    es: "Esto elimina únicamente las publicaciones generadas, los registros de obtención, los AI Briefs, los registros de brief, los marcadores de inclusión y las ejecuciones personales de Agent de tu cuenta. Se conservan las fuentes, suscripciones, programaciones, lecturas y favoritos. Escribe RESET para continuar.",
+  },
+  "Could not reset generated data.": {
+    "zh-CN": "无法重置生成的数据。",
+    "zh-TW": "無法重設產生的資料。",
+    ja: "生成データをリセットできませんでした。",
+    ko: "생성된 데이터를 재설정할 수 없습니다.",
+    es: "No se pudieron restablecer los datos generados.",
+  },
+  "Generated data reset.": {
+    "zh-CN": "生成的数据已重置。",
+    "zh-TW": "產生的資料已重設。",
+    ja: "生成データをリセットしました。",
+    ko: "생성된 데이터를 재설정했습니다.",
+    es: "Datos generados restablecidos.",
+  },
   "Content extraction": {
     "zh-CN": "内容提取",
     "zh-TW": "內容擷取",
@@ -5126,6 +5175,20 @@ const majorLocaleCoverageTranslations: Record<string, LocalePhraseMap> = {
 };
 
 const templateTranslations: PhraseTemplate[] = [
+  {
+    pattern: /^Reset ([0-9,]+) sources\. Deleted ([0-9,]+) posts, ([0-9,]+) briefs, and ([0-9,]+) logs\.$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const [, sources, posts, briefs, logs] = match;
+      const values: Record<Exclude<UiLocale, "en">, string> = {
+        "zh-CN": `重置了 ${sources} 个信息源。删除了 ${posts} 篇帖子、${briefs} 份 AI Brief 和 ${logs} 条日志。`,
+        "zh-TW": `重設了 ${sources} 個資訊源。刪除了 ${posts} 篇貼文、${briefs} 份 AI Brief 和 ${logs} 條日誌。`,
+        ja: `${sources} 件のソースをリセットしました。${posts} 件の投稿、${briefs} 件の AI Brief、${logs} 件のログを削除しました。`,
+        ko: `소스 ${sources}개를 재설정했습니다. 게시물 ${posts}개, AI Brief ${briefs}개, 로그 ${logs}개를 삭제했습니다.`,
+        es: `Se restablecieron ${sources} fuentes. Se eliminaron ${posts} publicaciones, ${briefs} AI Briefs y ${logs} registros.`,
+      };
+      return values[locale];
+    },
+  },
   {
     pattern: /^([0-9,]+) waiting$/u,
     render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {

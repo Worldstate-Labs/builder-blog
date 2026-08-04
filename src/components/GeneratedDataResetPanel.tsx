@@ -2,25 +2,14 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RotateCcw, Trash2 } from "lucide-react";
+import { useI18n } from "@/components/I18nProvider";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import { generatedDataResetSummary } from "@/lib/generated-data-reset-summary";
+import { translateUiPhrase } from "@/lib/i18n-phrases";
 
-type ResetSummary = {
-  users: number;
-  resetBuilders: number;
-  deletedFeedItems: number;
-  deletedLibraryFetchRuns: number;
-  deletedDigests: number;
-  deletedDigestRuns: number;
-  deletedDigestedItems: number;
-  deletedAgentJobRuns: number;
-  resetCloudSourceTasks: number;
-  deletedCloudQueueItems: number;
-  deletedCloudRunTasks: number;
-  deletedCloudRuns: number;
-  deletedCloudAgentJobRuns: number;
-};
-
-export function AdminMaintenancePanel() {
+export function GeneratedDataResetPanel() {
+  const { locale } = useI18n();
+  const tr = (text: string) => translateUiPhrase(locale, text) ?? text;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
@@ -35,34 +24,38 @@ export function AdminMaintenancePanel() {
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  function closeDialog() {
-    if (isPending) return;
+  function dismissDialog() {
     setOpen(false);
     setConfirmation("");
   }
 
-  function resetState() {
+  function closeDialog() {
+    if (isPending) return;
+    dismissDialog();
+  }
+
+  function resetGeneratedData() {
     if (isPending || confirmation !== "RESET") return;
     setStatus(null);
     setError(null);
 
     startTransition(async () => {
       try {
-        const response = await fetch("/api/admin/maintenance/fetch-digest-reset", {
+        const response = await fetch("/api/account/generated-data/reset", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ confirmation }),
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          setError(body?.error ?? "Could not reset fetch and brief state.");
+          setError(tr(body?.error ?? "Could not reset generated data."));
           return;
         }
-        setStatus(resetSummaryMessage(body.summary));
+        setStatus(tr(generatedDataResetSummary(body?.summary)));
         window.dispatchEvent(new Event(contentSyncStateChanged));
-        closeDialog();
+        dismissDialog();
       } catch {
-        setError("Could not reset fetch and brief state.");
+        setError(tr("Could not reset generated data."));
       }
     });
   }
@@ -73,11 +66,12 @@ export function AdminMaintenancePanel() {
         <div className="access-keys-copy">
           <div className="access-keys-headline">
             <RotateCcw className="access-keys-headline-icon" aria-hidden="true" />
-            <h2 className="fb-section-heading">Admin maintenance</h2>
+            <h2 className="fb-section-heading">{tr("Generated data")}</h2>
           </div>
           <p className="access-keys-desc">
-            Reset all generated local and Cloud fetch and AI Brief state while keeping
-            accounts, sources, subscriptions, reads, and favorites.
+            {tr(
+              "Delete posts, fetch logs, AI Briefs, brief logs, and personal Agent run records generated for your account. Sources, subscriptions, schedules, reads, and favorites are kept.",
+            )}
           </p>
         </div>
       </div>
@@ -94,7 +88,7 @@ export function AdminMaintenancePanel() {
           type="button"
         >
           <Trash2 aria-hidden="true" />
-          Reset all fetch and brief state
+          {tr("Reset fetch and AI Brief data")}
         </button>
       </div>
 
@@ -120,12 +114,11 @@ export function AdminMaintenancePanel() {
       >
         <div className="fb-dialog-inner settings-dialog-stack">
           <div>
-            <h3 className="fb-section-heading">Reset generated state?</h3>
+            <h3 className="fb-section-heading">{tr("Reset your generated data?")}</h3>
             <p className="settings-dialog-copy">
-              This deletes local and Cloud fetched posts, queues, fetch logs, AI Briefs,
-              brief logs, brief inclusion markers, and related Agent run records
-              for every user. Sources and subscriptions are kept. Type RESET to
-              continue.
+              {tr(
+                "This deletes generated posts, fetch logs, AI Briefs, brief logs, inclusion markers, and personal Agent run records for your account only. Sources, subscriptions, schedules, reads, and favorites are kept. Type RESET to continue.",
+              )}
             </p>
           </div>
           <input
@@ -142,35 +135,19 @@ export function AdminMaintenancePanel() {
               onClick={closeDialog}
               type="button"
             >
-              Cancel
+              {tr("Cancel")}
             </button>
             <button
               className="fb-btn danger"
               disabled={isPending || confirmation !== "RESET"}
-              onClick={resetState}
+              onClick={resetGeneratedData}
               type="button"
             >
-              Reset
+              {tr("Reset")}
             </button>
           </div>
         </div>
       </dialog>
     </section>
   );
-}
-
-function resetSummaryMessage(summary: ResetSummary | null | undefined) {
-  if (!summary) return "Fetch and brief state reset.";
-  const logCount =
-    summary.deletedLibraryFetchRuns +
-    summary.deletedDigestRuns +
-    summary.deletedAgentJobRuns +
-    summary.deletedCloudRuns +
-    summary.deletedCloudAgentJobRuns;
-  const cloudWorkCount =
-    summary.deletedCloudQueueItems + summary.deletedCloudRunTasks;
-  return [
-    `Reset ${summary.resetBuilders} sources for ${summary.users} users.`,
-    `Deleted ${summary.deletedFeedItems} posts, ${summary.deletedDigests} briefs, ${logCount} logs, and ${cloudWorkCount} Cloud work records.`,
-  ].join(" ");
 }

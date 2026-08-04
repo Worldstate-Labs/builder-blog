@@ -83,6 +83,26 @@ test("Sources page UI phrases translate while product and source names stay stab
   }
 });
 
+test("generated-data reset copy is translated in every supported locale", () => {
+  const locales = ["zh-CN", "zh-TW", "ja", "ko", "es"] as const;
+  const phrases = [
+    "Generated data",
+    "Delete posts, fetch logs, AI Briefs, brief logs, and personal Agent run records generated for your account. Sources, subscriptions, schedules, reads, and favorites are kept.",
+    "Reset fetch and AI Brief data",
+    "Reset your generated data?",
+    "This deletes generated posts, fetch logs, AI Briefs, brief logs, inclusion markers, and personal Agent run records for your account only. Sources, subscriptions, schedules, reads, and favorites are kept. Type RESET to continue.",
+    "Could not reset generated data.",
+    "Reset 8 sources. Deleted 21 posts, 3 briefs, and 5 logs.",
+  ];
+
+  for (const locale of locales) {
+    for (const phrase of phrases) {
+      assert.ok(translateUiPhrase(locale, phrase), `${locale}: ${phrase}`);
+    }
+  }
+  assert.equal(translateUiPhrase("zh-CN", "Generated data"), "生成的数据");
+});
+
 test("worker queue counts and generated task labels translate", () => {
   const phrases: Array<[string, string]> = [
     ["37 waiting", "37 个等待中"],
