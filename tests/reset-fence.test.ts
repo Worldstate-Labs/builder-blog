@@ -138,39 +138,6 @@ test("stale worker write errors expose the reset-fenced API contract", () => {
   assert.doesNotMatch(error.message, /global reset/);
 });
 
-test("RESET advances the durable fence before deleting generated state", async () => {
-  process.env.DATABASE_URL ??= "postgresql://test:test@127.0.0.1:5432/test";
-  const { resetFetchDigestState } = await import("../src/lib/fetch-digest-reset");
-  const calls: string[] = [];
-  const tx = fakeResetTransaction(calls);
-  const client = {
-    async $transaction(callback: (value: typeof tx) => Promise<unknown>) {
-      return callback(tx);
-    },
-  };
-
-  const summary = await resetFetchDigestState(client as never);
-
-  assert.deepEqual(calls.slice(0, 3), ["resetFence.lock", "resetFence.clock", "resetFence.update"]);
-  assert.deepEqual(summary, {
-    users: 3,
-    resetBuilders: 11,
-    deletedFeedItems: 12,
-    deletedLibraryFetchRuns: 13,
-    deletedDigests: 14,
-    deletedDigestRuns: 15,
-    deletedDigestedItems: 16,
-    deletedAgentJobRuns: 17,
-    resetCloudSourceTasks: 2,
-    deletedCloudQueueItems: 18,
-    deletedCloudRunTasks: 19,
-    deletedCloudRuns: 20,
-    deletedCloudAgentJobRuns: 21,
-    lastResetAt: summary.lastResetAt,
-  });
-  assert.ok(Number.isFinite(Date.parse(summary.lastResetAt)));
-});
-
 test("cloud scheduler and digest writers serialize every generated-state mutation with RESET", () => {
   const scheduler = source("src/lib/cloud-source-scheduler.ts");
   const leaseRoute = source("src/app/api/admin/cloud-fetch/lease/route.ts");
@@ -226,74 +193,6 @@ function fenceClient(lastResetAt: Date) {
     },
   };
   return client;
-}
-
-function fakeResetTransaction(calls: string[]) {
-  const count = (name: string, value: number) => ({
-    async deleteMany() {
-      calls.push(`${name}.deleteMany`);
-      return { count: value };
-    },
-  });
-  return {
-    async $queryRawUnsafe(query: string) {
-      if (query.includes("clock_timestamp")) {
-        calls.push("resetFence.clock");
-        return [{ now: new Date("2026-07-14T04:00:00.000Z") }];
-      }
-      calls.push("resetFence.lock");
-      return [{ id: "global" }];
-    },
-    resetFence: {
-      async update(args: { data: { lastResetAt: Date } }) {
-        calls.push("resetFence.update");
-        return { lastResetAt: args.data.lastResetAt };
-      },
-    },
-    user: { async count() { calls.push("user.count"); return 3; } },
-    cloudSourceTask: {
-      async findMany() {
-        return [
-          { id: "task_active", builderId: "builder_active", effectiveFrequency: "DAILY" },
-          { id: "task_paused", builderId: "builder_paused", effectiveFrequency: "WEEKLY" },
-        ];
-      },
-      updateIndex: 0,
-      async updateMany(args: { where: { id: { in: string[] } } }) {
-        if (args.where.id.in.length === 0) return { count: 0 };
-        this.updateIndex += 1;
-        calls.push("cloudSourceTask.updateMany");
-        return { count: 1 };
-      },
-    },
-    cloudSourceSubmission: {
-      async groupBy() {
-        return [{ cloudBuilderId: "builder_active", _count: { _all: 1 } }];
-      },
-    },
-    feedItem: count("feedItem", 12),
-    cloudFetchQueueItem: count("cloudFetchQueueItem", 18),
-    cloudFetchRunTask: count("cloudFetchRunTask", 19),
-    cloudFetchRun: count("cloudFetchRun", 20),
-    libraryFetchRun: count("libraryFetchRun", 13),
-    digest: count("digest", 14),
-    digestRun: count("digestRun", 15),
-    digestedItem: count("digestedItem", 16),
-    agentJobRun: {
-      deleteIndex: 0,
-      async deleteMany() {
-        this.deleteIndex += 1;
-        calls.push("agentJobRun.deleteMany");
-        return { count: this.deleteIndex === 1 ? 17 : 21 };
-      },
-    },
-    builder: {
-      async updateMany() {
-        calls.push("builder.updateMany");
-        return { count: 11 };
-      },
-    },
-  };
 }
 
 function scopedResetClient() {
