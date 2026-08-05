@@ -37,6 +37,7 @@ ${shellFunction(runner, "clear_current_file")}
 ${shellFunction(runner, "job_update_error_is_reset_fenced")}
 ${shellFunction(runner, "strict_job_run_update_for_instance")}
 ${shellFunction(runner, "verify_followbrief_current_pid")}
+${shellFunction(runner, "parse_cloud_worker_release_result")}
 release_cloud_worker_leases_for_instance() { return 0; }
 ${shellFunction(runner, "cloud_host_control_current_file")}
 `;
@@ -3412,6 +3413,7 @@ JOB_UPDATE_RESET_FENCED=78
 ${shellFunction(runner, "json_get_number")}
 ${shellFunction(runner, "json_get_string")}
 ${shellFunction(runner, "job_update_error_is_reset_fenced")}
+${shellFunction(runner, "parse_cloud_worker_release_result")}
 ${shellFunction(runner, "release_cloud_worker_leases_for_instance")}
 stub_code=0
 stub_stdout=""
@@ -3502,11 +3504,59 @@ assert_case \
 assert_case \
   malformed-response \
   0 \
-  '{"outcome":' \
+  '{"outcome":"released","releasedRuns":1,"releasedSourceTasks":2,"requeuedQueueItems":3' \
   '' \
   1 \
   '' \
-  'release-cloud-fetch'
+  'malformed response'
+assert_case \
+  exponent-count \
+  0 \
+  '{"outcome":"released","releasedRuns":1e2,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
+  negative-count \
+  0 \
+  '{"outcome":"released","releasedRuns":-1,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
+  fractional-count \
+  0 \
+  '{"outcome":"released","releasedRuns":1.5,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
+  string-count \
+  0 \
+  '{"outcome":"released","releasedRuns":"1","releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
+  out-of-bound-count \
+  0 \
+  '{"outcome":"released","releasedRuns":2147483648,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
+  duplicate-count \
+  0 \
+  '{"outcome":"released","releasedRuns":1,"releasedRuns":2,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
 assert_case \
   unsupported-outcome \
   0 \
@@ -3514,7 +3564,7 @@ assert_case \
   '' \
   1 \
   '' \
-  'unexpected'
+  'malformed response'
 assert_case \
   generic-409 \
   1 \

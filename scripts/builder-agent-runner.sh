@@ -2671,6 +2671,64 @@ job_update_error_is_reset_fenced() {
     "$_jueirf_file"
 }
 
+parse_cloud_worker_release_result() {
+  _pcwrr_file="${1:-}"
+  [ -r "$_pcwrr_file" ] || return 1
+  node - "$_pcwrr_file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const MAX_COUNT = 2147483647;
+const COUNT_FIELDS = ["releasedRuns", "releasedSourceTasks", "requeuedQueueItems"];
+let raw = "";
+try {
+  raw = fs.readFileSync(file, "utf8");
+} catch {
+  process.exit(1);
+}
+let parsed;
+try {
+  parsed = JSON.parse(raw);
+} catch {
+  process.exit(1);
+}
+if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  process.exit(1);
+}
+const outcomeFieldMatches = [...raw.matchAll(/"outcome"\s*:\s*"(released|already_released)"(?=\s*[,}])/g)];
+if (outcomeFieldMatches.length !== 1) {
+  process.exit(1);
+}
+const outcome = outcomeFieldMatches[0][1];
+if (parsed.outcome !== outcome) {
+  process.exit(1);
+}
+for (const field of COUNT_FIELDS) {
+  const fieldMatches = raw.match(new RegExp(`"${field}"\\s*:`, "g")) || [];
+  if (fieldMatches.length !== 1) {
+    process.exit(1);
+  }
+  const tokenMatches = [...raw.matchAll(new RegExp(`"${field}"\\s*:\\s*(0|[1-9]\\d*)(?=\\s*[,}])`, "g"))];
+  if (tokenMatches.length !== 1) {
+    process.exit(1);
+  }
+  const token = tokenMatches[0][1];
+  const value = parsed[field];
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0 ||
+    value > MAX_COUNT ||
+    String(value) !== token
+  ) {
+    process.exit(1);
+  }
+}
+console.log(
+  `${outcome} ${parsed.releasedRuns} ${parsed.releasedSourceTasks} ${parsed.requeuedQueueItems}`,
+);
+NODE
+}
+
 release_cloud_worker_leases_for_instance() {
   _rclfi_instance="${1:-}"
   if [ -z "$_rclfi_instance" ]; then
@@ -2704,33 +2762,16 @@ release_cloud_worker_leases_for_instance() {
     return "$_rclfi_exit"
   fi
 
-  _rclfi_outcome="$(json_get_string outcome "$_rclfi_stdout")"
-  case "$_rclfi_outcome" in
-    released|already_released) ;;
-    "")
-      echo "release-cloud-fetch did not return a supported JSON outcome." >&2
-      rm -f "$_rclfi_stdout" "$_rclfi_stderr"
-      return 1
-      ;;
-    *)
-      echo "release-cloud-fetch returned unsupported outcome '$_rclfi_outcome'." >&2
-      rm -f "$_rclfi_stdout" "$_rclfi_stderr"
-      return 1
-      ;;
-  esac
-
-  _rclfi_runs="$(json_get_number releasedRuns "$_rclfi_stdout")"
-  _rclfi_sources="$(json_get_number releasedSourceTasks "$_rclfi_stdout")"
-  _rclfi_queue="$(json_get_number requeuedQueueItems "$_rclfi_stdout")"
-  for _rclfi_value in "$_rclfi_runs" "$_rclfi_sources" "$_rclfi_queue"; do
-    case "$_rclfi_value" in
-      ''|*[!0-9]*)
-        echo "release-cloud-fetch returned malformed release counts." >&2
-        rm -f "$_rclfi_stdout" "$_rclfi_stderr"
-        return 1
-        ;;
-    esac
-  done
+  if ! _rclfi_parsed="$(parse_cloud_worker_release_result "$_rclfi_stdout")"; then
+    echo "release-cloud-fetch returned malformed response." >&2
+    rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+    return 1
+  fi
+  set -- $_rclfi_parsed
+  _rclfi_outcome="${1:-}"
+  _rclfi_runs="${2:-}"
+  _rclfi_sources="${3:-}"
+  _rclfi_queue="${4:-}"
 
   echo "Released cloud worker leases for $_rclfi_instance (outcome=$_rclfi_outcome runs=$_rclfi_runs sourceTasks=$_rclfi_sources queueItems=$_rclfi_queue)."
   rm -f "$_rclfi_stdout" "$_rclfi_stderr"

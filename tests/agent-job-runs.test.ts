@@ -919,18 +919,35 @@ test("runner exposes strict account-scoped cloud host lifecycle controls", () =>
   assert.match(runner, /verify_followbrief_current_pid/);
   assert.match(runner, /BUILDER_BLOG_STRICT_JOB_UPDATE/);
   assert.match(runner, /_target_update_code=0[\s\S]*job_run_update "\$@" \|\| _target_update_code=\$\?/);
+  assert.match(runner, /parse_cloud_worker_release_result\(\) \{/);
   assert.match(runner, /release_cloud_worker_leases_for_instance\(\) \{/);
+  assert.match(
+    runner,
+    /parse_cloud_worker_release_result\(\) \{[\s\S]*node - "\$_pcwrr_file"/,
+  );
+  assert.match(
+    runner,
+    /parse_cloud_worker_release_result\(\) \{[\s\S]*2147483647[\s\S]*JSON\.parse[\s\S]*Number\.isSafeInteger/,
+  );
+  assert.match(
+    runner,
+    /parse_cloud_worker_release_result\(\) \{[\s\S]*matchAll[\s\S]*releasedRuns[\s\S]*releasedSourceTasks[\s\S]*requeuedQueueItems/,
+  );
+  assert.match(
+    runner,
+    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*parse_cloud_worker_release_result "\$_rclfi_stdout"/,
+  );
   assert.match(
     runner,
     /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*release-cloud-fetch --job-run-id/,
   );
   assert.match(
     runner,
-    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*json_get_string outcome[\s\S]*released\|already_released/,
+    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*release-cloud-fetch returned malformed response\./,
   );
   assert.match(
     runner,
-    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*json_get_number releasedRuns[\s\S]*json_get_number releasedSourceTasks[\s\S]*json_get_number requeuedQueueItems/,
+    /parse_cloud_worker_release_result\(\) \{[\s\S]*releasedRuns[\s\S]*releasedSourceTasks[\s\S]*requeuedQueueItems/,
   );
   assert.match(
     runner,
