@@ -19,6 +19,7 @@ import {
   CommonSummaryRulesForm,
 } from "@/components/CommonSummaryRulesForm";
 import { isAdminEmail } from "@/lib/admin";
+import { canViewSourceFetchingRules } from "@/lib/admin-fetch-only-sources";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listAdminSourceCandidateLibraries } from "@/lib/source-candidate-backup";
@@ -143,6 +144,9 @@ async function SourceTypeConfigSection({
     ...config,
     contentQuality: defaultSourceConfigById.get(config.sourceId)?.contentQuality ?? config.contentQuality,
   }));
+  const visibleSourceConfigs = sourceConfigs.filter((config) =>
+    canViewSourceFetchingRules(config.sourceId, isAdmin),
+  );
   return (
     <section className="settings-rules">
       <details className="settings-rules-panel fb-panel" open>
@@ -155,8 +159,8 @@ async function SourceTypeConfigSection({
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
             <CountMeta
-              label={sourceConfigs.length === 1 ? "source type" : "source types"}
-              value={sourceConfigs.length}
+              label={visibleSourceConfigs.length === 1 ? "source type" : "source types"}
+              value={visibleSourceConfigs.length}
             />
           </span>
           <span className="settings-rules-toggle-icon" aria-hidden="true">
@@ -179,7 +183,7 @@ async function SourceTypeConfigSection({
           <AdminSourceTypeManager
             canEditFetchingInstructions={isAdmin}
             canEditQualityGates={isAdmin}
-            initialConfigs={sourceConfigs.map((c) => ({
+            initialConfigs={visibleSourceConfigs.map((c) => ({
               sourceId: c.sourceId,
               label: c.label,
               agentDefaultStatus: c.agentDefaultStatus,

@@ -17,6 +17,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS,
+  canViewSourceFetchingRules,
   isAdminFetchOnlySourceType,
   normalizeAdminFetchOnlySourceType,
 } from "../src/lib/admin-fetch-only-sources";
@@ -363,6 +364,15 @@ test("admin-fetch-only source types are normalized and explicit", () => {
   assert.equal(isAdminFetchOnlySourceType("new_product_launches"), true);
   assert.equal(normalizeAdminFetchOnlySourceType("GitHub-Trending"), "github_trending");
   assert.equal(isAdminFetchOnlySourceType("blog"), false);
+});
+
+test("source fetching rules hide admin-fetched source types from non-admin users", () => {
+  for (const sourceType of ADMIN_FETCH_ONLY_SOURCE_TYPE_IDS) {
+    assert.equal(canViewSourceFetchingRules(sourceType, false), false);
+    assert.equal(canViewSourceFetchingRules(sourceType, true), true);
+  }
+  assert.equal(canViewSourceFetchingRules("blog", false), true);
+  assert.equal(canViewSourceFetchingRules("youtube", false), true);
 });
 
 test("platform-maintained source types are normalized and explicit", async () => {
@@ -4389,6 +4399,12 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /where: \{ userId, revokedAt: null \}/);
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
   assert.match(settingsPage, /getAllSourceConfigs\(\)/);
+  assert.match(
+    settingsPage,
+    /const visibleSourceConfigs = sourceConfigs\.filter\(\(config\) =>[\s\S]*canViewSourceFetchingRules\(config\.sourceId, isAdmin\)/,
+  );
+  assert.match(settingsPage, /value=\{visibleSourceConfigs\.length\}/);
+  assert.match(settingsPage, /initialConfigs=\{visibleSourceConfigs\.map/);
   assert.match(settingsPage, /canEditFetchingInstructions=\{isAdmin\}/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);

@@ -21,3 +21,10 @@ export function isAdminFetchOnlySourceType(
     normalizeAdminFetchOnlySourceType(sourceType),
   );
 }
+
+export function canViewSourceFetchingRules(
+  sourceType: string | null | undefined,
+  userIsAdmin: boolean,
+) {
+  return userIsAdmin || !isAdminFetchOnlySourceType(sourceType);
+}
