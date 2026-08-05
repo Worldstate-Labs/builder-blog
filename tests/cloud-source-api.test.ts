@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import {
@@ -755,6 +755,28 @@ test("cloud source scheduler exposes DB-backed materialize and lease workflows",
   assert.match(scheduler, /tokenBudgetPerHour/);
   assert.match(scheduler, /requestedLimit/);
   assert.match(scheduler, /leaseExpiresAt/);
+});
+
+test("Cloud worker ownership keeps legacy runs nullable and adds AgentJobRun ownership for new runs", () => {
+  const schema = source("prisma/schema.prisma");
+  const migrationPath = "prisma/migrations/000092_cloud_fetch_worker_ownership/migration.sql";
+  const migration = existsSync(join(root, migrationPath)) ? source(migrationPath) : "";
+
+  assert.match(schema, /cloudFetchRuns\s+CloudFetchRun\[\]/);
+  assert.match(schema, /agentJobRunId\s+String\?/);
+  assert.match(
+    schema,
+    /agentJobRun\s+AgentJobRun\?\s+@relation\(fields:\s*\[agentJobRunId\],\s*references:\s*\[id\],\s*onDelete:\s*SetNull\)/,
+  );
+  assert.match(schema, /@@index\(\[createdByUserId,\s*agentJobRunId,\s*status\]\)/);
+
+  assert.ok(existsSync(join(root, migrationPath)), "expected Cloud worker ownership migration to exist");
+  assert.match(migration, /ALTER TABLE "CloudFetchRun" ADD COLUMN "agentJobRunId" TEXT;/);
+  assert.match(
+    migration,
+    /FOREIGN KEY \("agentJobRunId"\) REFERENCES "AgentJobRun"\("id"\) ON DELETE SET NULL ON UPDATE CASCADE;/,
+  );
+  assert.doesNotMatch(migration, /UPDATE\s+"CloudFetchRun"\s+SET\s+"agentJobRunId"/);
 });
 
 test("cloud submission reconciles to a single active submission and cancels superseded fetches", () => {
