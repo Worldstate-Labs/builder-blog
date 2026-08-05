@@ -2744,6 +2744,8 @@ NODE
 
 release_cloud_worker_leases_for_instance() {
   _rclfi_instance="${1:-}"
+  _rclfi_stdout=""
+  _rclfi_stderr=""
   if [ -z "$_rclfi_instance" ]; then
     echo "Cloud worker lease release requires a public instance id." >&2
     return 1
@@ -2751,8 +2753,17 @@ release_cloud_worker_leases_for_instance() {
 
   _rclfi_saved_umask="$(umask)"
   umask 077
-  _rclfi_stdout="$(mktemp "$JOB_STATE_DIR/cloud-release.stdout.XXXXXX")"
-  _rclfi_stderr="$(mktemp "$JOB_STATE_DIR/cloud-release.stderr.XXXXXX")"
+  if ! _rclfi_stdout="$(mktemp "$JOB_STATE_DIR/cloud-release.stdout.XXXXXX")"; then
+    umask "$_rclfi_saved_umask"
+    echo "Failed to create temporary files for cloud worker lease release." >&2
+    return 1
+  fi
+  if ! _rclfi_stderr="$(mktemp "$JOB_STATE_DIR/cloud-release.stderr.XXXXXX")"; then
+    umask "$_rclfi_saved_umask"
+    rm -f "$_rclfi_stdout"
+    echo "Failed to create temporary files for cloud worker lease release." >&2
+    return 1
+  fi
   umask "$_rclfi_saved_umask"
 
   _rclfi_exit=0

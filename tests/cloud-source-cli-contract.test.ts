@@ -3618,6 +3618,57 @@ grep -E 'job run id|instance' "${dir}/missing.err" >/dev/null || exit 39
   }
 });
 
+test("release helper restores umask and cleans partial temp files when the second mktemp fails", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-release-helper-mktemp-"));
+  try {
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+JOB_STATE_DIR="${dir}/state"
+AGENT_DIR="${dir}/agent"
+mkdir -p "$JOB_STATE_DIR" "$AGENT_DIR"
+${shellFunction(runner, "job_update_error_is_reset_fenced")}
+${shellFunction(runner, "parse_cloud_worker_release_result")}
+${shellFunction(runner, "release_cloud_worker_leases_for_instance")}
+node() {
+  printf 'called\\n' >> "${dir}/node.log"
+  return 0
+}
+mktemp() {
+  if [ ! -e "${dir}/mktemp-first.done" ]; then
+    : > "${dir}/mktemp-first.done"
+    _path="${dir}/state/first-temp"
+    : > "$_path"
+    printf '%s\\n' "$_path"
+    return 0
+  fi
+  printf 'mktemp failed\\n' >&2
+  return 1
+}
+umask 022
+before_umask="$(umask)"
+set +e
+release_cloud_worker_leases_for_instance host-1 > "${dir}/case.out" 2> "${dir}/case.err"
+code="$?"
+set -e
+[ "$code" -ne 0 ] || exit 41
+[ "$(umask)" = "$before_umask" ] || exit 42
+[ ! -e "${dir}/state/first-temp" ] || exit 43
+[ -z "$(find "$JOB_STATE_DIR" -type f -print)" ] || exit 44
+[ ! -e "${dir}/node.log" ] || exit 45
+grep -E 'mktemp|temp|release' "${dir}/case.err" >/dev/null || exit 46
+[ ! -s "${dir}/case.out" ] || exit 47
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud host control escalates the cached descendant set after the runner root exits", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-descendants-"));
   try {
