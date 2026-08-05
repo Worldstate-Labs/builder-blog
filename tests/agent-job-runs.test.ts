@@ -919,9 +919,26 @@ test("runner exposes strict account-scoped cloud host lifecycle controls", () =>
   assert.match(runner, /verify_followbrief_current_pid/);
   assert.match(runner, /BUILDER_BLOG_STRICT_JOB_UPDATE/);
   assert.match(runner, /_target_update_code=0[\s\S]*job_run_update "\$@" \|\| _target_update_code=\$\?/);
+  assert.match(runner, /release_cloud_worker_leases_for_instance\(\) \{/);
   assert.match(
     runner,
-    /cloud_host_control_current_file\(\) \{[\s\S]*_chcc_update_code=0[\s\S]*strict_job_run_update_for_instance[\s\S]*\|\| _chcc_update_code=\$\?[\s\S]*\[\s*"\$_chcc_update_code"\s*-eq\s*"\$JOB_UPDATE_RESET_FENCED"\s*\]/,
+    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*release-cloud-fetch --job-run-id/,
+  );
+  assert.match(
+    runner,
+    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*json_get_string outcome[\s\S]*released\|already_released/,
+  );
+  assert.match(
+    runner,
+    /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*json_get_number releasedRuns[\s\S]*json_get_number releasedSourceTasks[\s\S]*json_get_number requeuedQueueItems/,
+  );
+  assert.match(
+    runner,
+    /cloud_host_control_current_file\(\) \{[\s\S]*verify_followbrief_current_pid[\s\S]*strict_job_run_update_for_instance[\s\S]*release_cloud_worker_leases_for_instance[\s\S]*clear_current_file/,
+  );
+  assert.match(
+    runner,
+    /if \[ "\$_chcc_update_code" -eq "\$JOB_UPDATE_RESET_FENCED" \]; then[\s\S]*clear_current_file "\$_chcc_file" "\$_chcc_instance"[\s\S]*return 0[\s\S]*fi[\s\S]*_chcc_release_code=0/,
   );
 });
 

@@ -2671,6 +2671,72 @@ job_update_error_is_reset_fenced() {
     "$_jueirf_file"
 }
 
+release_cloud_worker_leases_for_instance() {
+  _rclfi_instance="${1:-}"
+  if [ -z "$_rclfi_instance" ]; then
+    echo "Cloud worker lease release requires a public instance id." >&2
+    return 1
+  fi
+
+  _rclfi_saved_umask="$(umask)"
+  umask 077
+  _rclfi_stdout="$(mktemp "$JOB_STATE_DIR/cloud-release.stdout.XXXXXX")"
+  _rclfi_stderr="$(mktemp "$JOB_STATE_DIR/cloud-release.stderr.XXXXXX")"
+  umask "$_rclfi_saved_umask"
+
+  _rclfi_exit=0
+  node "$AGENT_DIR/builder-digest.mjs" release-cloud-fetch --job-run-id "$_rclfi_instance" \
+    >"$_rclfi_stdout" 2>"$_rclfi_stderr" || _rclfi_exit=$?
+
+  if [ "$_rclfi_exit" -ne 0 ] && job_update_error_is_reset_fenced "$_rclfi_stderr"; then
+    rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+    return "$JOB_UPDATE_RESET_FENCED"
+  fi
+
+  if [ "$_rclfi_exit" -ne 0 ]; then
+    echo "Failed to release cloud worker leases for $_rclfi_instance." >&2
+    if [ -s "$_rclfi_stderr" ]; then
+      tail -n 5 "$_rclfi_stderr" >&2 || cat "$_rclfi_stderr" >&2 || true
+    else
+      echo "release-cloud-fetch exited with code $_rclfi_exit." >&2
+    fi
+    rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+    return "$_rclfi_exit"
+  fi
+
+  _rclfi_outcome="$(json_get_string outcome "$_rclfi_stdout")"
+  case "$_rclfi_outcome" in
+    released|already_released) ;;
+    "")
+      echo "release-cloud-fetch did not return a supported JSON outcome." >&2
+      rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+      return 1
+      ;;
+    *)
+      echo "release-cloud-fetch returned unsupported outcome '$_rclfi_outcome'." >&2
+      rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+      return 1
+      ;;
+  esac
+
+  _rclfi_runs="$(json_get_number releasedRuns "$_rclfi_stdout")"
+  _rclfi_sources="$(json_get_number releasedSourceTasks "$_rclfi_stdout")"
+  _rclfi_queue="$(json_get_number requeuedQueueItems "$_rclfi_stdout")"
+  for _rclfi_value in "$_rclfi_runs" "$_rclfi_sources" "$_rclfi_queue"; do
+    case "$_rclfi_value" in
+      ''|*[!0-9]*)
+        echo "release-cloud-fetch returned malformed release counts." >&2
+        rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+        return 1
+        ;;
+    esac
+  done
+
+  echo "Released cloud worker leases for $_rclfi_instance (outcome=$_rclfi_outcome runs=$_rclfi_runs sourceTasks=$_rclfi_sources queueItems=$_rclfi_queue)."
+  rm -f "$_rclfi_stdout" "$_rclfi_stderr"
+  return 0
+}
+
 cloud_host_control_current_file() {
   _chcc_action="$1"
   _chcc_file="$2"
@@ -2742,9 +2808,20 @@ cloud_host_control_current_file() {
           echo "Stopped $_chcc_label worker but could not record its terminal status; preserving its marker for retry." >&2
           return 1
         fi
-        clear_current_file "$_chcc_file" "$_chcc_instance"
         if [ "$_chcc_update_code" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+          clear_current_file "$_chcc_file" "$_chcc_instance"
           echo "Reconciled reset-fenced $_chcc_label worker $_chcc_instance after confirming local shutdown."
+          return 0
+        fi
+        _chcc_release_code=0
+        release_cloud_worker_leases_for_instance "$_chcc_instance" || _chcc_release_code=$?
+        if [ "$_chcc_release_code" -ne 0 ] && [ "$_chcc_release_code" -ne "$JOB_UPDATE_RESET_FENCED" ]; then
+          echo "Stopped $_chcc_label worker but could not release its server lease; preserving its marker for retry." >&2
+          return 1
+        fi
+        clear_current_file "$_chcc_file" "$_chcc_instance"
+        if [ "$_chcc_release_code" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+          echo "Reconciled reset-fenced cloud lease release for $_chcc_label worker $_chcc_instance after local shutdown."
           return 0
         fi
         echo "Stopped $_chcc_label worker $_chcc_instance."
@@ -2772,9 +2849,22 @@ cloud_host_control_current_file() {
     echo "Could not reconcile stale $_chcc_label worker $_chcc_instance; preserving its marker." >&2
     return 1
   fi
-  clear_current_file "$_chcc_file" "$_chcc_instance"
-  if [ "$_chcc_update_code" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+  if [ "$_chcc_action" = "stop-current" ] && [ "$_chcc_update_code" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+    clear_current_file "$_chcc_file" "$_chcc_instance"
     echo "Reconciled reset-fenced stale $_chcc_label worker $_chcc_instance without signaling pid ${_chcc_pid:-unknown}."
+    return 0
+  fi
+  if [ "$_chcc_action" = "stop-current" ]; then
+    _chcc_release_code=0
+    release_cloud_worker_leases_for_instance "$_chcc_instance" || _chcc_release_code=$?
+    if [ "$_chcc_release_code" -ne 0 ] && [ "$_chcc_release_code" -ne "$JOB_UPDATE_RESET_FENCED" ]; then
+      echo "Could not release stale $_chcc_label worker $_chcc_instance after local reconciliation; preserving its marker." >&2
+      return 1
+    fi
+  fi
+  clear_current_file "$_chcc_file" "$_chcc_instance"
+  if [ "${_chcc_release_code:-0}" -eq "$JOB_UPDATE_RESET_FENCED" ]; then
+    echo "Reconciled reset-fenced cloud lease release for stale $_chcc_label worker $_chcc_instance without signaling pid ${_chcc_pid:-unknown}."
     return 0
   fi
   echo "Reconciled stale $_chcc_label worker $_chcc_instance without signaling pid ${_chcc_pid:-unknown}."

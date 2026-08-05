@@ -37,6 +37,7 @@ ${shellFunction(runner, "clear_current_file")}
 ${shellFunction(runner, "job_update_error_is_reset_fenced")}
 ${shellFunction(runner, "strict_job_run_update_for_instance")}
 ${shellFunction(runner, "verify_followbrief_current_pid")}
+release_cloud_worker_leases_for_instance() { return 0; }
 ${shellFunction(runner, "cloud_host_control_current_file")}
 `;
 
@@ -3396,6 +3397,161 @@ assert_case \
   }
 });
 
+test("release helper accepts only released outcomes, classifies exact reset fences, and cleans temp files", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-release-helper-cases-"));
+  try {
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+JOB_STATE_DIR="${dir}/state"
+AGENT_DIR="${dir}/agent"
+mkdir -p "$JOB_STATE_DIR" "$AGENT_DIR"
+JOB_UPDATE_RESET_FENCED=78
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "job_update_error_is_reset_fenced")}
+${shellFunction(runner, "release_cloud_worker_leases_for_instance")}
+stub_code=0
+stub_stdout=""
+stub_stderr=""
+node() {
+  if [ "$1" = "-" ]; then command node "$@"; return "$?"; fi
+  printf '%s\\n' "$*" > "${dir}/args.log"
+  if [ -n "$stub_stdout" ]; then
+    printf '%s\\n' "$stub_stdout"
+  fi
+  if [ -n "$stub_stderr" ]; then
+    printf '%s\\n' "$stub_stderr" >&2
+  fi
+  return "$stub_code"
+}
+assert_case() {
+  case_name="$1"
+  stub_code="$2"
+  stub_stdout="$3"
+  stub_stderr="$4"
+  expected_code="$5"
+  expected_stdout_pattern="$6"
+  expected_stderr_pattern="$7"
+  rm -f "${dir}/args.log" "${dir}/case.out" "${dir}/case.err"
+  before_count="$(find "$JOB_STATE_DIR" -type f | wc -l | tr -d ' ')"
+  set +e
+  release_cloud_worker_leases_for_instance host-1 > "${dir}/case.out" 2> "${dir}/case.err"
+  actual_code="$?"
+  set -e
+  [ "$actual_code" = "$expected_code" ] || {
+    echo "$case_name returned $actual_code instead of $expected_code" >&2
+    exit 31
+  }
+  grep -F 'builder-digest.mjs release-cloud-fetch --job-run-id host-1' "${dir}/args.log" >/dev/null || exit 32
+  after_count="$(find "$JOB_STATE_DIR" -type f | wc -l | tr -d ' ')"
+  [ "$before_count" = "$after_count" ] || exit 33
+  if [ -n "$expected_stdout_pattern" ]; then
+    grep -E "$expected_stdout_pattern" "${dir}/case.out" >/dev/null || exit 34
+  elif [ -s "${dir}/case.out" ]; then
+    exit 35
+  fi
+  if [ -n "$expected_stderr_pattern" ]; then
+    grep -E "$expected_stderr_pattern" "${dir}/case.err" >/dev/null || exit 36
+  elif [ -s "${dir}/case.err" ]; then
+    exit 37
+  fi
+}
+assert_case \
+  released \
+  0 \
+  '{"outcome":"released","releasedRuns":1,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  0 \
+  '1.*2.*3' \
+  ''
+assert_case \
+  already-released \
+  0 \
+  '{"outcome":"already_released","releasedRuns":0,"releasedSourceTasks":0,"requeuedQueueItems":0}' \
+  '' \
+  0 \
+  '0.*0.*0' \
+  ''
+assert_case \
+  reset-fenced \
+  1 \
+  '' \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' \
+  78 \
+  '' \
+  ''
+assert_case \
+  job-not-found \
+  1 \
+  '' \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_release_job_not_found","retryable":false}' \
+  1 \
+  '' \
+  'cloud_release_job_not_found'
+assert_case \
+  auth \
+  1 \
+  '' \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":401,"syncCode":"http_status","responseCode":"unauthorized","retryable":false}' \
+  1 \
+  '' \
+  'unauthorized'
+assert_case \
+  malformed-response \
+  0 \
+  '{"outcome":' \
+  '' \
+  1 \
+  '' \
+  'release-cloud-fetch'
+assert_case \
+  unsupported-outcome \
+  0 \
+  '{"outcome":"unexpected","releasedRuns":1,"releasedSourceTasks":1,"requeuedQueueItems":1}' \
+  '' \
+  1 \
+  '' \
+  'unexpected'
+assert_case \
+  generic-409 \
+  1 \
+  '' \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"other_conflict","retryable":false}' \
+  1 \
+  '' \
+  'other_conflict'
+assert_case \
+  retryable-reset-fence \
+  1 \
+  '' \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":true}' \
+  1 \
+  '' \
+  'retryable'
+assert_case \
+  network \
+  1 \
+  '' \
+  'FOLLOWBRIEF_ERROR {"type":"http_sync","status":null,"syncCode":"network","responseCode":null,"retryable":null}' \
+  1 \
+  '' \
+  'network'
+if release_cloud_worker_leases_for_instance "" >/dev/null 2>"${dir}/missing.err"; then
+  exit 38
+fi
+grep -E 'job run id|instance' "${dir}/missing.err" >/dev/null || exit 39
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud host control escalates the cached descendant set after the runner root exits", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-descendants-"));
   try {
@@ -3417,13 +3573,18 @@ process_tree_pids() { printf '4242\\n4343\\n'; }
 terminate_process_tree() { return 1; }
 terminate_recorded_process_ids() { printf '%s\\n' "$1" > "${dir}/killed"; return 0; }
 job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+release_cloud_worker_leases_for_instance() {
+  [ -r "${currentFile}" ] || exit 41
+  printf 'release\\n' >> "${dir}/updates"
+  return 0
+}
 cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
 `,
       "utf8",
     );
     await execFileAsync("sh", [script]);
     await assert.rejects(readFile(currentFile, "utf8"));
-    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "killed");
+    assert.equal((await readFile(join(dir, "updates"), "utf8")).trim(), "killed\nrelease");
     assert.equal((await readFile(join(dir, "killed"), "utf8")).trim(), "4242 4343");
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -3555,6 +3716,7 @@ job_run_update_for_instance() {
   printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
   return 1
 }
+release_cloud_worker_leases_for_instance() { printf 'release\\n' >> "${dir}/order"; return 0; }
 cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
 `,
       "utf8",
@@ -3563,6 +3725,54 @@ cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
     await assert.rejects(readFile(currentFile, "utf8"));
     assert.equal((await readFile(join(dir, "order"), "utf8")).trim(), "terminate\nupdate");
     assert.match(result.stdout, /reset-fenced cloud-library-host worker host-live/i);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud host control releases only after an exact live worker reaches terminal status and clears last", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-live-release-order-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-live-release", workerPid: 6767, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_calls=0
+verify_followbrief_pid() {
+  verify_calls=$((verify_calls + 1))
+  [ "$verify_calls" -eq 1 ]
+}
+process_tree_pids() { printf '6767\\n'; }
+terminate_process_tree() { printf 'terminate\\n' >> "${dir}/order"; return 0; }
+job_run_update_for_instance() {
+  [ -r "${currentFile}" ] || exit 41
+  printf 'update\\n' >> "${dir}/order"
+  return 0
+}
+release_cloud_worker_leases_for_instance() {
+  [ -r "${currentFile}" ] || exit 42
+  printf 'release\\n' >> "${dir}/order"
+  return 0
+}
+clear_current_file() {
+  [ "$(json_get_string instanceId "$1")" = "$2" ] || exit 43
+  printf 'clear\\n' >> "${dir}/order"
+  rm -f "$1"
+}
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+    await assert.rejects(readFile(currentFile, "utf8"));
+    assert.equal((await readFile(join(dir, "order"), "utf8")).trim(), "terminate\nupdate\nrelease\nclear");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -3640,6 +3850,36 @@ cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
   }
 });
 
+test("cloud host control keeps current.json when release fails after a successful terminal update", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-release-failure-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    await writeFile(
+      currentFile,
+      `${JSON.stringify({ instanceId: "host-release-fail", workerPid: 6868, startedAt: "2026-07-20T00:00:00Z", expectedAt: "2026-07-20T00:00:00Z" })}\n`,
+      "utf8",
+    );
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_followbrief_pid() { return 1; }
+kill() { [ "$1" = "-0" ] && return 1; return 1; }
+job_run_update_for_instance() { printf 'update\\n' >> "${dir}/order"; return 0; }
+release_cloud_worker_leases_for_instance() { printf 'release\\n' >> "${dir}/order"; return 19; }
+cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host
+`,
+      "utf8",
+    );
+    await assert.rejects(execFileAsync("sh", [script]));
+    assert.equal(JSON.parse(await readFile(currentFile, "utf8")).instanceId, "host-release-fail");
+    assert.equal((await readFile(join(dir, "order"), "utf8")).trim(), "update\nrelease");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud host control keeps the marker for non-reset-fenced stop-current update failures", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-stop-current-failures-"));
   try {
@@ -3695,6 +3935,92 @@ assert_case missing-diagnostic 23 ''
   }
 });
 
+test("cloud host control reconciles dead and reused workers before release, and clears only if the marker still matches", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-stale-release-order-"));
+  try {
+    const currentFile = join(dir, "current.json");
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `${cloudHostControlHarnessPrelude(runner, dir)}
+verify_case=""
+verify_followbrief_pid() {
+  [ "$verify_case" = "reused" ]
+}
+process_start_epoch() {
+  if [ "$verify_case" = "reused" ]; then
+    printf '200\\n'
+    return 0
+  fi
+  printf '100\\n'
+}
+kill() {
+  if [ "$1" = "-0" ] && [ "$2" = "6969" ]; then
+    [ "$verify_case" = "reused" ]
+    return $?
+  fi
+  printf '%s\\n' "$*" >> "${dir}/signals"
+  return 1
+}
+terminate_process_tree() { printf 'terminated\\n' >> "${dir}/signals"; return 0; }
+job_run_update_for_instance() {
+  [ -r "${currentFile}" ] || exit 51
+  printf 'update|%s\\n' "$4" >> "${dir}/order"
+  return 0
+}
+release_cloud_worker_leases_for_instance() {
+  [ -r "${currentFile}" ] || exit 52
+  printf 'release\\n' >> "${dir}/order"
+  if [ "$verify_case" = "reused" ]; then
+    printf '%s\\n' '${JSON.stringify({ instanceId: "replacement", workerPid: 7000, startedAt: "2026-07-21T00:00:00Z", expectedAt: "2026-07-21T00:00:00Z" })}' > "${currentFile}"
+  fi
+  return 0
+}
+clear_current_file() {
+  printf 'clear|%s|%s\\n' "$(json_get_string instanceId "$1")" "$2" >> "${dir}/order"
+  if [ "$(json_get_string instanceId "$1")" = "$2" ]; then
+    rm -f "$1"
+  fi
+}
+assert_case() {
+  verify_case="$1"
+  rm -f "${dir}/signals" "${dir}/order" "${currentFile}"
+  case "$verify_case" in
+    dead)
+      printf '%s\\n' '{"instanceId":"host-dead-release","workerPid":6969,"startedAt":"2026-07-20T00:00:00Z","expectedAt":"2026-07-20T00:00:00Z"}' > "${currentFile}"
+      ;;
+    reused)
+      printf '%s\\n' '{"instanceId":"host-reused-release","workerPid":6969,"processStartEpoch":100,"startedAt":"2026-07-20T00:00:00Z","expectedAt":"2026-07-20T00:00:00Z"}' > "${currentFile}"
+      ;;
+    *)
+      exit 64
+      ;;
+  esac
+  cloud_host_control_current_file stop-current "${currentFile}" cloud-library-host >/dev/null
+}
+assert_case dead
+[ ! -e "${currentFile}" ] || exit 53
+[ ! -e "${dir}/signals" ] || exit 54
+grep '^update|stale$' "${dir}/order" >/dev/null || exit 55
+grep '^release$' "${dir}/order" >/dev/null || exit 56
+grep '^clear|host-dead-release|host-dead-release$' "${dir}/order" >/dev/null || exit 57
+assert_case reused
+[ -r "${currentFile}" ] || exit 58
+[ "$(json_get_string instanceId "${currentFile}")" = "replacement" ] || exit 59
+[ ! -e "${dir}/signals" ] || exit 60
+grep '^update|stale$' "${dir}/order" >/dev/null || exit 61
+grep '^release$' "${dir}/order" >/dev/null || exit 62
+grep '^clear|replacement|host-reused-release$' "${dir}/order" >/dev/null || exit 63
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("mark-replaced records the live host without terminating it or clearing its marker", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-replace-"));
   try {
@@ -3712,6 +4038,7 @@ test("mark-replaced records the live host without terminating it or clearing its
 verify_followbrief_pid() { return 0; }
 terminate_process_tree() { touch "${dir}/terminated"; return 0; }
 job_run_update_for_instance() { printf '%s\\n' "$4" >> "${dir}/updates"; return 0; }
+release_cloud_worker_leases_for_instance() { printf 'release\\n' >> "${dir}/updates"; return 0; }
 cloud_host_control_current_file mark-replaced "${currentFile}" cloud-library-host
 `,
       "utf8",
@@ -3758,6 +4085,10 @@ job_run_update_for_instance() {
   printf '%s\\n' "$4" >> "${dir}/updates"
   printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"agent_job_reset_fenced","retryable":false}' > "$BUILDER_BLOG_JOB_UPDATE_ERROR_FILE"
   return 1
+}
+release_cloud_worker_leases_for_instance() {
+  printf 'release\\n' >> "${dir}/signals"
+  return 0
 }
 assert_case() {
   verify_case="$1"
