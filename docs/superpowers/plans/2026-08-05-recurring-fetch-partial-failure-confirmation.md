@@ -120,7 +120,7 @@ Test the `classify-library-setup-verdict` CLI with these arguments:
 --job-name library-cron
 ```
 
-Assert that it writes a parseable verdict with mode `0600` via atomic rename. Assert fail-closed behavior for a symlinked run artifact, mismatched owner account/job/instance, output outside the direct job-state directory, a symlink output, missing required merge input, malformed JSON, wrong merge-report status, duplicate/unknown verdict fields, mismatched `runnerExitCode`, and mismatched expected instance.
+Assert that it writes a parseable verdict with mode `0600` via atomic rename. Assert fail-closed behavior for a symlinked run artifact, mismatched owner account/job/instance, output outside the direct job-state directory, a symlink output, missing required merge input, malformed JSON, wrong merge-report status, duplicate/unknown verdict fields, mismatched `runnerExitCode`, and mismatched expected instance. Include both a duplicate top-level `status` key and a duplicate nested failure-entry `reason` key so ordinary `JSON.parse` cannot accidentally satisfy the test.
 
 - [ ] **Step 2: Run the CLI tests and confirm they fail**
 
@@ -150,7 +150,7 @@ else if (command === "classify-library-setup-verdict") await classifyLibrarySetu
 else if (command === "verify-library-setup-verdict") await verifyLibrarySetupVerdictCommand(args);
 ```
 
-The writer emits exactly the closed schema fields from the spec, uses a uniquely named same-directory temporary file with `mode: 0o600`, renames atomically, and chmods the final file to `0600`. The verifier accepts only the exact top-level and failure-entry key sets, version 1, bounded values, matching instance ID, and matching runner exit code; it prints the normalized verdict JSON on success and exits nonzero otherwise.
+The writer emits exactly the closed schema fields from the spec, uses a uniquely named same-directory temporary file with `mode: 0o600`, renames atomically, and chmods the final file to `0600`. The verifier first reads a bounded raw file (maximum 64 KiB), runs a small JSON lexical scanner that tracks object nesting and rejects a repeated decoded key within each individual object, and only then calls `JSON.parse`. It accepts only the exact top-level and failure-entry key sets, version 1, bounded values, matching instance ID, and matching runner exit code; it prints the normalized verdict JSON on success and exits nonzero otherwise. Do not use a regex for duplicate-key detection and do not add a dependency.
 
 - [ ] **Step 5: Run all verdict tests**
 
@@ -375,4 +375,3 @@ Use `superpowers:requesting-code-review` against the implementation branch. Re-r
 - [ ] **Step 6: Commit any verification fixes**
 
 Use a Lore commit describing the reason, scope risk, exact tests, and any remaining untested OpenClaw live-delivery gap.
-
