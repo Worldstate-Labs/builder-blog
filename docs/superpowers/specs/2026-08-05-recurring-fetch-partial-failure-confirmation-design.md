@@ -114,7 +114,8 @@ These inputs are authoritative for every run:
   establish whether the run has zero post tasks or entered post-task processing;
 - the final runner exit code held by `run_with_job_tracking`.
 
-For a run with one or more post tasks, all of these additional files are required:
+For a run with one or more non-discovery tasks (ordinary post tasks or
+user-action tasks), all of these additional files are required:
 
 - `$JOB_TMP_DIR/library-fetch-merged.json`, the authoritative final planned task
   set after discovery expansion, media handling, and result merging;
@@ -134,12 +135,14 @@ present, they supersede that slice's pre-validation result for the corresponding
 task. Every failure they describe must also appear in the durable acceptance
 ledger.
 
-A zero-post-task run is a narrow exception because the runner returns before
-creating merge artifacts or the acceptance ledger. It may classify as `ok` only
-when the runner exits `0`, the authoritative always-required files parse, there
-is no failed candidate-discovery outcome, and every source/user-action terminal
+A zero-non-discovery-task run is a narrow exception because the runner returns
+before creating merge artifacts or the acceptance ledger. It may classify as
+`ok` only when the runner exits `0`, the authoritative always-required files
+parse, there is no failed candidate-discovery outcome, and every source terminal
 outcome in `library-fetch-result.json` is well formed and its sync path completed
-successfully. A zero-post-task run can never be `needs_confirmation`.
+successfully. A zero-non-discovery-task run can never be `needs_confirmation`.
+An action-needed-only run is not this exception: user-action tasks take the
+normal merge/sync path and require durable acceptance-ledger coverage.
 
 Missing required inputs are fatal. Logs, prose, directory modification times,
 and a "latest" verdict are never authoritative.
@@ -188,15 +191,17 @@ Failure eligibility is explicit:
 
 - runner exit code is `0`;
 - all inputs required for the run shape parse successfully;
-- every planned ordinary post-fetch task is represented by a durable acceptance-
-  ledger entry, except in the defined zero-post-task path;
+- every planned ordinary post-fetch task and user-action task is represented by
+  a durable acceptance-ledger entry, except in the defined zero-non-discovery-
+  task path;
 - no failed ordinary post-fetch or candidate-discovery outcome remains;
 - every user-action outcome, if present, is a well-formed `action_needed` outcome.
 
 `needs_confirmation` requires all of the following:
 
 - runner exit code is `65`;
-- all inputs required for the one-or-more-post-task run shape parse successfully;
+- all inputs required for the one-or-more-non-discovery-task run shape parse
+  successfully;
 - every planned ordinary post-fetch task is represented by a durable acceptance-
   ledger entry;
 - at least one bounded ordinary post-fetch task failure is present and every such
