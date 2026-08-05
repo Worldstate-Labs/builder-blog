@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 import type { SkillJobName } from "../src/lib/skill-job-files";
 import {
@@ -344,6 +345,34 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.doesNotMatch(child, /1\. Install or refresh the skill:/);
   assert.doesNotMatch(child, /1a\. Exchange the one-time setup code/);
   assert.doesNotMatch(child, /bb_ec_renderer_openclaw_parent/);
+
+  const probeFunction = parent.match(
+    /openclaw_persistent_session_mode\(\) \{[\s\S]*?\n\}/,
+  )?.[0];
+  assert.ok(probeFunction, "rendered parent must include the session capability probe");
+  const probe = (help: string) => spawnSync(
+    "bash",
+    ["-c", `${probeFunction}\nopenclaw_persistent_session_mode "$1"`, "probe", help],
+    { encoding: "utf8" },
+  );
+  const currentPiped = probe([
+    "--session <target>  Session target (main|isolated|current)",
+    "--system-event <text>  System event payload",
+  ].join("\n"));
+  const currentSpaced = probe("--session current | main | isolated");
+  const legacyMain = probe([
+    "--session <target>  Session target (isolated | main)",
+    "--system-event <text>  System event payload (main session)",
+  ].join("\n"));
+  const unsupported = probe("--session <target>  Session target (isolated)");
+
+  assert.equal(currentPiped.status, 0, currentPiped.stderr);
+  assert.equal(currentPiped.stdout.trim(), "current");
+  assert.equal(currentSpaced.status, 0, currentSpaced.stderr);
+  assert.equal(currentSpaced.stdout.trim(), "current");
+  assert.equal(legacyMain.status, 0, legacyMain.stderr);
+  assert.equal(legacyMain.stdout.trim(), "main-event");
+  assert.notEqual(unsupported.status, 0);
 });
 
 test("route GET delegates cloud-library-host rendering and preserves markdown headers", async () => {

@@ -367,6 +367,29 @@ function setupFatalVerdict(instanceId, runnerExitCode, plannedTaskCount = 0, syn
   };
 }
 
+function setupZeroTaskOutcomesAreSafe(fetchResult) {
+  const outcomes = Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [];
+  const seenIds = new Set();
+  for (const outcome of outcomes) {
+    const task = outcome?.plannedTask;
+    if (!task || typeof task !== "object" || Array.isArray(task)) return false;
+    const outcomeId = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
+    const taskId = taskIdForSync(task);
+    if (!outcomeId || !taskId || outcomeId !== taskId || seenIds.has(outcomeId)) return false;
+    seenIds.add(outcomeId);
+
+    const status = String(outcome?.status || "").trim().toLowerCase();
+    const kind = setupTaskKind(task);
+    if (kind === "discovery") return false;
+    if (kind === "user_action") {
+      if (status !== "action_needed") return false;
+      continue;
+    }
+    if (status !== "skipped" || validateTaskOutcome(outcome).length > 0) return false;
+  }
+  return true;
+}
+
 function classifyLibrarySetupVerdict(input = {}) {
   const runnerExitCode = Number(input.runnerExitCode);
   const instanceId = setupVerdictBoundedText(input.instanceId, 128);
@@ -389,7 +412,8 @@ function classifyLibrarySetupVerdict(input = {}) {
 
   if (initialNonDiscoveryTasks.length === 0) {
     const discoveryFailed = setupDiscoveryFailed(fetchResult, null, failurePayloads);
-    const status = runnerExitCode === 0 && !discoveryFailed ? "ok" : "fatal";
+    const outcomesAreSafe = setupZeroTaskOutcomesAreSafe(fetchResult);
+    const status = runnerExitCode === 0 && !discoveryFailed && outcomesAreSafe ? "ok" : "fatal";
     return {
       schemaVersion: SETUP_VERDICT_SCHEMA_VERSION,
       status,

@@ -256,9 +256,47 @@ test("allows the true zero-non-discovery-task path only on exit 0", async () => 
     instanceId: randomUUID(),
     fetchResult: { fetchTasks: [], taskOutcomes: [] },
   });
+  const failedSourceOutcome = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 0,
+    instanceId: randomUUID(),
+    fetchResult: {
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "source-post-failed",
+        status: "failed",
+        reason: "source_sync_failed",
+        plannedTask: postTask("source-post-failed"),
+      }],
+    },
+  });
+  const malformedSourceOutcome = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 0,
+    instanceId: randomUUID(),
+    fetchResult: {
+      fetchTasks: [],
+      taskOutcomes: [{ fetchTaskId: "source-without-plan", status: "skipped", reason: "no_update" }],
+    },
+  });
+  const safelySkippedSourceOutcome = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 0,
+    instanceId: randomUUID(),
+    fetchResult: {
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "source-post-skipped",
+        status: "skipped",
+        reason: "already_fetched",
+        evidence: { checkedAt: "2026-08-05T00:00:00.000Z" },
+        plannedTask: postTask("source-post-skipped"),
+      }],
+    },
+  });
 
   assert.equal(ok.status, "ok");
   assert.equal(failed.status, "fatal");
+  assert.equal(failedSourceOutcome.status, "fatal");
+  assert.equal(malformedSourceOutcome.status, "fatal");
+  assert.equal(safelySkippedSourceOutcome.status, "ok");
 });
 
 test("treats skipped posts as terminal non-failures and overall timeouts as fatal", async () => {
