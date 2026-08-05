@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
-import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import {
+  contentSyncStateChanged,
+  requestWorkspaceRefresh,
+} from "@/lib/content-sync-events";
 import { generatedDataResetSummary } from "@/lib/generated-data-reset-summary";
 import { translateUiPhrase } from "@/lib/i18n-phrases";
 
@@ -53,6 +56,7 @@ export function GeneratedDataResetPanel() {
         }
         setStatus(tr(generatedDataResetSummary(body?.summary)));
         window.dispatchEvent(new Event(contentSyncStateChanged));
+        requestWorkspaceRefresh("generated-data-reset");
         dismissDialog();
       } catch {
         setError(tr("Could not reset generated data."));

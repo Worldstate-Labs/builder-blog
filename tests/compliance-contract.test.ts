@@ -145,6 +145,7 @@ test("account API resets only session-owned generated fetch and brief state", ()
   assert.match(handler, /getCurrentSession/);
   assert.match(handler, /const userId = session\?\.user\?\.id/);
   assert.match(handler, /dependencies\.reset\(userId\)/);
+  assert.match(handler, /revalidatePath\("\/\(workspace\)", "layout"\)/);
   assert.match(handler, /confirmation[\s\S]*RESET/);
 
   assert.match(helper, /resetUserFetchDigestState/);
@@ -169,6 +170,7 @@ test("every authenticated account sees a personal generated-data reset panel", (
   assert.match(panel, /\/api\/account\/generated-data\/reset/);
   assert.match(panel, /contentSyncStateChanged/);
   assert.match(panel, /window\.dispatchEvent\(new Event\(contentSyncStateChanged\)\)/);
+  assert.match(panel, /requestWorkspaceRefresh\("generated-data-reset"\)/);
   assert.match(panel, /useI18n/);
   assert.match(panel, /translateUiPhrase/);
   assert.doesNotMatch(panel, /Admin maintenance|every user|all fetch|Cloud work|deletedCloud|users:/);

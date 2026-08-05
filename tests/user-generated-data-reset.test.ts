@@ -132,6 +132,39 @@ test("account reset handler derives the only target from the session", async () 
   assert.deepEqual(await response.json(), { status: "reset", summary });
 });
 
+test("account reset handler invalidates workspace data only after a successful reset", async () => {
+  const { createAccountGeneratedDataResetPost } = await import(
+    "../src/lib/account-generated-data-reset-route"
+  );
+  let invalidations = 0;
+  const post = createAccountGeneratedDataResetPost({
+    getSession: async () => ({ user: { id: "session-user" } }),
+    reset: async () => ({
+      resetBuilders: 1,
+      deletedFeedItems: 3,
+      deletedLibraryFetchRuns: 0,
+      deletedDigests: 0,
+      deletedDigestRuns: 0,
+      deletedDigestedItems: 0,
+      deletedRecommendationSnapshots: 0,
+      deletedAgentJobRuns: 0,
+      lastResetAt: "2026-08-05T08:53:37.925Z",
+    }),
+    revalidateWorkspace: () => {
+      invalidations += 1;
+    },
+    logError: () => undefined,
+  } as never);
+
+  const invalidConfirmation = await post(resetRequest({ confirmation: "reset" }));
+  assert.equal(invalidConfirmation.status, 400);
+  assert.equal(invalidations, 0);
+
+  const success = await post(resetRequest({ confirmation: "RESET" }));
+  assert.equal(success.status, 200);
+  assert.equal(invalidations, 1);
+});
+
 test("account reset handler hides internal reset failures", async () => {
   const { createAccountGeneratedDataResetPost } = await import(
     "../src/lib/account-generated-data-reset-route"

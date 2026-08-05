@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
 import {
@@ -12,12 +13,14 @@ type ResetSession = {
 type AccountGeneratedDataResetDependencies = {
   getSession: () => Promise<ResetSession>;
   reset: (userId: string) => Promise<UserFetchDigestResetSummary>;
+  revalidateWorkspace?: () => void;
   logError: (...values: unknown[]) => void;
 };
 
 const defaultDependencies: AccountGeneratedDataResetDependencies = {
   getSession: getCurrentSession,
   reset: resetUserFetchDigestState,
+  revalidateWorkspace: () => revalidatePath("/(workspace)", "layout"),
   logError: (...values) => console.error(...values),
 };
 
@@ -41,6 +44,11 @@ export function createAccountGeneratedDataResetPost(
 
     try {
       const summary = await dependencies.reset(userId);
+      try {
+        dependencies.revalidateWorkspace?.();
+      } catch (error) {
+        dependencies.logError("Failed to revalidate workspace after generated-data reset", error);
+      }
       return NextResponse.json({ status: "reset", summary });
     } catch (error) {
       dependencies.logError("Failed to reset account generated data", error);
