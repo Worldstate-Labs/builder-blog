@@ -935,6 +935,10 @@ test("runner exposes strict account-scoped cloud host lifecycle controls", () =>
   );
   assert.match(
     runner,
+    /parse_cloud_worker_release_result\(\) \{[\s\S]*REQUIRED_KEYS[\s\S]*Object\.keys\(parsed\)\.sort\(\)[\s\S]*outcomeKeyMatches/,
+  );
+  assert.match(
+    runner,
     /release_cloud_worker_leases_for_instance\(\) \{[\s\S]*parse_cloud_worker_release_result "\$_rclfi_stdout"/,
   );
   assert.match(

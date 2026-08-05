@@ -2678,6 +2678,7 @@ parse_cloud_worker_release_result() {
 const fs = require("fs");
 const file = process.argv[2];
 const MAX_COUNT = 2147483647;
+const REQUIRED_KEYS = ["outcome", "releasedRuns", "releasedSourceTasks", "requeuedQueueItems"];
 const COUNT_FIELDS = ["releasedRuns", "releasedSourceTasks", "requeuedQueueItems"];
 let raw = "";
 try {
@@ -2694,8 +2695,20 @@ try {
 if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
   process.exit(1);
 }
+const parsedKeys = Object.keys(parsed).sort();
+const requiredKeys = [...REQUIRED_KEYS].sort();
+if (
+  parsedKeys.length !== requiredKeys.length ||
+  parsedKeys.some((key, index) => key !== requiredKeys[index])
+) {
+  process.exit(1);
+}
 const outcomeFieldMatches = [...raw.matchAll(/"outcome"\s*:\s*"(released|already_released)"(?=\s*[,}])/g)];
 if (outcomeFieldMatches.length !== 1) {
+  process.exit(1);
+}
+const outcomeKeyMatches = raw.match(/"outcome"\s*:/g) || [];
+if (outcomeKeyMatches.length !== 1) {
   process.exit(1);
 }
 const outcome = outcomeFieldMatches[0][1];

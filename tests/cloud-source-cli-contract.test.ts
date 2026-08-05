@@ -3550,9 +3550,25 @@ assert_case \
   '' \
   'malformed response'
 assert_case \
+  extra-top-level-key \
+  0 \
+  '{"outcome":"released","releasedRuns":1,"releasedSourceTasks":2,"requeuedQueueItems":3,"extra":4}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
   duplicate-count \
   0 \
   '{"outcome":"released","releasedRuns":1,"releasedRuns":2,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
+  '' \
+  1 \
+  '' \
+  'malformed response'
+assert_case \
+  duplicate-outcome \
+  0 \
+  '{"outcome":"released","outcome":"already_released","releasedRuns":1,"releasedSourceTasks":2,"requeuedQueueItems":3}' \
   '' \
   1 \
   '' \
