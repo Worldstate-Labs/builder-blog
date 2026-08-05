@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { appendFile, mkdir, mkdtemp, readdir, readFile, rename, rm, stat as fsStat, writeFile } from "node:fs/promises";
+import { appendFile, chmod, lstat, mkdir, mkdtemp, open, readdir, readFile, rename, rm, stat as fsStat, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir, hostname, platform, release, userInfo } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
@@ -261,6 +261,450 @@ function isCandidateDiscoveryOutcome(outcome) {
     isCandidateDiscoveryTaskId(outcome?.fetchTaskId) ||
     isCandidateDiscoveryFetchTask(outcome?.plannedTask)
   );
+}
+
+const SETUP_VERDICT_SCHEMA_VERSION = 1;
+const SETUP_VERDICT_MAX_FAILURES = 200;
+const SETUP_VERDICT_MAX_BYTES = 64 * 1024;
+const SETUP_VERDICT_STATUSES = new Set(["ok", "needs_confirmation", "fatal"]);
+const SETUP_VERDICT_FAILURE_STAGES = new Set(["read", "summarize", "sync"]);
+
+function setupTaskKind(task) {
+  if (isCandidateDiscoveryFetchTask(task)) return "discovery";
+  if (isUserActionAgentWorkType(task?.agentWorkType)) return "user_action";
+  return "post";
+}
+
+function setupVerdictBoundedText(value, maxLength, fallback = "") {
+  const text = String(value ?? "")
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (text || fallback).slice(0, maxLength);
+}
+
+function setupOutcomeFailureKind(outcome) {
+  return setupVerdictBoundedText(
+    outcome?.evidence?.failureKind ?? outcome?.failureKind ?? outcome?.reason,
+    160,
+  );
+}
+
+function setupOutcomeValidationError(outcome) {
+  const errors = outcome?.evidence?.validation?.errors;
+  if (!Array.isArray(errors)) return "";
+  return setupVerdictBoundedText(errors.find((value) => String(value || "").trim()), 400);
+}
+
+function setupFailureStage(outcome) {
+  const detail = `${setupOutcomeValidationError(outcome)} ${setupOutcomeFailureKind(outcome)} ${outcome?.reason ?? ""}`.toLowerCase();
+  if (/sync|persist|not_synced/.test(detail)) return "sync";
+  if (/headline|summary|summar|not_summarized/.test(detail)) return "summarize";
+  if (outcome?.completedStage === "summarize") return "summarize";
+  return "read";
+}
+
+function setupFailureEntry(task, outcome) {
+  const fetchTaskId = setupVerdictBoundedText(taskIdForSync(task), 512, "unknown-task");
+  return {
+    fetchTaskId,
+    title: setupVerdictBoundedText(
+      task?.title ?? task?.item?.title ?? task?.url ?? task?.item?.url,
+      240,
+      fetchTaskId,
+    ),
+    source: setupVerdictBoundedText(
+      [task?.builder, task?.sourceType].filter(Boolean).join(" · "),
+      200,
+      "Unknown source",
+    ),
+    stage: setupFailureStage(outcome),
+    reason: setupVerdictBoundedText(
+      setupOutcomeValidationError(outcome) || outcome?.reason || outcome?.failureReason,
+      400,
+      "failed",
+    ),
+  };
+}
+
+function setupSyncTerminalOutcomes(payload) {
+  const outcomes = new Map();
+  for (const { item } of extractSyncItems(payload ?? {})) {
+    const id = String(item?.rawJson?.fetchTaskId || item?.fetchTaskId || "").trim();
+    if (id) outcomes.set(id, { fetchTaskId: id, status: "synced" });
+  }
+  for (const outcome of Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []) {
+    const id = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
+    if (id) outcomes.set(id, outcome);
+  }
+  return outcomes;
+}
+
+function setupDiscoveryFailed(fetchResult, syncPayload, failurePayloads) {
+  const candidates = [
+    ...(Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []),
+    ...(Array.isArray(syncPayload?.taskOutcomes) ? syncPayload.taskOutcomes : []),
+    ...failurePayloads.flatMap((payload) => (
+      Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []
+    )),
+  ];
+  return candidates.some((outcome) => {
+    if (!isCandidateDiscoveryOutcome(outcome)) return false;
+    const status = String(outcome?.status || "").trim().toLowerCase();
+    return status === "failed" || status === "blocked" || status === "action_needed";
+  });
+}
+
+function setupFatalVerdict(instanceId, runnerExitCode, plannedTaskCount = 0, synchronizedTerminalTaskCount = 0, failures = []) {
+  return {
+    schemaVersion: SETUP_VERDICT_SCHEMA_VERSION,
+    status: "fatal",
+    runnerExitCode,
+    instanceId,
+    plannedTaskCount,
+    synchronizedTerminalTaskCount,
+    failures: failures.slice(0, SETUP_VERDICT_MAX_FAILURES),
+  };
+}
+
+function classifyLibrarySetupVerdict(input = {}) {
+  const runnerExitCode = Number(input.runnerExitCode);
+  const instanceId = setupVerdictBoundedText(input.instanceId, 128);
+  const fetchResult = input.fetchResult;
+  if (
+    !Number.isSafeInteger(runnerExitCode) || !instanceId || !fetchResult ||
+    typeof fetchResult !== "object" || !Array.isArray(fetchResult.fetchTasks)
+  ) {
+    return setupFatalVerdict(instanceId, Number.isSafeInteger(runnerExitCode) ? runnerExitCode : 1);
+  }
+
+  let initialTasks;
+  try {
+    initialTasks = extractFetchTasks(fetchResult);
+  } catch {
+    return setupFatalVerdict(instanceId, runnerExitCode);
+  }
+  const initialNonDiscoveryTasks = initialTasks.filter((task) => setupTaskKind(task) !== "discovery");
+  const failurePayloads = Array.isArray(input.failurePayloads) ? input.failurePayloads : [];
+
+  if (initialNonDiscoveryTasks.length === 0) {
+    const discoveryFailed = setupDiscoveryFailed(fetchResult, null, failurePayloads);
+    const status = runnerExitCode === 0 && !discoveryFailed ? "ok" : "fatal";
+    return {
+      schemaVersion: SETUP_VERDICT_SCHEMA_VERSION,
+      status,
+      runnerExitCode,
+      instanceId,
+      plannedTaskCount: 0,
+      synchronizedTerminalTaskCount: 0,
+      failures: [],
+    };
+  }
+
+  const mergedFetchResult = input.mergedFetchResult;
+  const syncPayload = input.syncPayload;
+  const mergeResult = input.mergeResult;
+  const remainingMergeResult = input.remainingMergeResult;
+  const syncedTaskIds = new Set(
+    Array.isArray(input.syncedTaskIds)
+      ? input.syncedTaskIds.map((value) => String(value).trim()).filter(Boolean)
+      : [],
+  );
+  if (
+    !mergedFetchResult || typeof mergedFetchResult !== "object" || !Array.isArray(mergedFetchResult.fetchTasks) ||
+    !syncPayload || typeof syncPayload !== "object" ||
+    mergeResult?.status !== "ok" || !Array.isArray(mergeResult?.taskIds) || !Array.isArray(mergeResult?.shards) ||
+    remainingMergeResult?.status !== "ok" || !Array.isArray(remainingMergeResult?.taskIds) || !Array.isArray(remainingMergeResult?.shards)
+  ) {
+    return setupFatalVerdict(instanceId, runnerExitCode);
+  }
+
+  let plannedTasks;
+  try {
+    plannedTasks = extractFetchTasks(mergedFetchResult);
+  } catch {
+    return setupFatalVerdict(instanceId, runnerExitCode);
+  }
+  const nonDiscoveryTasks = plannedTasks.filter((task) => setupTaskKind(task) !== "discovery");
+  const initialIds = initialNonDiscoveryTasks.map((task) => taskIdForSync(task));
+  const mergedIds = nonDiscoveryTasks.map((task) => taskIdForSync(task));
+  const validPlanIds = (
+    initialIds.every(Boolean) && mergedIds.every(Boolean) &&
+    new Set(initialIds).size === initialIds.length && new Set(mergedIds).size === mergedIds.length &&
+    initialIds.length === mergedIds.length && initialIds.every((id) => mergedIds.includes(id))
+  );
+  if (!validPlanIds) return setupFatalVerdict(instanceId, runnerExitCode);
+  const postTasks = nonDiscoveryTasks.filter((task) => setupTaskKind(task) === "post");
+  const effectiveOutcomes = setupSyncTerminalOutcomes(syncPayload);
+  for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
+    const id = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
+    if (id && !effectiveOutcomes.has(id)) effectiveOutcomes.set(id, outcome);
+  }
+  for (const payload of failurePayloads) {
+    for (const outcome of Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []) {
+      const id = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
+      if (id) effectiveOutcomes.set(id, outcome);
+    }
+  }
+
+  let fatal = runnerExitCode !== 0 && runnerExitCode !== 65;
+  let synchronizedTerminalTaskCount = 0;
+  const failures = [];
+  if (setupDiscoveryFailed(fetchResult, syncPayload, failurePayloads)) fatal = true;
+
+  for (const task of nonDiscoveryTasks) {
+    const id = taskIdForSync(task);
+    const key = taskKeyForSync(task);
+    const outcome = effectiveOutcomes.get(id);
+    const status = String(outcome?.status || "").trim().toLowerCase();
+    const durablyAccepted = syncedTaskIds.has(key) || syncedTaskIds.has(id);
+    if (!durablyAccepted || !status) {
+      fatal = true;
+      continue;
+    }
+    synchronizedTerminalTaskCount += 1;
+    if (setupTaskKind(task) === "user_action") {
+      if (status !== "action_needed") fatal = true;
+      continue;
+    }
+    if (status === "failed" || status === "blocked") {
+      const entry = setupFailureEntry(task, outcome);
+      failures.push(entry);
+      if (setupOutcomeFailureKind(outcome) === "runtime_auth_failed" || entry.reason === "runtime_auth_failed") {
+        fatal = true;
+      }
+      continue;
+    }
+    if (status !== "synced" && status !== "skipped") fatal = true;
+  }
+
+  if (failures.length > SETUP_VERDICT_MAX_FAILURES) fatal = true;
+  let status = "fatal";
+  if (!fatal && runnerExitCode === 0 && failures.length === 0) status = "ok";
+  else if (!fatal && runnerExitCode === 65 && failures.length > 0) status = "needs_confirmation";
+
+  return {
+    schemaVersion: SETUP_VERDICT_SCHEMA_VERSION,
+    status,
+    runnerExitCode,
+    instanceId,
+    plannedTaskCount: postTasks.length,
+    synchronizedTerminalTaskCount,
+    failures: failures.slice(0, SETUP_VERDICT_MAX_FAILURES),
+  };
+}
+
+export function classifyLibrarySetupVerdictForTest(input = {}) {
+  return classifyLibrarySetupVerdict(input);
+}
+
+async function setupVerdictRegularFileText(file) {
+  const info = await lstat(file);
+  if (!info.isFile() || info.isSymbolicLink()) throw new Error(`Setup verdict evidence is not a regular file: ${file}`);
+  return readFile(file, "utf8");
+}
+
+async function setupVerdictRegularJson(file) {
+  const raw = await setupVerdictRegularFileText(file);
+  return JSON.parse(raw);
+}
+
+async function setupVerdictDirectory(file) {
+  const info = await lstat(file);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`Setup verdict directory is unsafe: ${file}`);
+}
+
+function assertExactKeys(value, expectedKeys, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`);
+  }
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new Error(`${label} has unexpected fields.`);
+  }
+}
+
+function assertJsonObjectKeysUnique(raw) {
+  const stack = [];
+  const skipWhitespace = (start) => {
+    let index = start;
+    while (/\s/.test(raw[index] || "")) index += 1;
+    return index;
+  };
+  let index = 0;
+  while (index < raw.length) {
+    const char = raw[index];
+    if (char === '"') {
+      const start = index;
+      index += 1;
+      while (index < raw.length) {
+        if (raw[index] === "\\") {
+          index += 2;
+          continue;
+        }
+        if (raw[index] === '"') {
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      const context = stack.at(-1);
+      const next = skipWhitespace(index);
+      if (context?.type === "object" && context.expectingKey && raw[next] === ":") {
+        const key = JSON.parse(raw.slice(start, index));
+        if (context.keys.has(key)) throw new Error(`Setup verdict JSON contains duplicate key: ${key}`);
+        context.keys.add(key);
+        context.expectingKey = false;
+      }
+      continue;
+    }
+    if (char === "{") stack.push({ type: "object", keys: new Set(), expectingKey: true });
+    else if (char === "[") stack.push({ type: "array" });
+    else if (char === "}" || char === "]") stack.pop();
+    else if (char === ",") {
+      const context = stack.at(-1);
+      if (context?.type === "object") context.expectingKey = true;
+    }
+    index += 1;
+  }
+}
+
+function validateSetupVerdict(value, expectedInstanceId, expectedRunnerExitCode) {
+  assertExactKeys(value, [
+    "schemaVersion",
+    "status",
+    "runnerExitCode",
+    "instanceId",
+    "plannedTaskCount",
+    "synchronizedTerminalTaskCount",
+    "failures",
+  ], "Setup verdict");
+  if (value.schemaVersion !== SETUP_VERDICT_SCHEMA_VERSION) throw new Error("Setup verdict schemaVersion is invalid.");
+  if (!SETUP_VERDICT_STATUSES.has(value.status)) throw new Error("Setup verdict status is invalid.");
+  if (!Number.isSafeInteger(value.runnerExitCode) || value.runnerExitCode !== expectedRunnerExitCode) {
+    throw new Error("Setup verdict runnerExitCode does not match the completed run.");
+  }
+  if (value.instanceId !== expectedInstanceId || typeof value.instanceId !== "string" || value.instanceId.length > 128) {
+    throw new Error("Setup verdict instanceId does not match the completed run.");
+  }
+  for (const key of ["plannedTaskCount", "synchronizedTerminalTaskCount"]) {
+    if (!Number.isSafeInteger(value[key]) || value[key] < 0 || value[key] > 100_000) {
+      throw new Error(`Setup verdict ${key} is invalid.`);
+    }
+  }
+  if (!Array.isArray(value.failures) || value.failures.length > SETUP_VERDICT_MAX_FAILURES) {
+    throw new Error("Setup verdict failures are invalid.");
+  }
+  for (const failure of value.failures) {
+    assertExactKeys(failure, ["fetchTaskId", "title", "source", "stage", "reason"], "Setup verdict failure");
+    if (!SETUP_VERDICT_FAILURE_STAGES.has(failure.stage)) throw new Error("Setup verdict failure stage is invalid.");
+    for (const [key, max] of [["fetchTaskId", 512], ["title", 240], ["source", 200], ["reason", 400]]) {
+      if (typeof failure[key] !== "string" || !failure[key].trim() || failure[key].length > max) {
+        throw new Error(`Setup verdict failure ${key} is invalid.`);
+      }
+    }
+  }
+  if (value.status === "ok" && (value.runnerExitCode !== 0 || value.failures.length !== 0)) {
+    throw new Error("Setup verdict ok state is inconsistent.");
+  }
+  if (value.status === "needs_confirmation" && (value.runnerExitCode !== 65 || value.failures.length === 0)) {
+    throw new Error("Setup verdict confirmation state is inconsistent.");
+  }
+  return value;
+}
+
+async function readAndValidateSetupVerdict(file, expectedInstanceId, expectedRunnerExitCode) {
+  const raw = await setupVerdictRegularFileText(file);
+  if (Buffer.byteLength(raw, "utf8") > SETUP_VERDICT_MAX_BYTES) throw new Error("Setup verdict is too large.");
+  assertJsonObjectKeysUnique(raw);
+  return validateSetupVerdict(JSON.parse(raw), expectedInstanceId, expectedRunnerExitCode);
+}
+
+async function writeSetupVerdictAtomically(file, value) {
+  try {
+    const existing = await lstat(file);
+    if (!existing.isFile() || existing.isSymbolicLink()) throw new Error("Setup verdict output path is unsafe.");
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const temporary = join(dirname(file), `.${basename(file)}.${process.pid}.${randomUUID()}.tmp`);
+  let handle;
+  try {
+    handle = await open(temporary, "wx", 0o600);
+    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = null;
+    await rename(temporary, file);
+    await chmod(file, 0o600);
+  } finally {
+    if (handle) await handle.close().catch(() => {});
+    await rm(temporary, { force: true }).catch(() => {});
+  }
+}
+
+async function classifyLibrarySetupVerdictCommand(args) {
+  const jobStateDir = resolve(argValue(args, "--job-state-dir", ""));
+  const runDir = resolve(argValue(args, "--run-dir", ""));
+  const outFile = resolve(argValue(args, "--out", ""));
+  const runnerExitCode = Number(argValue(args, "--runner-exit-code", ""));
+  const instanceId = String(argValue(args, "--instance-id", "") || "").trim();
+  const expectedAccountSlug = String(argValue(args, "--account-slug", "") || "").trim();
+  const expectedJobName = String(argValue(args, "--job-name", "") || "").trim();
+  if (!jobStateDir || !runDir || !outFile || !Number.isSafeInteger(runnerExitCode) || !instanceId || !expectedAccountSlug) {
+    throw new Error("Missing setup verdict arguments.");
+  }
+  if (expectedJobName !== "library-cron") throw new Error("Setup verdicts are only supported for library-cron.");
+  if (dirname(runDir) !== join(jobStateDir, "runs")) throw new Error("Setup verdict run directory is outside job state.");
+  if (dirname(outFile) !== jobStateDir || basename(outFile) !== `setup-verdict-${instanceId}.json`) {
+    throw new Error("Setup verdict output path is outside job state or does not match the instance.");
+  }
+  await setupVerdictDirectory(jobStateDir);
+  await setupVerdictDirectory(join(jobStateDir, "runs"));
+  await setupVerdictDirectory(runDir);
+
+  let verdict = setupFatalVerdict(instanceId, runnerExitCode);
+  try {
+    const owner = await setupVerdictRegularJson(join(runDir, ".run-owner.json"));
+    if (
+      owner?.app !== "followbrief" || owner?.accountSlug !== expectedAccountSlug ||
+      owner?.jobName !== expectedJobName || owner?.instanceId !== instanceId
+    ) {
+      throw new Error("Setup verdict run owner does not match the requested run.");
+    }
+    const fetchResult = await setupVerdictRegularJson(join(runDir, "library-fetch-result.json"));
+    const initialTasks = extractFetchTasks(fetchResult);
+    const nonDiscoveryTasks = initialTasks.filter((task) => setupTaskKind(task) !== "discovery");
+    const input = { runnerExitCode, instanceId, fetchResult };
+    if (nonDiscoveryTasks.length > 0) {
+      input.mergedFetchResult = await setupVerdictRegularJson(join(runDir, "library-fetch-merged.json"));
+      input.syncPayload = await setupVerdictRegularJson(join(runDir, "library-agent-sync.json"));
+      input.mergeResult = await setupVerdictRegularJson(join(runDir, "merge-task-results.json"));
+      input.remainingMergeResult = await setupVerdictRegularJson(join(runDir, "merge-task-results-remaining.json"));
+      const ledger = await setupVerdictRegularFileText(join(runDir, "completed-checkpoint-synced-task-ids.txt"));
+      input.syncedTaskIds = ledger.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const names = (await readdir(runDir)).filter((name) => (
+        /^library-result-slice-.*-(?:validation-)?failed-payload\.json$/.test(name)
+      )).sort();
+      input.failurePayloads = [];
+      for (const name of names) input.failurePayloads.push(await setupVerdictRegularJson(join(runDir, name)));
+    }
+    verdict = classifyLibrarySetupVerdict(input);
+  } catch {
+    verdict = setupFatalVerdict(instanceId, runnerExitCode);
+  }
+  await writeSetupVerdictAtomically(outFile, verdict);
+  console.log(JSON.stringify(verdict, null, 2));
+}
+
+async function verifyLibrarySetupVerdictCommand(args) {
+  const file = argValue(args, "--file", "");
+  const instanceId = String(argValue(args, "--instance-id", "") || "").trim();
+  const runnerExitCode = Number(argValue(args, "--runner-exit-code", ""));
+  if (!file || !instanceId || !Number.isSafeInteger(runnerExitCode)) throw new Error("Missing verdict verification arguments.");
+  const verdict = await readAndValidateSetupVerdict(file, instanceId, runnerExitCode);
+  console.log(JSON.stringify(verdict, null, 2));
 }
 
 export function timedSourceFetchForTest(input, init = {}, fetchImpl = fetch) {
@@ -13876,6 +14320,8 @@ async function main() {
   else if (command === "prepare-managed-media") await prepareManagedMediaCommand(args);
   else if (command === "asr-doctor") await asrDoctorCommand();
   else if (command === "append-fetch-run-terminal-task-ids") await appendFetchRunTerminalTaskIds(args);
+  else if (command === "classify-library-setup-verdict") await classifyLibrarySetupVerdictCommand(args);
+  else if (command === "verify-library-setup-verdict") await verifyLibrarySetupVerdictCommand(args);
   else if (command === "split-sync-slices") await splitSyncSlices(args);
   else if (command === "fail-sync-slice") await failSyncSlice(args);
   else if (command === "prepare") await prepare(args);
