@@ -23,6 +23,7 @@ test("cloud fetch run task lock uses parameterized FOR UPDATE query and returns 
   assert.match(calls[0]!.query, /SELECT[\s\S]*FROM "CloudFetchRunTask"/);
   assert.match(calls[0]!.query, /"runId" = \$1/);
   assert.match(calls[0]!.query, /"cloudSourceTaskId" IN \(\$2, \$3\)/);
+  assert.match(calls[0]!.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
   assert.match(calls[0]!.query, /FOR UPDATE/);
   assert.deepEqual(calls[0]!.values, ["run_1", "task_a", "task_b"]);
 });

@@ -169,10 +169,18 @@ test("releaseCloudFetchWorkerLeases releases only the owned running work, recomp
   assert.ok(
     fixture.operations.indexOf("resetFence.lock") < fixture.operations.indexOf("cloudFetchRun.findMany"),
   );
-  assert.deepEqual(fixture.lockCalls, [
-    { runId: "run_1", cloudSourceTaskIds: ["task_a", "task_b"] },
-    { runId: "run_2", cloudSourceTaskIds: ["task_d"] },
-  ]);
+  assert.deepEqual(
+    fixture.lockCalls.map((call) => ({
+      runId: call.runId,
+      cloudSourceTaskIds: call.cloudSourceTaskIds,
+    })),
+    [
+      { runId: "run_1", cloudSourceTaskIds: ["task_a", "task_b"] },
+      { runId: "run_2", cloudSourceTaskIds: ["task_d"] },
+    ],
+  );
+  assert.match(fixture.lockCalls[0]!.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
+  assert.match(fixture.lockCalls[1]!.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
   assert.deepEqual(
     fixture.cloudFetchRunTaskFindManyCalls.map((call) => call.orderBy ?? null),
     [
@@ -487,11 +495,29 @@ test("duplicate release requests lock runs and task rows in the same determinist
     prisma: second.prisma as never,
   });
 
-  assert.deepEqual(first.lockCalls, [
-    { runId: "run_1", cloudSourceTaskIds: ["task_a", "task_b"] },
-    { runId: "run_2", cloudSourceTaskIds: ["task_c"] },
-  ]);
-  assert.deepEqual(second.lockCalls, first.lockCalls);
+  assert.deepEqual(
+    first.lockCalls.map((call) => ({
+      runId: call.runId,
+      cloudSourceTaskIds: call.cloudSourceTaskIds,
+    })),
+    [
+      { runId: "run_1", cloudSourceTaskIds: ["task_a", "task_b"] },
+      { runId: "run_2", cloudSourceTaskIds: ["task_c"] },
+    ],
+  );
+  assert.deepEqual(
+    second.lockCalls.map((call) => ({
+      runId: call.runId,
+      cloudSourceTaskIds: call.cloudSourceTaskIds,
+    })),
+    first.lockCalls.map((call) => ({
+      runId: call.runId,
+      cloudSourceTaskIds: call.cloudSourceTaskIds,
+    })),
+  );
+  for (const call of [...first.lockCalls, ...second.lockCalls]) {
+    assert.match(call.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
+  }
 });
 
 function createReleaseFixture(input: {
@@ -515,7 +541,7 @@ function createReleaseFixture(input: {
   const resetFenceLockValues: unknown[][] = [];
   const resetFenceUpsertCalls: unknown[] = [];
   const transactionOptions: unknown[] = [];
-  const lockCalls: Array<{ runId: string; cloudSourceTaskIds: string[] }> = [];
+  const lockCalls: Array<{ query: string; runId: string; cloudSourceTaskIds: string[] }> = [];
   const cloudFetchRunTaskFindManyCalls: Array<{ where: Record<string, unknown>; orderBy?: unknown }> = [];
   const cloudFetchRunTaskUpdateManyCalls: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
   const cloudFetchQueueItemUpdateManyCalls: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
@@ -532,7 +558,7 @@ function createReleaseFixture(input: {
         const runId = String(values[0]);
         const cloudSourceTaskIds = values.slice(1).map((value) => String(value));
         operations.push("cloudFetchRunTask.lock");
-        lockCalls.push({ runId, cloudSourceTaskIds });
+        lockCalls.push({ query, runId, cloudSourceTaskIds });
         return tasks
           .filter((task) => task.runId === runId && cloudSourceTaskIds.includes(task.cloudSourceTaskId))
           .sort((left, right) => left.cloudSourceTaskId.localeCompare(right.cloudSourceTaskId))

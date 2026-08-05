@@ -30,6 +30,7 @@ export async function lockCloudFetchRunTaskRows(
      FROM "CloudFetchRunTask"
      WHERE "runId" = $1
        AND "cloudSourceTaskId" IN (${placeholders})
+     ORDER BY "cloudSourceTaskId" ASC
      FOR UPDATE`,
     params.runId,
     ...cloudSourceTaskIds,
