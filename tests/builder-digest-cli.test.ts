@@ -6456,13 +6456,85 @@ test("release-cloud-fetch fails before network contact when job run id is missin
   }
 });
 
+test("release-cloud-fetch reports bounded retryable HTTP diagnostics without retrying", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-release-cloud-fetch-"));
+  const requests: Array<{ path: string; authorization: string | undefined; body: unknown }> = [];
+  const server = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    req.on("end", () => {
+      requests.push({
+        path: req.url ?? "",
+        authorization: req.headers.authorization,
+        body: JSON.parse(Buffer.concat(chunks).toString("utf8") || "null"),
+      });
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({
+        error: "busy",
+        code: "release_busy",
+        retryable: true,
+      }));
+    });
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address() as AddressInfo;
+
+  try {
+    await assert.rejects(
+      execFileAsync(
+        process.execPath,
+        ["scripts/builder-digest.mjs", "release-cloud-fetch", "--job-run-id", "host-1"],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            BUILDER_BLOG_AGENT_DIR: tmp,
+            BUILDER_BLOG_TOKEN: "test-token",
+            BUILDER_BLOG_URL: `http://127.0.0.1:${address.port}`,
+          },
+        },
+      ),
+      (error: NodeJS.ErrnoException & { stderr?: string; stdout?: string; code?: number }) => {
+        assert.equal(error.code, 1);
+        assert.equal(error.stdout ?? "", "");
+        assert.match(
+          error.stderr ?? "",
+          /^FOLLOWBRIEF_ERROR {"type":"http_sync","status":503,"syncCode":"http_status","responseCode":"release_busy","retryable":true}\nHTTP 503 for cloud fetch release: busy \(code=release_busy; retryable=true\)\n?$/,
+        );
+        assert.doesNotMatch(error.stderr ?? "", /test-token|127\.0\.0\.1|jobRunId|host-1/);
+        return true;
+      },
+    );
+    assert.deepEqual(requests, [
+      {
+        path: "/api/admin/cloud-fetch/release",
+        authorization: "Bearer test-token",
+        body: { jobRunId: "host-1" },
+      },
+    ]);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+});
+
 test("builder digest CLI exposes release-cloud-fetch command", () => {
   const script = readFileSync(join(process.cwd(), "scripts/builder-digest.mjs"), "utf8");
+  const releaseCommandSource = script.match(/async function releaseCloudFetch\(args\) \{[\s\S]*?\n\}/)?.[0] ?? "";
 
   assert.match(script, /release-cloud-fetch --job-run-id <id>/);
   assert.match(script, /command === "release-cloud-fetch"/);
   assert.match(script, /\/api\/admin\/cloud-fetch\/release/);
   assert.match(script, /Missing --job-run-id <id> for release-cloud-fetch\./);
+  assert.match(releaseCommandSource, /timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS/);
 });
 
 test("schedule-spec emits anchor-aligned cron, launchd, and server schedule values", async () => {

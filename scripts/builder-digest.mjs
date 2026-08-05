@@ -1466,6 +1466,7 @@ function httpSyncError(message, details) {
   error.httpSyncCode = details.code ?? "unknown";
   error.httpResponseCode = details.responseCode ?? null;
   error.httpRetryable = details.retryable ?? null;
+  error.httpDisplayMessage = message;
   if (details.cause) error.cause = details.cause;
   return error;
 }
@@ -1521,6 +1522,23 @@ function cliHttpErrorDiagnostic(error) {
 
 export function cliHttpErrorDiagnosticForTest(error) {
   return cliHttpErrorDiagnostic(error);
+}
+
+function rewriteHttpSyncErrorMessage(error, label) {
+  if (!error?.isHttpSyncError) return error;
+  const status = Number(error.httpStatus);
+  const detail = String(error.httpDisplayMessage || error.message || "HTTP sync failed").trim();
+  const suffix = [
+    typeof error.httpResponseCode === "string" && error.httpResponseCode.trim()
+      ? `code=${error.httpResponseCode.trim()}`
+      : null,
+    typeof error.httpRetryable === "boolean" ? `retryable=${error.httpRetryable}` : null,
+  ].filter(Boolean).join("; ");
+  const prefix = Number.isInteger(status) && status > 0
+    ? `HTTP ${status} for ${label}: ${detail}`
+    : `HTTP sync for ${label}: ${detail}`;
+  error.message = suffix ? `${prefix} (${suffix})` : prefix;
+  return error;
 }
 
 function httpSyncErrorSummary(error) {
@@ -12285,13 +12303,17 @@ async function releaseCloudFetch(args) {
   requireLoggedIn(config);
   const jobRunId = String(argValue(args, "--job-run-id") || "").trim();
   if (!jobRunId) throw new Error("Missing --job-run-id <id> for release-cloud-fetch.");
-  const result = await postJson(
-    `${config.appUrl}/api/admin/cloud-fetch/release`,
-    { jobRunId },
-    config.token,
-    { label: "cloud fetch release", retries: 0 },
-  );
-  console.log(JSON.stringify(result, null, 2));
+  try {
+    const result = await postJson(
+      `${config.appUrl}/api/admin/cloud-fetch/release`,
+      { jobRunId },
+      config.token,
+      { label: "cloud fetch release", retries: 0, timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS },
+    );
+    console.log(JSON.stringify(result, null, 2));
+  } catch (error) {
+    throw rewriteHttpSyncErrorMessage(error, "cloud fetch release");
+  }
 }
 
 async function leaseCloudBuilders(args) {
