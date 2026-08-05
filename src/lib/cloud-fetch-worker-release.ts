@@ -268,6 +268,6 @@ export async function releaseCloudFetchWorkerLeasesInTransaction(params: {
 }
 
 async function loadPrisma(): Promise<CloudWorkerReleaseDb> {
-  const module = await import("@/lib/prisma");
-  return module.prisma as unknown as CloudWorkerReleaseDb;
+  const prismaModule = await import("@/lib/prisma");
+  return prismaModule.prisma as unknown as CloudWorkerReleaseDb;
 }
