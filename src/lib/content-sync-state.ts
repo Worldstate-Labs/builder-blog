@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { activeBuilderPoolEntryWhere } from "@/lib/builder-pool";
 import { builderLibraryState } from "@/lib/builder-library-state";
 import { prisma } from "@/lib/prisma";
 
@@ -65,7 +66,7 @@ export async function contentSyncState(
 async function readContentSyncState(userId: string, isAdmin: boolean): Promise<ContentSyncState> {
   const [poolEntries, cloudSubmissions] = await Promise.all([
     prisma.builderPoolEntry.findMany({
-      where: { userId, removedAt: null },
+      where: activeBuilderPoolEntryWhere(userId),
       select: { builderId: true },
     }),
     prisma.cloudSourceSubmission.findMany({

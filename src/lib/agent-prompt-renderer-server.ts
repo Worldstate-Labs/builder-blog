@@ -1,10 +1,11 @@
 import type { ExistingCronRecord } from "@/lib/agent-prompt-renderer";
+import { activeBuilderPoolEntryWhere } from "@/lib/builder-pool";
 import type { SkillJobName } from "@/lib/skill-job-files";
 
 type RendererServerPrisma = {
   builderPoolEntry: {
     findMany(args: {
-      where: { userId: string; removedAt: null };
+      where: ReturnType<typeof activeBuilderPoolEntryWhere>;
       select: { builder: { select: { kind: true } } };
     }): Promise<Array<{ builder: { kind: string } | null }>>;
   };
@@ -55,7 +56,7 @@ export async function buildSourceCredentialPrep(
   userId: string,
 ): Promise<string> {
   const entries = await prisma.builderPoolEntry.findMany({
-    where: { userId, removedAt: null },
+    where: activeBuilderPoolEntryWhere(userId),
     select: { builder: { select: { kind: true } } },
   });
   const kinds = new Set<string>();

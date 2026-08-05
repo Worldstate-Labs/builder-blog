@@ -1,3 +1,4 @@
+import { activeBuilderPoolEntryWhere } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 
 export type BuilderLibraryState = {
@@ -21,7 +22,7 @@ export async function builderLibraryState(
 
   const [poolState, subscriptionState, builderState, feedState] = await Promise.all([
     prisma.builderPoolEntry.aggregate({
-      where: { userId },
+      where: activeBuilderPoolEntryWhere(userId),
       _count: true,
       _max: { updatedAt: true },
     }),

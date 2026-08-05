@@ -61,7 +61,10 @@ import {
   sharePersonalLibraryToHub,
   userImportableLibraryHubEntryWhere,
 } from "@/lib/library-hub";
-import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
+import {
+  activeBuilderPoolEntryWhere,
+  ensureDefaultCommunityLibraryImport,
+} from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { ensureSourceCandidateLibraryFromAdminSources } from "@/lib/source-candidate-library";
 import {
@@ -330,7 +333,7 @@ async function loadSourceLibraryData(user: {
     adminLibVisibility,
   ] = await Promise.all([
     prisma.builderPoolEntry.findMany({
-      where: { userId: user.id, removedAt: null },
+      where: activeBuilderPoolEntryWhere(user.id),
       include: {
         builder: {
           include: {
@@ -534,10 +537,7 @@ async function loadFetchSyncData(user: {
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
     }),
     prisma.builderPoolEntry.findMany({
-      where: {
-        userId: user.id,
-        removedAt: null,
-      },
+      where: activeBuilderPoolEntryWhere(user.id),
       orderBy: { createdAt: "asc" },
       select: {
         builder: {

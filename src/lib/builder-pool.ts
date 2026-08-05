@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin } from "@prisma/client";
+import { BuilderPoolOrigin, type Prisma } from "@prisma/client";
 import { adminEmails, isAdminEmail } from "@/lib/admin";
 import {
   followBriefSourceLibraryDescription,
@@ -52,10 +52,37 @@ export async function addBuilderToPool(params: {
 export async function activePoolBuilderIds(userId: string) {
   await ensureDefaultCommunityLibraryImport(userId);
   const entries = await prisma.builderPoolEntry.findMany({
-    where: { userId, removedAt: null },
+    where: activeBuilderPoolEntryWhere(userId),
     select: { builderId: true },
   });
   return entries.map((entry) => entry.builderId);
+}
+
+// HUB_IMPORT rows are a materialized projection. A live LibraryImport plus a
+// current Hub item is the source of truth, so cascaded Hub deletions cannot
+// leave historical pool rows visible as active sources.
+export function activeBuilderPoolEntryWhere(
+  userId: string,
+): Prisma.BuilderPoolEntryWhereInput {
+  return {
+    userId,
+    removedAt: null,
+    OR: [
+      { origin: BuilderPoolOrigin.PERSONAL_SYNC },
+      {
+        origin: BuilderPoolOrigin.HUB_IMPORT,
+        builder: {
+          hubItems: {
+            some: {
+              hubEntry: {
+                imports: { some: { userId } },
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 export async function ensureDefaultCommunityLibraryImport(userId: string) {

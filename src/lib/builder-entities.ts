@@ -1,5 +1,6 @@
 import type { BuilderKind } from "@prisma/client";
 
+import { activeBuilderPoolEntryWhere } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 
 export { pickPrimaryVariant, type ChannelVariant } from "@/lib/builder-channel-picker";
@@ -76,8 +77,7 @@ export async function computeEntityReachabilityAfterRemoval(params: {
     }),
     prisma.builderPoolEntry.findMany({
       where: {
-        userId: params.userId,
-        removedAt: null,
+        ...activeBuilderPoolEntryWhere(params.userId),
         builder: {
           // exclude the ones in the removed library (they'll be soft-deleted)
           NOT: { hubItems: { some: { hubEntryId: params.removedLibraryId } } },
