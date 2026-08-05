@@ -89,12 +89,11 @@ LEGACY_LABEL="com.followbrief.digest.$(legacy_account_slug "$ACCT")"
 FOUND=0
 for CANDIDATE_LABEL in "$LABEL" "$LEGACY_LABEL"; do
   PLIST="$HOME/Library/LaunchAgents/$CANDIDATE_LABEL.plist"
-  if launchctl list 2>/dev/null | awk '{ print $3 }' | grep -x "$CANDIDATE_LABEL"; then
+  if launchctl print "gui/$(id -u)/$CANDIDATE_LABEL" >/dev/null 2>&1; then
+    echo "Loaded LaunchAgent: $CANDIDATE_LABEL"
     FOUND=1
-  fi
-  if [ -f "$PLIST" ]; then
-    echo "LaunchAgent plist exists: $PLIST"
-    FOUND=1
+  elif [ -f "$PLIST" ]; then
+    echo "Inactive LaunchAgent plist found (not loaded; no active schedule): $PLIST"
   fi
 done
 if [ "$FOUND" -eq 0 ]; then
@@ -109,8 +108,11 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"
 crontab -l 2>/dev/null | grep "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh digest-cron" || echo "(none found)"
 ```
 
-If the result is "(none found)", continue to the next step. If it lists one or
-more existing brief jobs for this account, STOP: report exactly what was found, explain that
+Only a `Loaded LaunchAgent:` line or a matching Linux crontab line means an
+existing local schedule was found. An `Inactive LaunchAgent plist found` line
+is stale configuration, not an active schedule; do not ask for confirmation
+because of that line, and continue automatically when the output also says
+`(none found)`. If an existing local schedule is found, STOP: report exactly what was found, explain that
 continuing replaces this account's brief schedule and its pinned runtime
 (jobs for other accounts are left untouched), and ask the user whether to
 override. Only continue past this step after the user explicitly confirms. If

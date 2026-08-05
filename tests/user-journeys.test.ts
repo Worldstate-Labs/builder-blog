@@ -1605,11 +1605,16 @@ test("web app serves the agent skill and setup command", () => {
   // override confirmation before replacing.
   assert.match(libraryCronSetupPrompt, /com\\?\.followbrief\\?\.library\\?\./);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\\?\.sh library-cron/);
-  assert.match(libraryCronSetupPrompt, /launchctl list/);
+  assert.match(libraryCronSetupPrompt, /launchctl print "gui\/\$\(id -u\)\/\$CANDIDATE_LABEL"/);
   assert.match(libraryCronSetupPrompt, /legacy_account_slug/);
-  assert.match(libraryCronSetupPrompt, /grep -x "\$CANDIDATE_LABEL"/);
   assert.match(libraryCronSetupPrompt, /\[ -f "\$PLIST" \]/);
-  assert.match(libraryCronSetupPrompt, /LaunchAgent plist exists/);
+  assert.match(libraryCronSetupPrompt, /Inactive LaunchAgent plist found \(not loaded; no active schedule\)/);
+  assert.match(libraryCronSetupPrompt, /do not ask for confirmation\s+because of that line/);
+  const libraryInactivePlistBranch = libraryCronSetupPrompt.match(
+    /elif \[ -f "\$PLIST" \]; then\n([\s\S]*?)\n  fi/,
+  )?.[1];
+  assert.ok(libraryInactivePlistBranch);
+  assert.doesNotMatch(libraryInactivePlistBranch, /FOUND=1/);
   assert.match(libraryCronSetupPrompt, /the user whether to\s+override/);
   assert.match(libraryCronSetupPrompt, /\(none found\)/);
   assert.match(libraryCronSetupPrompt, /SCHEDULER_PATH="\$HOME\/\.local\/bin:\$HOME\/bin:\$HOME\/\.codex\/bin:\$HOME\/\.bun\/bin:\/opt\/homebrew\/bin:\/opt\/homebrew\/sbin:\/usr\/local\/bin:\/usr\/bin:\/bin"/);
@@ -1723,9 +1728,15 @@ test("web app serves the agent skill and setup command", () => {
   // Same pre-install detection + override gate as library.
   assert.match(digestCronSetupPrompt, /com\\?\.followbrief\\?\.digest\\?\./);
   assert.match(digestCronSetupPrompt, /legacy_account_slug/);
-  assert.match(digestCronSetupPrompt, /grep -x "\$CANDIDATE_LABEL"/);
+  assert.match(digestCronSetupPrompt, /launchctl print "gui\/\$\(id -u\)\/\$CANDIDATE_LABEL"/);
   assert.match(digestCronSetupPrompt, /\[ -f "\$PLIST" \]/);
-  assert.match(digestCronSetupPrompt, /LaunchAgent plist exists/);
+  assert.match(digestCronSetupPrompt, /Inactive LaunchAgent plist found \(not loaded; no active schedule\)/);
+  assert.match(digestCronSetupPrompt, /do not ask for confirmation\s+because of that line/);
+  const digestInactivePlistBranch = digestCronSetupPrompt.match(
+    /elif \[ -f "\$PLIST" \]; then\n([\s\S]*?)\n  fi/,
+  )?.[1];
+  assert.ok(digestInactivePlistBranch);
+  assert.doesNotMatch(digestInactivePlistBranch, /FOUND=1/);
   assert.match(digestCronSetupPrompt, /the user whether to\s+override/);
   assert.match(digestCronSetupPrompt, /\(none found\)/);
   assert.match(digestCronSetupPrompt, /\$LABEL\.log/);
