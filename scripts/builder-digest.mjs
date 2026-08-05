@@ -636,6 +636,7 @@ function usage() {
   lease-cloud-builders [--limit 10] [--lease-owner local-cloud-runner]
   fetch-cloud-library [--limit 10] [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--post-limit 5] [--force] [--agent-model gpt-5.5]
   heartbeat-cloud-fetch --cloud-run-id <id> [--lease-owner local-cloud-runner]
+  release-cloud-fetch --job-run-id <id>
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5] [--partial-outcomes]
   sync-cloud-builders --file personal-builders.json --cloud-run-id <id> [--agent-model gpt-5.5]
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
@@ -12279,6 +12280,20 @@ async function heartbeatCloudFetch(args) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+async function releaseCloudFetch(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const jobRunId = String(argValue(args, "--job-run-id") || "").trim();
+  if (!jobRunId) throw new Error("Missing --job-run-id <id> for release-cloud-fetch.");
+  const result = await postJson(
+    `${config.appUrl}/api/admin/cloud-fetch/release`,
+    { jobRunId },
+    config.token,
+    { label: "cloud fetch release", retries: 0 },
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
 async function leaseCloudBuilders(args) {
   const config = await readConfig();
   requireLoggedIn(config);
@@ -13846,6 +13861,7 @@ async function main() {
   else if (command === "lease-cloud-builders") await leaseCloudBuilders(args);
   else if (command === "fetch-cloud-library") await fetchCloudLibrary(args);
   else if (command === "heartbeat-cloud-fetch") await heartbeatCloudFetch(args);
+  else if (command === "release-cloud-fetch") await releaseCloudFetch(args);
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync-cloud-builders") await syncCloudBuilders(args);
   else if (command === "render-digest") await renderDigest(args);

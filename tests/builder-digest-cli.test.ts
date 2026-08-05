@@ -6334,6 +6334,137 @@ test("builder digest CLI exposes lease-cloud-builders command", () => {
   assert.match(script, /--lease-owner/);
 });
 
+test("release-cloud-fetch posts only the job run id and prints the release response", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-release-cloud-fetch-"));
+  const requests: Array<{
+    method: string;
+    path: string;
+    authorization: string | undefined;
+    contentType: string | undefined;
+    body: unknown;
+  }> = [];
+  const response = {
+    outcome: "released",
+    releasedRuns: 1,
+    releasedSourceTasks: 2,
+    requeuedQueueItems: 2,
+  };
+  const server = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    req.on("end", () => {
+      requests.push({
+        method: req.method ?? "",
+        path: req.url ?? "",
+        authorization: req.headers.authorization,
+        contentType: req.headers["content-type"],
+        body: JSON.parse(Buffer.concat(chunks).toString("utf8") || "null"),
+      });
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(response));
+    });
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address() as AddressInfo;
+
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      process.execPath,
+      ["scripts/builder-digest.mjs", "release-cloud-fetch", "--job-run-id", "host-1"],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          BUILDER_BLOG_AGENT_DIR: tmp,
+          BUILDER_BLOG_TOKEN: "test-token",
+          BUILDER_BLOG_URL: `http://127.0.0.1:${address.port}`,
+        },
+      },
+    );
+
+    assert.equal(requests.length, 1);
+    assert.deepEqual(requests[0], {
+      method: "POST",
+      path: "/api/admin/cloud-fetch/release",
+      authorization: "Bearer test-token",
+      contentType: "application/json",
+      body: { jobRunId: "host-1" },
+    });
+    assert.equal(stdout.trim(), JSON.stringify(response, null, 2));
+    assert.equal(stderr, "");
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+});
+
+test("release-cloud-fetch fails before network contact when job run id is missing", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-release-cloud-fetch-"));
+  const requests: string[] = [];
+  const server = createServer((req, res) => {
+    requests.push(req.url ?? "");
+    res.writeHead(500, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "unexpected" }));
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address() as AddressInfo;
+
+  try {
+    await assert.rejects(
+      execFileAsync(
+        process.execPath,
+        ["scripts/builder-digest.mjs", "release-cloud-fetch"],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            BUILDER_BLOG_AGENT_DIR: tmp,
+            BUILDER_BLOG_TOKEN: "test-token",
+            BUILDER_BLOG_URL: `http://127.0.0.1:${address.port}`,
+          },
+        },
+      ),
+      (error: NodeJS.ErrnoException & { stderr?: string; code?: number }) => {
+        assert.equal(error.code, 1);
+        assert.match(
+          error.stderr ?? "",
+          /Missing --job-run-id <id> for release-cloud-fetch\./,
+        );
+        return true;
+      },
+    );
+    assert.deepEqual(requests, []);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+});
+
+test("builder digest CLI exposes release-cloud-fetch command", () => {
+  const script = readFileSync(join(process.cwd(), "scripts/builder-digest.mjs"), "utf8");
+
+  assert.match(script, /release-cloud-fetch --job-run-id <id>/);
+  assert.match(script, /command === "release-cloud-fetch"/);
+  assert.match(script, /\/api\/admin\/cloud-fetch\/release/);
+  assert.match(script, /Missing --job-run-id <id> for release-cloud-fetch\./);
+});
+
 test("schedule-spec emits anchor-aligned cron, launchd, and server schedule values", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-schedule-spec-"));
   const anchorFile = join(tmp, "schedule-anchor-library-cron-user");
