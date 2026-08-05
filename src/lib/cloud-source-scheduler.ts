@@ -407,6 +407,8 @@ async function materializeDueCloudFetchQueueInTransaction(params: {
 export async function leaseCloudFetchTasks(params: {
   limit: number;
   leaseOwner: string;
+  createdByUserId: string;
+  agentJobRunId: string;
   now?: Date;
   prisma?: PrismaClient;
   workerStartedAt?: Date;
@@ -428,6 +430,8 @@ export async function leaseCloudFetchTasks(params: {
 async function leaseCloudFetchTasksInTransaction(params: {
   limit: number;
   leaseOwner: string;
+  createdByUserId: string;
+  agentJobRunId: string;
   now: Date;
   prisma: CloudSchedulerDb;
   workerStartedAt: Date;
@@ -560,6 +564,8 @@ async function leaseCloudFetchTasksInTransaction(params: {
       requestedLimit: params.limit,
       tasksClaimed: claimableSelected.length,
       status: CloudFetchRunStatus.RUNNING,
+      createdByUserId: params.createdByUserId,
+      agentJobRunId: params.agentJobRunId,
     },
   });
 

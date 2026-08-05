@@ -23,14 +23,30 @@ const resetFenceQuery = (
   startedAt = now,
 ) => query.includes("clock_timestamp") ? [{ now: startedAt }] : [{ lastResetAt }];
 
+type LeaseCloudFetchTaskOptions =
+  & Omit<
+    Parameters<typeof leaseCloudFetchTasksInternal>[0],
+    "createdByUserId" | "agentJobRunId"
+  >
+  & Partial<
+    Pick<
+      Parameters<typeof leaseCloudFetchTasksInternal>[0],
+      "createdByUserId" | "agentJobRunId"
+    >
+  >;
+
 const leaseCloudFetchTasks = (
-  options: Parameters<typeof leaseCloudFetchTasksInternal>[0],
+  {
+    createdByUserId = "admin_user_1",
+    agentJobRunId = "agent_job_1",
+    ...options
+  }: LeaseCloudFetchTaskOptions,
 ) => {
   const prisma = options.prisma as unknown as {
     $executeRawUnsafe?: (query: string, ...values: unknown[]) => Promise<number>;
   };
   prisma.$executeRawUnsafe ??= async () => 1;
-  return leaseCloudFetchTasksInternal(options);
+  return leaseCloudFetchTasksInternal({ ...options, createdByUserId, agentJobRunId });
 };
 
 const baseTask = (overrides: Partial<CloudSchedulerTaskInput>): CloudSchedulerTaskInput => ({
@@ -2607,7 +2623,8 @@ test("leaseCloudFetchTasks matches stored estimates and null source-type priors 
   assert.ok(!hasInsensitiveUnknownSourceFallback(remainingFallbackFilters));
 });
 
-test("leaseCloudFetchTasks includes provisional execution plans in leased tasks and extends the initial lease to cover them", async () => {
+test("leaseCloudFetchTasks stamps ownership and includes provisional execution plans in leased tasks", async () => {
+  const runCreates: Array<{ data: Record<string, unknown> }> = [];
   const queueUpdates: Array<{ data: { leaseExpiresAt: Date } }> = [];
   const runTaskCreates: Array<{ data: { details?: { executionPlan?: Record<string, unknown> } } }> = [];
   const queuedItem = {
@@ -2670,10 +2687,13 @@ test("leaseCloudFetchTasks includes provisional execution plans in leased tasks 
     },
     cloudSourceSubmission: { groupBy: async () => [] },
     cloudFetchRun: {
-      create: async (args: { data: Record<string, unknown> }) => ({
+      create: async (args: { data: Record<string, unknown> }) => {
+        runCreates.push(args);
+        return {
         id: "run_cloud_plan_1",
         ...args.data,
-      }),
+        };
+      },
     },
     feedItem: {
       findMany: async () => [],
@@ -2690,6 +2710,14 @@ test("leaseCloudFetchTasks includes provisional execution plans in leased tasks 
   assert.equal(result.status, "ok");
   assert.equal(result.runId, "run_cloud_plan_1");
   assert.equal(result.tasks.length, 1);
+  assert.deepEqual(runCreates[0]?.data, {
+    leaseOwner: "local-cloud-runner:test",
+    requestedLimit: 1,
+    tasksClaimed: 1,
+    status: "RUNNING",
+    createdByUserId: "admin_user_1",
+    agentJobRunId: "agent_job_1",
+  });
   assert.deepEqual(result.tasks[0], {
     cloudSourceTaskId: "cloud_task_plan_1",
     builderId: "cloud_builder_plan_1",

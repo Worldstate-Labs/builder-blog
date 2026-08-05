@@ -561,6 +561,9 @@ test("admin cloud fetch queue and lease routes support session or bearer admin a
   assert.match(adminHelper, /isAdminEmail/);
   assert.match(queueRoute, /materializeDueCloudFetchQueue/);
   assert.match(leaseRoute, /leaseCloudFetchTasks/);
+  assert.match(leaseRoute, /select:\s*\{\s*id:\s*true,\s*createdAt:\s*true\s*\}/);
+  assert.match(leaseRoute, /createdByUserId:\s*admin\.user\.id/);
+  assert.match(leaseRoute, /agentJobRunId:\s*jobRun\.id/);
   assert.match(heartbeatRoute, /heartbeatCloudFetchRun/);
 });
 
@@ -761,14 +764,16 @@ test("Cloud worker ownership keeps legacy runs nullable and adds AgentJobRun own
   const schema = source("prisma/schema.prisma");
   const migrationPath = "prisma/migrations/000092_cloud_fetch_worker_ownership/migration.sql";
   const migration = existsSync(join(root, migrationPath)) ? source(migrationPath) : "";
+  const cloudFetchRunModel = schema.match(/model CloudFetchRun \{[\s\S]*?\n\}/m)?.[0] ?? "";
+  const agentJobRunModel = schema.match(/model AgentJobRun \{[\s\S]*?\n\}/m)?.[0] ?? "";
 
-  assert.match(schema, /cloudFetchRuns\s+CloudFetchRun\[\]/);
-  assert.match(schema, /agentJobRunId\s+String\?/);
+  assert.match(agentJobRunModel, /cloudFetchRuns\s+CloudFetchRun\[\]/);
+  assert.match(cloudFetchRunModel, /agentJobRunId\s+String\?/);
   assert.match(
-    schema,
+    cloudFetchRunModel,
     /agentJobRun\s+AgentJobRun\?\s+@relation\(fields:\s*\[agentJobRunId\],\s*references:\s*\[id\],\s*onDelete:\s*SetNull\)/,
   );
-  assert.match(schema, /@@index\(\[createdByUserId,\s*agentJobRunId,\s*status\]\)/);
+  assert.match(cloudFetchRunModel, /@@index\(\[createdByUserId,\s*agentJobRunId,\s*status\]\)/);
 
   assert.ok(existsSync(join(root, migrationPath)), "expected Cloud worker ownership migration to exist");
   assert.match(migration, /ALTER TABLE "CloudFetchRun" ADD COLUMN "agentJobRunId" TEXT;/);

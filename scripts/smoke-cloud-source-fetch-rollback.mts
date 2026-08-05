@@ -311,11 +311,27 @@ async function main() {
           mustSucceedBy: smokeDeadline,
         },
       });
+      const jobRun = await tx.agentJobRun.create({
+        data: {
+          userId: activeCloudLibrary.ownerUserId,
+          jobType: "cloud-library-fetch",
+          trigger: "manual",
+          instanceId: `${marker}-job-run`,
+          startedAt: leaseNow,
+          heartbeatAt: leaseNow,
+          status: "running",
+          createdAt: leaseNow,
+        },
+        select: { id: true, userId: true, createdAt: true },
+      });
       const lease = await leaseCloudFetchTasks({
         limit: 1,
         leaseOwner: `${marker}-lease`,
+        createdByUserId: jobRun.userId,
+        agentJobRunId: jobRun.id,
         now: leaseNow,
         prisma: txClient,
+        workerStartedAt: jobRun.createdAt,
       });
       if (lease.status !== "ok" || !lease.runId || lease.tasks.length !== 1) {
         throw new Error(`Expected one leased task, got ${JSON.stringify(lease)}.`);

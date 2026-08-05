@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       jobType: "cloud-library-fetch",
       instanceId: jobRunId,
     },
-    select: { createdAt: true },
+    select: { id: true, createdAt: true },
   });
   if (!jobRun) {
     return NextResponse.json(
@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     result = await leaseCloudFetchTasks({
       limit,
       leaseOwner,
+      createdByUserId: admin.user.id,
+      agentJobRunId: jobRun.id,
       workerStartedAt: jobRun.createdAt,
     });
   } catch (error) {

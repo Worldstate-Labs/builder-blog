@@ -153,6 +153,9 @@ test("cloud scheduler and digest writers serialize every generated-state mutatio
   assert.match(leaseRoute, /jobRunId is required/);
   assert.match(leaseRoute, /jobType: "cloud-library-fetch"/);
   assert.match(leaseRoute, /instanceId: jobRunId/);
+  assert.match(leaseRoute, /select:\s*\{\s*id:\s*true,\s*createdAt:\s*true\s*\}/);
+  assert.match(leaseRoute, /createdByUserId:\s*admin\.user\.id/);
+  assert.match(leaseRoute, /agentJobRunId:\s*jobRun\.id/);
   assert.match(leaseRoute, /workerStartedAt: jobRun\.createdAt/);
   assert.match(cli, /cloud fetch lease[\s\S]*jobRunId: envJobRunId\(\)/);
   assert.match(context, /\$transaction[\s\S]*jobType:\s*"digest-build"[\s\S]*createdAt:\s*true[\s\S]*lockResetFenceForWorker\(tx, jobRun\.createdAt, userResetFenceId\(user\.id\)\)[\s\S]*digestRun\.create/);
