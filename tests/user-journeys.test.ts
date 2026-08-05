@@ -1517,7 +1517,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
   assert.match(
     libraryCronSetupPrompt,
-    /BUILDER_BLOG_WORKER_MODE=1 \\\s+BUILDER_BLOG_JOB_TRIGGER=one_time \\\s+BUILDER_BLOG_AGENT_RUNTIME="\{\{AGENT_RUNTIME\}\}" \\\s+BUILDER_BLOG_FETCH_FORCE="\{\{FETCH_FLAG\}\}" \\\s+BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/,
+    /BUILDER_BLOG_WORKER_MODE=1 \\\s+BUILDER_BLOG_SETUP_INITIAL=1 \\\s+BUILDER_BLOG_JOB_RUN_ID="\$EXPECTED_INSTANCE_ID" \\\s+BUILDER_BLOG_SETUP_VERDICT_FILE="\$SETUP_VERDICT_FILE" \\\s+BUILDER_BLOG_JOB_TRIGGER=one_time \\\s+BUILDER_BLOG_AGENT_RUNTIME="\{\{AGENT_RUNTIME\}\}" \\\s+BUILDER_BLOG_FETCH_FORCE="\{\{FETCH_FLAG\}\}" \\\s+BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/,
   );
   assert.match(libraryCronSetupPrompt, /INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
   assert.doesNotMatch(libraryCronSetupPrompt, /webSyncDisabled: true/);
@@ -1640,7 +1640,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /one real initial fetch job/);
   assert.match(libraryCronSetupPrompt, /writes fetch-log rows,[\s\S]*builders, and[\s\S]*feed items/);
   assert.match(libraryCronSetupPrompt, /do not treat a lack of\s+output as a hang/);
-  assert.match(libraryCronSetupPrompt, /status: failures\.length \? "needs_confirmation" : "ok"/);
+  assert.match(libraryCronSetupPrompt, /verify-library-setup-verdict/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SETUP_INITIAL=1/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_RUN_ID="\$EXPECTED_INSTANCE_ID"/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SETUP_VERDICT_FILE="\$SETUP_VERDICT_FILE"/);
   assert.match(libraryCronSetupPrompt, /without failed post tasks[\s\S]*continue automatically to step 7/);
   assert.match(libraryCronSetupPrompt, /list every failed post\s+task[\s\S]*failed stage/);
   assert.match(libraryCronSetupPrompt, /Only\s+continue to step 7 if the user explicitly agrees/);
@@ -1656,15 +1659,17 @@ test("web app serves the agent skill and setup command", () => {
     "account's library fetch cron",
     "4. Keep the selected runtime and fetch mode scoped",
     "6. Run one real initial fetch job now",
+    "EXPECTED_INSTANCE_ID",
     "BUILDER_BLOG_WORKER_MODE=1",
+    "BUILDER_BLOG_SETUP_INITIAL=1",
     "BUILDER_BLOG_JOB_TRIGGER=one_time",
     "BUILDER_BLOG_AGENT_RUNTIME=\"{{AGENT_RUNTIME}}\"",
     "BUILDER_BLOG_FETCH_DAYS=\"{{FETCH_DAYS}}\"",
     "BUILDER_BLOG_PARALLEL_WORKERS=\"{{PARALLEL_WORKERS}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
+    "verify-library-setup-verdict",
     "Report its output",
     "writes fetch-log rows",
-    "After the command exits 0, run this gate",
     "needs_confirmation",
     "7. Only after the initial run has passed the schedule gate above",
     "runtime-library-cron-$ACCOUNT_SLUG",
@@ -1687,10 +1692,7 @@ test("web app serves the agent skill and setup command", () => {
     /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*account_slug\(\) \{[\s\S]*createHash[\s\S]*ACCOUNT_SLUG="\$\(account_slug "\$ACCT"\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/,
   );
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
-  assert.match(
-    libraryCronSetupPrompt,
-    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*TMP_DIR="\$\{BUILDER_BLOG_JOB_TMP_DIR:-\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\}"/,
-  );
+  assert.match(libraryCronSetupPrompt, /SETUP_VERDICT_FILE="\$SETUP_TMP_DIR\/setup-verdict-\$EXPECTED_INSTANCE_ID\.json"/);
   assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="\$\(cat "\$SCHEDULE_SPEC_DIR\/status\.txt"\)"/);
   assert.match(libraryCronSetupPrompt, /--started-at "\$ANCHOR_AT"/);
   assert.match(libraryCronSetupPrompt, /step after step 1 and before this check/);

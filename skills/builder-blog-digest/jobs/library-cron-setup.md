@@ -2,8 +2,9 @@ Set up the FollowBrief private source library scheduled job.
 
 This is an interactive local agent setup run. Do not ask the user questions
 except where step 3 requires it (confirming whether to replace an existing
-library fetch cron), or when crontab permissions or a missing local credential
-blocks the setup.
+library fetch cron), where step 6 requires it (confirming whether to schedule
+after safe post-level failures), or when crontab permissions or a missing local
+credential blocks the setup.
 
 Run these steps exactly. If any command fails, stop and report the command, exit
 code, and stderr. Do not use `--force`. Do not browse for extra context. Do not
@@ -201,8 +202,14 @@ NODE
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
 SETUP_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct"
 mkdir -p "$SETUP_TMP_DIR"
-BUILDER_BLOG_JOB_TMP_DIR="$SETUP_TMP_DIR" \
+EXPECTED_INSTANCE_ID="$(node -e 'const { randomUUID } = require("node:crypto"); process.stdout.write(randomUUID())')"
+SETUP_VERDICT_FILE="$SETUP_TMP_DIR/setup-verdict-$EXPECTED_INSTANCE_ID.json"
+rm -f -- "$SETUP_VERDICT_FILE"
+if BUILDER_BLOG_JOB_TMP_DIR="$SETUP_TMP_DIR" \
 BUILDER_BLOG_WORKER_MODE=1 \
+BUILDER_BLOG_SETUP_INITIAL=1 \
+BUILDER_BLOG_JOB_RUN_ID="$EXPECTED_INSTANCE_ID" \
+BUILDER_BLOG_SETUP_VERDICT_FILE="$SETUP_VERDICT_FILE" \
 BUILDER_BLOG_JOB_TRIGGER=one_time \
 BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
 BUILDER_BLOG_FETCH_FORCE="{{FETCH_FLAG}}" \
@@ -211,81 +218,47 @@ BUILDER_BLOG_PARALLEL_WORKERS="{{PARALLEL_WORKERS}}" \
 BUILDER_BLOG_INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="$ACCT" \
-$HOME/.builder-blog/builder-agent-runner.sh library-cron
+"$AGENT_DIR/builder-agent-runner.sh" library-cron
+then
+  RUNNER_EXIT_CODE=0
+else
+  RUNNER_EXIT_CODE="$?"
+fi
+if ! SETUP_VERDICT_JSON="$(
+  node "$AGENT_DIR/builder-digest.mjs" verify-library-setup-verdict \
+    --file "$SETUP_VERDICT_FILE" \
+    --instance-id "$EXPECTED_INSTANCE_ID" \
+    --runner-exit-code "$RUNNER_EXIT_CODE"
+)"; then
+  echo "Initial fetch verdict verification failed (runner exit $RUNNER_EXIT_CODE)." >&2
+  exit 1
+fi
+printf '%s\n' "$SETUP_VERDICT_JSON"
 ```
 
 Report its output. This is a real run: it writes fetch-log rows, builders, and
-feed items to FollowBrief. If the command errors or times out, report the
-command, exit code, and stderr, and stop — do not install the schedule in step
-7.
+feed items to FollowBrief. The runner's exit code is captured instead of
+terminating this step immediately so the verifier can distinguish safe,
+synchronized post-level failures from fatal or incomplete runs. Trust only the
+JSON printed by `verify-library-setup-verdict`; do not infer that scheduling is
+safe from the runner's stderr or from exit code 65 alone. If verdict verification
+itself fails, report `RUNNER_EXIT_CODE` and the verifier error, then stop without
+installing the schedule.
 
-After the command exits 0, run this gate before deciding whether to install the
-schedule. It inspects the initial run's validation/sync artifacts and prints
-post-level failures, if any:
-
-```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-account_slug() {
-  node - "${1:-default}" <<'NODE'
-const { createHash } = require("node:crypto");
-const account = String(process.argv[2] || "default");
-const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
-const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
-console.log(`${base}_${hash}`);
-NODE
-}
-ACCOUNT_SLUG="$(account_slug "$ACCT")"
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct}"
-node - "$TMP_DIR/library-fetch-result.json" "$TMP_DIR/library-agent-sync.json" <<'NODE'
-const fs = require("fs");
-const fetchFile = process.argv[2];
-const syncFile = process.argv[3];
-const readJson = (file) => {
-  try { return JSON.parse(fs.readFileSync(file, "utf8")); }
-  catch { return null; }
-};
-const fetchResult = readJson(fetchFile);
-const syncPayload = readJson(syncFile);
-const planned = new Map(
-  (Array.isArray(fetchResult?.["fetch" + "Tasks"]) ? fetchResult["fetch" + "Tasks"] : [])
-    .map((task) => [String(task.id || task.item?.externalId || task.item?.url || ""), task])
-    .filter(([id]) => id),
-);
-const sourceLabel = (task) =>
-  [task?.builder, task?.sourceType].filter(Boolean).join(" · ") || "Unknown source";
-const titleLabel = (task, outcome) =>
-  task?.title || task?.item?.title || task?.url || task?.item?.url || outcome.fetchTaskId;
-const stageFor = (reason) => {
-  const text = String(reason || "").toLowerCase();
-  if (/summary|summariz|not_summarized/.test(text)) return "summarize";
-  if (/sync|not_synced|persist/.test(text)) return "sync";
-  return "read";
-};
-const failures = (Array.isArray(syncPayload?.taskOutcomes) ? syncPayload.taskOutcomes : [])
-  .filter((outcome) => outcome?.status === "failed")
-  .map((outcome) => {
-    const task = planned.get(String(outcome.fetchTaskId)) || {};
-    return {
-      title: titleLabel(task, outcome),
-      source: sourceLabel(task),
-      stage: stageFor(outcome.reason || outcome.failureReason),
-      reason: outcome.reason || outcome.failureReason || "failed",
-    };
-  });
-console.log(JSON.stringify({ status: failures.length ? "needs_confirmation" : "ok", failures }, null, 2));
-NODE
-```
-
-If the gate prints `"status": "ok"`, tell the user the validation run completed
+If the verifier prints `"status": "ok"`, tell the user the validation run completed
 without failed post tasks, then continue automatically to step 7 and install the
 original scheduled job.
 
-If the gate prints `"status": "needs_confirmation"`, list every failed post
+If the verifier prints `"status": "needs_confirmation"`, list every failed post
 task for the user with its title, source, failed stage (`read`, `summarize`, or
 `sync`), and reason. Then ask whether to install the scheduled run anyway. Only
 continue to step 7 if the user explicitly agrees; otherwise stop and do not
 install or report an active schedule.
+
+If the verifier prints `"status": "fatal"`, report `RUNNER_EXIT_CODE`, the
+verdict code, and every available failure detail, then stop. A timeout,
+discovery failure, credential/runtime failure, malformed or missing evidence,
+or any other fatal verdict must never install or report an active schedule.
 
 If this initial run surfaces an `x_token_missing` (or any `*_token_missing`)
 notice, that is expected when the user declined or skipped that token in the

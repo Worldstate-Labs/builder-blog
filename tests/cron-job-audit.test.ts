@@ -91,6 +91,43 @@ test("cron scheduler status changes leave local and server audit events", () => 
   assert.match(digestRuns, /timeZone: cronJob\.timeZone \?\? null,/);
 });
 
+test("library setup verifies the current initial run before mutating scheduler state", () => {
+  const prompt = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
+
+  assert.match(prompt, /randomUUID/);
+  assert.match(
+    prompt,
+    /SETUP_VERDICT_FILE="\$SETUP_TMP_DIR\/setup-verdict-\$EXPECTED_INSTANCE_ID\.json"/,
+  );
+  assert.match(prompt, /rm -f -- "\$SETUP_VERDICT_FILE"/);
+  assert.match(prompt, /BUILDER_BLOG_SETUP_INITIAL=1/);
+  assert.match(prompt, /BUILDER_BLOG_JOB_RUN_ID="\$EXPECTED_INSTANCE_ID"/);
+  assert.match(prompt, /BUILDER_BLOG_SETUP_VERDICT_FILE="\$SETUP_VERDICT_FILE"/);
+  assert.match(
+    prompt,
+    /if BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"[\s\S]*then\n  RUNNER_EXIT_CODE=0\nelse\n  RUNNER_EXIT_CODE="\$\?"\nfi/,
+  );
+  assert.match(
+    prompt,
+    /verify-library-setup-verdict[\s\S]*--file "\$SETUP_VERDICT_FILE"[\s\S]*--instance-id "\$EXPECTED_INSTANCE_ID"[\s\S]*--runner-exit-code "\$RUNNER_EXIT_CODE"/,
+  );
+  assert.match(prompt, /"status": "fatal"[\s\S]*stop/);
+  assert.match(prompt, /"status": "needs_confirmation"[\s\S]*ask whether to install/);
+  assert.doesNotMatch(
+    prompt,
+    /node - "\$TMP_DIR\/library-fetch-result\.json" "\$TMP_DIR\/library-agent-sync\.json"/,
+  );
+
+  const verifierIndex = prompt.indexOf("verify-library-setup-verdict");
+  const installStepIndex = prompt.indexOf("7. Only after the initial run has passed");
+  const pinIndex = prompt.indexOf("runtime-library-cron-$ACCOUNT_SLUG", installStepIndex);
+  const launchdIndex = prompt.indexOf("launchctl bootstrap", installStepIndex);
+  assert.ok(verifierIndex >= 0, "setup verdict verifier must be present");
+  assert.ok(installStepIndex > verifierIndex, "schedule install must follow verdict verification");
+  assert.ok(pinIndex > installStepIndex, "runtime pins must be written only after the verdict gate");
+  assert.ok(launchdIndex > pinIndex, "launchd install must follow the approved verdict gate");
+});
+
 test("cron stop prompts audit scheduler mutations before web status sync", () => {
   const librarySetup = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
   const digestSetup = source("skills/builder-blog-digest/jobs/digest-cron-setup.md");
