@@ -1,6 +1,6 @@
 # Recurring Fetch Partial-Failure Confirmation
 
-**Status:** Pending final user review
+**Status:** Approved for implementation
 **Date:** 2026-08-05  
 **Scope:** Regular-user `library-cron-setup` for Claude Code, Codex, and OpenClaw
 
@@ -243,20 +243,28 @@ its own interpretation of stderr.
 Claude Code and Codex keep the common interactive setup flow. Their current
 conversation asks the question and resumes step 7 only after an explicit yes.
 
-For OpenClaw, the one-shot setup continuation changes from `--session isolated`
-to `--session current`. The [OpenClaw cron CLI contract](https://docs.openclaw.ai/cli/cron)
-defines `current` as binding the scheduled turn to the active session at creation
-time; the locally supported baseline is OpenClaw `2026.5.20`. Setup verifies that
-the installed CLI supports this mode before queueing. An unsupported version
-fails closed before creating the one-shot job; it must not silently fall back to
-an isolated session. The 30-second delayed start remains so the parent setup turn
-can finish before the continuation runs.
+For OpenClaw, the one-shot setup continuation must bind to a persistent
+interactive session instead of `--session isolated`. The renderer chooses the
+strongest mode advertised by the installed CLI:
+
+- when `openclaw cron add --help` advertises `current`, queue the existing agent
+  message with `--session current`; the
+  [OpenClaw cron CLI contract](https://docs.openclaw.ai/cli/cron) defines this as
+  binding the scheduled turn to the active session at creation time;
+- for the locally supported OpenClaw `2026.5.20` compatibility contract, whose
+  help advertises only `main|isolated`, queue the continuation into
+  `--session main` as a `--system-event` with `--wake now`;
+- if neither compatible persistent-session form is advertised, fail closed
+  before creating the one-shot job. Never fall back to an isolated session.
+
+The 30-second delayed start remains so the parent setup turn can finish before
+the continuation runs.
 
 The OpenClaw renderer will stop replacing `needs_confirmation` with an
 unattended hard stop, and will remove the child preamble that forbids waiting
 for confirmation. When the continuation ends its turn with a question, the
-user's next reply is a new turn in the same current session and can continue
-steps 7-8 from the existing prompt context.
+user's next reply is a new turn in the selected persistent session and can
+continue steps 7-8 from the existing prompt context.
 
 The one-shot setup job remains separate from the installed recurring schedule.
 The recurring schedule is still launchd on macOS or crontab on Linux, and its
@@ -313,7 +321,9 @@ Steps 7 and 8 remain unchanged apart from their predecessor gate:
   unreachable;
 - `fatal` never reaches schedule installation;
 - Claude Code and Codex retain the interactive question;
-- OpenClaw parent queues `--session current`, not `isolated`;
+- OpenClaw parent prefers `--session current`, uses the `2026.5.20`
+  `--session main --system-event --wake now` compatibility path when needed,
+  and never uses `isolated`;
 - OpenClaw child retains the common confirmation wording and does not contain
   the unattended no-confirmation rewrite;
 - existing credential, existing-schedule override, runtime pinning,
