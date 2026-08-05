@@ -201,18 +201,42 @@ function buildOpenClawInitialRunBootstrap({
     "if [ \"$OPENCLAW_TIMEOUT_CURRENT\" -lt \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" ]; then",
     "  openclaw config set agents.defaults.timeoutSeconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" --strict-json >/dev/null 2>&1 || true",
     "fi",
-    "if ! openclaw cron add \\",
-    "  --name \"$SETUP_ID\" \\",
-    "  --at \"$RUN_AT\" \\",
-    "  --delete-after-run \\",
-    "  --agent \"${OPENCLAW_AGENT:-main}\" \\",
-    "  --session isolated \\",
-    "  --light-context \\",
-    "  --timeout-seconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" \\",
-    "  --announce \\",
-    "  --best-effort-deliver \\",
-    "  --message \"$(cat \"$PROMPT_COPY\")\" \\",
-    "  --json > \"$CRON_ADD_OUTPUT\" 2>&1; then",
+    "if ! OPENCLAW_CRON_ADD_HELP=\"$(openclaw cron add --help 2>&1)\"; then",
+    "  echo \"Could not inspect OpenClaw cron session capabilities.\" >&2",
+    "  exit 1",
+    "fi",
+    "CRON_ADD_OK=0",
+    "if printf '%s\\n' \"$OPENCLAW_CRON_ADD_HELP\" | grep -Eq 'main\\|isolated\\|current|current\\|session:'; then",
+    "  if openclaw cron add \\",
+    "    --name \"$SETUP_ID\" \\",
+    "    --at \"$RUN_AT\" \\",
+    "    --delete-after-run \\",
+    "    --agent \"${OPENCLAW_AGENT:-main}\" \\",
+    "    --session current \\",
+    "    --timeout-seconds \"$OPENCLAW_SETUP_TIMEOUT_SECONDS\" \\",
+    "    --announce \\",
+    "    --best-effort-deliver \\",
+    "    --message \"$(cat \"$PROMPT_COPY\")\" \\",
+    "    --json > \"$CRON_ADD_OUTPUT\" 2>&1; then",
+    "    CRON_ADD_OK=1",
+    "  fi",
+    "elif printf '%s\\n' \"$OPENCLAW_CRON_ADD_HELP\" | grep -q 'main|isolated' \\",
+    "  && printf '%s\\n' \"$OPENCLAW_CRON_ADD_HELP\" | grep -q -- '--system-event'; then",
+    "  if openclaw cron add \\",
+    "    --name \"$SETUP_ID\" \\",
+    "    --at \"$RUN_AT\" \\",
+    "    --delete-after-run \\",
+    "    --session main \\",
+    "    --system-event \"$(cat \"$PROMPT_COPY\")\" \\",
+    "    --wake now \\",
+    "    --json > \"$CRON_ADD_OUTPUT\" 2>&1; then",
+    "    CRON_ADD_OK=1",
+    "  fi",
+    "else",
+    "  echo \"OpenClaw does not expose a persistent cron session mode required for confirmation.\" >&2",
+    "  exit 1",
+    "fi",
+    "if [ \"$CRON_ADD_OK\" -ne 1 ]; then",
     "  echo \"OpenClaw durable setup job could not be queued.\" >&2",
     "  cat \"$CRON_ADD_OUTPUT\" >&2",
     "  exit 1",
@@ -231,35 +255,18 @@ function setupInitialRunMarker(job: SkillJobName): string {
   return "";
 }
 
-function adaptSetupContinuationForUnattendedChild(
-  job: SkillJobName,
-  childBody: string,
-): string {
-  if (job !== "library-cron-setup") return childBody;
-  return childBody.replace(
-    /If the gate prints `"status": "needs_confirmation"`[\s\S]*?install or report an active schedule\./,
-    [
-      "If the gate prints `\"status\": \"needs_confirmation\"`, list every failed post",
-      "task with its title, source, failed stage (`read`, `summarize`, or `sync`),",
-      "and reason. Then stop without installing the scheduled run. This child job is",
-      "unattended and must not wait for confirmation.",
-    ].join("\n"),
-  );
-}
-
 function sliceSetupPromptForOpenClawChild(job: SkillJobName, content: string): string {
   const marker = setupInitialRunMarker(job);
   const markerIndex = marker ? content.indexOf(marker) : -1;
-  const rawChildBody = markerIndex >= 0 ? content.slice(markerIndex).trimStart() : content.trimStart();
-  const childBody = adaptSetupContinuationForUnattendedChild(job, rawChildBody);
+  const childBody = markerIndex >= 0 ? content.slice(markerIndex).trimStart() : content.trimStart();
   return [
     "Run this queued FollowBrief setup continuation.",
     "Start at the initial-run step below; numbering continues from the",
     "user-facing setup prompt.",
     "",
-    "This job is unattended. If the initial run command fails, times out, or the",
-    "validation gate reports failed post tasks, report the details and stop",
-    "without installing the schedule.",
+    "This continuation runs in a persistent OpenClaw session. Stop and report any",
+    "hard failure or timeout. When the instructions require explicit confirmation,",
+    "ask the user and wait for their reply in this session before continuing.",
     "",
     childBody,
   ].join("\n");

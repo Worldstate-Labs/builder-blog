@@ -319,11 +319,27 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.match(parent, /maxAttempts\s*=\s*4/);
   assert.match(parent, /error\?\.cause/);
   assert.doesNotMatch(parent, /curl -fsSL/);
+  assert.match(parent, /OPENCLAW_CRON_ADD_HELP="\$\(openclaw cron add --help 2>&1\)"/);
+  assert.match(parent, /--session current/);
+  assert.match(parent, /--message "\$\(cat "\$PROMPT_COPY"\)"/);
+  assert.match(parent, /--session main/);
+  assert.match(parent, /--system-event "\$\(cat "\$PROMPT_COPY"\)"/);
+  assert.match(parent, /--wake now/);
+  assert.match(
+    parent,
+    /OpenClaw does not expose a persistent cron session mode required for confirmation/,
+  );
+  assert.doesNotMatch(parent, /--session isolated/);
+  assert.doesNotMatch(parent, /--light-context/);
   assert.match(parent, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
   assert.doesNotMatch(parent, /Run this queued FollowBrief setup continuation/);
 
   assert.match(child, /^Run this queued FollowBrief setup continuation\./);
-  assert.match(child, /This job is unattended\./);
+  assert.match(child, /persistent OpenClaw session/);
+  assert.match(child, /"status": "needs_confirmation"[\s\S]*ask whether to install/);
+  assert.match(child, /Only[\s\S]*continue to step 7 if the user explicitly agrees/);
+  assert.doesNotMatch(child, /unattended and must not wait for confirmation/);
+  assert.doesNotMatch(child, /--session isolated/);
   assert.match(child, /6\. Run one real initial fetch job now\./);
   assert.doesNotMatch(child, /1\. Install or refresh the skill:/);
   assert.doesNotMatch(child, /1a\. Exchange the one-time setup code/);
