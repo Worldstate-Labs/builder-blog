@@ -1,6 +1,6 @@
 # Recurring Fetch Partial-Failure Confirmation
 
-**Status:** Approved for implementation planning  
+**Status:** Pending final user review
 **Date:** 2026-08-05  
 **Scope:** Regular-user `library-cron-setup` for Claude Code, Codex, and OpenClaw
 
@@ -79,19 +79,22 @@ on the raw exit code alone.
 
 ### 1. Setup-run declaration and durable verdict path
 
-Step 6 will declare that this direct worker invocation is a setup proof by
-passing a dedicated environment flag and a caller-selected verdict path under
-the existing stable setup state directory:
+Step 6 will generate one opaque UUID before starting the runner and declare that
+this direct worker invocation is a setup proof by passing a dedicated environment
+flag, the UUID as the runner's job-run identity, and a UUID-bearing verdict path
+under the existing stable setup state directory:
 
 ```text
 BUILDER_BLOG_SETUP_INITIAL=1
-BUILDER_BLOG_SETUP_VERDICT_FILE=<library-cron-direct>/setup-verdict.json
+BUILDER_BLOG_JOB_RUN_ID=<setup UUID>
+BUILDER_BLOG_SETUP_VERDICT_FILE=<library-cron-direct>/setup-verdict-<setup UUID>.json
 ```
 
-Before starting the runner, the prompt removes only that exact old verdict
-file. The runner validates that the requested verdict is a normal file path
-directly under its owned `JOB_STATE_DIR`; it must reject symlinks, traversal,
-and paths outside that directory. Verdict writes are atomic and mode `0600`.
+The prompt retains the same UUID as `EXPECTED_INSTANCE_ID`. Before starting the
+runner, it removes only that exact UUID-bearing verdict file. The runner validates
+that the requested verdict is a normal file path directly under its owned
+`JOB_STATE_DIR`; it must reject symlinks, traversal, and paths outside that
+directory. Verdict writes are atomic and mode `0600`.
 
 Normal one-time fetches, installed recurring runs, digest jobs, and Cloud jobs
 do not set the flag and do not produce this artifact.
@@ -102,16 +105,44 @@ do not set the flag and do not produce this artifact.
 per-run directory still exists. For declared `library-cron` setup proofs, it
 invokes a deterministic classifier before `cleanup_job_tmp_dir`.
 
-The classifier uses only runner-owned artifacts from the current run:
+The classifier uses only regular, non-symlink files owned by the current run.
+These inputs are authoritative for every run:
 
-- the planned fetch-task set;
-- the terminal/synchronized task-id ledger already maintained while normal and
-  failure-patch payloads are accepted by FollowBrief;
-- merged task outcomes and failure-patch payloads;
-- the final runner exit code;
-- current run identity and owned run-directory metadata.
+- `$JOB_TMP_DIR/.run-owner.json`, whose account, job type, and instance ID must
+  exactly match the active setup run;
+- `$JOB_TMP_DIR/library-fetch-result.json`, the normalized fetch response used to
+  establish whether the run has zero post tasks or entered post-task processing;
+- the final runner exit code held by `run_with_job_tracking`.
 
-It must not infer safety from log prose or from a failure ratio.
+For a run with one or more post tasks, all of these additional files are required:
+
+- `$JOB_TMP_DIR/library-fetch-merged.json`, the authoritative final planned task
+  set after discovery expansion, media handling, and result merging;
+- `$JOB_TMP_DIR/library-agent-sync.json`, the canonical merged sync payload;
+- `$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt`, the durable acceptance
+  ledger. A task ID enters this ledger only after its normal result or synthesized
+  failure patch is accepted by FollowBrief; server-terminal IDs observed during
+  the same run may also appear;
+- `$JOB_TMP_DIR/merge-task-results.json` and
+  `$JOB_TMP_DIR/merge-task-results-remaining.json`, the two merge reports that
+  prove the runner completed both merge phases.
+
+The per-slice
+`library-result-slice-*-validation-failed-payload.json` and
+`library-result-slice-*-failed-payload.json` files are conditional inputs. When
+present, they supersede that slice's pre-validation result for the corresponding
+task. Every failure they describe must also appear in the durable acceptance
+ledger.
+
+A zero-post-task run is a narrow exception because the runner returns before
+creating merge artifacts or the acceptance ledger. It may classify as `ok` only
+when the runner exits `0`, the authoritative always-required files parse, there
+is no failed candidate-discovery outcome, and every source/user-action terminal
+outcome in `library-fetch-result.json` is well formed and its sync path completed
+successfully. A zero-post-task run can never be `needs_confirmation`.
+
+Missing required inputs are fatal. Logs, prose, directory modification times,
+and a "latest" verdict are never authoritative.
 
 The verdict schema is closed and versioned:
 
@@ -142,27 +173,43 @@ exchange code, raw fetched body, or provider response.
 
 The classifier is fail-closed.
 
+Failure eligibility is explicit:
+
+- only ordinary post-fetch task failures that have a durable acceptance-ledger
+  entry may produce `needs_confirmation`;
+- `candidate_discovery_fallback` outcomes are discovery control-plane work, not
+  post-fetch tasks, and any failed discovery outcome is `fatal` for this change;
+- valid `user_action_*`, `x_token_missing`, and `x_token_invalid` outcomes with
+  `action_needed` status describe an expected user action rather than a fetch
+  failure, so they do not require confirmation and may coexist with `ok`;
+- a failed or malformed user-action outcome is `fatal`.
+
 `ok` requires all of the following:
 
 - runner exit code is `0`;
-- planned artifacts parse successfully;
-- every planned task is represented by a successful durable sync/terminal-sync
-  acknowledgement;
-- no failed task outcome remains.
+- all inputs required for the run shape parse successfully;
+- every planned ordinary post-fetch task is represented by a durable acceptance-
+  ledger entry, except in the defined zero-post-task path;
+- no failed ordinary post-fetch or candidate-discovery outcome remains;
+- every user-action outcome, if present, is a well-formed `action_needed` outcome.
 
 `needs_confirmation` requires all of the following:
 
 - runner exit code is `65`;
-- planned artifacts parse successfully;
-- every planned task is represented by a successful durable sync/terminal-sync
-  acknowledgement;
-- at least one bounded post/source task failure is present;
+- all inputs required for the one-or-more-post-task run shape parse successfully;
+- every planned ordinary post-fetch task is represented by a durable acceptance-
+  ledger entry;
+- at least one bounded ordinary post-fetch task failure is present and every such
+  failure has a durable acceptance-ledger entry;
+- no failed candidate-discovery outcome and no failed or malformed user-action
+  outcome is present;
 - no global authentication, timeout, missing-artifact, ownership, or incomplete
   synchronization condition is present.
 
-Missing result files that were deterministically converted to failed terminal
-outcomes and successfully synchronized may qualify. A failed attempt to sync
-that terminal outcome does not qualify.
+Missing result files that were deterministically converted to failed ordinary
+post-task outcomes and successfully synchronized may qualify. A missing or
+failed candidate-discovery result, or a failed attempt to sync a post-task
+terminal outcome, does not qualify.
 
 Every other state is `fatal`, including a missing or malformed artifact,
 incomplete planned-task coverage, non-`0`/non-`65` exit, timeout, authentication
@@ -174,7 +221,9 @@ the setup treats that exactly like `fatal`.
 ### 4. Prompt control flow
 
 Step 6 captures the runner code without aborting the setup shell block, then
-requires the current verdict file.
+requires the UUID-bearing verdict file. It accepts the verdict only when
+`verdict.instanceId === EXPECTED_INSTANCE_ID`; it never consults `current.json`,
+directory modification times, or whichever verdict happens to be newest.
 
 - `ok`: report a clean proof and continue automatically to step 7.
 - `needs_confirmation`: list every bounded failure with title, source, stage,
@@ -195,9 +244,13 @@ Claude Code and Codex keep the common interactive setup flow. Their current
 conversation asks the question and resumes step 7 only after an explicit yes.
 
 For OpenClaw, the one-shot setup continuation changes from `--session isolated`
-to `--session current`, which OpenClaw defines as binding the scheduled turn to
-the active session at creation time. The 30-second delayed start remains so the
-parent setup turn can finish before the continuation runs.
+to `--session current`. The [OpenClaw cron CLI contract](https://docs.openclaw.ai/cli/cron)
+defines `current` as binding the scheduled turn to the active session at creation
+time; the locally supported baseline is OpenClaw `2026.5.20`. Setup verifies that
+the installed CLI supports this mode before queueing. An unsupported version
+fails closed before creating the one-shot job; it must not silently fall back to
+an isolated session. The 30-second delayed start remains so the parent setup turn
+can finish before the continuation runs.
 
 The OpenClaw renderer will stop replacing `needs_confirmation` with an
 unattended hard stop, and will remove the child preamble that forbids waiting
@@ -223,8 +276,9 @@ Steps 7 and 8 remain unchanged apart from their predecessor gate:
 
 ## Error Handling
 
-- Stale verdicts are prevented by deleting the exact target before the run and
-  matching the verdict `instanceId` to the run that just completed.
+- Stale verdicts are prevented by using the prompt-generated UUID in both the
+  verdict filename and `BUILDER_BLOG_JOB_RUN_ID`, deleting only that exact target
+  before the run, and requiring exact `instanceId` equality afterward.
 - A malformed, duplicate-key, extra-field, unbounded, or wrong-version verdict
   is fatal.
 - A setup proof timeout remains fatal even if cleanup synchronized some terminal
@@ -244,6 +298,9 @@ Steps 7 and 8 remain unchanged apart from their predecessor gate:
   `needs_confirmation`;
 - exit `65`, failure-patch sync failed -> `fatal`;
 - exit `65`, incomplete task-id coverage -> `fatal`;
+- failed candidate-discovery outcome -> `fatal`;
+- valid user-action `action_needed` outcome alone does not require confirmation;
+- failed or malformed user-action outcome -> `fatal`;
 - timeout/auth/non-65 infrastructure exit -> `fatal`;
 - corrupt/missing/stale/extra-field inputs fail closed;
 - verdict output is atomic, mode `0600`, bounded, and contains no secret fields.
