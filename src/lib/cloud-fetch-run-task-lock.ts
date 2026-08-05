@@ -21,7 +21,7 @@ export async function lockCloudFetchRunTaskRows(
         .map((taskId) => String(taskId || "").trim())
         .filter(Boolean),
     ),
-  );
+  ).sort((left, right) => left.localeCompare(right));
   if (cloudSourceTaskIds.length === 0) return [];
 
   const placeholders = cloudSourceTaskIds.map((_, index) => `$${index + 2}`).join(", ");

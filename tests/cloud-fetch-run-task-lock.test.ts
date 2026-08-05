@@ -15,7 +15,7 @@ test("cloud fetch run task lock uses parameterized FOR UPDATE query and returns 
         ];
       },
     },
-    { runId: "run_1", cloudSourceTaskIds: ["task_a", "task_b"] },
+    { runId: "run_1", cloudSourceTaskIds: ["task_b", "task_a", "task_b", "  task_a  "] },
   );
 
   assert.deepEqual(rows.map((row) => row.cloudSourceTaskId), ["task_a", "task_b"]);
