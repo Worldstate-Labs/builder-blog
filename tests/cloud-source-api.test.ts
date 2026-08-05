@@ -712,6 +712,33 @@ test("admin cloud fetch plan route requires admin auth, stale-write protection, 
   assert.match(syncRoute, /const runTasks = await tx\.cloudFetchRunTask\.findMany/);
 });
 
+test("admin cloud fetch release endpoint only accepts public jobRunId and preserves release conflict contracts", () => {
+  const route = source("src/app/api/admin/cloud-fetch/release/route.ts");
+  const releaseHelper = source("src/lib/cloud-fetch-worker-release.ts");
+  const resetFence = source("src/lib/reset-fence.ts");
+
+  assert.match(route, /requireCloudFetchAdmin\(request\)/);
+  assert.match(route, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
+  assert.match(route, /const jobRunId = typeof body\?\.jobRunId === "string"/);
+  assert.match(route, /body\.jobRunId\.trim\(\)\.slice\(0, 160\)/);
+  assert.match(route, /releaseCloudFetchWorkerLeases\(\{\s*userId: admin\.user\.id,\s*instanceId: jobRunId,\s*\}\)/);
+  assert.doesNotMatch(route, /body\?\.runId|body\.runId/);
+  assert.doesNotMatch(route, /body\?\.agentJobRunId|body\.agentJobRunId/);
+  assert.doesNotMatch(route, /body\?\.createdByUserId|body\.createdByUserId/);
+  assert.doesNotMatch(route, /agentJobRunId:/);
+  assert.doesNotMatch(route, /createdByUserId:/);
+  assert.match(route, /if \(error instanceof CloudWorkerReleaseJobNotFoundError\)/);
+  assert.match(route, /code: error\.responseCode/);
+  assert.match(releaseHelper, /readonly responseCode = CLOUD_WORKER_RELEASE_ERROR\.jobNotFound/);
+  assert.match(releaseHelper, /jobNotFound: "cloud_release_job_not_found"/);
+  assert.match(releaseHelper, /readonly retryable = false/);
+  assert.match(route, /if \(error instanceof StaleWorkerWriteError\)/);
+  assert.match(resetFence, /readonly responseCode = "agent_job_reset_fenced"/);
+  assert.match(resetFence, /readonly retryable = false/);
+  assert.match(route, /status: error\.statusCode/);
+  assert.match(route, /return NextResponse\.json\(result\)/);
+});
+
 test("cloud conflict responses are machine-readable and preserve retryability", () => {
   const conflict = source("src/lib/cloud-fetch-conflict.ts");
   const cli = source("scripts/builder-digest.mjs");

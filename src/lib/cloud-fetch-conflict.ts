@@ -1,6 +1,8 @@
 export type CloudFetchConflictCode =
   | "reset_fenced"
+  | "agent_job_reset_fenced"
   | "cloud_run_not_running"
+  | "cloud_release_job_not_found"
   | "cloud_source_already_finalized"
   | "cloud_source_finalize_race"
   | "cloud_lease_expired"
