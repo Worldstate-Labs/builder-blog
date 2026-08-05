@@ -3321,6 +3321,24 @@ finalize_library_timeout_results() {
     --timeout-stage "runtime" || true
 }
 
+write_initial_setup_verdict() {
+  _wisv_code="${1:-1}"
+  [ "${BUILDER_BLOG_SETUP_INITIAL:-0}" = "1" ] || return 0
+  [ "$JOB_NAME" = "library-cron" ] || return 0
+  if [ -z "${BUILDER_BLOG_SETUP_VERDICT_FILE:-}" ]; then
+    echo "Initial library setup proof did not provide a verdict path." >&2
+    return 1
+  fi
+  node "$AGENT_DIR/builder-digest.mjs" classify-library-setup-verdict \
+    --job-state-dir "$JOB_STATE_DIR" \
+    --run-dir "$JOB_TMP_DIR" \
+    --out "$BUILDER_BLOG_SETUP_VERDICT_FILE" \
+    --runner-exit-code "$_wisv_code" \
+    --instance-id "$BUILDER_BLOG_JOB_RUN_ID" \
+    --account-slug "$ACCOUNT_SLUG" \
+    --job-name "$JOB_NAME"
+}
+
 run_with_job_tracking() {
   _trigger="$1"
   TRACKED_JOB_FINALIZED=0
@@ -3394,6 +3412,7 @@ run_with_job_tracking() {
           ;;
       esac
       TRACKED_JOB_FINALIZED=1
+      write_initial_setup_verdict 124 || true
       cleanup_job_tmp_dir timed_out "timeout_seconds_for_job"
       cleanup_old_job_runs
       return 124
@@ -3442,6 +3461,7 @@ run_with_job_tracking() {
       --exit-code "$_code"
   fi
   TRACKED_JOB_FINALIZED=1
+  write_initial_setup_verdict "$_code" || true
   cleanup_job_tmp_dir "$_cleanup_status" "$_cleanup_reason"
   cleanup_old_job_runs
   return "$_code"

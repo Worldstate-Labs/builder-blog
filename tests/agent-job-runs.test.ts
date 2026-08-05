@@ -890,6 +890,32 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(workerPrompt, /including Claude Task\/subagent tools,[\s\S]*`codex exec`, `claude -p`, `openclaw agent`/);
 });
 
+test("runner writes declared library setup verdicts before per-run cleanup without changing exit codes", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+
+  assert.match(
+    runner,
+    /write_initial_setup_verdict\(\) \{[\s\S]*BUILDER_BLOG_SETUP_INITIAL:-0[\s\S]*JOB_NAME" = "library-cron"[\s\S]*BUILDER_BLOG_SETUP_VERDICT_FILE/,
+  );
+  assert.match(
+    runner,
+    /classify-library-setup-verdict[\s\S]*--job-state-dir "\$JOB_STATE_DIR"[\s\S]*--run-dir "\$JOB_TMP_DIR"[\s\S]*--out "\$BUILDER_BLOG_SETUP_VERDICT_FILE"[\s\S]*--runner-exit-code "\$_wisv_code"[\s\S]*--instance-id "\$BUILDER_BLOG_JOB_RUN_ID"[\s\S]*--account-slug "\$ACCOUNT_SLUG"[\s\S]*--job-name "\$JOB_NAME"/,
+  );
+  assert.match(
+    runner,
+    /finalize_library_timeout_results \|\| true[\s\S]*write_initial_setup_verdict 124 \|\| true[\s\S]*cleanup_job_tmp_dir timed_out/,
+  );
+  assert.match(
+    runner,
+    /job_run_update failed "Runtime exited with code \$_code\."[\s\S]*write_initial_setup_verdict "\$_code" \|\| true[\s\S]*cleanup_job_tmp_dir "\$_cleanup_status"[\s\S]*return "\$_code"/,
+  );
+  const verdictStart = runner.indexOf("write_initial_setup_verdict() {");
+  const verdictEnd = runner.indexOf("\n}\n\nrun_with_job_tracking()", verdictStart);
+  assert.ok(verdictStart >= 0 && verdictEnd > verdictStart);
+  const verdictFunction = runner.slice(verdictStart, verdictEnd);
+  assert.doesNotMatch(verdictFunction, /digest-cron|cloud-library/);
+});
+
 test("runner cleans cloud host temp files and orphaned fetch tools", () => {
   const runner = source("scripts/builder-agent-runner.sh");
 
