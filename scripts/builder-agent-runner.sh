@@ -3339,6 +3339,24 @@ write_initial_setup_verdict() {
     --job-name "$JOB_NAME"
 }
 
+# Print-only classification for scheduled/one-time library runs: emits
+# "<status> <failureCount>" so exit 65 with every task outcome durably
+# recorded can be reported as a partial success instead of a failed run.
+# Any classification problem prints nothing, which keeps the failed report.
+library_partial_verdict_status() {
+  _lpvs_code="${1:-1}"
+  _lpvs_json="$(
+    node "$AGENT_DIR/builder-digest.mjs" classify-library-setup-verdict \
+      --job-state-dir "$JOB_STATE_DIR" \
+      --run-dir "$JOB_TMP_DIR" \
+      --runner-exit-code "$_lpvs_code" \
+      --instance-id "$BUILDER_BLOG_JOB_RUN_ID" \
+      --account-slug "$ACCOUNT_SLUG" \
+      --job-name "$JOB_NAME" 2>/dev/null
+  )" || return 0
+  printf '%s' "$_lpvs_json" | node -e 'let raw="";process.stdin.on("data",(c)=>{raw+=c});process.stdin.on("end",()=>{try{const v=JSON.parse(raw);const n=Array.isArray(v?.failures)?v.failures.length:0;process.stdout.write(`${String(v?.status||"")} ${n}`)}catch{}})' 2>/dev/null || true
+}
+
 run_with_job_tracking() {
   _trigger="$1"
   TRACKED_JOB_FINALIZED=0
@@ -3455,10 +3473,26 @@ run_with_job_tracking() {
     job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout" \
       --exit-code "$_code"
   else
-    _cleanup_status="failed"
-    _cleanup_reason="runtime_finished"
-    job_run_update failed "Runtime exited with code $_code." "runtime_finished" \
-      --exit-code "$_code"
+    _partial_verdict=""
+    if [ "$_code" -eq 65 ]; then
+      case "$JOB_NAME" in
+        library-cron|library-once) _partial_verdict="$(library_partial_verdict_status "$_code")" ;;
+      esac
+    fi
+    if [ "${_partial_verdict%% *}" = "needs_confirmation" ]; then
+      _partial_failure_count="${_partial_verdict##* }"
+      case "$_partial_failure_count" in ''|*[!0-9]*) _partial_failure_count=0 ;; esac
+      _cleanup_status="succeeded"
+      _cleanup_reason="partial_task_failures"
+      job_run_update succeeded "Runtime completed; $_partial_failure_count post task(s) failed and are recorded in the fetch log." "partial_task_failures" \
+        --stage "completed" \
+        --exit-code "$_code"
+    else
+      _cleanup_status="failed"
+      _cleanup_reason="runtime_finished"
+      job_run_update failed "Runtime exited with code $_code." "runtime_finished" \
+        --exit-code "$_code"
+    fi
   fi
   TRACKED_JOB_FINALIZED=1
   write_initial_setup_verdict "$_code" || true

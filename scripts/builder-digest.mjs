@@ -671,17 +671,23 @@ async function writeSetupVerdictAtomically(file, value) {
 async function classifyLibrarySetupVerdictCommand(args) {
   const jobStateDir = resolve(argValue(args, "--job-state-dir", ""));
   const runDir = resolve(argValue(args, "--run-dir", ""));
-  const outFile = resolve(argValue(args, "--out", ""));
+  // --out is optional: setup runs persist the verdict file for the prompt's
+  // verify step, while scheduled/one-time runs classify print-only so the
+  // runner can report durably recorded partial failures instead of a failed run.
+  const outFileArg = String(argValue(args, "--out", "") || "").trim();
+  const outFile = outFileArg ? resolve(outFileArg) : "";
   const runnerExitCode = Number(argValue(args, "--runner-exit-code", ""));
   const instanceId = String(argValue(args, "--instance-id", "") || "").trim();
   const expectedAccountSlug = String(argValue(args, "--account-slug", "") || "").trim();
   const expectedJobName = String(argValue(args, "--job-name", "") || "").trim();
-  if (!jobStateDir || !runDir || !outFile || !Number.isSafeInteger(runnerExitCode) || !instanceId || !expectedAccountSlug) {
+  if (!jobStateDir || !runDir || !Number.isSafeInteger(runnerExitCode) || !instanceId || !expectedAccountSlug) {
     throw new Error("Missing setup verdict arguments.");
   }
-  if (expectedJobName !== "library-cron") throw new Error("Setup verdicts are only supported for library-cron.");
+  if (expectedJobName !== "library-cron" && expectedJobName !== "library-once") {
+    throw new Error("Setup verdicts are only supported for library fetch jobs.");
+  }
   if (dirname(runDir) !== join(jobStateDir, "runs")) throw new Error("Setup verdict run directory is outside job state.");
-  if (dirname(outFile) !== jobStateDir || basename(outFile) !== `setup-verdict-${instanceId}.json`) {
+  if (outFile && (dirname(outFile) !== jobStateDir || basename(outFile) !== `setup-verdict-${instanceId}.json`)) {
     throw new Error("Setup verdict output path is outside job state or does not match the instance.");
   }
   await setupVerdictDirectory(jobStateDir);
@@ -718,7 +724,7 @@ async function classifyLibrarySetupVerdictCommand(args) {
   } catch {
     verdict = setupFatalVerdict(instanceId, runnerExitCode);
   }
-  await writeSetupVerdictAtomically(outFile, verdict);
+  if (outFile) await writeSetupVerdictAtomically(outFile, verdict);
   console.log(JSON.stringify(verdict, null, 2));
 }
 

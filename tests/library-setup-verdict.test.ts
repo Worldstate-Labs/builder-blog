@@ -454,6 +454,68 @@ test("CLI rejects stale instances, unsafe output paths, symlinks, and missing ev
   }
 });
 
+test("CLI classifies library-once partial runs print-only without writing a verdict file", async () => {
+  const fixture = await makeRunArtifacts();
+  try {
+    const okTask = postTask("post-cli");
+    const failedTask = postTask("post-fail");
+    await writeJson(join(fixture.runDir, ".run-owner.json"), {
+      app: "followbrief",
+      accountSlug: fixture.accountSlug,
+      jobName: "library-once",
+      instanceId: fixture.instanceId,
+    });
+    await writeJson(join(fixture.runDir, "library-fetch-result.json"), { fetchTasks: [okTask, failedTask], taskOutcomes: [] });
+    await writeJson(join(fixture.runDir, "library-fetch-merged.json"), { fetchTasks: [okTask, failedTask], taskOutcomes: [] });
+    await writeJson(join(fixture.runDir, "merge-task-results.json"), { status: "ok", taskIds: ["post-cli", "post-fail"], shards: [] });
+    await writeJson(join(fixture.runDir, "merge-task-results-remaining.json"), { status: "ok", taskIds: ["post-cli", "post-fail"], shards: [] });
+    await writeFile(join(fixture.runDir, "completed-checkpoint-synced-task-ids.txt"), "post-cli\npost-fail\n", { mode: 0o600 });
+    await writeJson(join(fixture.runDir, "library-result-slice-000-payload-validation-failed-payload.json"), {
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: "post-fail",
+          status: "failed",
+          reason: "task_validation_failed",
+          evidence: {
+            failureKind: "task_validation_failed",
+            validation: { errors: ["headline:headline_too_long"] },
+          },
+        },
+      ],
+    });
+
+    const classified = runVerdictCli([
+      "classify-library-setup-verdict",
+      "--job-state-dir", fixture.stateDir,
+      "--run-dir", fixture.runDir,
+      "--runner-exit-code", "65",
+      "--instance-id", fixture.instanceId,
+      "--account-slug", fixture.accountSlug,
+      "--job-name", "library-once",
+    ]);
+    assert.equal(classified.status, 0, classified.stderr);
+    const verdict = JSON.parse(classified.stdout);
+    assert.equal(verdict.status, "needs_confirmation");
+    assert.equal(verdict.failures.length, 1);
+    assert.equal(verdict.failures[0].stage, "summarize");
+    await assert.rejects(stat(fixture.verdictFile), /ENOENT/);
+
+    const rejectedJob = runVerdictCli([
+      "classify-library-setup-verdict",
+      "--job-state-dir", fixture.stateDir,
+      "--run-dir", fixture.runDir,
+      "--runner-exit-code", "65",
+      "--instance-id", fixture.instanceId,
+      "--account-slug", fixture.accountSlug,
+      "--job-name", "digest-cron",
+    ]);
+    assert.notEqual(rejectedJob.status, 0);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("verifier rejects duplicate and unknown fields before JSON.parse can overwrite them", async () => {
   const root = await mkdtemp(join(tmpdir(), "followbrief-verdict-json-"));
   const instanceId = randomUUID();

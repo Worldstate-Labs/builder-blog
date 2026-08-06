@@ -1049,3 +1049,21 @@ test("web status uses scheduled job instances while history can show one-time ru
   assert.match(digestRoute, /scheduledJobRuns/);
   assert.match(digestRoute, /agentJobRun\.findMany/);
 });
+
+test("library runs that exit 65 with durably recorded partial failures report succeeded", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  assert.match(runner, /library_partial_verdict_status\(\) \{/);
+  assert.match(
+    runner,
+    /if \[ "\$_code" -eq 65 \]; then[\s\S]{0,200}library-cron\|library-once\)[\s\S]{0,120}library_partial_verdict_status "\$_code"/,
+  );
+  assert.match(
+    runner,
+    /job_run_update succeeded "Runtime completed; \$_partial_failure_count post task\(s\) failed and are recorded in the fetch log\." "partial_task_failures" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/,
+  );
+  assert.match(runner, /job_run_update failed "Runtime exited with code \$_code\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
+
+  const cli = source("scripts/builder-digest.mjs");
+  assert.match(cli, /expectedJobName !== "library-cron" && expectedJobName !== "library-once"/);
+  assert.match(cli, /if \(outFile\) await writeSetupVerdictAtomically\(outFile, verdict\);/);
+});
