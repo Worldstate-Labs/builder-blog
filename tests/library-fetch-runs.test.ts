@@ -968,40 +968,161 @@ grep -- '--timeout-seconds 120' "${logFile}" >/dev/null
   });
 });
 
-test("OpenClaw preflight marker detection accepts JSON-wrapped assistant text", () => {
+test("OpenClaw preflight marker detection requires one semantically parsed JSON success object", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   const detector = shellFunction(runner, "agent_output_has_openclaw_preflight_marker");
   const dir = mkdtempSync(join(tmpdir(), "followbrief-openclaw-preflight-"));
-  const outputFile = join(dir, "openclaw-agent-output.json");
   const scriptFile = join(dir, "detect.sh");
-
-  writeFileSync(
-    outputFile,
-    JSON.stringify(
-      {
-        runId: "run_test",
-        status: "ok",
-        result: {
-          payloads: [
-            {
-              text: "{\"followbriefRuntimePreflight\":\"ok\",\"runtimeReady\":true}",
-              mediaUrl: null,
-            },
-          ],
+  const detectorExitCode = (file: string) => {
+    try {
+      execFileSync("sh", [scriptFile, file], { stdio: "pipe" });
+      return 0;
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      assert.equal(typeof status, "number", `detector exited without a numeric status for ${file}`);
+      return status as number;
+    }
+  };
+  const cases = [
+    {
+      name: "accepts a direct marker JSON document",
+      expectedExitCode: 0,
+      contents: JSON.stringify({
+        followbriefRuntimePreflight: "ok",
+        runtimeReady: true,
+      }),
+    },
+    {
+      name: "accepts JSON-wrapped assistant text",
+      expectedExitCode: 0,
+      contents: JSON.stringify(
+        {
+          runId: "run_test",
+          status: "ok",
+          result: {
+            payloads: [
+              {
+                text: "{\"followbriefRuntimePreflight\":\"ok\",\"runtimeReady\":true}",
+                mediaUrl: null,
+              },
+            ],
+          },
         },
-      },
-      null,
-      2,
-    ),
-  );
+        null,
+        2,
+      ),
+    },
+    {
+      name: "accepts a decorated pretty-printed OpenClaw envelope after diagnostics",
+      expectedExitCode: 0,
+      contents: [
+        "[state-migrations] local schema already up to date",
+        JSON.stringify(
+          {
+            runId: "run_preflight",
+            status: "ok",
+            result: {
+              payloads: [
+                {
+                  text: "{\"followbriefRuntimePreflight\":\"ok\",\"runtimeReady\":true}",
+                  mediaUrl: null,
+                },
+              ],
+            },
+          },
+          null,
+          2,
+        ),
+      ].join("\n"),
+    },
+    {
+      name: "accepts wrapped assistant text from finalAssistantVisibleText",
+      expectedExitCode: 0,
+      contents: JSON.stringify(
+        {
+          runId: "run_meta",
+          status: "ok",
+          result: {
+            meta: {
+              finalAssistantVisibleText:
+                "{\"followbriefRuntimePreflight\":\"ok\",\"runtimeReady\":true}",
+            },
+          },
+        },
+        null,
+        2,
+      ),
+    },
+    {
+      name: "rejects a direct object with runtimeReady false",
+      expectedExitCode: 1,
+      contents: JSON.stringify({
+        followbriefRuntimePreflight: "ok",
+        runtimeReady: false,
+      }),
+    },
+    {
+      name: "rejects split success fields across separate JSON documents",
+      expectedExitCode: 1,
+      contents: [
+        JSON.stringify({ followbriefRuntimePreflight: "ok" }),
+        JSON.stringify({ runtimeReady: true }),
+      ].join("\n"),
+    },
+    {
+      name: "rejects truncated decorated JSON with an escaped success marker",
+      expectedExitCode: 1,
+      contents: [
+        "[state-migrations] replaying local diagnostics",
+        "{",
+        '  "result": {',
+        '    "payloads": [',
+        '      {',
+        '        "text": "{\\"followbriefRuntimePreflight\\":\\"ok\\",\\"runtimeReady\\":true}"',
+      ].join("\n"),
+    },
+    {
+      name: "rejects diagnostic-only text that mentions readiness fields",
+      expectedExitCode: 1,
+      contents: [
+        "[state-migrations] sample readiness output follows for documentation only",
+        '"followbriefRuntimePreflight":"ok"',
+        '"runtimeReady":true',
+        "No parsed JSON envelope was emitted.",
+      ].join("\n"),
+    },
+    {
+      name: "rejects decorated prose followed by a standalone success-object example",
+      expectedExitCode: 1,
+      contents: [
+        "[state-migrations] example success payload for docs only",
+        '{"followbriefRuntimePreflight":"ok","runtimeReady":true}',
+      ].join("\n"),
+    },
+    {
+      name: "rejects decorated prose plus an arbitrary wrapper object",
+      expectedExitCode: 1,
+      contents: [
+        "[state-migrations] docs",
+        '{"note":"{\\"followbriefRuntimePreflight\\":\\"ok\\",\\"runtimeReady\\":true}"}',
+      ].join("\n"),
+    },
+  ];
+
   writeFileSync(
     scriptFile,
     `set -eu\n${detector}\nagent_output_has_openclaw_preflight_marker "$1"\n`,
   );
 
-  assert.doesNotThrow(() => {
-    execFileSync("sh", [scriptFile, outputFile], { stdio: "pipe" });
-  });
+  for (const [index, testCase] of cases.entries()) {
+    const outputFile = join(dir, `openclaw-agent-output-${index}.json`);
+    writeFileSync(outputFile, testCase.contents, "utf8");
+    assert.equal(
+      detectorExitCode(outputFile),
+      testCase.expectedExitCode,
+      testCase.name,
+    );
+  }
 });
 
 test("CLI can audit production cron status against local scheduler state", () => {

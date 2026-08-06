@@ -807,41 +807,120 @@ openclaw_auth_failure_summary() {
 agent_output_has_openclaw_preflight_marker() {
   _file="${1:-}"
   [ -n "$_file" ] && [ -r "$_file" ] || return 1
-  if grep -q '"followbriefRuntimePreflight"[[:space:]]*:[[:space:]]*"ok"' "$_file" && \
-    grep -q '"runtimeReady"[[:space:]]*:[[:space:]]*true' "$_file"; then
-    return 0
-  fi
   node - "$_file" <<'NODE'
 const fs = require("fs");
 const file = process.argv[2];
 const text = fs.readFileSync(file, "utf8");
-const markerText = (value) =>
-  typeof value === "string" &&
-  /"followbriefRuntimePreflight"\s*:\s*"ok"/.test(value) &&
-  /"runtimeReady"\s*:\s*true/.test(value);
-const hasMarker = (value, depth = 0) => {
-  if (depth > 20) return false;
-  if (markerText(value)) return true;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return false;
-    try {
-      return hasMarker(JSON.parse(trimmed), depth + 1);
-    } catch {
-      return false;
+const balancedCandidateAt = (input, start) => {
+  const opener = input[start];
+  if (opener !== "{" && opener !== "[") return null;
+  const stack = [opener];
+  let inString = false;
+  let escaping = false;
+  for (let index = start + 1; index < input.length; index += 1) {
+    const char = input[index];
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaping = true;
+        continue;
+      }
+      if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === "{" || char === "[") {
+      stack.push(char);
+      continue;
+    }
+    if (char !== "}" && char !== "]") continue;
+    const expected = char === "}" ? "{" : "[";
+    if (stack.pop() !== expected) return null;
+    if (stack.length === 0) {
+      return { text: input.slice(start, index + 1), end: index + 1 };
     }
   }
-  if (!value || typeof value !== "object") return false;
-  if (value.followbriefRuntimePreflight === "ok" && value.runtimeReady === true) return true;
-  return Object.values(value).some((child) => hasMarker(child, depth + 1));
+  return null;
 };
-const documents = [text, ...text.split(/\n+/).filter(Boolean)];
-for (const documentText of documents) {
-  if (markerText(documentText)) process.exit(0);
+const extractJsonCandidates = (input) => {
+  const candidates = [];
+  for (let start = 0; start < input.length; start += 1) {
+    const candidate = balancedCandidateAt(input, start);
+    if (candidate) candidates.push(candidate.text);
+  }
+  return candidates;
+};
+const extractJsonOnlyDocuments = (input) => {
+  const documents = [];
+  let index = 0;
+  while (index < input.length) {
+    while (index < input.length && /\s/.test(input[index])) index += 1;
+    if (index >= input.length) break;
+    const candidate = balancedCandidateAt(input, index);
+    if (!candidate) return null;
+    documents.push(candidate.text);
+    index = candidate.end;
+  }
+  return documents;
+};
+const parseNestedJsonString = (value) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return null;
   try {
-    if (hasMarker(JSON.parse(documentText))) process.exit(0);
+    return JSON.parse(trimmed);
   } catch {
-    // Keep scanning; OpenClaw may emit JSONL or decorated text.
+    return null;
+  }
+};
+const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isDirectMarkerObject = (value) =>
+  isPlainObject(value) &&
+  value.followbriefRuntimePreflight === "ok" &&
+  value.runtimeReady === true;
+const stringContainsDirectMarker = (value) => {
+  const parsed = parseNestedJsonString(value);
+  return isDirectMarkerObject(parsed);
+};
+const isRecognizedEnvelope = (value) =>
+  isPlainObject(value) &&
+  typeof value.runId === "string" &&
+  value.status === "ok" &&
+  isPlainObject(value.result);
+const envelopeHasMarker = (value) => {
+  if (!isRecognizedEnvelope(value)) return false;
+  const payloads = Array.isArray(value.result.payloads) ? value.result.payloads : [];
+  for (const payload of payloads) {
+    if (isPlainObject(payload) && stringContainsDirectMarker(payload.text)) return true;
+  }
+  if (isPlainObject(value.result.meta) && stringContainsDirectMarker(value.result.meta.finalAssistantVisibleText)) {
+    return true;
+  }
+  return false;
+};
+const documentHasMarker = (value, allowDirectMarkerDocument) => {
+  if (Array.isArray(value)) return value.some((child) => documentHasMarker(child, true));
+  if (allowDirectMarkerDocument && isDirectMarkerObject(value)) return true;
+  return envelopeHasMarker(value);
+};
+const jsonOnlyDocuments = extractJsonOnlyDocuments(text);
+const candidateDocuments = jsonOnlyDocuments ?? extractJsonCandidates(text);
+for (const candidate of candidateDocuments) {
+  try {
+    const parsed = JSON.parse(candidate);
+    if (jsonOnlyDocuments !== null) {
+      if (documentHasMarker(parsed, true)) process.exit(0);
+      continue;
+    }
+    if (documentHasMarker(parsed, false)) process.exit(0);
+  } catch {
+    // Keep scanning; OpenClaw may emit JSON, JSONL, or decorated text.
   }
 }
 process.exit(1);
