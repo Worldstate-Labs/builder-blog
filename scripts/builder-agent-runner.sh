@@ -5544,6 +5544,31 @@ run_library_job() {
     echo "Library run completed normal post-task sync, but discovery failed for at least one source." >&2
     return 65
   fi
+  # Worker-recorded post failures sync cleanly (a failed outcome is valid data),
+  # so they never trip the slice/merge checks above. Exit 65 keeps the
+  # documented contract — 65 means partial failures that are durably recorded —
+  # which the setup verdict classifier and the partial-success job report both
+  # depend on.
+  if [ "$_sync_command" != "sync-cloud-builders" ]; then
+    _library_failed_outcomes="$(node - "$JOB_TMP_DIR/library-agent-sync.json" <<'NODE' 2>/dev/null
+const fs = require("fs");
+let count = 0;
+try {
+  const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  for (const outcome of Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []) {
+    const status = String(outcome?.status || "").trim().toLowerCase();
+    if (status === "failed" || status === "blocked") count += 1;
+  }
+} catch {}
+console.log(count);
+NODE
+)"
+    case "$_library_failed_outcomes" in ''|*[!0-9]*) _library_failed_outcomes=0 ;; esac
+    if [ "$_library_failed_outcomes" -gt 0 ]; then
+      echo "Library run completed with $_library_failed_outcomes durably recorded failed post task(s)." >&2
+      return 65
+    fi
+  fi
 }
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then

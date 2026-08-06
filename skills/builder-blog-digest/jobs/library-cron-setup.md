@@ -299,16 +299,24 @@ ACCOUNT_SLUG="$(account_slug "$ACCT")"
 ANCHOR_FILE="$AGENT_DIR/schedule-anchor-library-cron-$ACCOUNT_SLUG"
 SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
 OWNER_FILE="$AGENT_DIR/cron-owner-library-cron-$ACCOUNT_SLUG"
-if [ ! -s "$OWNER_FILE" ]; then
-  node - "$ACCOUNT_SLUG" <<'NODE' > "$OWNER_FILE"
+# Reuse the recorded owner id only when it was minted on this machine for this
+# account+job; a migrated/cloned home directory must not inherit another
+# machine's identity, or two machines would both pass the server owner guard.
+node - "$ACCOUNT_SLUG" "$OWNER_FILE" <<'NODE'
 const { randomUUID } = require("node:crypto");
+const fs = require("node:fs");
 const os = require("node:os");
 const accountSlug = process.argv[2] || "default";
+const ownerFile = process.argv[3];
 const host = (os.hostname() || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-console.log(`local:${host}:${accountSlug}:library-cron:${randomUUID()}`);
+let existing = "";
+try { existing = String(fs.readFileSync(ownerFile, "utf8")).split("\n")[0].trim(); } catch {}
+const parts = existing.split(":");
+const reusable = parts.length === 5 && parts[0] === "local" && parts[1] === host &&
+  parts[2] === accountSlug && parts[3] === "library-cron" && Boolean(parts[4]);
+if (!reusable) fs.writeFileSync(ownerFile, `local:${host}:${accountSlug}:library-cron:${randomUUID()}\n`);
 NODE
-  chmod 600 "$OWNER_FILE" 2>/dev/null || true
-fi
+chmod 600 "$OWNER_FILE" 2>/dev/null || true
 printf '{{AGENT_RUNTIME}}\n' > "$AGENT_DIR/runtime-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_FORCE}}\n' > "$AGENT_DIR/fetch-force-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_DAYS}}\n' > "$AGENT_DIR/fetch-days-library-cron-$ACCOUNT_SLUG"
