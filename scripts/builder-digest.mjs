@@ -7973,6 +7973,7 @@ async function transcribeManagedMediaTask(task, { artifactDir }) {
 async function prepareManagedMediaTasks(fetchResult, {
   artifactRoot = join(jobTmpDir("library-once"), "managed-media"),
   transcribeTask = transcribeManagedMediaTask,
+  onTaskSettled = null,
 } = {}) {
   const fetchTasks = Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [];
   const retainedTasks = [];
@@ -7982,9 +7983,19 @@ async function prepareManagedMediaTasks(fetchResult, {
   let preparedCount = 0;
   let blockedCount = 0;
   let failedCount = 0;
+  const preparedResult = (remainingTasks = []) => ({
+    ...fetchResult,
+    fetchTasks: [...retainedTasks, ...remainingTasks],
+    taskOutcomes: [...taskOutcomes],
+    managedMediaPreparation: {
+      prepared: preparedCount,
+      blocked: blockedCount,
+      failed: failedCount,
+    },
+  });
 
   await mkdir(artifactRoot, { recursive: true });
-  for (const task of fetchTasks) {
+  for (const [taskIndex, task] of fetchTasks.entries()) {
     if (!isManagedMediaTask(task)) {
       retainedTasks.push(task);
       continue;
@@ -8027,38 +8038,35 @@ async function prepareManagedMediaTasks(fetchResult, {
         },
       });
       preparedCount += 1;
-      continue;
+    } else {
+      const reason = String(result?.reason || "managed_media_preparation_failed").slice(0, 400);
+      const blocked = managedMediaCapabilityFailure(reason);
+      taskOutcomes.push({
+        fetchTaskId: String(task?.id || fetchTaskId(task)),
+        status: blocked ? "blocked" : "failed",
+        reason: blocked ? "asr_capability_missing" : reason,
+        evidence: {
+          managedBy: "followbrief-runner",
+          sourceReason: reason,
+          attemptedMethods: result?.attempts || [],
+          artifactDirectory: basename(artifactDir),
+          ...(result?.error ? { error: String(result.error).slice(0, 500) } : {}),
+        },
+        plannedTask: task,
+      });
+      if (blocked) blockedCount += 1;
+      else failedCount += 1;
     }
 
-    const reason = String(result?.reason || "managed_media_preparation_failed").slice(0, 400);
-    const blocked = managedMediaCapabilityFailure(reason);
-    taskOutcomes.push({
-      fetchTaskId: String(task?.id || fetchTaskId(task)),
-      status: blocked ? "blocked" : "failed",
-      reason: blocked ? "asr_capability_missing" : reason,
-      evidence: {
-        managedBy: "followbrief-runner",
-        sourceReason: reason,
-        attemptedMethods: result?.attempts || [],
-        artifactDirectory: basename(artifactDir),
-        ...(result?.error ? { error: String(result.error).slice(0, 500) } : {}),
-      },
-      plannedTask: task,
-    });
-    if (blocked) blockedCount += 1;
-    else failedCount += 1;
+    if (typeof onTaskSettled === "function") {
+      await onTaskSettled(
+        preparedResult(fetchTasks.slice(taskIndex + 1)),
+        { task, result },
+      );
+    }
   }
 
-  return {
-    ...fetchResult,
-    fetchTasks: retainedTasks,
-    taskOutcomes,
-    managedMediaPreparation: {
-      prepared: preparedCount,
-      blocked: blockedCount,
-      failed: failedCount,
-    },
-  };
+  return preparedResult();
 }
 
 export function prepareManagedMediaTasksForTest(fetchResult, options) {
@@ -8076,7 +8084,10 @@ async function prepareManagedMediaCommand(args) {
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!outFile) throw new Error("Missing --out fetch-result.json");
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
-  const prepared = await prepareManagedMediaTasks(fetchResult, { artifactRoot });
+  const prepared = await prepareManagedMediaTasks(fetchResult, {
+    artifactRoot,
+    onTaskSettled: (snapshot) => writeJsonAtomically(outFile, snapshot),
+  });
   await writeJsonAtomically(outFile, prepared);
   console.log(JSON.stringify({
     status: "ok",
@@ -8487,8 +8498,13 @@ export function planFetchQueueAssignments(fetchResult, {
   const activeKeys = new Set(Array.from(activeGroupKeys, (key) => String(key)));
   const excludedIds = new Set(Array.from(excludeTaskIds, (id) => String(id)));
   const groups = new Map();
+  const deferredManagedMediaTasks = [];
   for (const task of workTasks) {
     if (excludedTaskIdsContains(excludedIds, task)) continue;
+    if (isManagedMediaTask(task)) {
+      deferredManagedMediaTasks.push(task);
+      continue;
+    }
     const key = shardGroupKey(task);
     const group = groups.get(key) ?? { key, weight: 0, tasks: [] };
     group.weight += shardTaskWeight(task);
@@ -8565,8 +8581,14 @@ export function planFetchQueueAssignments(fetchResult, {
     assignments: assignments.filter((assignment) => assignment.tasks.length > 0),
     blockedTasks: blockedGroups.flatMap((group) => group.tasks),
     blockedGroupKeys: blockedGroups.map((group) => group.key),
-    pendingTasks: pendingGroups.flatMap((group) => group.tasks),
-    pendingGroupKeys: pendingGroups.map((group) => group.key),
+    pendingTasks: [
+      ...pendingGroups.flatMap((group) => group.tasks),
+      ...deferredManagedMediaTasks,
+    ],
+    pendingGroupKeys: [
+      ...pendingGroups.map((group) => group.key),
+      ...new Set(deferredManagedMediaTasks.map((task) => shardGroupKey(task))),
+    ],
     userActionTasks,
     discoveryTasks,
   };

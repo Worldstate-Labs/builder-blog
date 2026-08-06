@@ -2073,6 +2073,67 @@ test("managed media preparation rewrites successful ASR tasks to ready before mo
   }
 });
 
+test("managed media preparation publishes an atomic-ready snapshot after each media task", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?prepare-media-incremental=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-incremental-"));
+  try {
+    const mediaTask = (id: string) => ({
+      id,
+      type: "youtube_transcription",
+      sourceType: "youtube",
+      contentStatus: "requires_agent",
+      agentWorkType: "youtube_transcription",
+      plannedExtractionMethod: "audio_transcription",
+      item: {
+        title: id,
+        url: `https://www.youtube.com/watch?v=${id}`,
+        body: "",
+        rawJson: {},
+      },
+    });
+    const ordinaryTask = {
+      id: "article-task",
+      sourceType: "blog",
+      contentStatus: "requires_agent",
+      agentWorkType: "blog_article_fetch",
+      item: { title: "Article", url: "https://example.com/article" },
+    };
+    const snapshots: Array<{ fetchTasks: Array<Record<string, unknown>> }> = [];
+
+    const prepared = await cli.prepareManagedMediaTasksForTest(
+      {
+        fetchTasks: [mediaTask("media-one"), mediaTask("media-two"), ordinaryTask],
+        taskOutcomes: [],
+      },
+      {
+        artifactRoot: dir,
+        transcribeTask: async (task: { id: string }) => ({
+          text: `Prepared transcript for ${task.id}`,
+          transcriptSource: "local-speech-to-text",
+          backend: "faster-whisper",
+          attempts: [{ method: "local-asr", status: "ok" }],
+        }),
+        onTaskSettled: async (snapshot: { fetchTasks: Array<Record<string, unknown>> }) => {
+          snapshots.push(structuredClone(snapshot));
+        },
+      },
+    );
+
+    assert.equal(snapshots.length, 2);
+    assert.deepEqual(snapshots[0].fetchTasks.map((task) => task.id), [
+      "media-one",
+      "media-two",
+      "article-task",
+    ]);
+    assert.equal(snapshots[0].fetchTasks[0].agentWorkType, "summarize_prepared_media");
+    assert.equal(snapshots[0].fetchTasks[1].plannedExtractionMethod, "audio_transcription");
+    assert.equal(snapshots[1].fetchTasks[1].agentWorkType, "summarize_prepared_media");
+    assert.deepEqual(prepared, snapshots[1]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("managed media preparation blocks only ASR-dependent tasks when capability is missing", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?prepare-media-blocked=${Date.now()}`);
   const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-blocked-"));
@@ -7526,6 +7587,52 @@ test("fetch queue assignment exclusions are scoped by cloud run id", async () =>
     ),
     ["run_2"],
   );
+});
+
+test("fetch queue assigns ready work while unprepared managed media remains pending", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      {
+        id: "managed-video",
+        type: "youtube_transcription",
+        sourceType: "youtube",
+        contentStatus: "requires_agent",
+        agentWorkType: "youtube_transcription",
+        plannedExtractionMethod: "audio_transcription",
+        item: {
+          title: "Long video",
+          url: "https://www.youtube.com/watch?v=managed001",
+        },
+      },
+      {
+        id: "ready-article",
+        sourceType: "blog",
+        contentStatus: "requires_agent",
+        agentWorkType: "blog_article_fetch",
+        item: {
+          title: "Ready article",
+          url: "https://example.com/ready",
+        },
+      },
+    ],
+  };
+
+  const plan = cli.planFetchQueueAssignments(fetchResult, {
+    maxWorkers: 2,
+    maxGroupsPerAssignment: 1,
+    maxTasksPerAssignment: 1,
+  });
+
+  assert.deepEqual(
+    plan.assignments.flatMap((assignment: { tasks: Array<{ id: string }> }) =>
+      assignment.tasks.map((task) => task.id),
+    ),
+    ["ready-article"],
+  );
+  assert.deepEqual(plan.pendingTasks.map((task: { id: string }) => task.id), ["managed-video"]);
+  assert.equal(plan.blockedTasks.length, 0);
 });
 
 test("assign-fetch-tasks writes dynamic shards and skips already assigned task ids", async () => {

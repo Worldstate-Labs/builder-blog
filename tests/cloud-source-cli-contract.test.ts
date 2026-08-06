@@ -2498,18 +2498,29 @@ test("library worker prompt forbids background task work", async () => {
   assert.match(prompt, /TASK_FILE="\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/task-\$TASK_HASH\.json"/);
 });
 
-test("runner prepares managed media before assigning any model workers", async () => {
+test("runner starts managed media without blocking ready worker assignment", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const runStart = runner.indexOf("run_library_job() {");
   const runEnd = runner.indexOf("\nrun_digest_job() {", runStart);
   const runLibraryJob = runner.slice(runStart, runEnd === -1 ? undefined : runEnd);
 
-  assert.match(runLibraryJob, /prepare_managed_media_batch[\s\\]*"\$_result_file"[\s\\]*"initial"/);
+  assert.match(runLibraryJob, /start_managed_media_batch[\s\\]*"\$_result_file"[\s\\]*"initial"/);
   assert.ok(
-    runLibraryJob.indexOf("prepare_managed_media_batch")
+    runLibraryJob.indexOf("start_managed_media_batch")
       < runLibraryJob.indexOf('assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"'),
   );
-  assert.match(runner, /prepare_managed_media_batch[\s\\]*"\$_fmcs_file"[\s\\]*"refill-\$_cloud_refill_count"/);
+  assert.match(runLibraryJob, /poll_managed_media_batch/);
+  assert.match(runLibraryJob, /managed_media_batch_running/);
+  assert.match(
+    runLibraryJob,
+    /_cloud_refill_exhausted[^\n]*_managed_media_active[^\n]*-eq 0/,
+  );
+  const refillStart = runner.indexOf("fetch_more_cloud_sources() {");
+  const refillEnd = runner.indexOf("\npatch_current_fetch_plans() {", refillStart);
+  const refill = runner.slice(refillStart, refillEnd === -1 ? undefined : refillEnd);
+  assert.match(refill, /start_managed_media_batch[\s\\]*"\$_result_file"[\s\\]*"refill-\$_cloud_refill_count"/);
+  assert.doesNotMatch(refill, /prepare_managed_media_batch/);
+  assert.ok(refill.indexOf("merge-fetch-results") < refill.indexOf("start_managed_media_batch"));
   assert.match(runner, /builder-digest\.mjs" prepare-managed-media/);
 });
 

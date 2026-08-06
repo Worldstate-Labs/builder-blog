@@ -3913,49 +3913,66 @@ NODE
   print_compact_json_artifact_summary "expand_discovery" "$_nlfb_file"
 }
 
-prepare_managed_media_batch() {
-  _pmmb_file="${1:-}"
-  _pmmb_scope="${2:-batch}"
-  _pmmb_progress_dir="${3:-}"
-  [ -n "$_pmmb_file" ] || return 64
-  _pmmb_count="$(grep -c '"plannedExtractionMethod"[[:space:]]*:[[:space:]]*"audio_transcription"' "$_pmmb_file" 2>/dev/null || true)"
-  case "$_pmmb_count" in ''|*[!0-9]*) _pmmb_count=0 ;; esac
-  [ "$_pmmb_count" -gt 0 ] || return 0
+start_managed_media_batch() {
+  _smmb_file="${1:-}"
+  _smmb_scope="${2:-batch}"
+  _smmb_progress_dir="${3:-}"
+  [ -n "$_smmb_file" ] || return 64
 
-  _pmmb_safe_scope="$(printf '%s' "$_pmmb_scope" | tr -c 'a-zA-Z0-9_.-' '_')"
-  _pmmb_summary="$JOB_TMP_DIR/managed-media-$_pmmb_safe_scope.json"
-  _pmmb_artifacts="$JOB_TMP_DIR/managed-media/$_pmmb_safe_scope"
-  echo "Preparing $_pmmb_count managed long-media task(s) before starting model workers."
-  job_run_update running "Preparing long-media primary content." "managed_media_started" \
+  _managed_media_active=0
+  _managed_media_failure_code=0
+  _managed_media_pid=""
+  _managed_media_progress_dir="$_smmb_progress_dir"
+  _smmb_count="$(grep -c '"plannedExtractionMethod"[[:space:]]*:[[:space:]]*"audio_transcription"' "$_smmb_file" 2>/dev/null || true)"
+  case "$_smmb_count" in ''|*[!0-9]*) _smmb_count=0 ;; esac
+  [ "$_smmb_count" -gt 0 ] || return 0
+
+  _smmb_safe_scope="$(printf '%s' "$_smmb_scope" | tr -c 'a-zA-Z0-9_.-' '_')"
+  _managed_media_summary="$JOB_TMP_DIR/managed-media-$_smmb_safe_scope.json"
+  _smmb_artifacts="$JOB_TMP_DIR/managed-media/$_smmb_safe_scope"
+  echo "Preparing $_smmb_count managed long-media task(s) alongside model workers."
+  job_run_update running "Preparing long-media primary content alongside ready source work." "managed_media_started" \
     --stage "prepare_managed_media"
-  set +e
-  BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_pmmb_progress_dir" \
+  BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_smmb_progress_dir" \
     node "$AGENT_DIR/builder-digest.mjs" prepare-managed-media \
-      --tasks "$_pmmb_file" \
-      --out "$_pmmb_file" \
-      --artifact-root "$_pmmb_artifacts" > "$_pmmb_summary" &
-  _pmmb_pid="$!"
-  while kill -0 "$_pmmb_pid" 2>/dev/null; do
-    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
-      --tasks "$_pmmb_file" \
-      --results-dir "$(dirname "$_pmmb_progress_dir")" \
-      --stage "prepare_managed_media" >/dev/null 2>&1 || true
-    sleep 2
-  done
-  wait "$_pmmb_pid"
-  _pmmb_code="$?"
-  set -e
+      --tasks "$_smmb_file" \
+      --out "$_smmb_file" \
+      --artifact-root "$_smmb_artifacts" > "$_managed_media_summary" &
+  _managed_media_pid="$!"
+  _managed_media_active=1
+}
+
+managed_media_batch_running() {
+  [ "${_managed_media_active:-0}" -eq 1 ] || return 1
+  kill -0 "${_managed_media_pid:-}" 2>/dev/null
+}
+
+poll_managed_media_batch() {
+  _managed_media_reaped_this_poll=0
+  [ "${_managed_media_active:-0}" -eq 1 ] || return 0
   node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
-    --tasks "$_pmmb_file" \
-    --results-dir "$(dirname "$_pmmb_progress_dir")" \
+    --tasks "$_result_file" \
+    --results-dir "$(dirname "$_managed_media_progress_dir")" \
     --stage "prepare_managed_media" >/dev/null 2>&1 || true
-  if [ "$_pmmb_code" -ne 0 ]; then
+  if managed_media_batch_running; then
+    return 0
+  fi
+
+  set +e
+  wait "$_managed_media_pid"
+  _managed_media_code="$?"
+  set -e
+  _managed_media_active=0
+  _managed_media_reaped_this_poll=1
+  if [ "$_managed_media_code" -ne 0 ]; then
+    _managed_media_failure_code="$_managed_media_code"
     job_run_update failed "Managed long-media preparation failed." "managed_media_failed" \
       --stage "prepare_managed_media" \
-      --exit-code "$_pmmb_code"
-    return "$_pmmb_code"
+      --exit-code "$_managed_media_code"
+    return 0
   fi
-  cat "$_pmmb_summary"
+
+  cat "$_managed_media_summary"
   job_run_update running "Managed long-media preparation finished." "managed_media_finished" \
     --stage "prepare_managed_media"
 }
@@ -4738,16 +4755,6 @@ fetch_more_cloud_sources() {
     node "$AGENT_DIR/builder-digest.mjs" patch-cloud-fetch-plan \
       --tasks "$_fmcs_file" || true
   fi
-  if prepare_managed_media_batch \
-    "$_fmcs_file" \
-    "refill-$_cloud_refill_count" \
-    "$_fmcs_results_dir/shard-runner-managed-media-checkpoints"; then
-    :
-  else
-    _pmmb_refill_code="$?"
-    _cloud_refill_exhausted=1
-    return "$_pmmb_refill_code"
-  fi
   _fmcs_task_count="$(library_fetch_task_count "$_fmcs_file")" || _fmcs_task_count=0
   case "$_fmcs_task_count" in ''|*[!0-9]*) _fmcs_task_count=0 ;; esac
   if [ "$_fmcs_task_count" -eq 0 ]; then
@@ -4777,6 +4784,10 @@ fetch_more_cloud_sources() {
       --out "$_fmcs_merged"
     mv "$_fmcs_merged" "$_result_file"
   fi
+  start_managed_media_batch \
+    "$_result_file" \
+    "refill-$_cloud_refill_count" \
+    "$_fmcs_results_dir/shard-runner-managed-media-checkpoints" || return "$?"
   _dynamic_queue_drained=0
 }
 
@@ -5056,6 +5067,12 @@ run_library_job() {
   _dynamic_queue_enabled=0
   _dynamic_assignment_count=0
   _dynamic_queue_drained=0
+  _managed_media_active=0
+  _managed_media_failure_code=0
+  _managed_media_pid=""
+  _managed_media_progress_dir=""
+  _managed_media_reaped_this_poll=0
+  _managed_media_summary=""
   _cloud_refill_count=0
   _cloud_refill_limit="$(cloud_refill_limit)"
   _cloud_refill_exhausted=0
@@ -5126,10 +5143,6 @@ run_library_job() {
   if grep -q '"plannedExtractionMethod"[[:space:]]*:[[:space:]]*"audio_transcription"' "$_result_file" 2>/dev/null; then
     patch_current_fetch_plans
   fi
-  prepare_managed_media_batch \
-    "$_result_file" \
-    "initial" \
-    "$_results_dir/shard-runner-managed-media-checkpoints" || return "$?"
 
   _task_count="$(library_fetch_task_count "$_result_file")" || {
     _count_code="$?"
@@ -5197,9 +5210,18 @@ run_library_job() {
     return 65
   fi
 
+  start_managed_media_batch \
+    "$_result_file" \
+    "initial" \
+    "$_results_dir/shard-runner-managed-media-checkpoints" || return "$?"
+
   job_run_update running "Assigning $_task_count fetch task(s)." "shard_started" --stage "shard_fetch_tasks"
   _dynamic_queue_enabled=1
   : > "$_assigned_fetch_task_ids_file"
+  _worker_entries=""
+  _skip_wait_pids=""
+  _timed_out_worker_pids=""
+  _started_shard_names=""
   assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
 
   patch_current_fetch_plans
@@ -5209,10 +5231,6 @@ run_library_job() {
   _run_started_epoch_seconds="$(
     node -e 'const date = new Date(process.env.BUILDER_BLOG_JOB_STARTED_AT || Date.now()); const seconds = Math.floor(date.getTime() / 1000); console.log(Number.isFinite(seconds) ? seconds : Math.floor(Date.now() / 1000));'
   )"
-  _worker_entries=""
-  _skip_wait_pids=""
-  _timed_out_worker_pids=""
-  _started_shard_names=""
   _checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
   : > "$_checkpoint_synced_ids_file"
   job_run_update running "Running source fetch workers." "workers_started" --stage "run_fetch_workers"
@@ -5221,6 +5239,7 @@ run_library_job() {
   while :; do
     _alive=0
     _now="$(date +%s)"
+    poll_managed_media_batch
     for _entry in ${_worker_entries:-}; do
       _pid="${_entry%%:*}"
       _rest="${_entry#*:}"
@@ -5402,7 +5421,7 @@ run_library_job() {
           fi
         fi
         _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
-        if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ]; then
+        if [ "$_sync_command" = "sync-cloud-builders" ] && [ "$_free_slots" -gt 0 ] && [ "${_dynamic_queue_drained:-0}" -eq 1 ] && [ "${_cloud_refill_exhausted:-0}" -eq 0 ] && [ "${_managed_media_active:-0}" -eq 0 ]; then
           if fetch_more_cloud_sources; then :; else return "$?"; fi
           if [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
             assign_dynamic_fetch_workers "$_free_slots"
@@ -5416,6 +5435,24 @@ run_library_job() {
       fi
     fi
     if [ "$_alive" -eq 0 ]; then
+      # The producer can exit after the poll at the top of this iteration.
+      # Reap it before deciding that the whole queue is idle.
+      poll_managed_media_batch
+    fi
+    if [ "$_alive" -eq 0 ] && ! managed_media_batch_running; then
+      if [ "${_managed_media_failure_code:-0}" -ne 0 ]; then
+        break
+      fi
+      if [ "${_managed_media_active:-0}" -eq 1 ]; then
+        # The producer exited between the second poll and this check. Reap it
+        # at the top of the next iteration before making an idle decision.
+        continue
+      fi
+      if [ "${_managed_media_reaped_this_poll:-0}" -eq 1 ] && [ "$_dynamic_queue_enabled" -eq 1 ] && [ "${_dynamic_queue_drained:-0}" -eq 0 ]; then
+        # A just-settled media task changed the shared queue after this
+        # iteration's assignment pass. Let the next pass assign or drain it.
+        continue
+      fi
       if [ "$_cloud_persistent_host" -eq 1 ] && [ "$_dynamic_queue_enabled" -eq 1 ]; then
         sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
         if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "cloud-host-idle" "" "assigned"; then
@@ -5481,6 +5518,7 @@ run_library_job() {
     sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
     sleep 5
   done
+  poll_managed_media_batch
   sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
   for _entry in ${_worker_entries:-}; do
     _pid="${_entry%%:*}"
@@ -5498,6 +5536,9 @@ run_library_job() {
 
   if ! flush_remaining_library_results "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" "$_shard_timeout" "library-result"; then
     return 65
+  fi
+  if [ "${_managed_media_failure_code:-0}" -ne 0 ]; then
+    return "$_managed_media_failure_code"
   fi
   if [ "$_discovery_failed" -ne 0 ]; then
     echo "Library run completed normal post-task sync, but discovery failed for at least one source." >&2
