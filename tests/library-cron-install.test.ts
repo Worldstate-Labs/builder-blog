@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdtemp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readdir, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -717,6 +717,40 @@ test("account must be a reasonable email without control characters", async () =
     assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
     assert.equal(await readMutationLog(harness.mutationLogPath), "");
     assert.deepEqual(await readJson(harness.contractPath), initial);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
+test("contract path must be a real in-directory regular file, not a symlink", async () => {
+  const harness = await makeHarness({ verdictStatus: "needs_confirmation" });
+  try {
+    const externalDir = join(harness.rootDir, "external");
+    await mkdir(externalDir, { recursive: true });
+    const externalTarget = join(externalDir, `resume-contract-${INSTANCE_ID}.json`);
+    const externalContract = baseContract({ verdictStatus: "needs_confirmation" });
+    await writeContract(externalTarget, externalContract, 0o600);
+    const externalBefore = await readFile(externalTarget, "utf8");
+
+    await unlink(harness.contractPath);
+    await symlink(externalTarget, harness.contractPath);
+
+    const symlinkResult = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+    assert.notEqual(symlinkResult.status, 0);
+    assert.match(symlinkResult.stderr, /symlink|regular file|contract path/i);
+    assert.doesNotMatch(symlinkResult.stdout, /followbriefScheduleInstall/);
+    assert.equal(await readMutationLog(harness.mutationLogPath), "");
+    assert.equal(await readFile(externalTarget, "utf8"), externalBefore);
+
+    await unlink(harness.contractPath);
+    await symlink(join(externalDir, "missing-contract.json"), harness.contractPath);
+
+    const brokenResult = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+    assert.notEqual(brokenResult.status, 0);
+    assert.match(brokenResult.stderr, /contract|symlink|file/i);
+    assert.doesNotMatch(brokenResult.stderr, /at Object\.|node:fs|Error:/i);
+    assert.doesNotMatch(brokenResult.stdout, /followbriefScheduleInstall/);
+    assert.equal(await readMutationLog(harness.mutationLogPath), "");
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }

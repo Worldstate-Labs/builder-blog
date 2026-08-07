@@ -123,11 +123,11 @@ function currentHost() {
 
 let stats;
 try {
-  stats = fs.statSync(contractPath);
+  stats = fs.lstatSync(contractPath);
 } catch {
   fail("Contract file does not exist.");
 }
-if (!stats.isFile()) fail("Contract path must point to a file.");
+if (!stats.isFile()) fail("Contract path must point to a regular file, not a symlink or special path.");
 if ((stats.mode & 0o777) !== 0o600) fail("Contract file mode must be exactly 0600.");
 if (typeof process.getuid === "function" && stats.uid !== process.getuid()) fail("Contract file must be owned by the current user.");
 
@@ -150,9 +150,22 @@ if (typeof contract.accountSlug !== "string" || contract.accountSlug !== slugFor
 if (typeof contract.instanceId !== "string" || !uuidRe.test(contract.instanceId)) fail("Contract instanceId is invalid.");
 if (path.basename(contractPath) !== `resume-contract-${contract.instanceId}.json`) fail("Contract filename must match instanceId.");
 const expectedDir = path.join(agentDir, "tmp", "accounts", contract.accountSlug, "library-cron-direct");
-const realDir = fs.realpathSync(path.dirname(contractPath));
-const expectedRealDir = fs.realpathSync(expectedDir);
-if (realDir !== expectedRealDir) fail("Contract path must live in the account-scoped library-cron-direct directory.");
+let realContractPath;
+let expectedRealContractPath;
+try {
+  realContractPath = fs.realpathSync(contractPath);
+} catch {
+  fail("Contract path must resolve to a real in-directory contract file.");
+}
+try {
+  expectedRealContractPath = path.join(
+    fs.realpathSync(expectedDir),
+    `resume-contract-${contract.instanceId}.json`,
+  );
+} catch {
+  fail("Contract path must resolve under the account-scoped library-cron-direct directory.");
+}
+if (realContractPath !== expectedRealContractPath) fail("Contract path must resolve exactly to the expected in-directory contract file.");
 if (!["ok", "needs_confirmation"].includes(contract.verdictStatus)) fail("Unsupported verdict status.");
 if (!runtimes.has(contract.runtime)) fail("Unsupported runtime.");
 const freq = frequencyMeta[contract.frequencyKey];
