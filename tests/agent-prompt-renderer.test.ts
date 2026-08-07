@@ -9,6 +9,11 @@ import {
   type NormalizedAgentPromptRenderOptions,
 } from "../src/lib/agent-prompt-renderer";
 
+const markdownShellBlocks = (text: string) =>
+  [...text.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1]);
+
+const markdownProse = (text: string) => text.replace(/```bash\n[\s\S]*?```/g, "");
+
 function normalizedOptions(
   overrides: Partial<NormalizedAgentPromptRenderOptions> = {},
 ): NormalizedAgentPromptRenderOptions {
@@ -337,25 +342,46 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
 
   assert.match(child, /^Run this queued FollowBrief setup continuation\./);
   assert.match(child, /persistent OpenClaw session/);
-  assert.match(child, /"status": "needs_confirmation"[\s\S]*ask whether to install/);
-  assert.match(child, /Only[\s\S]*continue to step 7 if the user explicitly agrees/);
-  assert.match(
-    child,
-    /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
-  );
-  assert.match(
-    child,
-    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
-  );
+  assert.match(child, /If the verified verdict was `"needs_confirmation"`/);
+  assert.match(child, /Ask whether to install the scheduled run\s+anyway\./);
+  assert.match(child, /Only[\s\S]*continue to step 8 if the user explicitly agrees/);
   assert.match(child, /followbriefScheduleInstall/);
   assert.match(child, /FollowBrief schedule is not confirmed active\./);
   assert.doesNotMatch(child, /unattended and must not wait for confirmation/);
   assert.doesNotMatch(child, /--session isolated/);
   assert.doesNotMatch(child, /openclaw cron (add|list|inspect|run)/);
   assert.match(child, /6\. Run one real initial fetch job now\./);
+  assert.match(child, /7\. Interpret the output from step 6/);
+  assert.match(child, /8\. When the user explicitly confirms a `needs_confirmation` result later/);
   assert.doesNotMatch(child, /1\. Install or refresh the skill:/);
   assert.doesNotMatch(child, /1a\. Exchange the one-time setup code/);
   assert.doesNotMatch(child, /bb_ec_renderer_openclaw_parent/);
+
+  const childBlocks = markdownShellBlocks(child);
+  const setupBlockIndex = childBlocks.findIndex((candidate) =>
+    candidate.includes("verify-library-setup-verdict"),
+  );
+  assert.ok(setupBlockIndex >= 0, "child prompt must keep the setup flow in one bash block");
+  const setupBlock = childBlocks[setupBlockIndex]!;
+  assert.match(
+    setupBlock,
+    /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
+  );
+  assert.match(setupBlock, /FAILED_POST_DETAILS="\$\(/);
+  assert.match(setupBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
+  assert.match(setupBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
+  assert.match(setupBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  assert.match(setupBlock, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(setupBlock, /followbriefScheduleInstall/);
+  for (const laterBlock of childBlocks.slice(setupBlockIndex + 1)) {
+    assert.doesNotMatch(laterBlock, /SETUP_VERDICT_JSON|EXPECTED_INSTANCE_ID|SETUP_TMP_DIR/);
+  }
+  const childProse = markdownProse(child);
+  assert.doesNotMatch(
+    childProse,
+    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
+  );
+  assert.match(childProse, /only the exact `Exact confirmation command:` line printed by step 6,\s+byte-for-byte\./);
 
   const probeFunction = parent.match(
     /openclaw_persistent_session_mode\(\) \{[\s\S]*?\n\}/,

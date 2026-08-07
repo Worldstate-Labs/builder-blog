@@ -234,59 +234,6 @@ if ! SETUP_VERDICT_JSON="$(
   exit 1
 fi
 printf '%s\n' "$SETUP_VERDICT_JSON"
-```
-
-Report its output. This is a real run: it writes fetch-log rows, builders, and
-feed items to FollowBrief. The runner's exit code is captured instead of
-terminating this step immediately so the verifier can distinguish safe,
-synchronized post-level failures from fatal or incomplete runs. Trust only the
-JSON printed by `verify-library-setup-verdict`; do not infer that scheduling is
-safe from the runner's stderr or from exit code 65 alone. If verdict verification
-itself fails, report `RUNNER_EXIT_CODE` and the verifier error, then stop without
-installing the schedule.
-
-If the verifier prints `"status": "ok"`, tell the user the validation run completed
-without failed post tasks, then continue automatically to step 7 and install the
-original scheduled job.
-
-If the verifier prints `"status": "needs_confirmation"`, list every failed post
-task for the user with its title, source, failed stage (`read`, `summarize`, or
-`sync`), and reason. Then ask whether to install the scheduled run anyway. Only
-continue to step 7 if the user explicitly agrees; otherwise stop and do not
-install or report an active schedule.
-
-If the verifier prints `"status": "fatal"`, report `RUNNER_EXIT_CODE`, the
-verdict code, and every available failure detail, then stop. A timeout,
-discovery failure, credential/runtime failure, malformed or missing evidence,
-or any other fatal verdict must never install or report an active schedule.
-
-If this initial run surfaces an `x_token_missing` (or any `*_token_missing`)
-notice, that is expected when the user declined or skipped that token in the
-credential-prep step earlier. Report it as an "Action needed" notice and
-continue — do NOT re-ask. That source stays in "Action needed" until its token
-is added to `~/.builder-blog/secrets.json` later.
-
-7. After `verify-library-setup-verdict` succeeds, create a same-account resume
-contract beside the setup verdict and let only the bundled helper touch local
-scheduler state. Do not inspect or run any unrelated OpenClaw cron, skill,
-plugin, subagent, or manual verification job here. Natural-language claims and
-unrelated OpenClaw cron state are insufficient: only this exact contract-bound
-helper may install or confirm the FollowBrief library schedule.
-
-```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-account_slug() {
-  node - "${1:-default}" <<'NODE'
-const { createHash } = require("node:crypto");
-const account = String(process.argv[2] || "default");
-const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
-const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
-console.log(`${base}_${hash}`);
-NODE
-}
-ACCOUNT_SLUG="$(account_slug "$ACCT")"
-RESUME_CONTRACT_PATH="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct/resume-contract-$EXPECTED_INSTANCE_ID.json"
 SETUP_VERDICT_STATUS="$(
   node - "$SETUP_VERDICT_JSON" <<'NODE'
 const verdict = JSON.parse(process.argv[2]);
@@ -313,6 +260,8 @@ for (const row of rows) {
 }
 NODE
 )"
+HELPER_PATH="$AGENT_DIR/builder-library-cron-install.sh"
+RESUME_CONTRACT_PATH="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct/resume-contract-$EXPECTED_INSTANCE_ID.json"
 if [ "$SETUP_VERDICT_STATUS" = "fatal" ]; then
   rm -f -- "$RESUME_CONTRACT_PATH"
   echo "Fatal setup verdict; removed same-instance resume contract candidate: $RESUME_CONTRACT_PATH" >&2
@@ -351,19 +300,18 @@ NODE
 chmod 600 "$RESUME_CONTRACT_TMP"
 mv -f "$RESUME_CONTRACT_TMP" "$RESUME_CONTRACT_PATH"
 printf 'Resume contract: %s\n' "$RESUME_CONTRACT_PATH"
-CONFIRM_COMMAND="FOLLOWBRIEF_CONFIRM_PARTIAL=1 \"$AGENT_DIR/builder-library-cron-install.sh\" --contract \"$RESUME_CONTRACT_PATH\""
 if [ "$SETUP_VERDICT_STATUS" = "needs_confirmation" ]; then
   echo 'Initial fetch completed with safe post-level failures.'
   if [ -n "$FAILED_POST_DETAILS" ]; then
     printf '%s\n' "$FAILED_POST_DETAILS"
   fi
-  printf 'Exact confirmation command: %s\n' "$CONFIRM_COMMAND"
+  printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\n' "$HELPER_PATH" "$RESUME_CONTRACT_PATH"
   exit 0
 fi
 INSTALL_STDOUT_FILE="$SETUP_TMP_DIR/install-$EXPECTED_INSTANCE_ID.stdout"
 INSTALL_STDERR_FILE="$SETUP_TMP_DIR/install-$EXPECTED_INSTANCE_ID.stderr"
 set +e
-"$AGENT_DIR/builder-library-cron-install.sh" --contract "$RESUME_CONTRACT_PATH" >"$INSTALL_STDOUT_FILE" 2>"$INSTALL_STDERR_FILE"
+"$HELPER_PATH" --contract "$RESUME_CONTRACT_PATH" >"$INSTALL_STDOUT_FILE" 2>"$INSTALL_STDERR_FILE"
 INSTALL_EXIT_CODE="$?"
 set -e
 cat "$INSTALL_STDOUT_FILE"
@@ -417,25 +365,53 @@ then
 fi
 ```
 
-If step 7 printed `"status": "needs_confirmation"`, list every failed post task
-for the user with its title, source, failed stage (`read`, `summarize`, or
-`sync`), and reason. Then ask whether to install the scheduled run anyway. Only
-continue to step 8 if the user explicitly agrees; otherwise stop and do not
-install or report an active schedule.
+Report the output from step 6. This is still a real run: it writes fetch-log
+rows, builders, and feed items to FollowBrief. The runner's exit code is
+captured instead of terminating this step immediately so the verifier can
+distinguish safe, synchronized post-level failures from fatal or incomplete
+runs. Trust only the JSON printed by `verify-library-setup-verdict`; do not
+infer that scheduling is safe from the runner's stderr or from exit code 65
+alone. If verdict verification itself fails, report `RUNNER_EXIT_CODE` and the
+verifier error, then stop without installing the schedule.
+
+If this initial run surfaces an `x_token_missing` (or any `*_token_missing`)
+notice, that is expected when the user declined or skipped that token in the
+credential-prep step earlier. Report it as an "Action needed" notice and
+continue — do NOT re-ask. That source stays in "Action needed" until its token
+is added to `~/.builder-blog/secrets.json` later.
+
+7. Interpret the output from step 6. If the verified verdict was `"ok"`, step 6
+already created the strict resume contract, invoked the bundled helper in the
+same shell turn, and validated the exact final marker before allowing success.
+Tell the user the validation run completed without failed post tasks and report
+the confirmed FollowBrief schedule evidence from that same output.
+
+If the verified verdict was `"needs_confirmation"`, step 6 already created the
+strict resume contract, printed `Resume contract: ...`, listed every failed post
+task with title, source, failed stage (`read`, `summarize`, or `sync`), and
+printed `Exact confirmation command: ...` with the fully expanded absolute
+helper path and absolute contract path. Ask whether to install the scheduled run
+anyway. Only continue to step 8 if the user explicitly agrees; otherwise stop
+and do not install or report an active schedule.
+
+If the verified verdict was `"fatal"`, report `RUNNER_EXIT_CODE`, the verdict
+code, and every available failure detail, then stop. A timeout, discovery
+failure, credential/runtime failure, malformed or missing evidence, or any
+other fatal verdict must never install or report an active schedule.
 
 8. When the user explicitly confirms a `needs_confirmation` result later, run
-only the exact helper command that step 7 printed:
-`FOLLOWBRIEF_CONFIRM_PARTIAL=1 "$AGENT_DIR/builder-library-cron-install.sh" --contract "$RESUME_CONTRACT_PATH"`.
-Do not substitute another path, inspect OpenClaw cron state, invoke any other
-skill/plugin/subagent, or run a manual FollowBrief verification job. Success
-requires helper exit code 0 and a final nonempty stdout line that parses as the
-exact JSON marker with no extra properties:
-`followbriefScheduleInstall`, `job`, `account`, `instanceId`, `runtime`,
-`frequencyKey`, `ownerId`, `startedAt`, `localScheduler`, and `serverStatus`.
-The marker must match the live contract values (`job=library-cron`, the same
-account/instance/runtime/frequency, `ownerId` equal to the updated contract,
-`startedAt` equal to the updated contract anchor, `localScheduler` equal to
-`launchd` or `crontab`, and `serverStatus=active`). A marker hidden in prose,
-on an earlier line, malformed, missing, mismatched, or carrying any extra
-property means the FollowBrief schedule is not confirmed active. Report exactly
-that failure message and stop.
+only the exact `Exact confirmation command:` line printed by step 6,
+byte-for-byte. Do not substitute another path, inspect OpenClaw cron state,
+invoke any other skill/plugin/subagent, or run a manual FollowBrief
+verification job. Success still requires helper exit code 0 and a final
+nonempty stdout line that parses as the exact JSON marker with no extra
+properties: `followbriefScheduleInstall`, `job`, `account`, `instanceId`,
+`runtime`, `frequencyKey`, `ownerId`, `startedAt`, `localScheduler`, and
+`serverStatus`. The marker must match the live contract values
+(`job=library-cron`, the same account/instance/runtime/frequency, `ownerId`
+equal to the updated contract, `startedAt` equal to the updated contract
+anchor, `localScheduler` equal to `launchd` or `crontab`, and
+`serverStatus=active`). A marker hidden in prose, on an earlier line,
+malformed, missing, mismatched, or carrying any extra property means the
+FollowBrief schedule is not confirmed active. Report exactly that failure
+message and stop.

@@ -93,6 +93,12 @@ test("cron scheduler status changes leave local and server audit events", () => 
 
 test("library setup verifies the current initial run before mutating scheduler state", () => {
   const prompt = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
+  const setupBlocks = markdownShellBlocks(prompt);
+  const stepSixBlockIndex = setupBlocks.findIndex((candidate) =>
+    candidate.includes("verify-library-setup-verdict"),
+  );
+  assert.ok(stepSixBlockIndex >= 0, "missing step 6 setup block for library-cron");
+  const stepSixBlock = setupBlocks[stepSixBlockIndex]!;
 
   assert.match(prompt, /randomUUID/);
   assert.match(
@@ -108,21 +114,24 @@ test("library setup verifies the current initial run before mutating scheduler s
     /if BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"[\s\S]*then\n  RUNNER_EXIT_CODE=0\nelse\n  RUNNER_EXIT_CODE="\$\?"\nfi/,
   );
   assert.match(
-    prompt,
+    stepSixBlock,
     /verify-library-setup-verdict[\s\S]*--file "\$SETUP_VERDICT_FILE"[\s\S]*--instance-id "\$EXPECTED_INSTANCE_ID"[\s\S]*--runner-exit-code "\$RUNNER_EXIT_CODE"/,
   );
-  assert.match(prompt, /node - "\$SETUP_VERDICT_JSON" <<'NODE'/);
+  assert.match(stepSixBlock, /node - "\$SETUP_VERDICT_JSON" <<'NODE'/);
+  assert.match(stepSixBlock, /FAILED_POST_DETAILS="\$\(/);
   assert.match(
-    prompt,
+    stepSixBlock,
     /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
   );
-  assert.match(prompt, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
-  assert.match(prompt, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
-  assert.match(prompt, /builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/);
-  assert.match(prompt, /followbriefScheduleInstall/);
-  assert.match(prompt, /FollowBrief schedule is not confirmed active\./);
-  assert.match(prompt, /"status": "fatal"[\s\S]*stop/);
-  assert.match(prompt, /"status": "needs_confirmation"[\s\S]*ask whether to install/);
+  assert.match(stepSixBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
+  assert.match(stepSixBlock, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
+  assert.match(stepSixBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
+  assert.match(stepSixBlock, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(stepSixBlock, /followbriefScheduleInstall/);
+  assert.match(stepSixBlock, /FollowBrief schedule is not confirmed active\./);
+  assert.match(stepSixBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  assert.match(prompt, /If the verified verdict was `"fatal"`[\s\S]*stop/);
+  assert.match(prompt, /If the verified verdict was `"needs_confirmation"`[\s\S]*Ask whether to install the scheduled run\s+anyway\./);
   assert.doesNotMatch(
     prompt,
     /node - "\$TMP_DIR\/library-fetch-result\.json" "\$TMP_DIR\/library-agent-sync\.json"/,
@@ -131,15 +140,18 @@ test("library setup verifies the current initial run before mutating scheduler s
   assert.doesNotMatch(prompt, /\|\s*crontab -/);
   assert.doesNotMatch(prompt, /cron-status[\s\S]*--job library-cron/);
   assert.doesNotMatch(prompt, /cron-audit[\s\S]*--job library-cron[\s\S]*--event launchd_bootstrap_succeeded/);
+  for (const laterBlock of setupBlocks.slice(stepSixBlockIndex + 1)) {
+    assert.doesNotMatch(laterBlock, /SETUP_VERDICT_JSON|EXPECTED_INSTANCE_ID|SETUP_TMP_DIR/);
+  }
 
   const verifierIndex = prompt.indexOf("verify-library-setup-verdict");
-  const contractStepIndex = prompt.indexOf("7. After `verify-library-setup-verdict` succeeds");
-  const contractPathIndex = prompt.indexOf("resume-contract-$EXPECTED_INSTANCE_ID.json", contractStepIndex);
-  const helperIndex = prompt.indexOf('builder-library-cron-install.sh" --contract "$RESUME_CONTRACT_PATH"', contractStepIndex);
+  const contractPathIndex = stepSixBlock.indexOf("resume-contract-$EXPECTED_INSTANCE_ID.json");
+  const helperIndex = stepSixBlock.indexOf('"$HELPER_PATH" --contract "$RESUME_CONTRACT_PATH"');
+  const stepSevenIndex = prompt.indexOf("7. Interpret the output from step 6");
   assert.ok(verifierIndex >= 0, "setup verdict verifier must be present");
-  assert.ok(contractStepIndex > verifierIndex, "resume contract handling must follow verdict verification");
-  assert.ok(contractPathIndex > contractStepIndex, "resume contract path must be defined after the verdict gate");
+  assert.ok(contractPathIndex >= 0, "resume contract path must be defined in the step 6 verdict block");
   assert.ok(helperIndex > contractPathIndex, "helper execution must follow contract creation");
+  assert.ok(stepSevenIndex > prompt.indexOf("```", verifierIndex), "step 7 must describe the completed step 6 output");
 });
 
 test("cron stop prompts audit scheduler mutations before web status sync", () => {
@@ -149,10 +161,6 @@ test("cron stop prompts audit scheduler mutations before web status sync", () =>
   const digestStop = source("skills/builder-blog-digest/jobs/digest-cron-stop.md");
 
   assert.match(librarySetup, /builder-library-cron-install\.sh/);
-  assert.match(
-    librarySetup,
-    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
-  );
   assert.doesNotMatch(librarySetup, /cron-audit[\s\S]*--job library-cron[\s\S]*--event launchd_bootout_start/);
   assert.doesNotMatch(librarySetup, /cron-audit[\s\S]*--job library-cron[\s\S]*--event crontab_install_succeeded/);
   assert.doesNotMatch(librarySetup, /cron-status[\s\S]*--job library-cron/);

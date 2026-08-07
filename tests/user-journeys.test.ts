@@ -103,6 +103,14 @@ function assertOrderedText(text: string, markers: string[]) {
   }
 }
 
+function markdownShellBlocks(text: string) {
+  return [...text.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1]);
+}
+
+function markdownProse(text: string) {
+  return text.replace(/```bash\n[\s\S]*?```/g, "");
+}
+
 type SourceConfigStoreBehaviorModule = {
   ensureUserSourceConfigs: (userId: string) => Promise<SourceConfigStoreUserRow[]>;
   getUserSourceConfigs: (userId: string) => Promise<SourceConfigStoreUserRow[]>;
@@ -1591,7 +1599,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /openclaw config set agents\.defaults\.timeoutSeconds "\{\{CRON_TIMEOUT_SECONDS\}\}" --strict-json/);
   assert.doesNotMatch(libraryCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(libraryCronSetupPrompt, /ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /7\. After `verify-library-setup-verdict` succeeds/);
+  assert.match(libraryCronSetupPrompt, /7\. Interpret the output from step 6/);
+  assert.match(libraryCronSetupPrompt, /8\. When the user explicitly confirms a `needs_confirmation` result later/);
   assert.match(libraryCronSetupPrompt, /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/);
   assert.match(libraryCronSetupPrompt, /JSON\.parse\(process\.argv\[2\]\)/);
   assert.match(libraryCronSetupPrompt, /version: 1/);
@@ -1611,12 +1620,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
   assert.match(libraryCronSetupPrompt, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryCronSetupPrompt, /printf 'Resume contract: %s\\n' "\$RESUME_CONTRACT_PATH"/);
-  assert.match(libraryCronSetupPrompt, /"\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/);
-  assert.match(
-    libraryCronSetupPrompt,
-    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
-  );
-  assert.match(libraryCronSetupPrompt, /final nonempty stdout line/);
+  assert.match(libraryCronSetupPrompt, /HELPER_PATH="\$AGENT_DIR\/builder-library-cron-install\.sh"/);
+  assert.match(libraryCronSetupPrompt, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryCronSetupPrompt, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  assert.match(libraryCronSetupPrompt, /final\s+nonempty stdout line/);
   assert.match(libraryCronSetupPrompt, /followbriefScheduleInstall/);
   assert.match(libraryCronSetupPrompt, /localScheduler/);
   assert.match(libraryCronSetupPrompt, /serverStatus/);
@@ -1664,15 +1671,15 @@ test("web app serves the agent skill and setup command", () => {
     /do not manually perform\s+fetch-task work outside the numbered commands/,
   );
   assert.match(libraryCronSetupPrompt, /one real initial fetch job/);
-  assert.match(libraryCronSetupPrompt, /writes fetch-log rows,[\s\S]*builders, and[\s\S]*feed items/);
+  assert.match(libraryCronSetupPrompt, /writes fetch-log\s+rows,[\s\S]*builders, and[\s\S]*feed items/);
   assert.match(libraryCronSetupPrompt, /do not treat a lack of\s+output as a hang/);
   assert.match(libraryCronSetupPrompt, /verify-library-setup-verdict/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SETUP_INITIAL=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_RUN_ID="\$EXPECTED_INSTANCE_ID"/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SETUP_VERDICT_FILE="\$SETUP_VERDICT_FILE"/);
-  assert.match(libraryCronSetupPrompt, /without failed post tasks[\s\S]*continue automatically to step 7/);
-  assert.match(libraryCronSetupPrompt, /list every failed post\s+task[\s\S]*failed stage/);
-  assert.match(libraryCronSetupPrompt, /Only\s+continue to step 7 if the user explicitly agrees/);
+  assert.match(libraryCronSetupPrompt, /If the verified verdict was `"ok"`[\s\S]*validation run completed without failed post tasks/);
+  assert.match(libraryCronSetupPrompt, /If the verified verdict was `"needs_confirmation"`[\s\S]*listed every failed post/);
+  assert.match(libraryCronSetupPrompt, /Only\s+continue to step 8 if the user explicitly agrees/);
   assert.doesNotMatch(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Copy `task\.builderSync`/);
@@ -1681,6 +1688,28 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /Fetch task boundary/);
   assert.doesNotMatch(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
   assert.doesNotMatch(libraryCronSetupPrompt, /contentStatus="ready"/);
+  const librarySetupBlocks = markdownShellBlocks(libraryCronSetupPrompt);
+  const libraryStepSixBlockIndex = librarySetupBlocks.findIndex((candidate) =>
+    candidate.includes("verify-library-setup-verdict"),
+  );
+  assert.ok(libraryStepSixBlockIndex >= 0, "library setup prompt must keep contract handling in step 6");
+  const libraryStepSixBlock = librarySetupBlocks[libraryStepSixBlockIndex]!;
+  assert.match(libraryStepSixBlock, /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/);
+  assert.match(libraryStepSixBlock, /FAILED_POST_DETAILS="\$\(/);
+  assert.match(libraryStepSixBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryStepSixBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryStepSixBlock, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryStepSixBlock, /followbriefScheduleInstall/);
+  assert.match(libraryStepSixBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  for (const laterBlock of librarySetupBlocks.slice(libraryStepSixBlockIndex + 1)) {
+    assert.doesNotMatch(laterBlock, /SETUP_VERDICT_JSON|EXPECTED_INSTANCE_ID|SETUP_TMP_DIR/);
+  }
+  const librarySetupProse = markdownProse(libraryCronSetupPrompt);
+  assert.doesNotMatch(
+    librarySetupProse,
+    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
+  );
+  assert.match(librarySetupProse, /only the exact `Exact confirmation command:` line printed by step 6,\s+byte-for-byte\./);
   assertOrderedText(libraryCronSetupPrompt, [
     "account's library fetch cron",
     "4. Keep the selected runtime and fetch mode scoped",
@@ -1694,11 +1723,10 @@ test("web app serves the agent skill and setup command", () => {
     "BUILDER_BLOG_PARALLEL_WORKERS=\"{{PARALLEL_WORKERS}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "verify-library-setup-verdict",
-    "Report its output",
-    "writes fetch-log rows",
-    "needs_confirmation",
-    "7. After `verify-library-setup-verdict` succeeds",
-    "resume-contract-$EXPECTED_INSTANCE_ID.json",
+    "Resume contract:",
+    "Exact confirmation command:",
+    "FollowBrief schedule is not confirmed active.",
+    "7. Interpret the output from step 6",
   ]);
   // Override-already-fetched and fetch-days now flow through the strict resume
   // contract, so the helper owns the actual pin writes and scheduler install.
