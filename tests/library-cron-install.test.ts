@@ -581,6 +581,24 @@ test("needs_confirmation requires explicit partial-result confirmation", async (
   }
 });
 
+test("contract mode must be exactly 0600", async () => {
+  const harness = await makeHarness({ verdictStatus: "needs_confirmation" });
+  try {
+    await chmod(harness.contractPath, 0o644);
+    const initial = await readJson(harness.contractPath);
+
+    const result = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /0600|group\/world writable|mode/i);
+    assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
+    assert.equal(await readMutationLog(harness.mutationLogPath), "");
+    assert.deepEqual(await readJson(harness.contractPath), initial);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
 test("completed contracts fail closed when local or server evidence drifts", async () => {
   const cases = [
     {
@@ -847,6 +865,68 @@ test("completed retry is read-only and fails closed on later local or server dri
     assert.equal(countEvents(afterServerDrift, "cron-status"), countEvents(beforeServerDrift, "cron-status"));
     const serverState = await readJson(harness.serverControlPath);
     assert.equal((serverState.cronState as JsonRecord).ownerId, `local:${HOSTNAME}:${ACCOUNT_SLUG}:library-cron:44444444-4444-4444-8444-444444444444`);
+
+    await setServerState(harness, {
+      ownerId: OWNER_ID,
+      hostname: HOSTNAME,
+      status: "active",
+      applyCronStatus: true,
+    });
+    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), "14\n", "utf8");
+    await chmod(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), 0o600);
+
+    const evidenceDriftCases = [
+      {
+        name: "localScheduler evidence drift",
+        evidence: { localScheduler: "crontab" },
+      },
+      {
+        name: "localLabel evidence drift",
+        evidence: { localLabel: `${LABEL}.other` },
+      },
+      {
+        name: "schedule evidence drift",
+        evidence: { schedule: "anchor:0 0 * * *" },
+      },
+      {
+        name: "serverStatus evidence drift",
+        evidence: { serverStatus: "stopped" },
+      },
+      {
+        name: "hostname evidence drift",
+        evidence: { hostname: "different-host" },
+      },
+    ] as const;
+
+    for (const scenario of evidenceDriftCases) {
+      const currentContract = (await readJson(harness.contractPath)) as Contract & { evidence: JsonRecord };
+      await writeContract(harness.contractPath, {
+        ...currentContract,
+        evidence: {
+          ...currentContract.evidence,
+          ...scenario.evidence,
+        },
+      } as Contract);
+      const beforeEvidenceDrift = await readJsonLines(harness.mutationLogPath);
+      const evidenceDrift = runInstaller(harness);
+      assert.notEqual(evidenceDrift.status, 0, scenario.name);
+      assert.doesNotMatch(evidenceDrift.stdout, /followbriefScheduleInstall/, scenario.name);
+      const afterEvidenceDrift = await readJsonLines(harness.mutationLogPath);
+      assert.equal(
+        countEvents(afterEvidenceDrift, "launchctl.bootstrap"),
+        countEvents(beforeEvidenceDrift, "launchctl.bootstrap"),
+        scenario.name,
+      );
+      assert.equal(
+        countEvents(afterEvidenceDrift, "cron-status"),
+        countEvents(beforeEvidenceDrift, "cron-status"),
+        scenario.name,
+      );
+
+      await writeContract(harness.contractPath, {
+        ...currentContract,
+      } as Contract);
+    }
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }

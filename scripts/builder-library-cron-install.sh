@@ -128,7 +128,7 @@ try {
   fail("Contract file does not exist.");
 }
 if (!stats.isFile()) fail("Contract path must point to a file.");
-if ((stats.mode & 0o022) !== 0) fail("Contract file must not be group/world writable.");
+if ((stats.mode & 0o777) !== 0o600) fail("Contract file mode must be exactly 0600.");
 if (typeof process.getuid === "function" && stats.uid !== process.getuid()) fail("Contract file must be owned by the current user.");
 
 let contract;
@@ -458,6 +458,29 @@ if (state.schedule !== process.env.EXPECTED_SCHEDULE) fail("Server schedule does
 NODE
 }
 
+verify_completed_evidence() {
+  [ "$EVIDENCE_LOCAL_SCHEDULER" = "$MARKER_SCHEDULER" ] || {
+    echo "Completed contract localScheduler evidence does not match live state." >&2
+    exit 75
+  }
+  [ "$EVIDENCE_LOCAL_LABEL" = "$LABEL" ] || {
+    echo "Completed contract localLabel evidence does not match live state." >&2
+    exit 75
+  }
+  [ "$EVIDENCE_SCHEDULE" = "$SCHEDULE_STATUS" ] || {
+    echo "Completed contract schedule evidence does not match live state." >&2
+    exit 75
+  }
+  [ "$EVIDENCE_SERVER_STATUS" = "active" ] || {
+    echo "Completed contract serverStatus evidence does not match live state." >&2
+    exit 75
+  }
+  [ "$EVIDENCE_HOSTNAME" = "$HOSTNAME_SANITIZED" ] || {
+    echo "Completed contract hostname evidence does not match live state." >&2
+    exit 75
+  }
+}
+
 emit_marker() {
   node - <<'NODE'
 const marker = {
@@ -493,6 +516,7 @@ fi
 if [ -n "$COMPLETED_AT" ]; then
   SCHEDULE_STATUS="$EVIDENCE_SCHEDULE"
   [ -n "$SCHEDULE_STATUS" ] || { echo "Completed contract is missing schedule evidence." >&2; exit 75; }
+  verify_completed_evidence
   verify_pin_files
   verify_local_scheduler
   STATE_FILE="$SCHEDULE_SPEC_DIR/cron-state-readback.json"
