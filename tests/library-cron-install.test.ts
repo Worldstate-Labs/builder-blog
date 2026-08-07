@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -161,6 +161,31 @@ async function readJson(path: string): Promise<JsonRecord> {
   return JSON.parse(await readFile(path, "utf8")) as JsonRecord;
 }
 
+async function snapshotTree(root: string): Promise<Record<string, string>> {
+  const snapshot: Record<string, string> = {};
+  async function walk(current: string, prefix: string) {
+    let entries: string[];
+    try {
+      entries = (await readdir(current)).sort();
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const fullPath = join(current, entry);
+      const relative = prefix ? `${prefix}/${entry}` : entry;
+      const details = await stat(fullPath);
+      if (details.isDirectory()) {
+        snapshot[`${relative}/`] = "<dir>";
+        await walk(fullPath, relative);
+      } else {
+        snapshot[relative] = await readFile(fullPath, "utf8");
+      }
+    }
+  }
+  await walk(root, "");
+  return snapshot;
+}
+
 function finalNonEmptyLine(stdout: string): string {
   return stdout
     .split(/\r?\n/)
@@ -285,6 +310,18 @@ async function seedCompletedLocalState(
         },
   };
   await writeFile(harness.launchctlStatePath, `${JSON.stringify(launchctlState, null, 2)}\n`, "utf8");
+}
+
+async function seedScheduleScratchState(harness: Harness) {
+  const scratchDir = join(harness.agentDir, "tmp", "accounts", harness.contract.accountSlug, "library-cron-schedule");
+  await mkdir(scratchDir, { recursive: true });
+  await writeFile(join(scratchDir, "cron.txt"), "sentinel cron\n", "utf8");
+  await writeFile(join(scratchDir, "launchd.xml"), "<sentinel />\n", "utf8");
+  await writeFile(join(scratchDir, "status.txt"), "sentinel status\n", "utf8");
+  await writeFile(join(scratchDir, "timezone.txt"), "Mars/Olympus\n", "utf8");
+  await writeFile(join(scratchDir, "cron-state-readback.json"), "{\"sentinel\":true}\n", "utf8");
+  await writeFile(join(scratchDir, "custom.txt"), "custom scratch\n", "utf8");
+  return scratchDir;
 }
 
 async function setServerState(
@@ -437,7 +474,7 @@ if (command === "schedule-spec") {
   if (arg("--launchd-out")) fs.writeFileSync(arg("--launchd-out"), spec.launchd + "\\n");
   if (arg("--status-out")) fs.writeFileSync(arg("--status-out"), status + "\\n");
   if (arg("--timezone-out")) fs.writeFileSync(arg("--timezone-out"), timezone + "\\n");
-  console.log(JSON.stringify({ status: "ok", freq, anchorAt, cron: spec.cron, statusSchedule: status, timeZone: timezone }, null, 2));
+  console.log(JSON.stringify({ status: "ok", freq, anchorAt, cron: spec.cron, launchdXml: spec.launchd, statusSchedule: status, timeZone: timezone }, null, 2));
   process.exit(0);
 }
 if (command === "cron-audit") {
@@ -893,9 +930,11 @@ test("completed retry is read-only and fails closed on later local or server dri
     await setServerState(harness, { status: "stopped", applyCronStatus: true });
     const first = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
     assert.equal(first.status, 0, first.stderr);
+    const scratchDir = await seedScheduleScratchState(harness);
 
     const beforeRetryMutations = await readJsonLines(harness.mutationLogPath);
     const beforeRetryContract = await readJson(harness.contractPath);
+    const beforeRetryScratch = await snapshotTree(scratchDir);
 
     const retry = runInstaller(harness);
     assert.equal(retry.status, 0, retry.stderr);
@@ -917,6 +956,7 @@ test("completed retry is read-only and fails closed on later local or server dri
     assert.equal(countEvents(afterRetryMutations, "launchctl.bootstrap"), countEvents(beforeRetryMutations, "launchctl.bootstrap"));
     assert.equal(countEvents(afterRetryMutations, "cron-status"), countEvents(beforeRetryMutations, "cron-status"));
     assert.ok(countEvents(afterRetryMutations, "cron-state") > countEvents(beforeRetryMutations, "cron-state"));
+    assert.deepEqual(await snapshotTree(scratchDir), beforeRetryScratch);
 
     const afterRetryContract = await readJson(harness.contractPath);
     assert.equal(afterRetryContract.ownerId, beforeRetryContract.ownerId);
@@ -1031,6 +1071,7 @@ test("linux crontab install and completed retry validate the exact live row", as
     await setServerState(harness, { status: "stopped", applyCronStatus: true });
     const first = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
     assert.equal(first.status, 0, first.stderr);
+    const scratchDir = await seedScheduleScratchState(harness);
     assert.deepEqual(parseMarker(first.stdout), {
       followbriefScheduleInstall: "ok",
       job: "library-cron",
@@ -1049,6 +1090,7 @@ test("linux crontab install and completed retry validate the exact live row", as
 
     const beforeRetryMutations = await readJsonLines(harness.mutationLogPath);
     const beforeRetryContract = await readJson(harness.contractPath);
+    const beforeRetryScratch = await snapshotTree(scratchDir);
     const retry = runInstaller(harness);
     assert.equal(retry.status, 0, retry.stderr);
     assert.deepEqual(parseMarker(retry.stdout), {
@@ -1070,6 +1112,7 @@ test("linux crontab install and completed retry validate the exact live row", as
     );
     assert.equal(countEvents(afterRetryMutations, "cron-status"), countEvents(beforeRetryMutations, "cron-status"));
     assert.deepEqual(await readJson(harness.contractPath), beforeRetryContract);
+    assert.deepEqual(await snapshotTree(scratchDir), beforeRetryScratch);
 
     const driftedCrontab = (await readFile(harness.crontabPath, "utf8")).replace(/^24 15 \* \* \*/m, "0 0 * * *");
     await writeFile(harness.crontabPath, driftedCrontab, "utf8");

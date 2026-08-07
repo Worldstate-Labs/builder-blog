@@ -270,7 +270,6 @@ DAYS_FILE="$AGENT_DIR/fetch-days-library-cron-$ACCOUNT_SLUG"
 PARALLEL_FILE="$AGENT_DIR/parallel-library-cron-$ACCOUNT_SLUG"
 ANCHOR_FILE="$AGENT_DIR/schedule-anchor-library-cron-$ACCOUNT_SLUG"
 OWNER_FILE="$AGENT_DIR/cron-owner-library-cron-$ACCOUNT_SLUG"
-SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
 PLIST_PATH="$LAUNCH_AGENTS_DIR/$LABEL.plist"
 CRON_ROW="# FollowBrief library cron · $ACCOUNT"
 MARKER_SCHEDULER="crontab"
@@ -340,17 +339,52 @@ verify_pin_files() {
 }
 
 generate_schedule_spec() {
-  mkdir -p "$SCHEDULE_SPEC_DIR"
-  "$CLI" schedule-spec \
-    --freq "$FREQUENCY_KEY" \
-    --anchor-at "$ANCHOR_AT" \
-    --cron-out "$SCHEDULE_SPEC_DIR/cron.txt" \
-    --launchd-out "$SCHEDULE_SPEC_DIR/launchd.xml" \
-    --status-out "$SCHEDULE_SPEC_DIR/status.txt" \
-    --timezone-out "$SCHEDULE_SPEC_DIR/timezone.txt" >/dev/null
-  CRON_EXPR="$(read_first_line "$SCHEDULE_SPEC_DIR/cron.txt")"
-  EXPECTED_LAUNCHD_XML="$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")"
-  SCHEDULE_STATUS="$(read_first_line "$SCHEDULE_SPEC_DIR/status.txt")"
+  _schedule_json="$("$CLI" schedule-spec --freq "$FREQUENCY_KEY" --anchor-at "$ANCHOR_AT")"
+  PARSED_SCHEDULE_TSV="$(SCHEDULE_SPEC_JSON="$_schedule_json" EXPECTED_FREQUENCY_KEY="$FREQUENCY_KEY" EXPECTED_ANCHOR_AT="$ANCHOR_AT" node - <<'NODE'
+  const payload = JSON.parse(String(process.env.SCHEDULE_SPEC_JSON || ""));
+  function fail(message) {
+    console.error(message);
+    process.exit(75);
+  }
+  if (!payload || typeof payload !== "object") fail("schedule-spec returned invalid JSON.");
+  if (payload.status !== "ok") fail("schedule-spec did not report ok.");
+  if (payload.freq !== process.env.EXPECTED_FREQUENCY_KEY) fail("schedule-spec frequency does not match contract.");
+  if (payload.anchorAt !== process.env.EXPECTED_ANCHOR_AT) fail("schedule-spec anchor does not match contract.");
+  if (typeof payload.cron !== "string" || !payload.cron.trim()) fail("schedule-spec cron expression is missing.");
+  if (typeof payload.launchdXml !== "string" || !payload.launchdXml.trim()) fail("schedule-spec launchd XML is missing.");
+  if (typeof payload.statusSchedule !== "string" || !payload.statusSchedule.trim()) fail("schedule-spec status schedule is missing.");
+  if (payload.statusSchedule !== `anchor:${payload.cron}`) fail("schedule-spec status schedule does not match cron expression.");
+  for (const [key, value] of [
+    ["CRON_EXPR", payload.cron],
+    ["EXPECTED_LAUNCHD_XML_B64", Buffer.from(String(payload.launchdXml), "utf8").toString("base64")],
+    ["SCHEDULE_STATUS", payload.statusSchedule],
+    ["SCHEDULE_TIME_ZONE", payload.timeZone == null ? "" : String(payload.timeZone)],
+  ]) {
+    process.stdout.write(`${key}\t${String(value)}\n`);
+  }
+NODE
+)"
+  PARSED_SCHEDULE_TSV="$PARSED_SCHEDULE_TSV" node - <<'NODE'
+const allowed = new Set(["CRON_EXPR", "EXPECTED_LAUNCHD_XML_B64", "SCHEDULE_STATUS", "SCHEDULE_TIME_ZONE"]);
+for (const line of String(process.env.PARSED_SCHEDULE_TSV || "").split(/\n/)) {
+  if (!line) continue;
+  const [key] = line.split("\t");
+  if (!allowed.has(key)) {
+    console.error(`Unexpected parsed schedule key: ${key}`);
+    process.exit(75);
+  }
+}
+NODE
+  while IFS="$TAB" read -r _key _value; do
+    case "$_key" in
+      CRON_EXPR) CRON_EXPR="$_value" ;;
+      EXPECTED_LAUNCHD_XML_B64) EXPECTED_LAUNCHD_XML="$(printf '%s' "$_value" | node -e 'const fs=require("node:fs"); process.stdout.write(Buffer.from(fs.readFileSync(0,"utf8").trim(),"base64").toString("utf8"))')";;
+      SCHEDULE_STATUS) SCHEDULE_STATUS="$_value" ;;
+      SCHEDULE_TIME_ZONE) SCHEDULE_TIME_ZONE="$_value" ;;
+    esac
+  done <<EOF
+$PARSED_SCHEDULE_TSV
+EOF
 }
 
 wait_for_launchd_absent() {
@@ -367,7 +401,7 @@ wait_for_launchd_absent() {
 }
 
 install_launchd() {
-  mkdir -p "$LAUNCH_AGENTS_DIR" "$AGENT_DIR/logs" "$SCHEDULE_SPEC_DIR"
+  mkdir -p "$LAUNCH_AGENTS_DIR" "$AGENT_DIR/logs"
   "$CLI" cron-audit --job library-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST_PATH" ] && echo 1 || echo 0)" >/dev/null
   BOOTOUT_CODE=0
   launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || BOOTOUT_CODE="$?"
@@ -394,7 +428,7 @@ install_launchd() {
 <key>BUILDER_BLOG_INTERVAL_MINUTES</key><string>$INTERVAL_MINUTES</string>
 <key>INTERVAL_MINUTES</key><string>$INTERVAL_MINUTES</string>
 </dict>
-$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")
+$EXPECTED_LAUNCHD_XML
 <key>StandardOutPath</key><string>$AGENT_DIR/logs/$LABEL.log</string>
 <key>StandardErrorPath</key><string>$AGENT_DIR/logs/$LABEL.log</string>
 </dict>
@@ -415,7 +449,7 @@ EOF
 }
 
 install_crontab() {
-  mkdir -p "$AGENT_DIR/logs" "$SCHEDULE_SPEC_DIR"
+  mkdir -p "$AGENT_DIR/logs"
   (
     crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCOUNT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCOUNT\".*builder-agent-runner.sh library-cron" || true
     printf '# FollowBrief library cron · %s\n%s BUILDER_BLOG_ACCOUNT="%s" %s library-cron >> %s/logs/%s.log 2>&1\n' "$ACCOUNT" "$CRON_EXPR" "$ACCOUNT" "$RUNNER" "$AGENT_DIR" "$LABEL"
@@ -469,7 +503,8 @@ NODE
 }
 
 verify_server_state() {
-  _state_file="$1"
+  _state_json="$1"
+  CRON_STATE_JSON="$_state_json" \
   EXPECTED_HOST="$HOSTNAME_SANITIZED" \
   EXPECTED_RUNTIME="$RUNTIME" \
   EXPECTED_FREQUENCY_KEY="$FREQUENCY_KEY" \
@@ -478,10 +513,8 @@ verify_server_state() {
   EXPECTED_OWNER_ID="$OWNER_ID" \
   EXPECTED_STARTED_AT="$ANCHOR_AT" \
   EXPECTED_SCHEDULE="$SCHEDULE_STATUS" \
-  node - "$_state_file" <<'NODE'
-const fs = require("node:fs");
-const path = process.argv[2];
-const state = JSON.parse(fs.readFileSync(path, "utf8"));
+  node - <<'NODE'
+const state = JSON.parse(String(process.env.CRON_STATE_JSON || ""));
 function fail(message) {
   console.error(message);
   process.exit(75);
@@ -559,9 +592,8 @@ if [ -n "$COMPLETED_AT" ]; then
   generate_schedule_spec
   verify_completed_evidence
   verify_local_scheduler
-  STATE_FILE="$SCHEDULE_SPEC_DIR/cron-state-readback.json"
-  "$CLI" cron-state --job library-cron > "$STATE_FILE"
-  verify_server_state "$STATE_FILE"
+  CRON_STATE_JSON="$("$CLI" cron-state --job library-cron)"
+  verify_server_state "$CRON_STATE_JSON"
   MARKER_ACCOUNT="$ACCOUNT" MARKER_INSTANCE_ID="$INSTANCE_ID" MARKER_RUNTIME="$RUNTIME" MARKER_FREQUENCY_KEY="$FREQUENCY_KEY" MARKER_OWNER_ID="$OWNER_ID" MARKER_STARTED_AT="$ANCHOR_AT" MARKER_LOCAL_SCHEDULER="$MARKER_SCHEDULER" emit_marker
   exit 0
 fi
@@ -590,9 +622,8 @@ verify_local_scheduler
   --owner-id "$OWNER_ID" \
   --force "$FORCE" >/dev/null
 
-STATE_FILE="$SCHEDULE_SPEC_DIR/cron-state-readback.json"
-"$CLI" cron-state --job library-cron > "$STATE_FILE"
-verify_server_state "$STATE_FILE"
+CRON_STATE_JSON="$("$CLI" cron-state --job library-cron)"
+verify_server_state "$CRON_STATE_JSON"
 
 COMPLETED_AT="$(iso_minute_now)"
 update_contract_json completed "$OWNER_ID" "$ANCHOR_AT" "$COMPLETED_AT" "$MARKER_SCHEDULER" "$LABEL" "$SCHEDULE_STATUS" "active" "$HOSTNAME_SANITIZED"
