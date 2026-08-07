@@ -49,6 +49,12 @@ type Harness = {
   label: string;
 };
 
+type DriftScenario = {
+  name: string;
+  setup: (harness: Harness) => Promise<void>;
+  verify?: (harness: Harness) => Promise<void>;
+};
+
 const repoRoot = process.cwd();
 const helperPath = join(repoRoot, "scripts", "builder-library-cron-install.sh");
 
@@ -717,7 +723,7 @@ test("account must be a reasonable email without control characters", async () =
 });
 
 test("completed contracts fail closed when local or server evidence drifts", async () => {
-  const cases = [
+  const cases: DriftScenario[] = [
     {
       name: "local LaunchAgent missing while server stays active",
       setup: async (harness: Harness) => {
@@ -799,7 +805,7 @@ test("completed contracts fail closed when local or server evidence drifts", asy
         await setServerState(harness, { status: "active" });
       },
     },
-  ] as const;
+  ];
 
   for (const scenario of cases) {
     const harness = await makeHarness({
@@ -1153,7 +1159,6 @@ test("linux crontab install and completed retry validate the exact live row", as
 test("linux install preserves unrelated FollowBrief rows for similar-looking accounts", async () => {
   const currentAccount = "a.b@example.com";
   const currentSlug = accountSlugFor(currentAccount);
-  const currentLabel = `com.followbrief.library.${currentSlug}`;
   const harness = await makeHarness(
     {
       account: currentAccount,
