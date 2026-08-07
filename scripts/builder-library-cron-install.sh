@@ -450,8 +450,31 @@ EOF
 
 install_crontab() {
   mkdir -p "$AGENT_DIR/logs"
+  CURRENT_CRONTAB="$(crontab -l 2>/dev/null || true)"
+  FILTERED_CRONTAB="$(CURRENT_CRONTAB="$CURRENT_CRONTAB" ACCOUNT="$ACCOUNT" RUNNER="$RUNNER" node - <<'NODE'
+const current = String(process.env.CURRENT_CRONTAB || "");
+const account = String(process.env.ACCOUNT || "");
+const runner = String(process.env.RUNNER || "");
+const comment = `# FollowBrief library cron · ${account}`;
+const accountToken = `BUILDER_BLOG_ACCOUNT="${account}"`;
+const output = [];
+for (const line of current.split(/\n/)) {
+  if (!line) continue;
+  if (line === comment) continue;
+  const removeRow =
+    line.includes(accountToken) &&
+    line.includes(runner) &&
+    /\bbuilder-agent-runner\.sh library-cron\b/.test(line);
+  if (removeRow) continue;
+  output.push(line);
+}
+process.stdout.write(output.join("\n"));
+NODE
+)"
   (
-    crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCOUNT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCOUNT\".*builder-agent-runner.sh library-cron" || true
+    if [ -n "$FILTERED_CRONTAB" ]; then
+      printf '%s\n' "$FILTERED_CRONTAB"
+    fi
     printf '# FollowBrief library cron · %s\n%s BUILDER_BLOG_ACCOUNT="%s" %s library-cron >> %s/logs/%s.log 2>&1\n' "$ACCOUNT" "$CRON_EXPR" "$ACCOUNT" "$RUNNER" "$AGENT_DIR" "$LABEL"
   ) | crontab -
   "$CLI" cron-audit --job library-cron --event crontab_install_succeeded --label "$LABEL" --reason setup_install >/dev/null
@@ -468,12 +491,14 @@ verify_local_scheduler() {
       echo "FollowBrief LaunchAgent is not loaded." >&2
       exit 75
     }
-    EXPECTED_LAUNCHD_XML="$EXPECTED_LAUNCHD_XML" EXPECTED_LABEL="$LABEL" EXPECTED_RUNNER="$RUNNER" PLIST_PATH="$PLIST_PATH" node - <<'NODE'
+    EXPECTED_LAUNCHD_XML="$EXPECTED_LAUNCHD_XML" EXPECTED_LABEL="$LABEL" EXPECTED_RUNNER="$RUNNER" EXPECTED_ACCOUNT="$ACCOUNT" EXPECTED_INTERVAL="$INTERVAL_MINUTES" PLIST_PATH="$PLIST_PATH" node - <<'NODE'
 const fs = require("node:fs");
 const plistPath = process.env.PLIST_PATH;
 const expectedLabel = process.env.EXPECTED_LABEL;
 const expectedRunner = process.env.EXPECTED_RUNNER;
 const expectedLaunchdXml = String(process.env.EXPECTED_LAUNCHD_XML || "");
+const expectedAccount = process.env.EXPECTED_ACCOUNT;
+const expectedInterval = process.env.EXPECTED_INTERVAL;
 const plist = fs.readFileSync(plistPath, "utf8");
 function fail(message) {
   console.error(message);
@@ -487,6 +512,14 @@ if (!/<key>ProgramArguments<\/key>\s*<array>\s*<string>[^<]*builder-agent-runner
 }
 if (!normalized.includes(`<string>${expectedRunner}</string>`)) fail("LaunchAgent runner path does not match contract.");
 if (!normalized.includes(normalizedExpectedXml)) fail("LaunchAgent StartCalendarInterval does not match the regenerated schedule.");
+const envMatch = plist.match(/<key>EnvironmentVariables<\/key>\s*<dict>([\s\S]*?)<\/dict>/);
+if (!envMatch) fail("LaunchAgent EnvironmentVariables block is missing.");
+const envEntries = [...envMatch[1].matchAll(/<key>([^<]+)<\/key>\s*<string>([^<]*)<\/string>/g)];
+const envMap = Object.fromEntries(envEntries.map((match) => [match[1], match[2]]));
+if (envMap.BUILDER_BLOG_ACCOUNT !== expectedAccount) fail("LaunchAgent account binding does not match contract.");
+if (envMap.BUILDER_BLOG_SCHEDULER_TICK !== "1") fail("LaunchAgent scheduler tick flag does not match contract.");
+if (envMap.BUILDER_BLOG_INTERVAL_MINUTES !== expectedInterval) fail("LaunchAgent interval binding does not match contract.");
+if (envMap.INTERVAL_MINUTES !== expectedInterval) fail("LaunchAgent INTERVAL_MINUTES binding does not match contract.");
 NODE
   else
     CRONTAB_CONTENT="$(crontab -l 2>/dev/null || true)"

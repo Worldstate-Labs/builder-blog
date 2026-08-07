@@ -1060,6 +1060,24 @@ test("completed retry is read-only and fails closed on later local or server dri
     const afterLaunchdDrift = await readJsonLines(harness.mutationLogPath);
     assert.equal(countEvents(afterLaunchdDrift, "launchctl.bootstrap"), countEvents(beforeLaunchdDrift, "launchctl.bootstrap"));
     assert.equal(countEvents(afterLaunchdDrift, "cron-status"), countEvents(beforeLaunchdDrift, "cron-status"));
+
+    const restoredPlist = (await readFile(driftedPlistPath, "utf8"))
+      .replace("<key>Hour</key><integer>0</integer>", "<key>Hour</key><integer>15</integer>")
+      .replace("<key>Minute</key><integer>0</integer>", "<key>Minute</key><integer>24</integer>");
+    await writeFile(driftedPlistPath, restoredPlist, "utf8");
+
+    const beforeEnvDrift = await readJsonLines(harness.mutationLogPath);
+    const envDriftedPlist = (await readFile(driftedPlistPath, "utf8"))
+      .replace("<key>BUILDER_BLOG_ACCOUNT</key><string>test@example.com</string>", "<key>BUILDER_BLOG_ACCOUNT</key><string>other@example.com</string>")
+      .replace("<key>BUILDER_BLOG_INTERVAL_MINUTES</key><string>1440</string>", "<key>BUILDER_BLOG_INTERVAL_MINUTES</key><string>999</string>")
+      .replace("<key>INTERVAL_MINUTES</key><string>1440</string>", "<key>INTERVAL_MINUTES</key><string>999</string>");
+    await writeFile(driftedPlistPath, envDriftedPlist, "utf8");
+    const envDrift = runInstaller(harness);
+    assert.notEqual(envDrift.status, 0);
+    assert.doesNotMatch(envDrift.stdout, /followbriefScheduleInstall/);
+    const afterEnvDrift = await readJsonLines(harness.mutationLogPath);
+    assert.equal(countEvents(afterEnvDrift, "launchctl.bootstrap"), countEvents(beforeEnvDrift, "launchctl.bootstrap"));
+    assert.equal(countEvents(afterEnvDrift, "cron-status"), countEvents(beforeEnvDrift, "cron-status"));
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }
@@ -1127,6 +1145,66 @@ test("linux crontab install and completed retry validate the exact live row", as
     );
     assert.equal(countEvents(afterDriftMutations, "cron-status"), countEvents(beforeDriftMutations, "cron-status"));
     assert.match(await readFile(harness.crontabPath, "utf8"), /^0 0 \* \* \*/m);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
+test("linux install preserves unrelated FollowBrief rows for similar-looking accounts", async () => {
+  const currentAccount = "a.b@example.com";
+  const currentSlug = accountSlugFor(currentAccount);
+  const currentLabel = `com.followbrief.library.${currentSlug}`;
+  const harness = await makeHarness(
+    {
+      account: currentAccount,
+      accountSlug: currentSlug,
+      verdictStatus: "needs_confirmation",
+    },
+    { platform: "Linux" },
+  );
+  try {
+    await setServerState(harness, { status: "stopped", applyCronStatus: true });
+    const unrelatedRow = [
+      "# FollowBrief library cron · axb@example.com",
+      `24 15 * * * BUILDER_BLOG_ACCOUNT="axb@example.com" ${join(harness.agentDir, "builder-agent-runner.sh")} library-cron >> ${join(harness.agentDir, "logs", "com.followbrief.library.axb_example_com_d28c65fd.log")} 2>&1`,
+    ].join("\n");
+    await writeFile(
+      harness.crontabPath,
+      `${unrelatedRow}\n# Some other cron\n0 1 * * * echo keep-me\n`,
+      "utf8",
+    );
+
+    const result = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+
+    assert.equal(result.status, 0, result.stderr);
+    const crontabText = await readFile(harness.crontabPath, "utf8");
+    assert.match(crontabText, /^# FollowBrief library cron · axb@example\.com$/m);
+    assert.match(
+      crontabText,
+      /^24 15 \* \* \* BUILDER_BLOG_ACCOUNT="axb@example\.com" .*builder-agent-runner\.sh library-cron/m,
+    );
+    assert.equal(
+      crontabText.split("\n").filter((line) => line.includes('BUILDER_BLOG_ACCOUNT="axb@example.com"') && line.includes("builder-agent-runner.sh library-cron")).length,
+      1,
+    );
+    assert.equal(
+      crontabText.split("\n").filter((line) => line.includes(`BUILDER_BLOG_ACCOUNT="${currentAccount}"`) && line.includes("builder-agent-runner.sh library-cron")).length,
+      1,
+    );
+    assert.match(crontabText, /^# Some other cron$/m);
+    assert.match(crontabText, /^0 1 \* \* \* echo keep-me$/m);
+    assert.deepEqual(parseMarker(result.stdout), {
+      followbriefScheduleInstall: "ok",
+      job: "library-cron",
+      account: currentAccount,
+      instanceId: INSTANCE_ID,
+      runtime: "openclaw",
+      frequencyKey: "daily",
+      ownerId: `local:${HOSTNAME}:${currentSlug}:library-cron:${OWNER_UUID}`,
+      startedAt: ANCHOR_AT,
+      localScheduler: "crontab",
+      serverStatus: "active",
+    });
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }
