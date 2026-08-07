@@ -339,8 +339,19 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.match(child, /persistent OpenClaw session/);
   assert.match(child, /"status": "needs_confirmation"[\s\S]*ask whether to install/);
   assert.match(child, /Only[\s\S]*continue to step 7 if the user explicitly agrees/);
+  assert.match(
+    child,
+    /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
+  );
+  assert.match(
+    child,
+    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
+  );
+  assert.match(child, /followbriefScheduleInstall/);
+  assert.match(child, /FollowBrief schedule is not confirmed active\./);
   assert.doesNotMatch(child, /unattended and must not wait for confirmation/);
   assert.doesNotMatch(child, /--session isolated/);
+  assert.doesNotMatch(child, /openclaw cron (add|list|inspect|run)/);
   assert.match(child, /6\. Run one real initial fetch job now\./);
   assert.doesNotMatch(child, /1\. Install or refresh the skill:/);
   assert.doesNotMatch(child, /1a\. Exchange the one-time setup code/);

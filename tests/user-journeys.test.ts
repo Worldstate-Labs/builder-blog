@@ -1140,33 +1140,28 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileSurface, /replaceAll\("\{\{AGENT_RUNTIME\}\}", ""\)/);
   assert.match(skillFileSurface, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
   assert.match(skillFileSurface, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "10"\)/);
-  // cron-setup prompts generate an anchor-aligned schedule after the
-  // validation run passes, then install via launchd on macOS / crontab on Linux.
-  assert.match(libraryCronSetupPrompt, /schedule-spec/);
-  assert.match(libraryCronSetupPrompt, /--anchor-file "\$ANCHOR_FILE"/);
-  assert.match(libraryCronSetupPrompt, /--cron-out "\$SCHEDULE_SPEC_DIR\/cron\.txt"/);
-  assert.match(libraryCronSetupPrompt, /--launchd-out "\$SCHEDULE_SPEC_DIR\/launchd\.xml"/);
-  assert.match(libraryCronSetupPrompt, /--status-out "\$SCHEDULE_SPEC_DIR\/status\.txt"/);
-  assert.match(libraryCronSetupPrompt, /--timezone-out "\$SCHEDULE_SPEC_DIR\/timezone\.txt"/);
-  assert.match(libraryCronSetupPrompt, /CRON_SCHEDULE_EXPR="\$\(cat "\$SCHEDULE_SPEC_DIR\/cron\.txt"\)"/);
-  assert.match(libraryCronSetupPrompt, /LAUNCHD_SCHEDULE_XML="\$\(cat "\$SCHEDULE_SPEC_DIR\/launchd\.xml"\)"/);
-  assert.match(libraryCronSetupPrompt, /date -u \+"\%Y-\%m-\%dT\%H:\%M:00Z" > "\$ANCHOR_FILE"/);
-  assert.doesNotMatch(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  // Library cron-setup now emits a strict resume contract after verdict
+  // verification and delegates every local scheduler mutation to the helper.
+  assert.match(libraryCronSetupPrompt, /builder-library-cron-install\.sh/);
+  assert.match(libraryCronSetupPrompt, /resume-contract-\$EXPECTED_INSTANCE_ID\.json/);
+  assert.match(libraryCronSetupPrompt, /FollowBrief schedule is not confirmed active\./);
+  assert.doesNotMatch(libraryCronSetupPrompt, /schedule-spec/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /--anchor-file "\$ANCHOR_FILE"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /--cron-out "\$SCHEDULE_SPEC_DIR\/cron\.txt"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /--launchd-out "\$SCHEDULE_SPEC_DIR\/launchd\.xml"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /--status-out "\$SCHEDULE_SPEC_DIR\/status\.txt"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /--timezone-out "\$SCHEDULE_SPEC_DIR\/timezone\.txt"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /CRON_SCHEDULE_EXPR="\$\(cat "\$SCHEDULE_SPEC_DIR\/cron\.txt"\)"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /LAUNCHD_SCHEDULE_XML="\$\(cat "\$SCHEDULE_SPEC_DIR\/launchd\.xml"\)"/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /launchctl bootstrap/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /\|\s*crontab -/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /StartCalendarInterval/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key>/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
-  assert.doesNotMatch(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
-  assert.doesNotMatch(libraryCronSetupPrompt, /<key>StartInterval<\/key>/);
-  assert.match(libraryCronSetupPrompt, /StartCalendarInterval/);
-  assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
-  assert.match(libraryCronSetupPrompt, /<key>INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
-  assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key><string>1<\/string>/);
-  assert.match(libraryCronSetupPrompt, /schedule-anchor-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /launchctl bootstrap/);
-  assert.match(libraryCronSetupPrompt, /LaunchAgents/);
   assert.match(libraryCronSetupPrompt, /verify this account's local credential/);
   assert.match(libraryCronSetupPrompt, /Account file not found for \$ACCT/);
   assert.match(libraryCronSetupPrompt, /Stop before installing the schedule/);
-  assert.match(libraryCronSetupPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /\{\{PARALLEL_WORKERS\}\}/);
   assert.doesNotMatch(libraryCronSetupPrompt, /CRON_TZ=/);
   assertOrderedText(libraryCronSetupPrompt, [
@@ -1456,6 +1451,7 @@ test("web app serves the agent skill and setup command", () => {
       continue;
     }
     if (file === "config/local-agent-timeouts.json") continue;
+    if (file === "scripts/builder-library-cron-install.sh") continue;
     assert.ok(
       completeRuntimeTraceDefinition.includes(`"./${file}"`),
       `next.config.ts outputFileTracingIncludes for the files route is missing ${file} — that asset will 500 (ENOENT) on Vercel`,
@@ -1572,9 +1568,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronStopPrompt, /regenerate-digest-cron-\$ACCOUNT_SLUG/);
   assert.match(digestCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron\/current\.json/);
   assert.doesNotMatch(digestCronStopPrompt, /Do not\s+exchange a token or make any network call/);
-  // Setup now pins the chosen runtime in an account-scoped pin file so the
-  // runner picks the matching unattended-mode invocation at cron-fire time
-  // without sharing runtime choice across FollowBrief accounts.
+  // Setup still carries the chosen runtime/frequency into a deterministic
+  // helper contract, without letting the prompt inline any scheduler mutation.
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
   // Setup prompts must run standalone — no other skills/plugins/subagents, so
@@ -1582,12 +1577,10 @@ test("web app serves the agent skill and setup command", () => {
   // install steps.
   assert.match(libraryCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
   assert.match(digestCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
-  assert.match(libraryCronSetupPrompt, /pin the\s+scheduled runtime\/fetch settings/);
+  assert.match(libraryCronSetupPrompt, /resume contract/);
   assert.match(libraryCronSetupPrompt, /cron-state --job library-cron/);
   assert.match(libraryCronSetupPrompt, /"status": "active"/);
   assert.match(libraryCronSetupPrompt, /old server owner must remain authorized/);
-  assert.match(libraryCronSetupPrompt, /cron-owner-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /--owner-id "\$OWNER_ID"/);
   assert.match(digestCronSetupPrompt, /cron-state --job digest-cron/);
   assert.match(digestCronSetupPrompt, /cron-owner-digest-cron-\$ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /--owner-id "\$OWNER_ID"/);
@@ -1597,15 +1590,43 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(libraryCronSetupPrompt, /openclaw config set agents\.defaults\.timeoutSeconds "\{\{CRON_TIMEOUT_SECONDS\}\}" --strict-json/);
   assert.doesNotMatch(libraryCronSetupPrompt, /exec-policy preset yolo/);
-  // Pin files are per-account and per-job so multiple FollowBrief accounts and
-  // job types can use different runtimes on one machine.
   assert.match(libraryCronSetupPrompt, /ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /7\. Only after the initial run has passed the schedule gate above, pin the/);
-  assert.match(libraryCronSetupPrompt, /crontab/);
+  assert.match(libraryCronSetupPrompt, /7\. After `verify-library-setup-verdict` succeeds/);
+  assert.match(libraryCronSetupPrompt, /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/);
+  assert.match(libraryCronSetupPrompt, /JSON\.parse\(process\.argv\[2\]\)/);
+  assert.match(libraryCronSetupPrompt, /version: 1/);
+  assert.match(libraryCronSetupPrompt, /job: "library-cron"/);
+  assert.match(libraryCronSetupPrompt, /account: ACCT/);
+  assert.match(libraryCronSetupPrompt, /accountSlug: ACCOUNT_SLUG/);
+  assert.match(libraryCronSetupPrompt, /instanceId: EXPECTED_INSTANCE_ID/);
+  assert.match(libraryCronSetupPrompt, /verdictStatus: SETUP_VERDICT_STATUS/);
+  assert.match(libraryCronSetupPrompt, /runtime: "{{AGENT_RUNTIME}}"/);
+  assert.match(libraryCronSetupPrompt, /frequencyKey: "{{CRON_FREQUENCY_KEY}}"/);
+  assert.match(libraryCronSetupPrompt, /frequencyLabel: "{{CRON_FREQUENCY_LABEL}}"/);
+  assert.match(libraryCronSetupPrompt, /intervalMinutes: Number\("{{CRON_INTERVAL_MINUTES}}"\)/);
+  assert.match(libraryCronSetupPrompt, /force: "{{FETCH_FORCE}}" === "1"/);
+  assert.match(libraryCronSetupPrompt, /fetchDays: Number\("{{FETCH_DAYS}}"\)/);
+  assert.match(libraryCronSetupPrompt, /parallelWorkers: Number\("{{PARALLEL_WORKERS}}"\)/);
+  assert.match(libraryCronSetupPrompt, /createdAt: new Date\(\)\.toISOString\(\)/);
+  assert.match(libraryCronSetupPrompt, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
+  assert.match(libraryCronSetupPrompt, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryCronSetupPrompt, /printf 'Resume contract: %s\\n' "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryCronSetupPrompt, /"\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(
+    libraryCronSetupPrompt,
+    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
+  );
+  assert.match(libraryCronSetupPrompt, /final nonempty stdout line/);
+  assert.match(libraryCronSetupPrompt, /followbriefScheduleInstall/);
+  assert.match(libraryCronSetupPrompt, /localScheduler/);
+  assert.match(libraryCronSetupPrompt, /serverStatus/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   assert.doesNotMatch(libraryCronSetupPrompt, /fetchTasks/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /bearerToken|exchangeCode|credentials|credentialJson|environmentSnapshot|prompt:/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /openclaw cron (add|list|inspect|run)/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /cron-status[\s\S]*--job library-cron/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /cron-audit[\s\S]*--job library-cron/);
   // Pre-install detection: list existing same-type crons and require explicit
   // override confirmation before replacing.
   assert.match(libraryCronSetupPrompt, /com\\?\.followbrief\\?\.library\\?\./);
@@ -1676,30 +1697,21 @@ test("web app serves the agent skill and setup command", () => {
     "Report its output",
     "writes fetch-log rows",
     "needs_confirmation",
-    "7. Only after the initial run has passed the schedule gate above",
-    "runtime-library-cron-$ACCOUNT_SLUG",
-    "schedule-anchor-library-cron-$ACCOUNT_SLUG",
-    "launchctl bootstrap",
-    "8. After the schedule is installed",
-    "--owner-id \"$OWNER_ID\"",
+    "7. After `verify-library-setup-verdict` succeeds",
+    "resume-contract-$EXPECTED_INSTANCE_ID.json",
   ]);
-  // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
-  // the runtime, and the runner turns 1 into --force for its deterministic
-  // fetch-personal command. The choice must persist on disk — a copy-time URL
-  // param alone could never reach the recurring fetch.
+  // Override-already-fetched and fetch-days now flow through the strict resume
+  // contract, so the helper owns the actual pin writes and scheduler install.
   assert.match(libraryCronSetupPrompt, /\{\{FETCH_FORCE\}\}/);
-  assert.match(libraryCronSetupPrompt, /fetch-force-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronSetupPrompt, /force: "{{FETCH_FORCE}}" === "1"/);
   assert.match(libraryCronSetupPrompt, /\{\{FETCH_DAYS\}\}/);
-  assert.match(libraryCronSetupPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /\$LABEL\.log/);
+  assert.match(libraryCronSetupPrompt, /fetchDays: Number\("{{FETCH_DAYS}}"\)/);
   assert.match(
     libraryCronSetupPrompt,
     /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*account_slug\(\) \{[\s\S]*createHash[\s\S]*ACCOUNT_SLUG="\$\(account_slug "\$ACCT"\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/,
   );
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
   assert.match(libraryCronSetupPrompt, /SETUP_VERDICT_FILE="\$SETUP_TMP_DIR\/setup-verdict-\$EXPECTED_INSTANCE_ID\.json"/);
-  assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="\$\(cat "\$SCHEDULE_SPEC_DIR\/status\.txt"\)"/);
-  assert.match(libraryCronSetupPrompt, /--started-at "\$ANCHOR_AT"/);
   assert.match(libraryCronSetupPrompt, /step after step 1 and before this check/);
   assert.match(libraryCronSetupPrompt, /This setup\s+prompt raises OpenClaw's response timeout/);
   assert.match(libraryCronSetupPrompt, /runs on this machine through the\s+selected local runtime/);

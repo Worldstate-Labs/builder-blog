@@ -266,26 +266,16 @@ credential-prep step earlier. Report it as an "Action needed" notice and
 continue — do NOT re-ask. That source stays in "Action needed" until its token
 is added to `~/.builder-blog/secrets.json` later.
 
-7. Only after the initial run has passed the schedule gate above, pin the
-scheduled runtime/fetch settings and install the schedule to run
-{{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
-while the unmanaged initial run above is still executing, and a pipeline that
-failed the initial run or was not approved after post-task failures never gets
-scheduled. The concrete launchd/crontab schedule is generated from this install
-time after validation succeeds. The first scheduled fetch window is
-install anchor + {{CRON_INTERVAL_MINUTES}} minutes, and later windows stay on
-that same anchor, so long previous runs cannot drift the cadence. Pick the path
-for this machine's OS — run `uname` if unsure.
-
-Write the per-account, per-job pins immediately before installing the schedule:
-`runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
-unattended mode; `fetch-force-library-cron-$ACCOUNT_SLUG` controls re-fetching
-already-fetched posts; `fetch-days-library-cron-$ACCOUNT_SLUG` pins the lookback
-window; and `parallel-library-cron-$ACCOUNT_SLUG` pins the worker count.
+7. After `verify-library-setup-verdict` succeeds, create a same-account resume
+contract beside the setup verdict and let only the bundled helper touch local
+scheduler state. Do not inspect or run any unrelated OpenClaw cron, skill,
+plugin, subagent, or manual verification job here. Natural-language claims and
+unrelated OpenClaw cron state are insufficient: only this exact contract-bound
+helper may install or confirm the FollowBrief library schedule.
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 account_slug() {
   node - "${1:-default}" <<'NODE'
 const { createHash } = require("node:crypto");
@@ -296,188 +286,156 @@ console.log(`${base}_${hash}`);
 NODE
 }
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
-ANCHOR_FILE="$AGENT_DIR/schedule-anchor-library-cron-$ACCOUNT_SLUG"
-SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
-OWNER_FILE="$AGENT_DIR/cron-owner-library-cron-$ACCOUNT_SLUG"
-# Reuse the recorded owner id only when it was minted on this machine for this
-# account+job; a migrated/cloned home directory must not inherit another
-# machine's identity, or two machines would both pass the server owner guard.
-node - "$ACCOUNT_SLUG" "$OWNER_FILE" <<'NODE'
-const { randomUUID } = require("node:crypto");
+RESUME_CONTRACT_PATH="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct/resume-contract-$EXPECTED_INSTANCE_ID.json"
+SETUP_VERDICT_STATUS="$(
+  node - "$SETUP_VERDICT_JSON" <<'NODE'
+const verdict = JSON.parse(process.argv[2]);
+if (!verdict || typeof verdict !== "object" || Array.isArray(verdict)) {
+  throw new Error("Setup verdict must be a JSON object.");
+}
+const allowedStatuses = new Set(["ok", "needs_confirmation", "fatal"]);
+if (!allowedStatuses.has(verdict.status)) {
+  throw new Error(`Unsupported setup verdict status: ${String(verdict.status)}`);
+}
+process.stdout.write(verdict.status);
+NODE
+)"
+FAILED_POST_DETAILS="$(
+  node - "$SETUP_VERDICT_JSON" <<'NODE'
+const verdict = JSON.parse(process.argv[2]);
+const rows = Array.isArray(verdict.failedPosts) ? verdict.failedPosts : [];
+for (const row of rows) {
+  const title = typeof row?.title === "string" && row.title.trim() ? row.title.trim() : "(untitled)";
+  const source = typeof row?.source === "string" && row.source.trim() ? row.source.trim() : "(unknown source)";
+  const stage = typeof row?.stage === "string" && row.stage.trim() ? row.stage.trim() : "(unknown stage)";
+  const reason = typeof row?.reason === "string" && row.reason.trim() ? row.reason.trim() : "(unknown reason)";
+  console.log(`- ${title} | ${source} | ${stage} | ${reason}`);
+}
+NODE
+)"
+if [ "$SETUP_VERDICT_STATUS" = "fatal" ]; then
+  rm -f -- "$RESUME_CONTRACT_PATH"
+  echo "Fatal setup verdict; removed same-instance resume contract candidate: $RESUME_CONTRACT_PATH" >&2
+  if [ -n "$FAILED_POST_DETAILS" ]; then
+    printf '%s\n' "$FAILED_POST_DETAILS" >&2
+  fi
+  exit 1
+fi
+umask 077
+RESUME_CONTRACT_TMP="$(mktemp "$SETUP_TMP_DIR/resume-contract-$EXPECTED_INSTANCE_ID.json.tmp.XXXXXX")"
+node - "$RESUME_CONTRACT_TMP" "$ACCT" "$ACCOUNT_SLUG" "$EXPECTED_INSTANCE_ID" "$SETUP_VERDICT_STATUS" <<'NODE'
 const fs = require("node:fs");
-const os = require("node:os");
-const accountSlug = process.argv[2] || "default";
-const ownerFile = process.argv[3];
-const host = (os.hostname() || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-let existing = "";
-try { existing = String(fs.readFileSync(ownerFile, "utf8")).split("\n")[0].trim(); } catch {}
-const parts = existing.split(":");
-const reusable = parts.length === 5 && parts[0] === "local" && parts[1] === host &&
-  parts[2] === accountSlug && parts[3] === "library-cron" && Boolean(parts[4]);
-if (!reusable) fs.writeFileSync(ownerFile, `local:${host}:${accountSlug}:library-cron:${randomUUID()}\n`);
+const tmpPath = process.argv[2];
+const ACCT = process.argv[3];
+const ACCOUNT_SLUG = process.argv[4];
+const EXPECTED_INSTANCE_ID = process.argv[5];
+const SETUP_VERDICT_STATUS = process.argv[6];
+const contract = {
+  version: 1,
+  job: "library-cron",
+  account: ACCT,
+  accountSlug: ACCOUNT_SLUG,
+  instanceId: EXPECTED_INSTANCE_ID,
+  verdictStatus: SETUP_VERDICT_STATUS,
+  runtime: "{{AGENT_RUNTIME}}",
+  frequencyKey: "{{CRON_FREQUENCY_KEY}}",
+  frequencyLabel: "{{CRON_FREQUENCY_LABEL}}",
+  intervalMinutes: Number("{{CRON_INTERVAL_MINUTES}}"),
+  force: "{{FETCH_FORCE}}" === "1",
+  fetchDays: Number("{{FETCH_DAYS}}"),
+  parallelWorkers: Number("{{PARALLEL_WORKERS}}"),
+  createdAt: new Date().toISOString(),
+};
+fs.writeFileSync(tmpPath, `${JSON.stringify(contract, null, 2)}\n`, { mode: 0o600 });
 NODE
-chmod 600 "$OWNER_FILE" 2>/dev/null || true
-printf '{{AGENT_RUNTIME}}\n' > "$AGENT_DIR/runtime-library-cron-$ACCOUNT_SLUG"
-printf '{{FETCH_FORCE}}\n' > "$AGENT_DIR/fetch-force-library-cron-$ACCOUNT_SLUG"
-printf '{{FETCH_DAYS}}\n' > "$AGENT_DIR/fetch-days-library-cron-$ACCOUNT_SLUG"
-printf '{{PARALLEL_WORKERS}}\n' > "$AGENT_DIR/parallel-library-cron-$ACCOUNT_SLUG"
-date -u +"%Y-%m-%dT%H:%M:00Z" > "$ANCHOR_FILE"
-ANCHOR_AT="$(cat "$ANCHOR_FILE")"
-mkdir -p "$SCHEDULE_SPEC_DIR"
-node "$AGENT_DIR/builder-digest.mjs" schedule-spec \
-  --freq "{{CRON_FREQUENCY_KEY}}" \
-  --anchor-file "$ANCHOR_FILE" \
-  --cron-out "$SCHEDULE_SPEC_DIR/cron.txt" \
-  --launchd-out "$SCHEDULE_SPEC_DIR/launchd.xml" \
-  --status-out "$SCHEDULE_SPEC_DIR/status.txt" \
-  --timezone-out "$SCHEDULE_SPEC_DIR/timezone.txt"
-```
-
-### macOS (`uname` is Darwin) → launchd LaunchAgent
-
-On macOS you MUST use a launchd LaunchAgent, not cron. A LaunchAgent runs
-inside your login session, so it can reach the login keychain and the pinned
-agent ({{AGENT_RUNTIME_LABEL}}) is authenticated. Plain `cron` runs outside
-your session and cannot reach the keychain, so the agent CLI fails every run
-with "Not logged in". The generated plist uses `StartCalendarInterval`
-entries derived from the install anchor.
-
-```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-account_slug() {
-  node - "${1:-default}" <<'NODE'
-const { createHash } = require("node:crypto");
-const account = String(process.argv[2] || "default");
-const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
-const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
-console.log(`${base}_${hash}`);
-NODE
-}
-ACCOUNT_SLUG="$(account_slug "$ACCT")"
-SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
-LAUNCHD_SCHEDULE_XML="$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")"
-wait_for_launchd_absent() {
-  label="$1"
-  remaining=30
-  while [ "$remaining" -gt 0 ]; do
-    if ! launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 1
-    remaining=$((remaining - 1))
-  done
-  ! launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1
-}
-LABEL="com.followbrief.library.$(account_slug "$ACCT")"
-PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-mkdir -p "$HOME/Library/LaunchAgents"
-cat > "$PLIST" <<PLISTEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-<key>Label</key><string>$LABEL</string>
-<key>ProgramArguments</key>
-<array>
-<string>$HOME/.builder-blog/builder-agent-runner.sh</string>
-<string>library-cron</string>
-</array>
-<key>EnvironmentVariables</key>
-<dict>
-<key>BUILDER_BLOG_ACCOUNT</key><string>$ACCT</string>
-<key>BUILDER_BLOG_SCHEDULER_TICK</key><string>1</string>
-<key>BUILDER_BLOG_INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
-<key>INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
-</dict>
-$LAUNCHD_SCHEDULE_XML
-<key>StandardOutPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
-<key>StandardErrorPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
-</dict>
-</plist>
-PLISTEOF
-node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_start --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason setup_replace
-BOOTOUT_CODE=0
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || BOOTOUT_CODE="$?"
-node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootout_finished --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --reason "exit_$BOOTOUT_CODE"
-if ! wait_for_launchd_absent "$LABEL"; then
-  echo "timed out waiting for launchd to unload: $LABEL" >&2
-  exit 75
+chmod 600 "$RESUME_CONTRACT_TMP"
+mv -f "$RESUME_CONTRACT_TMP" "$RESUME_CONTRACT_PATH"
+printf 'Resume contract: %s\n' "$RESUME_CONTRACT_PATH"
+CONFIRM_COMMAND="FOLLOWBRIEF_CONFIRM_PARTIAL=1 \"$AGENT_DIR/builder-library-cron-install.sh\" --contract \"$RESUME_CONTRACT_PATH\""
+if [ "$SETUP_VERDICT_STATUS" = "needs_confirmation" ]; then
+  echo 'Initial fetch completed with safe post-level failures.'
+  if [ -n "$FAILED_POST_DETAILS" ]; then
+    printf '%s\n' "$FAILED_POST_DETAILS"
+  fi
+  printf 'Exact confirmation command: %s\n' "$CONFIRM_COMMAND"
+  exit 0
 fi
-launchctl enable "gui/$(id -u)/$LABEL"
-if launchctl bootstrap "gui/$(id -u)" "$PLIST"; then
-  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootstrap_succeeded --label "$LABEL" --plist-exists 1 --reason setup_install
-else
-  BOOTSTRAP_CODE="$?"
-  node "$AGENT_DIR/builder-digest.mjs" cron-audit --job library-cron --event launchd_bootstrap_failed --label "$LABEL" --plist-exists 1 --reason "exit_$BOOTSTRAP_CODE"
-  exit "$BOOTSTRAP_CODE"
+INSTALL_STDOUT_FILE="$SETUP_TMP_DIR/install-$EXPECTED_INSTANCE_ID.stdout"
+INSTALL_STDERR_FILE="$SETUP_TMP_DIR/install-$EXPECTED_INSTANCE_ID.stderr"
+set +e
+"$AGENT_DIR/builder-library-cron-install.sh" --contract "$RESUME_CONTRACT_PATH" >"$INSTALL_STDOUT_FILE" 2>"$INSTALL_STDERR_FILE"
+INSTALL_EXIT_CODE="$?"
+set -e
+cat "$INSTALL_STDOUT_FILE"
+cat "$INSTALL_STDERR_FILE" >&2
+printf 'builder-library-cron-install.sh exit: %s\n' "$INSTALL_EXIT_CODE" >&2
+if [ "$INSTALL_EXIT_CODE" -ne 0 ]; then
+  echo "FollowBrief schedule is not confirmed active." >&2
+  exit "$INSTALL_EXIT_CODE"
 fi
-launchctl print "gui/$(id -u)/$LABEL" | grep -E "state =|program ="
-```
-
-### Linux / other (no keychain) → crontab
-
-The agent CLI's token is a plain file there, so cron works. This removes any
-previous FollowBrief library job for this account, then installs one idempotent
-job:
-
-```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-account_slug() {
-  node - "${1:-default}" <<'NODE'
-const { createHash } = require("node:crypto");
-const account = String(process.argv[2] || "default");
-const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
-const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
-console.log(`${base}_${hash}`);
-NODE
+if ! node - "$INSTALL_STDOUT_FILE" "$RESUME_CONTRACT_PATH" <<'NODE'
+const fs = require("node:fs");
+const stdoutPath = process.argv[2];
+const contractPath = process.argv[3];
+const stdout = fs.readFileSync(stdoutPath, "utf8");
+const lines = stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+if (lines.length === 0) {
+  throw new Error("Missing final marker line.");
 }
-ACCOUNT_SLUG="$(account_slug "$ACCT")"
-SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
-CRON_SCHEDULE_EXPR="$(cat "$SCHEDULE_SPEC_DIR/cron.txt")"
-LABEL="com.followbrief.library.$(account_slug "$ACCT")"
-(
-  crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron"
-  printf "# FollowBrief library cron · %s\n%s BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/%s.log 2>&1\n" "$ACCT" "$CRON_SCHEDULE_EXPR" "$ACCT" "$HOME" "$HOME" "$LABEL"
-) | crontab -
-BUILDER_BLOG_ACCOUNT="$ACCT" node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-audit --job library-cron --event crontab_install_succeeded --label "$LABEL" --reason setup_install
-crontab -l | grep 'builder-agent-runner.sh library-cron'
-```
-
-8. After the schedule is installed, report the active schedule to FollowBrief so
-the web app can compare expected runs with fetch logs. This is a status update
-only; it does not fetch content. Do not run this step before the initial run and
-schedule install have both finished successfully:
-
-```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-account_slug() {
-  node - "${1:-default}" <<'NODE'
-const { createHash } = require("node:crypto");
-const account = String(process.argv[2] || "default");
-const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
-const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
-console.log(`${base}_${hash}`);
-NODE
+const marker = JSON.parse(lines.at(-1));
+const expectedKeys = [
+  "followbriefScheduleInstall",
+  "job",
+  "account",
+  "instanceId",
+  "runtime",
+  "frequencyKey",
+  "ownerId",
+  "startedAt",
+  "localScheduler",
+  "serverStatus",
+];
+const actualKeys = Object.keys(marker).sort();
+if (JSON.stringify(actualKeys) !== JSON.stringify([...expectedKeys].sort())) {
+  throw new Error(`Unexpected helper marker keys: ${actualKeys.join(",")}`);
 }
-ACCOUNT_SLUG="$(account_slug "$ACCT")"
-ANCHOR_FILE="$AGENT_DIR/schedule-anchor-library-cron-$ACCOUNT_SLUG"
-SCHEDULE_SPEC_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-schedule"
-OWNER_FILE="$AGENT_DIR/cron-owner-library-cron-$ACCOUNT_SLUG"
-OWNER_ID="$(cat "$OWNER_FILE")"
-ANCHOR_AT="$(cat "$ANCHOR_FILE")"
-SCHEDULE_STATUS="$(cat "$SCHEDULE_SPEC_DIR/status.txt")"
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
-  --job library-cron \
-  --status active \
-  --freq "{{CRON_FREQUENCY_KEY}}" \
-  --label "{{CRON_FREQUENCY_LABEL}}" \
-  --schedule "$SCHEDULE_STATUS" \
-  --started-at "$ANCHOR_AT" \
-  --runtime "{{AGENT_RUNTIME}}" \
-  --owner-id "$OWNER_ID" \
-  --force "{{FETCH_FORCE}}"
+const contract = JSON.parse(fs.readFileSync(contractPath, "utf8"));
+if (marker.followbriefScheduleInstall !== "ok") throw new Error("Marker status must be ok.");
+if (marker.job !== "library-cron") throw new Error("Marker job mismatch.");
+if (marker.account !== contract.account) throw new Error("Marker account mismatch.");
+if (marker.instanceId !== contract.instanceId) throw new Error("Marker instance mismatch.");
+if (marker.runtime !== contract.runtime) throw new Error("Marker runtime mismatch.");
+if (marker.frequencyKey !== contract.frequencyKey) throw new Error("Marker frequency mismatch.");
+if (typeof marker.ownerId !== "string" || marker.ownerId !== contract.ownerId) throw new Error("Marker ownerId mismatch.");
+if (typeof marker.startedAt !== "string" || marker.startedAt !== contract.anchorAt) throw new Error("Marker startedAt mismatch.");
+if (marker.localScheduler !== "launchd" && marker.localScheduler !== "crontab") throw new Error("Marker localScheduler mismatch.");
+if (marker.serverStatus !== "active") throw new Error("Marker serverStatus mismatch.");
+NODE
+then
+  echo "FollowBrief schedule is not confirmed active." >&2
+  exit 1
+fi
 ```
+
+If step 7 printed `"status": "needs_confirmation"`, list every failed post task
+for the user with its title, source, failed stage (`read`, `summarize`, or
+`sync`), and reason. Then ask whether to install the scheduled run anyway. Only
+continue to step 8 if the user explicitly agrees; otherwise stop and do not
+install or report an active schedule.
+
+8. When the user explicitly confirms a `needs_confirmation` result later, run
+only the exact helper command that step 7 printed:
+`FOLLOWBRIEF_CONFIRM_PARTIAL=1 "$AGENT_DIR/builder-library-cron-install.sh" --contract "$RESUME_CONTRACT_PATH"`.
+Do not substitute another path, inspect OpenClaw cron state, invoke any other
+skill/plugin/subagent, or run a manual FollowBrief verification job. Success
+requires helper exit code 0 and a final nonempty stdout line that parses as the
+exact JSON marker with no extra properties:
+`followbriefScheduleInstall`, `job`, `account`, `instanceId`, `runtime`,
+`frequencyKey`, `ownerId`, `startedAt`, `localScheduler`, and `serverStatus`.
+The marker must match the live contract values (`job=library-cron`, the same
+account/instance/runtime/frequency, `ownerId` equal to the updated contract,
+`startedAt` equal to the updated contract anchor, `localScheduler` equal to
+`launchd` or `crontab`, and `serverStatus=active`). A marker hidden in prose,
+on an earlier line, malformed, missing, mismatched, or carrying any extra
+property means the FollowBrief schedule is not confirmed active. Report exactly
+that failure message and stop.

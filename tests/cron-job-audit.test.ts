@@ -111,21 +111,35 @@ test("library setup verifies the current initial run before mutating scheduler s
     prompt,
     /verify-library-setup-verdict[\s\S]*--file "\$SETUP_VERDICT_FILE"[\s\S]*--instance-id "\$EXPECTED_INSTANCE_ID"[\s\S]*--runner-exit-code "\$RUNNER_EXIT_CODE"/,
   );
+  assert.match(prompt, /node - "\$SETUP_VERDICT_JSON" <<'NODE'/);
+  assert.match(
+    prompt,
+    /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
+  );
+  assert.match(prompt, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
+  assert.match(prompt, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
+  assert.match(prompt, /builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(prompt, /followbriefScheduleInstall/);
+  assert.match(prompt, /FollowBrief schedule is not confirmed active\./);
   assert.match(prompt, /"status": "fatal"[\s\S]*stop/);
   assert.match(prompt, /"status": "needs_confirmation"[\s\S]*ask whether to install/);
   assert.doesNotMatch(
     prompt,
     /node - "\$TMP_DIR\/library-fetch-result\.json" "\$TMP_DIR\/library-agent-sync\.json"/,
   );
+  assert.doesNotMatch(prompt, /launchctl bootstrap "gui\/\$\(id -u\)"/);
+  assert.doesNotMatch(prompt, /\|\s*crontab -/);
+  assert.doesNotMatch(prompt, /cron-status[\s\S]*--job library-cron/);
+  assert.doesNotMatch(prompt, /cron-audit[\s\S]*--job library-cron[\s\S]*--event launchd_bootstrap_succeeded/);
 
   const verifierIndex = prompt.indexOf("verify-library-setup-verdict");
-  const installStepIndex = prompt.indexOf("7. Only after the initial run has passed");
-  const pinIndex = prompt.indexOf("runtime-library-cron-$ACCOUNT_SLUG", installStepIndex);
-  const launchdIndex = prompt.indexOf("launchctl bootstrap", installStepIndex);
+  const contractStepIndex = prompt.indexOf("7. After `verify-library-setup-verdict` succeeds");
+  const contractPathIndex = prompt.indexOf("resume-contract-$EXPECTED_INSTANCE_ID.json", contractStepIndex);
+  const helperIndex = prompt.indexOf('builder-library-cron-install.sh" --contract "$RESUME_CONTRACT_PATH"', contractStepIndex);
   assert.ok(verifierIndex >= 0, "setup verdict verifier must be present");
-  assert.ok(installStepIndex > verifierIndex, "schedule install must follow verdict verification");
-  assert.ok(pinIndex > installStepIndex, "runtime pins must be written only after the verdict gate");
-  assert.ok(launchdIndex > pinIndex, "launchd install must follow the approved verdict gate");
+  assert.ok(contractStepIndex > verifierIndex, "resume contract handling must follow verdict verification");
+  assert.ok(contractPathIndex > contractStepIndex, "resume contract path must be defined after the verdict gate");
+  assert.ok(helperIndex > contractPathIndex, "helper execution must follow contract creation");
 });
 
 test("cron stop prompts audit scheduler mutations before web status sync", () => {
@@ -134,10 +148,16 @@ test("cron stop prompts audit scheduler mutations before web status sync", () =>
   const libraryStop = source("skills/builder-blog-digest/jobs/library-cron-stop.md");
   const digestStop = source("skills/builder-blog-digest/jobs/digest-cron-stop.md");
 
-  for (const [job, prompt] of [
-    ["library-cron", librarySetup],
-    ["digest-cron", digestSetup],
-  ] as const) {
+  assert.match(librarySetup, /builder-library-cron-install\.sh/);
+  assert.match(
+    librarySetup,
+    /FOLLOWBRIEF_CONFIRM_PARTIAL=1 "\$AGENT_DIR\/builder-library-cron-install\.sh" --contract "\$RESUME_CONTRACT_PATH"/,
+  );
+  assert.doesNotMatch(librarySetup, /cron-audit[\s\S]*--job library-cron[\s\S]*--event launchd_bootout_start/);
+  assert.doesNotMatch(librarySetup, /cron-audit[\s\S]*--job library-cron[\s\S]*--event crontab_install_succeeded/);
+  assert.doesNotMatch(librarySetup, /cron-status[\s\S]*--job library-cron/);
+
+  for (const [job, prompt] of [["digest-cron", digestSetup]] as const) {
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_start`));
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_finished`));
     assert.match(prompt, new RegExp(`cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootstrap_succeeded`));
@@ -218,10 +238,9 @@ test("launchd replacement waits before bootstrap in regular local setup prompts"
   const librarySetup = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
   const digestSetup = source("skills/builder-blog-digest/jobs/digest-cron-setup.md");
 
-  for (const [job, prompt] of [
-    ["library-cron", librarySetup],
-    ["digest-cron", digestSetup],
-  ] as const) {
+  assert.doesNotMatch(librarySetup, /launchctl bootstrap "gui\/\$\(id -u\)"/);
+
+  for (const [job, prompt] of [["digest-cron", digestSetup]] as const) {
     const block = regularLocalLaunchdSetupBlock(prompt, job);
 
     assert.match(block, /wait_for_launchd_absent\(\) \{/);
