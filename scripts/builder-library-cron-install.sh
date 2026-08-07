@@ -120,6 +120,39 @@ function currentHost() {
     .replace(/[^a-zA-Z0-9._-]/g, "_")
     .slice(0, 80) || "unknown";
 }
+function requireTrustedDescendantDir(rootPath, parts) {
+  let currentText = rootPath;
+  let currentReal;
+  try {
+    currentReal = fs.realpathSync(rootPath);
+  } catch {
+    fail("Contract trust root is missing or unreadable.");
+  }
+  for (const part of parts) {
+    currentText = path.join(currentText, part);
+    let st;
+    try {
+      st = fs.lstatSync(currentText);
+    } catch {
+      fail(`Contract directory component is missing: ${part}`);
+    }
+    if (!st.isDirectory()) {
+      fail(`Contract directory component must be a real directory, not a symlink or special path: ${part}`);
+    }
+    let currentResolved;
+    try {
+      currentResolved = fs.realpathSync(currentText);
+    } catch {
+      fail(`Contract directory component could not be resolved: ${part}`);
+    }
+    const expectedResolved = path.join(currentReal, part);
+    if (currentResolved !== expectedResolved) {
+      fail(`Contract directory component must not be symlinked or redirected: ${part}`);
+    }
+    currentReal = expectedResolved;
+  }
+  return currentReal;
+}
 
 let stats;
 try {
@@ -149,7 +182,12 @@ if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(contract.account)) 
 if (typeof contract.accountSlug !== "string" || contract.accountSlug !== slugForAccount(contract.account)) fail("Contract account slug is invalid.");
 if (typeof contract.instanceId !== "string" || !uuidRe.test(contract.instanceId)) fail("Contract instanceId is invalid.");
 if (path.basename(contractPath) !== `resume-contract-${contract.instanceId}.json`) fail("Contract filename must match instanceId.");
-const expectedDir = path.join(agentDir, "tmp", "accounts", contract.accountSlug, "library-cron-direct");
+const trustedContractDirReal = requireTrustedDescendantDir(agentDir, [
+  "tmp",
+  "accounts",
+  contract.accountSlug,
+  "library-cron-direct",
+]);
 let realContractPath;
 let expectedRealContractPath;
 try {
@@ -159,12 +197,10 @@ try {
 }
 try {
   expectedRealContractPath = path.join(
-    fs.realpathSync(expectedDir),
+    trustedContractDirReal,
     `resume-contract-${contract.instanceId}.json`,
   );
-} catch {
-  fail("Contract path must resolve under the account-scoped library-cron-direct directory.");
-}
+} catch {}
 if (realContractPath !== expectedRealContractPath) fail("Contract path must resolve exactly to the expected in-directory contract file.");
 if (!["ok", "needs_confirmation"].includes(contract.verdictStatus)) fail("Unsupported verdict status.");
 if (!runtimes.has(contract.runtime)) fail("Unsupported runtime.");
