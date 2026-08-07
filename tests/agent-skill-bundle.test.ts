@@ -76,6 +76,7 @@ test("server builds one deterministic bundle covering the complete installed run
     "new-product-launches.mjs",
     "cloud-shard-budget.mjs",
     "builder-agent-runner.sh",
+    "builder-library-cron-install.sh",
     "install-agent-skill-bundle.cjs",
     "sources.json",
     "local-agent-timeouts.json",
@@ -97,6 +98,20 @@ test("server builds one deterministic bundle covering the complete installed run
     assert.ok(bytes.length > 0, `${file.name} must not be empty`);
     assert.equal(sha256(bytes), file.sha256, `${file.name} hash must match`);
   }
+
+  const libraryCronInstaller = (first.files as BundleEntry[]).find(
+    (file) => file.target === "builder-library-cron-install.sh",
+  );
+  assert.ok(libraryCronInstaller, "bundle must include builder-library-cron-install.sh");
+  assert.equal(
+    libraryCronInstaller?.mode,
+    0o755,
+    "builder-library-cron-install.sh must stay executable",
+  );
+  assert.ok(
+    Buffer.from(libraryCronInstaller?.contentBase64 ?? "", "base64").length > 0,
+    "builder-library-cron-install.sh must not be empty",
+  );
 
   for (const file of first.files as BundleEntry[]) {
     if (!/\.[cm]?js$/.test(file.target)) continue;
@@ -214,6 +229,10 @@ test("installer validates every file before changing an existing installation", 
     REQUIRED_TARGETS: readonly string[];
     installBundlePayload: (payload: unknown, agentDir: string) => void;
   };
+  assert.ok(
+    REQUIRED_TARGETS.includes("builder-library-cron-install.sh"),
+    "transactional installer must require builder-library-cron-install.sh",
+  );
   const agentDir = mkdtempSync(join(tmpdir(), "followbrief-bundle-corrupt-"));
   const existingPath = join(agentDir, "builder-digest.mjs");
   writeFileSync(existingPath, "old cli");

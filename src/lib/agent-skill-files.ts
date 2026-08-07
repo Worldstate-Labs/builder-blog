@@ -70,6 +70,12 @@ export const agentSkillFiles = {
     contentType: "text/x-shellscript; charset=utf-8",
     mode: 0o755,
   },
+  "builder-library-cron-install.sh": {
+    sourcePath: "scripts/builder-library-cron-install.sh",
+    target: "builder-library-cron-install.sh",
+    contentType: "text/x-shellscript; charset=utf-8",
+    mode: 0o755,
+  },
   "builder-digest.mjs": {
     sourcePath: "scripts/builder-digest.mjs",
     target: "builder-digest.mjs",
