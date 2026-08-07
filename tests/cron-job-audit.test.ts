@@ -126,10 +126,10 @@ test("library setup verifies the current initial run before mutating scheduler s
   assert.match(stepSixBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
   assert.match(stepSixBlock, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
   assert.match(stepSixBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
-  assert.match(stepSixBlock, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(stepSixBlock, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
   assert.match(stepSixBlock, /followbriefScheduleInstall/);
   assert.match(stepSixBlock, /FollowBrief schedule is not confirmed active\./);
-  assert.match(stepSixBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  assert.match(stepSixBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="%s" "%s" --contract "%s"\\n'/);
   assert.match(prompt, /If the verified verdict was `"fatal"`[\s\S]*stop/);
   assert.match(prompt, /If the verified verdict was `"needs_confirmation"`[\s\S]*Ask whether to install the scheduled run\s+anyway\./);
   assert.doesNotMatch(
@@ -146,7 +146,7 @@ test("library setup verifies the current initial run before mutating scheduler s
 
   const verifierIndex = prompt.indexOf("verify-library-setup-verdict");
   const contractPathIndex = stepSixBlock.indexOf("resume-contract-$EXPECTED_INSTANCE_ID.json");
-  const helperIndex = stepSixBlock.indexOf('"$HELPER_PATH" --contract "$RESUME_CONTRACT_PATH"');
+  const helperIndex = stepSixBlock.indexOf('BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" "$HELPER_PATH" --contract "$RESUME_CONTRACT_PATH"');
   const stepSevenIndex = prompt.indexOf("7. Interpret the output from step 6");
   assert.ok(verifierIndex >= 0, "setup verdict verifier must be present");
   assert.ok(contractPathIndex >= 0, "resume contract path must be defined in the step 6 verdict block");

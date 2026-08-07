@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import type { SkillJobName } from "../src/lib/skill-job-files";
 import {
@@ -370,8 +373,8 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.match(setupBlock, /FAILED_POST_DETAILS="\$\(/);
   assert.match(setupBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
   assert.match(setupBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
-  assert.match(setupBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
-  assert.match(setupBlock, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(setupBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="%s" "%s" --contract "%s"\\n'/);
+  assert.match(setupBlock, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
   assert.match(setupBlock, /followbriefScheduleInstall/);
   for (const laterBlock of childBlocks.slice(setupBlockIndex + 1)) {
     assert.doesNotMatch(laterBlock, /SETUP_VERDICT_JSON|EXPECTED_INSTANCE_ID|SETUP_TMP_DIR/);
@@ -410,6 +413,53 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.equal(legacyMain.status, 0, legacyMain.stderr);
   assert.equal(legacyMain.stdout.trim(), "main-event");
   assert.notEqual(unsupported.status, 0);
+});
+
+test("printed confirmation command stays self-contained across a fresh shell", () => {
+  const root = mkdtempSync(join(tmpdir(), "openclaw-confirm-command-"));
+  const agentDir = join(root, "agent root");
+  const helperPath = join(agentDir, "builder-library-cron-install.sh");
+  const contractPath = join(
+    agentDir,
+    "tmp",
+    "accounts",
+    "openclaw_example_com_deadbeef",
+    "library-cron-direct",
+    "resume-contract-11111111-1111-4111-8111-111111111111.json",
+  );
+  const resultPath = join(root, "helper-result.json");
+
+  mkdirSync(dirname(contractPath), { recursive: true });
+  writeFileSync(contractPath, '{"version":1}\n', "utf8");
+  writeFileSync(
+    helperPath,
+    `#!/bin/sh
+set -eu
+[ "\${FOLLOWBRIEF_CONFIRM_PARTIAL:-}" = "1" ]
+[ "\${BUILDER_BLOG_AGENT_DIR:-}" = "${agentDir}" ]
+[ "$0" = "${helperPath}" ]
+[ "$1" = "--contract" ]
+[ "$2" = "${contractPath}" ]
+printf '{"agentDir":"%s","helper":"%s","flag":"%s","arg1":"%s","arg2":"%s"}\\n' "$BUILDER_BLOG_AGENT_DIR" "$0" "$FOLLOWBRIEF_CONFIRM_PARTIAL" "$1" "$2" > "${resultPath}"
+`,
+    "utf8",
+  );
+  chmodSync(helperPath, 0o755);
+
+  const command = `FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="${agentDir}" "${helperPath}" --contract "${contractPath}"`;
+  const env = { ...process.env };
+  delete env.BUILDER_BLOG_AGENT_DIR;
+
+  const result = spawnSync("sh", ["-c", command], { encoding: "utf8", env });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(readFileSync(resultPath, "utf8")), {
+    agentDir,
+    helper: helperPath,
+    flag: "1",
+    arg1: "--contract",
+    arg2: contractPath,
+  });
 });
 
 test("route GET delegates cloud-library-host rendering and preserves markdown headers", async () => {

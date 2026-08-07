@@ -1621,8 +1621,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryCronSetupPrompt, /printf 'Resume contract: %s\\n' "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryCronSetupPrompt, /HELPER_PATH="\$AGENT_DIR\/builder-library-cron-install\.sh"/);
-  assert.match(libraryCronSetupPrompt, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
-  assert.match(libraryCronSetupPrompt, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryCronSetupPrompt, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="%s" "%s" --contract "%s"\\n'/);
   assert.match(libraryCronSetupPrompt, /final\s+nonempty stdout line/);
   assert.match(libraryCronSetupPrompt, /followbriefScheduleInstall/);
   assert.match(libraryCronSetupPrompt, /localScheduler/);
@@ -1698,9 +1698,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryStepSixBlock, /FAILED_POST_DETAILS="\$\(/);
   assert.match(libraryStepSixBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryStepSixBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
-  assert.match(libraryStepSixBlock, /"\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
+  assert.match(libraryStepSixBlock, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryStepSixBlock, /followbriefScheduleInstall/);
-  assert.match(libraryStepSixBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 "%s" --contract "%s"\\n'/);
+  assert.match(libraryStepSixBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="%s" "%s" --contract "%s"\\n'/);
   for (const laterBlock of librarySetupBlocks.slice(libraryStepSixBlockIndex + 1)) {
     assert.doesNotMatch(laterBlock, /SETUP_VERDICT_JSON|EXPECTED_INSTANCE_ID|SETUP_TMP_DIR/);
   }
