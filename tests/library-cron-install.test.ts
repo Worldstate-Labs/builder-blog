@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdtemp, mkdir, readdir, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -165,6 +166,19 @@ async function writeContract(path: string, contract: Contract, mode = 0o600) {
 
 async function readJson(path: string): Promise<JsonRecord> {
   return JSON.parse(await readFile(path, "utf8")) as JsonRecord;
+}
+
+function source(path: string): string {
+  return readFileSync(join(repoRoot, path), "utf8");
+}
+
+function extractHeredoc(text: string, startMarker: string): string {
+  const start = text.indexOf(startMarker);
+  assert.ok(start >= 0, `Expected to find ${JSON.stringify(startMarker)}`);
+  const bodyStart = text.indexOf("\n", start) + 1;
+  const end = text.indexOf("\nNODE", bodyStart);
+  assert.ok(end > bodyStart, "Expected a closing NODE heredoc delimiter");
+  return text.slice(bodyStart, end);
 }
 
 async function snapshotTree(root: string): Promise<Record<string, string>> {
@@ -676,6 +690,52 @@ test("needs_confirmation requires explicit partial-result confirmation", async (
     assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
     assert.equal(await readMutationLog(harness.mutationLogPath), "");
     assert.deepEqual(await readJson(harness.contractPath), initial);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
+test("prompt-shaped needs_confirmation contract uses second-precision createdAt accepted by helper validation", async () => {
+  const harness = await makeHarness({
+    verdictStatus: "needs_confirmation",
+    createdAt: "placeholder",
+  });
+  try {
+    const prompt = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
+    const writer = extractHeredoc(
+      prompt,
+      `node - "$RESUME_CONTRACT_TMP" "$ACCT" "$ACCOUNT_SLUG" "$EXPECTED_INSTANCE_ID" "$SETUP_VERDICT_STATUS" <<'NODE'`,
+    )
+      .replaceAll("{{AGENT_RUNTIME}}", "openclaw")
+      .replaceAll("{{CRON_FREQUENCY_KEY}}", "daily")
+      .replaceAll("{{CRON_FREQUENCY_LABEL}}", "Daily")
+      .replaceAll("{{CRON_INTERVAL_MINUTES}}", "1440")
+      .replaceAll("{{FETCH_FORCE}}", "1")
+      .replaceAll("{{FETCH_DAYS}}", "14")
+      .replaceAll("{{PARALLEL_WORKERS}}", "3");
+
+    const writeResult = spawnSync(
+      "node",
+      [
+        "-",
+        harness.contractPath,
+        ACCOUNT,
+        ACCOUNT_SLUG,
+        INSTANCE_ID,
+        "needs_confirmation",
+      ],
+      { input: writer, encoding: "utf8" },
+    );
+    assert.equal(writeResult.status, 0, writeResult.stderr);
+
+    const contract = (await readJson(harness.contractPath)) as Contract;
+    assert.match(contract.createdAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+    assert.doesNotMatch(contract.createdAt, /\.\d{3}Z$/);
+
+    const result = runInstaller(harness);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /explicit partial-result confirmation/i);
+    assert.doesNotMatch(result.stderr, /createdAt/i);
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }

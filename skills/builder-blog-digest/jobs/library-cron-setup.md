@@ -293,7 +293,7 @@ const contract = {
   force: "{{FETCH_FORCE}}" === "1",
   fetchDays: Number("{{FETCH_DAYS}}"),
   parallelWorkers: Number("{{PARALLEL_WORKERS}}"),
-  createdAt: new Date().toISOString(),
+  createdAt: new Date().toISOString().replace(/\.[0-9]{3}Z$/, "Z"),
 };
 fs.writeFileSync(tmpPath, `${JSON.stringify(contract, null, 2)}\n`, { mode: 0o600 });
 NODE

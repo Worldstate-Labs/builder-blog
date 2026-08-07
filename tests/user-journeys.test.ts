@@ -1616,7 +1616,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /force: "{{FETCH_FORCE}}" === "1"/);
   assert.match(libraryCronSetupPrompt, /fetchDays: Number\("{{FETCH_DAYS}}"\)/);
   assert.match(libraryCronSetupPrompt, /parallelWorkers: Number\("{{PARALLEL_WORKERS}}"\)/);
-  assert.match(libraryCronSetupPrompt, /createdAt: new Date\(\)\.toISOString\(\)/);
+  assert.match(libraryCronSetupPrompt, /createdAt: new Date\(\)\.toISOString\(\)\.replace\(\/\\\.\[0-9\]\{3\}Z\$\/, "Z"\)/);
   assert.match(libraryCronSetupPrompt, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
   assert.match(libraryCronSetupPrompt, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryCronSetupPrompt, /printf 'Resume contract: %s\\n' "\$RESUME_CONTRACT_PATH"/);
