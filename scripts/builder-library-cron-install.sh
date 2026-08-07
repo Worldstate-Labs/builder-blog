@@ -144,6 +144,8 @@ for (const key of Object.keys(contract)) {
 if (contract.version !== 1) fail("Unsupported contract version.");
 if (contract.job !== "library-cron") fail("Unsupported contract job.");
 if (typeof contract.account !== "string" || !contract.account.trim()) fail("Contract account is required.");
+if (/[\x00-\x1f\x7f]/.test(contract.account)) fail("Contract account must not contain control characters.");
+if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(contract.account)) fail("Contract account must be a reasonable email address.");
 if (typeof contract.accountSlug !== "string" || contract.accountSlug !== slugForAccount(contract.account)) fail("Contract account slug is invalid.");
 if (typeof contract.instanceId !== "string" || !uuidRe.test(contract.instanceId)) fail("Contract instanceId is invalid.");
 if (path.basename(contractPath) !== `resume-contract-${contract.instanceId}.json`) fail("Contract filename must match instanceId.");
@@ -337,6 +339,20 @@ verify_pin_files() {
   [ "$(read_first_line "$OWNER_FILE")" = "$OWNER_ID" ] || { echo "Local owner pin does not match contract." >&2; exit 75; }
 }
 
+generate_schedule_spec() {
+  mkdir -p "$SCHEDULE_SPEC_DIR"
+  "$CLI" schedule-spec \
+    --freq "$FREQUENCY_KEY" \
+    --anchor-at "$ANCHOR_AT" \
+    --cron-out "$SCHEDULE_SPEC_DIR/cron.txt" \
+    --launchd-out "$SCHEDULE_SPEC_DIR/launchd.xml" \
+    --status-out "$SCHEDULE_SPEC_DIR/status.txt" \
+    --timezone-out "$SCHEDULE_SPEC_DIR/timezone.txt" >/dev/null
+  CRON_EXPR="$(read_first_line "$SCHEDULE_SPEC_DIR/cron.txt")"
+  EXPECTED_LAUNCHD_XML="$(cat "$SCHEDULE_SPEC_DIR/launchd.xml")"
+  SCHEDULE_STATUS="$(read_first_line "$SCHEDULE_SPEC_DIR/status.txt")"
+}
+
 wait_for_launchd_absent() {
   _label="$1"
   _remaining=30
@@ -400,7 +416,6 @@ EOF
 
 install_crontab() {
   mkdir -p "$AGENT_DIR/logs" "$SCHEDULE_SPEC_DIR"
-  CRON_EXPR="$(read_first_line "$SCHEDULE_SPEC_DIR/cron.txt")"
   (
     crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCOUNT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCOUNT\".*builder-agent-runner.sh library-cron" || true
     printf '# FollowBrief library cron · %s\n%s BUILDER_BLOG_ACCOUNT="%s" %s library-cron >> %s/logs/%s.log 2>&1\n' "$ACCOUNT" "$CRON_EXPR" "$ACCOUNT" "$RUNNER" "$AGENT_DIR" "$LABEL"
@@ -419,9 +434,35 @@ verify_local_scheduler() {
       echo "FollowBrief LaunchAgent is not loaded." >&2
       exit 75
     }
+    EXPECTED_LAUNCHD_XML="$EXPECTED_LAUNCHD_XML" EXPECTED_LABEL="$LABEL" EXPECTED_RUNNER="$RUNNER" PLIST_PATH="$PLIST_PATH" node - <<'NODE'
+const fs = require("node:fs");
+const plistPath = process.env.PLIST_PATH;
+const expectedLabel = process.env.EXPECTED_LABEL;
+const expectedRunner = process.env.EXPECTED_RUNNER;
+const expectedLaunchdXml = String(process.env.EXPECTED_LAUNCHD_XML || "");
+const plist = fs.readFileSync(plistPath, "utf8");
+function fail(message) {
+  console.error(message);
+  process.exit(75);
+}
+const normalized = plist.replace(/\s+/g, " ");
+const normalizedExpectedXml = expectedLaunchdXml.replace(/\s+/g, " ").trim();
+if (!normalized.includes(`<key>Label</key><string>${expectedLabel}</string>`)) fail("LaunchAgent label does not match contract.");
+if (!/<key>ProgramArguments<\/key>\s*<array>\s*<string>[^<]*builder-agent-runner\.sh<\/string>\s*<string>library-cron<\/string>\s*<\/array>/s.test(plist)) {
+  fail("LaunchAgent program arguments do not match the library-cron runner.");
+}
+if (!normalized.includes(`<string>${expectedRunner}</string>`)) fail("LaunchAgent runner path does not match contract.");
+if (!normalized.includes(normalizedExpectedXml)) fail("LaunchAgent StartCalendarInterval does not match the regenerated schedule.");
+NODE
   else
-    crontab -l | grep -F "$CRON_ROW" >/dev/null 2>&1 || {
-      echo "FollowBrief crontab row is missing." >&2
+    CRONTAB_CONTENT="$(crontab -l 2>/dev/null || true)"
+    printf '%s\n' "$CRONTAB_CONTENT" | grep -F "$CRON_ROW" >/dev/null 2>&1 || {
+      echo "FollowBrief crontab comment is missing." >&2
+      exit 75
+    }
+    EXPECTED_ROW="$CRON_EXPR BUILDER_BLOG_ACCOUNT=\"$ACCOUNT\" $RUNNER library-cron >> $AGENT_DIR/logs/$LABEL.log 2>&1"
+    printf '%s\n' "$CRONTAB_CONTENT" | grep -Fx "$EXPECTED_ROW" >/dev/null 2>&1 || {
+      echo "FollowBrief crontab row does not match the regenerated schedule." >&2
       exit 75
     }
   fi
@@ -514,13 +555,11 @@ if [ -z "$ANCHOR_AT" ]; then
 fi
 
 if [ -n "$COMPLETED_AT" ]; then
-  SCHEDULE_STATUS="$EVIDENCE_SCHEDULE"
-  [ -n "$SCHEDULE_STATUS" ] || { echo "Completed contract is missing schedule evidence." >&2; exit 75; }
-  verify_completed_evidence
   verify_pin_files
+  generate_schedule_spec
+  verify_completed_evidence
   verify_local_scheduler
   STATE_FILE="$SCHEDULE_SPEC_DIR/cron-state-readback.json"
-  mkdir -p "$SCHEDULE_SPEC_DIR"
   "$CLI" cron-state --job library-cron > "$STATE_FILE"
   verify_server_state "$STATE_FILE"
   MARKER_ACCOUNT="$ACCOUNT" MARKER_INSTANCE_ID="$INSTANCE_ID" MARKER_RUNTIME="$RUNTIME" MARKER_FREQUENCY_KEY="$FREQUENCY_KEY" MARKER_OWNER_ID="$OWNER_ID" MARKER_STARTED_AT="$ANCHOR_AT" MARKER_LOCAL_SCHEDULER="$MARKER_SCHEDULER" emit_marker
@@ -530,16 +569,7 @@ fi
 update_contract_json owner_anchor "$OWNER_ID" "$ANCHOR_AT"
 write_pin_files
 verify_pin_files
-
-mkdir -p "$SCHEDULE_SPEC_DIR"
-"$CLI" schedule-spec \
-  --freq "$FREQUENCY_KEY" \
-  --anchor-file "$ANCHOR_FILE" \
-  --cron-out "$SCHEDULE_SPEC_DIR/cron.txt" \
-  --launchd-out "$SCHEDULE_SPEC_DIR/launchd.xml" \
-  --status-out "$SCHEDULE_SPEC_DIR/status.txt" \
-  --timezone-out "$SCHEDULE_SPEC_DIR/timezone.txt" >/dev/null
-SCHEDULE_STATUS="$(read_first_line "$SCHEDULE_SPEC_DIR/status.txt")"
+generate_schedule_spec
 
 if [ "$MARKER_SCHEDULER" = "launchd" ]; then
   install_launchd

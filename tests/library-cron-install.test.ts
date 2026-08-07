@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -29,6 +30,7 @@ type Contract = {
 };
 
 type Harness = {
+  platform: "Darwin" | "Linux";
   rootDir: string;
   homeDir: string;
   agentDir: string;
@@ -87,6 +89,42 @@ const INITIAL_KEYS = [
   "createdAt",
 ] as const;
 const EXTENDED_KEYS = [...INITIAL_KEYS, "ownerId", "anchorAt", "completedAt", "evidence"] as const;
+
+function accountSlugFor(account: string): string {
+  const base = account.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "").replace(/_+/g, "_") || "default";
+  const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+  return `${base}_${hash}`;
+}
+
+function scheduleSpecFor(freq: Contract["frequencyKey"], anchorAt = ANCHOR_AT) {
+  const date = new Date(anchorAt);
+  const minute = date.getUTCMinutes();
+  const hour = date.getUTCHours();
+  const weekday = date.getUTCDay();
+  if (freq === "1h") {
+    return {
+      cron: `${minute} * * * *`,
+      launchd: `<key>StartCalendarInterval</key>\n  <dict><key>Minute</key><integer>${minute}</integer></dict>`,
+      status: `anchor:${minute} * * * *`,
+    };
+  }
+  if (freq === "weekly") {
+    return {
+      cron: `${minute} ${hour} * * ${weekday}`,
+      launchd: `<key>StartCalendarInterval</key>\n  <dict><key>Weekday</key><integer>${weekday}</integer><key>Hour</key><integer>${hour}</integer><key>Minute</key><integer>${minute}</integer></dict>`,
+      status: `anchor:${minute} ${hour} * * ${weekday}`,
+    };
+  }
+  return {
+    cron: `${minute} ${hour} * * *`,
+    launchd: `<key>StartCalendarInterval</key>\n  <dict><key>Hour</key><integer>${hour}</integer><key>Minute</key><integer>${minute}</integer></dict>`,
+    status: `anchor:${minute} ${hour} * * *`,
+  };
+}
+
+function expectedCrontabRow(harness: Harness, cronExpr = scheduleSpecFor(harness.contract.frequencyKey, harness.anchorAt).cron) {
+  return `${cronExpr} BUILDER_BLOG_ACCOUNT="${harness.contract.account}" ${join(harness.agentDir, "builder-agent-runner.sh")} library-cron >> ${join(harness.agentDir, "logs", `${harness.label}.log`)} 2>&1`;
+}
 
 function baseContract(overrides: Partial<Contract> = {}): Contract {
   return {
@@ -162,6 +200,10 @@ function countEvents(entries: JsonRecord[], command: string): number {
   return entries.filter((entry) => entry.command === command).length;
 }
 
+function countWhere(entries: JsonRecord[], predicate: (entry: JsonRecord) => boolean): number {
+  return entries.filter(predicate).length;
+}
+
 function assertNoForbiddenProperties(value: unknown) {
   if (Array.isArray(value)) {
     for (const item of value) assertNoForbiddenProperties(item);
@@ -203,12 +245,12 @@ async function seedCompletedLocalState(
   const ownerId = overrides.ownerId ?? harness.ownerId;
 
   const files = [
-    [`runtime-library-cron-${ACCOUNT_SLUG}`, runtime],
-    [`fetch-force-library-cron-${ACCOUNT_SLUG}`, force ? "1" : "0"],
-    [`fetch-days-library-cron-${ACCOUNT_SLUG}`, String(fetchDays)],
-    [`parallel-library-cron-${ACCOUNT_SLUG}`, String(parallelWorkers)],
-    [`schedule-anchor-library-cron-${ACCOUNT_SLUG}`, anchorAt],
-    [`cron-owner-library-cron-${ACCOUNT_SLUG}`, ownerId],
+    [`runtime-library-cron-${harness.contract.accountSlug}`, runtime],
+    [`fetch-force-library-cron-${harness.contract.accountSlug}`, force ? "1" : "0"],
+    [`fetch-days-library-cron-${harness.contract.accountSlug}`, String(fetchDays)],
+    [`parallel-library-cron-${harness.contract.accountSlug}`, String(parallelWorkers)],
+    [`schedule-anchor-library-cron-${harness.contract.accountSlug}`, anchorAt],
+    [`cron-owner-library-cron-${harness.contract.accountSlug}`, ownerId],
   ] as const;
   for (const [name, value] of files) {
     const path = join(harness.agentDir, name);
@@ -216,10 +258,18 @@ async function seedCompletedLocalState(
     await chmod(path, 0o600);
   }
 
-  if (overrides.writePlist !== false) {
+  if (harness.platform === "Darwin") {
+    if (overrides.writePlist !== false) {
+      await writeFile(
+        join(harness.launchAgentsDir, `${harness.label}.plist`),
+        `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n<key>Label</key><string>${harness.label}</string>\n<key>ProgramArguments</key>\n<array>\n<string>${join(harness.agentDir, "builder-agent-runner.sh")}</string>\n<string>library-cron</string>\n</array>\n${scheduleSpecFor(harness.contract.frequencyKey, anchorAt).launchd}\n</dict>\n</plist>\n`,
+        "utf8",
+      );
+    }
+  } else {
     await writeFile(
-      join(harness.launchAgentsDir, `${harness.label}.plist`),
-      `<?xml version="1.0"?><plist><dict><key>Label</key><string>${harness.label}</string><key>ProgramArguments</key><array><string>${join(harness.agentDir, "builder-agent-runner.sh")}</string><string>library-cron</string></array></dict></plist>\n`,
+      harness.crontabPath,
+      `# FollowBrief library cron · ${harness.contract.account}\n${expectedCrontabRow(harness, scheduleSpecFor(harness.contract.frequencyKey, anchorAt).cron)}\n`,
       "utf8",
     );
   }
@@ -271,7 +321,11 @@ async function setServerState(
   await writeFile(harness.serverControlPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
-async function makeHarness(contractOverrides: Partial<Contract> = {}): Promise<Harness> {
+async function makeHarness(
+  contractOverrides: Partial<Contract> = {},
+  options: { platform?: "Darwin" | "Linux" } = {},
+): Promise<Harness> {
+  const platform = options.platform ?? "Darwin";
   const rootDir = await mkdtemp(join(tmpdir(), "library-cron-install-"));
   const homeDir = join(rootDir, "home");
   const agentDir = join(homeDir, ".builder-blog");
@@ -281,7 +335,7 @@ async function makeHarness(contractOverrides: Partial<Contract> = {}): Promise<H
     agentDir,
     "tmp",
     "accounts",
-    ACCOUNT_SLUG,
+    contractOverrides.accountSlug ?? ACCOUNT_SLUG,
     "library-cron-direct",
     `resume-contract-${INSTANCE_ID}.json`,
   );
@@ -291,6 +345,7 @@ async function makeHarness(contractOverrides: Partial<Contract> = {}): Promise<H
   const openclawLogPath = join(rootDir, "openclaw.log");
   const crontabPath = join(rootDir, "crontab.txt");
   const contract = baseContract(contractOverrides);
+  const schedule = scheduleSpecFor(contract.frequencyKey, ANCHOR_AT);
 
   await mkdir(agentDir, { recursive: true });
   await mkdir(launchAgentsDir, { recursive: true });
@@ -301,6 +356,7 @@ async function makeHarness(contractOverrides: Partial<Contract> = {}): Promise<H
   await writeFile(launchctlStatePath, `${JSON.stringify({ loaded: {} }, null, 2)}\n`, "utf8");
   await setServerState(
     {
+      platform,
       rootDir,
       homeDir,
       agentDir,
@@ -315,8 +371,8 @@ async function makeHarness(contractOverrides: Partial<Contract> = {}): Promise<H
       contract,
       ownerId: OWNER_ID,
       anchorAt: ANCHOR_AT,
-      scheduleStatus: SCHEDULE_STATUS,
-      label: LABEL,
+      scheduleStatus: schedule.status,
+      label: `com.followbrief.library.${contract.accountSlug}`,
     },
     { status: "stopped" },
   );
@@ -519,6 +575,7 @@ console.log("unrelated openclaw cron");
   await writeExecutable(join(fakeBinDir, "sleep"), "#!/bin/sh\nexit 0\n");
 
   return {
+    platform,
     rootDir,
     homeDir,
     agentDir,
@@ -533,8 +590,8 @@ console.log("unrelated openclaw cron");
     contract,
     ownerId: OWNER_ID,
     anchorAt: ANCHOR_AT,
-    scheduleStatus: SCHEDULE_STATUS,
-    label: LABEL,
+    scheduleStatus: schedule.status,
+    label: `com.followbrief.library.${contract.accountSlug}`,
   };
 }
 
@@ -547,7 +604,7 @@ function runInstaller(harness: Harness, extraEnv: Record<string, string | undefi
       HOME: harness.homeDir,
       PATH: `${harness.fakeBinDir}:${process.env.PATH ?? ""}`,
       BUILDER_BLOG_AGENT_DIR: harness.agentDir,
-      FOLLOWBRIEF_TEST_UNAME: "Darwin",
+      FOLLOWBRIEF_TEST_UNAME: harness.platform,
       FOLLOWBRIEF_TEST_NOW: ANCHOR_AT,
       FOLLOWBRIEF_TEST_HOSTNAME: HOSTNAME,
       FOLLOWBRIEF_TEST_OWNER_UUID: OWNER_UUID,
@@ -591,6 +648,29 @@ test("contract mode must be exactly 0600", async () => {
 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /0600|group\/world writable|mode/i);
+    assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
+    assert.equal(await readMutationLog(harness.mutationLogPath), "");
+    assert.deepEqual(await readJson(harness.contractPath), initial);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
+test("account must be a reasonable email without control characters", async () => {
+  const badAccount = "bad\tuser@example.com";
+  const harness = await makeHarness(
+    {
+      account: badAccount,
+      accountSlug: accountSlugFor(badAccount),
+      verdictStatus: "needs_confirmation",
+    },
+  );
+  try {
+    const initial = await readJson(harness.contractPath);
+    const result = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /account|email|control/i);
     assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
     assert.equal(await readMutationLog(harness.mutationLogPath), "");
     assert.deepEqual(await readJson(harness.contractPath), initial);
@@ -754,19 +834,19 @@ test("explicit confirmation installs the account-scoped scheduler and persists v
     assert.equal(typeof contract.completedAt, "string");
     assert.deepEqual(contract.evidence, {
       localScheduler: "launchd",
-      localLabel: LABEL,
-      schedule: SCHEDULE_STATUS,
+      localLabel: harness.label,
+      schedule: harness.scheduleStatus,
       serverStatus: "active",
       hostname: HOSTNAME,
     });
 
     const pinFiles = [
-      [`runtime-library-cron-${ACCOUNT_SLUG}`, "openclaw"],
-      [`fetch-force-library-cron-${ACCOUNT_SLUG}`, "1"],
-      [`fetch-days-library-cron-${ACCOUNT_SLUG}`, "14"],
-      [`parallel-library-cron-${ACCOUNT_SLUG}`, "3"],
-      [`schedule-anchor-library-cron-${ACCOUNT_SLUG}`, ANCHOR_AT],
-      [`cron-owner-library-cron-${ACCOUNT_SLUG}`, OWNER_ID],
+      [`runtime-library-cron-${harness.contract.accountSlug}`, "openclaw"],
+      [`fetch-force-library-cron-${harness.contract.accountSlug}`, "1"],
+      [`fetch-days-library-cron-${harness.contract.accountSlug}`, "14"],
+      [`parallel-library-cron-${harness.contract.accountSlug}`, "3"],
+      [`schedule-anchor-library-cron-${harness.contract.accountSlug}`, ANCHOR_AT],
+      [`cron-owner-library-cron-${harness.contract.accountSlug}`, OWNER_ID],
     ] as const;
     for (const [name, value] of pinFiles) {
       const path = join(harness.agentDir, name);
@@ -775,13 +855,13 @@ test("explicit confirmation installs the account-scoped scheduler and persists v
       assertPinText(await readFile(path, "utf8"), value);
     }
 
-    const plistPath = join(harness.launchAgentsDir, `${LABEL}.plist`);
+    const plistPath = join(harness.launchAgentsDir, `${harness.label}.plist`);
     const plist = await readFile(plistPath, "utf8");
     assert.match(plist, new RegExp(`<string>${join(harness.agentDir, "builder-agent-runner.sh").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/string>`));
     assert.match(plist, /<string>library-cron<\/string>/);
 
     const launchctlState = (await readJson(harness.launchctlStatePath)) as JsonRecord;
-    assert.ok((launchctlState.loaded as JsonRecord)[LABEL]);
+    assert.ok((launchctlState.loaded as JsonRecord)[harness.label]);
 
     const mutations = await readJsonLines(harness.mutationLogPath);
     assert.ok(countEvents(mutations, "schedule-spec") >= 1);
@@ -795,7 +875,7 @@ test("explicit confirmation installs the account-scoped scheduler and persists v
       status: "active",
       frequencyKey: "daily",
       frequencyLabel: "Daily",
-      schedule: SCHEDULE_STATUS,
+      schedule: harness.scheduleStatus,
       runtime: "openclaw",
       overrideFetched: true,
       ownerId: OWNER_ID,
@@ -842,8 +922,8 @@ test("completed retry is read-only and fails closed on later local or server dri
     assert.equal(afterRetryContract.ownerId, beforeRetryContract.ownerId);
     assert.equal(afterRetryContract.anchorAt, beforeRetryContract.anchorAt);
 
-    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), "99\n", "utf8");
-    await chmod(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), 0o600);
+    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), "99\n", "utf8");
+    await chmod(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), 0o600);
     const beforeLocalDrift = await readJsonLines(harness.mutationLogPath);
     const localDrift = runInstaller(harness);
     assert.notEqual(localDrift.status, 0);
@@ -851,10 +931,10 @@ test("completed retry is read-only and fails closed on later local or server dri
     const afterLocalDrift = await readJsonLines(harness.mutationLogPath);
     assert.equal(countEvents(afterLocalDrift, "launchctl.bootstrap"), countEvents(beforeLocalDrift, "launchctl.bootstrap"));
     assert.equal(countEvents(afterLocalDrift, "cron-status"), countEvents(beforeLocalDrift, "cron-status"));
-    assertPinText(await readFile(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), "utf8"), "99");
+    assertPinText(await readFile(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), "utf8"), "99");
 
-    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), "14\n", "utf8");
-    await chmod(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), 0o600);
+    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), "14\n", "utf8");
+    await chmod(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), 0o600);
     await setServerState(harness, { ownerId: `local:${HOSTNAME}:${ACCOUNT_SLUG}:library-cron:44444444-4444-4444-8444-444444444444` });
     const beforeServerDrift = await readJsonLines(harness.mutationLogPath);
     const serverDrift = runInstaller(harness);
@@ -872,8 +952,8 @@ test("completed retry is read-only and fails closed on later local or server dri
       status: "active",
       applyCronStatus: true,
     });
-    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), "14\n", "utf8");
-    await chmod(join(harness.agentDir, `fetch-days-library-cron-${ACCOUNT_SLUG}`), 0o600);
+    await writeFile(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), "14\n", "utf8");
+    await chmod(join(harness.agentDir, `fetch-days-library-cron-${harness.contract.accountSlug}`), 0o600);
 
     const evidenceDriftCases = [
       {
@@ -927,6 +1007,83 @@ test("completed retry is read-only and fails closed on later local or server dri
         ...currentContract,
       } as Contract);
     }
+
+    const beforeLaunchdDrift = await readJsonLines(harness.mutationLogPath);
+    const driftedPlistPath = join(harness.launchAgentsDir, `${harness.label}.plist`);
+    const driftedPlist = (await readFile(driftedPlistPath, "utf8"))
+      .replace("<key>Hour</key><integer>15</integer>", "<key>Hour</key><integer>0</integer>")
+      .replace("<key>Minute</key><integer>24</integer>", "<key>Minute</key><integer>0</integer>");
+    await writeFile(driftedPlistPath, driftedPlist, "utf8");
+    const launchdDrift = runInstaller(harness);
+    assert.notEqual(launchdDrift.status, 0);
+    assert.doesNotMatch(launchdDrift.stdout, /followbriefScheduleInstall/);
+    const afterLaunchdDrift = await readJsonLines(harness.mutationLogPath);
+    assert.equal(countEvents(afterLaunchdDrift, "launchctl.bootstrap"), countEvents(beforeLaunchdDrift, "launchctl.bootstrap"));
+    assert.equal(countEvents(afterLaunchdDrift, "cron-status"), countEvents(beforeLaunchdDrift, "cron-status"));
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
+test("linux crontab install and completed retry validate the exact live row", async () => {
+  const harness = await makeHarness({ verdictStatus: "needs_confirmation" }, { platform: "Linux" });
+  try {
+    await setServerState(harness, { status: "stopped", applyCronStatus: true });
+    const first = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+    assert.equal(first.status, 0, first.stderr);
+    assert.deepEqual(parseMarker(first.stdout), {
+      followbriefScheduleInstall: "ok",
+      job: "library-cron",
+      account: ACCOUNT,
+      instanceId: INSTANCE_ID,
+      runtime: "openclaw",
+      frequencyKey: "daily",
+      ownerId: OWNER_ID,
+      startedAt: ANCHOR_AT,
+      localScheduler: "crontab",
+      serverStatus: "active",
+    });
+    const crontabText = await readFile(harness.crontabPath, "utf8");
+    assert.match(crontabText, new RegExp(`^# FollowBrief library cron · ${ACCOUNT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+    assert.match(crontabText, new RegExp(`^${expectedCrontabRow(harness).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+
+    const beforeRetryMutations = await readJsonLines(harness.mutationLogPath);
+    const beforeRetryContract = await readJson(harness.contractPath);
+    const retry = runInstaller(harness);
+    assert.equal(retry.status, 0, retry.stderr);
+    assert.deepEqual(parseMarker(retry.stdout), {
+      followbriefScheduleInstall: "ok",
+      job: "library-cron",
+      account: ACCOUNT,
+      instanceId: INSTANCE_ID,
+      runtime: "openclaw",
+      frequencyKey: "daily",
+      ownerId: OWNER_ID,
+      startedAt: ANCHOR_AT,
+      localScheduler: "crontab",
+      serverStatus: "active",
+    });
+    const afterRetryMutations = await readJsonLines(harness.mutationLogPath);
+    assert.equal(
+      countWhere(afterRetryMutations, (entry) => entry.command === "crontab" && Array.isArray(entry.args) && entry.args[0] === "-"),
+      countWhere(beforeRetryMutations, (entry) => entry.command === "crontab" && Array.isArray(entry.args) && entry.args[0] === "-"),
+    );
+    assert.equal(countEvents(afterRetryMutations, "cron-status"), countEvents(beforeRetryMutations, "cron-status"));
+    assert.deepEqual(await readJson(harness.contractPath), beforeRetryContract);
+
+    const driftedCrontab = (await readFile(harness.crontabPath, "utf8")).replace(/^24 15 \* \* \*/m, "0 0 * * *");
+    await writeFile(harness.crontabPath, driftedCrontab, "utf8");
+    const beforeDriftMutations = await readJsonLines(harness.mutationLogPath);
+    const drift = runInstaller(harness);
+    assert.notEqual(drift.status, 0);
+    assert.doesNotMatch(drift.stdout, /followbriefScheduleInstall/);
+    const afterDriftMutations = await readJsonLines(harness.mutationLogPath);
+    assert.equal(
+      countWhere(afterDriftMutations, (entry) => entry.command === "crontab" && Array.isArray(entry.args) && entry.args[0] === "-"),
+      countWhere(beforeDriftMutations, (entry) => entry.command === "crontab" && Array.isArray(entry.args) && entry.args[0] === "-"),
+    );
+    assert.equal(countEvents(afterDriftMutations, "cron-status"), countEvents(beforeDriftMutations, "cron-status"));
+    assert.match(await readFile(harness.crontabPath, "utf8"), /^0 0 \* \* \*/m);
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }
