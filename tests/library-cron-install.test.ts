@@ -930,6 +930,46 @@ test("explicit confirmation installs the account-scoped scheduler and persists v
   }
 });
 
+test("initial install replaces a stale foreign-host owner file instead of inheriting it", async () => {
+  const harness = await makeHarness({ verdictStatus: "needs_confirmation" });
+  try {
+    await setServerState(harness, { status: "stopped", applyCronStatus: true });
+    const ownerFile = join(
+      harness.agentDir,
+      `cron-owner-library-cron-${harness.contract.accountSlug}`,
+    );
+    const staleOwnerId = `local:other-host:${harness.contract.accountSlug}:library-cron:33333333-3333-4333-8333-333333333333`;
+    await writeFile(ownerFile, `${staleOwnerId}\n`, "utf8");
+    await chmod(ownerFile, 0o600);
+
+    const result = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+    const marker = parseMarker(result.stdout);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(marker, {
+      followbriefScheduleInstall: "ok",
+      job: "library-cron",
+      account: ACCOUNT,
+      instanceId: INSTANCE_ID,
+      runtime: "openclaw",
+      frequencyKey: "daily",
+      ownerId: OWNER_ID,
+      startedAt: ANCHOR_AT,
+      localScheduler: "launchd",
+      serverStatus: "active",
+    });
+    assertPinText(await readFile(ownerFile, "utf8"), OWNER_ID);
+
+    const contract = await readJson(harness.contractPath);
+    assert.equal(contract.ownerId, OWNER_ID);
+
+    const serverState = await readJson(harness.serverControlPath);
+    assert.equal((serverState.cronState as JsonRecord).ownerId, OWNER_ID);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
 test("completed retry is read-only and fails closed on later local or server drift", async () => {
   const harness = await makeHarness({ verdictStatus: "needs_confirmation" });
   try {

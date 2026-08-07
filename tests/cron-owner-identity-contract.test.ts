@@ -26,41 +26,47 @@ function runNodeScript(script: string, args: string[]): { stdout: string; status
 
 const currentHost = (os.hostname() || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
 
-for (const { path, job } of [
-  { path: "skills/builder-blog-digest/jobs/library-cron-setup.md", job: "library-cron" },
-  { path: "skills/builder-blog-digest/jobs/digest-cron-setup.md", job: "digest-cron" },
-]) {
-  test(`${job} setup regenerates a migrated owner id instead of inheriting another machine's identity`, () => {
-    const prompt = source(path);
-    assert.ok(
-      !prompt.includes('if [ ! -s "$OWNER_FILE" ]'),
-      "Setup must not blindly reuse an existing owner file",
-    );
-    const script = extractHeredoc(prompt, `node - "$ACCOUNT_SLUG" "$OWNER_FILE" <<'NODE'`);
-    const dir = mkdtempSync(join(tmpdir(), "cron-owner-"));
-    const ownerFile = join(dir, `cron-owner-${job}-slug_1234abcd`);
+test("digest-cron setup regenerates a migrated owner id instead of inheriting another machine's identity", () => {
+  const prompt = source("skills/builder-blog-digest/jobs/digest-cron-setup.md");
+  const job = "digest-cron";
+  assert.ok(
+    !prompt.includes('if [ ! -s "$OWNER_FILE" ]'),
+    "Setup must not blindly reuse an existing owner file",
+  );
+  const script = extractHeredoc(prompt, `node - "$ACCOUNT_SLUG" "$OWNER_FILE" <<'NODE'`);
+  const dir = mkdtempSync(join(tmpdir(), "cron-owner-"));
+  const ownerFile = join(dir, `cron-owner-${job}-slug_1234abcd`);
 
-    // Migrated file: minted on another machine, same account+job.
-    const staleId = `local:OtherMac.local:slug_1234abcd:${job}:11111111-1111-4111-8111-111111111111`;
-    writeFileSync(ownerFile, `${staleId}\n`);
-    let run = runNodeScript(script, ["slug_1234abcd", ownerFile]);
-    assert.equal(run.status, 0);
-    const regenerated = readFileSync(ownerFile, "utf8").trim();
-    assert.notEqual(regenerated, staleId);
-    assert.match(regenerated, new RegExp(`^local:${currentHost.replace(/[.]/g, "[.]")}:slug_1234abcd:${job}:[0-9a-f-]{36}$`));
+  const staleId = `local:OtherMac.local:slug_1234abcd:${job}:11111111-1111-4111-8111-111111111111`;
+  writeFileSync(ownerFile, `${staleId}\n`);
+  let run = runNodeScript(script, ["slug_1234abcd", ownerFile]);
+  assert.equal(run.status, 0);
+  const regenerated = readFileSync(ownerFile, "utf8").trim();
+  assert.notEqual(regenerated, staleId);
+  assert.match(regenerated, new RegExp(`^local:${currentHost.replace(/[.]/g, "[.]")}:slug_1234abcd:${job}:[0-9a-f-]{36}$`));
 
-    // Locally minted file: reused unchanged.
-    run = runNodeScript(script, ["slug_1234abcd", ownerFile]);
-    assert.equal(run.status, 0);
-    assert.equal(readFileSync(ownerFile, "utf8").trim(), regenerated);
+  run = runNodeScript(script, ["slug_1234abcd", ownerFile]);
+  assert.equal(run.status, 0);
+  assert.equal(readFileSync(ownerFile, "utf8").trim(), regenerated);
 
-    // Wrong account slug: regenerated.
-    run = runNodeScript(script, ["other_slug_5678efgh", join(dir, "owner-other")]);
-    assert.equal(run.status, 0);
-    const created = readFileSync(join(dir, "owner-other"), "utf8").trim();
-    assert.match(created, new RegExp(`^local:.*:other_slug_5678efgh:${job}:`));
-  });
-}
+  run = runNodeScript(script, ["other_slug_5678efgh", join(dir, "owner-other")]);
+  assert.equal(run.status, 0);
+  const created = readFileSync(join(dir, "owner-other"), "utf8").trim();
+  assert.match(created, new RegExp(`^local:.*:other_slug_5678efgh:${job}:`));
+});
+
+test("library-cron setup delegates owner minting to builder-library-cron-install.sh", () => {
+  const prompt = source("skills/builder-blog-digest/jobs/library-cron-setup.md");
+
+  assert.match(prompt, /builder-library-cron-install\.sh/);
+  assert.doesNotMatch(prompt, /node - "\$ACCOUNT_SLUG" "\$OWNER_FILE" <<'NODE'/);
+  assert.doesNotMatch(prompt, /cron-owner-library-cron-\$ACCOUNT_SLUG/);
+  assert.doesNotMatch(prompt, /randomUUID\(\)\\n\`?\)?/);
+  assert.match(
+    prompt,
+    /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/,
+  );
+});
 
 test("library runner exits 65 when durably recorded post failures survive a clean sync", () => {
   const runner = source("scripts/builder-agent-runner.sh");
