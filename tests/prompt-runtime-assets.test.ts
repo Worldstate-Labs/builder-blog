@@ -85,3 +85,28 @@ test("local and Vercel production builds verify the emitted prompt traces", () =
     );
   }
 });
+
+test("trace verifier explicitly tracks every non-prompt runtime asset from the canonical manifest", () => {
+  const verifierScript = readFileSync(
+    "scripts/verify-prompt-runtime-traces.mjs",
+    "utf8",
+  );
+  const assetListMatch = verifierScript.match(
+    /const completeAgentRuntimeAssetRelativePaths = \[([\s\S]*?)\];/,
+  );
+
+  assert.ok(
+    assetListMatch,
+    "scripts/verify-prompt-runtime-traces.mjs must declare a machine-checkable completeAgentRuntimeAssetRelativePaths list",
+  );
+
+  const verifierAssets = [
+    ...assetListMatch[1].matchAll(/"([^"]+)"/g),
+  ].map((match) => `./${match[1]}`);
+
+  assert.deepEqual(
+    verifierAssets.sort(),
+    [...COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS].sort(),
+    "scripts/verify-prompt-runtime-traces.mjs must explicitly expect every non-prompt agent runtime asset from agentSkillFiles",
+  );
+});

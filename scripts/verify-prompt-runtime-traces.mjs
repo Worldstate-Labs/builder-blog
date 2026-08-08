@@ -9,23 +9,37 @@ const promptDirectory = resolve(
   projectRoot,
   "skills/builder-blog-digest/jobs",
 );
-const promptAssets = readdirSync(promptDirectory)
+const promptMarkdownAssets = readdirSync(promptDirectory)
   .filter((file) => file.endsWith(".md"))
-  .map((file) => resolve(promptDirectory, file))
-  .concat(resolve(projectRoot, "config/local-agent-timeouts.json"));
+  .map((file) => resolve(promptDirectory, file));
+const promptRuntimeAssetRelativePaths = [
+  "config/local-agent-timeouts.json",
+];
+const promptAssets = [
+  ...promptMarkdownAssets,
+  ...promptRuntimeAssetRelativePaths.map((assetPath) =>
+    resolve(projectRoot, assetPath),
+  ),
+];
 const installerAsset = resolve(
   projectRoot,
   "scripts/install-agent-skill-bundle.cjs",
 );
+const completeAgentRuntimeAssetRelativePaths = [
+  "scripts/builder-digest.mjs",
+  "scripts/new-product-launches.mjs",
+  "scripts/builder-agent-runner.sh",
+  "scripts/builder-library-cron-install.sh",
+  "scripts/cloud-shard-budget.mjs",
+  "scripts/install-agent-skill-bundle.cjs",
+  "config/sources.json",
+  "config/local-agent-timeouts.json",
+];
 const completeAgentRuntimeAssets = [
-  resolve(projectRoot, "scripts/builder-digest.mjs"),
-  resolve(projectRoot, "scripts/new-product-launches.mjs"),
-  resolve(projectRoot, "scripts/builder-agent-runner.sh"),
-  resolve(projectRoot, "scripts/builder-library-cron-install.sh"),
-  resolve(projectRoot, "scripts/cloud-shard-budget.mjs"),
-  installerAsset,
-  resolve(projectRoot, "config/sources.json"),
-  ...promptAssets,
+  ...completeAgentRuntimeAssetRelativePaths.map((assetPath) =>
+    resolve(projectRoot, assetPath),
+  ),
+  ...promptMarkdownAssets,
 ];
 
 const traceManifests = {
