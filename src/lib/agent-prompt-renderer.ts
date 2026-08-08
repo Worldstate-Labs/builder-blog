@@ -354,6 +354,7 @@ function buildOpenClawInitialRunBootstrap({
     "    --name \"$SETUP_ID\" \\",
     "    --at \"$RUN_AT\" \\",
     "    --delete-after-run \\",
+    "    --agent \"${OPENCLAW_AGENT:-main}\" \\",
     "    --session main \\",
     "    --session-key \"$OPENCLAW_PARENT_SESSION_KEY\" \\",
     "    --system-event \"$(cat \"$PROMPT_COPY\")\" \\",

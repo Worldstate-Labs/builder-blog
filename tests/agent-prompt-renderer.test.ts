@@ -599,10 +599,59 @@ test("rendered OpenClaw queue block binds the legacy main-event continuation to 
     "--at",
     result.cronAddArgs[3]!,
     "--delete-after-run",
+    "--agent",
+    "main",
     "--session",
     "main",
     "--session-key",
     "agent:main:telegram:direct:12345",
+    "--system-event",
+    "Run this queued FollowBrief setup continuation.",
+    "--wake",
+    "now",
+    "--json",
+  ]);
+});
+
+test("rendered OpenClaw queue block keeps agent selection aligned with the resolved legacy main-event session key", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_non_default_agent",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_non_default_agent",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const result = runOpenClawQueueBlock({
+    block: queueBlock,
+    channelContext: JSON.stringify({ sender: { id: 12345 } }),
+    sessions: JSON.stringify({
+      sessions: [{ agentId: "ops", kind: "direct", key: "agent:ops:telegram:direct:12345" }],
+    }),
+    helpText: [
+      "--session <target>  Session target (isolated | main)",
+      "--session-key <key>  Target one exact session for replies",
+      "--system-event <text>  System event payload (main session)",
+    ].join("\n"),
+    agent: "ops",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.deepEqual(result.cronAddArgs, [
+    "--name",
+    result.cronAddArgs[1]!,
+    "--at",
+    result.cronAddArgs[3]!,
+    "--delete-after-run",
+    "--agent",
+    "ops",
+    "--session",
+    "main",
+    "--session-key",
+    "agent:ops:telegram:direct:12345",
     "--system-event",
     "Run this queued FollowBrief setup continuation.",
     "--wake",
@@ -640,7 +689,9 @@ test("rendered OpenClaw queue block prefers chat.id over sender.id so a group ro
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
-  assert.deepEqual(result.cronAddArgs.slice(5, 10), [
+  assert.deepEqual(result.cronAddArgs.slice(5, 12), [
+    "--agent",
+    "main",
     "--session",
     "main",
     "--session-key",
@@ -693,7 +744,9 @@ test("rendered OpenClaw queue block supports exact channel and room session keys
 
     assert.equal(result.status, 0, `${scenario.label}: ${result.stderr}`);
     assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
-    assert.deepEqual(result.cronAddArgs.slice(5, 10), [
+    assert.deepEqual(result.cronAddArgs.slice(5, 12), [
+      "--agent",
+      "main",
       "--session",
       "main",
       "--session-key",
