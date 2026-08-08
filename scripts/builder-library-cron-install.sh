@@ -311,6 +311,8 @@ done <<EOF
 $VALIDATED_TSV
 EOF
 
+export BUILDER_BLOG_ACCOUNT="$ACCOUNT"
+
 HOSTNAME_SANITIZED="$(current_host)"
 LABEL="com.followbrief.library.$ACCOUNT_SLUG"
 RUNTIME_FILE="$AGENT_DIR/runtime-library-cron-$ACCOUNT_SLUG"
@@ -596,19 +598,24 @@ verify_server_state() {
   EXPECTED_STARTED_AT="$ANCHOR_AT" \
   EXPECTED_SCHEDULE="$SCHEDULE_STATUS" \
   node - <<'NODE'
-const state = JSON.parse(String(process.env.CRON_STATE_JSON || ""));
+const response = JSON.parse(String(process.env.CRON_STATE_JSON || ""));
 function fail(message) {
   console.error(message);
   process.exit(75);
 }
-if (!state || typeof state !== "object") fail("cron-state returned invalid JSON.");
+if (!response || typeof response !== "object" || Array.isArray(response)) fail("cron-state returned invalid JSON.");
+if (!Object.prototype.hasOwnProperty.call(response, "job")) fail("cron-state response is missing its job envelope.");
+const state = response.job;
+if (!state || typeof state !== "object" || Array.isArray(state)) fail("Server cron-state job is missing.");
 if (state.status !== "active") fail("Server cron-state is not active.");
 if (state.runtime !== process.env.EXPECTED_RUNTIME) fail("Server runtime does not match contract.");
 if (state.frequencyKey !== process.env.EXPECTED_FREQUENCY_KEY) fail("Server frequency does not match contract.");
 if (state.frequencyLabel !== process.env.EXPECTED_FREQUENCY_LABEL) fail("Server frequency label does not match contract.");
 if (String(Boolean(state.overrideFetched)) !== String(process.env.EXPECTED_FORCE === "1")) fail("Server force setting does not match contract.");
 if (state.ownerId !== process.env.EXPECTED_OWNER_ID) fail("Server ownerId does not match contract.");
-if (state.startedAt !== process.env.EXPECTED_STARTED_AT) fail("Server startedAt does not match contract.");
+const serverStartedAt = Date.parse(String(state.startedAt || ""));
+const expectedStartedAt = Date.parse(String(process.env.EXPECTED_STARTED_AT || ""));
+if (!Number.isFinite(serverStartedAt) || serverStartedAt !== expectedStartedAt) fail("Server startedAt does not match contract.");
 if (state.hostname !== process.env.EXPECTED_HOST) fail("Server hostname does not match current host.");
 if (state.schedule !== process.env.EXPECTED_SCHEDULE) fail("Server schedule does not match generated schedule.");
 NODE

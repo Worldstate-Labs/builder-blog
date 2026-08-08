@@ -360,6 +360,7 @@ async function setServerState(
   }> = {},
 ) {
   const payload = {
+    account: harness.contract.account,
     hostname: overrides.hostname ?? HOSTNAME,
     applyCronStatus: overrides.applyCronStatus ?? true,
     cronState: {
@@ -371,7 +372,7 @@ async function setServerState(
       runtime: overrides.runtime ?? harness.contract.runtime,
       overrideFetched: overrides.overrideFetched ?? harness.contract.force,
       ownerId: overrides.ownerId ?? harness.ownerId,
-      startedAt: overrides.startedAt ?? harness.anchorAt,
+      startedAt: new Date(overrides.startedAt ?? harness.anchorAt).toISOString(),
       hostname: overrides.hostname ?? HOSTNAME,
     },
   };
@@ -483,6 +484,11 @@ function scheduleForAnchor(freq, anchorAt) {
     launchd: "<key>StartCalendarInterval</key>\\n  <dict><key>Hour</key><integer>" + hour + "</integer><key>Minute</key><integer>" + minute + "</integer></dict>",
   };
 }
+const requiredAccount = loadServer().account;
+if (process.env.BUILDER_BLOG_ACCOUNT !== requiredAccount) {
+  console.error("builder-digest account context is missing");
+  process.exit(66);
+}
 append({ command, args });
 if (command === "schedule-spec") {
   const freq = arg("--freq") ?? "daily";
@@ -517,7 +523,10 @@ if (command === "cron-status") {
   };
   append({ command, payload });
   if (server.applyCronStatus !== false) {
-    server.cronState = payload;
+    server.cronState = {
+      ...payload,
+      startedAt: new Date(payload.startedAt).toISOString(),
+    };
     saveServer(server);
   }
   console.log(JSON.stringify({ ok: true, payload }, null, 2));
@@ -525,7 +534,7 @@ if (command === "cron-status") {
 }
 if (command === "cron-state") {
   const server = loadServer();
-  console.log(JSON.stringify(server.cronState, null, 2));
+  console.log(JSON.stringify({ job: server.cronState }, null, 2));
   process.exit(0);
 }
 console.error("unsupported command: " + command);
