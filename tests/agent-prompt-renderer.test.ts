@@ -767,7 +767,12 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
     "--session-key <key>  Target one exact session for replies",
     "--system-event <text>  System event payload (main session)",
   ].join("\n");
-  const scenarios = [
+  const scenarios: ReadonlyArray<{
+    label: string;
+    channelContext: string;
+    sessions: string;
+    expectedError?: RegExp;
+  }> = [
     {
       label: "malformed context",
       channelContext: '["not-an-object"]',
@@ -839,7 +844,7 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
         ],
       }),
     },
-  ] as const;
+  ];
 
   for (const scenario of scenarios) {
     const result = runOpenClawQueueBlock({
