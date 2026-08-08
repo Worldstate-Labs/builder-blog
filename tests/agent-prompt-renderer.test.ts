@@ -649,6 +649,60 @@ test("rendered OpenClaw queue block prefers chat.id over sender.id so a group ro
   ]);
 });
 
+test("rendered OpenClaw queue block supports exact channel and room session keys", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_channel_room_exact",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_channel_room_exact",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const scenarios = [
+    {
+      label: "channel",
+      channelContext: JSON.stringify({ chat: { id: "C123456" } }),
+      sessions: JSON.stringify({
+        sessions: [{ agentId: "main", kind: "channel", key: "agent:main:slack:channel:C123456" }],
+      }),
+      expectedKey: "agent:main:slack:channel:C123456",
+    },
+    {
+      label: "room",
+      channelContext: JSON.stringify({ chat: { id: "!room-42:example.org" } }),
+      sessions: JSON.stringify({
+        sessions: [{ agentId: "main", kind: "room", key: "agent:main:matrix:room:!room-42:example.org" }],
+      }),
+      expectedKey: "agent:main:matrix:room:!room-42:example.org",
+    },
+  ] as const;
+
+  for (const scenario of scenarios) {
+    const result = runOpenClawQueueBlock({
+      block: queueBlock,
+      channelContext: scenario.channelContext,
+      sessions: scenario.sessions,
+      helpText: [
+        "--session <target>  Session target (isolated | main)",
+        "--session-key <key>  Target one exact session for replies",
+        "--system-event <text>  System event payload (main session)",
+      ].join("\n"),
+    });
+
+    assert.equal(result.status, 0, `${scenario.label}: ${result.stderr}`);
+    assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+    assert.deepEqual(result.cronAddArgs.slice(5, 10), [
+      "--session",
+      "main",
+      "--session-key",
+      scenario.expectedKey,
+      "--system-event",
+    ]);
+  }
+});
+
 test("rendered OpenClaw queue block keeps the native current-session branch unchanged", async () => {
   const parent = await renderWithDefaults({
     job: "library-cron-setup",
@@ -756,6 +810,24 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
       }),
     },
     {
+      label: "collapsed direct main key",
+      channelContext: JSON.stringify({ sender: { id: "12345" } }),
+      sessions: JSON.stringify({
+        sessions: [{ agentId: "main", kind: "direct", key: "agent:main:main" }],
+      }),
+      expectedError: /exact origin cannot be proven/i,
+    },
+    {
+      label: "channel base and thread collision without thread context",
+      channelContext: JSON.stringify({ chat: { id: "C123456" } }),
+      sessions: JSON.stringify({
+        sessions: [
+          { agentId: "main", kind: "channel", key: "agent:main:slack:channel:C123456" },
+          { agentId: "main", kind: "channel", key: "agent:main:slack:channel:C123456:thread:1700000000.1000" },
+        ],
+      }),
+    },
+    {
       label: "alternate cron and internal routes",
       channelContext: JSON.stringify({ sender: { id: "12345" } }),
       sessions: JSON.stringify({
@@ -779,7 +851,11 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
 
     assert.notEqual(result.status, 0, `${scenario.label} should fail closed`);
     assert.equal(result.cronAddArgs.length, 0, `${scenario.label} must fail before cron add`);
-    assert.match(result.stderr, /OpenClaw durable setup job could not be queued|OpenClaw origin session/i);
+    assert.match(
+      result.stderr,
+      scenario.expectedError ??
+        /OpenClaw durable setup job could not be queued|OpenClaw origin session/i,
+    );
   }
 });
 
