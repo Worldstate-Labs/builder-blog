@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import test from "node:test";
 import type { SkillJobName } from "../src/lib/skill-job-files";
 import {
@@ -40,6 +40,128 @@ function normalizedOpenClawChildSetupOptions(
     ...normalizedOptions({ runtime: "openclaw" }),
     runtime: "openclaw",
     ...overrides,
+  };
+}
+
+function extractBashBlock(content: string, marker: string): string {
+  const block = markdownShellBlocks(content).find((candidate) => candidate.includes(marker));
+  assert.ok(block, `missing bash block with marker: ${marker}`);
+  return block!;
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function dataTextUrl(text: string): string {
+  return `data:text/plain;base64,${Buffer.from(text, "utf8").toString("base64")}`;
+}
+
+function runOpenClawQueueBlock({
+  block,
+  channelContext,
+  sessions,
+  helpText,
+  agent = "main",
+}: {
+  block: string;
+  channelContext: string;
+  sessions: string;
+  helpText: string;
+  agent?: string;
+}) {
+  const root = mkdtempSync(join(tmpdir(), "openclaw-queue-block-"));
+  const agentDir = join(root, "agent");
+  const binDir = join(root, "bin");
+  const cronAddArgsPath = join(root, "cron-add-args.txt");
+  const helpPath = join(root, "cron-add-help.txt");
+  const sessionsPath = join(root, "sessions.json");
+  const openclawPath = join(binDir, "openclaw");
+
+  mkdirSync(agentDir, { recursive: true });
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(helpPath, helpText, "utf8");
+  writeFileSync(sessionsPath, sessions, "utf8");
+  writeFileSync(
+    openclawPath,
+    `#!/bin/sh
+set -eu
+cmd="\${1:-}"
+shift || true
+case "$cmd" in
+  config)
+    sub="\${1:-}"
+    shift || true
+    case "$sub" in
+      get)
+        printf '0\\n'
+        ;;
+      set)
+        exit 0
+        ;;
+      *)
+        echo "unexpected config subcommand: $sub" >&2
+        exit 97
+        ;;
+    esac
+    ;;
+  sessions)
+    [ "\${1:-}" = "--json" ] || exit 96
+    cat "$OPENCLAW_TEST_SESSIONS_PATH"
+    ;;
+  cron)
+    sub="\${1:-}"
+    shift || true
+    case "$sub" in
+      add)
+        if [ "\${1:-}" = "--help" ]; then
+          cat "$OPENCLAW_TEST_HELP_PATH"
+          exit 0
+        fi
+        printf '%s\\n' "$@" > "$OPENCLAW_TEST_CRON_ADD_ARGS_PATH"
+        printf '{"ok":true}\\n'
+        ;;
+      *)
+        echo "unexpected cron subcommand: $sub" >&2
+        exit 95
+        ;;
+    esac
+    ;;
+  *)
+    echo "unexpected command: $cmd" >&2
+    exit 94
+    ;;
+esac
+`,
+    "utf8",
+  );
+  chmodSync(openclawPath, 0o755);
+
+  const promptUrl = dataTextUrl("Run this queued FollowBrief setup continuation.\n");
+  const blockForExecution = block.replace(
+    /^OPENCLAW_CHILD_SETUP_PROMPT_URL='[^']*'$/m,
+    `OPENCLAW_CHILD_SETUP_PROMPT_URL=${shellSingleQuote(promptUrl)}`,
+  );
+  const env = {
+    ...process.env,
+    PATH: `${binDir}${delimiter}${process.env.PATH ?? ""}`,
+    BUILDER_BLOG_AGENT_DIR: agentDir,
+    OPENCLAW_AGENT: agent,
+    OPENCLAW_CHANNEL_CONTEXT: channelContext,
+    OPENCLAW_TEST_CRON_ADD_ARGS_PATH: cronAddArgsPath,
+    OPENCLAW_TEST_HELP_PATH: helpPath,
+    OPENCLAW_TEST_SESSIONS_PATH: sessionsPath,
+  };
+  const result = spawnSync("bash", ["-eu", "-c", blockForExecution], {
+    encoding: "utf8",
+    env,
+  });
+
+  return {
+    ...result,
+    cronAddArgs: existsSync(cronAddArgsPath)
+      ? readFileSync(cronAddArgsPath, "utf8").trim().split("\n").filter(Boolean)
+      : [],
   };
 }
 
@@ -331,7 +453,13 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
   assert.match(parent, /OPENCLAW_CRON_ADD_HELP="\$\(openclaw cron add --help 2>&1\)"/);
   assert.match(parent, /--session current/);
   assert.match(parent, /--message "\$\(cat "\$PROMPT_COPY"\)"/);
+  assert.match(parent, /OPENCLAW_CHANNEL_CONTEXT/);
+  assert.match(parent, /openclaw sessions --json/);
+  assert.match(parent, /chat\.id/);
+  assert.match(parent, /sender\.id/);
+  assert.match(parent, /OPENCLAW_PARENT_SESSION_KEY/);
   assert.match(parent, /--session main/);
+  assert.match(parent, /--session-key "\$OPENCLAW_PARENT_SESSION_KEY"/);
   assert.match(parent, /--system-event "\$\(cat "\$PROMPT_COPY"\)"/);
   assert.match(parent, /--wake now/);
   assert.match(
@@ -404,15 +532,134 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
     "--session <target>  Session target (isolated | main)",
     "--system-event <text>  System event payload (main session)",
   ].join("\n"));
+  const legacyMainWithSessionKey = probe([
+    "--session <target>  Session target (isolated | main)",
+    "--session-key <key>  Target one exact session for replies",
+    "--system-event <text>  System event payload (main session)",
+  ].join("\n"));
   const unsupported = probe("--session <target>  Session target (isolated)");
 
   assert.equal(currentPiped.status, 0, currentPiped.stderr);
   assert.equal(currentPiped.stdout.trim(), "current");
   assert.equal(currentSpaced.status, 0, currentSpaced.stderr);
   assert.equal(currentSpaced.stdout.trim(), "current");
-  assert.equal(legacyMain.status, 0, legacyMain.stderr);
-  assert.equal(legacyMain.stdout.trim(), "main-event");
+  assert.notEqual(legacyMain.status, 0);
+  assert.equal(legacyMainWithSessionKey.status, 0, legacyMainWithSessionKey.stderr);
+  assert.equal(legacyMainWithSessionKey.stdout.trim(), "main-event");
   assert.notEqual(unsupported.status, 0);
+});
+
+test("rendered OpenClaw queue block binds the legacy main-event continuation to one exact origin session", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_exact_session",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_exact_session",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const result = runOpenClawQueueBlock({
+    block: queueBlock,
+    channelContext: JSON.stringify({ sender: { id: 12345 } }),
+    sessions: JSON.stringify({
+      sessions: [
+        { agentId: "main", key: "agent:main:run:cron-owner-12345" },
+        { agentId: "main", key: "agent:main:telegram:peer:12345" },
+        { agentId: "main", key: "agent:main:telegram:peer:012345" },
+        { agentId: "work", key: "agent:work:telegram:peer:12345" },
+      ],
+    }),
+    helpText: [
+      "--session <target>  Session target (isolated | main)",
+      "--session-key <key>  Target one exact session for replies",
+      "--system-event <text>  System event payload (main session)",
+    ].join("\n"),
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.deepEqual(result.cronAddArgs, [
+    "--name",
+    result.cronAddArgs[1]!,
+    "--at",
+    result.cronAddArgs[3]!,
+    "--delete-after-run",
+    "--session",
+    "main",
+    "--session-key",
+    "agent:main:telegram:peer:12345",
+    "--system-event",
+    "Run this queued FollowBrief setup continuation.",
+    "--wake",
+    "now",
+    "--json",
+  ]);
+});
+
+test("rendered OpenClaw queue block fails closed before cron add when origin-session routing is malformed or ambiguous", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_fail_closed",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_fail_closed",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const helpText = [
+    "--session <target>  Session target (isolated | main)",
+    "--session-key <key>  Target one exact session for replies",
+    "--system-event <text>  System event payload (main session)",
+  ].join("\n");
+  const scenarios = [
+    {
+      label: "malformed context",
+      channelContext: '["not-an-object"]',
+      sessions: JSON.stringify({
+        sessions: [{ agentId: "main", key: "agent:main:telegram:peer:12345" }],
+      }),
+    },
+    {
+      label: "zero matches",
+      channelContext: JSON.stringify({ sender: { id: "12345" } }),
+      sessions: JSON.stringify({
+        sessions: [{ agentId: "main", key: "agent:main:telegram:peer:no-match" }],
+      }),
+    },
+    {
+      label: "ambiguous matches",
+      channelContext: JSON.stringify({ sender: { id: "12345" } }),
+      sessions: JSON.stringify({
+        sessions: [
+          { agentId: "main", key: "agent:main:telegram:peer:12345" },
+          { agentId: "main", key: "agent:main:discord:peer:12345" },
+        ],
+      }),
+    },
+    {
+      label: "deceptive partial suffix",
+      channelContext: JSON.stringify({ sender: { id: "12345" } }),
+      sessions: JSON.stringify({
+        sessions: [{ agentId: "main", key: "agent:main:telegram:peer:012345" }],
+      }),
+    },
+  ] as const;
+
+  for (const scenario of scenarios) {
+    const result = runOpenClawQueueBlock({
+      block: queueBlock,
+      channelContext: scenario.channelContext,
+      sessions: scenario.sessions,
+      helpText,
+    });
+
+    assert.notEqual(result.status, 0, `${scenario.label} should fail closed`);
+    assert.equal(result.cronAddArgs.length, 0, `${scenario.label} must fail before cron add`);
+    assert.match(result.stderr, /OpenClaw durable setup job could not be queued|OpenClaw origin session/i);
+  }
 });
 
 test("printed confirmation command stays self-contained across a fresh shell", () => {
