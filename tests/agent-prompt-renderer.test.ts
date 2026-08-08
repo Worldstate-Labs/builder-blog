@@ -57,6 +57,8 @@ function dataTextUrl(text: string): string {
   return `data:text/plain;base64,${Buffer.from(text, "utf8").toString("base64")}`;
 }
 
+const failSessionsCommandSentinel = "__FAIL_OPENCLAW_SESSIONS_COMMAND__";
+
 function runOpenClawQueueBlock({
   block,
   channelContext,
@@ -81,7 +83,9 @@ function runOpenClawQueueBlock({
   mkdirSync(agentDir, { recursive: true });
   mkdirSync(binDir, { recursive: true });
   writeFileSync(helpPath, helpText, "utf8");
-  writeFileSync(sessionsPath, sessions, "utf8");
+  if (sessions !== failSessionsCommandSentinel) {
+    writeFileSync(sessionsPath, sessions, "utf8");
+  }
   writeFileSync(
     openclawPath,
     `#!/bin/sh
@@ -107,6 +111,10 @@ case "$cmd" in
     ;;
   sessions)
     [ "\${1:-}" = "--json" ] || exit 96
+    if [ "$OPENCLAW_TEST_SESSIONS_PATH" = "${failSessionsCommandSentinel}" ]; then
+      echo "stubbed openclaw sessions failure" >&2
+      exit 93
+    fi
     cat "$OPENCLAW_TEST_SESSIONS_PATH"
     ;;
   cron)
@@ -150,7 +158,8 @@ esac
     OPENCLAW_CHANNEL_CONTEXT: channelContext,
     OPENCLAW_TEST_CRON_ADD_ARGS_PATH: cronAddArgsPath,
     OPENCLAW_TEST_HELP_PATH: helpPath,
-    OPENCLAW_TEST_SESSIONS_PATH: sessionsPath,
+    OPENCLAW_TEST_SESSIONS_PATH:
+      sessions === failSessionsCommandSentinel ? failSessionsCommandSentinel : sessionsPath,
   };
   const result = spawnSync("bash", ["-eu", "-c", blockForExecution], {
     encoding: "utf8",
@@ -598,6 +607,54 @@ test("rendered OpenClaw queue block binds the legacy main-event continuation to 
   ]);
 });
 
+test("rendered OpenClaw queue block keeps the native current-session branch unchanged", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_current_branch",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_current_branch",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const result = runOpenClawQueueBlock({
+    block: queueBlock,
+    channelContext: JSON.stringify({ sender: { id: 12345 } }),
+    sessions: failSessionsCommandSentinel,
+    helpText: [
+      "--session <target>  Session target (main|isolated|current)",
+      "--timeout-seconds <seconds>  Override the agent timeout",
+      "--announce  Deliver output to the active route when possible",
+      "--best-effort-deliver  Try to deliver even if the active route is stale",
+      "--message <text>  Prompt body",
+      "--system-event <text>  System event payload",
+    ].join("\n"),
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.deepEqual(result.cronAddArgs, [
+    "--name",
+    result.cronAddArgs[1]!,
+    "--at",
+    result.cronAddArgs[3]!,
+    "--delete-after-run",
+    "--agent",
+    "main",
+    "--session",
+    "current",
+    "--timeout-seconds",
+    result.cronAddArgs[10]!,
+    "--announce",
+    "--best-effort-deliver",
+    "--message",
+    "Run this queued FollowBrief setup continuation.",
+    "--json",
+  ]);
+  assert.doesNotMatch(result.cronAddArgs.join("\n"), /--session-key|--system-event|--wake/);
+});
+
 test("rendered OpenClaw queue block fails closed before cron add when origin-session routing is malformed or ambiguous", async () => {
   const parent = await renderWithDefaults({
     job: "library-cron-setup",
@@ -660,6 +717,33 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
     assert.equal(result.cronAddArgs.length, 0, `${scenario.label} must fail before cron add`);
     assert.match(result.stderr, /OpenClaw durable setup job could not be queued|OpenClaw origin session/i);
   }
+});
+
+test("rendered OpenClaw queue block fails closed before cron add when openclaw sessions --json fails", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_sessions_failure",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_sessions_failure",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const result = runOpenClawQueueBlock({
+    block: queueBlock,
+    channelContext: JSON.stringify({ sender: { id: 12345 } }),
+    sessions: failSessionsCommandSentinel,
+    helpText: [
+      "--session <target>  Session target (isolated | main)",
+      "--session-key <key>  Target one exact session for replies",
+      "--system-event <text>  System event payload (main session)",
+    ].join("\n"),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.cronAddArgs.length, 0);
+  assert.match(result.stderr, /OpenClaw origin session routing could not list sessions\./);
 });
 
 test("printed confirmation command stays self-contained across a fresh shell", () => {
