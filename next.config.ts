@@ -55,6 +55,7 @@ const completeAgentRuntimeTraceFiles = [
   "./scripts/builder-digest.mjs",
   "./scripts/new-product-launches.mjs",
   "./scripts/builder-agent-runner.sh",
+  "./scripts/builder-library-cron-install.sh",
   "./scripts/cloud-shard-budget.mjs",
   "./scripts/install-agent-skill-bundle.cjs",
   "./config/sources.json",

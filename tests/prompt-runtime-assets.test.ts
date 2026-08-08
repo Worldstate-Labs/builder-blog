@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { agentSkillFiles } from "../src/lib/agent-skill-files";
 import nextConfig from "../next.config";
 
 const PROMPT_RENDER_ROUTES = [
@@ -16,13 +17,15 @@ const PROMPT_RUNTIME_ASSETS = [
   "./skills/builder-blog-digest/jobs/*.md",
   "./config/local-agent-timeouts.json",
 ] as const;
+const COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS = Object.values(agentSkillFiles)
+  .map(({ sourcePath }) => sourcePath)
+  .filter(
+    (sourcePath) =>
+      !sourcePath.startsWith("skills/builder-blog-digest/jobs/"),
+  )
+  .map((sourcePath) => `./${sourcePath}`);
 const COMPLETE_AGENT_RUNTIME_ASSETS = [
-  "./scripts/builder-digest.mjs",
-  "./scripts/new-product-launches.mjs",
-  "./scripts/builder-agent-runner.sh",
-  "./scripts/cloud-shard-budget.mjs",
-  "./scripts/install-agent-skill-bundle.cjs",
-  "./config/sources.json",
+  ...COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS,
   ...PROMPT_RUNTIME_ASSETS,
 ] as const;
 

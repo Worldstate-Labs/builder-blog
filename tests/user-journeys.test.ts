@@ -1459,7 +1459,6 @@ test("web app serves the agent skill and setup command", () => {
       continue;
     }
     if (file === "config/local-agent-timeouts.json") continue;
-    if (file === "scripts/builder-library-cron-install.sh") continue;
     assert.ok(
       completeRuntimeTraceDefinition.includes(`"./${file}"`),
       `next.config.ts outputFileTracingIncludes for the files route is missing ${file} — that asset will 500 (ENOENT) on Vercel`,
