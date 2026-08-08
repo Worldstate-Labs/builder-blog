@@ -574,10 +574,14 @@ test("rendered OpenClaw queue block binds the legacy main-event continuation to 
     channelContext: JSON.stringify({ sender: { id: 12345 } }),
     sessions: JSON.stringify({
       sessions: [
-        { agentId: "main", key: "agent:main:run:cron-owner-12345" },
-        { agentId: "main", key: "agent:main:telegram:peer:12345" },
-        { agentId: "main", key: "agent:main:telegram:peer:012345" },
-        { agentId: "work", key: "agent:work:telegram:peer:12345" },
+        { agentId: "main", kind: "cron", key: "agent:main:telegram:direct:12345" },
+        { agentId: "main", kind: "direct", key: "agent:main:run:cron-owner-12345" },
+        { agentId: "main", kind: "direct", key: "agent:main:telegram:direct:12345" },
+        { agentId: "main", kind: "direct", key: "agent:main:telegram:direct:012345" },
+        { agentId: "main", kind: "direct", key: "agent:main:telegram:direct" },
+        { agentId: "main", kind: "direct", key: "agent:main:telegram:direct:12345:topic:9" },
+        { agentId: "main", kind: "direct", key: "agent:main:cron:direct:12345" },
+        { agentId: "work", kind: "direct", key: "agent:work:telegram:direct:12345" },
       ],
     }),
     helpText: [
@@ -598,12 +602,50 @@ test("rendered OpenClaw queue block binds the legacy main-event continuation to 
     "--session",
     "main",
     "--session-key",
-    "agent:main:telegram:peer:12345",
+    "agent:main:telegram:direct:12345",
     "--system-event",
     "Run this queued FollowBrief setup continuation.",
     "--wake",
     "now",
     "--json",
+  ]);
+});
+
+test("rendered OpenClaw queue block prefers chat.id over sender.id so a group route beats the sender's DM", async () => {
+  const parent = await renderWithDefaults({
+    job: "library-cron-setup",
+    options: { runtime: "openclaw", frequency: "daily", fetchDays: 11, parallelWorkers: 3 },
+    exchange: {
+      code: "bb_ec_renderer_openclaw_group_preferred",
+      accountEmail: "openclaw@example.com",
+      accountUserId: "user_openclaw_group_preferred",
+    },
+  });
+  const queueBlock = extractBashBlock(parent, "OPENCLAW_CHILD_SETUP_PROMPT_URL");
+  const result = runOpenClawQueueBlock({
+    block: queueBlock,
+    channelContext: JSON.stringify({ sender: { id: 12345 }, chat: { id: -100 } }),
+    sessions: JSON.stringify({
+      sessions: [
+        { agentId: "main", kind: "direct", key: "agent:main:telegram:direct:12345" },
+        { agentId: "main", kind: "group", key: "agent:main:telegram:group:-100" },
+      ],
+    }),
+    helpText: [
+      "--session <target>  Session target (isolated | main)",
+      "--session-key <key>  Target one exact session for replies",
+      "--system-event <text>  System event payload (main session)",
+    ].join("\n"),
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /FOLLOWBRIEF_OPENCLAW_QUEUED=1/);
+  assert.deepEqual(result.cronAddArgs.slice(5, 10), [
+    "--session",
+    "main",
+    "--session-key",
+    "agent:main:telegram:group:-100",
+    "--system-event",
   ]);
 });
 
@@ -676,14 +718,14 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
       label: "malformed context",
       channelContext: '["not-an-object"]',
       sessions: JSON.stringify({
-        sessions: [{ agentId: "main", key: "agent:main:telegram:peer:12345" }],
+        sessions: [{ agentId: "main", kind: "direct", key: "agent:main:telegram:direct:12345" }],
       }),
     },
     {
       label: "zero matches",
       channelContext: JSON.stringify({ sender: { id: "12345" } }),
       sessions: JSON.stringify({
-        sessions: [{ agentId: "main", key: "agent:main:telegram:peer:no-match" }],
+        sessions: [{ agentId: "main", kind: "direct", key: "agent:main:telegram:direct:no-match" }],
       }),
     },
     {
@@ -691,8 +733,8 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
       channelContext: JSON.stringify({ sender: { id: "12345" } }),
       sessions: JSON.stringify({
         sessions: [
-          { agentId: "main", key: "agent:main:telegram:peer:12345" },
-          { agentId: "main", key: "agent:main:discord:peer:12345" },
+          { agentId: "main", kind: "direct", key: "agent:main:telegram:direct:12345" },
+          { agentId: "main", kind: "direct", key: "agent:main:discord:direct:12345" },
         ],
       }),
     },
@@ -700,7 +742,29 @@ test("rendered OpenClaw queue block fails closed before cron add when origin-ses
       label: "deceptive partial suffix",
       channelContext: JSON.stringify({ sender: { id: "12345" } }),
       sessions: JSON.stringify({
-        sessions: [{ agentId: "main", key: "agent:main:telegram:peer:012345" }],
+        sessions: [{ agentId: "main", kind: "direct", key: "agent:main:telegram:direct:012345" }],
+      }),
+    },
+    {
+      label: "group thread collision",
+      channelContext: JSON.stringify({ sender: { id: "12345" }, chat: { id: "-100" } }),
+      sessions: JSON.stringify({
+        sessions: [
+          { agentId: "main", kind: "group", key: "agent:main:telegram:group:-100" },
+          { agentId: "main", kind: "group", key: "agent:main:telegram:group:-100:topic:77" },
+        ],
+      }),
+    },
+    {
+      label: "alternate cron and internal routes",
+      channelContext: JSON.stringify({ sender: { id: "12345" } }),
+      sessions: JSON.stringify({
+        sessions: [
+          { agentId: "main", kind: "cron", key: "agent:main:telegram:direct:12345" },
+          { agentId: "main", kind: "direct", key: "agent:main:cron:direct:12345" },
+          { agentId: "main", kind: "direct", key: "agent:main:run:direct:12345" },
+          { agentId: "main", kind: "direct", key: "agent:main:telegram:direct" },
+        ],
       }),
     },
   ] as const;
