@@ -29,7 +29,7 @@ Requests that submit `frequency: "1h"` must fail validation. Generic schedule-re
 
 ## Cost Visibility Contract
 
-`RunUsageSummary` gains an explicit `showCost` boolean with a secure default of `false`. It always renders Tokens, Input, and Output when usage exists, and renders the Cost item only when `showCost` is true.
+`RunUsageSummary` gains an optional `showCost?: boolean` prop with a secure default of `false`. It always renders Tokens, Input, and Output when usage exists, and renders the Cost item only when `showCost` is true.
 
 `FetchLogPanel` and `DigestLogPanel` gain `showCost` props, also defaulting to false. They pass the flag to `RunUsageSummary`. Fetch worker-group inline usage formatting receives the same flag so a non-admin never sees a `$...` amount outside the summary card.
 
@@ -63,7 +63,8 @@ Use test-first changes with explicit RED/GREEN evidence:
 3. Fetch log tests cover both the top usage summary and worker-group inline usage.
 4. Digest log tests cover the build-log usage summary.
 5. User-journey tests verify that the builders page derives and threads `isAdmin` into both log trees.
-6. Run the full unit suite, lint, production build, and prompt runtime trace verification.
+6. Repository-wide audits verify that no public frequency closed set still accepts `1h` and no non-admin fetch/digest renderer bypasses `showCost`.
+7. Run the full unit suite, lint, production build, and prompt runtime trace verification.
 
 ## Out of Scope
 
