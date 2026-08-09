@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { postDetailHref } from "@/lib/navigation";
 
 type BuilderSummary = {
@@ -51,12 +52,26 @@ export function BuilderFeedItems({
   }>({ builderId, totalCount, items: null });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const items =
     itemState.builderId === builderId && itemState.totalCount === totalCount
       ? itemState.items
       : null;
   const returnHref = builder.entityId ? `/builder/${builder.entityId}` : "/builders";
   const returnLabel = builder.entityId ? builder.name : "Sources";
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function refreshOpenFeed() {
+      setRefreshVersion((version) => version + 1);
+    }
+
+    window.addEventListener(contentSyncStateChanged, refreshOpenFeed);
+    return () => {
+      window.removeEventListener(contentSyncStateChanged, refreshOpenFeed);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -89,7 +104,7 @@ export function BuilderFeedItems({
     return () => {
       cancelled = true;
     };
-  }, [builderId, totalCount, isOpen]);
+  }, [builderId, totalCount, isOpen, refreshVersion]);
 
   return (
     <div className="builder-posts">
@@ -119,7 +134,7 @@ export function BuilderFeedItems({
             variant="row"
           />
         ))}
-        {items?.length === 0 ? (
+        {items?.length === 0 && !isLoading && !error ? (
           <EmptyState
             className="builder-post-empty"
             title="No summarized posts yet"
