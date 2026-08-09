@@ -4894,6 +4894,152 @@ library_worker_was_started() {
   return 1
 }
 
+library_worker_retry_was_consumed() {
+  _lwrc_name="${1:-}"
+  case " ${_retried_shard_names:-} " in
+    *" $_lwrc_name "*) return 0 ;;
+  esac
+  return 1
+}
+
+consume_library_worker_retry() {
+  _cwlr_name="${1:-}"
+  library_worker_retry_was_consumed "$_cwlr_name" && return 1
+  _retried_shard_names="${_retried_shard_names:-} $_cwlr_name"
+  return 0
+}
+
+handle_worker_no_progress_timeout_terminal() {
+  echo "Worker $_lane ($_name) made no checkpoint progress for ${_worker_no_progress_timeout}s; terminating it (unfinished tasks will be reported as failed)." >&2
+  write_worker_control_event "$_results_dir/$_name-worker.log" "worker_no_progress_timeout" "$_lane" "$_name" "Worker made no checkpoint, progress, or result-file progress for ${_worker_no_progress_timeout}s."
+  printf 'Worker %s (%s) made no checkpoint progress for %ss; terminating it (unfinished tasks will be reported as failed).\n' "$_lane" "$_name" "$_worker_no_progress_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
+  job_run_update running "Worker $_lane made no checkpoint progress and will be terminated." "worker_no_progress_timeout" \
+    --timeout-seconds "$_worker_no_progress_timeout" \
+    --timeout-stage "worker_no_progress" \
+    --timed-out-worker "$_name" \
+    --timed-out-worker-lane "$_lane" \
+    --timed-out-worker-pid "$_pid" \
+    --termination "terminating"
+  if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
+    job_run_update running "Worker $_lane with no checkpoint progress was terminated." "worker_no_progress_timeout" \
+      --timeout-seconds "$_worker_no_progress_timeout" \
+      --timeout-stage "worker_no_progress" \
+      --timed-out-worker "$_name" \
+      --timed-out-worker-lane "$_lane" \
+      --timed-out-worker-pid "$_pid" \
+      --termination "terminated"
+  else
+    echo "Worker $_lane ($_name) pid $_pid was still alive after no-progress termination; continuing without waiting." >&2
+    _skip_wait_pids="$_skip_wait_pids $_pid"
+    job_run_update running "Worker $_lane with no checkpoint progress did not exit after forced termination." "worker_no_progress_timeout" \
+      --timeout-seconds "$_worker_no_progress_timeout" \
+      --timeout-stage "worker_no_progress" \
+      --timed-out-worker "$_name" \
+      --timed-out-worker-lane "$_lane" \
+      --timed-out-worker-pid "$_pid" \
+      --termination "still_alive_after_kill" \
+      --skipped-wait-pids "$_skip_wait_pids"
+  fi
+  _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
+}
+
+attempt_initial_worker_no_progress_retry() {
+  library_worker_retry_was_consumed "$_name" && return 1
+
+  echo "Worker $_lane ($_name) made no checkpoint progress for ${_worker_no_progress_timeout}s; terminating it before a one-time retry." >&2
+  write_worker_control_event "$_results_dir/$_name-worker.log" "worker_no_progress_retry" "$_lane" "$_name" "Worker made no checkpoint, progress, or result-file progress for ${_worker_no_progress_timeout}s on attempt 1."
+  printf 'Worker %s (%s) made no checkpoint progress for %ss; terminating it before a one-time retry.\n' "$_lane" "$_name" "$_worker_no_progress_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
+  job_run_update running "Worker $_lane made no checkpoint progress and will be retried once." "worker_no_progress_retry" \
+    --timeout-seconds "$_worker_no_progress_timeout" \
+    --timeout-stage "worker_no_progress" \
+    --timed-out-worker "$_name" \
+    --timed-out-worker-lane "$_lane" \
+    --timed-out-worker-pid "$_pid" \
+    --termination "terminating_for_retry"
+  if ! terminate_process_tree "$_pid" TERM 10 && ! terminate_process_tree "$_pid" KILL 3; then
+    echo "Worker $_lane ($_name) pid $_pid could not be confirmed dead for retry; falling back to terminal timeout handling." >&2
+    job_run_update running "Worker $_lane could not be safely restarted after no checkpoint progress." "worker_no_progress_retry" \
+      --timeout-seconds "$_worker_no_progress_timeout" \
+      --timeout-stage "worker_no_progress" \
+      --timed-out-worker "$_name" \
+      --timed-out-worker-lane "$_lane" \
+      --timed-out-worker-pid "$_pid" \
+      --termination "retry_aborted_process_still_alive"
+    return 1
+  fi
+
+  wait "$_pid" 2>/dev/null || true
+  _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
+  _skip_wait_pids="$_skip_wait_pids $_pid"
+  if [ -e "$_worker_log_path" ]; then
+    mv "$_worker_log_path" "$_results_dir/$_name-attempt-1-worker.log"
+  fi
+  if [ -e "$_worker_agent_output_path" ]; then
+    mv "$_worker_agent_output_path" "$_results_dir/$_name-attempt-1-agent-output.log"
+  fi
+
+  consume_library_worker_retry "$_name" || true
+  _ainpr_entries_before="${_worker_entries:-}"
+  start_library_worker "$_worker_shard_file" retry
+  _ainpr_entries_after="${_worker_entries:-}"
+  if [ "$_ainpr_entries_after" = "$_ainpr_entries_before" ]; then
+    echo "Worker $_lane ($_name) could not be restarted after no checkpoint progress; falling back to terminal timeout handling." >&2
+    job_run_update running "Worker $_lane could not be restarted after no checkpoint progress." "worker_no_progress_retry" \
+      --timeout-seconds "$_worker_no_progress_timeout" \
+      --timeout-stage "worker_no_progress" \
+      --timed-out-worker "$_name" \
+      --timed-out-worker-lane "$_lane" \
+      --timed-out-worker-pid "$_pid" \
+      --termination "retry_start_failed"
+    return 1
+  fi
+
+  _ainpr_new_entries="${_ainpr_entries_after#"$_ainpr_entries_before"}"
+  _ainpr_new_entries="${_ainpr_new_entries# }"
+  _ainpr_retry_entry="${_ainpr_new_entries%% *}"
+  _ainpr_retry_pid="${_ainpr_retry_entry%%:*}"
+  case "$_ainpr_retry_pid" in
+    ''|*[!0-9]*)
+      echo "Worker $_lane ($_name) restart did not record a valid retry pid; falling back to terminal timeout handling." >&2
+      job_run_update running "Worker $_lane could not be restarted after no checkpoint progress." "worker_no_progress_retry" \
+        --timeout-seconds "$_worker_no_progress_timeout" \
+        --timeout-stage "worker_no_progress" \
+        --timed-out-worker "$_name" \
+        --timed-out-worker-lane "$_lane" \
+        --timed-out-worker-pid "$_pid" \
+        --termination "retry_start_failed"
+      return 1
+      ;;
+  esac
+  if ! kill -0 "$_ainpr_retry_pid" 2>/dev/null; then
+    wait "$_ainpr_retry_pid" 2>/dev/null || true
+    _skip_wait_pids="$_skip_wait_pids $_ainpr_retry_pid"
+    if worker_result_covers_shard_tasks "$_result_path" "$_worker_shard_file"; then
+      return 0
+    fi
+    _pid="$_ainpr_retry_pid"
+    echo "Worker $_lane ($_name) retry exited before producing a complete result; falling back to terminal timeout handling." >&2
+    job_run_update running "Worker $_lane could not be restarted after no checkpoint progress." "worker_no_progress_retry" \
+      --timeout-seconds "$_worker_no_progress_timeout" \
+      --timeout-stage "worker_no_progress" \
+      --timed-out-worker "$_name" \
+      --timed-out-worker-lane "$_lane" \
+      --timed-out-worker-pid "$_pid" \
+      --termination "retry_start_failed"
+    return 1
+  fi
+
+  job_run_update running "Worker $_lane made no checkpoint progress and was restarted once." "worker_no_progress_retry" \
+    --timeout-seconds "$_worker_no_progress_timeout" \
+    --timeout-stage "worker_no_progress" \
+    --timed-out-worker "$_name" \
+    --timed-out-worker-lane "$_lane" \
+    --timed-out-worker-pid "$_pid" \
+    --termination "restarted"
+  _alive=$(( _alive + 1 ))
+  return 0
+}
+
 worker_result_covers_shard_tasks() {
   _wrcst_result="${1:-}"
   _wrcst_shard="${2:-}"
@@ -5029,6 +5175,7 @@ NODE
 
 start_library_worker() {
   _slw_shard_file="${1:-}"
+  _slw_start_mode="${2:-normal}"
   [ -n "$_slw_shard_file" ] || return 0
   [ -e "$_slw_shard_file" ] || return 0
   _slw_shard_name="$(basename "$_slw_shard_file" .json)"
@@ -5043,7 +5190,7 @@ try {
 }
 NODE
 )"
-  if library_worker_was_started "$_slw_shard_name"; then
+  if [ "$_slw_start_mode" != "retry" ] && library_worker_was_started "$_slw_shard_name"; then
     return 0
   fi
   _worker_timeout="$(shard_timeout_seconds_for_file "$_slw_shard_file")"
@@ -5301,6 +5448,7 @@ run_library_job() {
   _skip_wait_pids=""
   _timed_out_worker_pids=""
   _started_shard_names=""
+  _retried_shard_names=""
   assign_dynamic_fetch_workers "$MAX_PARALLEL_WORKERS"
 
   patch_current_fetch_plans
@@ -5385,37 +5533,11 @@ run_library_job() {
           _worker_no_progress_age=$(( _now - _started ))
           _worker_stall_age=$(( _now - _worker_progress_mtime ))
           if [ "$_worker_progress_mtime" -le 0 ] && [ "$_worker_no_progress_age" -ge "$_worker_no_progress_timeout" ]; then
-          echo "Worker $_lane ($_name) made no checkpoint progress for ${_worker_no_progress_timeout}s; terminating it (unfinished tasks will be reported as failed)." >&2
-          write_worker_control_event "$_results_dir/$_name-worker.log" "worker_no_progress_timeout" "$_lane" "$_name" "Worker made no checkpoint, progress, or result-file progress for ${_worker_no_progress_timeout}s."
-          printf 'Worker %s (%s) made no checkpoint progress for %ss; terminating it (unfinished tasks will be reported as failed).\n' "$_lane" "$_name" "$_worker_no_progress_timeout" >> "$_results_dir/$_name-worker.log" 2>/dev/null || true
-          job_run_update running "Worker $_lane made no checkpoint progress and will be terminated." "worker_no_progress_timeout" \
-            --timeout-seconds "$_worker_no_progress_timeout" \
-            --timeout-stage "worker_no_progress" \
-            --timed-out-worker "$_name" \
-            --timed-out-worker-lane "$_lane" \
-            --timed-out-worker-pid "$_pid" \
-            --termination "terminating"
-          if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
-            job_run_update running "Worker $_lane with no checkpoint progress was terminated." "worker_no_progress_timeout" \
-              --timeout-seconds "$_worker_no_progress_timeout" \
-              --timeout-stage "worker_no_progress" \
-              --timed-out-worker "$_name" \
-              --timed-out-worker-lane "$_lane" \
-              --timed-out-worker-pid "$_pid" \
-              --termination "terminated"
-          else
-            echo "Worker $_lane ($_name) pid $_pid was still alive after no-progress termination; continuing without waiting." >&2
-            _skip_wait_pids="$_skip_wait_pids $_pid"
-            job_run_update running "Worker $_lane with no checkpoint progress did not exit after forced termination." "worker_no_progress_timeout" \
-              --timeout-seconds "$_worker_no_progress_timeout" \
-              --timeout-stage "worker_no_progress" \
-              --timed-out-worker "$_name" \
-              --timed-out-worker-lane "$_lane" \
-              --timed-out-worker-pid "$_pid" \
-              --termination "still_alive_after_kill" \
-              --skipped-wait-pids "$_skip_wait_pids"
-          fi
-          _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
+            if ! attempt_initial_worker_no_progress_retry; then
+              handle_worker_no_progress_timeout_terminal
+            else
+              continue
+            fi
           elif [ "$_worker_progress_mtime" -gt 0 ] && [ "$_worker_stall_age" -ge "$_worker_stall_timeout" ]; then
             echo "Worker $_lane ($_name) made no checkpoint progress for ${_worker_stall_timeout}s after prior progress; terminating it (unfinished tasks will be reported as failed)." >&2
             write_worker_control_event "$_results_dir/$_name-worker.log" "worker_stalled_timeout" "$_lane" "$_name" "Worker stopped updating result, checkpoint, or progress files for ${_worker_stall_timeout}s after prior progress."

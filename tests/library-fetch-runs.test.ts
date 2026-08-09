@@ -861,6 +861,316 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /\*\-cron\)/);
 });
 
+test("initial no-progress worker retry archives attempt-one logs and only makes a shard eligible once", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const retryAttempt = shellFunction(runner, "attempt_initial_worker_no_progress_retry");
+  const terminalTimeout = shellFunction(runner, "handle_worker_no_progress_timeout_terminal");
+  const workerStarted = shellFunction(runner, "library_worker_was_started");
+  const retryWasConsumed = shellFunction(runner, "library_worker_retry_was_consumed");
+  const consumeRetry = shellFunction(runner, "consume_library_worker_retry");
+  const startWorker = shellFunction(runner, "start_library_worker");
+  const workerEntryLane = shellFunction(runner, "worker_entry_lane");
+  const branchMatches = runner.match(/write_worker_control_event "\$_results_dir\/\$_name-worker\.log" "worker_no_progress_timeout"/g) ?? [];
+  assert.equal(branchMatches.length, 1);
+  assert.match(
+    terminalTimeout,
+    /write_worker_control_event "\$_results_dir\/\$_name-worker\.log" "worker_no_progress_timeout"/,
+  );
+  assert.match(
+    runner,
+    /if ! attempt_initial_worker_no_progress_retry; then\s+handle_worker_no_progress_timeout_terminal\s+else\s+continue\s+fi/,
+  );
+
+  const retryDir = mkdtempSync(join(tmpdir(), "followbrief-no-progress-worker-retry-"));
+  const retryScriptFile = join(retryDir, "retry-check.sh");
+  writeFileSync(
+    retryScriptFile,
+    `set -eu
+${retryWasConsumed}
+${consumeRetry}
+${retryAttempt}
+${terminalTimeout}
+worker_result_covers_shard_tasks() {
+  [ "\${RESULT_COVERS:-0}" = 1 ]
+}
+terminate_process_tree() {
+  printf 'terminate:%s:%s:%s\\n' "$1" "$2" "$3" >> "$ORDER_FILE"
+  case "\${TERMINATE_MODE:-retry-success}" in
+    retry-success) [ "$2" = TERM ] ;;
+    retry-fail) return 1 ;;
+    terminal-success) [ "$2" = TERM ] ;;
+    terminal-fail) return 1 ;;
+    *) return 1 ;;
+  esac
+}
+job_run_update() {
+  printf '%s\\n' "$*" >> "$JOB_UPDATE_FILE"
+}
+write_worker_control_event() {
+  printf '%s|%s|%s|%s|%s\\n' "$1" "$2" "$3" "$4" "$5" >> "$CONTROL_FILE"
+}
+start_library_worker() {
+  printf 'start:%s:%s\\n' "$1" "\${2:-normal}" >> "$ORDER_FILE"
+  case "\${START_MODE:-live}" in
+    live)
+      sh -c 'sleep 5' >/dev/null 2>&1 &
+      _worker_entries="\${_worker_entries:-} $!:222:shard-001:lane-42"
+      ;;
+    dead) _worker_entries="\${_worker_entries:-} 8888:222:shard-001:lane-42" ;;
+    complete) _worker_entries="\${_worker_entries:-} 9999:222:shard-001:lane-42" ;;
+    none) : ;;
+    *) return 1 ;;
+  esac
+}
+reset_retry_case() {
+  _retried_shard_names=""
+  _worker_entries=" 4242:111:shard-001:lane-42"
+  _skip_wait_pids=""
+  _timed_out_worker_pids=""
+  _alive=0
+  _pid=4242
+  _name=shard-001
+  _lane=lane-42
+  _worker_no_progress_timeout=90
+  _worker_shard_file="$RETRY_DIR/shard-001.json"
+  _results_dir="$RETRY_DIR/results"
+  _result_path="$_results_dir/$_name-result.json"
+  _worker_log_path="$_results_dir/$_name-worker.log"
+  _worker_agent_output_path="$_results_dir/$_name-agent-output.log"
+  mkdir -p "$_results_dir"
+  printf 'attempt-one worker\\n' > "$_worker_log_path"
+  printf 'attempt-one agent\\n' > "$_worker_agent_output_path"
+  : > "$ORDER_FILE"
+  : > "$JOB_UPDATE_FILE"
+  : > "$CONTROL_FILE"
+  rm -f "$FALLBACK_FILE" "$FALLBACK_CONSUMED_FILE" \
+    "$_results_dir/$_name-attempt-1-worker.log" \
+    "$_results_dir/$_name-attempt-1-agent-output.log"
+}
+printf '{"workerId":"lane-42","fetchTasks":[{"id":"task-1","workerId":"lane-42"}]}' > "$RETRY_DIR/shard-001.json"
+_retried_shard_names=""
+if library_worker_retry_was_consumed shard-a; then
+  exit 1
+fi
+consume_library_worker_retry shard-a
+library_worker_retry_was_consumed shard-a
+if consume_library_worker_retry shard-a; then
+  exit 1
+fi
+if library_worker_retry_was_consumed shard-b; then
+  exit 1
+fi
+consume_library_worker_retry shard-b
+library_worker_retry_was_consumed shard-b
+reset_retry_case
+TERMINATE_MODE=retry-success
+START_MODE=live
+RESULT_COVERS=0
+attempt_initial_worker_no_progress_retry
+library_worker_retry_was_consumed "$_name"
+[ "$_alive" -eq 1 ]
+case " $_timed_out_worker_pids " in
+  *" $_pid "*) ;;
+  *) exit 1 ;;
+esac
+case " $_skip_wait_pids " in
+  *" $_pid "*) ;;
+  *) exit 1 ;;
+esac
+[ ! -e "$_worker_log_path" ]
+[ ! -e "$_worker_agent_output_path" ]
+grep -q '^attempt-one worker$' "$_results_dir/$_name-attempt-1-worker.log"
+grep -q '^attempt-one agent$' "$_results_dir/$_name-attempt-1-agent-output.log"
+[ "$(sed -n '1p' "$ORDER_FILE")" = "terminate:\${_pid}:TERM:10" ]
+[ "$(sed -n '2p' "$ORDER_FILE")" = "start:\${_worker_shard_file}:retry" ]
+
+reset_retry_case
+TERMINATE_MODE=retry-fail
+START_MODE=live
+RESULT_COVERS=0
+if attempt_initial_worker_no_progress_retry; then
+  exit 1
+else
+  TERMINATE_MODE=terminal-success
+  handle_worker_no_progress_timeout_terminal
+fi
+if library_worker_retry_was_consumed "$_name"; then
+  exit 1
+fi
+[ "$_alive" -eq 0 ]
+[ -e "$_worker_log_path" ]
+[ -e "$_worker_agent_output_path" ]
+[ ! -e "$_results_dir/$_name-attempt-1-worker.log" ]
+[ ! -e "$_results_dir/$_name-attempt-1-agent-output.log" ]
+[ "$(grep -c 'worker_no_progress_timeout' "$CONTROL_FILE")" = "1" ]
+[ "$(grep -c 'worker_no_progress_timeout .*--termination terminating' "$JOB_UPDATE_FILE")" = "1" ]
+[ "$(grep -c 'worker_no_progress_timeout .*--termination terminated' "$JOB_UPDATE_FILE")" = "1" ]
+grep -q 'made no checkpoint progress for 90s; terminating it (unfinished tasks will be reported as failed)\.' "$_worker_log_path"
+case " $_timed_out_worker_pids " in
+  *" $_pid "*) ;;
+  *) exit 1 ;;
+esac
+[ "$(grep -c '^start:' "$ORDER_FILE" || true)" = "0" ]
+[ "$(grep -c '^terminate:' "$ORDER_FILE" || true)" = "3" ]
+
+reset_retry_case
+TERMINATE_MODE=retry-success
+START_MODE=dead
+RESULT_COVERS=0
+if attempt_initial_worker_no_progress_retry; then
+  exit 1
+else
+  TERMINATE_MODE=terminal-success
+  handle_worker_no_progress_timeout_terminal
+fi
+library_worker_retry_was_consumed "$_name"
+[ "$_alive" -eq 0 ]
+[ "$(grep -c 'retry_start_failed' "$JOB_UPDATE_FILE")" = "1" ]
+[ "$(grep -c 'timed-out-worker-pid 8888 .*retry_start_failed' "$JOB_UPDATE_FILE")" = "1" ]
+[ "$(grep -c 'worker_no_progress_timeout .*timed-out-worker-pid 8888 .*--termination terminating' "$JOB_UPDATE_FILE")" = "1" ]
+case " $_skip_wait_pids " in
+  *" 8888 "*) ;;
+  *) exit 1 ;;
+esac
+case " $_timed_out_worker_pids " in
+  *" 8888 "*) ;;
+  *) exit 1 ;;
+esac
+
+reset_retry_case
+TERMINATE_MODE=retry-success
+START_MODE=complete
+RESULT_COVERS=1
+attempt_initial_worker_no_progress_retry
+library_worker_retry_was_consumed "$_name"
+[ "$_alive" -eq 0 ]
+[ "$(grep -c 'retry_start_failed' "$JOB_UPDATE_FILE" || true)" = "0" ]
+[ "$(grep -c 'worker_no_progress_timeout' "$JOB_UPDATE_FILE" || true)" = "0" ]
+case " $_skip_wait_pids " in
+  *" 9999 "*) ;;
+  *) exit 1 ;;
+esac
+case " $_timed_out_worker_pids " in
+  *" 9999 "*) exit 1 ;;
+esac
+
+reset_retry_case
+consume_library_worker_retry "$_name"
+START_MODE=live
+RESULT_COVERS=0
+if attempt_initial_worker_no_progress_retry; then
+  exit 1
+else
+  TERMINATE_MODE=terminal-fail
+  handle_worker_no_progress_timeout_terminal
+fi
+[ "$(grep -c 'worker_no_progress_timeout' "$CONTROL_FILE")" = "1" ]
+[ "$(grep -c 'worker_no_progress_timeout .*--termination terminating' "$JOB_UPDATE_FILE")" = "1" ]
+[ "$(grep -c 'still_alive_after_kill' "$JOB_UPDATE_FILE")" = "1" ]
+grep -q 'made no checkpoint progress for 90s; terminating it (unfinished tasks will be reported as failed)\.' "$_worker_log_path"
+case " $_skip_wait_pids " in
+  *" $_pid "*) ;;
+  *) exit 1 ;;
+esac
+case " $_timed_out_worker_pids " in
+  *" $_pid "*) ;;
+  *) exit 1 ;;
+esac
+[ "$(grep -c '^terminate:' "$ORDER_FILE" || true)" = "2" ]
+`,
+    "utf8",
+  );
+
+  assert.doesNotThrow(() => {
+    execFileSync("sh", [retryScriptFile], {
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        RETRY_DIR: retryDir,
+        ORDER_FILE: join(retryDir, "order.log"),
+        JOB_UPDATE_FILE: join(retryDir, "job-update.log"),
+        CONTROL_FILE: join(retryDir, "control.log"),
+        FALLBACK_FILE: join(retryDir, "fallback.txt"),
+        FALLBACK_CONSUMED_FILE: join(retryDir, "fallback-consumed.txt"),
+      },
+    });
+  });
+
+  const startDir = mkdtempSync(join(tmpdir(), "followbrief-no-progress-worker-start-"));
+  const startScriptFile = join(startDir, "start-check.sh");
+  writeFileSync(
+    startScriptFile,
+    `set -eu
+${workerStarted}
+${startWorker}
+${workerEntryLane}
+shard_timeout_seconds_for_file() {
+  printf '%s\\n' 321
+}
+run_selected_runtime() {
+  _seq=1
+  if [ -r "$RUN_CAPTURE_DIR/seq" ]; then
+    _seq=$(( $(cat "$RUN_CAPTURE_DIR/seq") + 1 ))
+  fi
+  printf '%s\\n' "$_seq" > "$RUN_CAPTURE_DIR/seq"
+  _prefix="$RUN_CAPTURE_DIR/run-\${_seq}"
+  printf '%s\\n' "$BUILDER_BLOG_SHARD_FILE" > "$_prefix.shard"
+  printf '%s\\n' "$BUILDER_BLOG_SHARD_RESULT" > "$_prefix.result"
+  printf '%s\\n' "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR" > "$_prefix.checkpoint"
+  printf '%s\\n' "$BUILDER_BLOG_AGENT_OUTPUT_FILE" > "$_prefix.agent_output"
+  printf '%s\\n' "$BUILDER_BLOG_SHARD_TIMEOUT_SECONDS" > "$_prefix.timeout"
+}
+wait_for_worker_entries() {
+  for _entry in \${_worker_entries:-}; do
+    _entry_pid="\${_entry%%:*}"
+    wait "$_entry_pid" 2>/dev/null || true
+  done
+}
+PINNED_RUNTIME=codex
+ACCOUNT_SLUG=test-account
+JOB_NAME=library-fetch
+AGENT_DIR="$START_DIR/agent"
+RUN_CAPTURE_DIR="$START_DIR/captures"
+mkdir -p "$AGENT_DIR/jobs" "$RUN_CAPTURE_DIR"
+_results_dir="$START_DIR/results"
+mkdir -p "$_results_dir"
+_worker_entries=""
+_started_shard_names=""
+_started_worker_count=0
+printf '{"workerId":"lane-42","fetchTasks":[{"id":"task-1","workerId":"lane-42"}]}' > "$START_DIR/shard-001.json"
+start_library_worker "$START_DIR/shard-001.json"
+_normal_entry="\${_worker_entries# }"
+wait_for_worker_entries
+start_library_worker "$START_DIR/shard-001.json" retry
+_retry_entry="\${_worker_entries##* }"
+wait_for_worker_entries
+[ "$(worker_entry_lane "$_normal_entry")" = "lane-42" ]
+[ "$(worker_entry_lane "$_retry_entry")" = "lane-42" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-1.shard")" = "$START_DIR/shard-001.json" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-2.shard")" = "$START_DIR/shard-001.json" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-1.result")" = "$_results_dir/shard-001-result.json" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-2.result")" = "$_results_dir/shard-001-result.json" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-1.checkpoint")" = "$_results_dir/shard-001-checkpoints" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-2.checkpoint")" = "$_results_dir/shard-001-checkpoints" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-1.agent_output")" = "$_results_dir/shard-001-agent-output.log" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-2.agent_output")" = "$_results_dir/shard-001-agent-output.log" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-1.timeout")" = "321" ]
+[ "$(cat "$RUN_CAPTURE_DIR/run-2.timeout")" = "321" ]
+`,
+    "utf8",
+  );
+
+  assert.doesNotThrow(() => {
+    execFileSync("sh", [startScriptFile], {
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        START_DIR: startDir,
+      },
+    });
+  });
+});
+
 test("OpenClaw worker timeout follows shard timeout while preflight keeps its own safe timeout fallback", async () => {
   const runner = source("scripts/builder-agent-runner.sh");
   const openclawRunner = shellFunction(runner, "run_with_openclaw_unattended");
