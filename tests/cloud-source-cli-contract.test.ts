@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -2706,6 +2707,53 @@ test("admin cloud host prompts coordinate account-safe replacement and stop befo
   assert.doesNotMatch(stopPrompt, /stop followbrief-cloud-library-host\.service[^\n]*\|\| true/);
 });
 
+test("cloud stop pin cleanup removes broken symlinks and fails when a target remains", async () => {
+  const stopPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
+  const cleanupBlock = markdownShellBlocks(stopPrompt).find(
+    (candidate) =>
+      candidate.includes("for PIN_FILE in") &&
+      candidate.includes('runtime-cloud-library-host-$ACCOUNT_SLUG'),
+  );
+  assert.ok(cleanupBlock, "missing cloud runtime pin cleanup block");
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-pin-cleanup-"));
+  const account = "cleanup@example.com";
+  const base = account
+    .replace(/[^a-zA-Z0-9]/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_") || "default";
+  const hash = createHash("sha256").update(account).digest("hex").slice(0, 8);
+  const accountSlug = `${base}_${hash}`;
+  const hostPin = join(dir, `runtime-cloud-library-host-${accountSlug}`);
+  const cronPin = join(dir, `runtime-cloud-library-cron-${accountSlug}`);
+  const runCleanup = () =>
+    execFileAsync("/bin/sh", ["-eu", "-c", cleanupBlock], {
+      env: {
+        ...process.env,
+        BUILDER_BLOG_ACCOUNT: account,
+        BUILDER_BLOG_AGENT_DIR: dir,
+      },
+    });
+
+  try {
+    await symlink(join(dir, "missing-target"), hostPin);
+    await runCleanup();
+    await assert.rejects(lstat(hostPin), /ENOENT/);
+
+    await mkdir(cronPin);
+    await assert.rejects(
+      runCleanup(),
+      (error: unknown) => {
+        assert.match(String((error as { stderr?: string }).stderr), /Failed to remove file:/);
+        return true;
+      },
+    );
+    assert.ok((await lstat(cronPin)).isDirectory(), "cleanup must not recursively remove directories");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("admin cloud setup launchd replacement paths wait for absence after bootout", async () => {
   const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
   const replacementBlock = markdownShellBlocks(setupPrompt).find((candidate) => candidate.includes("OLD_CLOUD_WORKER_STOPPED"));
@@ -2717,7 +2765,7 @@ test("admin cloud setup launchd replacement paths wait for absence after bootout
   assert.match(replacementBlock, /wait_for_launchd_absent\(\) \{/);
   assert.match(
     replacementBlock,
-    /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" \|\| exit "\$\?"[\s\S]*wait_for_launchd_absent "\$LABEL"[\s\S]*rm -f "\$PLIST" \|\| exit "\$\?"/,
+    /launchctl bootout "gui\/\$\(id -u\)\/\$LABEL" \|\| exit "\$\?"[\s\S]*wait_for_launchd_absent "\$LABEL"[\s\S]*if ! rm -- "\$PLIST" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$PLIST" \] \|\| \[ -L "\$PLIST" \]; \}; then[\s\S]*echo "Failed to remove file: \$PLIST" >&2[\s\S]*exit 1[\s\S]*fi/,
   );
   assert.match(replacementBlock, /timed out/i);
   assert.doesNotMatch(
@@ -2884,7 +2932,7 @@ test("admin cloud stop fails closed when Linux service state cannot be inspected
   }
 });
 
-test("regular local launchd stop waits for absence before removing plist", async () => {
+test("regular local launchd stop accepts a plist removed concurrently after launchd is absent", async () => {
   for (const [job, promptPath, label] of [
     ["library-cron", "skills/builder-blog-digest/jobs/library-cron-stop.md", "com.followbrief.library.test_local"],
     ["digest-cron", "skills/builder-blog-digest/jobs/digest-cron-stop.md", "com.followbrief.digest.test_local"],
@@ -2950,6 +2998,7 @@ sleep() {
 }
 rm() {
   printf 'rm %s gone=%s sleeps=%s\\n' "$*" "$LAUNCHD_GONE" "$SLEEP_CALLS" >> "${dir}/ops.log"
+  command rm -- "$2"
   command rm "$@"
 }
 ${block}
@@ -2974,7 +3023,7 @@ ${block}
       assert.match(launchctlLog, /^bootout gui\//m);
       assert.equal((launchctlLog.match(/^sleep 1$/gm) ?? []).length, 2);
       const opsLog = await readFile(join(dir, "ops.log"), "utf8");
-      assert.match(opsLog, /^rm -f .* gone=1 sleeps=2$/m);
+      assert.match(opsLog, /^rm -- .* gone=1 sleeps=2$/m);
       const nodeLog = await readFile(join(dir, "node.log"), "utf8");
       assert.match(nodeLog, /launchd_bootout_start/);
       assert.match(nodeLog, /launchd_bootout_finished/);
@@ -3076,7 +3125,7 @@ ${block}
       assert.match(launchctlLog, /^bootout gui\//m);
       assert.equal((launchctlLog.match(/^sleep 1$/gm) ?? []).length, 2);
       const opsLog = await readFile(join(dir, "ops.log"), "utf8");
-      assert.match(opsLog, /^rm -f .* gone=1 sleeps=2$/m);
+      assert.match(opsLog, /^rm -- .* gone=1 sleeps=2$/m);
       const nodeLog = await readFile(join(dir, "node.log"), "utf8");
       assert.match(nodeLog, /launchd_bootout_start/);
       assert.match(nodeLog, /launchd_bootout_finished/);

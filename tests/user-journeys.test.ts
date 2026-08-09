@@ -1699,7 +1699,14 @@ test("web app serves the agent skill and setup command", () => {
   const libraryStepSixBlock = librarySetupBlocks[libraryStepSixBlockIndex]!;
   assert.match(libraryStepSixBlock, /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/);
   assert.match(libraryStepSixBlock, /FAILED_POST_DETAILS="\$\(/);
-  assert.match(libraryStepSixBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
+  assert.match(
+    libraryStepSixBlock,
+    /if ! rm -- "\$RESUME_CONTRACT_PATH" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$RESUME_CONTRACT_PATH" \] \|\| \[ -L "\$RESUME_CONTRACT_PATH" \]; \}; then[\s\S]*echo "Failed to remove file: \$RESUME_CONTRACT_PATH" >&2[\s\S]*exit 1[\s\S]*fi/,
+  );
+  assert.doesNotMatch(
+    libraryStepSixBlock,
+    /(?:^|[;&|()\s])rm[ \t]+(?:--force|-[A-Za-z]*f[A-Za-z]*)(?=[ \t]|$)/m,
+  );
   assert.match(libraryStepSixBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryStepSixBlock, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
   assert.match(libraryStepSixBlock, /followbriefScheduleInstall/);

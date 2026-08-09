@@ -17,6 +17,8 @@ const markdownShellBlocks = (text: string) =>
 
 const markdownProse = (text: string) => text.replace(/```bash\n[\s\S]*?```/g, "");
 
+const forceDeleteCommand = /(?:^|[;&|()\s])rm[ \t]+(?:--force|-[A-Za-z]*f[A-Za-z]*)(?=[ \t]|$)/m;
+
 function normalizedOptions(
   overrides: Partial<NormalizedAgentPromptRenderOptions> = {},
 ): NormalizedAgentPromptRenderOptions {
@@ -268,6 +270,13 @@ test("all copied prompts install with bounded Node fetch before consuming the ex
     assert.match(content, /error\?\.cause/);
     assert.doesNotMatch(content, /curl -fsSL/);
     assert.doesNotMatch(content, /\{\{EXCHANGE_BLOCK\}\}/);
+    for (const [blockIndex, block] of markdownShellBlocks(content).entries()) {
+      assert.doesNotMatch(
+        block,
+        forceDeleteCommand,
+        `${job} bash block ${blockIndex + 1} must not use force-delete syntax`,
+      );
+    }
   }
 });
 
@@ -411,7 +420,11 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
     /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
   );
   assert.match(setupBlock, /FAILED_POST_DETAILS="\$\(/);
-  assert.match(setupBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
+  assert.match(
+    setupBlock,
+    /if ! rm -- "\$RESUME_CONTRACT_PATH" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$RESUME_CONTRACT_PATH" \] \|\| \[ -L "\$RESUME_CONTRACT_PATH" \]; \}; then[\s\S]*echo "Failed to remove file: \$RESUME_CONTRACT_PATH" >&2[\s\S]*exit 1[\s\S]*fi/,
+  );
+  assert.doesNotMatch(setupBlock, forceDeleteCommand);
   assert.match(setupBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
   assert.match(setupBlock, /printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="%s" "%s" --contract "%s"\\n'/);
   assert.match(setupBlock, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);

@@ -8,6 +8,8 @@ const source = (path: string) => readFileSync(join(root, path), "utf8");
 const markdownShellBlocks = (text: string) =>
   [...text.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1]);
 
+const forceDeleteCommand = /(?:^|[;&|()\s])rm[ \t]+(?:--force|-[A-Za-z]*f[A-Za-z]*)(?=[ \t]|$)/m;
+
 const regularLocalLaunchdStopBlock = (prompt: string, job: string) => {
   const block = markdownShellBlocks(prompt).find(
     (candidate) => candidate.includes("legacy_account_slug()") && candidate.includes('launchd absent: $LABEL'),
@@ -105,7 +107,10 @@ test("library setup verifies the current initial run before mutating scheduler s
     prompt,
     /SETUP_VERDICT_FILE="\$SETUP_TMP_DIR\/setup-verdict-\$EXPECTED_INSTANCE_ID\.json"/,
   );
-  assert.match(prompt, /rm -f -- "\$SETUP_VERDICT_FILE"/);
+  assert.match(
+    prompt,
+    /if \[ -e "\$SETUP_VERDICT_FILE" \] \|\| \[ -L "\$SETUP_VERDICT_FILE" \]; then[\s\S]*Refusing to reuse an existing setup verdict file:[\s\S]*exit 1[\s\S]*fi/,
+  );
   assert.match(prompt, /BUILDER_BLOG_SETUP_INITIAL=1/);
   assert.match(prompt, /BUILDER_BLOG_JOB_RUN_ID="\$EXPECTED_INSTANCE_ID"/);
   assert.match(prompt, /BUILDER_BLOG_SETUP_VERDICT_FILE="\$SETUP_VERDICT_FILE"/);
@@ -123,7 +128,11 @@ test("library setup verifies the current initial run before mutating scheduler s
     stepSixBlock,
     /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
   );
-  assert.match(stepSixBlock, /rm -f -- "\$RESUME_CONTRACT_PATH"/);
+  assert.match(
+    stepSixBlock,
+    /if ! rm -- "\$RESUME_CONTRACT_PATH" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$RESUME_CONTRACT_PATH" \] \|\| \[ -L "\$RESUME_CONTRACT_PATH" \]; \}; then[\s\S]*echo "Failed to remove file: \$RESUME_CONTRACT_PATH" >&2[\s\S]*exit 1[\s\S]*fi/,
+  );
+  assert.doesNotMatch(stepSixBlock, forceDeleteCommand);
   assert.match(stepSixBlock, /chmod 600 "\$RESUME_CONTRACT_TMP"/);
   assert.match(stepSixBlock, /mv -f "\$RESUME_CONTRACT_TMP" "\$RESUME_CONTRACT_PATH"/);
   assert.match(stepSixBlock, /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR" "\$HELPER_PATH" --contract "\$RESUME_CONTRACT_PATH"/);
@@ -199,13 +208,17 @@ test("cron stop prompts audit scheduler mutations before web status sync", () =>
         `cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_bootout_finished[\\s\\S]*--launchctl-loaded "\\$LOADED_AFTER"[\\s\\S]*--reason "exit_\\$BOOTOUT_CODE"`,
       ),
     );
-    assert.match(block, /if \[ "\$LOADED" = "1" \] && \[ "\$LOADED_AFTER" = "1" \]; then[\s\S]*exit 75[\s\S]*rm -f "\$PLIST"/);
+    assert.match(
+      block,
+      /if \[ "\$LOADED" = "1" \] && \[ "\$LOADED_AFTER" = "1" \]; then[\s\S]*exit 75[\s\S]*if ! rm -- "\$PLIST" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$PLIST" \] \|\| \[ -L "\$PLIST" \]; \}; then[\s\S]*echo "Failed to remove file: \$PLIST" >&2[\s\S]*exit 1[\s\S]*fi/,
+    );
     assert.match(
       block,
       new RegExp(
-        `launchd_bootout_finished[\\s\\S]*rm -f "\\$PLIST"[\\s\\S]*cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_remove_plist[\\s\\S]*--launchctl-loaded "\\$LOADED_AFTER"`,
+        `launchd_bootout_finished[\\s\\S]*rm -- "\\$PLIST"[\\s\\S]*cron-audit[\\s\\S]*--job ${job}[\\s\\S]*--event launchd_remove_plist[\\s\\S]*--launchctl-loaded "\\$LOADED_AFTER"`,
       ),
     );
+    assert.doesNotMatch(block, forceDeleteCommand);
   }
 });
 

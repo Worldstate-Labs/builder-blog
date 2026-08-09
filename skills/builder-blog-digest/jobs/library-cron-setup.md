@@ -204,7 +204,10 @@ SETUP_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct"
 mkdir -p "$SETUP_TMP_DIR"
 EXPECTED_INSTANCE_ID="$(node -e 'const { randomUUID } = require("node:crypto"); process.stdout.write(randomUUID())')"
 SETUP_VERDICT_FILE="$SETUP_TMP_DIR/setup-verdict-$EXPECTED_INSTANCE_ID.json"
-rm -f -- "$SETUP_VERDICT_FILE"
+if [ -e "$SETUP_VERDICT_FILE" ] || [ -L "$SETUP_VERDICT_FILE" ]; then
+  echo "Refusing to reuse an existing setup verdict file: $SETUP_VERDICT_FILE" >&2
+  exit 1
+fi
 if BUILDER_BLOG_JOB_TMP_DIR="$SETUP_TMP_DIR" \
 BUILDER_BLOG_WORKER_MODE=1 \
 BUILDER_BLOG_SETUP_INITIAL=1 \
@@ -263,7 +266,11 @@ NODE
 HELPER_PATH="$AGENT_DIR/builder-library-cron-install.sh"
 RESUME_CONTRACT_PATH="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct/resume-contract-$EXPECTED_INSTANCE_ID.json"
 if [ "$SETUP_VERDICT_STATUS" = "fatal" ]; then
-  rm -f -- "$RESUME_CONTRACT_PATH"
+  if ! rm -- "$RESUME_CONTRACT_PATH" 2>/dev/null &&
+     { [ -e "$RESUME_CONTRACT_PATH" ] || [ -L "$RESUME_CONTRACT_PATH" ]; }; then
+    echo "Failed to remove file: $RESUME_CONTRACT_PATH" >&2
+    exit 1
+  fi
   echo "Fatal setup verdict; removed same-instance resume contract candidate: $RESUME_CONTRACT_PATH" >&2
   if [ -n "$FAILED_POST_DETAILS" ]; then
     printf '%s\n' "$FAILED_POST_DETAILS" >&2
