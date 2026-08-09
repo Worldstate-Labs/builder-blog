@@ -155,6 +155,7 @@ export type DigestLogPanelProps = {
   onDetailsOpenChange?: (open: boolean) => void;
   onCronJobChange?: (cronJob: DigestCronJobStatus | null) => void;
   onStatusChange?: (status: DigestUpdateStatus) => void;
+  showCost?: boolean;
   showHeading?: boolean;
   showStatusToggle?: boolean;
 };
@@ -358,6 +359,7 @@ export function DigestLogPanel({
   onDetailsOpenChange,
   onCronJobChange,
   onStatusChange,
+  showCost = false,
   showHeading = true,
   showStatusToggle = true,
 }: DigestLogPanelProps) {
@@ -627,6 +629,7 @@ export function DigestLogPanel({
         <DigestLogDialog
           jobRuns={jobRuns}
           logRef={selectedLog}
+          showCost={showCost}
           suppressStalled={liveLogSuppressStalled}
           onClose={() => setSelectedLog(null)}
           runs={runs}
@@ -1532,12 +1535,14 @@ function DigestLogDialog({
   logRef,
   onClose,
   runs,
+  showCost,
   suppressStalled = false,
 }: {
   jobRuns: AgentJobRunListItem[];
   logRef: DigestLogRef;
   onClose: () => void;
   runs: DigestRunListItem[];
+  showCost: boolean;
   suppressStalled?: boolean;
 }) {
   const jobsByInstanceId = jobRunByInstanceId(jobRuns);
@@ -1566,7 +1571,7 @@ function DigestLogDialog({
           </button>
         </header>
         <div className="sync-panel-log-dialog-body">
-          <RunUsageSummary usage={usage} />
+          <RunUsageSummary showCost={showCost} usage={usage} />
           {run ? (
             <RunCard domId={null} jobRun={jobRun ?? undefined} run={run} suppressStalled={suppressStalled} />
           ) : jobRun ? (

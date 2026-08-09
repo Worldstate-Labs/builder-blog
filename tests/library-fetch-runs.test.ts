@@ -8,6 +8,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { BuilderLibraryList } from "../src/components/BuilderLibraryList";
+import { RunUsageSummary } from "../src/components/RunUsageSummary";
 import { SkillPromptActions } from "../src/components/SkillPromptActions";
 import {
   cloudSubmissionSourcesForBuilders,
@@ -557,14 +558,49 @@ test("fetch and brief log dialogs show task-level usage summaries", () => {
 
   assert.match(fetchPanel, /import \{ RunUsageSummary \}/);
   assert.match(fetchPanel, /const usage = readUsageSummary\(resolvedJobRun\?\.details, run\?\.details\)/);
-  assert.match(fetchPanel, /<div className="sync-panel-log-dialog-body">\s*<RunUsageSummary usage=\{usage\} \/>/);
+  assert.match(fetchPanel, /<div className="sync-panel-log-dialog-body">\s*<RunUsageSummary showCost=\{showCost\} usage=\{usage\} \/>/);
   assert.match(digestPanel, /import \{ RunUsageSummary \}/);
   assert.match(digestPanel, /const usage = readUsageSummary\(jobRun\?\.details\)/);
-  assert.match(digestPanel, /<div className="sync-panel-log-dialog-body">\s*<RunUsageSummary usage=\{usage\} \/>/);
+  assert.match(digestPanel, /<div className="sync-panel-log-dialog-body">\s*<RunUsageSummary showCost=\{showCost\} usage=\{usage\} \/>/);
   assert.match(usageComponent, /aria-label="Task usage"/);
   assert.match(usageComponent, /formatUsageTokens\(usage\.totalTokens\)/);
+  assert.match(usageComponent, /showCost = false/);
+  assert.match(usageComponent, /className=\{showCost \? "sync-panel-usage-summary" : "sync-panel-usage-summary is-cost-hidden"\}/);
+  assert.match(usageComponent, /showCost \? \(/);
   assert.match(usageComponent, /formatUsageCost\(usage\)/);
   assert.match(css, /\.sync-panel-usage-summary/);
+  assert.match(css, /grid-template-columns: repeat\(var\(--sync-panel-usage-columns, 4\), minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.sync-panel-usage-summary\.is-cost-hidden\s*\{\s*--sync-panel-usage-columns: 3;\s*\}/);
+});
+
+test("RunUsageSummary hides monetary usage unless showCost is explicitly enabled", () => {
+  const usage = {
+    inputTokens: 4200,
+    outputTokens: 1337,
+    cachedInputTokens: null,
+    reasoningTokens: null,
+    totalTokens: 5537,
+    costUsd: 0.0127,
+    costEstimated: true,
+    currency: "USD",
+    provider: "openai",
+    model: "gpt-5.4",
+    source: "runtime_sidecar",
+  };
+
+  const hiddenHtml = renderToStaticMarkup(createElement(RunUsageSummary, { usage }));
+  assert.match(hiddenHtml, />Tokens</);
+  assert.match(hiddenHtml, />Input</);
+  assert.match(hiddenHtml, />Output</);
+  assert.match(hiddenHtml, />5,537</);
+  assert.match(hiddenHtml, />4,200</);
+  assert.match(hiddenHtml, />1,337</);
+  assert.doesNotMatch(hiddenHtml, />Cost</);
+  assert.doesNotMatch(hiddenHtml, /\$/);
+
+  const visibleHtml = renderToStaticMarkup(createElement(RunUsageSummary, { showCost: true, usage }));
+  assert.match(visibleHtml, />Cost</);
+  assert.match(visibleHtml, /est\. \$0\.0127/);
 });
 
 test("builder library rows show FollowBrief maintenance provenance without fetch prompts", () => {
@@ -1827,7 +1863,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
   assert.doesNotMatch(panel, /\{formatCount\(stats\.accounted\)\}<\/strong> done/);
   assert.match(panel, /readUsageSummary\(value\.usage, value\)/);
-  assert.match(panel, /const usageText = formatInlineUsage\(workerGroup\.usage\)/);
+  assert.match(panel, /const usageText = formatInlineUsage\(workerGroup\.usage, showCost\)/);
+  assert.match(panel, /if \(showCost && usage\.costUsd !== null\) parts\.push\(formatUsageCost\(usage\)\)/);
   assert.match(panel, /className="sync-panel-task-worker-meta"/);
   assert.doesNotMatch(panel, /className="sync-panel-task-source-usage"/);
   assert.doesNotMatch(panel, /\{formatCount\(workerGroup\.tasks\.length\)\}<\/strong> tasks/);

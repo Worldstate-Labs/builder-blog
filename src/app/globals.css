@@ -7144,9 +7144,13 @@ summary.library-section-summary::after {
   border-radius: 10px;
   display: grid;
   gap: 0.625rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--sync-panel-usage-columns, 4), minmax(0, 1fr));
   margin: 0 0 0.875rem;
   padding: 0.75rem;
+}
+
+.sync-panel-usage-summary.is-cost-hidden {
+  --sync-panel-usage-columns: 3;
 }
 
 .sync-panel-usage-summary-item {

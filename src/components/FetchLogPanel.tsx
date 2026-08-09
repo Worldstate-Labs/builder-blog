@@ -1198,6 +1198,7 @@ export function FetchLogPanel({
   actions,
   actionsPlacement = "end",
   onLogRecordKeysChange,
+  showCost = false,
   summaryLanguage,
 }: {
   initialRuns: LibraryFetchRunListItem[];
@@ -1209,6 +1210,7 @@ export function FetchLogPanel({
   actions?: ReactNode;
   actionsPlacement?: "start" | "end";
   onLogRecordKeysChange?: (keys: string[]) => void;
+  showCost?: boolean;
   summaryLanguage?: string | null;
 }) {
   const [runs, setRuns] = useState(initialRuns);
@@ -1518,6 +1520,7 @@ export function FetchLogPanel({
             setLiveLogSuppressStalled(false);
           }}
           runs={dialogRuns}
+          showCost={showCost}
           suppressStalled={liveLogSuppressStalled}
         />
       ) : null}
@@ -2201,11 +2204,13 @@ function RunCardTaskDetails({
   details,
   liveProgress,
   parentCanProgress,
+  showCost,
 }: {
   assignmentMayStillBePending: boolean;
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
   parentCanProgress: boolean;
+  showCost: boolean;
 }) {
   const displayDetails = fetchDetailsForTaskDisplay(details, liveProgress);
   const postTaskCount = Array.isArray(displayDetails.fetchTasks)
@@ -2228,6 +2233,7 @@ function RunCardTaskDetails({
           details={displayDetails}
           liveProgress={liveProgress}
           parentCanProgress={parentCanProgress}
+          showCost={showCost}
         />
       </div>
     </details>
@@ -2401,10 +2407,12 @@ function JobRunCard({
   jobRun,
   domId = jobRunDomId(jobRun.instanceId),
   onOpenLog,
+  showCost,
 }: {
   jobRun: AgentJobRunListItem;
   domId?: string | null;
   onOpenLog?: () => void;
+  showCost: boolean;
 }) {
   const hydrated = useHydrated();
   const tone = jobRunStatusTone(jobRun);
@@ -2458,6 +2466,7 @@ function JobRunCard({
           details={{}}
           liveProgress={liveProgress}
           parentCanProgress={isActiveJobRun(jobRun)}
+          showCost={showCost}
         />
       ) : null}
       {statusDetails.length > 0 ? (
@@ -2486,6 +2495,7 @@ function RunCard({
   onOpenLog,
   run,
   domId = runDomId(run.id),
+  showCost,
   suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
@@ -2493,6 +2503,7 @@ function RunCard({
   onOpenLog?: () => void;
   run: LibraryFetchRunListItem;
   domId?: string | null;
+  showCost: boolean;
   suppressStalled?: boolean;
 }) {
   const hydrated = useHydrated();
@@ -2580,6 +2591,7 @@ function RunCard({
         details={details}
         liveProgress={liveProgress}
         parentCanProgress={inflight}
+        showCost={showCost}
       />
     </article>
   );
@@ -2591,6 +2603,7 @@ function FetchLogDialog({
   logRef,
   onClose,
   runs,
+  showCost,
   suppressStalled = false,
 }: {
   cronJob: LibraryCronJobStatus | null;
@@ -2598,6 +2611,7 @@ function FetchLogDialog({
   logRef: FetchLogRef;
   onClose: () => void;
   runs: LibraryFetchRunListItem[];
+  showCost: boolean;
   suppressStalled?: boolean;
 }) {
   const jobsByInstanceId = jobRunByInstanceId(jobRuns);
@@ -2627,17 +2641,18 @@ function FetchLogDialog({
           </button>
         </header>
         <div className="sync-panel-log-dialog-body">
-          <RunUsageSummary usage={usage} />
+          <RunUsageSummary showCost={showCost} usage={usage} />
           {run ? (
             <RunCard
               cronJob={cronJob}
               domId={null}
               jobRun={resolvedJobRun ?? undefined}
               run={run}
+              showCost={showCost}
               suppressStalled={suppressStalled}
             />
           ) : resolvedJobRun ? (
-            <JobRunCard domId={null} jobRun={resolvedJobRun} />
+            <JobRunCard domId={null} jobRun={resolvedJobRun} showCost={showCost} />
           ) : (
             <EmptyState
               className="sync-panel-empty is-dashed"
@@ -2908,11 +2923,11 @@ function workerUsageMap(workerUsages: FetchTaskWorkerUsage[] | undefined): Map<s
   return byWorkerId;
 }
 
-function formatInlineUsage(usage: UsageSummary | null): string | null {
+function formatInlineUsage(usage: UsageSummary | null, showCost: boolean): string | null {
   if (!usage) return null;
   const parts: string[] = [];
   if (usage.totalTokens !== null) parts.push(`${formatUsageTokens(usage.totalTokens)} tokens`);
-  if (usage.costUsd !== null) parts.push(formatUsageCost(usage));
+  if (showCost && usage.costUsd !== null) parts.push(formatUsageCost(usage));
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -2921,11 +2936,13 @@ function DetailsBody({
   details,
   liveProgress,
   parentCanProgress,
+  showCost,
 }: {
   assignmentMayStillBePending: boolean;
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
   parentCanProgress: boolean;
+  showCost: boolean;
 }) {
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
@@ -2946,7 +2963,7 @@ function DetailsBody({
         <div>
           <ul className="sync-panel-task-worker-group-list">
             {taskGroups.map((workerGroup) => {
-              const usageText = formatInlineUsage(workerGroup.usage);
+              const usageText = formatInlineUsage(workerGroup.usage, showCost);
               return (
                 <li className="sync-panel-task-worker-group" key={workerGroup.key}>
                   <details className="sync-panel-task-worker-details" open>
