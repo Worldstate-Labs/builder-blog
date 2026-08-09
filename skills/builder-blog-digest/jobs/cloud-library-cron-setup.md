@@ -186,7 +186,11 @@ case "$(uname -s)" in
       echo "timed out waiting for shared launchd service to unload: $LABEL" >&2
       exit 75
     fi
-    rm -f "$PLIST" || exit "$?"
+    if ! rm -- "$PLIST" 2>/dev/null &&
+       { [ -e "$PLIST" ] || [ -L "$PLIST" ]; }; then
+      echo "Failed to remove file: $PLIST" >&2
+      exit 1
+    fi
     ;;
   *)
     if systemctl --user is-active --quiet "$UNIT_NAME"; then
@@ -199,7 +203,11 @@ case "$(uname -s)" in
       echo "shared systemd service is still active" >&2
       exit 75
     fi
-    rm -f "$UNIT" || exit "$?"
+    if ! rm -- "$UNIT" 2>/dev/null &&
+       { [ -e "$UNIT" ] || [ -L "$UNIT" ]; }; then
+      echo "Failed to remove file: $UNIT" >&2
+      exit 1
+    fi
     systemctl --user daemon-reload || exit "$?"
     ;;
 esac

@@ -65,7 +65,11 @@ if [ "$SERVICE_LOADED" = "1" ] && ! wait_for_launchd_absent "$LABEL"; then
   echo "timed out waiting for launchd service to unload: $LABEL" >&2
   exit 75
 fi
-rm -f "$PLIST" || exit "$?"
+if ! rm -- "$PLIST" 2>/dev/null &&
+   { [ -e "$PLIST" ] || [ -L "$PLIST" ]; }; then
+  echo "Failed to remove file: $PLIST" >&2
+  exit 1
+fi
 [ ! -f "$PLIST" ] || { echo "service definition still exists: $PLIST" >&2; exit 75; }
 echo "SERVICE_ABSENT launchd $LABEL"
 ```
@@ -111,7 +115,11 @@ if systemctl --user is-active --quiet "$UNIT_NAME"; then
   echo "service is still active: $UNIT_NAME" >&2
   exit 75
 fi
-rm -f "$UNIT" || exit "$?"
+if ! rm -- "$UNIT" 2>/dev/null &&
+   { [ -e "$UNIT" ] || [ -L "$UNIT" ]; }; then
+  echo "Failed to remove file: $UNIT" >&2
+  exit 1
+fi
 systemctl --user daemon-reload || exit "$?"
 [ ! -f "$UNIT" ] || { echo "service definition still exists: $UNIT" >&2; exit 75; }
 echo "SERVICE_ABSENT systemd $UNIT_NAME"
@@ -143,8 +151,16 @@ console.log(`${base}_${hash}`);
 NODE
 }
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
-rm -f "$AGENT_DIR/runtime-cloud-library-host-$ACCOUNT_SLUG" \
-      "$AGENT_DIR/runtime-cloud-library-cron-$ACCOUNT_SLUG"
+for PIN_FILE in \
+  "$AGENT_DIR/runtime-cloud-library-host-$ACCOUNT_SLUG" \
+  "$AGENT_DIR/runtime-cloud-library-cron-$ACCOUNT_SLUG"
+do
+  if ! rm -- "$PIN_FILE" 2>/dev/null &&
+     { [ -e "$PIN_FILE" ] || [ -L "$PIN_FILE" ]; }; then
+    echo "Failed to remove file: $PIN_FILE" >&2
+    exit 1
+  fi
+done
 ```
 
 5. Report that the service was absent, whether each recorded worker was stopped

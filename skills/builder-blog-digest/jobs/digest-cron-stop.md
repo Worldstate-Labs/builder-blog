@@ -175,7 +175,11 @@ for LABEL in $LABELS; do
       echo "timed out waiting for launchd to go absent: $LABEL" >&2
       exit 75
     fi
-    rm -f "$PLIST"
+    if ! rm -- "$PLIST" 2>/dev/null &&
+       { [ -e "$PLIST" ] || [ -L "$PLIST" ]; }; then
+      echo "Failed to remove file: $PLIST" >&2
+      exit 1
+    fi
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_remove_plist --label "$LABEL" --plist-exists "$([ -f "$PLIST" ] && echo 1 || echo 0)" --launchctl-loaded "$LOADED_AFTER" --reason stop_cron
   else
     node "$AGENT_DIR/builder-digest.mjs" cron-audit --job digest-cron --event launchd_no_schedule_found --label "$LABEL" --plist-exists 0 --launchctl-loaded 0 --reason stop_cron
@@ -274,7 +278,11 @@ if [ -r "$CURRENT_FILE" ]; then
       --summary "Stop cron found no live worker for the recorded instance." \
       --reason "stop_cron_stale"
   fi
-  rm -f "$CURRENT_FILE"
+  if ! rm -- "$CURRENT_FILE" 2>/dev/null &&
+     { [ -e "$CURRENT_FILE" ] || [ -L "$CURRENT_FILE" ]; }; then
+    echo "Failed to remove file: $CURRENT_FILE" >&2
+    exit 1
+  fi
 else
   echo "no active brief cron worker recorded"
 fi
@@ -295,9 +303,17 @@ console.log(`${base}_${hash}`);
 NODE
 }
 ACCOUNT_SLUG="$(account_slug "$ACCT")"
-rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOUNT_SLUG" \
-      "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/cron-owner-digest-cron-$ACCOUNT_SLUG" \
-      "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
+for PIN_FILE in \
+  "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOUNT_SLUG" \
+  "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/cron-owner-digest-cron-$ACCOUNT_SLUG" \
+  "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
+do
+  if ! rm -- "$PIN_FILE" 2>/dev/null &&
+     { [ -e "$PIN_FILE" ] || [ -L "$PIN_FILE" ]; }; then
+    echo "Failed to remove file: $PIN_FILE" >&2
+    exit 1
+  fi
+done
 ```
 
 6. Report the stopped status to FollowBrief so the web app can hide Stop cron
