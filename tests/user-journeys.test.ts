@@ -4567,6 +4567,44 @@ test("content config is per-user, seeded from a system default", () => {
   assert.doesNotMatch(contract, /the admin's per-source fetch prompt/);
 });
 
+test("builders page only reveals fetch and digest cost from server-authenticated admin state", () => {
+  const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
+  const sourceSyncLogTabs = readFileSync("src/components/SourceSyncLogTabs.tsx", "utf8");
+  const ownDigestUpdatesCard = readFileSync(
+    "src/components/OwnDigestPipelineUpdatesCard.tsx",
+    "utf8",
+  );
+  const fetchLogPanel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");
+  const digestLogPanel = readFileSync("src/components/DigestLogPanel.tsx", "utf8");
+
+  assert.match(
+    buildersPage,
+    /async function loadDigestSourcesPageData\(\) \{[\s\S]*?const isAdmin = isAdminEmail\(session\.user\.email\);[\s\S]*?return \{[\s\S]*?\bisAdmin,\s*[\s\S]*?\};/,
+  );
+  assert.match(
+    buildersPage,
+    /async function FetchSyncSection\([\s\S]*?<SourceSyncLogTabs[\s\S]*?showCost=\{data\.isAdmin\}[\s\S]*?\/>/,
+  );
+  assert.match(
+    buildersPage,
+    /async function DigestSourcesSection\([\s\S]*?<OwnDigestPipelineUpdatesCard[\s\S]*?showCost=\{data\.isAdmin\}[\s\S]*?\/>/,
+  );
+  assert.match(
+    sourceSyncLogTabs,
+    /export function SourceSyncLogTabs\(\{[\s\S]*?showCost = false,[\s\S]*?\}: \{[\s\S]*?showCost\?: boolean;[\s\S]*?\}\)[\s\S]*?<FetchLogPanel[\s\S]*?showCost=\{showCost\}[\s\S]*?\/>/,
+  );
+  assert.match(
+    ownDigestUpdatesCard,
+    /export function OwnDigestPipelineUpdatesCard\(\{[\s\S]*?\.\.\.logPanelProps[\s\S]*?\)[\s\S]*?<DigestLogPanel[\s\S]*?\{\.\.\.logPanelProps\}[\s\S]*?\/>/,
+  );
+  assert.match(fetchLogPanel, /export function FetchLogPanel\(\{[\s\S]*?showCost = false,/);
+  assert.match(digestLogPanel, /export function DigestLogPanel\(\{[\s\S]*?showCost = false,/);
+
+  assert.doesNotMatch(sourceSyncLogTabs, /isAdminEmail/);
+  assert.doesNotMatch(fetchLogPanel, /isAdminEmail/);
+  assert.doesNotMatch(digestLogPanel, /isAdminEmail/);
+});
+
 test("ensureUserSourceConfigs materializes new_product_launches without overwriting edited user rows", async () => {
   const userId = "user_materialize";
   const editedBlogSummary = "User-edited blog summary prompt";

@@ -217,6 +217,7 @@ async function DigestSourcesSection({
         initialRuns={data.digestRuns}
         initialScheduledJobRuns={data.digestScheduledJobRuns}
         pipeline={data.ownDigestPipeline}
+        showCost={data.isAdmin}
       />
     </section>
   );
@@ -241,6 +242,7 @@ function DigestSourcesFallback() {
 async function loadDigestSourcesPageData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
+  const isAdmin = isAdminEmail(session.user.email);
 
   const [
     rawTokens,
@@ -295,6 +297,7 @@ async function loadDigestSourcesPageData() {
     digestJobRuns,
     digestRuns: rawDigestRuns,
     digestScheduledJobRuns,
+    isAdmin,
     ownDigestPipeline,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
@@ -852,6 +855,7 @@ async function FetchSyncSection({
           initialHasMoreHistory={data.hasMoreFetchHistory}
           initialScheduledJobRuns={data.scheduledJobRuns}
           initialRuns={data.fetchRuns}
+          showCost={data.isAdmin}
           summaryLanguage={data.summaryLanguage}
           userId={data.userId}
         />

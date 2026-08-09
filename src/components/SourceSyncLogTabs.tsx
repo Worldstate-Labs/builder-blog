@@ -45,6 +45,7 @@ export function SourceSyncLogTabs({
   initialJobRuns,
   initialRuns,
   initialScheduledJobRuns,
+  showCost = false,
   summaryLanguage,
   userId,
 }: {
@@ -55,6 +56,7 @@ export function SourceSyncLogTabs({
   initialScheduledJobRuns?: AgentJobRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
   initialHasMoreHistory?: boolean;
+  showCost?: boolean;
   summaryLanguage?: string | null;
   userId: string;
 }) {
@@ -241,6 +243,7 @@ export function SourceSyncLogTabs({
           initialScheduledJobRuns={initialScheduledJobRuns}
           initialRuns={initialRuns}
           onLogRecordKeysChange={handleLatestAgentLogRecordChange}
+          showCost={showCost}
           summaryLanguage={summaryLanguage}
         />
       </section>
