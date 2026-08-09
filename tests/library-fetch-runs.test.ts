@@ -366,7 +366,7 @@ test("builder library rows show FollowBrief maintenance provenance without fetch
   assert.doesNotMatch(html, /Submit to FollowBrief/);
 });
 
-test("fetch action helpers keep cloud submission personal-only while start actions use any reachable non-maintained source", () => {
+test("fetch action helpers exclude platform-maintained sources for users and include them for admins", () => {
   const importedOrdinary = { sourceType: "blog", origin: "HUB_IMPORT" };
   const importedMaintained = { sourceType: "new_product_launches", origin: "HUB_IMPORT" };
   const sources = cloudSubmissionSourcesForBuilders([
@@ -413,6 +413,21 @@ test("fetch action helpers keep cloud submission personal-only while start actio
   ]);
 
   assert.deepEqual(sources.map((source) => source.id), ["builder_blog_1"]);
+  const adminSources = cloudSubmissionSourcesForBuilders(
+    [
+      { id: "builder_github_trending", sourceType: "github_trending" },
+      { id: "builder_product_hunt", sourceType: "product_hunt_top_products" },
+      { id: "builder_launches_private", sourceType: "new_product_launches" },
+      { id: "builder_blog_1", sourceType: "blog" },
+    ],
+    { userIsAdmin: true },
+  );
+  assert.deepEqual(adminSources.map((source) => source.id), [
+    "builder_github_trending",
+    "builder_product_hunt",
+    "builder_launches_private",
+    "builder_blog_1",
+  ]);
   assert.equal(
     hasFetchActionSourcesForBuilders([
       { sourceType: "blog" },
@@ -430,6 +445,17 @@ test("fetch action helpers keep cloud submission personal-only while start actio
   assert.equal(
     hasFetchActionSourcesForBuilders([{ sourceType: "product_hunt_top_products" }]),
     false,
+  );
+  assert.equal(
+    hasFetchActionSourcesForBuilders(
+      [
+        { sourceType: "new_product_launches" },
+        { sourceType: "github_trending" },
+        { sourceType: "product_hunt_top_products" },
+      ],
+      { userIsAdmin: true },
+    ),
+    true,
   );
   assert.equal(
     hasFetchActionSourcesForBuilders([

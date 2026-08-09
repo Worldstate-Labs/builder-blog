@@ -800,7 +800,10 @@ test("library fetch candidates are recomputed from followed sources every run", 
 
   assert.match(contextRoute, /const subscribedBuilderIdSet = new Set/);
   assert.match(contextRoute, /if \(!subscribedBuilderIdSet\.has\(builder\.id\)\) return false/);
-  assert.match(contextRoute, /isAdminFetchOnlySourceType\(builder\.sourceType\)/);
+  assert.match(
+    contextRoute,
+    /if \(!userIsAdmin && isAdminFetchOnlySourceType\(builder\.sourceType\)\) return false/,
+  );
   assert.match(contextRoute, /fetchDisabledReason: "admin_fetch_only_source"/);
   assert.match(contextRoute, /admin-fetch-only source types are fetched by admin and shared by entity/);
   assert.match(contextRoute, /if \(builder\.ownerUserId === user\.id\) return true/);
@@ -4650,6 +4653,7 @@ test("cloud chooser keeps platform-maintained rows visible while excluding them 
       avatarUrl: null,
       avatarDataUrl: null,
       platformMaintained: true,
+      cloudSelectable: false,
     },
     {
       id: "builder_blog",
@@ -4661,6 +4665,7 @@ test("cloud chooser keeps platform-maintained rows visible while excluding them 
       avatarUrl: null,
       avatarDataUrl: null,
       platformMaintained: false,
+      cloudSelectable: true,
     },
   ]);
 
@@ -4680,4 +4685,61 @@ test("cloud chooser keeps platform-maintained rows visible while excluding them 
   assert.match(html, /Maintained by FollowBrief/);
   assert.match(html, /builder_launches/);
   assert.match(html, /disabled=""/);
+});
+
+test("cloud chooser lets admins submit FollowBrief-maintained sources", () => {
+  const chooser = cloudSubmissionChooserState([
+    {
+      id: "builder_github_trending",
+      name: "GitHub Trending",
+      handle: null,
+      sourceType: "github_trending",
+      sourceUrl: "https://github.com/trending",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+      platformMaintained: true,
+      cloudSelectable: true,
+    },
+    {
+      id: "builder_product_hunt",
+      name: "Product Hunt Top Products",
+      handle: null,
+      sourceType: "product_hunt_top_products",
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+      platformMaintained: true,
+      cloudSelectable: true,
+    },
+    {
+      id: "builder_launches",
+      name: "New Product Launches",
+      handle: null,
+      sourceType: "new_product_launches",
+      sourceUrl: "https://followbrief.worldstatelabs.com/?source=new-product-launches",
+      fetchUrl: null,
+      avatarUrl: null,
+      avatarDataUrl: null,
+      platformMaintained: true,
+      cloudSelectable: true,
+    },
+  ]);
+
+  assert.equal(chooser.eligibleSourceCount, 3);
+  assert.deepEqual(chooser.submitAllBuilderIds, [
+    "builder_github_trending",
+    "builder_product_hunt",
+    "builder_launches",
+  ]);
+
+  const html = renderToStaticMarkup(
+    createElement(CloudSourceSelectionField, {
+      sources: chooser.sources,
+      selectedBuilderIds: chooser.initialSelectedBuilderIds,
+      onChange() {},
+    }),
+  );
+  assert.doesNotMatch(html, /disabled=""/);
 });

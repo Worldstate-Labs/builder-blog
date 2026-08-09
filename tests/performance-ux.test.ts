@@ -6151,20 +6151,23 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /<OriginalSourceAction/);
 });
 
-test("fetch action selection keeps cloud submission personal-only while start actions use reachable non-maintained sources", () => {
+test("fetch action selection includes FollowBrief-maintained sources only for admins", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const skillPromptActions = source("src/components/SkillPromptActions.tsx");
   const helper = source("src/lib/fetch-action-sources.ts");
 
   assert.match(helper, /isPlatformMaintainedSourceType/);
   assert.match(helper, /export function cloudSubmissionSourcesForBuilders/);
-  assert.match(helper, /return builders\.filter\(\(builder\) => isFetchActionEligibleSource\(builder\)\)/);
+  assert.match(helper, /options\.userIsAdmin \|\| !isPlatformMaintainedSourceType/);
+  assert.match(helper, /return builders\.filter\(\(builder\) => isFetchActionEligibleSource\(builder, options\)\)/);
   assert.match(helper, /export function hasFetchActionSourcesForBuilders/);
-  assert.match(helper, /return builders\.some\(\(builder\) => isFetchActionEligibleSource\(builder\)\)/);
+  assert.match(helper, /return builders\.some\(\(builder\) => isFetchActionEligibleSource\(builder, options\)\)/);
   assert.match(helper, /export function fetchSyncSupportingCopy/);
   assert.match(helper, /return hasFetchActionSources[\s\S]*"Choose FollowBrief or your own agent to fetch and summarize sources\."[\s\S]*: null/);
   assert.match(buildersPage, /const cloudSubmissionSources: CloudSubmissionSource\[] = cloudSubmissionSourcesForBuilders\(/);
   assert.match(buildersPage, /const hasFetchActionSources = hasFetchActionSourcesForBuilders\(/);
+  assert.match(buildersPage, /\{ userIsAdmin: user\.isAdmin \}/);
+  assert.match(buildersPage, /cloudSelectable: user\.isAdmin \|\| !platformMaintained/);
   assert.match(buildersPage, /rawCloudSubmissionSources\.map\(\(\{ builder \}\) => builder\)/);
   assert.match(buildersPage, /showStartActions=\{data\.hasFetchActionSources\}/);
   assert.match(buildersPage, /fetchSyncSupportingCopy\(data\.hasFetchActionSources\)/);

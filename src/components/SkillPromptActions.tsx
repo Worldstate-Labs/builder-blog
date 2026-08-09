@@ -108,6 +108,7 @@ export type CloudSubmissionSource = {
   avatarUrl: string | null;
   avatarDataUrl: string | null;
   platformMaintained: boolean;
+  cloudSelectable: boolean;
 };
 export type CloudSubmissionChooserState = {
   sources: CloudSubmissionSource[];
@@ -117,7 +118,7 @@ export type CloudSubmissionChooserState = {
 };
 
 function cloudSubmissionEligibleSources(sources: CloudSubmissionSource[]) {
-  return sources.filter((source) => !source.platformMaintained);
+  return sources.filter((source) => source.cloudSelectable);
 }
 
 export function cloudSubmissionChooserState(
@@ -1366,7 +1367,7 @@ export function CloudSourceSelectionField({
 
   function toggleSource(id: string) {
     const source = sources.find((candidate) => candidate.id === id);
-    if (!source || source.platformMaintained) return;
+    if (!source?.cloudSelectable) return;
     const nextSelected = new Set(selectedSet);
     if (nextSelected.has(id)) {
       nextSelected.delete(id);
@@ -1375,7 +1376,7 @@ export function CloudSourceSelectionField({
     }
     onChange(
       sources
-        .filter((candidate) => !candidate.platformMaintained && nextSelected.has(candidate.id))
+        .filter((candidate) => candidate.cloudSelectable && nextSelected.has(candidate.id))
         .map((candidate) => candidate.id),
     );
   }
@@ -1397,7 +1398,7 @@ export function CloudSourceSelectionField({
         {sources.map((source) => {
           const checked = selectedSet.has(source.id);
           const disabled =
-            source.platformMaintained || (!checked && selectedCount >= CLOUD_SOURCE_SUBMISSION_LIMIT);
+            !source.cloudSelectable || (!checked && selectedCount >= CLOUD_SOURCE_SUBMISSION_LIMIT);
           const meta = cloudSubmissionSourceMeta(source);
           return (
             <label

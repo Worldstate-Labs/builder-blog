@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { normalizeCloudSourceSubmissionInput } from "@/lib/cloud-source-contracts";
 import {
   CloudSourceSubmissionError,
@@ -32,10 +33,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await getCurrentSession();
-  const userId = session?.user?.id;
-  if (!userId) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
+  const userIsAdmin = isAdminEmail(session.user.email);
 
   const nowMs = Date.now();
   const lastSubmissionAt = recentSubmissions.get(userId) ?? 0;
@@ -59,6 +61,7 @@ export async function POST(request: Request) {
       frequency: input.frequency,
       summaryLanguage: input.summaryLanguage,
       builderIds: input.builderIds,
+      allowPlatformMaintainedSources: userIsAdmin,
     });
     // Invalidate the Sources page RSC so a fresh submittedSourceCount (and thus
     // the "Stop fetching" button) shows on the next request. The client also

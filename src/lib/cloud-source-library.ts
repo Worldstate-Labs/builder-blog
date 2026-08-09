@@ -419,6 +419,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
   frequency: CloudFetchFrequency;
   summaryLanguage: string;
   builderIds?: string[];
+  allowPlatformMaintainedSources?: boolean;
   now?: Date;
   prisma?: PrismaClient;
   copyBuilderUpsert?: UpsertBuilderForCloudCopy;
@@ -442,7 +443,9 @@ export async function submitUserPrivateLibraryToCloud(params: {
   }
   const selectedBuilderIds = params.builderIds ? new Set(params.builderIds) : null;
   const eligibleSubmissionSources = privateSources.filter(
-    (source) => !isPlatformMaintainedSourceType(source.builder.sourceType),
+    (source) =>
+      params.allowPlatformMaintainedSources ||
+      !isPlatformMaintainedSourceType(source.builder.sourceType),
   );
   const submissionSources = selectedBuilderIds
     ? privateSources.filter((source) => selectedBuilderIds.has(source.builderId))
@@ -452,6 +455,7 @@ export async function submitUserPrivateLibraryToCloud(params: {
   }
   if (
     selectedBuilderIds &&
+    !params.allowPlatformMaintainedSources &&
     submissionSources.some((source) => isPlatformMaintainedSourceType(source.builder.sourceType))
   ) {
     throw new CloudSourceSubmissionError(

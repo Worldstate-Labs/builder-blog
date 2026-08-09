@@ -23,6 +23,8 @@ test("cloud source submission route authenticates, normalizes input, and rate li
   assert.match(route, /builderIds: body\?\.builderIds/);
   assert.match(route, /submitUserPrivateLibraryToCloud/);
   assert.match(route, /builderIds: input\.builderIds/);
+  assert.match(route, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(route, /allowPlatformMaintainedSources: userIsAdmin/);
   assert.match(route, /CLOUD_SUBMISSION_RATE_LIMIT_MS/);
   assert.match(route, /sourcesSubmitted/);
   assert.match(route, /tasksSubmitted/);
@@ -285,6 +287,29 @@ test("submit-all excludes platform-maintained sources and does not count them ag
     assert.equal(copyCalls.some((call) => call.startsWith("new_product_launches:")), false);
     assert.equal(copyCalls.some((call) => call.startsWith("github_trending:")), false);
     assert.equal(copyCalls.some((call) => call.startsWith("product_hunt_top_products:")), false);
+
+    const adminResult = await submitUserPrivateLibraryToCloud({
+      userId: "user_1",
+      frequency: "DAILY",
+      summaryLanguage: "en",
+      builderIds: [
+        "builder_github_trending",
+        "builder_product_hunt",
+        "builder_launches",
+      ],
+      allowPlatformMaintainedSources: true,
+      prisma: prisma as never,
+      copyBuilderUpsert: async ({ sourceType, name }) => {
+        copyCalls.push(`${sourceType}:${name}`);
+        return { id: `cloud_${name.replace(/\s+/g, "_")}` };
+      },
+      syncHub: async () => ({ entry: {} as never, builderCount: 0 }),
+    });
+
+    assert.equal(adminResult.sourcesSubmitted, 3);
+    assert.equal(copyCalls.some((call) => call.startsWith("new_product_launches:")), true);
+    assert.equal(copyCalls.some((call) => call.startsWith("github_trending:")), true);
+    assert.equal(copyCalls.some((call) => call.startsWith("product_hunt_top_products:")), true);
   } finally {
     if (previousDatabaseUrl === undefined) {
       delete process.env.DATABASE_URL;

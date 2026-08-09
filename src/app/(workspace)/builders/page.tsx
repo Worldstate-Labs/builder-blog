@@ -574,7 +574,34 @@ async function loadFetchSyncData(user: {
     rawCloudSubmissionSources
       .map(({ builder }) => builder)
       .filter((builder) => builder.ownerUserId === user.id)
-      .map((builder) => ({
+      .map((builder) => {
+        const platformMaintained = isPlatformMaintainedSourceType(builder.sourceType);
+        return {
+          id: builder.id,
+          name: builder.name,
+          handle: builder.handle,
+          sourceType: builder.sourceType,
+          sourceUrl: builder.sourceUrl,
+          fetchUrl: builder.fetchUrl,
+          avatarUrl: builder.avatarUrl,
+          avatarDataUrl: builder.avatarDataUrl,
+          platformMaintained,
+          cloudSelectable: user.isAdmin || !platformMaintained,
+          ownerUserId: builder.ownerUserId,
+        };
+      });
+  const cloudSubmissionSourceIndexById = new Map(
+    personalCloudSubmissionCandidates.map((builder, index) => [builder.id, index]),
+  );
+  const cloudSubmissionSources: CloudSubmissionSource[] = cloudSubmissionSourcesForBuilders(
+    personalCloudSubmissionCandidates,
+    { userIsAdmin: user.isAdmin },
+  );
+  const fetchActionSourceBuilders = rawCloudSubmissionSources.map(({ builder }) => builder);
+  if (!user.isAdmin) {
+    for (const builder of personalCloudSubmissionCandidates) {
+      if (!builder.platformMaintained) continue;
+      cloudSubmissionSources.push({
         id: builder.id,
         name: builder.name,
         handle: builder.handle,
@@ -584,28 +611,9 @@ async function loadFetchSyncData(user: {
         avatarUrl: builder.avatarUrl,
         avatarDataUrl: builder.avatarDataUrl,
         platformMaintained: isPlatformMaintainedSourceType(builder.sourceType),
-        ownerUserId: builder.ownerUserId,
-      }));
-  const cloudSubmissionSourceIndexById = new Map(
-    personalCloudSubmissionCandidates.map((builder, index) => [builder.id, index]),
-  );
-  const cloudSubmissionSources: CloudSubmissionSource[] = cloudSubmissionSourcesForBuilders(
-    personalCloudSubmissionCandidates,
-  );
-  const fetchActionSourceBuilders = rawCloudSubmissionSources.map(({ builder }) => builder);
-  for (const builder of personalCloudSubmissionCandidates) {
-    if (!builder.platformMaintained) continue;
-    cloudSubmissionSources.push({
-      id: builder.id,
-      name: builder.name,
-      handle: builder.handle,
-      sourceType: builder.sourceType,
-      sourceUrl: builder.sourceUrl,
-      fetchUrl: builder.fetchUrl,
-      avatarUrl: builder.avatarUrl,
-      avatarDataUrl: builder.avatarDataUrl,
-      platformMaintained: isPlatformMaintainedSourceType(builder.sourceType),
-    });
+        cloudSelectable: false,
+      });
+    }
   }
   cloudSubmissionSources.sort(
     (a, b) =>
@@ -614,6 +622,7 @@ async function loadFetchSyncData(user: {
   );
   const hasFetchActionSources = hasFetchActionSourcesForBuilders(
     fetchActionSourceBuilders,
+    { userIsAdmin: user.isAdmin },
   );
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
