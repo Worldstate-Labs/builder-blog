@@ -14,18 +14,20 @@ const source = (path: string) => readFileSync(join(root, path), "utf8");
 
 test("admin cloud fetch runs route is admin-gated and serializes worker host plus source deliveries", () => {
   const route = source("src/app/api/admin/cloud-fetch/runs/route.ts");
+  const handler = source("src/lib/cloud-fetch-runs-handler.ts");
 
-  assert.match(route, /export async function GET/);
-  assert.match(route, /requireCloudFetchAdmin\(request\)/);
-  assert.match(route, /NextResponse\.json\(\{ error: auth\.error \}/);
-  assert.match(route, /cloudFetchRun\.findMany/);
+  assert.match(route, /createCloudFetchRunsGetHandler/);
+  assert.match(route, /export const GET = createCloudFetchRunsGetHandler\(/);
+  assert.match(route, /requireCloudFetchAdmin/);
   assert.match(route, /serializeCloudFetchRun/);
   assert.match(route, /serializeCloudWorkerHost/);
   assert.match(route, /export const dynamic = "force-dynamic"/);
-  assert.match(route, /"Cache-Control": "no-store, max-age=0"/);
-  assert.match(route, /leaseBatches/);
-  assert.match(route, /workerHost/);
-  assert.match(route, /builder: \{ select: \{ name: true, sourceType: true \} \}/);
+  assert.match(handler, /return NextResponse\.json\(\{ error: auth\.error \}/);
+  assert.match(handler, /listCloudFetchRuns/);
+  assert.match(handler, /"Cache-Control": "no-store, max-age=0"/);
+  assert.match(handler, /leaseBatches/);
+  assert.match(handler, /workerHost/);
+  assert.match(handler, /builder: \{ select: \{ name: true, sourceType: true \} \}/);
 });
 
 test("cloud-library management page is admin-gated and mounts the cloud monitor sections", () => {
@@ -48,8 +50,11 @@ test("cloud-library management page loads and passes initial pending source diag
   assert.match(page, /getPendingCloudFetchSources/);
   assert.match(page, /const \[[\s\S]*initialPendingSources[\s\S]*\] = await Promise\.all\(\[/);
   assert.match(page, /Promise\.all\(\[[\s\S]*getPendingCloudFetchSources\(\{[\s\S]*prisma[\s\S]*now: new Date\(\)[\s\S]*\}\),[\s\S]*\]\)/);
-  assert.match(page, /initialPendingSources/);
-  assert.match(page, /AdminCloudFetchLog[\s\S]*initialPendingSources/);
+  assert.match(
+    page,
+    /<AdminCloudFetchLog[\s\S]*initialWorkerHost=\{workerHost\}[\s\S]*initialLeaseBatches=\{leaseBatches\}[\s\S]*initialHasMore=\{hasMore\}[\s\S]*initialPendingSources=\{initialPendingSources\}/,
+  );
+  assert.doesNotMatch(page, /<AdminCloudFetchLog\s*\{\.\.\.cloudFetchLogProps\}/);
 });
 
 test("cloud output pools are automatic and only expose pause controls", () => {
@@ -509,8 +514,8 @@ test("cloud worker host uses a distinct jobType so it never leaks into a persona
   assert.match(cloudPage, /getAgentJobRuns\(userId, "cloud-library-fetch", 5\)/);
   assert.match(cloudPage, /serializeCloudWorkerHost/);
   assert.match(cloudPage, /initialWorkerHost/);
-  const cloudRunsRoute = source("src/app/api/admin/cloud-fetch/runs/route.ts");
-  assert.match(cloudRunsRoute, /getAgentJobRuns\(auth\.user\.id, "cloud-library-fetch", 5\)/);
+  const cloudRunsHandler = source("src/lib/cloud-fetch-runs-handler.ts");
+  assert.match(cloudRunsHandler, /getAgentJobRuns\(auth\.user\.id, "cloud-library-fetch", 5\)/);
 
   // ...while the personal fetch log stays on library-fetch (excludes cloud rounds).
   const personalFetchRuns = source("src/app/api/skill/fetch-runs/route.ts");

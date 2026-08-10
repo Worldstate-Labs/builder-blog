@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { ComponentProps } from "react";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
@@ -61,12 +60,6 @@ export default async function CloudLibraryManagementPage() {
       jobRuns[0] ??
       null,
   );
-  const cloudFetchLogProps = {
-    initialWorkerHost: workerHost,
-    initialLeaseBatches: leaseBatches,
-    initialHasMore: hasMore,
-    initialPendingSources,
-  } as unknown as ComponentProps<typeof AdminCloudFetchLog>;
 
   return (
     <div className="page-pad page-pad--settings">
@@ -109,7 +102,13 @@ export default async function CloudLibraryManagementPage() {
               </span>
             </summary>
             <div className="settings-rules-body">
-              <AdminCloudFetchLog {...cloudFetchLogProps} />
+              <AdminCloudFetchLog
+                initialWorkerHost={workerHost}
+                initialLeaseBatches={leaseBatches}
+                initialHasMore={hasMore}
+                // @ts-expect-error Task 3 owns the AdminCloudFetchLog prop type update.
+                initialPendingSources={initialPendingSources}
+              />
             </div>
           </details>
 
