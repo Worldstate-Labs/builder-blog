@@ -662,6 +662,8 @@ test("candidate discovery results expand into Product Hunt per-product fetch tas
   const discoveryTask = {
     type: "candidate_discovery",
     id: "candidate_discovery:builder_product_hunt_top_products:product_hunt_top_products",
+    cloudRunId: "cloud_run_product_hunt",
+    cloudSourceTaskId: "cloud_source_product_hunt",
     agentWorkType: "candidate_discovery_fallback",
     contentStatus: "requires_agent",
     builder: "Product Hunt Top Products",
@@ -717,6 +719,10 @@ test("candidate discovery results expand into Product Hunt per-product fetch tas
   assert.equal(expanded.fetchTasks[0].item.url, "https://www.producthunt.com/products/mailwarm");
   assert.equal(expanded.fetchTasks[0].item.rawJson.rank, 1);
   assert.equal(expanded.fetchTasks[0].item.rawJson.discoveryFetchTaskId, discoveryTask.id);
+  assert.equal(expanded.fetchTasks[0].cloudRunId, discoveryTask.cloudRunId);
+  assert.equal(expanded.fetchTasks[0].cloudSourceTaskId, discoveryTask.cloudSourceTaskId);
+  assert.equal(expanded.fetchTasks[0].builderSync.cloudRunId, discoveryTask.cloudRunId);
+  assert.equal(expanded.fetchTasks[0].builderSync.cloudSourceTaskId, discoveryTask.cloudSourceTaskId);
 });
 
 test("expanded fetch results expose canonical planned post tasks for fetch logs", async () => {
@@ -5866,6 +5872,223 @@ test("cloud source slicing keeps every post for one source in one terminal paylo
   assert.equal(slices[0].payload.builders[0].items.length, 4);
 });
 
+test("cloud source slicing recovers a missing run id from an exact source-task lease", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-identity-recovery=${Date.now()}`);
+  const fetchTask = {
+    id: "post_legacy_discovery",
+    builderId: "builder_product_hunt",
+    agentWorkType: "product_hunt_top_product_report",
+    contentStatus: "requires_agent",
+    builderSync: {
+      builderId: "builder_product_hunt",
+      cloudSourceTaskId: "source_product_hunt",
+    },
+    item: { url: "https://www.producthunt.com/products/example" },
+  };
+
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    {
+      status: "ok",
+      fetchTasks: [fetchTask],
+      cloudSourceTasks: [
+        {
+          cloudRunId: "run_product_hunt",
+          cloudSourceTaskId: "source_product_hunt",
+          builderId: "builder_product_hunt",
+        },
+      ],
+    },
+    {
+      builders: [
+        {
+          builderId: "builder_product_hunt",
+          items: [
+            {
+              title: "Example product",
+              url: fetchTask.item.url,
+              rawJson: { fetchTaskId: fetchTask.id },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [],
+    },
+  );
+
+  assert.equal(slices.length, 1);
+  assert.equal(slices[0].key, "cloudSource:run_product_hunt:source_product_hunt");
+  assert.equal(slices[0].cloudRunId, "run_product_hunt");
+  assert.equal(slices[0].cloudSourceTaskId, "source_product_hunt");
+  assert.equal(slices[0].tasks.fetchTasks[0].cloudRunId, "run_product_hunt");
+  assert.equal(slices[0].tasks.fetchTasks[0].cloudSourceTaskId, "source_product_hunt");
+});
+
+test("completed checkpoint merge keeps the exact cloud lease needed to recover task identity", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-checkpoint-identity-"));
+  try {
+    const tasksFile = join(dir, "cloud-fetch-result.json");
+    const resultsDir = join(dir, "results");
+    const tasksOut = join(dir, "completed-tasks.json");
+    const payloadOut = join(dir, "completed-payload.json");
+    await mkdir(resultsDir, { recursive: true });
+
+    const fetchTask = {
+      id: "post_legacy_discovery",
+      builderId: "builder_product_hunt",
+      agentWorkType: "product_hunt_top_product_report",
+      contentStatus: "requires_agent",
+      builderSync: {
+        builderId: "builder_product_hunt",
+        cloudSourceTaskId: "source_product_hunt",
+      },
+      item: { url: "https://www.producthunt.com/products/example" },
+    };
+    await writeFile(
+      tasksFile,
+      `${JSON.stringify({
+        status: "ok",
+        fetchTasks: [fetchTask],
+        cloudSourceTasks: [
+          {
+            cloudRunId: "run_product_hunt",
+            cloudSourceTaskId: "source_product_hunt",
+            builderId: "builder_product_hunt",
+          },
+          {
+            cloudRunId: "run_unfinished",
+            cloudSourceTaskId: "source_unfinished",
+            builderId: "builder_unfinished",
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      join(resultsDir, "shard-0-result.json"),
+      `${JSON.stringify({
+        builders: [
+          {
+            builderId: "builder_product_hunt",
+            items: [
+              {
+                title: "Example product",
+                url: fetchTask.item.url,
+                summary: "Example summary.",
+                rawJson: { fetchTaskId: fetchTask.id },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      })}\n`,
+      "utf8",
+    );
+
+    await execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "merge-task-results",
+        "--completed-only",
+        "--tasks",
+        tasksFile,
+        "--results-dir",
+        resultsDir,
+        "--tasks-out",
+        tasksOut,
+        "--out",
+        payloadOut,
+      ],
+      { cwd: process.cwd() },
+    );
+
+    const completedTasks = JSON.parse(await readFile(tasksOut, "utf8"));
+    assert.deepEqual(completedTasks.cloudSourceTasks, [
+      {
+        cloudRunId: "run_product_hunt",
+        cloudSourceTaskId: "source_product_hunt",
+        builderId: "builder_product_hunt",
+      },
+    ]);
+    const cli = await import(`../scripts/builder-digest.mjs?checkpoint-identity=${Date.now()}`);
+    const completedPayload = JSON.parse(await readFile(payloadOut, "utf8"));
+    const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(completedTasks, completedPayload);
+    assert.equal(slices.length, 1);
+    assert.equal(slices[0].cloudRunId, "run_product_hunt");
+    assert.equal(slices[0].cloudSourceTaskId, "source_product_hunt");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud source slicing does not guess a run id for an ambiguous repeated lease", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-identity-ambiguity=${Date.now()}`);
+  const fetchTask = {
+    id: "post_legacy_discovery",
+    builderId: "builder_product_hunt",
+    agentWorkType: "product_hunt_top_product_report",
+    contentStatus: "requires_agent",
+    builderSync: {
+      builderId: "builder_product_hunt",
+      cloudSourceTaskId: "source_product_hunt",
+    },
+    item: { url: "https://www.producthunt.com/products/example" },
+  };
+
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    {
+      status: "ok",
+      fetchTasks: [fetchTask],
+      cloudSourceTasks: ["run_1", "run_2"].map((cloudRunId) => ({
+        cloudRunId,
+        cloudSourceTaskId: "source_product_hunt",
+        builderId: "builder_product_hunt",
+      })),
+    },
+    { builders: [], taskOutcomes: [] },
+  );
+
+  const missingRunSlice = slices.find(
+    (slice: { key: string }) => slice.key === "cloudSource:missing-run:source_product_hunt",
+  );
+  assert.ok(missingRunSlice);
+  assert.equal(missingRunSlice.cloudRunId, "");
+});
+
+test("cloud source slicing does not recover identity from another builder's lease", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-builder-mismatch=${Date.now()}`);
+  const sourceTaskId = "source_product_hunt";
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    {
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "post_legacy_discovery",
+          builderId: "builder_product_hunt",
+          agentWorkType: "product_hunt_top_product_report",
+          contentStatus: "requires_agent",
+          builderSync: { builderId: "builder_product_hunt", cloudSourceTaskId: sourceTaskId },
+          item: { url: "https://www.producthunt.com/products/example" },
+        },
+      ],
+      cloudSourceTasks: [
+        {
+          cloudRunId: "run_other_builder",
+          cloudSourceTaskId: sourceTaskId,
+          builderId: "builder_other",
+        },
+      ],
+    },
+    { builders: [], taskOutcomes: [] },
+  );
+
+  const missingRunSlice = slices.find(
+    (slice: { key: string }) => slice.key === `cloudSource:missing-run:${sourceTaskId}`,
+  );
+  assert.ok(missingRunSlice);
+  assert.equal(missingRunSlice.cloudRunId, "");
+});
+
 test("cloud source slicing keeps planned-only terminal outcomes with their source", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?cloud-source-planned-outcome=${Date.now()}`);
   const completedTask = {
@@ -8498,6 +8721,32 @@ test("checkpoint progress cannot regress a task already synced by the server", a
       message: "Started reading this task.",
     },
   ]);
+});
+
+test("checkpoint sync failure updates keep summaries retryable and expose the diagnostic", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?checkpoint-sync-failure=${Date.now()}`);
+  const updates = cli.checkpointSyncFailureTaskUpdatesForTest(
+    {
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "post_waiting_to_sync",
+          builder: "Product Hunt Top Products",
+          builderId: "builder_product_hunt",
+          sourceType: "product_hunt_top_products",
+          item: { title: "Example product", url: "https://example.com/product" },
+        },
+      ],
+    },
+    "Missing --cloud-run-id <id> for sync-cloud-builders.",
+  );
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].id, "post_waiting_to_sync");
+  assert.equal(updates[0].status, "summarized");
+  assert.equal(updates[0].phase, "sync");
+  assert.match(updates[0].message, /Sync attempt failed; retrying/);
+  assert.match(updates[0].reason, /Missing --cloud-run-id/);
 });
 
 test("fetch progress does not append the same lifecycle event twice in a row", async () => {

@@ -4578,6 +4578,7 @@ sync_payload_slices() {
   _sps_sync_command="${SYNC_BUILDERS_COMMAND:-sync-builders}"
   _sps_extra_args="${SYNC_BUILDERS_EXTRA_ARGS:-}"
   _sps_failure_mode="${SYNC_PAYLOAD_FAILURE_MODE:-patch}"
+  SYNC_PAYLOAD_LAST_ERROR_FILE=""
   shift 4 || true
 
   node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
@@ -4630,6 +4631,7 @@ NODE
     set -e
     cat "$_slice_validate"
     if [ "$_slice_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_slice_validate"; then
+      SYNC_PAYLOAD_LAST_ERROR_FILE="$_slice_validate"
       _sps_failures=$(( _sps_failures + 1 ))
       if [ "$_sps_failure_mode" = "skip" ]; then
         echo "Skipping non-destructive sync for $_sps_label $_slice_name after validate-agent-sync failed (exit $_slice_validate_code)." >&2
@@ -4687,6 +4689,7 @@ NODE
     fi
 
     _sps_failures=$(( _sps_failures + 1 ))
+    SYNC_PAYLOAD_LAST_ERROR_FILE="$_slice_stderr"
     if [ "$_sps_failure_mode" = "skip" ]; then
       echo "Skipping non-destructive sync for $_sps_label $_slice_name after $_sps_sync_command failed (exit $_slice_code)." >&2
       continue
@@ -4813,6 +4816,11 @@ sync_completed_checkpoints() {
     return 0
   fi
 
+  if [ -s "${SYNC_PAYLOAD_LAST_ERROR_FILE:-}" ]; then
+    node "$AGENT_DIR/builder-digest.mjs" checkpoint-sync-failure \
+      --tasks "$_scc_tasks" \
+      --diagnostic-file "$SYNC_PAYLOAD_LAST_ERROR_FILE" >/dev/null 2>&1 || true
+  fi
   echo "One or more completed checkpoint task syncs failed; retrying during a later checkpoint or final sync." >&2
   return 0
 }

@@ -1100,6 +1100,7 @@ function usage() {
   assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ [--assigned-only] [--complete-sources-only] --out library-agent-sync.json
+  checkpoint-sync-failure --tasks fetch-result.json --diagnostic-file sync.err
   finalize-worker-result --shard shards/shard-N.json --results-dir shards/results/ --out shards/results/shard-N-result.json
   prepare-managed-media --tasks fetch-result.json [--out fetch-result.json] [--artifact-root managed-media/]
   asr-doctor
@@ -2655,11 +2656,17 @@ function ensureSummaryInstructionsLanguage(instructions, summaryLanguage) {
 }
 
 function buildCloudFetchTask(task, metadata) {
+  const cloudRunId =
+    metadata?.cloudRunId ?? metadata?.builderSync?.cloudRunId ??
+    task?.cloudRunId ?? task?.builderSync?.cloudRunId ?? null;
+  const cloudSourceTaskId =
+    metadata?.cloudSourceTaskId ?? metadata?.builderSync?.cloudSourceTaskId ??
+    task?.cloudSourceTaskId ?? task?.builderSync?.cloudSourceTaskId ?? null;
   const summaryLanguage = metadata?.summaryLanguage ?? task?.summaryLanguage ?? task?.summaryInstructions?.language ?? null;
   return {
     ...task,
-    cloudRunId: metadata?.cloudRunId ?? task?.cloudRunId ?? null,
-    cloudSourceTaskId: metadata?.cloudSourceTaskId ?? task?.cloudSourceTaskId ?? null,
+    cloudRunId,
+    cloudSourceTaskId,
     mustSucceedBy: metadata?.mustSucceedBy ?? task?.mustSucceedBy ?? null,
     estimatedDurationSeconds: metadata?.estimatedDurationSeconds ?? task?.estimatedDurationSeconds ?? null,
     estimatedWorkSeconds: task?.estimatedWorkSeconds ?? metadata?.estimatedWorkSeconds ?? null,
@@ -2677,7 +2684,8 @@ function buildCloudFetchTask(task, metadata) {
     builderSync: {
       ...(task?.builderSync ?? {}),
       builderId: task?.builderSync?.builderId ?? task?.builderId ?? metadata?.builderId ?? null,
-      cloudSourceTaskId: metadata?.cloudSourceTaskId ?? task?.builderSync?.cloudSourceTaskId ?? null,
+      cloudRunId,
+      cloudSourceTaskId,
     },
     summaryInstructions: ensureSummaryInstructionsLanguage(task?.summaryInstructions, summaryLanguage),
   };
@@ -5435,15 +5443,20 @@ export function expandCandidateDiscoveryFetchResult(
       if (candidate) candidates.push(candidate);
       if (task.discovery?.limit && candidates.length >= Number(task.discovery.limit)) break;
     }
-    const fetchTasks = candidates.map((candidate) =>
-      fetchTaskFromAgentTask(
+    const fetchTasks = candidates.map((candidate) => {
+      const fetchTask = fetchTaskFromAgentTask(
         discoveryFallback.buildAgentTask(builder, candidate, { sources: taskSources, agentModel }),
         builderSync,
         taskSources,
         commonFetchRules,
         commonSummaryRules,
-      ),
-    );
+      );
+      const hasCloudIdentity = Boolean(
+        task?.cloudRunId || task?.builderSync?.cloudRunId ||
+        task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId,
+      );
+      return hasCloudIdentity ? buildCloudFetchTask(fetchTask, task) : fetchTask;
+    });
     if (fetchTasks.length > 0) expandedTasks.push(...fetchTasks);
     else discoveryOutcomes.push(candidateDiscoveryOutcome(task, discoveryResult, {
       fallbackReason: "candidate_discovery_no_usable_candidates",
@@ -9875,6 +9888,55 @@ export function coalesceCheckpointProgressUpdates(updates, completedTaskIds = []
   return [...byTaskId.values()];
 }
 
+function checkpointSyncFailureTaskUpdates(fetchResult, diagnostic) {
+  const reason = compactProgressText(diagnostic, 160) || "Checkpoint sync failed";
+  return fetchRunPlannedTaskPatches(fetchResult).map((task) => ({
+    ...task,
+    status: "summarized",
+    phase: "sync",
+    message: compactProgressText(`Sync attempt failed; retrying: ${reason}`, 260),
+    reason,
+  }));
+}
+
+export function checkpointSyncFailureTaskUpdatesForTest(fetchResult, diagnostic) {
+  return checkpointSyncFailureTaskUpdates(fetchResult, diagnostic);
+}
+
+async function emitCheckpointSyncFailure(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const diagnosticFile = argValue(args, "--diagnostic-file");
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!diagnosticFile) throw new Error("Missing --diagnostic-file sync.err");
+
+  const config = await readConfig();
+  const progress = await readFetchProgressState();
+  if (!progress) return;
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  let diagnostic = "Checkpoint sync failed";
+  try {
+    const lines = (await readFile(diagnosticFile, "utf8"))
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    diagnostic = compactProgressText(lines.at(-1), 160) || diagnostic;
+  } catch {}
+
+  const updates = checkpointSyncFailureTaskUpdates(fetchResult, diagnostic);
+  for (const update of updates) upsertFetchProgressTask(progress, update);
+  appendFetchProgressEvent(progress, {
+    type: "checkpoint_sync_failed",
+    status: "retrying",
+    reason: diagnostic,
+    message: `Sync attempt failed for ${updates.length} completed post task${updates.length === 1 ? "" : "s"}; retrying.`,
+  });
+  await emitFetchJobProgress(config, progress, {
+    stage: "workers_running",
+    current: { task: null },
+    summary: `Completed summaries could not sync; retrying automatically. ${diagnostic}`,
+  });
+}
+
 function latestProgressTask(tasks) {
   return tasks
     .filter((task) => task?.id)
@@ -10040,7 +10102,10 @@ async function mergeTaskResults(args) {
     ? filterSyncPayloadToTasks(merged.payload, selectedTasks)
     : merged.payload;
   const tasksOut = shouldFilterOutput
-    ? filterFetchResultToTasks(fetchResult, selectedTasks, { includeZeroPostCloudSourceTasks: !completedOnly })
+    ? filterFetchResultToTasks(fetchResult, selectedTasks, {
+        includeSelectedCloudSourceTasks: completedOnly,
+        includeZeroPostCloudSourceTasks: !completedOnly,
+      })
     : null;
   await writeFile(outFile, `${JSON.stringify(payloadOut, null, 2)}\n`, "utf8");
   if (tasksOutFile) {
@@ -10265,12 +10330,54 @@ function zeroPostCloudSourceTasksForSync(fetchResult) {
   });
 }
 
+function cloudSourceTasksMatchingTask(task, cloudSourceTasks) {
+  const sourceTaskId = String(
+    task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "",
+  ).trim();
+  if (!sourceTaskId) return [];
+
+  const cloudRunId = taskCloudRunIdForSync(task);
+  let matches = cloudSourceTasks.filter((candidate) =>
+    String(candidate?.cloudSourceTaskId || "").trim() === sourceTaskId &&
+    (!cloudRunId || String(candidate?.cloudRunId || "").trim() === cloudRunId),
+  );
+  const builderId = String(task?.builderId || task?.builderSync?.builderId || "").trim();
+  if (builderId) {
+    const matchesWithBuilderIdentity = matches.filter((candidate) =>
+      String(candidate?.builderId || candidate?.builderSync?.builderId || "").trim(),
+    );
+    if (matchesWithBuilderIdentity.length > 0) {
+      matches = matchesWithBuilderIdentity.filter((candidate) =>
+        String(candidate?.builderId || candidate?.builderSync?.builderId || "").trim() === builderId,
+      );
+    }
+  }
+  if (!cloudRunId) {
+    const runIds = uniqueNonEmptyStrings(matches.map((candidate) => candidate?.cloudRunId));
+    if (runIds.length !== 1) return [];
+    matches = matches.filter((candidate) =>
+      String(candidate?.cloudRunId || "").trim() === runIds[0],
+    );
+  }
+  return matches;
+}
+
+function selectedCloudSourceTasksForSync(fetchResult, tasks) {
+  const cloudSourceTasks = extractCloudSourceTasks(fetchResult);
+  return mergeCloudSourceTasks(
+    ...tasks.map((task) => cloudSourceTasksMatchingTask(task, cloudSourceTasks)),
+  );
+}
+
 function filterFetchResultToTasks(fetchResult, tasks, options = {}) {
   const wantedIds = new Set(tasks.map(taskIdForSync));
   const wantedKeys = new Set(tasks.map(taskKeyForSync));
-  const cloudSourceTasks = options.includeZeroPostCloudSourceTasks
-    ? zeroPostCloudSourceTasksForSync(fetchResult)
-    : [];
+  const cloudSourceTasks = mergeCloudSourceTasks(
+    options.includeSelectedCloudSourceTasks
+      ? selectedCloudSourceTasksForSync(fetchResult, tasks)
+      : [],
+    options.includeZeroPostCloudSourceTasks ? zeroPostCloudSourceTasksForSync(fetchResult) : [],
+  );
   return {
     ...copyPayloadMetadata(fetchResult),
     status: fetchResult?.status ?? "ok",
@@ -10375,6 +10482,29 @@ function extractCloudSourceTasks(fetchResult) {
   return Array.isArray(fetchResult?.cloudSourceTasks) ? fetchResult.cloudSourceTasks : [];
 }
 
+function recoverCloudTaskIdentity(task, cloudSourceTasks) {
+  const existingRunId = String(task?.cloudRunId || task?.builderSync?.cloudRunId || "").trim();
+  const sourceTaskId = String(
+    task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "",
+  ).trim();
+  if (existingRunId || !sourceTaskId) return task;
+
+  const matches = cloudSourceTasksMatchingTask(task, cloudSourceTasks);
+  const runIds = uniqueNonEmptyStrings(matches.map((candidate) => candidate?.cloudRunId));
+  if (runIds.length !== 1) return task;
+
+  return {
+    ...task,
+    cloudRunId: runIds[0],
+    cloudSourceTaskId: sourceTaskId,
+    builderSync: {
+      ...(task?.builderSync ?? {}),
+      cloudRunId: runIds[0],
+      cloudSourceTaskId: sourceTaskId,
+    },
+  };
+}
+
 function plannedTasksForQueueSync(fetchResult) {
   const tasks = [...extractFetchTasks(fetchResult)];
   const seen = new Set(tasks.map((task) => taskKeyForSync(task)));
@@ -10415,8 +10545,10 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
   const taskMatchesById = new Map();
   const taskMatches = [];
   const emittedItemTaskIds = new Set();
-  const fetchTasks = plannedTasksForQueueSync(fetchResult);
   const cloudSourceTasks = extractCloudSourceTasks(fetchResult);
+  const fetchTasks = plannedTasksForQueueSync(fetchResult).map((task) =>
+    recoverCloudTaskIdentity(task, cloudSourceTasks),
+  );
 
   for (const task of fetchTasks) {
     const key = keyForTask(task);
@@ -14631,6 +14763,7 @@ async function main() {
   else if (command === "assign-fetch-tasks") await assignFetchTasks(args);
   else if (command === "merge-fetch-results") await mergeFetchResultsCommand(args);
   else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
+  else if (command === "checkpoint-sync-failure") await emitCheckpointSyncFailure(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
   else if (command === "finalize-worker-result") await finalizeWorkerResult(args);
   else if (command === "extract-long-media") await extractLongMedia(args);

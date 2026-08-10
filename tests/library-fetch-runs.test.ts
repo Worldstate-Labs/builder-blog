@@ -1133,6 +1133,10 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
     runner,
     /One or more completed checkpoint task syncs failed; retrying during a later checkpoint or final sync\./,
   );
+  assert.match(
+    runner,
+    /checkpoint-sync-failure[\s\S]*--tasks "\$_scc_tasks"[\s\S]*--diagnostic-file "\$SYNC_PAYLOAD_LAST_ERROR_FILE"/,
+  );
   assert.match(runner, /--reason "task_validation_failed"/);
   assert.match(runner, /--validation-file "\$_slice_validate"/);
   assert.match(runner, /--reason "task_sync_failed"/);
