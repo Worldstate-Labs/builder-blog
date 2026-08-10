@@ -125,9 +125,39 @@ test("pending source token and deferral summaries translate when values are form
       expected: "估算 1,200 tokens",
     },
     {
+      locale: "zh-CN" as const,
+      source: "Remaining 50 tokens",
+      expected: "剩余 50 tokens",
+    },
+    {
+      locale: "zh-CN" as const,
+      source: "Deferrals 3",
+      expected: "延后次数 3",
+    },
+    {
+      locale: "zh-TW" as const,
+      source: "Estimated 1,200 tokens",
+      expected: "估算 1,200 tokens",
+    },
+    {
       locale: "zh-TW" as const,
       source: "Remaining 50 tokens",
       expected: "剩餘 50 tokens",
+    },
+    {
+      locale: "zh-TW" as const,
+      source: "Deferrals 3",
+      expected: "延後次數 3",
+    },
+    {
+      locale: "ja" as const,
+      source: "Estimated 1,200 tokens",
+      expected: "推定 1,200 tokens",
+    },
+    {
+      locale: "ja" as const,
+      source: "Remaining 50 tokens",
+      expected: "残り 50 tokens",
     },
     {
       locale: "ja" as const,
@@ -140,9 +170,29 @@ test("pending source token and deferral summaries translate when values are form
       expected: "예상 1,200 tokens",
     },
     {
+      locale: "ko" as const,
+      source: "Remaining 50 tokens",
+      expected: "남은 50 tokens",
+    },
+    {
+      locale: "ko" as const,
+      source: "Deferrals 3",
+      expected: "연기 횟수 3",
+    },
+    {
+      locale: "es" as const,
+      source: "Estimated 1,200 tokens",
+      expected: "Estimado 1,200 tokens",
+    },
+    {
       locale: "es" as const,
       source: "Remaining 50 tokens",
       expected: "Restante 50 tokens",
+    },
+    {
+      locale: "es" as const,
+      source: "Deferrals 3",
+      expected: "Aplazamientos 3",
     },
   ];
 
