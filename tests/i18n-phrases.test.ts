@@ -117,6 +117,40 @@ test("worker queue counts and generated task labels translate", () => {
   }
 });
 
+test("pending source token and deferral summaries translate when values are formatted inline", () => {
+  const cases = [
+    {
+      locale: "zh-CN" as const,
+      source: "Estimated 1,200 tokens",
+      expected: "估算 1,200 tokens",
+    },
+    {
+      locale: "zh-TW" as const,
+      source: "Remaining 50 tokens",
+      expected: "剩餘 50 tokens",
+    },
+    {
+      locale: "ja" as const,
+      source: "Deferrals 3",
+      expected: "延期回数 3",
+    },
+    {
+      locale: "ko" as const,
+      source: "Estimated 1,200 tokens",
+      expected: "예상 1,200 tokens",
+    },
+    {
+      locale: "es" as const,
+      source: "Remaining 50 tokens",
+      expected: "Restante 50 tokens",
+    },
+  ];
+
+  for (const { locale, source, expected } of cases) {
+    assert.equal(translateUiPhrase(locale, source), expected, `${locale}: ${source}`);
+  }
+});
+
 test("visible app TSX phrases have translations for supported non-English locales", () => {
   const locales = ["zh-CN", "zh-TW", "ja", "ko", "es"] as const;
   const files = execSync("rg --files src | rg '\\.(tsx)$'", { encoding: "utf8" })

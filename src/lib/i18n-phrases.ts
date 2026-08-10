@@ -5344,6 +5344,20 @@ const templateTranslations: PhraseTemplate[] = [
     },
   },
   {
+    pattern: /^(Estimated|Remaining) ([0-9,]+) tokens$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const label = translateUiPhrase(locale, match[1]) ?? match[1];
+      return `${label} ${match[2]} tokens`;
+    },
+  },
+  {
+    pattern: /^Deferrals ([0-9,]+)$/u,
+    render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
+      const label = translateUiPhrase(locale, "Deferrals") ?? "Deferrals";
+      return `${label} ${match[1]}`;
+    },
+  },
+  {
     pattern: /^Post \((.+)\) (.+)$/u,
     render(locale: Exclude<UiLocale, "en">, match: RegExpMatchArray) {
       const values: Record<Exclude<UiLocale, "en">, string> = {
