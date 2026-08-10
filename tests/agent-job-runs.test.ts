@@ -41,6 +41,61 @@ test("removed runtimes fail closed from both environment overrides and persisted
   }
 });
 
+test("unpinned Codex discovery records the runner model instead of an ambient model", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-discovery-"));
+  const agentDir = join(tempDir, "agent");
+  const homeDir = join(tempDir, "home");
+  const binDir = join(homeDir, ".codex", "bin");
+  const captureFile = join(tempDir, "codex-env.txt");
+  mkdirSync(join(agentDir, "jobs"), { recursive: true });
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(join(agentDir, "jobs", "library-cron.md"), "unused\n");
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+{
+  printf 'runtime=%s\\n' "\${BUILDER_BLOG_RUNTIME:-}"
+  printf 'model=%s\\n' "\${BUILDER_BLOG_AGENT_MODEL:-}"
+  printf 'args=%s\\n' "$*"
+} > "$FOLLOWBRIEF_CAPTURE_FILE"
+printf '%s\\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}'
+`, { mode: 0o755 });
+
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    HOME: homeDir,
+    PATH: `${binDir}:${process.env.PATH ?? ""}`,
+    BUILDER_BLOG_ACCOUNT: "codex-discovery@example.com",
+    BUILDER_BLOG_AGENT_DIR: agentDir,
+    BUILDER_BLOG_DISABLE_WEB_SYNC: "1",
+    BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH: "1",
+    BUILDER_BLOG_SMOKE_CHECK: "1",
+    CODEX_MODEL: "gpt-5.4",
+    FOLLOWBRIEF_CAPTURE_FILE: captureFile,
+  };
+  delete env.BUILDER_BLOG_AGENT_RUNTIME;
+  delete env.BUILDER_BLOG_AGENT_MODEL;
+  delete env.BUILDER_BLOG_CODEX_MODEL;
+  delete env.BUILDER_BLOG_CODEX_REASONING_EFFORT;
+
+  try {
+    const result = spawnSync("sh", [join(root, "scripts/builder-agent-runner.sh"), "library-cron"], {
+      cwd: root,
+      encoding: "utf8",
+      env,
+    });
+    let capture = "capture file missing";
+    try {
+      capture = readFileSync(captureFile, "utf8");
+    } catch {}
+    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}\n${capture}`);
+    assert.match(capture, /^runtime=codex$/m);
+    assert.match(capture, /^model=gpt-5\.6-luna$/m);
+    assert.match(capture, /args=.*--model gpt-5\.6-luna/);
+    assert.match(capture, /args=.*model_reasoning_effort=medium/);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 async function loadAgentJobRunsModule() {
   process.env.DATABASE_URL ??= "postgresql://postgres:postgres@127.0.0.1:5432/builder_blog_test";
   return import("../src/lib/agent-job-runs");

@@ -1278,13 +1278,19 @@ validate_runtime "$RAW_PINNED_RUNTIME"
 PINNED_RUNTIME="$(normalize_runtime "$RAW_PINNED_RUNTIME")"
 
 # Surface the resolved runtime to the CLI so the fetch-run record (and the web
-# fetch log) can label which agent ran it. The CLI also auto-detects
-# codex/claude from their own env, but the pin is authoritative and is the only
-# signal for openclaw. Empty for un-pinned interactive runs falls back to env
-# detection.
-export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
+# fetch log) can label which agent ran it. A pin is authoritative. For unpinned
+# runs, mirror the discovery chain's Codex-first choice before job tracking
+# starts so metadata matches the explicit runner model rather than global Codex
+# configuration.
+BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
+if [ -z "$BUILDER_BLOG_RUNTIME" ] && \
+   [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] && \
+   command -v codex >/dev/null 2>&1; then
+  BUILDER_BLOG_RUNTIME="codex"
+fi
+export BUILDER_BLOG_RUNTIME
 if [ -z "${BUILDER_BLOG_AGENT_MODEL:-}" ]; then
-  case "$PINNED_RUNTIME" in
+  case "$BUILDER_BLOG_RUNTIME" in
     codex) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CODEX_MODEL:-$DEFAULT_CODEX_MODEL}" ;;
     claude) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CLAUDE_MODEL:-sonnet}" ;;
   esac
