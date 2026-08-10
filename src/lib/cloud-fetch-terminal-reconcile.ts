@@ -103,7 +103,7 @@ export function reconcileCloudFetchTerminalResult(params: {
   });
 
   const clientPosts = clientPostMap(params.clientResult.details.posts);
-  const posts = expectedPosts.map(([postTaskId, planPost]) => {
+  const posts = expectedPosts.map<CloudFetchTerminalPost>(([postTaskId, planPost]) => {
     const submitted = submittedById.get(postTaskId);
     const itemResult = itemResultById.get(postTaskId);
     const outcome = outcomeById.get(postTaskId);
