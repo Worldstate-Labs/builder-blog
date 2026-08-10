@@ -89,7 +89,6 @@ const allowedInitial = new Set([
 ]);
 const allowedExtended = new Set([...allowedInitial, "ownerId", "anchorAt", "completedAt", "evidence"]);
 const frequencyMeta = {
-  "1h": { label: "Hourly", interval: 60 },
   daily: { label: "Daily", interval: 1440 },
   weekly: { label: "Weekly", interval: 10080 },
 };

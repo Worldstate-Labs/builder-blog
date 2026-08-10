@@ -960,7 +960,8 @@ test("web app serves the agent skill and setup command", () => {
   // also pass cadence.
   assert.match(skillPromptActions, /CronConfigDialog/);
   assert.match(skillPromptActions, /FREQUENCY_OPTIONS/);
-  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "1h", label: "Hourly" \}[\s\S]*\{ id: "daily", label: "Daily" \}[\s\S]*\{ id: "weekly", label: "Weekly" \}/);
+  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "daily", label: "Daily" \}[\s\S]*\{ id: "weekly", label: "Weekly" \}/);
+  assert.doesNotMatch(skillPromptActions, /id: "1h"|Hourly/);
   assert.doesNotMatch(skillPromptActions, /Every day|Every week/);
   assert.doesNotMatch(skillPromptActions, /Every 30 minutes|Every hour|Every 12 hours/);
   assert.doesNotMatch(skillPromptActions, /id: "30m"|id: "12h"/);
@@ -1070,7 +1071,8 @@ test("web app serves the agent skill and setup command", () => {
   // the setup prompt derives the concrete cron/launchd schedule from the
   // install-time anchor after validation succeeds.
   assert.match(skillJobRoute, /cronFrequencies/);
-  assert.match(skillJobRoute, /"1h": \{ label: "Hourly" \}[\s\S]*daily: \{ label: "Daily" \}[\s\S]*weekly: \{ label: "Weekly" \}/);
+  assert.match(skillJobRoute, /daily: \{ label: "Daily" \}[\s\S]*weekly: \{ label: "Weekly" \}/);
+  assert.doesNotMatch(skillJobRoute, /"1h": \{ label: "Hourly" \}|Hourly/);
   assert.doesNotMatch(skillJobRoute, /every day|every week/);
   assert.doesNotMatch(skillJobRoute, /every 30 minutes|every hour|every 12 hours|every 3 hours|every 6 hours/);
   assert.doesNotMatch(skillJobRoute, /"30m"|"3h"|"6h"|"12h"/);
@@ -1084,7 +1086,6 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptSurface, /openclaw: "OpenClaw"/);
   assert.match(skillPromptActions, /id: "openclaw"/);
   assert.match(skillPromptActions, /label: "OpenClaw"/);
-  assert.match(skillPromptActions, /Hourly/);
   assert.match(skillPromptActions, /Daily/);
   assert.match(skillPromptActions, /Weekly/);
   assert.doesNotMatch(skillPromptActions, /08:00|Mon 08:00/);

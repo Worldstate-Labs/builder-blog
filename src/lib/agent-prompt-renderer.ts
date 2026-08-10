@@ -5,7 +5,7 @@ import { expandSkillIncludes } from "./skill-includes";
 import { jobSkillFiles, type SkillJobName } from "./skill-job-files";
 
 export type AgentPromptRuntime = "claude" | "codex" | "openclaw";
-export type AgentPromptFrequency = "1h" | "daily" | "weekly";
+export type AgentPromptFrequency = "daily" | "weekly";
 
 export type ExistingCronRecord = {
   status: string;
@@ -64,13 +64,11 @@ const runtimeLabels: Record<AgentPromptRuntime, string> = {
 };
 
 const cronFrequencies: Record<AgentPromptFrequency, { label: string }> = {
-  "1h": { label: "Hourly" },
   daily: { label: "Daily" },
   weekly: { label: "Weekly" },
 };
 
 const cronIntervalMinutes: Record<AgentPromptFrequency, string> = {
-  "1h": "60",
   daily: "1440",
   weekly: "10080",
 };

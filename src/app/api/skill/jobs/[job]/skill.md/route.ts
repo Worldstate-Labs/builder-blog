@@ -63,15 +63,15 @@ export async function GET(request: Request, { params }: Params) {
   // metadata; the concrete cron/launchd schedule is generated on the user's
   // machine from the install-time anchor after validation succeeds.
   const cronFrequencies: Record<NonNullable<NormalizedAgentPromptRenderOptions["frequency"]>, { label: string }> = {
-    "1h": { label: "Hourly" },
     daily: { label: "Daily" },
     weekly: { label: "Weekly" },
   };
-  const defaultFreq = "daily";
+  const defaultFreq: NonNullable<NormalizedAgentPromptRenderOptions["frequency"]> = "daily";
   const freqRaw = url.searchParams.get("freq");
-  const freq = (freqRaw && cronFrequencies[freqRaw as keyof typeof cronFrequencies]
-    ? freqRaw
-    : defaultFreq) as NormalizedAgentPromptRenderOptions["frequency"];
+  if (freqRaw !== null && !Object.prototype.hasOwnProperty.call(cronFrequencies, freqRaw)) {
+    return NextResponse.json({ error: "Frequency invalid" }, { status: 400 });
+  }
+  const freq = (freqRaw ?? defaultFreq) as NormalizedAgentPromptRenderOptions["frequency"];
   const fetchForce = url.searchParams.get("force") === "1";
   const fetchDays = boundedIntegerParam(url.searchParams, "days", 30, 1, 90);
   const isLibraryJob = job.startsWith("library") || job.startsWith("cloud-library");

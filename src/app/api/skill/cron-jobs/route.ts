@@ -8,7 +8,6 @@ import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 
 const cronFrequencies: Record<string, { intervalMinutes: number; label: string }> = {
-  "1h": { intervalMinutes: 60, label: "Hourly" },
   daily: { intervalMinutes: 1_440, label: "Daily" },
   weekly: { intervalMinutes: 10_080, label: "Weekly" },
 };

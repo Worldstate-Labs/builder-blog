@@ -1116,7 +1116,7 @@ function usage() {
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
   sync --file builder-blog-digest.json [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   schedule-spec --freq daily --anchor-file schedule-anchor-library-cron-user [--cron-out cron.txt] [--launchd-out launchd.xml] [--status-out status.txt] [--timezone-out timezone.txt]
-  schedule-due --freq daily|weekly|1h --interval-minutes 1440 --anchor-at 2026-07-30T05:25:09Z --schedule "anchor:25 22 * * *" [--time-zone America/Los_Angeles] [--now 2026-07-31T02:27:00Z]
+  schedule-due --freq daily|weekly --interval-minutes 1440 --anchor-at 2026-07-30T05:25:09Z --schedule "anchor:25 22 * * *" [--time-zone America/Los_Angeles] [--now 2026-07-31T02:27:00Z]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq daily] [--schedule "0 8 * * *"]
   cron-state --job library-cron|digest-cron
   cron-guard --job library-cron|digest-cron --owner-id <local-owner-id>
@@ -13842,8 +13842,8 @@ async function cronGuard(args) {
 
 function normalizeScheduleFrequency(value) {
   const key = String(value || "").trim();
-  if (["1h", "daily", "weekly"].includes(key)) return key;
-  return "daily";
+  if (key === "daily" || key === "weekly") return key;
+  throw new Error(`Unsupported schedule frequency: ${key || "(empty)"}`);
 }
 
 function cronExpressionForAnchor(freq, anchorDate) {
@@ -13851,8 +13851,6 @@ function cronExpressionForAnchor(freq, anchorDate) {
   const hour = anchorDate.getHours();
   const weekday = anchorDate.getDay();
   switch (freq) {
-    case "1h":
-      return `${minute} * * * *`;
     case "daily":
       return `${minute} ${hour} * * *`;
     case "weekly":
@@ -13883,8 +13881,6 @@ function launchdScheduleForAnchor(freq, anchorDate) {
   const dict = (fields) => launchdScheduleDict(fields, "  ");
 
   switch (freq) {
-    case "1h":
-      return `${start}\n${dict([["Minute", minute]])}`;
     case "daily":
       return `${start}\n${dict([["Hour", hour], ["Minute", minute]])}`;
     case "weekly":

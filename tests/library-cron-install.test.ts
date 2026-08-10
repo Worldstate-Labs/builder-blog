@@ -17,9 +17,9 @@ type Contract = {
   instanceId: string;
   verdictStatus: "ok" | "needs_confirmation";
   runtime: "claude" | "codex" | "openclaw";
-  frequencyKey: "1h" | "daily" | "weekly";
-  frequencyLabel: "Hourly" | "Daily" | "Weekly";
-  intervalMinutes: 60 | 1440 | 10080;
+  frequencyKey: "daily" | "weekly";
+  frequencyLabel: "Daily" | "Weekly";
+  intervalMinutes: 1440 | 10080;
   force: boolean;
   fetchDays: number;
   parallelWorkers: number;
@@ -108,13 +108,6 @@ function scheduleSpecFor(freq: Contract["frequencyKey"], anchorAt = ANCHOR_AT) {
   const minute = date.getUTCMinutes();
   const hour = date.getUTCHours();
   const weekday = date.getUTCDay();
-  if (freq === "1h") {
-    return {
-      cron: `${minute} * * * *`,
-      launchd: `<key>StartCalendarInterval</key>\n  <dict><key>Minute</key><integer>${minute}</integer></dict>`,
-      status: `anchor:${minute} * * * *`,
-    };
-  }
   if (freq === "weekly") {
     return {
       cron: `${minute} ${hour} * * ${weekday}`,
@@ -472,7 +465,6 @@ function scheduleForAnchor(freq, anchorAt) {
   const minute = date.getUTCMinutes();
   const hour = date.getUTCHours();
   const weekday = date.getUTCDay();
-  if (freq === "1h") return { cron: minute + " * * * *", launchd: "<key>StartCalendarInterval</key>\\n  <dict><key>Minute</key><integer>" + minute + "</integer></dict>" };
   if (freq === "weekly") {
     return {
       cron: minute + " " + hour + " * * " + weekday,
@@ -786,6 +778,27 @@ test("account must be a reasonable email without control characters", async () =
     assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
     assert.equal(await readMutationLog(harness.mutationLogPath), "");
     assert.deepEqual(await readJson(harness.contractPath), initial);
+  } finally {
+    await rm(harness.rootDir, { recursive: true, force: true });
+  }
+});
+
+test("installer rejects unsupported hourly contract frequency before any schedule mutation", async () => {
+  const harness = await makeHarness({ verdictStatus: "needs_confirmation" });
+  try {
+    await writeContract(harness.contractPath, {
+      ...harness.contract,
+      frequencyKey: "1h" as never,
+      frequencyLabel: "Hourly" as never,
+      intervalMinutes: 60 as never,
+    });
+
+    const result = runInstaller(harness, { FOLLOWBRIEF_CONFIRM_PARTIAL: "1" });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unsupported frequencyKey/);
+    assert.doesNotMatch(result.stdout, /followbriefScheduleInstall/);
+    assert.equal(await readMutationLog(harness.mutationLogPath), "");
   } finally {
     await rm(harness.rootDir, { recursive: true, force: true });
   }

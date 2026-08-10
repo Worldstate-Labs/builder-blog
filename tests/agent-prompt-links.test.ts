@@ -92,7 +92,7 @@ test("parseAgentPromptLinkOptions enforces runtime and frequency closed sets", (
   for (const runtime of ["claude", "codex", "openclaw"]) {
     assert.deepEqual(parseAgentPromptLinkOptions("digest-once", { runtime }), { runtime });
   }
-  for (const frequency of ["1h", "daily", "weekly"]) {
+  for (const frequency of ["daily", "weekly"]) {
     assert.deepEqual(parseAgentPromptLinkOptions("library-cron-setup", { frequency }), { frequency });
   }
 
@@ -103,6 +103,10 @@ test("parseAgentPromptLinkOptions enforces runtime and frequency closed sets", (
   assert.throws(
     () => parseAgentPromptLinkOptions("digest-once", { runtime: "gpt5" }),
     /runtime/i,
+  );
+  assert.throws(
+    () => parseAgentPromptLinkOptions("library-cron-setup", { frequency: "1h" }),
+    /frequency/i,
   );
   assert.throws(
     () => parseAgentPromptLinkOptions("library-cron-setup", { frequency: "hourly" }),

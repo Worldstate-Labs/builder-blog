@@ -9,7 +9,7 @@ export const AGENT_PROMPT_LINK_PRIVACY_HEADERS = Object.freeze({
 });
 
 export type Runtime = "claude" | "codex" | "openclaw";
-export type Frequency = "1h" | "daily" | "weekly";
+export type Frequency = "daily" | "weekly";
 export type ExposedPromptJob =
   | "library-once"
   | "digest-once"
@@ -29,7 +29,7 @@ export type AgentPromptRenderOptions = {
 };
 
 const RUNTIMES: Runtime[] = ["claude", "codex", "openclaw"];
-const FREQUENCIES: Frequency[] = ["1h", "daily", "weekly"];
+const FREQUENCIES: Frequency[] = ["daily", "weekly"];
 const JOB_ALLOWED_KEYS: Record<ExposedPromptJob, readonly (keyof AgentPromptRenderOptions)[]> = {
   "library-once": ["runtime", "force", "fetchDays", "parallelWorkers"],
   "digest-once": ["runtime", "force", "parallelWorkers"],

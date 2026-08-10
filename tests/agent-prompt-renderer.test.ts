@@ -201,7 +201,7 @@ test("renderAgentPrompt renders recurring library setup with credential prep, ac
 test("renderAgentPrompt renders digest setup using digest regenerate placeholders and runtime labels", async () => {
   const content = await renderWithDefaults({
     job: "digest-cron-setup",
-    options: { runtime: "claude", frequency: "1h", force: true, parallelWorkers: 5 },
+    options: { runtime: "claude", frequency: "daily", force: true, parallelWorkers: 5 },
     exchange: {
       code: "bb_ec_renderer_digest_cron",
       accountEmail: "digest@example.com",
@@ -212,6 +212,7 @@ test("renderAgentPrompt renders digest setup using digest regenerate placeholder
   assert.match(content, /Scheduled runtime: \*\*Claude Code\*\* \(claude\)/);
   assert.match(content, /BUILDER_BLOG_DIGEST_REGENERATE="--regenerate"/);
   assert.match(content, /--regenerate "1"/);
+  assert.match(content, /BUILDER_BLOG_INTERVAL_MINUTES="1440"/);
   assert.match(content, /digest@example\.com/);
   assert.doesNotMatch(content, /\{\{DIGEST_REGENERATE\}\}|\{\{DIGEST_REGENERATE_FLAG\}\}/);
 });
@@ -600,4 +601,14 @@ test("route GET rejects a removed Hermes runtime instead of rendering an unpinne
 
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "Runtime invalid" });
+});
+
+test("route GET rejects an explicitly unsupported cron frequency", async () => {
+  const request = new Request(
+    "https://followbrief.example/api/skill/jobs/library-cron-setup/skill.md?runtime=codex&freq=1h",
+  );
+  const response = await getSkillJobPromptRoute(request, "library-cron-setup");
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "Frequency invalid" });
 });

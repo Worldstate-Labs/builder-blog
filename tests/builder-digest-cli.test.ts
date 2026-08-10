@@ -6980,7 +6980,7 @@ test("schedule-spec emits resolved IANA timezone metadata and writes timezone.tx
   assert.equal(timezone, "America/Los_Angeles");
 });
 
-test("schedule-spec supports temporary hourly local schedules", async () => {
+test("schedule-spec rejects removed hourly schedules", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-hourly-schedule-spec-"));
   const anchorFile = join(tmp, "schedule-anchor-library-cron-user");
   const cronOut = join(tmp, "cron.txt");
@@ -6988,7 +6988,7 @@ test("schedule-spec supports temporary hourly local schedules", async () => {
   const statusOut = join(tmp, "status.txt");
   await writeFile(anchorFile, "2026-06-21T13:15:22Z\n", "utf8");
 
-  const { stdout } = await execFileAsync(
+  const result = await execFileAsync(
     process.execPath,
     [
       "scripts/builder-digest.mjs",
@@ -7008,20 +7008,18 @@ test("schedule-spec supports temporary hourly local schedules", async () => {
       cwd: process.cwd(),
       env: { ...process.env, TZ: "UTC" },
     },
+  ).then(
+    () => {
+      throw new Error("schedule-spec unexpectedly accepted hourly frequency");
+    },
+    (error: NodeJS.ErrnoException & { stdout?: string; stderr?: string }) => error,
   );
 
-  const result = JSON.parse(stdout);
-  const cron = (await readFile(cronOut, "utf8")).trim();
-  const launchd = await readFile(launchdOut, "utf8");
-  const status = (await readFile(statusOut, "utf8")).trim();
-
-  assert.equal(cron, "15 * * * *");
-  assert.equal(status, "anchor:15 * * * *");
-  assert.equal(result.cron, cron);
-  assert.equal(result.statusSchedule, status);
-  assert.match(launchd, /<key>StartCalendarInterval<\/key>/);
-  assert.doesNotMatch(launchd, /<key>Hour<\/key>/);
-  assert.match(launchd, /<key>Minute<\/key>\s*<integer>15<\/integer>/);
+  assert.equal(result.stdout ?? "", "");
+  assert.match(result.stderr ?? "", /Unsupported schedule frequency: 1h/);
+  assert.equal(existsSync(cronOut), false);
+  assert.equal(existsSync(launchdOut), false);
+  assert.equal(existsSync(statusOut), false);
 });
 
 test("relative schedule windows use explicit timezone metadata for daily and weekly jobs", async () => {
@@ -7135,6 +7133,21 @@ test("schedule-due matches the shared server daily, DST, and weekly fixtures", (
   ], { TZ: "UTC" });
   assert.equal(weeklyFirstRun.status, 0, weeklyFirstRun.stderr);
   assert.equal(weeklyFirstRun.stdout.trim(), "2026-08-05T15:00:00Z");
+});
+
+test("schedule-due rejects removed hourly schedules", () => {
+  const hourly = runScheduleDue([
+    "--freq", "1h",
+    "--interval-minutes", "60",
+    "--anchor-at", "2026-06-21T13:15:22Z",
+    "--schedule", "anchor:15 * * * *",
+    "--time-zone", "UTC",
+    "--now", "2026-06-21T14:15:00Z",
+  ], { TZ: "UTC" });
+
+  assert.notEqual(hourly.status, 0);
+  assert.equal((hourly.stdout ?? "").trim(), "");
+  assert.match(hourly.stderr ?? "", /Unsupported schedule frequency: 1h/);
 });
 
 test("schedule-due falls back to legacy interval timing when daily schedule metadata is malformed", () => {
