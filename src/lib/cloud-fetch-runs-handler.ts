@@ -1,18 +1,36 @@
 import { NextResponse } from "next/server";
-import type { getAgentJobRuns as getAgentJobRunsFn } from "@/lib/agent-job-runs";
-import type { serializeCloudFetchRun as serializeCloudFetchRunFn, serializeCloudWorkerHost as serializeCloudWorkerHostFn } from "@/lib/cloud-fetch-run-log";
+import type { CloudFetchRunLogItem, CloudWorkerHostStatus } from "@/lib/cloud-fetch-run-log";
 import type { CloudPendingSourceSnapshot } from "@/lib/cloud-fetch-pending-sources";
 import type { requireCloudFetchAdmin as requireCloudFetchAdminFn } from "@/lib/cloud-source-admin";
 
 const PAGE_SIZE = 20;
 
+export type CloudFetchRunsQuery = {
+  where:
+    | Record<string, never>
+    | { startedAt: { lt: Date } }
+    | {
+        OR: [
+          { startedAt: { lt: Date } },
+          { startedAt: Date; id: { lt: string } },
+        ];
+      };
+  orderBy: [{ startedAt: "desc" }, { id: "desc" }];
+  take: number;
+  include: {
+    tasks: {
+      orderBy: { id: "asc" };
+      include: { builder: { select: { name: true; sourceType: true } } };
+    };
+  };
+};
+
 type CloudFetchRunsHandlerDeps = {
   requireCloudFetchAdmin: typeof requireCloudFetchAdminFn;
-  listCloudFetchRuns(args: unknown): Promise<unknown[]>;
-  getAgentJobRuns: typeof getAgentJobRunsFn;
+  listCloudFetchRuns(args: CloudFetchRunsQuery): Promise<CloudFetchRunLogItem[]>;
+  loadWorkerHost(userId: string): Promise<CloudWorkerHostStatus>;
+  getOfflineWorkerHost(): CloudWorkerHostStatus;
   getPendingCloudFetchSources(): Promise<CloudPendingSourceSnapshot>;
-  serializeCloudFetchRun: typeof serializeCloudFetchRunFn;
-  serializeCloudWorkerHost: typeof serializeCloudWorkerHostFn;
 };
 
 export function createCloudFetchRunsGetHandler(
@@ -32,7 +50,7 @@ export function createCloudFetchRunsGetHandler(
       return NextResponse.json({ error: "Invalid before cursor." }, { status: 400 });
     }
 
-    const rows = await deps.listCloudFetchRuns({
+    const leaseBatchRows = await deps.listCloudFetchRuns({
       // Composite keyset cursor on (startedAt desc, id desc). startedAt is not
       // unique, so a startedAt-only cursor either skips (`lt`) or stalls (`lte`)
       // when a full page shares one millisecond. Pairing it with the tiebreak id
@@ -59,24 +77,19 @@ export function createCloudFetchRunsGetHandler(
       },
     });
 
-    const hasMore = rows.length > PAGE_SIZE;
-    const leaseBatches = rows.slice(0, PAGE_SIZE).map(deps.serializeCloudFetchRun);
+    const hasMore = leaseBatchRows.length > PAGE_SIZE;
+    const leaseBatches = leaseBatchRows.slice(0, PAGE_SIZE);
 
-    let workerHost = null;
+    let workerHost: CloudWorkerHostStatus | null = null;
     let pendingSources: CloudPendingSourceSnapshot | null = null;
     if (!before) {
       const pendingSourcesPromise = deps.getPendingCloudFetchSources().catch(() => null);
       try {
-        const jobRuns = await deps.getAgentJobRuns(auth.user.id, "cloud-library-fetch", 5);
+        workerHost = await deps.loadWorkerHost(auth.user.id);
         const nextPendingSources = await pendingSourcesPromise;
-        workerHost = deps.serializeCloudWorkerHost(
-          jobRuns.find((job) => job.status === "running" || job.status === "starting")
-            ?? jobRuns[0]
-            ?? null,
-        );
         pendingSources = nextPendingSources;
       } catch {
-        workerHost = deps.serializeCloudWorkerHost(null);
+        workerHost = deps.getOfflineWorkerHost();
         pendingSources = null;
       }
     }

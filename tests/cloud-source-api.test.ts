@@ -7,16 +7,110 @@ import {
   normalizeCloudSourceSubmissionInput,
   parseCloudFetchPlanPatchPayload,
 } from "../src/lib/cloud-source-contracts";
+import type { CloudFetchRunsQuery } from "../src/lib/cloud-fetch-runs-handler";
 import {
   CloudSourceSubmissionError,
   submitUserPrivateLibraryToCloud,
 } from "../src/lib/cloud-source-library";
+import type { CloudPendingSourceSnapshot } from "../src/lib/cloud-fetch-pending-sources";
+import type {
+  CloudFetchRunLogItem,
+  CloudWorkerHostStatus,
+} from "../src/lib/cloud-fetch-run-log";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
 
 async function loadCloudFetchRunsHandlerModule() {
   return import("../src/lib/cloud-fetch-runs-handler");
+}
+
+function buildPendingSourcesSnapshot(): CloudPendingSourceSnapshot {
+  return {
+    budget: {
+      tokenBudgetPerHour: 100,
+      recentUsageTokens: 20,
+      activeEstimatedTokens: 30,
+      remainingTokens: 50,
+    },
+    sources: [
+      {
+        taskId: "task_1",
+        builderId: "builder_1",
+        summaryLanguage: "en",
+        sourceType: "blog",
+        name: "Example source",
+        canonicalKey: "example-source",
+        reason: "queued",
+        estimatedTokens: 1200,
+        consecutiveDeferrals: 1,
+        consecutiveFailures: 0,
+        lastDeferredAt: "2026-08-10T11:50:00.000Z",
+        nextAttemptAt: "2026-08-10T12:10:00.000Z",
+        circuitBreakerUntil: null,
+      },
+    ],
+  };
+}
+
+function buildLeaseBatch(id: string, startedAt: string): CloudFetchRunLogItem {
+  return {
+    id,
+    leaseOwner: "worker-host",
+    startedAt,
+    finishedAt: null,
+    durationMs: null,
+    status: "RUNNING",
+    requestedLimit: 20,
+    tasksClaimed: 1,
+    tasksSucceeded: 0,
+    tasksFailed: 0,
+    tasksRunning: 1,
+    plannedPosts: 2,
+    syncedPosts: 1,
+    failedPosts: 0,
+    skippedPosts: 0,
+    pendingPosts: 1,
+    usageTokens: 500,
+    usageCostUsd: 0.12,
+    summary: "Worker host active",
+    tasks: [],
+  };
+}
+
+function buildWorkerHostStatus(): CloudWorkerHostStatus {
+  return {
+    status: "online",
+    statusLabel: "Healthy",
+    hostname: "builder-host",
+    platform: "darwin",
+    runtime: "node",
+    model: "gpt-5.4",
+    stage: "workers_running",
+    summary: "Processing sources",
+    startedAt: "2026-08-10T11:45:00.000Z",
+    heartbeatAt: "2026-08-10T12:00:00.000Z",
+    updatedAt: "2026-08-10T12:00:00.000Z",
+    localWorkers: 2,
+    runnerPid: 321,
+    workerPid: 654,
+    progress: {
+      stage: "running",
+      updatedAt: "2026-08-10T12:00:00.000Z",
+      sourcesTotal: 3,
+      sourcesChecked: 1,
+      tasksPlanned: 2,
+      tasksDone: 1,
+      synced: 1,
+      failed: 0,
+      skipped: 0,
+      actionNeeded: 0,
+      currentSource: "Example source",
+      currentTask: "task_1",
+    },
+    tasks: [],
+    recentEvents: [],
+  };
 }
 
 test("cloud source submission route authenticates, normalizes input, and rate limits", () => {
@@ -784,29 +878,32 @@ test("admin cloud fetch runs route wires the shared handler and preserves live c
 
 test("cloud fetch runs handler returns fresh pending diagnostics on successful live polls", async () => {
   const { createCloudFetchRunsGetHandler } = await loadCloudFetchRunsHandlerModule();
-  const observed = { pendingCalls: 0, jobRunCalls: 0, queryArgs: null as unknown };
-  const liveProgress = { stage: "running" };
-  const pendingSources = { budget: { tokenBudgetPerHour: 100, recentUsageTokens: 20, activeEstimatedTokens: 30, remainingTokens: 50 }, sources: [{ taskId: "task_1" }] };
-  const rows = [
-    { id: "run_2", startedAt: new Date("2026-08-10T12:01:00.000Z") },
-    { id: "run_1", startedAt: new Date("2026-08-10T12:00:00.000Z") },
+  const observed: { pendingCalls: number; workerHostCalls: number; queryArgs: CloudFetchRunsQuery | null } = {
+    pendingCalls: 0,
+    workerHostCalls: 0,
+    queryArgs: null,
+  };
+  const workerHost = buildWorkerHostStatus();
+  const pendingSources = buildPendingSourcesSnapshot();
+  const leaseBatches = [
+    buildLeaseBatch("run_2", "2026-08-10T12:01:00.000Z"),
+    buildLeaseBatch("run_1", "2026-08-10T12:00:00.000Z"),
   ];
   const GET = createCloudFetchRunsGetHandler({
     requireCloudFetchAdmin: async () => ({ ok: true, user: { id: "admin_1" } }),
-    listCloudFetchRuns: async (args: unknown) => {
+    listCloudFetchRuns: async (args) => {
       observed.queryArgs = args;
-      return rows;
+      return leaseBatches;
     },
-    getAgentJobRuns: async () => {
-      observed.jobRunCalls += 1;
-      return [{ id: "job_1", status: "running" }];
+    loadWorkerHost: async () => {
+      observed.workerHostCalls += 1;
+      return workerHost;
     },
+    getOfflineWorkerHost: () => buildWorkerHostStatus(),
     getPendingCloudFetchSources: async () => {
       observed.pendingCalls += 1;
-      return pendingSources as never;
+      return pendingSources;
     },
-    serializeCloudFetchRun: (row: { id: string }) => ({ id: row.id }),
-    serializeCloudWorkerHost: () => ({ id: "host_1", progress: liveProgress }),
   });
 
   const response = await GET(new Request("https://followbrief.example/api/admin/cloud-fetch/runs"));
@@ -814,14 +911,14 @@ test("cloud fetch runs handler returns fresh pending diagnostics on successful l
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Cache-Control"), "no-store, max-age=0");
-  assert.equal(observed.jobRunCalls, 1);
+  assert.equal(observed.workerHostCalls, 1);
   assert.equal(observed.pendingCalls, 1);
-  assert.deepEqual(body.leaseBatches, [{ id: "run_2" }, { id: "run_1" }]);
-  assert.deepEqual(body.runs, [{ id: "run_2" }, { id: "run_1" }]);
+  assert.deepEqual(body.leaseBatches, leaseBatches);
+  assert.deepEqual(body.runs, leaseBatches);
   assert.equal(body.hasMore, false);
-  assert.deepEqual(body.workerHost, { id: "host_1", progress: liveProgress });
+  assert.deepEqual(body.workerHost, workerHost);
   assert.deepEqual(body.pendingSources, pendingSources);
-  assert.deepEqual(body.liveProgress, liveProgress);
+  assert.deepEqual(body.liveProgress, workerHost.progress);
   assert.deepEqual(observed.queryArgs, {
     where: {},
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
@@ -837,62 +934,65 @@ test("cloud fetch runs handler returns fresh pending diagnostics on successful l
 
 test("cloud fetch runs handler keeps live worker data when pending diagnostics fail", async () => {
   const { createCloudFetchRunsGetHandler } = await loadCloudFetchRunsHandlerModule();
-  const observed = { pendingCalls: 0, jobRunCalls: 0 };
+  const observed = { pendingCalls: 0, workerHostCalls: 0 };
+  const workerHost = buildWorkerHostStatus();
   const GET = createCloudFetchRunsGetHandler({
     requireCloudFetchAdmin: async () => ({ ok: true, user: { id: "admin_1" } }),
-    listCloudFetchRuns: async () => [{ id: "run_1", startedAt: new Date("2026-08-10T12:00:00.000Z") }],
-    getAgentJobRuns: async () => {
-      observed.jobRunCalls += 1;
-      return [{ id: "job_1", status: "running" }];
+    listCloudFetchRuns: async () => [buildLeaseBatch("run_1", "2026-08-10T12:00:00.000Z")],
+    loadWorkerHost: async () => {
+      observed.workerHostCalls += 1;
+      return workerHost;
     },
+    getOfflineWorkerHost: () => buildWorkerHostStatus(),
     getPendingCloudFetchSources: async () => {
       observed.pendingCalls += 1;
       throw new Error("diagnostics offline");
     },
-    serializeCloudFetchRun: (row: { id: string }) => ({ id: row.id }),
-    serializeCloudWorkerHost: () => ({ id: "host_1", progress: { stage: "running" } }),
   });
 
   const response = await GET(new Request("https://followbrief.example/api/admin/cloud-fetch/runs"));
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(observed.jobRunCalls, 1);
+  assert.equal(observed.workerHostCalls, 1);
   assert.equal(observed.pendingCalls, 1);
-  assert.deepEqual(body.leaseBatches, [{ id: "run_1" }]);
-  assert.deepEqual(body.workerHost, { id: "host_1", progress: { stage: "running" } });
+  assert.deepEqual(body.leaseBatches, [buildLeaseBatch("run_1", "2026-08-10T12:00:00.000Z")]);
+  assert.deepEqual(body.workerHost, workerHost);
   assert.equal(body.pendingSources, null);
-  assert.deepEqual(body.liveProgress, { stage: "running" });
+  assert.deepEqual(body.liveProgress, workerHost.progress);
 });
 
 test("cloud fetch runs handler skips live diagnostics for paginated history and returns pendingSources null", async () => {
   const { createCloudFetchRunsGetHandler } = await loadCloudFetchRunsHandlerModule();
-  const observed = { pendingCalls: 0, jobRunCalls: 0, queryArgs: null as unknown };
+  const observed: { pendingCalls: number; workerHostCalls: number; queryArgs: CloudFetchRunsQuery | null } = {
+    pendingCalls: 0,
+    workerHostCalls: 0,
+    queryArgs: null,
+  };
   const GET = createCloudFetchRunsGetHandler({
     requireCloudFetchAdmin: async () => ({ ok: true, user: { id: "admin_1" } }),
-    listCloudFetchRuns: async (args: unknown) => {
+    listCloudFetchRuns: async (args) => {
       observed.queryArgs = args;
-      return [{ id: "run_1", startedAt: new Date("2026-08-10T11:00:00.000Z") }];
+      return [buildLeaseBatch("run_1", "2026-08-10T11:00:00.000Z")];
     },
-    getAgentJobRuns: async () => {
-      observed.jobRunCalls += 1;
-      return [];
+    loadWorkerHost: async () => {
+      observed.workerHostCalls += 1;
+      return buildWorkerHostStatus();
     },
+    getOfflineWorkerHost: () => buildWorkerHostStatus(),
     getPendingCloudFetchSources: async () => {
       observed.pendingCalls += 1;
-      return { budget: { tokenBudgetPerHour: 1, recentUsageTokens: 0, activeEstimatedTokens: 0, remainingTokens: 1 }, sources: [] } as never;
+      return buildPendingSourcesSnapshot();
     },
-    serializeCloudFetchRun: (row: { id: string }) => ({ id: row.id }),
-    serializeCloudWorkerHost: () => ({ id: "host_ignored", progress: { stage: "ignored" } }),
   });
 
   const response = await GET(new Request("https://followbrief.example/api/admin/cloud-fetch/runs?before=2026-08-10T12:00:00.000Z&beforeId=run_9"));
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(observed.jobRunCalls, 0);
+  assert.equal(observed.workerHostCalls, 0);
   assert.equal(observed.pendingCalls, 0);
-  assert.deepEqual(body.leaseBatches, [{ id: "run_1" }]);
+  assert.deepEqual(body.leaseBatches, [buildLeaseBatch("run_1", "2026-08-10T11:00:00.000Z")]);
   assert.equal(body.workerHost, null);
   assert.equal(body.pendingSources, null);
   assert.equal(body.liveProgress, null);

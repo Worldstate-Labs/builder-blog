@@ -514,8 +514,8 @@ test("cloud worker host uses a distinct jobType so it never leaks into a persona
   assert.match(cloudPage, /getAgentJobRuns\(userId, "cloud-library-fetch", 5\)/);
   assert.match(cloudPage, /serializeCloudWorkerHost/);
   assert.match(cloudPage, /initialWorkerHost/);
-  const cloudRunsHandler = source("src/lib/cloud-fetch-runs-handler.ts");
-  assert.match(cloudRunsHandler, /getAgentJobRuns\(auth\.user\.id, "cloud-library-fetch", 5\)/);
+  const cloudRunsRoute = source("src/app/api/admin/cloud-fetch/runs/route.ts");
+  assert.match(cloudRunsRoute, /getAgentJobRuns\(userId, "cloud-library-fetch", 5\)/);
 
   // ...while the personal fetch log stays on library-fetch (excludes cloud rounds).
   const personalFetchRuns = source("src/app/api/skill/fetch-runs/route.ts");
