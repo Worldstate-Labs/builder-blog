@@ -181,7 +181,24 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(runner, /job_run_update failed "Runtime exited with code \$_code\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /job_run_update timed_out "Runtime reported a timeout\." "runtime_reported_timeout" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /job_run_update succeeded "Runtime completed successfully\." "runtime_finished" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/);
-  assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CODEX_MODEL:-gpt-5\.4-mini\}"/);
+  assert.match(runner, /DEFAULT_CODEX_MODEL="gpt-5\.6-luna"/);
+  assert.match(runner, /DEFAULT_CODEX_REASONING_EFFORT="medium"/);
+  assert.match(
+    runner,
+    /run_with_codex\(\) \{[\s\S]*_codex_model="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"[\s\S]*_codex_reasoning_effort="\$\{BUILDER_BLOG_CODEX_REASONING_EFFORT:-\$DEFAULT_CODEX_REASONING_EFFORT\}"[\s\S]*codex exec --json --model "\$_codex_model"[\s\S]*-c "model_reasoning_effort=\$_codex_reasoning_effort"[\s\S]*codex exec --model "\$_codex_model"[\s\S]*-c "model_reasoning_effort=\$_codex_reasoning_effort"/,
+  );
+  assert.match(
+    runner,
+    /run_with_codex_unattended\(\) \{[\s\S]*_codex_model="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"[\s\S]*_codex_reasoning_effort="\$\{BUILDER_BLOG_CODEX_REASONING_EFFORT:-\$DEFAULT_CODEX_REASONING_EFFORT\}"[\s\S]*codex exec --json --model "\$_codex_model"[\s\S]*-c "model_reasoning_effort=\$_codex_reasoning_effort"[\s\S]*codex exec --model "\$_codex_model"[\s\S]*-c "model_reasoning_effort=\$_codex_reasoning_effort"/,
+  );
+  assert.match(
+    runner,
+    /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"/,
+  );
+  assert.doesNotMatch(
+    runner,
+    /BUILDER_BLOG_(?:CODEX_MODEL|AGENT_MODEL)[^\n]*gpt-5\.4-mini/,
+  );
   assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CLAUDE_MODEL:-sonnet\}"/);
   assert.match(runner, /export BUILDER_BLOG_AGENT_MODEL/);
   assert.match(runner, /--usage-file/);

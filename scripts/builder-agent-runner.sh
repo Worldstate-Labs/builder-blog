@@ -53,6 +53,8 @@ if [ "${BUILDER_BLOG_JOB_TMP_IS_RUN_DIR:-0}" = "1" ] && [ -n "${BUILDER_BLOG_JOB
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
 JOB_UPDATE_RESET_FENCED=78
+DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_REASONING_EFFORT="medium"
 
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
 # runner so the per-user fetch log can distinguish scheduled jobs from
@@ -411,12 +413,17 @@ run_with_codex() {
   _codex_usage="$(agent_usage_file codex)"
   LAST_AGENT_OUTPUT_FILE="$_codex_output"
   LAST_AGENT_USAGE_FILE="$_codex_usage"
-  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.4-mini}"
+  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-$DEFAULT_CODEX_MODEL}"
+  _codex_reasoning_effort="${BUILDER_BLOG_CODEX_REASONING_EFFORT:-$DEFAULT_CODEX_REASONING_EFFORT}"
   set +e
   if structured_usage_enabled; then
-    codex exec --json --model "$_codex_model" --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+    codex exec --json --model "$_codex_model" --skip-git-repo-check \
+      -c "model_reasoning_effort=$_codex_reasoning_effort" \
+      -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   else
-    codex exec --model "$_codex_model" --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+    codex exec --model "$_codex_model" --skip-git-repo-check \
+      -c "model_reasoning_effort=$_codex_reasoning_effort" \
+      -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   fi
   _codex_code="$?"
   set -e
@@ -550,15 +557,18 @@ run_with_codex_unattended() {
   LAST_AGENT_USAGE_FILE="$_codex_usage"
   # Default to a cheaper model to keep digest/library runs inexpensive;
   # override per run/job with BUILDER_BLOG_CODEX_MODEL.
-  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.4-mini}"
+  _codex_model="${BUILDER_BLOG_CODEX_MODEL:-$DEFAULT_CODEX_MODEL}"
+  _codex_reasoning_effort="${BUILDER_BLOG_CODEX_REASONING_EFFORT:-$DEFAULT_CODEX_REASONING_EFFORT}"
   set +e
   if structured_usage_enabled; then
     codex exec --json --model "$_codex_model" --skip-git-repo-check --full-auto \
       -c sandbox_workspace_write.network_access=true \
+      -c "model_reasoning_effort=$_codex_reasoning_effort" \
       -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   else
     codex exec --model "$_codex_model" --skip-git-repo-check --full-auto \
       -c sandbox_workspace_write.network_access=true \
+      -c "model_reasoning_effort=$_codex_reasoning_effort" \
       -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
   fi
   _codex_code="$?"
@@ -1275,7 +1285,7 @@ PINNED_RUNTIME="$(normalize_runtime "$RAW_PINNED_RUNTIME")"
 export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
 if [ -z "${BUILDER_BLOG_AGENT_MODEL:-}" ]; then
   case "$PINNED_RUNTIME" in
-    codex) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CODEX_MODEL:-gpt-5.4-mini}" ;;
+    codex) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CODEX_MODEL:-$DEFAULT_CODEX_MODEL}" ;;
     claude) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CLAUDE_MODEL:-sonnet}" ;;
   esac
 fi
