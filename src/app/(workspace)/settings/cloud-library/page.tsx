@@ -106,7 +106,6 @@ export default async function CloudLibraryManagementPage() {
                 initialWorkerHost={workerHost}
                 initialLeaseBatches={leaseBatches}
                 initialHasMore={hasMore}
-                // @ts-expect-error Task 3 owns the AdminCloudFetchLog prop type update.
                 initialPendingSources={initialPendingSources}
               />
             </div>

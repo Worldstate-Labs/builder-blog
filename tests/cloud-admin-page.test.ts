@@ -55,6 +55,7 @@ test("cloud-library management page loads and passes initial pending source diag
     /<AdminCloudFetchLog[\s\S]*initialWorkerHost=\{workerHost\}[\s\S]*initialLeaseBatches=\{leaseBatches\}[\s\S]*initialHasMore=\{hasMore\}[\s\S]*initialPendingSources=\{initialPendingSources\}/,
   );
   assert.doesNotMatch(page, /<AdminCloudFetchLog\s*\{\.\.\.cloudFetchLogProps\}/);
+  assert.doesNotMatch(page, /@ts-expect-error/);
 });
 
 test("cloud output pools are automatic and only expose pause controls", () => {
@@ -199,6 +200,18 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /fallbackMetrics/);
   assert.match(log, /contentSyncStateChanged/);
   assert.match(log, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(log, /initialPendingSources/);
+  assert.match(log, /pendingSources\?: CloudPendingSourceSnapshot \| null/);
+  assert.match(log, /useState\(initialPendingSources\)/);
+  assert.match(log, /useRef\(initialPendingSources\)/);
+  assert.match(
+    log,
+    /liveDataSignature\(\{\s*workerHost: initialWorkerHost,\s*leaseBatches: initialLeaseBatches,\s*pendingSources: initialPendingSources,\s*\}\)/,
+  );
+  assert.match(log, /body\?\.pendingSources !== null/);
+  assert.match(log, /pendingSourcesRef\.current = body\.pendingSources/);
+  assert.match(log, /setPendingSources\(body\.pendingSources\)/);
+  assert.match(log, /pendingSources: body\?\.pendingSources !== null[\s\S]*pendingSourcesRef\.current/);
   assert.match(log, /This source is still running\. Post task outcomes appear after/);
   assert.match(log, /task\.plannedPosts === 0 &&[\s\S]*!task\.noGeneratedFetchTasks[\s\S]*!task\.finishedAt/);
   assert.match(log, /function formatPostOutcomeSummary\(\{[\s\S]*status/);
@@ -229,6 +242,56 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
   assert.doesNotMatch(log, /<strong>Estimated<\/strong>/);
   assert.doesNotMatch(log, /<strong>P\(success\)<\/strong>/);
+});
+
+test("cloud fetch log renders pending source lease diagnostics before waiting assignment", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+
+  assert.match(log, /Waiting for source lease/);
+  assert.match(log, /pendingSources\.sources\.length\} waiting/);
+  assert.match(log, /No sources waiting for lease\./);
+  assert.match(
+    log,
+    /Waiting for source lease[\s\S]*Waiting for assignment/,
+  );
+  assert.match(log, /<WorkerHostPanel[\s\S]*pendingSources=\{pendingSources\}/);
+  assert.match(log, /cloud-worker-task-section/);
+  assert.match(log, /cloud-worker-task-list/);
+  assert.match(log, /cloud-worker-task-row/);
+  assert.match(log, /cloud-worker-task-main/);
+  assert.match(log, /cloud-worker-task-title/);
+  assert.match(log, /cloud-worker-task-meta/);
+  assert.match(log, /cloud-worker-task-message/);
+});
+
+test("cloud fetch log shows reason-specific pending source copy plus token and time diagnostics", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+
+  assert.match(log, /Queued for lease/);
+  assert.match(log, /Circuit breaker delay/);
+  assert.match(log, /Retry delay/);
+  assert.match(log, /Canonical source active/);
+  assert.match(log, /Canonical cooldown/);
+  assert.match(log, /Token budget gate/);
+  assert.match(log, /Scheduler capacity/);
+  assert.match(log, /Queued and waiting for a worker lease\./);
+  assert.match(log, /Waiting for the circuit breaker delay to expire\./);
+  assert.match(log, /Waiting for the retry delay to expire\./);
+  assert.match(log, /Another active lease already owns this canonical source\./);
+  assert.match(log, /Recent canonical activity is still cooling down\./);
+  assert.match(log, /Needs more estimated tokens than remain in the rolling hourly window\./);
+  assert.match(log, /Due now and within budget, waiting for the scheduler's next selection pass\./);
+  assert.match(log, /Estimated /);
+  assert.match(log, /Remaining /);
+  assert.match(log, /Deferrals /);
+  assert.match(log, /Last deferred/);
+  assert.match(log, /Next attempt/);
+  assert.match(log, /Circuit until/);
+  assert.match(log, /formatUsageTokens\(source\.estimatedTokens\)/);
+  assert.match(log, /formatUsageTokens\(pendingSources\.budget\.remainingTokens\)/);
+  assert.match(log, /<RelativeTime value=\{source\.lastDeferredAt\}/);
+  assert.match(log, /<RelativeTime value=\{source\.nextAttemptAt\}/);
+  assert.match(log, /<RelativeTime value=\{source\.circuitBreakerUntil\}/);
 });
 
 function cloudPost(

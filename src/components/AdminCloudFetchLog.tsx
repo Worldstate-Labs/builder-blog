@@ -38,12 +38,18 @@ import {
   summarizeCloudWorkerLaneStatuses,
   type CloudWorkerLaneStatus,
 } from "@/lib/cloud-worker-task-display";
+import type {
+  CloudPendingSource,
+  CloudPendingSourceReason,
+  CloudPendingSourceSnapshot,
+} from "@/lib/cloud-fetch-pending-sources";
 
 type CloudFetchRunsResponse = {
   leaseBatches?: CloudFetchRunLogItem[];
   runs?: CloudFetchRunLogItem[];
   hasMore?: boolean;
   workerHost?: CloudWorkerHostStatus | null;
+  pendingSources?: CloudPendingSourceSnapshot | null;
   error?: string;
 };
 
@@ -191,6 +197,67 @@ function formatInlineUsage(usage: UsageSummary | null): string | null {
   if (usage.totalTokens !== null) parts.push(`${formatUsageTokens(usage.totalTokens)} tokens`);
   if (usage.costUsd !== null) parts.push(formatUsageCost(usage));
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function pendingSourceReasonLabel(reason: CloudPendingSourceReason): string {
+  switch (reason) {
+    case "queued":
+      return "Queued for lease";
+    case "circuit_breaker":
+      return "Circuit breaker delay";
+    case "retry_backoff":
+      return "Retry delay";
+    case "canonical_active":
+      return "Canonical source active";
+    case "canonical_cooldown":
+      return "Canonical cooldown";
+    case "token_budget":
+      return "Token budget gate";
+    case "scheduler_capacity":
+      return "Scheduler capacity";
+  }
+}
+
+function pendingSourceReasonMessage(reason: CloudPendingSourceReason): string {
+  switch (reason) {
+    case "queued":
+      return "Queued and waiting for a worker lease.";
+    case "circuit_breaker":
+      return "Waiting for the circuit breaker delay to expire.";
+    case "retry_backoff":
+      return "Waiting for the retry delay to expire.";
+    case "canonical_active":
+      return "Another active lease already owns this canonical source.";
+    case "canonical_cooldown":
+      return "Recent canonical activity is still cooling down.";
+    case "token_budget":
+      return "Needs more estimated tokens than remain in the rolling hourly window.";
+    case "scheduler_capacity":
+      return "Due now and within budget, waiting for the scheduler's next selection pass.";
+  }
+}
+
+function pendingSourceTimingParts(source: CloudPendingSource): InlinePart[] {
+  const parts: InlinePart[] = [
+    <>
+      Last deferred <RelativeTime value={source.lastDeferredAt} fallback="Never" />
+    </>,
+  ];
+  if (source.nextAttemptAt) {
+    parts.push(
+      <>
+        Next attempt <RelativeTime value={source.nextAttemptAt} />
+      </>,
+    );
+  }
+  if (source.circuitBreakerUntil) {
+    parts.push(
+      <>
+        Circuit until <RelativeTime value={source.circuitBreakerUntil} />
+      </>,
+    );
+  }
+  return parts;
 }
 
 function runtimeLabel(workerHost: CloudWorkerHostStatus): string | null {
@@ -582,11 +649,13 @@ function WorkerHostPanel({
   workerHost,
   runningSourceDeliveries,
   leaseBatches,
+  pendingSources,
   usage,
 }: {
   workerHost: CloudWorkerHostStatus;
   runningSourceDeliveries: number;
   leaseBatches: CloudFetchRunLogItem[];
+  pendingSources: CloudPendingSourceSnapshot;
   usage: UsageSummary | null;
 }) {
   const progress = workerHost.progress;
@@ -720,6 +789,44 @@ function WorkerHostPanel({
 
       <div className="cloud-worker-task-section">
         <div className="cloud-worker-task-section-head">
+          <h5>Waiting for source lease</h5>
+          <span>{pendingSources.sources.length} waiting</span>
+        </div>
+        {pendingSources.sources.length === 0 ? (
+          <p className="cron-field-hint">No sources waiting for lease.</p>
+        ) : (
+          <ul className="cloud-worker-task-list">
+            {pendingSources.sources.map((source) => (
+              <li key={source.taskId} className="cloud-worker-task-row">
+                <span className={`cloud-status-chip ${statusClass("queued")}`}>
+                  {pendingSourceReasonLabel(source.reason)}
+                </span>
+                <span className="cloud-worker-task-main">
+                  <span className="cloud-worker-task-title">{source.name}</span>
+                  <span className="cloud-worker-task-meta">
+                    <InlineParts
+                      parts={[
+                        source.sourceType,
+                        pendingSourceReasonLabel(source.reason),
+                        `Estimated ${formatUsageTokens(source.estimatedTokens)} tokens`,
+                        `Remaining ${formatUsageTokens(pendingSources.budget.remainingTokens)} tokens`,
+                        `Deferrals ${source.consecutiveDeferrals.toLocaleString()}`,
+                        ...pendingSourceTimingParts(source),
+                      ]}
+                    />
+                  </span>
+                  <span className="cloud-worker-task-message">
+                    {pendingSourceReasonMessage(source.reason)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="cloud-worker-task-section">
+        <div className="cloud-worker-task-section-head">
           <h5>Waiting for assignment</h5>
           <span>{tasks.length} waiting</span>
         </div>
@@ -785,24 +892,32 @@ export function AdminCloudFetchLog({
   initialWorkerHost,
   initialLeaseBatches,
   initialHasMore,
+  initialPendingSources,
 }: {
   initialWorkerHost: CloudWorkerHostStatus;
   initialLeaseBatches: CloudFetchRunLogItem[];
   initialHasMore: boolean;
+  initialPendingSources: CloudPendingSourceSnapshot;
 }) {
   const [workerHost, setWorkerHost] = useState(initialWorkerHost);
   const [leaseBatches, setLeaseBatches] = useState(initialLeaseBatches);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [pendingSources, setPendingSources] = useState(initialPendingSources);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [expandedShard, setExpandedShard] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const livePayloadSignatureRef = useRef(
-    liveDataSignature({ workerHost: initialWorkerHost, leaseBatches: initialLeaseBatches }),
+    liveDataSignature({
+      workerHost: initialWorkerHost,
+      leaseBatches: initialLeaseBatches,
+      pendingSources: initialPendingSources,
+    }),
   );
   const workerHostRef = useRef(initialWorkerHost);
   const leaseBatchesRef = useRef(initialLeaseBatches);
+  const pendingSourcesRef = useRef(initialPendingSources);
   const runningSourceDeliveries = leaseBatches.filter((batch) => batch.status.toUpperCase() === "RUNNING").length;
   const hasRunningWorkerTask = workerHost.tasks.some(
     (task) => task.status?.toUpperCase() === "RUNNING",
@@ -826,24 +941,32 @@ export function AdminCloudFetchLog({
       const body = (await res.json().catch(() => null)) as CloudFetchRunsResponse | null;
       const batches = body?.leaseBatches ?? body?.runs;
       const nextWorkerHost = body?.workerHost ?? workerHostRef.current;
-      if (Array.isArray(batches) || body?.workerHost) {
+      const nextPendingSources = body?.pendingSources !== null && body?.pendingSources !== undefined
+        ? body.pendingSources
+        : pendingSourcesRef.current;
+      if (Array.isArray(batches) || body?.workerHost || body?.pendingSources !== undefined) {
+        const nextLeaseBatches = Array.isArray(batches)
+          ? mergeLeaseBatches(leaseBatchesRef.current, batches)
+          : leaseBatchesRef.current;
         const nextSignature = liveDataSignature({
           workerHost: nextWorkerHost,
-          leaseBatches: Array.isArray(batches) ? batches : leaseBatchesRef.current,
+          leaseBatches: nextLeaseBatches,
+          pendingSources: body?.pendingSources !== null ? nextPendingSources : pendingSourcesRef.current,
         });
         const changed = nextSignature !== livePayloadSignatureRef.current;
         livePayloadSignatureRef.current = nextSignature;
         if (Array.isArray(batches)) {
-          setLeaseBatches((current) => {
-            const next = mergeLeaseBatches(current, batches);
-            leaseBatchesRef.current = next;
-            return next;
-          });
+          leaseBatchesRef.current = nextLeaseBatches;
+          setLeaseBatches(nextLeaseBatches);
           setHasMore(Boolean(body?.hasMore));
         }
         if (body?.workerHost) {
           workerHostRef.current = body.workerHost;
           setWorkerHost(body.workerHost);
+        }
+        if (body?.pendingSources !== null && body?.pendingSources !== undefined) {
+          pendingSourcesRef.current = body.pendingSources;
+          setPendingSources(body.pendingSources);
         }
         if (changed) requestWorkspaceRefresh("admin-cloud-fetch-log");
       }
@@ -932,6 +1055,7 @@ export function AdminCloudFetchLog({
         workerHost={workerHost}
         runningSourceDeliveries={runningSourceDeliveries}
         leaseBatches={leaseBatches}
+        pendingSources={pendingSources}
         usage={workerUsageTotal}
       />
 
