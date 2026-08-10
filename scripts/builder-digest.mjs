@@ -1122,7 +1122,7 @@ function usage() {
   cron-guard --job library-cron|digest-cron --owner-id <local-owner-id>
   fetch-status-audit
   digest-status-audit
-  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw] [--provider openai-codex] [--model gpt-5.4-mini] [--out runtime-usage.jsonl]
+  parse-runtime-usage --file runtime-output.log [--runtime codex|claude|openclaw] [--provider openai-codex] [--model gpt-5.6-luna] [--out runtime-usage.jsonl]
   aggregate-runtime-usage --out runtime-usage.json runtime-output-1.log runtime-output-2.log
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
@@ -1381,6 +1381,8 @@ function usageRateModelKey(value) {
 // below still win; this table exists so OpenClaw/Gateway logs that include
 // provider+model can produce a useful estimated cost without per-user setup.
 const DEFAULT_USAGE_PRICES_PER_1M = {
+  "openai-codex:gpt-5-6-luna": { input: 0.2, cachedInput: 0.02, output: 1.2 },
+  "openai:gpt-5-6-luna": { input: 0.2, cachedInput: 0.02, output: 1.2 },
   "openai-codex:gpt-5-5": { input: 5, cachedInput: 0.5, output: 30 },
   "openai:gpt-5-5": { input: 5, cachedInput: 0.5, output: 30 },
   "openai-codex:gpt-5-4": { input: 2.5, cachedInput: 0.25, output: 15 },
