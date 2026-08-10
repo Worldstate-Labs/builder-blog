@@ -95,6 +95,7 @@ const MIN_ESTIMATED_TOKENS = 1_000;
 const DEFAULT_MATERIALIZE_LIMIT = 100;
 const CLOUD_FETCHED_ITEM_LIMIT_PER_LEASE = 5_000;
 const CLOUD_SCHEDULER_TRANSACTION_OPTIONS = { maxWait: 60_000, timeout: 60_000 } as const;
+export const DEFAULT_CLOUD_FETCH_MATERIALIZE_LIMIT = DEFAULT_MATERIALIZE_LIMIT;
 
 const SOURCE_TYPE_PRIORS: Record<string, {
   durationP75Seconds: number;
@@ -1176,14 +1177,12 @@ async function computeLeaseBudget(params: {
     (sum, item) => sum + estimatedTokensForTask(item.cloudSourceTask),
     0,
   );
-  const tokenBudget = Math.max(0, params.config.tokenBudgetPerHour - recentUsageTokens - activeEstimatedTokens);
-  return {
-    limit: tokenBudget > 0 ? normalizedLeaseLimit(params.requestedLimit) : 0,
-    tokenBudget,
+  return calculateCloudFetchLeaseBudget({
     tokenBudgetPerHour: params.config.tokenBudgetPerHour,
     recentUsageTokens,
     activeEstimatedTokens,
-  };
+    requestedLimit: params.requestedLimit,
+  });
 }
 
 function estimatedDurationForTask(task: {
@@ -1211,10 +1210,10 @@ function estimatedTokensForTask(task: {
   estimatedTokenCost?: number | null;
   builder: { sourceType: string };
 }) {
-  return Math.max(
-    MIN_ESTIMATED_TOKENS,
-    task.estimatedTokenCost ?? sourceTypePrior(task.builder.sourceType).estimatedTokenCost,
-  );
+  return estimateCloudFetchTaskTokens({
+    estimatedTokenCost: task.estimatedTokenCost ?? null,
+    sourceType: task.builder.sourceType,
+  });
 }
 
 function queuedLeaseItemsWhere(
@@ -1353,6 +1352,35 @@ function provisionalExecutionPlanForLease(params: {
 
 function sourceTypePrior(sourceType: string) {
   return SOURCE_TYPE_PRIORS[sourceType.toLowerCase()] ?? SOURCE_TYPE_PRIORS.auto;
+}
+
+export function estimateCloudFetchTaskTokens(params: {
+  estimatedTokenCost: number | null | undefined;
+  sourceType: string;
+}) {
+  return Math.max(
+    MIN_ESTIMATED_TOKENS,
+    params.estimatedTokenCost ?? sourceTypePrior(params.sourceType).estimatedTokenCost,
+  );
+}
+
+export function calculateCloudFetchLeaseBudget(params: {
+  tokenBudgetPerHour: number;
+  recentUsageTokens: number;
+  activeEstimatedTokens: number;
+  requestedLimit: number;
+}) {
+  const tokenBudget = Math.max(
+    0,
+    params.tokenBudgetPerHour - params.recentUsageTokens - params.activeEstimatedTokens,
+  );
+  return {
+    limit: tokenBudget > 0 ? normalizedLeaseLimit(params.requestedLimit) : 0,
+    tokenBudget,
+    tokenBudgetPerHour: params.tokenBudgetPerHour,
+    recentUsageTokens: params.recentUsageTokens,
+    activeEstimatedTokens: params.activeEstimatedTokens,
+  };
 }
 
 function normalizedLeaseLimit(limit: number) {
