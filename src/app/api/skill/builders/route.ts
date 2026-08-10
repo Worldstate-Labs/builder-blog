@@ -8,6 +8,9 @@ import {
   readFetchTaskId,
   syncBuilderFeedItems,
   syncTextStats,
+  validateFetchSyncTaskBoundary,
+  FetchSyncTaskBoundaryError,
+  type FetchSyncBoundaryTask,
   type BuilderFeedSyncItemResult,
 } from "@/lib/builder-feed-sync";
 import {
@@ -113,6 +116,11 @@ export async function POST(request: Request) {
         throw new StaleWorkerWriteError();
       }
       await lockResetFenceForWorker(tx, run.createdAt, userResetFenceId(user.id));
+      validateFetchSyncTaskBoundary({
+        plannedTasks: plannedTasksFromFetchRunDetails(run.details),
+        builders: parsed.data.builders,
+        taskOutcomes: parsed.data.taskOutcomes,
+      });
       await syncBuilderFeedItems({
         prisma: tx,
         builders: parsed.data.builders,
@@ -188,6 +196,20 @@ export async function POST(request: Request) {
   }
 }
 
+function plannedTasksFromFetchRunDetails(details: unknown): FetchSyncBoundaryTask[] {
+  if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+  const fetchTasks = (details as Record<string, unknown>).fetchTasks;
+  if (!Array.isArray(fetchTasks)) return [];
+  return fetchTasks.filter((task): task is FetchSyncBoundaryTask =>
+    Boolean(
+      task &&
+      typeof task === "object" &&
+      !Array.isArray(task) &&
+      typeof (task as Record<string, unknown>).id === "string",
+    )
+  );
+}
+
 async function builderSyncFailureResponse({
   userId,
   fetchRun,
@@ -236,6 +258,9 @@ async function builderSyncFailureResponse({
     {
       status: "failed",
       error: message,
+      ...(error instanceof FetchSyncTaskBoundaryError
+        ? { code: error.code, violations: error.violations }
+        : {}),
       builders: counters.builders,
       feedItems: counters.feedItems,
       skippedFeedItems: counters.skippedFeedItems,

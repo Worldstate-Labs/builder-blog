@@ -826,6 +826,11 @@ test("builder sync endpoint durably patches fetch-run outcomes server-side", () 
   assert.match(buildersRoute, /fetchRunPatch/);
   assert.match(buildersRoute, /itemResultsToFetchRunOutcomes/);
   assert.match(buildersRoute, /skillTaskOutcomeToFetchRunOutcome/);
+  assert.match(buildersRoute, /validateFetchSyncTaskBoundary/);
+  assert.match(buildersRoute, /plannedTasksFromFetchRunDetails/);
+  assert.match(buildersRoute, /error instanceof FetchSyncTaskBoundaryError/);
+  assert.match(buildersRoute, /violations: error\.violations/);
+  assert.match(buildersRoute, /existingRun: run/);
   assert.match(buildersRoute, /builderSyncFailureResponse/);
   assert.match(buildersRoute, /catch \(error\)[\s\S]*builderSyncFailureResponse/);
   assert.match(buildersRoute, /patchFetchRunForBuilderSync[\s\S]*itemResults/);

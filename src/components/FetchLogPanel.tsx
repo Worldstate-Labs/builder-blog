@@ -3238,6 +3238,7 @@ const VALIDATION_ERROR_MESSAGES: Record<string, string> = {
   "headline:headline_too_long": "headline was too long",
   "headline:headline_duplicates_title": "headline duplicated the title",
   "headline:headline_duplicates_summary": "headline duplicated the summary",
+  "missing_synced_item_for_fetch_task": "worker result did not match the planned post identity",
   "content_quality:content_too_short": "post body was too short",
   "content_quality:content_duplicates_metadata": "post body duplicated title or description metadata instead of primary content",
   "youtube_content_quality:transcript_missing": "YouTube transcript was missing",

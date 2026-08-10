@@ -107,8 +107,13 @@ const CloudFetchSyncPayloadSchema = z.object({
 
 const CloudFetchPlanPostSchema = z.object({
   postTaskId: z.string().min(1).max(500),
+  kind: z.string().trim().min(1).max(80).nullable().optional(),
+  externalId: z.string().trim().min(1).max(512).nullable().optional(),
   title: z.string().trim().min(1).max(500).nullable().optional(),
   url: z.string().url().max(2048).nullable().optional(),
+  publishedAt: z.string().datetime().nullable().optional(),
+  sourceName: z.string().trim().min(1).max(240).nullable().optional(),
+  agentWorkType: z.string().trim().min(1).max(120).nullable().optional(),
   workerId: z.string().trim().min(1).max(160).nullable().optional(),
   estimatedWorkSeconds: z.number().int().min(0).max(7 * 24 * 60 * 60),
   executionBudgetSeconds: z.number().int().min(60 * 60).max(4 * 60 * 60),
@@ -150,6 +155,7 @@ const CloudFetchPlanPatchPayloadSchema = z.object({
   plans: z.array(CloudFetchPlanGroupSchema).min(1).max(500),
 }).superRefine((payload, ctx) => {
   const seenSourceTaskIds = new Set<string>();
+  const seenPostTaskIds = new Set<string>();
   for (const plan of payload.plans) {
     if (seenSourceTaskIds.has(plan.cloudSourceTaskId)) {
       ctx.addIssue({
@@ -160,6 +166,17 @@ const CloudFetchPlanPatchPayloadSchema = z.object({
       break;
     }
     seenSourceTaskIds.add(plan.cloudSourceTaskId);
+    for (const post of plan.posts) {
+      if (seenPostTaskIds.has(post.postTaskId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["plans"],
+          message: "Task plans cannot repeat the same postTaskId across cloud source tasks.",
+        });
+        return;
+      }
+      seenPostTaskIds.add(post.postTaskId);
+    }
   }
 });
 

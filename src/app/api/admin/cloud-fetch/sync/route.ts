@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import {
   emptyBuilderFeedSyncResult,
   syncBuilderFeedItems,
+  validateFetchSyncTaskBoundary,
+  FetchSyncTaskBoundaryError,
   type BuilderFeedSyncInput,
+  type FetchSyncBoundaryTask,
 } from "@/lib/builder-feed-sync";
 import {
   CloudFetchConflictError,
@@ -129,6 +132,12 @@ export async function POST(request: Request) {
 
       const preparedResults = parsed.data.taskResults.map((taskResult) => {
         const runTask = runTaskById.get(taskResult.cloudSourceTaskId)!;
+        const cloudTask = cloudTaskById.get(taskResult.cloudSourceTaskId)!;
+        if (runTask.builderId !== cloudTask.builderId) {
+          throw new CloudSyncWriteError(
+            `Cloud source ${taskResult.cloudSourceTaskId} builder identity does not match its run task.`,
+          );
+        }
         const executionPlanPosts = executionPlanPostsForTerminalResult(
           runTask.details,
           taskResult,
@@ -145,6 +154,11 @@ export async function POST(request: Request) {
           executionPlanPosts,
           expectedPostTaskIds,
         };
+      });
+      validateFetchSyncTaskBoundary({
+        plannedTasks: cloudSyncBoundaryTasks(preparedResults),
+        builders: parsed.data.builders,
+        taskOutcomes: parsed.data.taskOutcomes,
       });
       validateTerminalCoverage({
         expectedPostTaskIds: preparedResults.flatMap((entry) => entry.expectedPostTaskIds),
@@ -323,6 +337,12 @@ export async function POST(request: Request) {
     if (error instanceof CloudFetchConflictError) {
       return NextResponse.json(cloudFetchConflictBody(error), { status: error.statusCode });
     }
+    if (error instanceof FetchSyncTaskBoundaryError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code, violations: error.violations },
+        { status: error.statusCode },
+      );
+    }
     if (error instanceof CloudSyncWriteError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
@@ -366,6 +386,31 @@ export async function POST(request: Request) {
     taskOutcomes: parsed.data.taskOutcomes.length,
     generatedAt: new Date().toISOString(),
   });
+}
+
+function cloudSyncBoundaryTasks(
+  preparedResults: Array<{
+    taskResult: { cloudSourceTaskId: string };
+    runTask: { builderId: string };
+    executionPlanPosts: Record<string, Record<string, unknown>>;
+  }>,
+): FetchSyncBoundaryTask[] {
+  return preparedResults.flatMap((prepared) =>
+    Object.entries(prepared.executionPlanPosts).map(([postTaskId, post]) => {
+      const item = Object.fromEntries(
+        ["kind", "externalId", "title", "url", "publishedAt", "sourceName"]
+          .filter((field) => field in post)
+          .map((field) => [field, post[field]]),
+      );
+      return {
+        id: postTaskId,
+        builderId: prepared.runTask.builderId,
+        cloudSourceTaskId: prepared.taskResult.cloudSourceTaskId,
+        ...(typeof post.agentWorkType === "string" ? { agentWorkType: post.agentWorkType } : {}),
+        ...(Object.keys(item).length > 0 ? { item } : {}),
+      };
+    }),
+  );
 }
 
 function groupBuildersBySummaryLanguage({

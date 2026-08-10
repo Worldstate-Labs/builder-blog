@@ -28,6 +28,152 @@ export type BuilderFeedSyncResult = {
   itemResults: BuilderFeedSyncItemResult[];
 };
 
+export type FetchSyncBoundaryTask = Record<string, unknown> & {
+  id: string;
+  builderId?: string | null;
+  cloudSourceTaskId?: string | null;
+  agentWorkType?: string | null;
+  builderSync?: Record<string, unknown> | null;
+  item?: Record<string, unknown> | null;
+};
+
+export class FetchSyncTaskBoundaryError extends Error {
+  readonly statusCode = 400;
+  readonly code = "fetch_sync_task_boundary_violation";
+
+  constructor(readonly violations: string[]) {
+    super(`Fetch sync task boundary failed: ${violations.join("; ")}`);
+    this.name = "FetchSyncTaskBoundaryError";
+  }
+}
+
+function boundaryRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function boundaryText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function boundaryTaskBuilderId(task: FetchSyncBoundaryTask): string {
+  return boundaryText(boundaryRecord(task.builderSync).builderId) || boundaryText(task.builderId);
+}
+
+function boundaryTaskAcceptsItems(task: FetchSyncBoundaryTask): boolean {
+  const id = boundaryText(task.id);
+  const workType = boundaryText(task.agentWorkType);
+  return !(
+    workType === "candidate_discovery_fallback" ||
+    workType === "user_action" ||
+    workType.startsWith("user_action_") ||
+    workType === "x_token_missing" ||
+    workType === "x_token_invalid" ||
+    id.startsWith("candidate_discovery:")
+  );
+}
+
+function boundaryIdentityValue(field: string, value: unknown): unknown {
+  if (field === "publishedAt") {
+    if (value == null || value === "") return null;
+    const timestamp = new Date(String(value));
+    return Number.isNaN(timestamp.getTime()) ? String(value) : timestamp.toISOString();
+  }
+  if (value == null) return null;
+  return typeof value === "string" ? value.trim() : value;
+}
+
+function validateBoundaryItemIdentity(
+  task: FetchSyncBoundaryTask,
+  item: BuilderFeedSyncInput["items"][number],
+  violations: string[],
+) {
+  if (boundaryText(task.agentWorkType) === "fetch_builder_fallback") return;
+  const plannedItem = boundaryRecord(task.item);
+  for (const field of ["kind", "externalId", "title", "url", "publishedAt", "sourceName"] as const) {
+    if (!(field in plannedItem)) continue;
+    const planned = boundaryIdentityValue(field, plannedItem[field]);
+    const submitted = boundaryIdentityValue(field, item[field]);
+    if (submitted !== planned) violations.push(`${task.id}:${field}_mismatch`);
+  }
+}
+
+export function validateFetchSyncTaskBoundary({
+  plannedTasks,
+  builders,
+  taskOutcomes,
+}: {
+  plannedTasks: FetchSyncBoundaryTask[];
+  builders: BuilderFeedSyncInput[];
+  taskOutcomes: Array<{ fetchTaskId: string }>;
+}) {
+  const violations: string[] = [];
+  const plannedById = new Map<string, FetchSyncBoundaryTask>();
+  for (const task of plannedTasks) {
+    const id = boundaryText(task.id);
+    if (!id) continue;
+    if (plannedById.has(id)) violations.push(`${id}:duplicate_planned_task_id`);
+    else plannedById.set(id, task);
+  }
+
+  const terminalCounts = new Map<string, number>();
+  const countTerminal = (id: string) => terminalCounts.set(id, (terminalCounts.get(id) ?? 0) + 1);
+  for (const builder of builders) {
+    for (const item of builder.items) {
+      const rawJson = boundaryRecord(item.rawJson);
+      const fetchTaskId = boundaryText(rawJson.fetchTaskId);
+      const task = plannedById.get(fetchTaskId);
+      if (!task) {
+        violations.push(`${fetchTaskId || "missing"}:unknown_fetch_task_id`);
+        continue;
+      }
+      countTerminal(fetchTaskId);
+      if (!boundaryTaskAcceptsItems(task)) {
+        violations.push(`${fetchTaskId}:task_does_not_accept_items`);
+        continue;
+      }
+      const expectedBuilderId = boundaryTaskBuilderId(task);
+      if (expectedBuilderId && boundaryText(builder.builderId) !== expectedBuilderId) {
+        violations.push(`${fetchTaskId}:builderId_mismatch`);
+      }
+      const rawBuilderId = boundaryText(rawJson.builderId);
+      if (rawBuilderId && expectedBuilderId && rawBuilderId !== expectedBuilderId) {
+        violations.push(`${fetchTaskId}:rawJson.builderId_mismatch`);
+      }
+      validateBoundaryItemIdentity(task, item, violations);
+    }
+  }
+
+  for (const outcome of taskOutcomes) {
+    const fetchTaskId = boundaryText(outcome.fetchTaskId);
+    if (!plannedById.has(fetchTaskId)) {
+      violations.push(`${fetchTaskId || "missing"}:unknown_fetch_task_id`);
+      continue;
+    }
+    countTerminal(fetchTaskId);
+  }
+
+  for (const [fetchTaskId, count] of terminalCounts) {
+    const task = plannedById.get(fetchTaskId);
+    if (count > 1 && boundaryText(task?.agentWorkType) !== "fetch_builder_fallback") {
+      violations.push(`${fetchTaskId}:duplicate_task_result`);
+    }
+    if (
+      boundaryText(task?.agentWorkType) === "fetch_builder_fallback" &&
+      taskOutcomes.some((outcome) => boundaryText(outcome.fetchTaskId) === fetchTaskId) &&
+      builders.some((builder) => builder.items.some((item) =>
+        boundaryText(boundaryRecord(item.rawJson).fetchTaskId) === fetchTaskId
+      ))
+    ) {
+      violations.push(`${fetchTaskId}:duplicate_task_result`);
+    }
+  }
+
+  if (violations.length > 0) throw new FetchSyncTaskBoundaryError(violations);
+  return { plannedTasks: plannedById.size, submittedTasks: terminalCounts.size };
+}
+
 type BuilderFeedSyncMode =
   | {
       type: "personal";

@@ -341,6 +341,7 @@ function terminalEvidence(post: JsonRecord) {
     "plannedExtractionMethod",
     "mustSucceedBy",
     "estimateEvidence",
+    "evidence",
   ];
   return Object.fromEntries(allowed.flatMap((key) => post[key] === undefined ? [] : [[key, post[key]]]));
 }

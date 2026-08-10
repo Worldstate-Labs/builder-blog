@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   normalizeCloudFetchFrequencyInput,
   normalizeCloudSourceSubmissionInput,
+  parseCloudFetchPlanPatchPayload,
   parseCloudFetchSyncPayload,
 } from "../src/lib/cloud-source-contracts";
 
@@ -129,4 +130,51 @@ test("cloud fetch sync payload normalizes string task outcome evidence", () => {
   assert.deepEqual(parsed.data.taskOutcomes[0].evidence, {
     message: "NYT paywall and Cloudflare blocked all extraction methods.",
   });
+});
+
+test("cloud fetch plan rejects a post task id repeated across source tasks", () => {
+  const post = {
+    postTaskId: "fetch_post:duplicate",
+    estimatedWorkSeconds: 120,
+    executionBudgetSeconds: 3600,
+    workloadClass: "standard",
+    budgetReason: "minimum_budget",
+    deadlineState: "on_time",
+  };
+  const parsed = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [
+      { cloudSourceTaskId: "source_task_1", posts: [post] },
+      { cloudSourceTaskId: "source_task_2", posts: [post] },
+    ],
+  });
+  assert.equal(parsed.success, false);
+});
+
+test("cloud fetch plan preserves server-verifiable post identity", () => {
+  const parsed = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [{
+      cloudSourceTaskId: "source_task_1",
+      posts: [{
+        postTaskId: "fetch_post:builder_blog:BLOG_POST:post_1",
+        kind: "BLOG_POST",
+        externalId: "post_1",
+        title: "Canonical title",
+        url: "https://example.com/post-1",
+        publishedAt: "2026-08-09T12:00:00.000Z",
+        sourceName: "Example Blog",
+        agentWorkType: "fetch_post",
+        estimatedWorkSeconds: 120,
+        executionBudgetSeconds: 3600,
+        workloadClass: "standard",
+        budgetReason: "minimum_budget",
+        deadlineState: "on_time",
+      }],
+    }],
+  });
+  assert.equal(parsed.success, true);
+  if (!parsed.success) return;
+  assert.equal(parsed.data.plans[0].posts[0].externalId, "post_1");
+  assert.equal(parsed.data.plans[0].posts[0].agentWorkType, "fetch_post");
 });

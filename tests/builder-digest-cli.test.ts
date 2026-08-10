@@ -4771,6 +4771,63 @@ test("fail-sync-slice preserves per-task validation errors in evidence", async (
   });
 });
 
+test("fail-sync-slice normalizes a singular missing-item validation error", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "builder-digest-fail-missing-item-"));
+  const task = {
+    id: "fetch_post:x:tweet_1",
+    builder: "Example X account",
+    builderId: "builder_x",
+    contentStatus: "ready",
+    item: {
+      kind: "TWEET",
+      externalId: "tweet_1",
+      url: "https://x.com/example/status/tweet_1",
+      body: "A fetched X post body that is ready for summarization.",
+    },
+  };
+  const tasksFile = join(dir, "tasks.json");
+  const validationFile = join(dir, "validation.out");
+  const outFile = join(dir, "failed-payload.json");
+
+  await writeFile(tasksFile, JSON.stringify({ fetchTasks: [task] }), "utf8");
+  await writeFile(
+    validationFile,
+    `Agent sync validation failed for 1 task(s).\n${JSON.stringify(
+      [
+        {
+          fetchTaskId: task.id,
+          builder: task.builder,
+          item: task.item.externalId,
+          error: "missing_synced_item_for_fetch_task",
+        },
+      ],
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(process.execPath, [
+    "scripts/builder-digest.mjs",
+    "fail-sync-slice",
+    "--tasks",
+    tasksFile,
+    "--out",
+    outFile,
+    "--reason",
+    "task_validation_failed",
+    "--validation-file",
+    validationFile,
+  ]);
+
+  const payload = JSON.parse(await readFile(outFile, "utf8"));
+  assert.deepEqual(payload.taskOutcomes[0].evidence.validation, {
+    builder: task.builder,
+    item: task.item.externalId,
+    errors: ["missing_synced_item_for_fetch_task"],
+  });
+});
+
 test("fail-sync-slice preserves attempted item lifecycle evidence and concrete sync error", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const dir = await mkdtemp(join(tmpdir(), "builder-digest-failed-sync-evidence-"));
@@ -5030,8 +5087,14 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
         {
           fetchTaskId: "task_failed",
           status: "failed",
-          reason: "worker_missing_result",
-          evidence: { failureKind: "missing_worker_result_file" },
+          reason: "task_validation_failed",
+          evidence: {
+            failureKind: "task_validation_failed",
+            validation: {
+              item: "post_2",
+              errors: ["missing_synced_item_for_fetch_task"],
+            },
+          },
         },
       ],
       workerUsages: [
@@ -5061,7 +5124,7 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
       { cloudSourceTaskId: "cloud_task_2", status: "failed", plannedPosts: 1, syncedPosts: 0, failedPosts: 1 },
     ],
   );
-  assert.equal(payload.taskResults[1].failureReason, "worker_missing_result");
+  assert.equal(payload.taskResults[1].failureReason, "task_validation_failed");
   assert.equal(payload.taskResults[0].usageTokens, 1234);
   assert.equal(payload.taskResults[0].usageCostUsd, 0.05);
   assert.equal(payload.taskResults[1].usageTokens, undefined);
@@ -5104,8 +5167,15 @@ test("cloud sync task results are derived from planned cloud fetch tasks", async
   assert.equal(payload.taskResults[1].details.posts.length, 1);
   assert.equal(payload.taskResults[1].details.workerUsages, undefined);
   assert.equal(payload.taskResults[1].details.posts[0].status, "failed");
-  assert.equal(payload.taskResults[1].details.posts[0].failureReason, "worker_missing_result");
+  assert.equal(payload.taskResults[1].details.posts[0].failureReason, "task_validation_failed");
   assert.equal(payload.taskResults[1].details.posts[0].url, "https://openai.com/news/2");
+  assert.deepEqual(payload.taskResults[1].details.posts[0].evidence, {
+    failureKind: "task_validation_failed",
+    validation: {
+      item: "post_2",
+      errors: ["missing_synced_item_for_fetch_task"],
+    },
+  });
 });
 
 test("cloud sync task results include leased sources that generated no post tasks", async () => {
@@ -9407,6 +9477,293 @@ test("merge-task-results restores ready task body when worker omits or rewrites 
   const validation = cli.validateAgentSyncPayload(fetchResult, merged.payload);
   assert.equal(validation.status, "ok");
   assert.equal(validation.validatedFetchTasks, 2);
+});
+
+test("merge-task-results restores canonical builder identity for ready cloud tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "fetch_post:builder_x:TWEET:tweet_1",
+    type: "fetch_post",
+    contentStatus: "ready",
+    builder: "Example X account",
+    builderId: "builder_x",
+    sourceType: "x",
+    cloudSourceTaskId: "cloud_source_task_x",
+    builderSync: {
+      builderId: "builder_x",
+      cloudSourceTaskId: "cloud_source_task_x",
+      kind: "X",
+      sourceType: "x",
+      name: "Example X account",
+      handle: "example",
+      sourceUrl: "https://x.com/example",
+      fetchUrl: "https://x.com/example",
+      subscribe: false,
+    },
+    item: {
+      kind: "TWEET",
+      externalId: "tweet_1",
+      title: null,
+      url: "https://x.com/example/status/tweet_1",
+      publishedAt: "2026-08-09T10:00:00.000Z",
+      sourceName: "Example X account",
+      body: "The supplied X post explains a concrete product update and links to its source.",
+    },
+  };
+  const fetchResult = { status: "ok", fetchTasks: [task] };
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          {
+            // Reproduces the production failure: the worker copied the cloud
+            // source task id into the builder id field.
+            builderId: "cloud_source_task_x",
+            cloudSourceTaskId: "cloud_source_task_x",
+            kind: "X",
+            sourceType: "x",
+            name: "Example X account",
+            handle: "example",
+            sourceUrl: "https://x.com/example",
+            items: [
+              {
+                kind: "TWEET",
+                externalId: "tweet_1",
+                url: "https://x.com/example/status/tweet_1",
+                summary: "The author describes a concrete product update and points readers to the linked source for the full details.",
+                headline: "A concrete product update is now available",
+                rawJson: { fetchTaskId: task.id },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ]);
+
+  assert.equal(merged.payload.builders.length, 1);
+  assert.equal(merged.payload.builders[0].builderId, "builder_x");
+  assert.equal(merged.payload.builders[0].cloudSourceTaskId, "cloud_source_task_x");
+  assert.equal(cli.validateAgentSyncPayload(fetchResult, merged.payload).status, "ok");
+});
+
+test("merge-task-results restores every stable identity field for requires-agent tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "fetch_post:builder_blog:BLOG_POST:post_1",
+    type: "fetch_post",
+    contentStatus: "requires_agent",
+    builder: "Example Blog",
+    builderId: "builder_blog",
+    sourceType: "blog",
+    builderSync: {
+      builderId: "builder_blog",
+      kind: "BLOG",
+      sourceType: "blog",
+      name: "Example Blog",
+      sourceUrl: "https://example.com/blog",
+      fetchUrl: "https://example.com/feed.xml",
+      subscribe: true,
+    },
+    item: {
+      kind: "BLOG_POST",
+      externalId: "post_1",
+      title: "Canonical title",
+      url: "https://example.com/blog/post-1",
+      publishedAt: "2026-08-09T12:00:00.000Z",
+      sourceName: "Example Blog",
+      body: "",
+    },
+  };
+  const workerBody = "The fetched article contains enough primary detail to support a useful summary. ".repeat(8);
+  const fetchResult = { status: "ok", fetchTasks: [task] };
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          {
+            builderId: "wrong_builder",
+            kind: "X",
+            sourceType: "x",
+            name: "Wrong source",
+            sourceUrl: "https://wrong.example/source",
+            items: [
+              {
+                kind: "TWEET",
+                externalId: "wrong_external_id",
+                title: "Wrong title",
+                url: "https://wrong.example/post",
+                publishedAt: "2020-01-01T00:00:00.000Z",
+                sourceName: "Wrong source",
+                body: workerBody,
+                summary: "The article explains a concrete implementation and the operational evidence supporting it.",
+                headline: "A concrete implementation is now documented",
+                fetchTool: "worker-invented-tool",
+                rawJson: {
+                  fetchTaskId: task.id,
+                  builderId: "wrong_builder",
+                  workerId: "worker-invented-id",
+                  agentRuntime: "codex",
+                  agentCompletedAt: "2026-08-09T12:30:00.000Z",
+                  agentExecutionProof: "Fetched the primary article body.",
+                },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [{ shard: "shard-0", workerId: "worker-0", tasks: [task] }],
+  });
+
+  const builder = merged.payload.builders[0];
+  const item = builder.items[0];
+  assert.equal(builder.builderId, task.builderSync.builderId);
+  assert.equal(builder.kind, task.builderSync.kind);
+  assert.equal(builder.name, task.builderSync.name);
+  assert.equal(item.kind, task.item.kind);
+  assert.equal(item.externalId, task.item.externalId);
+  assert.equal(item.title, task.item.title);
+  assert.equal(item.url, task.item.url);
+  assert.equal(item.publishedAt, task.item.publishedAt);
+  assert.equal(item.sourceName, task.item.sourceName);
+  assert.equal(item.body, workerBody);
+  assert.equal(item.fetchTool, undefined);
+  assert.equal(item.rawJson.fetchTaskId, task.id);
+  assert.equal(item.rawJson.builderId, task.builderId);
+  assert.equal(item.rawJson.workerId, "worker-0");
+  assert.equal(cli.validateAgentSyncPayload(fetchResult, merged.payload).status, "ok");
+});
+
+test("merge-task-results drops off-plan items instead of syncing worker-authored identities", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "fetch_post:builder_blog:BLOG_POST:post_1",
+    type: "fetch_post",
+    contentStatus: "requires_agent",
+    builder: "Example Blog",
+    builderId: "builder_blog",
+    sourceType: "blog",
+    builderSync: { builderId: "builder_blog", kind: "BLOG", sourceType: "blog", name: "Example Blog" },
+    item: {
+      kind: "BLOG_POST",
+      externalId: "post_1",
+      title: "Planned post",
+      url: "https://example.com/post-1",
+      body: "",
+    },
+  };
+  const merged = cli.mergeShardSyncPayloads({ fetchTasks: [task] }, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          {
+            builderId: "off_plan_builder",
+            kind: "BLOG",
+            sourceType: "blog",
+            name: "Off-plan source",
+            items: [
+              {
+                kind: "BLOG_POST",
+                externalId: "off_plan_post",
+                title: "Off-plan post",
+                url: "https://off-plan.example/post",
+                body: "An off-plan body that must never be persisted. ".repeat(10),
+                summary: "An off-plan summary that must never be persisted by the synchronization route.",
+                headline: "An off-plan result must be rejected",
+                rawJson: { fetchTaskId: "unknown_task" },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [{ shard: "shard-0", workerId: "worker-0", tasks: [task] }],
+  });
+
+  assert.deepEqual(merged.payload.builders, []);
+  assert.equal(merged.payload.taskOutcomes.length, 1);
+  assert.equal(merged.payload.taskOutcomes[0].fetchTaskId, task.id);
+  assert.equal(merged.payload.taskOutcomes[0].reason, "worker_incomplete_result");
+});
+
+test("merge-task-results does not let one shard settle another shard's task", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const taskA = {
+    id: "task_a",
+    type: "fetch_post",
+    contentStatus: "requires_agent",
+    builder: "Source A",
+    builderId: "builder_a",
+    item: { kind: "BLOG_POST", externalId: "a", url: "https://a.example/post", body: "" },
+  };
+  const taskB = {
+    id: "task_b",
+    type: "fetch_post",
+    contentStatus: "requires_agent",
+    builder: "Source B",
+    builderId: "builder_b",
+    item: { kind: "BLOG_POST", externalId: "b", url: "https://b.example/post", body: "" },
+  };
+  const merged = cli.mergeShardSyncPayloads({ fetchTasks: [taskA, taskB] }, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [],
+        taskOutcomes: [{ fetchTaskId: taskB.id, status: "failed", reason: "wrong-shard-result" }],
+      },
+    },
+    { name: "shard-1-result.json", error: "no result file" },
+  ], {
+    shardPlans: [
+      { shard: "shard-0", workerId: "worker-0", tasks: [taskA] },
+      { shard: "shard-1", workerId: "worker-1", tasks: [taskB] },
+    ],
+  });
+
+  const outcomes = new Map(merged.payload.taskOutcomes.map((outcome) => [outcome.fetchTaskId, outcome]));
+  assert.equal(outcomes.size, 2);
+  assert.equal(outcomes.get(taskA.id)?.reason, "worker_incomplete_result");
+  assert.equal(outcomes.get(taskB.id)?.reason, "worker_missing_result");
+  assert.equal([...outcomes.values()].some((outcome) => outcome.reason === "wrong-shard-result"), false);
+});
+
+test("validate-agent-sync rejects unbound items and outcomes", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = youtubePlannedTask(cli, "vid_bound");
+  assert.throws(
+    () => cli.validateAgentSyncPayload(
+      { fetchTasks: [task] },
+      {
+        builders: [{
+          builderId: "other_builder",
+          name: "Other source",
+          items: [{
+            kind: "VIDEO",
+            externalId: "off_plan",
+            url: "https://www.youtube.com/watch?v=off_plan",
+            body: "Off-plan primary content. ".repeat(30),
+            summary: "This result is not associated with the planned post and must be rejected.",
+            headline: "An unbound result must not sync",
+            rawJson: { fetchTaskId: "unknown_task" },
+          }],
+        }],
+        taskOutcomes: [
+          { fetchTaskId: task.id, status: "failed", reason: "planned task failed" },
+          { fetchTaskId: "unknown_outcome", status: "failed", reason: "off-plan outcome" },
+        ],
+      },
+    ),
+    /Agent sync validation failed/,
+  );
 });
 
 test("merge-task-results canonicalizes stale ready item fetch task ids", async () => {

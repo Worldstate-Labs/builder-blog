@@ -131,6 +131,50 @@ test("terminal reconciliation derives every post and aggregate from server-accep
   assert.match(result.requestDigest, /^[a-f0-9]{64}$/);
 });
 
+test("terminal reconciliation preserves per-post validation evidence", () => {
+  const result = reconcileCloudFetchTerminalResult({
+    cloudSourceTaskId: "source_validation",
+    executionPlanPosts: { post_1: planPosts.post_1 },
+    clientResult: {
+      cloudSourceTaskId: "source_validation",
+      status: "failed",
+      plannedPosts: 1,
+      syncedPosts: 0,
+      failedPosts: 1,
+      failureReason: "task_validation_failed",
+      details: {
+        posts: [
+          {
+            id: "post_1",
+            status: "failed",
+            failureReason: "task_validation_failed",
+            evidence: {
+              validation: {
+                builder: "Example source",
+                item: "post_1",
+                errors: ["missing_synced_item_for_fetch_task"],
+              },
+            },
+          },
+        ],
+      },
+    },
+    submittedItems: [],
+    itemResults: [],
+    taskOutcomes: [
+      { fetchTaskId: "post_1", status: "failed", reason: "task_validation_failed" },
+    ],
+  });
+
+  assert.deepEqual(result.details.posts[0].evidence, {
+    validation: {
+      builder: "Example source",
+      item: "post_1",
+      errors: ["missing_synced_item_for_fetch_task"],
+    },
+  });
+});
+
 test("terminal reconciliation defers an all-ASR-capability-blocked source", () => {
   const result = reconcileCloudFetchTerminalResult({
     cloudSourceTaskId: "source_asr",

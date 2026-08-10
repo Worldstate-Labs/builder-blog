@@ -9099,7 +9099,7 @@ function stampItemWorkerId(item, workerId) {
     ...item,
     rawJson: {
       ...rawJson,
-      workerId: rawJson.workerId ?? workerId,
+      workerId,
     },
   };
 }
@@ -9107,8 +9107,8 @@ function stampItemWorkerId(item, workerId) {
 function normalizeAgentExecutionMetadata(item, task, taskId, workerId) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return item;
   const rawJson = objectRecord(item.rawJson);
-  const agentRuntime = stringValue(rawJson.agentRuntime) || DEFAULT_AGENT_RUNTIME || "local_agent";
-  const agentModel = stringValue(rawJson.agentModel) || DEFAULT_AGENT_MODEL;
+  const agentRuntime = DEFAULT_AGENT_RUNTIME || stringValue(rawJson.agentRuntime) || "local_agent";
+  const agentModel = DEFAULT_AGENT_MODEL || stringValue(rawJson.agentModel);
   const executionMetadata = {
     ...rawJson,
     agentRuntime,
@@ -9140,25 +9140,39 @@ function stampOutcomeWorkerId(outcome, workerId) {
   }
   return {
     ...outcome,
-    workerId: outcome.workerId ?? workerId,
+    workerId,
   };
 }
 
-function preserveReadyTaskItem(item, task) {
-  if (!task || task?.contentStatus !== "ready") return item;
+function canonicalizePlannedTaskItem(item, task, taskId, workerId) {
+  if (!task || task?.agentWorkType === "fetch_builder_fallback") return item;
   const original = task.item;
   if (!original || typeof original !== "object" || Array.isArray(original)) return item;
+  const workerContent = { ...(item ?? {}) };
+  delete workerContent.fetchTool;
+  const rawJson = objectRecord(item?.rawJson);
+  const canonicalBuilderId = String(task?.builderSync?.builderId || task?.builderId || "").trim();
+  const canonicalBuilderName = String(task?.builderSync?.name || task?.builder || "").trim();
   return {
-    ...item,
+    ...workerContent,
     kind: original.kind ?? item?.kind,
     externalId: original.externalId ?? item?.externalId,
     title: original.title ?? item?.title,
     url: original.url ?? item?.url,
     publishedAt: original.publishedAt ?? item?.publishedAt,
     sourceName: original.sourceName ?? item?.sourceName,
-    description: original.description ?? item?.description,
-    body: original.body ?? item?.body,
+    description: task?.contentStatus === "ready"
+      ? original.description ?? item?.description
+      : item?.description,
+    body: task?.contentStatus === "ready" ? original.body ?? item?.body : item?.body,
     headline: item?.headline ?? original.headline,
+    rawJson: {
+      ...rawJson,
+      fetchTaskId: taskId,
+      ...(canonicalBuilderId ? { builderId: canonicalBuilderId } : {}),
+      ...(canonicalBuilderName ? { builderName: canonicalBuilderName } : {}),
+      ...(workerId ? { workerId } : {}),
+    },
   };
 }
 
@@ -9201,6 +9215,7 @@ function syncBuilderFromFetchTask(task) {
   const sync = task?.builderSync ?? {};
   return {
     builderId: sync.builderId ?? task?.builderId ?? null,
+    cloudSourceTaskId: sync.cloudSourceTaskId ?? task?.cloudSourceTaskId ?? null,
     kind: sync.kind ?? "BLOG",
     sourceType: sync.sourceType ?? task?.sourceType ?? null,
     name: sync.name ?? task?.builder ?? "Unknown source",
@@ -9286,10 +9301,10 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     null;
 
   const plannedTasksForSignal = (id, outcome, shardPlan = null) => {
+    const shardMatches = (shardPlan?.tasks ?? []).filter((task) => taskIdForSync(task) === id);
+    if (shardPlan) return shardMatches;
     const embeddedTask = plannedTaskOutcomeForCloudSync(outcome);
     if (embeddedTask) return [embeddedTask];
-    const shardMatches = (shardPlan?.tasks ?? []).filter((task) => taskIdForSync(task) === id);
-    if (shardMatches.length > 0) return shardMatches;
     return plannedTasksById.get(id) ?? [];
   };
 
@@ -9309,7 +9324,9 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       if (syncedTaskKeys.has(key) && taskTypeByKey.get(key) !== "fetch_builder_fallback") continue;
       if (syncItemMatchesPlannedTask(builder, item, task, id)) return { id, key, task };
     }
-    const fallbackTask = rawTasks[0] ?? null;
+    const fallbackTask = shardPlan
+      ? rawTasks.length === 1 ? rawTasks[0] : null
+      : rawTasks[0] ?? null;
     return fallbackTask
       ? { id: rawTaskId, key: taskKeyForSync(fallbackTask), task: fallbackTask }
       : null;
@@ -9369,12 +9386,18 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       continue;
     }
     let itemCount = 0;
+    let unboundItemCount = 0;
     let normalizedSummaryCount = 0;
     for (const builder of shard.payload?.builders ?? []) {
-      const target = syncBuilderTarget(builder);
-      for (const item of builder?.items ?? []) {
+      const items = builder?.items ?? [];
+      for (const item of items) {
         const stampedItem = stampItemWorkerId(item, workerId);
         const match = plannedTaskForSyncItem(builder, stampedItem, shardPlan);
+        if (!match?.task) {
+          unboundItemCount += 1;
+          continue;
+        }
+        const target = syncBuilderTarget(syncBuilderFromFetchTask(match.task));
         const taskId = match?.id ?? null;
         const taskKey = match?.key ?? taskId;
         const canonicalItem = taskId
@@ -9387,7 +9410,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
             }
           : stampedItem;
         const mergedItem = taskId
-          ? preserveReadyTaskItem(canonicalItem, match?.task)
+          ? canonicalizePlannedTaskItem(canonicalItem, match?.task, taskId, workerId)
           : canonicalItem;
         const itemWithExecutionMetadata = taskId
           ? normalizeAgentExecutionMetadata(mergedItem, match?.task, taskId, workerId)
@@ -9410,12 +9433,17 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       }
     }
     let outcomeCount = 0;
+    let unboundOutcomeCount = 0;
     for (const outcome of shard.payload?.taskOutcomes ?? []) {
       if (!outcome?.fetchTaskId) continue;
       if (isCandidateDiscoveryOutcome(outcome)) continue;
       const id = String(outcome.fetchTaskId);
       const matches = plannedTasksForSignal(id, outcome, shardPlan);
-      const keys = matches.length > 0 ? matches.map(taskKeyForSync) : [id];
+      if (matches.length === 0) {
+        unboundOutcomeCount += 1;
+        continue;
+      }
+      const keys = matches.map(taskKeyForSync);
       if (keys.every((key) => accounted.has(key))) continue;
       for (const key of keys) accounted.add(key);
       const scopedOutcome =
@@ -9435,6 +9463,8 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       taskOutcomes: outcomeCount,
       ...(sourceShard ? { sourceShard } : {}),
       ...(plan ? { taskCount: plan.taskCount } : {}),
+      ...(unboundItemCount > 0 ? { unboundItems: unboundItemCount } : {}),
+      ...(unboundOutcomeCount > 0 ? { unboundOutcomes: unboundOutcomeCount } : {}),
       ...(normalizedSummaryCount > 0 ? { normalizedSummaries: normalizedSummaryCount } : {}),
     });
   }
@@ -10665,9 +10695,10 @@ function validationErrorsByTaskFromText(text = "") {
     for (const entry of parsed) {
       const fetchTaskId = String(entry?.fetchTaskId || "").trim();
       if (!fetchTaskId) continue;
-      const errors = Array.isArray(entry?.errors)
-        ? entry.errors.map((error) => String(error)).filter(Boolean)
-        : [];
+      const errors = [
+        ...(Array.isArray(entry?.errors) ? entry.errors : []),
+        ...(typeof entry?.error === "string" ? [entry.error] : []),
+      ].map((error) => String(error)).filter(Boolean);
       byTask.set(fetchTaskId, {
         ...(entry?.builder ? { builder: String(entry.builder) } : {}),
         ...(entry?.item ? { item: String(entry.item) } : {}),
@@ -10889,14 +10920,20 @@ export function validateAgentSyncPayload(fetchResult, payload) {
   const fetchTasks = extractFetchTasks(fetchResult);
   const syncReadyPayload = prepareSyncReadyPayload(payload, fetchTasks);
   const syncItems = extractSyncItems(syncReadyPayload);
-  const outcomeById = new Map(
-    (Array.isArray(syncReadyPayload?.taskOutcomes) ? syncReadyPayload.taskOutcomes : [])
-      .filter((o) => o && o.fetchTaskId)
-      .map((o) => [String(o.fetchTaskId), o]),
-  );
+  const outcomes = (Array.isArray(syncReadyPayload?.taskOutcomes) ? syncReadyPayload.taskOutcomes : [])
+    .filter((outcome) => outcome && outcome.fetchTaskId);
+  const outcomesById = new Map();
+  for (const outcome of outcomes) {
+    const id = String(outcome.fetchTaskId);
+    const matches = outcomesById.get(id) ?? [];
+    matches.push(outcome);
+    outcomesById.set(id, matches);
+  }
   const validatedFetchTasks = [];
   const accountedOutcomes = [];
   const errors = [];
+  const consumedItems = new Set();
+  const consumedOutcomes = new Set();
 
   const userActionTasks = [];
   for (const task of fetchTasks) {
@@ -10920,15 +10957,37 @@ export function validateAgentSyncPayload(fetchResult, payload) {
     const matches =
       task.agentWorkType === "fetch_builder_fallback"
         ? syncItems.filter((candidate) => itemMatchesBuilderFallback(candidate, task, id))
-        : (() => {
-            const found = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
-            return found ? [found] : [];
-          })();
+        : syncItems.filter((candidate) => itemMatchesAgentTask(candidate, task));
+    const taskOutcomes = outcomesById.get(String(id)) ?? [];
+    for (const match of matches) consumedItems.add(match);
+    for (const outcome of taskOutcomes) consumedOutcomes.add(outcome);
+    if (matches.length > 0 && taskOutcomes.length > 0) {
+      errors.push({
+        fetchTaskId: id,
+        builder: task.builder,
+        errors: ["task_must_not_have_both_synced_item_and_terminal_outcome"],
+      });
+    }
+    if (task.agentWorkType !== "fetch_builder_fallback" && matches.length > 1) {
+      errors.push({
+        fetchTaskId: id,
+        builder: task.builder,
+        errors: ["task_must_have_exactly_one_synced_item"],
+      });
+    }
     if (matches.length === 0) {
       // Not synced as an item → it MUST be accounted for by a structured
       // outcome (skipped/failed/blocked). A bare omission is unaccounted.
-      const outcome = outcomeById.get(id);
+      const outcome = taskOutcomes[0];
       if (outcome) {
+        if (taskOutcomes.length > 1) {
+          errors.push({
+            fetchTaskId: id,
+            builder: task.builder,
+            errors: ["task_must_have_exactly_one_terminal_outcome"],
+          });
+          continue;
+        }
         const outcomeErrors = validateTaskOutcome(outcome);
         if (outcomeErrors.length > 0) {
           errors.push({ fetchTaskId: id, builder: task.builder, errors: outcomeErrors });
@@ -10970,6 +11029,23 @@ export function validateAgentSyncPayload(fetchResult, payload) {
       // Errors already recorded per item; do not add a separate
       // "missing_synced_item" since at least one candidate was attempted.
     }
+  }
+
+  for (const candidate of syncItems) {
+    if (consumedItems.has(candidate)) continue;
+    errors.push({
+      fetchTaskId: String(candidate?.item?.rawJson?.fetchTaskId || ""),
+      builder: candidate?.builder?.name,
+      item: candidate?.item?.externalId || candidate?.item?.url || candidate?.item?.title,
+      error: "unbound_synced_item",
+    });
+  }
+  for (const outcome of outcomes) {
+    if (consumedOutcomes.has(outcome)) continue;
+    errors.push({
+      fetchTaskId: String(outcome.fetchTaskId || ""),
+      error: "unbound_task_outcome",
+    });
   }
 
   if (errors.length > 0) {
@@ -11912,12 +11988,32 @@ function cloudPlanPostPatch(task) {
   const cloudSourceTaskId = String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
   const postTaskId = String(task?.id || fetchTaskId(task) || "").trim();
   if (!cloudSourceTaskId || !postTaskId) return null;
+  const item = objectRecord(task?.item);
   return {
     cloudSourceTaskId,
     post: {
       postTaskId,
-      ...(task?.item?.title ? { title: String(task.item.title).trim().slice(0, 500) } : {}),
-      ...(task?.item?.url ? { url: String(task.item.url).trim().slice(0, 2048) } : {}),
+      ...(Object.hasOwn(item, "kind")
+        ? { kind: item.kind ? String(item.kind).trim().slice(0, 80) : null }
+        : {}),
+      ...(Object.hasOwn(item, "externalId")
+        ? { externalId: item.externalId ? String(item.externalId).trim().slice(0, 512) : null }
+        : {}),
+      ...(Object.hasOwn(item, "title")
+        ? { title: item.title ? String(item.title).trim().slice(0, 500) : null }
+        : {}),
+      ...(Object.hasOwn(item, "url")
+        ? { url: item.url ? String(item.url).trim().slice(0, 2048) : null }
+        : {}),
+      ...(Object.hasOwn(item, "publishedAt")
+        ? { publishedAt: normalizedDate(item.publishedAt) }
+        : {}),
+      ...(Object.hasOwn(item, "sourceName")
+        ? { sourceName: item.sourceName ? String(item.sourceName).trim().slice(0, 240) : null }
+        : {}),
+      ...(task?.agentWorkType
+        ? { agentWorkType: String(task.agentWorkType).trim().slice(0, 120) }
+        : {}),
       ...(task?.workerId ? { workerId: String(task.workerId).trim().slice(0, 160) } : {}),
       estimatedWorkSeconds: nonNegativeIntegerValue(task?.estimatedWorkSeconds, 0),
       executionBudgetSeconds: nonNegativeIntegerValue(task?.executionBudgetSeconds, 0),
@@ -12198,6 +12294,7 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
   const executionBudgetSeconds = count(task?.executionBudgetSeconds);
   const mediaDurationSeconds = count(task?.mediaDurationSeconds);
   const estimateEvidence = nonEmptyObjectRecord(task?.estimateEvidence);
+  const outcomeEvidence = nonEmptyObjectRecord(outcome?.evidence);
   return {
     id: text(task?.id || fetchTaskId(task)),
     title: text(task?.title ?? item.title ?? syncItem?.title),
@@ -12228,6 +12325,7 @@ function cloudSyncPostOutcome(task, status, outcome, syncItem = null) {
     ...(text(task?.plannedExtractionMethod) ? { plannedExtractionMethod: text(task.plannedExtractionMethod) } : {}),
     ...(text(task?.mustSucceedBy) ? { mustSucceedBy: text(task.mustSucceedBy) } : {}),
     ...(estimateEvidence ? { estimateEvidence } : {}),
+    ...(outcomeEvidence ? { evidence: outcomeEvidence } : {}),
   };
 }
 

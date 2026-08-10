@@ -132,6 +132,48 @@ test("serializeCloudFetchRun exposes per-source durations, usage, and per-post o
   assert.equal(task.posts[1].failureReason, "summary_missing");
 });
 
+test("serializeCloudFetchRun exposes validation evidence for failed posts", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    tasks: [
+      {
+        id: "rt_validation",
+        builderId: "cb_validation",
+        summaryLanguage: "source",
+        status: "FAILED",
+        plannedPosts: 1,
+        syncedPosts: 0,
+        failedPosts: 1,
+        actualDurationSeconds: 10,
+        failureReason: "task_validation_failed",
+        details: {
+          posts: [
+            {
+              id: "post_validation",
+              status: "failed",
+              failureReason: "task_validation_failed",
+              evidence: {
+                validation: {
+                  item: "tweet_1",
+                  errors: ["missing_synced_item_for_fetch_task"],
+                },
+              },
+            },
+          ],
+        },
+        builder: { name: "Example X account", sourceType: "x" },
+      },
+    ],
+  });
+
+  assert.deepEqual(result.tasks[0].posts[0].evidence, {
+    validation: {
+      item: "tweet_1",
+      errors: ["missing_synced_item_for_fetch_task"],
+    },
+  });
+});
+
 test("serializeCloudFetchRun aggregates planned/synced/failed/skipped posts across sources", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,

@@ -36,6 +36,7 @@ export type CloudFetchPostOutcome = {
   plannedExtractionMethod: string | null;
   mustSucceedBy: string | null;
   estimateEvidence: Record<string, unknown> | null;
+  evidence?: Record<string, unknown>;
   completedStage?: "read" | "summarize";
 };
 
@@ -464,6 +465,7 @@ function parseCloudTaskPosts(details: unknown, terminal = false): CloudFetchPost
     if (!item || typeof item !== "object") continue;
     const p = item as Record<string, unknown>;
     const rawJson = record(p.rawJson ?? p.raw_json);
+    const evidence = record(p.evidence);
     const id = str(p.id ?? p.fetchTaskId ?? p.fetch_task_id ?? rawJson?.fetchTaskId);
     const completedStage = p.completedStage === "read" || p.completedStage === "summarize"
       ? p.completedStage
@@ -499,6 +501,7 @@ function parseCloudTaskPosts(details: unknown, terminal = false): CloudFetchPost
         plannedExtractionMethod: str(p.plannedExtractionMethod ?? p.planned_extraction_method),
         mustSucceedBy: iso(p.mustSucceedBy ?? p.must_succeed_by),
         estimateEvidence: record(p.estimateEvidence ?? p.estimate_evidence),
+        ...(evidence ? { evidence } : {}),
         ...(completedStage ? { completedStage } : {}),
       },
       id ? planPosts.get(id) : null,
