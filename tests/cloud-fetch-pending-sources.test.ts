@@ -307,13 +307,14 @@ test("getPendingCloudFetchSources loads scheduler inputs with config defaults an
     cloudBuilderId: { in: ["builder_youtube_budget"] },
     active: true,
   });
-  assert.equal(queueArgs.length, 1);
+  assert.equal(queueArgs.length, 2);
   assert.deepEqual(queueArgs[0]?.where, {
+    status: "LEASED",
+    leaseExpiresAt: { gt: now },
+  });
+  assert.deepEqual(queueArgs[1]?.where, {
     cloudSourceTaskId: { in: ["youtube_budget"] },
-    OR: [
-      { status: "QUEUED" },
-      { status: "LEASED", leaseExpiresAt: { gt: now } },
-    ],
+    status: "QUEUED",
   });
   assert.equal(runTaskArgs.length, 2);
   assert.deepEqual(runTaskArgs[0]?.where, {
@@ -322,6 +323,135 @@ test("getPendingCloudFetchSources loads scheduler inputs with config defaults an
   assert.deepEqual(runTaskArgs[1]?.where, {
     startedAt: { gte: new Date("2026-08-10T17:00:00.000Z") },
   });
+});
+
+test("getPendingCloudFetchSources treats an out-of-scope active lease as canonical_active", async () => {
+  const queueArgs: Array<Record<string, unknown>> = [];
+  const prisma = {
+    cloudFetchConfig: { findUnique: async () => null },
+    cloudSourceTask: {
+      findMany: async () => [
+        pendingTask({
+          id: "candidate_task",
+          consecutiveDeferrals: 4,
+          builder: {
+            id: "builder_candidate",
+            name: "Candidate Source",
+            canonicalKey: "BLOG:https://example.com/shared-canonical",
+            sourceType: "blog",
+          },
+        }),
+      ],
+    },
+    cloudSourceSubmission: {
+      groupBy: async () => [{ cloudBuilderId: "builder_candidate", _count: { _all: 1 } }],
+    },
+    cloudFetchQueueItem: {
+      findMany: async (args: Record<string, unknown>) => {
+        queueArgs.push(args);
+        if ((args.where as { status?: string })?.status === "LEASED") {
+          return [
+            {
+              cloudSourceTaskId: "out_of_scope_leased_task",
+              status: CloudFetchQueueStatus.LEASED,
+              dueAt: now,
+              leaseExpiresAt: minutesFromNow(30),
+              cloudSourceTask: {
+                estimatedTokenCost: 90_000,
+                builder: {
+                  canonicalKey: "BLOG:https://example.com/shared-canonical",
+                  sourceType: "blog",
+                },
+              },
+            },
+          ];
+        }
+        return [];
+      },
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+    },
+  };
+
+  const snapshot = await getPendingCloudFetchSources({
+    prisma: prisma as never,
+    now,
+  });
+
+  assert.deepEqual(snapshot.sources.map((source) => [source.taskId, source.reason]), [
+    ["candidate_task", "canonical_active"],
+  ]);
+  assert.deepEqual(queueArgs[0]?.where, {
+    status: "LEASED",
+    leaseExpiresAt: { gt: now },
+  });
+});
+
+test("getPendingCloudFetchSources counts an out-of-scope active lease against remaining budget", async () => {
+  const prisma = {
+    cloudFetchConfig: {
+      findUnique: async () => ({ tokenBudgetPerHour: 100_000 }),
+    },
+    cloudSourceTask: {
+      findMany: async () => [
+        pendingTask({
+          id: "budget_candidate",
+          estimatedTokenCost: 40_000,
+          consecutiveDeferrals: 3,
+          builder: {
+            id: "builder_budget_candidate",
+            name: "Budget Candidate",
+            canonicalKey: "BLOG:https://example.com/budget-candidate",
+            sourceType: "blog",
+          },
+        }),
+      ],
+    },
+    cloudSourceSubmission: {
+      groupBy: async () => [{ cloudBuilderId: "builder_budget_candidate", _count: { _all: 1 } }],
+    },
+    cloudFetchQueueItem: {
+      findMany: async (args: Record<string, unknown>) => {
+        if ((args.where as { status?: string })?.status === "LEASED") {
+          return [
+            {
+              cloudSourceTaskId: "out_of_scope_budget_lease",
+              status: CloudFetchQueueStatus.LEASED,
+              dueAt: now,
+              leaseExpiresAt: minutesFromNow(30),
+              cloudSourceTask: {
+                estimatedTokenCost: 80_000,
+                builder: {
+                  canonicalKey: "BLOG:https://example.com/out-of-scope",
+                  sourceType: "blog",
+                },
+              },
+            },
+          ];
+        }
+        return [];
+      },
+    },
+    cloudFetchRunTask: {
+      findMany: async () => [],
+    },
+  };
+
+  const snapshot = await getPendingCloudFetchSources({
+    prisma: prisma as never,
+    now,
+  });
+
+  assert.deepEqual(snapshot.budget, {
+    tokenBudgetPerHour: 100_000,
+    recentUsageTokens: 0,
+    activeEstimatedTokens: 80_000,
+    remainingTokens: 20_000,
+  });
+  assert.deepEqual(snapshot.sources.map((source) => [source.taskId, source.reason]), [
+    ["budget_candidate", "token_budget"],
+  ]);
 });
 
 test("cloud-fetch-pending-sources query contract preserves scheduler boundaries", () => {
@@ -335,6 +465,8 @@ test("cloud-fetch-pending-sources query contract preserves scheduler boundaries"
   assert.match(source, /active:\s*true/);
   assert.match(source, /status:\s*"QUEUED"/);
   assert.match(source, /status:\s*"LEASED"/);
+  assert.match(source, /leaseExpiresAt:\s*\{\s*gt:\s*params\.now\s*\}/);
+  assert.match(source, /cloudSourceTaskId:\s*\{\s*in:\s*taskIds\s*\}/);
   assert.match(source, /oneHourAgo/);
   assert.match(source, /cooldownStartedAt/);
 });

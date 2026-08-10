@@ -93,6 +93,13 @@ type PendingCloudQueueItemInput = {
   status: "QUEUED" | "LEASED";
   dueAt: Date;
   leaseExpiresAt: Date | null;
+  cloudSourceTask?: {
+    estimatedTokenCost: number | null;
+    builder: {
+      canonicalKey: string;
+      sourceType: string;
+    };
+  };
 };
 
 type PendingCloudRecentRunTaskInput = {
@@ -154,6 +161,7 @@ export function buildPendingCloudFetchSnapshot(params: {
   }> | null;
   tasks: PendingCloudTaskInput[];
   activeSubmissionCounts: Record<string, number>;
+  activeLeaseItems?: PendingCloudQueueItemInput[];
   queueItems: PendingCloudQueueItemInput[];
   recentRunTasks: PendingCloudRecentRunTaskInput[];
   recentUsageTokens: number;
@@ -164,27 +172,45 @@ export function buildPendingCloudFetchSnapshot(params: {
   const queueItemsByTaskId = new Map<string, PendingCloudQueueItemInput[]>();
   const leasedTaskIds = new Set<string>();
   const activeLeaseCanonicalKeys = new Set<string>();
+  const activeLeaseItems = params.activeLeaseItems
+    ?? params.queueItems.filter(
+      (queueItem) =>
+        queueItem.status === "LEASED"
+        && (!queueItem.leaseExpiresAt || queueItem.leaseExpiresAt > params.now),
+    );
 
   for (const queueItem of params.queueItems) {
     const items = queueItemsByTaskId.get(queueItem.cloudSourceTaskId) ?? [];
     items.push(queueItem);
     queueItemsByTaskId.set(queueItem.cloudSourceTaskId, items);
-    if (queueItem.status === "LEASED" && (!queueItem.leaseExpiresAt || queueItem.leaseExpiresAt > params.now)) {
-      leasedTaskIds.add(queueItem.cloudSourceTaskId);
-      const leasedTask = taskById.get(queueItem.cloudSourceTaskId);
-      if (leasedTask) activeLeaseCanonicalKeys.add(leasedTask.builder.canonicalKey);
+  }
+  for (const leaseItem of activeLeaseItems) {
+    leasedTaskIds.add(leaseItem.cloudSourceTaskId);
+    const leasedTask = taskById.get(leaseItem.cloudSourceTaskId);
+    if (leasedTask) {
+      activeLeaseCanonicalKeys.add(leasedTask.builder.canonicalKey);
+      continue;
     }
+    const leaseCanonicalKey = leaseItem.cloudSourceTask?.builder.canonicalKey;
+    if (leaseCanonicalKey) activeLeaseCanonicalKeys.add(leaseCanonicalKey);
   }
 
-  const activeEstimatedTokens = [...leasedTaskIds]
-    .map((taskId) => taskById.get(taskId))
-    .filter((task): task is PendingCloudTaskInput => Boolean(task))
+  const activeEstimatedTokens = activeLeaseItems
     .reduce(
-      (sum, task) =>
-        sum + estimateCloudFetchTaskTokens({
-          estimatedTokenCost: task.estimatedTokenCost,
-          sourceType: task.builder.sourceType,
-        }),
+      (sum, leaseItem) => {
+        const task = taskById.get(leaseItem.cloudSourceTaskId);
+        if (task) {
+          return sum + estimateCloudFetchTaskTokens({
+            estimatedTokenCost: task.estimatedTokenCost,
+            sourceType: task.builder.sourceType,
+          });
+        }
+        if (!leaseItem.cloudSourceTask) return sum;
+        return sum + estimateCloudFetchTaskTokens({
+          estimatedTokenCost: leaseItem.cloudSourceTask.estimatedTokenCost,
+          sourceType: leaseItem.cloudSourceTask.builder.sourceType,
+        });
+      },
       0,
     );
   const budget = calculateCloudFetchLeaseBudget({
@@ -351,7 +377,7 @@ export async function getPendingCloudFetchSources(params: {
     params.now.getTime() - config.canonicalCooldownMinutes * MINUTE_MS,
   );
 
-  const [submissionCounts, queueItems, recentUsageRows, cooldownRows] = await Promise.all([
+  const [submissionCounts, activeLeaseItems, queueItems, recentUsageRows, cooldownRows] = await Promise.all([
     builderIds.length > 0
       ? params.prisma.cloudSourceSubmission.groupBy({
           by: ["cloudBuilderId"],
@@ -362,14 +388,34 @@ export async function getPendingCloudFetchSources(params: {
           _count: { _all: true },
         })
       : Promise.resolve([]),
+    params.prisma.cloudFetchQueueItem.findMany({
+      where: {
+        status: "LEASED",
+        leaseExpiresAt: { gt: params.now },
+      },
+      select: {
+        cloudSourceTaskId: true,
+        status: true,
+        dueAt: true,
+        leaseExpiresAt: true,
+        cloudSourceTask: {
+          select: {
+            estimatedTokenCost: true,
+            builder: {
+              select: {
+                canonicalKey: true,
+                sourceType: true,
+              },
+            },
+          },
+        },
+      },
+    }),
     taskIds.length > 0
       ? params.prisma.cloudFetchQueueItem.findMany({
           where: {
             cloudSourceTaskId: { in: taskIds },
-            OR: [
-              { status: "QUEUED" },
-              { status: "LEASED", leaseExpiresAt: { gt: params.now } },
-            ],
+            status: "QUEUED",
           },
         })
       : Promise.resolve([]),
@@ -402,6 +448,7 @@ export async function getPendingCloudFetchSources(params: {
     activeSubmissionCounts: Object.fromEntries(
       submissionCounts.map((row) => [row.cloudBuilderId, row._count._all]),
     ),
+    activeLeaseItems,
     queueItems,
     recentRunTasks: cooldownRows.map((row) => ({
       cloudSourceTaskId: row.cloudSourceTaskId ?? "",
