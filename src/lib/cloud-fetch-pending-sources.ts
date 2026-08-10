@@ -310,9 +310,6 @@ export function buildPendingCloudFetchSnapshot(params: {
     tasks: schedulableTasks,
   });
   const selectedTaskIds = new Set(plan.currentHourTaskIds);
-  const selectedEstimatedTokens = schedulableTasks
-    .filter((task) => selectedTaskIds.has(task.id))
-    .reduce((sum, task) => sum + task.estimatedTokenCost, 0);
 
   for (const task of schedulableTasks) {
     if (selectedTaskIds.has(task.id)) continue;
@@ -324,7 +321,6 @@ export function buildPendingCloudFetchSnapshot(params: {
         classifySchedulableReason({
           budget,
           planReason: plan.debug.deferred[task.id]?.reason,
-          selectedEstimatedTokens,
           taskEstimatedTokens: task.estimatedTokenCost,
         }),
         task.estimatedTokenCost,
@@ -467,14 +463,11 @@ export async function getPendingCloudFetchSources(params: {
 function classifySchedulableReason(params: {
   budget: ReturnType<typeof calculateCloudFetchLeaseBudget>;
   planReason?: string;
-  selectedEstimatedTokens: number;
   taskEstimatedTokens: number;
 }): CloudPendingSourceReason {
   if (params.planReason === "canonical_selected") return "scheduler_capacity";
   if (params.budget.tokenBudget <= 0) return "token_budget";
-  if (
-    params.selectedEstimatedTokens + params.taskEstimatedTokens > params.budget.tokenBudget
-  ) {
+  if (params.taskEstimatedTokens > params.budget.tokenBudget) {
     return "token_budget";
   }
   return "scheduler_capacity";

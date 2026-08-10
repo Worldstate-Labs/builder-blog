@@ -240,6 +240,74 @@ test("buildPendingCloudFetchSnapshot reports all pending reasons and excludes no
   assert.equal(snapshot.sources.some((source) => source.taskId === "inactive_demand_task"), false);
 });
 
+test("buildPendingCloudFetchSnapshot classifies an individually affordable deferred task as scheduler_capacity", () => {
+  const snapshot = buildPendingCloudFetchSnapshot({
+    now,
+    requestedLimit: 2,
+    config: {
+      tokenBudgetPerHour: 100_000,
+      starvationReserveRatio: 0,
+      leaseTtlMinutes: 60,
+      schedulingLeadMinutes: 120,
+      retryBaseMinutes: 30,
+      failureCircuitBreakerThreshold: 5,
+      canonicalCooldownMinutes: 60,
+      durationColdStartBufferRatio: 0.5,
+    },
+    tasks: [
+      pendingTask({
+        id: "selected_due_task",
+        estimatedTokenCost: 60_000,
+        mustSucceedBy: minutesFromNow(15),
+        builder: {
+          id: "builder_selected_due",
+          name: "Selected Due Task",
+          canonicalKey: "BLOG:https://example.com/selected-due",
+          sourceType: "blog",
+        },
+      }),
+      pendingTask({
+        id: "deferred_due_task",
+        estimatedTokenCost: 60_000,
+        builder: {
+          id: "builder_deferred_due",
+          name: "Deferred Due Task",
+          canonicalKey: "BLOG:https://example.com/deferred-due",
+          sourceType: "blog",
+        },
+      }),
+    ],
+    activeSubmissionCounts: {
+      builder_selected_due: 1,
+      builder_deferred_due: 1,
+    },
+    queueItems: [],
+    recentRunTasks: [],
+    recentUsageTokens: 0,
+  });
+
+  assert.deepEqual(snapshot.budget, {
+    tokenBudgetPerHour: 100_000,
+    recentUsageTokens: 0,
+    activeEstimatedTokens: 0,
+    remainingTokens: 100_000,
+  });
+  assert.deepEqual(
+    snapshot.sources.map((source) => ({
+      taskId: source.taskId,
+      reason: source.reason,
+      estimatedTokens: source.estimatedTokens,
+    })),
+    [
+      {
+        taskId: "deferred_due_task",
+        reason: "scheduler_capacity",
+        estimatedTokens: 60_000,
+      },
+    ],
+  );
+});
+
 test("getPendingCloudFetchSources loads scheduler inputs with config defaults and query boundaries", async () => {
   const taskArgs: Array<Record<string, unknown>> = [];
   const queueArgs: Array<Record<string, unknown>> = [];
