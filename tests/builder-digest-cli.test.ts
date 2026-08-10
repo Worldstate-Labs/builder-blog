@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile, spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8931,6 +8931,110 @@ test("merge-task-results assigned-only mode leaves unassigned queue tasks pendin
     ),
     false,
   );
+});
+
+test("missing shard classification preserves Codex model incompatibility evidence", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    id: "incompatible-model-task",
+    agentWorkType: "fetch_post",
+    builderSync: { builderId: "b1" },
+  };
+  const workerEvent = JSON.stringify({
+    type: "followbrief_worker_event",
+    reason: "runtime_model_incompatible",
+    worker: "worker-2",
+    shard: "shard-2",
+    message: "The installed Codex cannot run gpt-5.6-luna.",
+  });
+  const merged = cli.mergeShardSyncPayloads(
+    { status: "ok", fetchTasks: [task] },
+    [],
+    {
+      shardPlans: [
+        {
+          shard: "shard-2",
+          resultFile: "shard-2-result.json",
+          workerId: "worker-2",
+          workerLogTail: workerEvent,
+          tasks: [task],
+        },
+      ],
+    },
+  );
+
+  assert.equal(merged.payload.taskOutcomes[0]?.reason, "runtime_model_incompatible");
+  assert.equal(
+    merged.payload.taskOutcomes[0]?.evidence?.failureKind,
+    "runtime_model_incompatible",
+  );
+  assert.match(
+    merged.payload.taskOutcomes[0]?.evidence?.missingShard?.workerLogTail ?? "",
+    /installed Codex cannot run/,
+  );
+});
+
+test("finalize-worker-result atomically accounts for every task in a dead shard", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-finalize-worker-result-"));
+  const shardsDir = join(tmp, "shards");
+  const resultsDir = join(shardsDir, "results");
+  const shardFile = join(shardsDir, "shard-2.json");
+  const resultFile = join(resultsDir, "shard-2-result.json");
+  await mkdir(resultsDir, { recursive: true });
+  await writeFile(
+    shardFile,
+    `${JSON.stringify({
+      workerId: "worker-2",
+      fetchTasks: [
+        { id: "task-a", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+        { id: "task-b", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    join(resultsDir, "shard-2-worker.log"),
+    `${JSON.stringify({
+      type: "followbrief_worker_event",
+      reason: "runtime_model_incompatible",
+      worker: "worker-2",
+      shard: "shard-2",
+      message: "The installed Codex cannot run gpt-5.6-luna.",
+    })}\n`,
+    "utf8",
+  );
+
+  try {
+    await execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "finalize-worker-result",
+        "--shard",
+        shardFile,
+        "--results-dir",
+        resultsDir,
+        "--out",
+        resultFile,
+      ],
+      { cwd: process.cwd() },
+    );
+    const result = JSON.parse(await readFile(resultFile, "utf8"));
+    assert.deepEqual(
+      result.taskOutcomes.map((outcome: { fetchTaskId: string; reason: string }) => [
+        outcome.fetchTaskId,
+        outcome.reason,
+      ]),
+      [
+        ["task-a", "runtime_model_incompatible"],
+        ["task-b", "runtime_model_incompatible"],
+      ],
+    );
+    const names = await readdir(resultsDir);
+    assert.equal(names.some((name) => name.includes(".tmp")), false);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
 });
 
 test("merge-task-results assigned-only CLI writes only assigned tasks and outcomes", async () => {

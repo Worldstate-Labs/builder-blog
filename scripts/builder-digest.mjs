@@ -40,7 +40,7 @@ const MACHINE_HEADERS = (() => {
 // Bump when the CLI emits a meaningfully different fetch-run record
 // shape or behavior. The server stores this verbatim so the user can
 // see which CLI build produced a given run.
-const CLI_VERSION = "0.7.0";
+const CLI_VERSION = "0.8.0";
 
 // Cached for fetch-run logging so a single CLI run shares one host /
 // platform identity across success and failure paths.
@@ -1100,6 +1100,7 @@ function usage() {
   assign-fetch-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3] [--assigned-task-ids-file assigned.txt] [--active-group-keys-file active-groups.txt]
   merge-fetch-results --base fetch-result.json --next next-fetch-result.json --out fetch-result.json
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ [--assigned-only] [--complete-sources-only] --out library-agent-sync.json
+  finalize-worker-result --shard shards/shard-N.json --results-dir shards/results/ --out shards/results/shard-N-result.json
   prepare-managed-media --tasks fetch-result.json [--out fetch-result.json] [--artifact-root managed-media/]
   asr-doctor
   extract-long-media --fetch-task-id <id>
@@ -8966,6 +8967,14 @@ function workerLogLooksLikeRuntimeAuthFailure(text) {
   return workerLogHasFailureReason(text, "runtime_auth_failed");
 }
 
+function workerLogLooksLikeRuntimeModelIncompatibility(text) {
+  return workerLogHasFailureReason(text, "runtime_model_incompatible");
+}
+
+function workerLogLooksLikeRuntimeFailure(text) {
+  return workerLogHasFailureReason(text, "worker_runtime_failed");
+}
+
 function workerLogLooksLikeShardTimeout(text) {
   return workerLogHasFailureReason(text, "worker_shard_timeout");
 }
@@ -8990,6 +8999,12 @@ function workerLogLooksLikeStalledTimeout(text) {
 }
 
 function missingShardFailure(shardPlan, shardSummary) {
+  if (workerLogLooksLikeRuntimeModelIncompatibility(shardPlan?.workerLogTail)) {
+    return {
+      reason: "runtime_model_incompatible",
+      failureKind: "runtime_model_incompatible",
+    };
+  }
   if (workerLogLooksLikeRuntimeAuthFailure(shardPlan?.workerLogTail)) {
     return {
       reason: "runtime_auth_failed",
@@ -9018,6 +9033,12 @@ function missingShardFailure(shardPlan, shardSummary) {
     return {
       reason: "worker_shard_timeout",
       failureKind: "worker_shard_timeout",
+    };
+  }
+  if (workerLogLooksLikeRuntimeFailure(shardPlan?.workerLogTail)) {
+    return {
+      reason: "worker_runtime_failed",
+      failureKind: "worker_runtime_failed",
     };
   }
   if (shardSummary?.status === "ok" || shardSummary?.status === "incomplete") {
@@ -9586,6 +9607,54 @@ async function readShardPlans(resultsDir) {
     });
   }
   return plans;
+}
+
+async function finalizeWorkerResult(args) {
+  const shardFile = argValue(args, "--shard");
+  const resultsDir = argValue(args, "--results-dir");
+  const outFile = argValue(args, "--out");
+  if (!shardFile) throw new Error("Missing --shard shard.json");
+  if (!resultsDir) throw new Error("Missing --results-dir");
+  if (!outFile) throw new Error("Missing --out shard-result.json");
+
+  const fetchResult = JSON.parse(await readFile(shardFile, "utf8"));
+  const shard = basename(shardFile, ".json");
+  const plans = await readShardPlans(resultsDir);
+  const plan = plans.find((candidate) => candidate.shard === shard) ?? {
+    shard,
+    workerId: fetchResult.workerId ?? shard,
+    resultFile: basename(outFile),
+    tasks: Array.isArray(fetchResult.fetchTasks) ? fetchResult.fetchTasks : [],
+  };
+  const shardResults = [];
+  try {
+    shardResults.push({
+      name: basename(outFile),
+      payload: JSON.parse(await readFile(outFile, "utf8")),
+    });
+  } catch {}
+  for (const checkpoint of await readShardCheckpointResults(resultsDir)) {
+    if (workerIdFromShardResultName(checkpoint.name) === shard) shardResults.push(checkpoint);
+  }
+  const merged = mergeShardSyncPayloads(fetchResult, shardResults, {
+    shardPlans: [plan],
+    backfillMissing: true,
+    backfillUnassigned: false,
+  });
+  await mkdir(dirname(outFile), { recursive: true });
+  const tempFile = `${outFile}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(tempFile, `${JSON.stringify(merged.payload, null, 2)}\n`, "utf8");
+    await rename(tempFile, outFile);
+  } finally {
+    await rm(tempFile, { force: true });
+  }
+  console.log(JSON.stringify({
+    status: "ok",
+    shard,
+    tasks: Array.isArray(fetchResult.fetchTasks) ? fetchResult.fetchTasks.length : 0,
+    backfilledOutcomes: merged.backfilledOutcomes,
+  }));
 }
 
 async function readShardWorkerUsages(resultsDir, plannedTasks = []) {
@@ -14465,6 +14534,7 @@ async function main() {
   else if (command === "merge-fetch-results") await mergeFetchResultsCommand(args);
   else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
+  else if (command === "finalize-worker-result") await finalizeWorkerResult(args);
   else if (command === "extract-long-media") await extractLongMedia(args);
   else if (command === "prepare-managed-media") await prepareManagedMediaCommand(args);
   else if (command === "asr-doctor") await asrDoctorCommand();

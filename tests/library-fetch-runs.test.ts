@@ -73,6 +73,258 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   assert.match(schema, /regenerateDigest\s+Boolean\s+@default\(false\)/);
 });
 
+test("Codex preflight keeps Luna when the installed CLI can run it", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-preflight-luna-"));
+  const binDir = join(tempDir, "bin");
+  const callsFile = join(tempDir, "calls.txt");
+  execFileSync("mkdir", ["-p", binDir]);
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+model=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--model" ]; then shift; model="$1"; fi
+  shift
+done
+printf '%s\n' "$model" >> "$FOLLOWBRIEF_CODEX_CALLS"
+printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}'
+`, { mode: 0o755 });
+  const checkPath = join(tempDir, "check.sh");
+
+  try {
+    writeFileSync(checkPath, `set -eu
+${shellFunction(runner, "codex_model_failure_is_compatibility")}
+${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "probe_codex_model")}
+${shellFunction(runner, "resolve_codex_model_for_job")}
+DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
+DEFAULT_CODEX_REASONING_EFFORT="medium"
+AGENT_DIR="${tempDir}"
+JOB_TMP_DIR="${tempDir}"
+BUILDER_BLOG_CODEX_REASONING_EFFORT="medium"
+export AGENT_DIR JOB_TMP_DIR BUILDER_BLOG_CODEX_REASONING_EFFORT
+resolve_codex_model_for_job
+test "$BUILDER_BLOG_CODEX_MODEL" = "gpt-5.6-luna"
+test "$BUILDER_BLOG_AGENT_MODEL" = "gpt-5.6-luna"
+`, "utf8");
+    execFileSync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        FOLLOWBRIEF_CODEX_CALLS: callsFile,
+      },
+      stdio: "pipe",
+    });
+    assert.equal(readFileSync(callsFile, "utf8"), "gpt-5.6-luna\n");
+  } finally {
+    execFileSync("rm", ["-rf", tempDir]);
+  }
+});
+
+test("Codex preflight falls back to the cheap allowlisted model only for compatibility failures", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-preflight-fallback-"));
+  const binDir = join(tempDir, "bin");
+  const callsFile = join(tempDir, "calls.txt");
+  execFileSync("mkdir", ["-p", binDir]);
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+model=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--model" ]; then shift; model="$1"; fi
+  shift
+done
+printf '%s\n' "$model" >> "$FOLLOWBRIEF_CODEX_CALLS"
+if [ "$model" = "gpt-5.6-luna" ]; then
+  printf '%s\n' "The 'gpt-5.6-luna' model requires a newer version of Codex." >&2
+  exit 1
+fi
+printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}'
+`, { mode: 0o755 });
+  const checkPath = join(tempDir, "check.sh");
+
+  try {
+    writeFileSync(checkPath, `set -eu
+${shellFunction(runner, "codex_model_failure_is_compatibility")}
+${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "probe_codex_model")}
+${shellFunction(runner, "resolve_codex_model_for_job")}
+DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
+DEFAULT_CODEX_REASONING_EFFORT="medium"
+AGENT_DIR="${tempDir}"
+JOB_TMP_DIR="${tempDir}"
+BUILDER_BLOG_CODEX_REASONING_EFFORT="medium"
+export AGENT_DIR JOB_TMP_DIR BUILDER_BLOG_CODEX_REASONING_EFFORT
+resolve_codex_model_for_job
+test "$BUILDER_BLOG_CODEX_MODEL" = "gpt-5.4-mini"
+test "$BUILDER_BLOG_AGENT_MODEL" = "gpt-5.4-mini"
+`, "utf8");
+    execFileSync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        FOLLOWBRIEF_CODEX_CALLS: callsFile,
+      },
+      stdio: "pipe",
+    });
+    assert.equal(readFileSync(callsFile, "utf8"), "gpt-5.6-luna\ngpt-5.4-mini\n");
+  } finally {
+    execFileSync("rm", ["-rf", tempDir]);
+  }
+});
+
+test("Codex preflight never replaces an explicit model and runs before fetch or AI Brief work", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-preflight-explicit-"));
+  const binDir = join(tempDir, "bin");
+  const callsFile = join(tempDir, "calls.txt");
+  execFileSync("mkdir", ["-p", binDir]);
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+model=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--model" ]; then shift; model="$1"; fi
+  shift
+done
+printf '%s\n' "$model" >> "$FOLLOWBRIEF_CODEX_CALLS"
+printf '%s\n' 'model is unavailable' >&2
+exit 1
+`, { mode: 0o755 });
+  const checkPath = join(tempDir, "check.sh");
+
+  try {
+    writeFileSync(checkPath, `set -eu
+${shellFunction(runner, "codex_model_failure_is_compatibility")}
+${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "probe_codex_model")}
+${shellFunction(runner, "resolve_codex_model_for_job")}
+DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
+DEFAULT_CODEX_REASONING_EFFORT="medium"
+AGENT_DIR="${tempDir}"
+JOB_TMP_DIR="${tempDir}"
+BUILDER_BLOG_CODEX_MODEL="custom-cheap-model"
+BUILDER_BLOG_CODEX_REASONING_EFFORT="medium"
+export AGENT_DIR JOB_TMP_DIR BUILDER_BLOG_CODEX_MODEL BUILDER_BLOG_CODEX_REASONING_EFFORT
+if resolve_codex_model_for_job; then exit 91; fi
+`, "utf8");
+    execFileSync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        FOLLOWBRIEF_CODEX_CALLS: callsFile,
+      },
+      stdio: "pipe",
+    });
+    assert.equal(readFileSync(callsFile, "utf8"), "custom-cheap-model\n");
+
+    const library = shellFunction(runner, "run_library_job");
+    const digest = shellFunction(runner, "run_digest_job");
+    assert.ok(library.indexOf("run_codex_model_preflight") < library.indexOf("fetch-cloud-library"));
+    assert.ok(digest.indexOf("run_codex_model_preflight") < digest.indexOf("run_selected_runtime"));
+  } finally {
+    execFileSync("rm", ["-rf", tempDir]);
+  }
+});
+
+test("Codex preflight does not switch models for network or authentication failures", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-preflight-network-"));
+  const binDir = join(tempDir, "bin");
+  const callsFile = join(tempDir, "calls.txt");
+  execFileSync("mkdir", ["-p", binDir]);
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+model=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--model" ]; then shift; model="$1"; fi
+  shift
+done
+printf '%s\n' "$model" >> "$FOLLOWBRIEF_CODEX_CALLS"
+printf '%s\n' 'OAuth token refresh failed while connecting to the model provider' >&2
+exit 1
+`, { mode: 0o755 });
+  const checkPath = join(tempDir, "check.sh");
+
+  try {
+    writeFileSync(checkPath, `set -eu
+${shellFunction(runner, "codex_model_failure_is_compatibility")}
+${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "probe_codex_model")}
+${shellFunction(runner, "resolve_codex_model_for_job")}
+DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
+DEFAULT_CODEX_REASONING_EFFORT="medium"
+AGENT_DIR="${tempDir}"
+JOB_TMP_DIR="${tempDir}"
+BUILDER_BLOG_CODEX_REASONING_EFFORT="medium"
+export AGENT_DIR JOB_TMP_DIR BUILDER_BLOG_CODEX_REASONING_EFFORT
+if resolve_codex_model_for_job; then exit 91; fi
+`, "utf8");
+    execFileSync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        FOLLOWBRIEF_CODEX_CALLS: callsFile,
+      },
+      stdio: "pipe",
+    });
+    assert.equal(readFileSync(callsFile, "utf8"), "gpt-5.6-luna\n");
+  } finally {
+    execFileSync("rm", ["-rf", tempDir]);
+  }
+});
+
+test("Codex network preflight failure emits one accurate terminal update", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-preflight-report-"));
+  const binDir = join(tempDir, "bin");
+  const updatesFile = join(tempDir, "updates.txt");
+  execFileSync("mkdir", ["-p", binDir]);
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+printf '%s\n' 'OAuth token refresh failed while connecting to the model provider' >&2
+exit 1
+`, { mode: 0o755 });
+  const checkPath = join(tempDir, "check.sh");
+
+  try {
+    writeFileSync(checkPath, `set -eu
+${shellFunction(runner, "codex_model_failure_is_compatibility")}
+${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "probe_codex_model")}
+${shellFunction(runner, "resolve_codex_model_for_job")}
+${shellFunction(runner, "run_codex_model_preflight")}
+${shellFunction(runner, "report_runtime_model_failure")}
+job_run_update() { printf '%s\n' "$*" >> "$FOLLOWBRIEF_UPDATES_FILE"; }
+DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
+DEFAULT_CODEX_REASONING_EFFORT="medium"
+AGENT_DIR="${tempDir}"
+JOB_TMP_DIR="${tempDir}"
+BUILDER_BLOG_RUNTIME="codex"
+export AGENT_DIR JOB_TMP_DIR BUILDER_BLOG_RUNTIME
+code=0
+run_codex_model_preflight || code="$?"
+test "$code" -eq 78
+report_runtime_model_failure
+`, "utf8");
+    execFileSync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        FOLLOWBRIEF_UPDATES_FILE: updatesFile,
+      },
+      stdio: "pipe",
+    });
+    const updates = readFileSync(updatesFile, "utf8").trim().split("\n");
+    assert.equal(updates.length, 1);
+    assert.match(
+      updates[0],
+      /^failed Codex model preflight failed before work started\. runtime_model_preflight_failed /,
+    );
+  } finally {
+    execFileSync("rm", ["-rf", tempDir]);
+  }
+});
+
 test("migration creates LibraryFetchRun with the expected columns and index", () => {
   const migration = source("prisma/migrations/000028_library_fetch_runs/migration.sql");
   assert.match(migration, /CREATE TABLE "LibraryFetchRun"/);
@@ -216,7 +468,7 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   const cli = source("scripts/builder-digest.mjs");
   const runner = source("scripts/builder-agent-runner.sh");
   // CLI_VERSION is bumped for this change.
-  assert.match(cli, /const CLI_VERSION = "0\.7\.0";/);
+  assert.match(cli, /const CLI_VERSION = "0\.8\.0";/);
   // The CLI POSTs to the new endpoint with the bearer token.
   assert.match(cli, /\/api\/skill\/fetch-runs/);
   assert.match(cli, /BUILDER_BLOG_DISABLE_WEB_SYNC/);

@@ -54,6 +54,7 @@ fi
 HEARTBEAT_INTERVAL_SECONDS=60
 JOB_UPDATE_RESET_FENCED=78
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
+DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
 DEFAULT_CODEX_REASONING_EFFORT="medium"
 
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
@@ -408,6 +409,141 @@ EOF
 # Interactive (user is watching) — each runtime runs with its default
 # permission gates. Used when no runtime is pinned and the user is at
 # a TTY (library-once / digest-once from the command line).
+codex_model_failure_is_compatibility() {
+  _cmfic_file="${1:-}"
+  [ -r "$_cmfic_file" ] || return 1
+  grep -Eiq \
+    "requires a newer version of Codex|upgrade[-_ ]required|upgrade to (the )?(latest|newer) (Codex|app|CLI)|model([^[:alnum:]]|.*)(is )?(not available|unavailable|not supported|unsupported|unknown)|model_not_found|unsupported_model|unknown model|does not support.*model" \
+    "$_cmfic_file"
+}
+
+codex_probe_completed() {
+  _cpc_file="${1:-}"
+  [ -r "$_cpc_file" ] || return 1
+  node - "$_cpc_file" <<'NODE'
+const fs = require("fs");
+for (const line of fs.readFileSync(process.argv[2], "utf8").split(/\r?\n/)) {
+  try {
+    if (JSON.parse(line)?.type === "turn.completed") process.exit(0);
+  } catch {}
+}
+process.exit(1);
+NODE
+}
+
+probe_codex_model() {
+  _pcm_model="${1:-}"
+  [ -n "$_pcm_model" ] || return 1
+  mkdir -p "$JOB_TMP_DIR"
+  _pcm_output="$JOB_TMP_DIR/codex-model-preflight-$(printf '%s' "$_pcm_model" | tr -c 'a-zA-Z0-9_.@+-' '_').log"
+  CODEX_MODEL_PREFLIGHT_OUTPUT_FILE="$_pcm_output"
+  export CODEX_MODEL_PREFLIGHT_OUTPUT_FILE
+  _pcm_effort="${BUILDER_BLOG_CODEX_REASONING_EFFORT:-$DEFAULT_CODEX_REASONING_EFFORT}"
+  _pcm_timeout="${BUILDER_BLOG_CODEX_PREFLIGHT_TIMEOUT_SECONDS:-30}"
+  case "$_pcm_timeout" in ''|*[!0-9]*|0) _pcm_timeout=30 ;; esac
+  rm -f "$_pcm_output"
+  (
+    printf '%s\n' 'Reply with exactly OK. Do not use tools.' | \
+      codex exec --json --model "$_pcm_model" --skip-git-repo-check --sandbox read-only \
+        -c "model_reasoning_effort=$_pcm_effort" \
+        -C "$AGENT_DIR" -
+  ) > "$_pcm_output" 2>&1 &
+  _pcm_pid="$!"
+  _pcm_deadline=$(( $(date +%s) + _pcm_timeout ))
+  while kill -0 "$_pcm_pid" 2>/dev/null; do
+    if [ "$(date +%s)" -ge "$_pcm_deadline" ]; then
+      kill -TERM "$_pcm_pid" 2>/dev/null || true
+      sleep 1
+      kill -KILL "$_pcm_pid" 2>/dev/null || true
+      wait "$_pcm_pid" 2>/dev/null || true
+      printf '%s\n' "Codex model preflight timed out after ${_pcm_timeout}s." >> "$_pcm_output"
+      return 124
+    fi
+    sleep 1
+  done
+  set +e
+  wait "$_pcm_pid"
+  _pcm_code="$?"
+  set -e
+  [ "$_pcm_code" -eq 0 ] || return "$_pcm_code"
+  codex_probe_completed "$_pcm_output"
+}
+
+resolve_codex_model_for_job() {
+  _rcmf_explicit=0
+  _rcmf_primary="${BUILDER_BLOG_CODEX_MODEL:-$DEFAULT_CODEX_MODEL}"
+  if [ -n "${BUILDER_BLOG_CODEX_MODEL:-}" ]; then
+    _rcmf_explicit=1
+  fi
+  if probe_codex_model "$_rcmf_primary"; then
+    BUILDER_BLOG_CODEX_MODEL="$_rcmf_primary"
+    BUILDER_BLOG_AGENT_MODEL="$_rcmf_primary"
+    export BUILDER_BLOG_CODEX_MODEL BUILDER_BLOG_AGENT_MODEL
+    return 0
+  fi
+  _rcmf_primary_output="${CODEX_MODEL_PREFLIGHT_OUTPUT_FILE:-}"
+  if [ "$_rcmf_explicit" -eq 1 ] || ! codex_model_failure_is_compatibility "$_rcmf_primary_output"; then
+    return 1
+  fi
+  _rcmf_fallback="$DEFAULT_CODEX_FALLBACK_MODEL"
+  echo "Codex cannot run $_rcmf_primary with the installed CLI; trying allowlisted fallback $_rcmf_fallback." >&2
+  if ! probe_codex_model "$_rcmf_fallback"; then
+    return 1
+  fi
+  BUILDER_BLOG_CODEX_MODEL="$_rcmf_fallback"
+  BUILDER_BLOG_AGENT_MODEL="$_rcmf_fallback"
+  export BUILDER_BLOG_CODEX_MODEL BUILDER_BLOG_AGENT_MODEL
+}
+
+run_codex_model_preflight() {
+  [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] || return 0
+  [ "${BUILDER_BLOG_RUNTIME:-}" = "codex" ] || return 0
+  if resolve_codex_model_for_job; then
+    job_run_update running "Codex model ${BUILDER_BLOG_CODEX_MODEL} is ready." "runtime_model_preflight_succeeded" \
+      --stage "runtime_preflight"
+    return 0
+  fi
+  _rcmp_output="${CODEX_MODEL_PREFLIGHT_OUTPUT_FILE:-}"
+  _rcmp_provider_error=""
+  if [ -r "$_rcmp_output" ]; then
+    _rcmp_provider_error="$(tail -n 12 "$_rcmp_output" | tr '\n' ' ' | cut -c 1-1200)"
+  fi
+  _rcmp_reason="runtime_model_preflight_failed"
+  if codex_model_failure_is_compatibility "$_rcmp_output"; then
+    _rcmp_reason="runtime_model_incompatible"
+  fi
+  {
+    printf '%s\n' "$_rcmp_reason"
+    printf '%s\n' "$_rcmp_provider_error"
+  } > "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+  if [ "$_rcmp_reason" = "runtime_model_incompatible" ]; then
+    echo "The installed Codex could not run the selected economical model." >&2
+  else
+    echo "Codex model preflight failed before work started." >&2
+  fi
+  return 78
+}
+
+report_runtime_model_failure() {
+  _rrmf_marker="$JOB_TMP_DIR/runtime-model-incompatible.txt"
+  [ -s "$_rrmf_marker" ] || return 1
+  _rrmf_reason="$(sed -n '1p' "$_rrmf_marker")"
+  case "$_rrmf_reason" in
+    runtime_model_incompatible|runtime_model_preflight_failed) ;;
+    *) _rrmf_reason="runtime_model_preflight_failed" ;;
+  esac
+  _rrmf_provider_error="$(sed -n '2,$p' "$_rrmf_marker" | tr '\n' ' ' | cut -c 1-1200)"
+  if [ "$_rrmf_reason" = "runtime_model_incompatible" ]; then
+    _rrmf_summary="The installed Codex could not run the selected economical model."
+  else
+    _rrmf_summary="Codex model preflight failed before work started."
+  fi
+  job_run_update failed "$_rrmf_summary" "$_rrmf_reason" \
+    --stage "runtime_preflight" \
+    --exit-code "78" \
+    --provider-error "$_rrmf_provider_error"
+}
+
 run_with_codex() {
   _codex_output="$(agent_output_file codex)"
   _codex_usage="$(agent_usage_file codex)"
@@ -1118,6 +1254,16 @@ NODE
 }
 
 run_runtime_smoke_check() {
+  if [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] && [ "${BUILDER_BLOG_RUNTIME:-}" = "codex" ]; then
+    if ! resolve_codex_model_for_job; then
+      _rsmc_output="${CODEX_MODEL_PREFLIGHT_OUTPUT_FILE:-}"
+      if [ -r "$_rsmc_output" ]; then
+        tail -n 12 "$_rsmc_output" >&2
+      fi
+      echo "Codex model preflight failed before the runtime smoke check." >&2
+      return 78
+    fi
+  fi
   SMOKE_PROMPT_FILE="$JOB_TMP_DIR/runtime-smoke.md"
   cat > "$SMOKE_PROMPT_FILE" <<EOF
 You are validating a FollowBrief scheduled local runtime.
@@ -2322,6 +2468,128 @@ record_worker_runtime_auth_failure() {
   fi
 }
 
+worker_log_has_runtime_model_incompatibility() {
+  _wlhrmi_log="${1:-}"
+  [ -r "$_wlhrmi_log" ] || return 1
+  node - "$_wlhrmi_log" <<'NODE'
+const fs = require("fs");
+const compatibility = /requires a newer version of Codex|upgrade[-_ ]required|upgrade to (the )?(latest|newer) (Codex|app|CLI)|model([^a-z0-9]|.*)(is )?(not available|unavailable|not supported|unsupported|unknown)|model_not_found|unsupported_model|unknown model|does not support.*model/i;
+for (const line of fs.readFileSync(process.argv[2], "utf8").split(/\r?\n/)) {
+  if (!line.trim()) continue;
+  let event;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    continue;
+  }
+  if (event?.type === "followbrief_worker_event" && event?.reason === "runtime_model_incompatible") {
+    process.exit(0);
+  }
+  if (event?.type !== "turn.failed" && event?.type !== "error") continue;
+  const errorPayload = event?.error ?? event?.message ?? event;
+  if (compatibility.test(JSON.stringify(errorPayload))) process.exit(0);
+}
+process.exit(1);
+NODE
+}
+
+finalize_dead_library_worker() {
+  _fdlw_name="${1:-}"
+  _fdlw_lane="${2:-}"
+  _fdlw_shard="$_shards_dir/$_fdlw_name.json"
+  _fdlw_result="$_results_dir/$_fdlw_name-result.json"
+  _fdlw_worker_log="$_results_dir/$_fdlw_name-worker.log"
+  _fdlw_agent_log="$_results_dir/$_fdlw_name-agent-output.log"
+  _fdlw_exit_file="$_results_dir/$_fdlw_name-worker-exit-code"
+  [ -e "$_fdlw_shard" ] || return 0
+  if worker_result_covers_shard_tasks "$_fdlw_result" "$_fdlw_shard"; then
+    return 0
+  fi
+
+  _fdlw_model_incompatible=0
+  if worker_log_has_runtime_model_incompatibility "$_fdlw_worker_log" || \
+     worker_log_has_runtime_model_incompatibility "$_fdlw_agent_log"; then
+    _fdlw_model_incompatible=1
+    if ! grep -q '"reason":"runtime_model_incompatible"' "$_fdlw_worker_log" 2>/dev/null; then
+      write_worker_control_event \
+        "$_fdlw_worker_log" \
+        "runtime_model_incompatible" \
+        "$_fdlw_lane" \
+        "$_fdlw_name" \
+        "The installed Codex could not run the selected model."
+    fi
+  else
+    record_worker_runtime_auth_failure "$_fdlw_name" "$_fdlw_lane"
+    if ! grep -q '"type":"followbrief_worker_event"' "$_fdlw_worker_log" 2>/dev/null; then
+      _fdlw_exit_code="unknown"
+      if [ -r "$_fdlw_exit_file" ]; then
+        _fdlw_exit_code="$(tr -cd '0-9' < "$_fdlw_exit_file")"
+        [ -n "$_fdlw_exit_code" ] || _fdlw_exit_code="unknown"
+      fi
+      write_worker_control_event \
+        "$_fdlw_worker_log" \
+        "worker_runtime_failed" \
+        "$_fdlw_lane" \
+        "$_fdlw_name" \
+        "Worker exited with code $_fdlw_exit_code before writing a complete result."
+    fi
+  fi
+
+  if ! node "$AGENT_DIR/builder-digest.mjs" finalize-worker-result \
+    --shard "$_fdlw_shard" \
+    --results-dir "$_results_dir" \
+    --out "$_fdlw_result" >/dev/null; then
+    echo "Failed to finalize dead worker $_fdlw_lane ($_fdlw_name)." >&2
+    return 1
+  fi
+  if [ "$_fdlw_model_incompatible" -eq 1 ]; then
+    return 78
+  fi
+  return 0
+}
+
+finalize_model_incompatible_workers() {
+  _fmiw_failures=0
+  for _fmiw_entry in ${_worker_entries:-}; do
+    _fmiw_pid="${_fmiw_entry%%:*}"
+    _fmiw_rest="${_fmiw_entry#*:}"
+    _fmiw_after_started="${_fmiw_rest#*:}"
+    _fmiw_name="${_fmiw_after_started%%:*}"
+    _fmiw_lane="$(worker_entry_lane "$_fmiw_entry")"
+    _fmiw_shard="$_shards_dir/$_fmiw_name.json"
+    _fmiw_result="$_results_dir/$_fmiw_name-result.json"
+    [ -e "$_fmiw_shard" ] || continue
+    if worker_result_covers_shard_tasks "$_fmiw_result" "$_fmiw_shard"; then
+      continue
+    fi
+    if kill -0 "$_fmiw_pid" 2>/dev/null; then
+      terminate_process_tree "$_fmiw_pid" TERM 5 || terminate_process_tree "$_fmiw_pid" KILL 3 || true
+      if kill -0 "$_fmiw_pid" 2>/dev/null; then
+        echo "Could not stop incompatible worker $_fmiw_lane ($_fmiw_name)." >&2
+        _fmiw_failures=$(( _fmiw_failures + 1 ))
+        continue
+      fi
+    fi
+    wait "$_fmiw_pid" 2>/dev/null || true
+    if worker_result_covers_shard_tasks "$_fmiw_result" "$_fmiw_shard"; then
+      continue
+    fi
+    write_worker_control_event \
+      "$_results_dir/$_fmiw_name-worker.log" \
+      "runtime_model_incompatible" \
+      "$_fmiw_lane" \
+      "$_fmiw_name" \
+      "The installed Codex could not continue with the selected model."
+    _fmiw_finalize_code=0
+    finalize_dead_library_worker "$_fmiw_name" "$_fmiw_lane" || _fmiw_finalize_code="$?"
+    case "$_fmiw_finalize_code" in
+      0|78) ;;
+      *) _fmiw_failures=$(( _fmiw_failures + 1 )) ;;
+    esac
+  done
+  [ "$_fmiw_failures" -eq 0 ]
+}
+
 worker_log_has_backgrounded_tool() {
   _wlbt_log="${1:-}"
   [ -n "$_wlbt_log" ] || return 1
@@ -3354,6 +3622,10 @@ run_cloud_worker_host() {
     job_run_update succeeded "Worker host stopped." "worker_host_stopped" --stage "stopped"
     _cleanup_status="succeeded"
     _cleanup_reason="worker_host_stopped"
+  elif [ "$_code" -eq 78 ] && [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]; then
+    report_runtime_model_failure || true
+    _cleanup_status="failed"
+    _cleanup_reason="runtime_model_incompatible"
   else
     job_run_update failed "Worker host exited with code $_code." "worker_host_failed" \
       --stage "failed" \
@@ -3567,6 +3839,10 @@ run_with_job_tracking() {
     _cleanup_reason="runtime_reported_timeout"
     job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout" \
       --exit-code "$_code"
+  elif [ "$_code" -eq 78 ] && [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]; then
+    _cleanup_status="failed"
+    _cleanup_reason="runtime_model_incompatible"
+    report_runtime_model_failure || true
   else
     _partial_verdict=""
     if [ "$_code" -eq 65 ]; then
@@ -4204,6 +4480,10 @@ run_digest_job() {
     return 0
   fi
 
+  if command -v run_codex_model_preflight >/dev/null 2>&1; then
+    run_codex_model_preflight || return "$?"
+  fi
+
   job_run_update running "Generating digest summary JSON for $_item_count candidates." "agent_started" \
     --stage "run_local_agent"
   export BUILDER_BLOG_DIGEST_AGENT_ONLY=1
@@ -4620,7 +4900,7 @@ flush_remaining_library_results() {
   fi
   if [ "${_frlr_merge_issue_count:-0}" -gt 0 ]; then
     case "$_frlr_label" in
-      cloud-host-idle*|runtime-timeout*)
+      cloud-host-idle*|runtime-timeout*|runtime-model-incompatible*)
         echo "Parallel library run completed with $_frlr_merge_issue_count worker/result issue(s); terminal outcomes were synced for $_frlr_label." >&2
         return 0
         ;;
@@ -5236,7 +5516,14 @@ NODE
     # always use the pinned runtime's unattended invocation — even when the
     # enclosing job is a one-time run.
     IS_CRON_JOB=1
+    set +e
     run_selected_runtime
+    _slw_exit_code="$?"
+    set -e
+    _slw_exit_file="$_results_dir/$_slw_shard_name-worker-exit-code"
+    printf '%s\n' "$_slw_exit_code" > "$_slw_exit_file.tmp.$$"
+    mv "$_slw_exit_file.tmp.$$" "$_slw_exit_file"
+    exit "$_slw_exit_code"
   ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
   _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
   _started_shard_names="$_started_shard_names $_slw_shard_name"
@@ -5318,6 +5605,8 @@ run_library_job() {
   _cloud_refill_count=0
   _cloud_refill_limit="$(cloud_refill_limit)"
   _cloud_refill_exhausted=0
+  _runtime_circuit_reason=""
+  _runtime_circuit_provider_error=""
   _cloud_persistent_host=0
   if [ "$_sync_command" = "sync-cloud-builders" ] && [ "${BUILDER_BLOG_CLOUD_PERSISTENT_HOST:-0}" = "1" ]; then
     _cloud_persistent_host=1
@@ -5326,6 +5615,9 @@ run_library_job() {
 
   echo "FollowBrief $_job_label run: $MAX_PARALLEL_WORKERS worker(s)."
 
+  if command -v run_codex_model_preflight >/dev/null 2>&1; then
+    run_codex_model_preflight || return "$?"
+  fi
   run_openclaw_library_preflight || return "$?"
 
   job_run_update running "Fetching source candidates." "fetch_started" --stage "fetch_sources"
@@ -5623,9 +5915,24 @@ run_library_job() {
           fi
         fi
       else
-        record_worker_runtime_auth_failure "$_name" "$_lane"
+        set +e
+        finalize_dead_library_worker "$_name" "$_lane"
+        _dead_worker_code="$?"
+        set -e
+        if [ "$_dead_worker_code" -eq 78 ]; then
+          _runtime_circuit_reason="runtime_model_incompatible"
+          _runtime_circuit_provider_error="$(
+            { tail -n 12 "$_results_dir/$_name-agent-output.log" 2>/dev/null || \
+              tail -n 12 "$_results_dir/$_name-worker.log" 2>/dev/null || true; } | \
+              tr '\n' ' ' | cut -c 1-1200
+          )"
+          break
+        fi
       fi
     done
+    if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
+      break
+    fi
     if [ "$_dynamic_queue_enabled" -eq 1 ]; then
       _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
       if [ "$_free_slots" -gt 0 ]; then
@@ -5735,6 +6042,42 @@ run_library_job() {
     sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
     sleep 5
   done
+  if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
+    _circuit_terminalization_ok=1
+    if ! finalize_model_incompatible_workers; then
+      _circuit_terminalization_ok=0
+      echo "Could not terminalize every incompatible worker; cloud leases will not be released early." >&2
+    fi
+    if managed_media_batch_running; then
+      terminate_process_tree "$_managed_media_pid" TERM 5 || terminate_process_tree "$_managed_media_pid" KILL 3 || true
+      wait "$_managed_media_pid" 2>/dev/null || true
+      _managed_media_active=0
+    fi
+    {
+      printf '%s\n' "runtime_model_incompatible"
+      printf '%s\n' "$_runtime_circuit_provider_error"
+    } > "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+    sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
+    _circuit_flush_ok=1
+    if ! flush_remaining_library_results \
+      "$_result_file" \
+      "$_results_dir" \
+      "$_checkpoint_synced_ids_file" \
+      "$_shard_timeout" \
+      "runtime-model-incompatible" \
+      "runtime_model_incompatible"; then
+      _circuit_flush_ok=0
+      echo "Could not sync every runtime-model failure before stopping the run." >&2
+    fi
+    if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "${BUILDER_BLOG_JOB_RUN_ID:-}" ]; then
+      if [ "$_circuit_terminalization_ok" -eq 1 ] && [ "$_circuit_flush_ok" -eq 1 ]; then
+        release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" || true
+      else
+        echo "Cloud leases remain server-owned for safe expiry because local terminalization or sync did not complete." >&2
+      fi
+    fi
+    return 78
+  fi
   poll_managed_media_batch
   sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
   for _entry in ${_worker_entries:-}; do

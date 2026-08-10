@@ -96,6 +96,62 @@ printf '%s\\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_token
   }
 });
 
+test("runtime smoke check falls back to the cheap compatible model on the current Codex CLI", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-smoke-fallback-"));
+  const agentDir = join(tempDir, "agent");
+  const homeDir = join(tempDir, "home");
+  const binDir = join(homeDir, ".codex", "bin");
+  const callsFile = join(tempDir, "codex-calls.txt");
+  mkdirSync(join(agentDir, "jobs"), { recursive: true });
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(join(agentDir, "jobs", "library-cron.md"), "unused\n");
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+model=""
+previous=""
+for argument in "$@"; do
+  if [ "$previous" = "--model" ]; then model="$argument"; fi
+  previous="$argument"
+done
+printf '%s\n' "$model" >> "$FOLLOWBRIEF_CALLS_FILE"
+if [ "$model" = "gpt-5.6-luna" ]; then
+  printf '%s\n' 'This model requires a newer version of Codex.' >&2
+  exit 1
+fi
+printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}'
+`, { mode: 0o755 });
+
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    HOME: homeDir,
+    PATH: `${binDir}:${process.env.PATH ?? ""}`,
+    BUILDER_BLOG_ACCOUNT: "codex-smoke-fallback@example.com",
+    BUILDER_BLOG_AGENT_DIR: agentDir,
+    BUILDER_BLOG_AGENT_RUNTIME: "codex",
+    BUILDER_BLOG_DISABLE_WEB_SYNC: "1",
+    BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH: "1",
+    BUILDER_BLOG_SMOKE_CHECK: "1",
+    FOLLOWBRIEF_CALLS_FILE: callsFile,
+  };
+  delete env.BUILDER_BLOG_AGENT_MODEL;
+  delete env.BUILDER_BLOG_CODEX_MODEL;
+
+  try {
+    const result = spawnSync("sh", [join(root, "scripts/builder-agent-runner.sh"), "library-cron"], {
+      cwd: root,
+      encoding: "utf8",
+      env,
+    });
+    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+    assert.deepEqual(readFileSync(callsFile, "utf8").trim().split("\n"), [
+      "gpt-5.6-luna",
+      "gpt-5.4-mini",
+      "gpt-5.4-mini",
+    ]);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 async function loadAgentJobRunsModule() {
   process.env.DATABASE_URL ??= "postgresql://postgres:postgres@127.0.0.1:5432/builder_blog_test";
   return import("../src/lib/agent-job-runs");
@@ -237,6 +293,7 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(runner, /job_run_update timed_out "Runtime reported a timeout\." "runtime_reported_timeout" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /job_run_update succeeded "Runtime completed successfully\." "runtime_finished" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/);
   assert.match(runner, /DEFAULT_CODEX_MODEL="gpt-5\.6-luna"/);
+  assert.match(runner, /DEFAULT_CODEX_FALLBACK_MODEL="gpt-5\.4-mini"/);
   assert.match(runner, /DEFAULT_CODEX_REASONING_EFFORT="medium"/);
   assert.match(
     runner,
@@ -250,9 +307,19 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
     runner,
     /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"/,
   );
-  assert.doesNotMatch(
+  assert.match(runner, /resolve_codex_model_for_job\(\)[\s\S]*DEFAULT_CODEX_FALLBACK_MODEL/);
+  assert.doesNotMatch(runner, /download[^\n]*codex|managed[^\n]*codex[^\n]*(?:binary|cli)/i);
+  assert.match(
     runner,
-    /BUILDER_BLOG_(?:CODEX_MODEL|AGENT_MODEL)[^\n]*gpt-5\.4-mini/,
+    /runtime-model-incompatible\.txt[\s\S]*runtime_model_incompatible/,
+  );
+  assert.match(
+    runner,
+    /elif \[ "\$_code" -eq 78 \] && \[ -s "\$JOB_TMP_DIR\/runtime-model-incompatible\.txt" \]; then[\s\S]*report_runtime_model_failure/,
+  );
+  assert.match(
+    runner,
+    /report_runtime_model_failure\(\) \{[\s\S]*runtime_model_incompatible\|runtime_model_preflight_failed[\s\S]*job_run_update failed "\$_rrmf_summary" "\$_rrmf_reason"/,
   );
   assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CLAUDE_MODEL:-sonnet\}"/);
   assert.match(runner, /export BUILDER_BLOG_AGENT_MODEL/);

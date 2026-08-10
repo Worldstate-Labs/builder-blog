@@ -1996,6 +1996,215 @@ write_available_worker_ids "${availablePath}"
   }
 });
 
+test("cloud worker host reuses a dead lane immediately after terminalizing its shard", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("worker_entry_lane() {");
+  const end = runner.indexOf("\nstart_library_worker() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-lane-terminalized-"));
+  try {
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    await execFileAsync("mkdir", ["-p", resultsDir]);
+    const shardFile = join(shardsDir, "shard-2.json");
+    await writeFile(
+      shardFile,
+      JSON.stringify({
+        workerId: "worker-2",
+        fetchTasks: [
+          { id: "task-a", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+        ],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(resultsDir, "shard-2-worker.log"),
+      `${JSON.stringify({
+        type: "followbrief_worker_event",
+        reason: "worker_runtime_failed",
+        worker: "worker-2",
+        shard: "shard-2",
+        message: "Worker exited with code 1 before writing a complete result.",
+      })}\n`,
+      "utf8",
+    );
+    await execFileAsync(process.execPath, [
+      "scripts/builder-digest.mjs",
+      "finalize-worker-result",
+      "--shard",
+      shardFile,
+      "--results-dir",
+      resultsDir,
+      "--out",
+      join(resultsDir, "shard-2-result.json"),
+    ]);
+
+    const availablePath = join(dir, "available.txt");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `${runner.slice(start, end)}
+MAX_PARALLEL_WORKERS=3
+_shards_dir="${shardsDir}"
+_results_dir="${resultsDir}"
+_worker_entries="999999:1700000000:shard-2:worker-2"
+write_available_worker_ids "${availablePath}"
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [checkPath]);
+    const available = await readFile(availablePath, "utf8");
+    assert.match(available, /worker-2/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("worker model incompatibility detection trusts runtime errors, not fetched content", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const classifier = shellFunction(runner, "worker_log_has_runtime_model_incompatibility");
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-model-error-classifier-"));
+  try {
+    const contentLog = join(dir, "content.log");
+    const failedLog = join(dir, "failed.log");
+    await writeFile(
+      contentLog,
+      `${JSON.stringify({
+        type: "item.completed",
+        item: { type: "agent_message", text: "The article says its model is unavailable." },
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      failedLog,
+      `${JSON.stringify({
+        type: "turn.failed",
+        error: { message: "The gpt-5.6-luna model requires a newer version of Codex." },
+      })}\n`,
+      "utf8",
+    );
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${classifier}
+if worker_log_has_runtime_model_incompatibility "${contentLog}"; then exit 91; fi
+worker_log_has_runtime_model_incompatibility "${failedLog}"
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("model incompatibility circuit terminalizes every assigned worker", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const workerLane = shellFunction(runner, "worker_entry_lane");
+  const finalizeWorkers = shellFunction(runner, "finalize_model_incompatible_workers");
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-model-circuit-"));
+  try {
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    const eventsFile = join(dir, "events.txt");
+    const finalizedFile = join(dir, "finalized.txt");
+    await mkdir(resultsDir, { recursive: true });
+    await writeFile(join(shardsDir, "shard-0.json"), '{"fetchTasks":[{"id":"a"}]}\n');
+    await writeFile(join(shardsDir, "shard-1.json"), '{"fetchTasks":[{"id":"b"}]}\n');
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${workerLane}
+${finalizeWorkers}
+worker_result_covers_shard_tasks() { return 1; }
+terminate_process_tree() { return 0; }
+write_worker_control_event() { printf '%s:%s:%s\n' "$2" "$3" "$4" >> "${eventsFile}"; }
+finalize_dead_library_worker() { printf '%s:%s\n' "$1" "$2" >> "${finalizedFile}"; return 78; }
+_shards_dir="${shardsDir}"
+_results_dir="${resultsDir}"
+_worker_entries="999991:1700000000:shard-0:worker-0 999992:1700000000:shard-1:worker-1"
+finalize_model_incompatible_workers
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [checkPath]);
+    assert.deepEqual((await readFile(eventsFile, "utf8")).trim().split("\n"), [
+      "runtime_model_incompatible:worker-0:shard-0",
+      "runtime_model_incompatible:worker-1:shard-1",
+    ]);
+    assert.deepEqual((await readFile(finalizedFile, "utf8")).trim().split("\n"), [
+      "shard-0:worker-0",
+      "shard-1:worker-1",
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("model incompatibility circuit fails closed when a worker cannot be terminalized", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const workerLane = shellFunction(runner, "worker_entry_lane");
+  const finalizeWorkers = shellFunction(runner, "finalize_model_incompatible_workers");
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-model-circuit-failed-"));
+  try {
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    await mkdir(resultsDir, { recursive: true });
+    await writeFile(join(shardsDir, "shard-0.json"), '{"fetchTasks":[{"id":"a"}]}\n');
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${workerLane}
+${finalizeWorkers}
+worker_result_covers_shard_tasks() { return 1; }
+write_worker_control_event() { return 0; }
+finalize_dead_library_worker() { return 1; }
+_shards_dir="${shardsDir}"
+_results_dir="${resultsDir}"
+_worker_entries="999991:1700000000:shard-0:worker-0"
+code=0
+finalize_model_incompatible_workers || code="$?"
+test "$code" -eq 1
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("shared library runner finalizes dead workers before assigning their lanes again", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const startWorker = shellFunction(runner, "start_library_worker");
+  const library = shellFunction(runner, "run_library_job");
+  const flush = shellFunction(runner, "flush_remaining_library_results");
+
+  assert.match(startWorker, /worker-exit-code/);
+  assert.match(startWorker, /run_selected_runtime[\s\S]*_slw_exit_code="\$\?"/);
+  assert.match(library, /finalize_dead_library_worker "\$_name" "\$_lane"/);
+  assert.ok(
+    library.indexOf('finalize_dead_library_worker "$_name" "$_lane"') <
+      library.indexOf('assign_dynamic_fetch_workers "$_free_slots"'),
+  );
+  assert.match(
+    library,
+    /runtime_model_incompatible[\s\S]*finalize_model_incompatible_workers[\s\S]*flush_remaining_library_results[\s\S]*release_cloud_worker_leases_for_instance/,
+  );
+  assert.match(
+    library,
+    /_circuit_terminalization_ok[\s\S]*_circuit_flush_ok[\s\S]*if \[ "\$_circuit_terminalization_ok" -eq 1 \] && \[ "\$_circuit_flush_ok" -eq 1 \]; then[\s\S]*release_cloud_worker_leases_for_instance/,
+  );
+  const circuit = library.slice(library.indexOf('if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then'));
+  assert.doesNotMatch(circuit, /job_run_update failed/);
+  assert.match(flush, /cloud-host-idle\*\|runtime-timeout\*\|runtime-model-incompatible\*/);
+});
+
 test("cloud worker entry parsing and budget lookup ignore spaces and colons in JOB_TMP_DIR", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("shard_timeout_seconds() {");

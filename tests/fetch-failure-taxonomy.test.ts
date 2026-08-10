@@ -23,6 +23,7 @@ const REQUIRED_CODES = [
   "workload_exceeds_max_budget",
   "extraction_exceeds_shard_timeout",
   "runtime_auth_failed",
+  "runtime_model_incompatible",
   "runtime_interrupted",
   "runtime_timeout",
   "runtime_timeout_no_fetch_result",
@@ -33,6 +34,7 @@ const REQUIRED_CODES = [
   "slice_sync_failed",
   "cloud_feed_sync_rejected",
   "worker_missing_result",
+  "worker_runtime_failed",
   "worker_shard_timeout",
   "worker_no_progress_timeout",
   "worker_stalled_timeout",
@@ -81,6 +83,7 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
   assert.equal(fetchFailureMessage("unknown_new_code"), "Unknown failure: unknown new code");
   assert.equal(isContentFailureReason("content_missing"), true);
   assert.equal(isContentFailureReason("worker_missing_result"), false);
+  assert.equal(isContentFailureReason("runtime_model_incompatible"), false);
   assert.equal(isNotCompletedFailureReason("worker_no_progress_timeout"), true);
   assert.equal(isNotCompletedFailureReason("runtime_interrupted"), true);
   assert.equal(isNotCompletedFailureReason("runtime_timeout"), true);
@@ -88,6 +91,7 @@ test("fetch failure taxonomy exposes stage helpers used by the fetch log UI", ()
   assert.equal(isNotCompletedFailureReason("worker_stalled_timeout"), true);
   assert.equal(isNotCompletedFailureReason("worker_stopped_before_task_started"), true);
   assert.equal(isNotCompletedFailureReason("worker_backgrounded_tool"), true);
+  assert.equal(isNotCompletedFailureReason("worker_runtime_failed"), true);
   assert.equal(isNotCompletedFailureReason("summary_missing"), false);
   assert.equal(isHiddenFailureReason("heartbeat"), true);
   assert.equal(isHiddenFailureReason("worker_backgrounded_tool"), false);
