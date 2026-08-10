@@ -1207,6 +1207,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "lease 대기",
     es: "En cola para lease",
   },
+  "Ready for lease": {
+    "zh-CN": "可领取",
+    "zh-TW": "可領取",
+    ja: "リース準備完了",
+    ko: "lease 준비 완료",
+    es: "Lista para lease",
+  },
   "Circuit breaker delay": {
     "zh-CN": "熔断延迟",
     "zh-TW": "熔斷延遲",
@@ -1255,6 +1262,13 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ja: "キュー済みで、worker lease を待っています。",
     ko: "대기열에 있으며 worker lease를 기다리고 있습니다.",
     es: "Está en cola y esperando un lease de worker.",
+  },
+  "Due and within budget; waiting for the worker's next lease request.": {
+    "zh-CN": "已到执行时间且预算足够，等待 worker 下一次请求 lease。",
+    "zh-TW": "已到執行時間且預算足夠，等待 worker 下一次請求 lease。",
+    ja: "実行時刻に達して予算内です。worker の次回 lease リクエストを待っています。",
+    ko: "실행 시간이 되었고 예산 범위 내에 있어 worker의 다음 lease 요청을 기다리고 있습니다.",
+    es: "Ya corresponde y entra en presupuesto; espera la próxima solicitud de lease del worker.",
   },
   "Waiting for the circuit breaker delay to expire.": {
     "zh-CN": "等待熔断延迟结束。",

@@ -203,6 +203,8 @@ function pendingSourceReasonLabel(reason: CloudPendingSourceReason): string {
   switch (reason) {
     case "queued":
       return "Queued for lease";
+    case "ready_for_lease":
+      return "Ready for lease";
     case "circuit_breaker":
       return "Circuit breaker delay";
     case "retry_backoff":
@@ -222,6 +224,8 @@ function pendingSourceReasonMessage(reason: CloudPendingSourceReason): string {
   switch (reason) {
     case "queued":
       return "Queued and waiting for a worker lease.";
+    case "ready_for_lease":
+      return "Due and within budget; waiting for the worker's next lease request.";
     case "circuit_breaker":
       return "Waiting for the circuit breaker delay to expire.";
     case "retry_backoff":

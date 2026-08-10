@@ -268,6 +268,7 @@ test("cloud fetch log shows reason-specific pending source copy plus token and t
   const log = source("src/components/AdminCloudFetchLog.tsx");
 
   assert.match(log, /Queued for lease/);
+  assert.match(log, /Ready for lease/);
   assert.match(log, /Circuit breaker delay/);
   assert.match(log, /Retry delay/);
   assert.match(log, /Canonical source active/);
@@ -275,6 +276,7 @@ test("cloud fetch log shows reason-specific pending source copy plus token and t
   assert.match(log, /Token budget gate/);
   assert.match(log, /Scheduler capacity/);
   assert.match(log, /Queued and waiting for a worker lease\./);
+  assert.match(log, /Due and within budget; waiting for the worker's next lease request\./);
   assert.match(log, /Waiting for the circuit breaker delay to expire\./);
   assert.match(log, /Waiting for the retry delay to expire\./);
   assert.match(log, /Another active lease already owns this canonical source\./);

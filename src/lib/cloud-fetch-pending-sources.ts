@@ -17,6 +17,7 @@ const MINUTE_MS = 60 * 1000;
 
 const PENDING_REASON_PRIORITY: CloudPendingSourceReason[] = [
   "queued",
+  "ready_for_lease",
   "circuit_breaker",
   "retry_backoff",
   "canonical_active",
@@ -27,6 +28,7 @@ const PENDING_REASON_PRIORITY: CloudPendingSourceReason[] = [
 
 export type CloudPendingSourceReason =
   | "queued"
+  | "ready_for_lease"
   | "circuit_breaker"
   | "retry_backoff"
   | "canonical_active"
@@ -252,6 +254,13 @@ export function buildPendingCloudFetchSnapshot(params: {
       continue;
     }
 
+    if (task.nextAttemptAt && task.nextAttemptAt > params.now) {
+      if (task.consecutiveFailures > 0) {
+        pendingSources.push(toPendingSource(task, "retry_backoff", estimatedTokens));
+      }
+      continue;
+    }
+
     if (canonicalActivityPolicy.activeCanonicalKeys.has(task.builder.canonicalKey)) {
       pendingSources.push(toPendingSource(task, "canonical_active", estimatedTokens));
       continue;
@@ -262,13 +271,6 @@ export function buildPendingCloudFetchSnapshot(params: {
       cloudSourceTaskId: task.id,
     })) {
       pendingSources.push(toPendingSource(task, "canonical_cooldown", estimatedTokens));
-      continue;
-    }
-
-    if (task.nextAttemptAt && task.nextAttemptAt > params.now) {
-      if (task.consecutiveFailures > 0) {
-        pendingSources.push(toPendingSource(task, "retry_backoff", estimatedTokens));
-      }
       continue;
     }
 
@@ -312,9 +314,12 @@ export function buildPendingCloudFetchSnapshot(params: {
   const selectedTaskIds = new Set(plan.currentHourTaskIds);
 
   for (const task of schedulableTasks) {
-    if (selectedTaskIds.has(task.id)) continue;
     const sourceTask = schedulableSourceData.get(task.id);
     if (!sourceTask) continue;
+    if (selectedTaskIds.has(task.id)) {
+      pendingSources.push(toPendingSource(sourceTask, "ready_for_lease", task.estimatedTokenCost));
+      continue;
+    }
     pendingSources.push(
       toPendingSource(
         sourceTask,

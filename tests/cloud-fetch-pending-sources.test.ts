@@ -227,6 +227,7 @@ test("buildPendingCloudFetchSnapshot reports all pending reasons and excludes no
     snapshot.sources.map((source) => [source.taskId, source.reason]),
     [
       ["queued_task", "queued"],
+      ["selected_task", "ready_for_lease"],
       ["circuit_task", "circuit_breaker"],
       ["retry_task", "retry_backoff"],
       ["canonical_active_task", "canonical_active"],
@@ -234,10 +235,54 @@ test("buildPendingCloudFetchSnapshot reports all pending reasons and excludes no
       ["capacity_task", "scheduler_capacity"],
     ],
   );
-  assert.equal(snapshot.sources.some((source) => source.taskId === "selected_task"), false);
   assert.equal(snapshot.sources.some((source) => source.taskId === "leased_task"), false);
   assert.equal(snapshot.sources.some((source) => source.taskId === "future_success_task"), false);
   assert.equal(snapshot.sources.some((source) => source.taskId === "inactive_demand_task"), false);
+});
+
+test("buildPendingCloudFetchSnapshot omits a not-due successful task during canonical cooldown", () => {
+  const canonicalKey = "BLOG:https://example.com/not-due";
+  const snapshot = buildPendingCloudFetchSnapshot({
+    now,
+    requestedLimit: 1,
+    config: {
+      tokenBudgetPerHour: 500_000,
+      starvationReserveRatio: 0,
+      leaseTtlMinutes: 60,
+      schedulingLeadMinutes: 120,
+      retryBaseMinutes: 30,
+      failureCircuitBreakerThreshold: 5,
+      canonicalCooldownMinutes: 60,
+      durationColdStartBufferRatio: 0.5,
+    },
+    tasks: [
+      pendingTask({
+        id: "not_due_task",
+        nextAttemptAt: minutesFromNow(21 * 60),
+        consecutiveFailures: 0,
+        builder: {
+          id: "builder_not_due",
+          name: "Not Due Source",
+          canonicalKey,
+          sourceType: "blog",
+        },
+      }),
+    ],
+    activeSubmissionCounts: { builder_not_due: 1 },
+    queueItems: [],
+    recentRunTasks: [
+      {
+        cloudSourceTaskId: "not_due_task",
+        canonicalKey,
+        status: CloudFetchRunStatus.SUCCEEDED,
+        startedAt: minutesFromNow(-30),
+        usageTokens: 10_000,
+      },
+    ],
+    recentUsageTokens: 10_000,
+  });
+
+  assert.deepEqual(snapshot.sources, []);
 });
 
 test("buildPendingCloudFetchSnapshot classifies an individually affordable deferred task as scheduler_capacity", () => {
@@ -299,6 +344,11 @@ test("buildPendingCloudFetchSnapshot classifies an individually affordable defer
       estimatedTokens: source.estimatedTokens,
     })),
     [
+      {
+        taskId: "selected_due_task",
+        reason: "ready_for_lease",
+        estimatedTokens: 60_000,
+      },
       {
         taskId: "deferred_due_task",
         reason: "scheduler_capacity",
