@@ -768,6 +768,19 @@ test("admin cloud fetch release endpoint only accepts public jobRunId and preser
   assert.match(route, /return NextResponse\.json\(result\)/);
 });
 
+test("admin cloud fetch runs route loads pending source diagnostics only on fresh polls and isolates failures", () => {
+  const route = source("src/app/api/admin/cloud-fetch/runs/route.ts");
+
+  assert.match(route, /getPendingCloudFetchSources/);
+  assert.match(route, /let pendingSources: CloudPendingSourceSnapshot \| null = null/);
+  assert.match(route, /if \(!before\) \{[\s\S]*getPendingCloudFetchSources/);
+  assert.match(route, /try \{[\s\S]*return await getPendingCloudFetchSources\(\{[\s\S]*prisma:[\s\S]*now: new Date\(\),[\s\S]*\}\);[\s\S]*\} catch \{[\s\S]*return null;[\s\S]*\}/);
+  assert.match(route, /const \[jobRuns, nextPendingSources\] = await Promise\.all\(\[/);
+  assert.match(route, /pendingSources = nextPendingSources/);
+  assert.match(route, /pendingSources,/);
+  assert.match(route, /workerHost,\s*[\s\S]*pendingSources,\s*[\s\S]*liveProgress: workerHost\?\.progress \?\? null/);
+});
+
 test("cloud conflict responses are machine-readable and preserve retryability", () => {
   const conflict = source("src/lib/cloud-fetch-conflict.ts");
   const cli = source("scripts/builder-digest.mjs");

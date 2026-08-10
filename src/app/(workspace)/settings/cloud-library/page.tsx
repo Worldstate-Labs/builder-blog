@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ComponentProps } from "react";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { AdminCloudFetchConfigForm } from "@/components/AdminCloudFetchConfigForm";
@@ -12,6 +13,7 @@ import { getAgentJobRuns } from "@/lib/agent-job-runs";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { serializeCloudFetchRun, serializeCloudWorkerHost } from "@/lib/cloud-fetch-run-log";
+import { getPendingCloudFetchSources } from "@/lib/cloud-fetch-pending-sources";
 import { CLOUD_FETCH_CONFIG_ID, serializeCloudFetchConfig } from "@/lib/cloud-source-config";
 import { getCloudLibraryAdminSnapshot } from "@/lib/cloud-library-overview-data";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +21,7 @@ import { prisma } from "@/lib/prisma";
 export const metadata: Metadata = { title: "Cloud library management" };
 
 const PAGE_SIZE = 20;
+type PendingCloudFetchSourcesParams = Parameters<typeof getPendingCloudFetchSources>[0];
 
 export default async function CloudLibraryManagementPage() {
   const session = await getCurrentSession();
@@ -26,7 +29,7 @@ export default async function CloudLibraryManagementPage() {
   if (!isAdminEmail(session.user.email)) redirect("/settings");
   const userId = session.user.id;
 
-  const [tokens, runRows, jobRuns, cloudLibrarySnapshot, cloudConfig] = await Promise.all([
+  const [tokens, runRows, jobRuns, cloudLibrarySnapshot, cloudConfig, initialPendingSources] = await Promise.all([
     prisma.agentToken.findMany({
       where: { userId, revokedAt: null },
       orderBy: { createdAt: "desc" },
@@ -45,6 +48,10 @@ export default async function CloudLibraryManagementPage() {
     getAgentJobRuns(userId, "cloud-library-fetch", 5),
     getCloudLibraryAdminSnapshot(),
     prisma.cloudFetchConfig.findUnique({ where: { id: CLOUD_FETCH_CONFIG_ID } }),
+    getPendingCloudFetchSources({
+      prisma: prisma as unknown as PendingCloudFetchSourcesParams["prisma"],
+      now: new Date(),
+    }),
   ]);
 
   const hasMore = runRows.length > PAGE_SIZE;
@@ -54,6 +61,12 @@ export default async function CloudLibraryManagementPage() {
       jobRuns[0] ??
       null,
   );
+  const cloudFetchLogProps = {
+    initialWorkerHost: workerHost,
+    initialLeaseBatches: leaseBatches,
+    initialHasMore: hasMore,
+    initialPendingSources,
+  } as unknown as ComponentProps<typeof AdminCloudFetchLog>;
 
   return (
     <div className="page-pad page-pad--settings">
@@ -96,11 +109,7 @@ export default async function CloudLibraryManagementPage() {
               </span>
             </summary>
             <div className="settings-rules-body">
-              <AdminCloudFetchLog
-                initialWorkerHost={workerHost}
-                initialLeaseBatches={leaseBatches}
-                initialHasMore={hasMore}
-              />
+              <AdminCloudFetchLog {...cloudFetchLogProps} />
             </div>
           </details>
 

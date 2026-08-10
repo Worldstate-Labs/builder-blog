@@ -6,9 +6,14 @@ import {
   serializeCloudWorkerHost,
   type CloudWorkerHostStatus,
 } from "@/lib/cloud-fetch-run-log";
+import {
+  getPendingCloudFetchSources,
+  type CloudPendingSourceSnapshot,
+} from "@/lib/cloud-fetch-pending-sources";
 import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 20;
+type PendingCloudFetchSourcesParams = Parameters<typeof getPendingCloudFetchSources>[0];
 
 export const dynamic = "force-dynamic";
 
@@ -59,16 +64,32 @@ export async function GET(request: Request) {
   // Worker-host status only belongs on a fresh poll. Paginated history loads are
   // lease-batch only so older pages do not overwrite the live host panel.
   let workerHost: CloudWorkerHostStatus | null = null;
+  let pendingSources: CloudPendingSourceSnapshot | null = null;
   if (!before) {
+    const pendingSourcesPromise = (async () => {
+      try {
+        return await getPendingCloudFetchSources({
+          prisma: prisma as unknown as PendingCloudFetchSourcesParams["prisma"],
+          now: new Date(),
+        });
+      } catch {
+        return null;
+      }
+    })();
     try {
-      const jobRuns = await getAgentJobRuns(auth.user.id, "cloud-library-fetch", 5);
+      const [jobRuns, nextPendingSources] = await Promise.all([
+        getAgentJobRuns(auth.user.id, "cloud-library-fetch", 5),
+        pendingSourcesPromise,
+      ]);
       workerHost = serializeCloudWorkerHost(
         jobRuns.find((job) => job.status === "running" || job.status === "starting") ??
           jobRuns[0] ??
           null,
       );
+      pendingSources = nextPendingSources;
     } catch {
       workerHost = serializeCloudWorkerHost(null);
+      pendingSources = null;
     }
   }
 
@@ -78,6 +99,7 @@ export async function GET(request: Request) {
     runs: leaseBatches,
     hasMore,
     workerHost,
+    pendingSources,
     liveProgress: workerHost?.progress ?? null,
   }, {
     headers: {

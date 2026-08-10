@@ -42,6 +42,16 @@ test("cloud-library management page is admin-gated and mounts the cloud monitor 
   assert.match(page, /CLOUD_FETCH_CONFIG_ID/);
 });
 
+test("cloud-library management page loads and passes initial pending source diagnostics", () => {
+  const page = source("src/app/(workspace)/settings/cloud-library/page.tsx");
+
+  assert.match(page, /getPendingCloudFetchSources/);
+  assert.match(page, /const \[[\s\S]*initialPendingSources[\s\S]*\] = await Promise\.all\(\[/);
+  assert.match(page, /Promise\.all\(\[[\s\S]*getPendingCloudFetchSources\(\{[\s\S]*prisma[\s\S]*now: new Date\(\)[\s\S]*\}\),[\s\S]*\]\)/);
+  assert.match(page, /initialPendingSources/);
+  assert.match(page, /AdminCloudFetchLog[\s\S]*initialPendingSources/);
+});
+
 test("cloud output pools are automatic and only expose pause controls", () => {
   const form = source("src/components/AdminCloudFetchConfigForm.tsx");
 
