@@ -700,7 +700,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /upsertFetchProgressTask/);
   assert.match(cli, /--completed-only/);
   assert.match(cli, /filterFetchResultToTasks/);
-  assert.match(cli, /filterSyncPayloadToTaskIds/);
+  assert.match(cli, /filterSyncPayloadToTasks/);
   assert.match(cli, /backfillMissing: !completedOnly/);
   assert.match(cli, /completedTaskIds/);
   assert.match(cli, /includeInternal/);

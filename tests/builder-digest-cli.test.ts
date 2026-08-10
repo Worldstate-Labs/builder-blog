@@ -5796,6 +5796,195 @@ test("cloud source slicing keeps every post for one source in one terminal paylo
   assert.equal(slices[0].payload.builders[0].items.length, 4);
 });
 
+test("cloud source slicing keeps planned-only terminal outcomes with their source", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-planned-outcome=${Date.now()}`);
+  const completedTask = {
+    id: "post_completed",
+    cloudRunId: "run_1",
+    cloudSourceTaskId: "source_1",
+    builderId: "builder_1",
+    agentWorkType: "fetch_post",
+    contentStatus: "requires_agent",
+    builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+    item: { url: "https://example.com/completed" },
+  };
+  const rejectedTask = {
+    id: "post_over_budget",
+    cloudRunId: "run_1",
+    cloudSourceTaskId: "source_1",
+    builderId: "builder_1",
+    agentWorkType: "fetch_post",
+    contentStatus: "requires_agent",
+    builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+    item: { url: "https://example.com/over-budget" },
+  };
+  const rejectedOutcome = {
+    fetchTaskId: rejectedTask.id,
+    status: "failed",
+    reason: "workload_exceeds_max_budget",
+    plannedTask: rejectedTask,
+  };
+
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    {
+      status: "ok",
+      cloudRunId: "run_1",
+      fetchTasks: [completedTask],
+      taskOutcomes: [rejectedOutcome],
+    },
+    {
+      builders: [
+        {
+          builderId: "builder_1",
+          items: [
+            {
+              title: "Completed post",
+              url: completedTask.item.url,
+              rawJson: { fetchTaskId: completedTask.id },
+            },
+          ],
+        },
+      ],
+      taskOutcomes: [rejectedOutcome],
+    },
+  );
+
+  assert.equal(slices.length, 1);
+  assert.equal(slices[0].cloudRunId, "run_1");
+  assert.equal(slices[0].cloudSourceTaskId, "source_1");
+  assert.deepEqual(
+    slices[0].tasks.fetchTasks.map((task: { id: string }) => task.id),
+    ["post_completed", "post_over_budget"],
+  );
+  assert.deepEqual(
+    slices[0].payload.taskOutcomes.map((outcome: { fetchTaskId: string }) => outcome.fetchTaskId),
+    ["post_over_budget"],
+  );
+});
+
+test("complete cloud source merge preserves planned-only terminal outcomes", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-planned-outcome-merge-"));
+  try {
+    const tasksFile = join(dir, "tasks.json");
+    const shardsDir = join(dir, "shards");
+    const resultsDir = join(shardsDir, "results");
+    const tasksOut = join(dir, "tasks-out.json");
+    const payloadOut = join(dir, "payload-out.json");
+    await mkdir(resultsDir, { recursive: true });
+
+    const completedTask = {
+      id: "post_completed",
+      cloudRunId: "run_1",
+      cloudSourceTaskId: "source_1",
+      builderId: "builder_1",
+      agentWorkType: "fetch_post",
+      contentStatus: "requires_agent",
+      builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+      item: { url: "https://example.com/completed" },
+    };
+    const rejectedTask = {
+      id: "post_over_budget",
+      cloudRunId: "run_1",
+      cloudSourceTaskId: "source_1",
+      builderId: "builder_1",
+      agentWorkType: "fetch_post",
+      contentStatus: "requires_agent",
+      builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+      item: { url: "https://example.com/over-budget" },
+    };
+    const rejectedOutcome = {
+      fetchTaskId: rejectedTask.id,
+      status: "failed",
+      reason: "workload_exceeds_max_budget",
+      plannedTask: rejectedTask,
+    };
+    const pendingTask = {
+      ...completedTask,
+      id: "post_pending",
+      cloudRunId: "run_2",
+      item: { url: "https://example.com/pending" },
+    };
+    const repeatedRejectedOutcome = {
+      ...rejectedOutcome,
+      plannedTask: { ...rejectedTask, cloudRunId: "run_2" },
+    };
+    const unreportedRepeatedTask = {
+      ...rejectedTask,
+      cloudRunId: "run_3",
+    };
+
+    await writeFile(
+      tasksFile,
+      `${JSON.stringify({
+        status: "ok",
+        cloudRunId: "run_1",
+        fetchTasks: [completedTask, pendingTask, unreportedRepeatedTask],
+        taskOutcomes: [rejectedOutcome, repeatedRejectedOutcome],
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      join(shardsDir, "shard-0.json"),
+      `${JSON.stringify({ workerId: "worker-0", fetchTasks: [completedTask] })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      join(resultsDir, "shard-0-result.json"),
+      `${JSON.stringify({
+        builders: [
+          {
+            builderId: "builder_1",
+            items: [
+              {
+                title: "Completed post",
+                url: completedTask.item.url,
+                summary: "A complete source summary.",
+                rawJson: { fetchTaskId: completedTask.id },
+              },
+            ],
+          },
+        ],
+        taskOutcomes: [],
+      })}\n`,
+      "utf8",
+    );
+
+    await execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "merge-task-results",
+        "--tasks",
+        tasksFile,
+        "--results-dir",
+        resultsDir,
+        "--assigned-only",
+        "--complete-sources-only",
+        "--tasks-out",
+        tasksOut,
+        "--out",
+        payloadOut,
+      ],
+      { cwd: process.cwd() },
+    );
+
+    const mergedTasks = JSON.parse(await readFile(tasksOut, "utf8"));
+    const mergedPayload = JSON.parse(await readFile(payloadOut, "utf8"));
+    assert.deepEqual(
+      mergedTasks.fetchTasks.map((task: { id: string }) => task.id).sort(),
+      ["post_completed", "post_over_budget"],
+    );
+    assert.deepEqual(
+      mergedPayload.taskOutcomes.map((outcome: { plannedTask: { cloudRunId: string } }) =>
+        outcome.plannedTask.cloudRunId,
+      ),
+      ["run_1"],
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("split-sync-slices accepts cloud-source through the real CLI command", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-source-cli-"));
   try {
@@ -5947,6 +6136,122 @@ test("cloud source slicing carries repeated-lease evidence to every matching run
       ["post_skipped"],
     );
   }
+});
+
+test("cloud source slicing scopes planned-only outcomes to their lease run", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-source-planned-retry=${Date.now()}`);
+  const outcomes = ["run_1", "run_2"].map((cloudRunId) => {
+    const plannedTask = {
+      id: "post_over_budget",
+      cloudRunId,
+      cloudSourceTaskId: "source_1",
+      builderId: "builder_1",
+      agentWorkType: "fetch_post",
+      contentStatus: "requires_agent",
+      builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+      item: { url: "https://example.com/over-budget" },
+    };
+    return {
+      fetchTaskId: plannedTask.id,
+      status: "failed",
+      reason: "workload_exceeds_max_budget",
+      plannedTask,
+    };
+  });
+
+  const slices = cli.splitCloudSyncPayloadBySourceTaskForTest(
+    { status: "ok", taskOutcomes: outcomes },
+    { builders: [], taskOutcomes: outcomes },
+  ).sort((a: { cloudRunId: string }, b: { cloudRunId: string }) =>
+    a.cloudRunId.localeCompare(b.cloudRunId),
+  );
+
+  assert.deepEqual(slices.map((slice: { cloudRunId: string }) => slice.cloudRunId), ["run_1", "run_2"]);
+  for (const slice of slices) {
+    assert.deepEqual(
+      slice.tasks.fetchTasks.map((task: { id: string }) => task.id),
+      ["post_over_budget"],
+    );
+    assert.equal(slice.payload.taskOutcomes.length, 1);
+    assert.equal(slice.payload.taskOutcomes[0].plannedTask.cloudRunId, slice.cloudRunId);
+  }
+});
+
+test("cloud result merge preserves planned-only outcomes for repeated lease runs", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-planned-outcome-merge=${Date.now()}`);
+  const taskOutcomes = ["run_1", "run_2"].map((cloudRunId) => ({
+    fetchTaskId: "post_over_budget",
+    status: "failed",
+    reason: "workload_exceeds_max_budget",
+    plannedTask: {
+      id: "post_over_budget",
+      cloudRunId,
+      cloudSourceTaskId: "source_1",
+      agentWorkType: "fetch_post",
+      contentStatus: "requires_agent",
+      item: { url: "https://example.com/over-budget" },
+    },
+  }));
+
+  const merged = cli.mergeShardSyncPayloads(
+    { status: "ok", fetchTasks: [], taskOutcomes },
+    [],
+  );
+
+  assert.deepEqual(
+    merged.payload.taskOutcomes.map((outcome: { plannedTask: { cloudRunId: string } }) =>
+      outcome.plannedTask.cloudRunId,
+    ),
+    ["run_1", "run_2"],
+  );
+});
+
+test("cloud result merge backfills a missing repeated-lease shard independently", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?cloud-repeated-missing-shard=${Date.now()}`);
+  const repeatedTasks = ["run_1", "run_2"].map((cloudRunId) => ({
+    id: "post_dup",
+    cloudRunId,
+    cloudSourceTaskId: "source_1",
+    builderId: "builder_1",
+    agentWorkType: "fetch_post",
+    contentStatus: "requires_agent",
+    builderSync: { builderId: "builder_1", cloudSourceTaskId: "source_1" },
+    item: { url: "https://example.com/post" },
+  }));
+
+  const merged = cli.mergeShardSyncPayloads(
+    { status: "ok", fetchTasks: repeatedTasks, taskOutcomes: [] },
+    [
+      {
+        name: "shard-0-result.json",
+        payload: {
+          builders: [],
+          taskOutcomes: [
+            { fetchTaskId: "post_dup", status: "failed", reason: "run_1_failed" },
+          ],
+        },
+      },
+      { name: "shard-1-result.json", error: "no result file" },
+    ],
+    {
+      shardPlans: [
+        { shard: "shard-0", resultFile: "shard-0-result.json", tasks: [repeatedTasks[0]] },
+        { shard: "shard-1", resultFile: "shard-1-result.json", tasks: [repeatedTasks[1]] },
+      ],
+    },
+  );
+
+  assert.deepEqual(
+    merged.payload.taskOutcomes.map((outcome: { reason: string; plannedTask?: { cloudRunId?: string } }) => ({
+      reason: outcome.reason,
+      cloudRunId: outcome.plannedTask?.cloudRunId,
+    })),
+    [
+      { reason: "run_1_failed", cloudRunId: "run_1" },
+      { reason: "worker_missing_result", cloudRunId: "run_2" },
+    ],
+  );
+  assert.equal(merged.backfilledOutcomes, 1);
 });
 
 test("regular personal sync task slicing remains one post per payload", async () => {
@@ -9924,6 +10229,86 @@ test("merge-task-results keeps zero-post cloud sources in final remaining tasks"
   assert.deepEqual(
     remainingTasks.cloudSourceTasks.map((task: { cloudSourceTaskId: string }) => task.cloudSourceTaskId),
     ["source_without_posts"],
+  );
+});
+
+test("merge-task-results keeps zero-post cloud sources scoped to their lease run", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-merge-repeated-zero-source-"));
+  const resultsDir = join(tmp, "results");
+  const tasksFile = join(tmp, "fetch-result.json");
+  const payloadFile = join(tmp, "remaining-payload.json");
+  const tasksOutFile = join(tmp, "remaining-tasks.json");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        {
+          id: "run_1_post",
+          agentWorkType: "fetch_post",
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_1",
+          builderSync: { builderId: "b1", cloudSourceTaskId: "source_1" },
+        },
+      ],
+      cloudSourceTasks: [
+        {
+          cloudRunId: "run_1",
+          cloudSourceTaskId: "source_1",
+          builderId: "b1",
+          name: "Source Run 1",
+          sourceType: "blog",
+        },
+        {
+          cloudRunId: "run_2",
+          cloudSourceTaskId: "source_1",
+          builderId: "b1",
+          name: "Source Run 2",
+          sourceType: "blog",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await mkdir(resultsDir);
+  await writeFile(
+    join(resultsDir, "shard-0-result.json"),
+    `${JSON.stringify({
+      builders: [
+        {
+          builderId: "b1",
+          items: [{ externalId: "run-1-item", rawJson: { fetchTaskId: "run_1_post" } }],
+        },
+      ],
+      taskOutcomes: [],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "merge-task-results",
+      "--tasks",
+      tasksFile,
+      "--results-dir",
+      resultsDir,
+      "--assigned-only",
+      "--tasks-out",
+      tasksOutFile,
+      "--out",
+      payloadFile,
+    ],
+    { cwd: process.cwd() },
+  );
+
+  const remainingTasks = JSON.parse(await readFile(tasksOutFile, "utf8"));
+  assert.deepEqual(
+    remainingTasks.cloudSourceTasks.map((task: { cloudRunId: string; cloudSourceTaskId: string }) =>
+      `${task.cloudRunId}:${task.cloudSourceTaskId}`,
+    ),
+    ["run_2:source_1"],
   );
 });
 

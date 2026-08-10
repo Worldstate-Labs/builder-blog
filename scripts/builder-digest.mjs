@@ -8843,7 +8843,9 @@ function normalizeShardPlan(plan) {
     agentOutputBytes: Number.isFinite(Number(plan.agentOutputBytes)) ? Number(plan.agentOutputBytes) : null,
     usage,
     taskCount: Number.isFinite(Number(plan.taskCount)) ? Number(plan.taskCount) : tasks.length,
+    tasks,
     taskIds: tasks.map((task) => String(task?.id || fetchTaskId(task))),
+    taskKeys: tasks.map((task) => taskKeyForSync(task)),
     taskTitles: tasks
       .map((task) => task?.title || task?.item?.title || task?.url || task?.item?.url || task?.id || null)
       .filter(Boolean)
@@ -9215,30 +9217,37 @@ function deterministicSyncItemFromFetchTask(task) {
 
 export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) {
   const planned = extractFetchTasks(fetchResult).filter((task) => !isCandidateDiscoveryFetchTask(task));
-  const plannedTaskById = new Map(
-    planned.map((task) => [String(task?.id || fetchTaskId(task)), task]),
-  );
-  const taskTypeById = new Map(
-    planned.map((task) => [String(task?.id || fetchTaskId(task)), task?.agentWorkType || ""]),
+  const plannedTasksById = new Map();
+  for (const task of planned) {
+    const id = taskIdForSync(task);
+    const tasks = plannedTasksById.get(id) ?? [];
+    tasks.push(task);
+    plannedTasksById.set(id, tasks);
+  }
+  const taskTypeByKey = new Map(
+    planned.map((task) => [taskKeyForSync(task), task?.agentWorkType || ""]),
   );
   const shardPlans = (options.shardPlans ?? [])
     .map(normalizeShardPlan)
     .filter(Boolean);
-  const shardPlanByTaskId = new Map();
+  const shardPlanByTaskKey = new Map();
   const shardPlanByResultFile = new Map();
+  const shardPlanByShard = new Map();
   for (const plan of shardPlans) {
-    for (const taskId of plan.taskIds) shardPlanByTaskId.set(taskId, plan);
+    for (const taskKey of plan.taskKeys) shardPlanByTaskKey.set(taskKey, plan);
     shardPlanByResultFile.set(plan.resultFile, plan);
+    shardPlanByShard.set(plan.shard, plan);
   }
 
   const builders = [];
   const builderIndex = new Map();
   const taskOutcomes = [];
+  const plannedOutcomeKeys = new Set();
   // Tasks with any terminal signal (item or outcome) across all shards; the
   // backfill below covers the rest.
   const accounted = new Set();
   // Normal post tasks already synced — duplicate-item guard across shards.
-  const syncedTaskIds = new Set();
+  const syncedTaskKeys = new Set();
   const seenFallbackItems = new Set();
   const shardSummaries = [];
   const sourceShardFromResultName = (name) => {
@@ -9250,18 +9259,39 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   const builderKey = (builder) =>
     String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
 
-  const plannedTaskForSyncItem = (builder, item) => {
+  const shardPlanForResult = (shard) =>
+    shardPlanByResultFile.get(shard?.name) ??
+    shardPlanByShard.get(workerIdFromShardResultName(shard?.name)) ??
+    null;
+
+  const plannedTasksForSignal = (id, outcome, shardPlan = null) => {
+    const embeddedTask = plannedTaskOutcomeForCloudSync(outcome);
+    if (embeddedTask) return [embeddedTask];
+    const shardMatches = (shardPlan?.tasks ?? []).filter((task) => taskIdForSync(task) === id);
+    if (shardMatches.length > 0) return shardMatches;
+    return plannedTasksById.get(id) ?? [];
+  };
+
+  const plannedTaskForSyncItem = (builder, item, shardPlan = null) => {
     const rawTaskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
-    const rawTask = rawTaskId ? plannedTaskById.get(rawTaskId) : null;
-    if (rawTask && syncItemMatchesPlannedTask(builder, item, rawTask, rawTaskId)) {
-      return { id: rawTaskId, task: rawTask };
+    const rawTasks = rawTaskId
+      ? plannedTasksForSignal(rawTaskId, null, shardPlan)
+      : [];
+    for (const rawTask of rawTasks) {
+      if (syncItemMatchesPlannedTask(builder, item, rawTask, rawTaskId)) {
+        return { id: rawTaskId, key: taskKeyForSync(rawTask), task: rawTask };
+      }
     }
-    for (const task of planned) {
-      const id = String(task?.id || fetchTaskId(task));
-      if (syncedTaskIds.has(id) && taskTypeById.get(id) !== "fetch_builder_fallback") continue;
-      if (syncItemMatchesPlannedTask(builder, item, task, id)) return { id, task };
+    for (const task of shardPlan?.tasks ?? planned) {
+      const id = taskIdForSync(task);
+      const key = taskKeyForSync(task);
+      if (syncedTaskKeys.has(key) && taskTypeByKey.get(key) !== "fetch_builder_fallback") continue;
+      if (syncItemMatchesPlannedTask(builder, item, task, id)) return { id, key, task };
     }
-    return rawTask ? { id: rawTaskId, task: rawTask } : null;
+    const fallbackTask = rawTasks[0] ?? null;
+    return fallbackTask
+      ? { id: rawTaskId, key: taskKeyForSync(fallbackTask), task: fallbackTask }
+      : null;
   };
 
   const syncBuilderTarget = (builder) => {
@@ -9278,19 +9308,24 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
     if (!outcome?.fetchTaskId || isCandidateDiscoveryOutcome(outcome)) continue;
     const id = String(outcome.fetchTaskId);
-    if (accounted.has(id)) continue;
-    accounted.add(id);
+    const plannedTask = plannedTaskOutcomeForCloudSync(outcome);
+    const outcomeKey = plannedTask ? taskKeyForSync(plannedTask) : id;
+    if (plannedOutcomeKeys.has(outcomeKey)) continue;
+    plannedOutcomeKeys.add(outcomeKey);
+    const matches = plannedTasksForSignal(id, outcome);
+    if (matches.length === 0) accounted.add(id);
+    else for (const task of matches) accounted.add(taskKeyForSync(task));
     taskOutcomes.push(outcome);
   }
 
   for (const task of planned) {
     if (!isDeterministicSyncFetchTask(task)) continue;
-    const id = String(task?.id || fetchTaskId(task));
-    if (accounted.has(id)) continue;
+    const key = taskKeyForSync(task);
+    if (accounted.has(key)) continue;
     const target = syncBuilderTarget(syncBuilderFromFetchTask(task));
     target.items.push(deterministicSyncItemFromFetchTask(task));
-    accounted.add(id);
-    syncedTaskIds.add(id);
+    accounted.add(key);
+    syncedTaskKeys.add(key);
   }
 
   for (const shard of shardResults) {
@@ -9302,7 +9337,8 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     ) {
       continue;
     }
-    const workerId = shard.workerId ?? shardPlanByResultFile.get(shard.name)?.workerId ?? workerIdFromShardResultName(shard.name);
+    const shardPlan = shardPlanForResult(shard);
+    const workerId = shard.workerId ?? shardPlan?.workerId ?? workerIdFromShardResultName(shard.name);
     if (!shard.payload) {
       shardSummaries.push({
         shard: shard.name,
@@ -9317,8 +9353,9 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       const target = syncBuilderTarget(builder);
       for (const item of builder?.items ?? []) {
         const stampedItem = stampItemWorkerId(item, workerId);
-        const match = plannedTaskForSyncItem(builder, stampedItem);
+        const match = plannedTaskForSyncItem(builder, stampedItem, shardPlan);
         const taskId = match?.id ?? null;
+        const taskKey = match?.key ?? taskId;
         const canonicalItem = taskId
           ? {
               ...stampedItem,
@@ -9335,17 +9372,17 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           ? normalizeAgentExecutionMetadata(mergedItem, match?.task, taskId, workerId)
           : mergedItem;
         const normalized = normalizeSyncItemSummary(itemWithExecutionMetadata);
-        if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
+        if (taskId && taskTypeByKey.get(taskKey) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.
-          const itemKey = `${taskId}\u0000${normalized.item?.externalId || normalized.item?.url || ""}`;
+          const itemKey = `${taskKey}\u0000${normalized.item?.externalId || normalized.item?.url || ""}`;
           if (seenFallbackItems.has(itemKey)) continue;
           seenFallbackItems.add(itemKey);
-        } else if (taskId) {
-          if (syncedTaskIds.has(taskId)) continue;
-          syncedTaskIds.add(taskId);
+        } else if (taskKey) {
+          if (syncedTaskKeys.has(taskKey)) continue;
+          syncedTaskKeys.add(taskKey);
         }
-        if (taskId) accounted.add(taskId);
+        if (taskKey) accounted.add(taskKey);
         target.items.push(normalized.item);
         itemCount += 1;
         if (normalized.normalized) normalizedSummaryCount += 1;
@@ -9356,9 +9393,15 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       if (!outcome?.fetchTaskId) continue;
       if (isCandidateDiscoveryOutcome(outcome)) continue;
       const id = String(outcome.fetchTaskId);
-      if (accounted.has(id)) continue;
-      accounted.add(id);
-      taskOutcomes.push(stampOutcomeWorkerId(outcome, workerId));
+      const matches = plannedTasksForSignal(id, outcome, shardPlan);
+      const keys = matches.length > 0 ? matches.map(taskKeyForSync) : [id];
+      if (keys.every((key) => accounted.has(key))) continue;
+      for (const key of keys) accounted.add(key);
+      const scopedOutcome =
+        !plannedTaskOutcomeForCloudSync(outcome) && matches.length === 1 && taskCloudRunIdForSync(matches[0])
+          ? { ...outcome, plannedTask: matches[0] }
+          : outcome;
+      taskOutcomes.push(stampOutcomeWorkerId(scopedOutcome, workerId));
       outcomeCount += 1;
     }
     if (shard.checkpoint && itemCount === 0 && outcomeCount === 0) continue;
@@ -9377,7 +9420,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   for (const summary of shardSummaries) {
     if (summary.status === "missing") {
       const plan = shardPlanByResultFile.get(summary.shard);
-      if (plan && plan.taskIds.every((id) => accounted.has(id))) {
+      if (plan && plan.taskKeys.every((key) => accounted.has(key))) {
         delete summary.error;
         Object.assign(summary, {
           status: "ok",
@@ -9392,12 +9435,12 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     if (summary.status !== "ok") continue;
     const plan = shardPlanByResultFile.get(summary.shard);
     if (!plan) continue;
-    const missingTaskIds = plan.taskIds.filter((id) => !accounted.has(id));
-    if (missingTaskIds.length === 0) continue;
+    const missingTasks = plan.tasks.filter((task) => !accounted.has(taskKeyForSync(task)));
+    if (missingTasks.length === 0) continue;
     summary.status = "incomplete";
     summary.error = "result file did not account for every shard task";
-    summary.missingTasks = missingTaskIds.length;
-    summary.missingTaskIds = missingTaskIds;
+    summary.missingTasks = missingTasks.length;
+    summary.missingTaskIds = missingTasks.map(taskIdForSync);
   }
   const knownShardResults = new Set(shardSummaries.map((summary) => summary.shard));
   const shardSummaryByResultFile = new Map(
@@ -9424,11 +9467,12 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   if (options.backfillMissing !== false) {
     for (const task of planned) {
       if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
-      const id = String(task?.id || fetchTaskId(task));
-      if (accounted.has(id)) continue;
-      const shardPlan = shardPlanByTaskId.get(id);
+      const id = taskIdForSync(task);
+      const key = taskKeyForSync(task);
+      if (accounted.has(key)) continue;
+      const shardPlan = shardPlanByTaskKey.get(key);
       if (options.backfillUnassigned === false && !shardPlan) continue;
-      accounted.add(id);
+      accounted.add(key);
       const shardSummary = shardPlan ? shardSummaryByResultFile.get(shardPlan.resultFile) : null;
       const failure = missingTaskFailure(task, shardPlan, shardSummary, options);
       taskOutcomes.push({
@@ -9442,6 +9486,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           { ...options, failureKind: failure.failureKind },
         ),
         ...(shardPlan?.workerId ? { workerId: shardPlan.workerId } : {}),
+        ...(taskCloudRunIdForSync(task) ? { plannedTask: task } : {}),
       });
       backfilled += 1;
     }
@@ -9878,22 +9923,22 @@ async function mergeTaskResults(args) {
     backfillUnassigned: !(assignedOnly || completeSourcesOnly),
   });
   const excluded = await readIdSetFile(excludeTaskIdsFile);
-  const availableIds = syncPayloadTaskIds(merged.payload);
-  const completedSourceIds = completedOnly || completeSourcesOnly
-    ? completeSourceIdsForAvailableTasks(fetchResult, availableIds)
+  const plannedTasks = plannedTasksForQueueSync(fetchResult);
+  const availableKeys = syncPayloadTaskKeys(merged.payload, plannedTasks);
+  const completedSourceKeys = completedOnly || completeSourcesOnly
+    ? completeSourceKeysForAvailableTasks(fetchResult, availableKeys)
     : null;
-  const selectedTasks = extractFetchTasks(fetchResult).filter((task) => {
-    const id = taskIdForSync(task);
-    const sourceTaskId = taskSourceTaskIdForSync(task);
-    if (completedSourceIds && sourceTaskId && !completedSourceIds.has(sourceTaskId)) return false;
-    return availableIds.has(id) && !excludedTaskIdsContains(excluded, task);
+  const selectedTasks = plannedTasks.filter((task) => {
+    const sourceKey = taskSourceKeyForSync(task);
+    if (completedSourceKeys && sourceKey && !completedSourceKeys.has(sourceKey)) return false;
+    return availableKeys.has(taskKeyForSync(task)) && !excludedTaskIdsContains(excluded, task);
   });
   const selectedIds = new Set(
     selectedTasks.map((task) => taskIdForSync(task)),
   );
   const shouldFilterOutput = completedOnly || assignedOnly || completeSourcesOnly || excluded.size > 0;
   const payloadOut = shouldFilterOutput
-    ? filterSyncPayloadToTaskIds(merged.payload, selectedIds)
+    ? filterSyncPayloadToTasks(merged.payload, selectedTasks)
     : merged.payload;
   const tasksOut = shouldFilterOutput
     ? filterFetchResultToTasks(fetchResult, selectedTasks, { includeZeroPostCloudSourceTasks: !completedOnly })
@@ -9944,20 +9989,26 @@ function taskSourceTaskIdForSync(task) {
   return String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
 }
 
-function completeSourceIdsForAvailableTasks(fetchResult, availableIds) {
-  const tasksBySourceId = new Map();
-  for (const task of extractFetchTasks(fetchResult)) {
+function taskSourceKeyForSync(task) {
+  const sourceTaskId = taskSourceTaskIdForSync(task);
+  if (!sourceTaskId) return "";
+  return `${taskCloudRunIdForSync(task)}\u0000${sourceTaskId}`;
+}
+
+function completeSourceKeysForAvailableTasks(fetchResult, availableKeys) {
+  const tasksBySourceKey = new Map();
+  for (const task of plannedTasksForQueueSync(fetchResult)) {
     if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
-    const sourceTaskId = taskSourceTaskIdForSync(task);
-    if (!sourceTaskId) continue;
-    const tasks = tasksBySourceId.get(sourceTaskId) ?? [];
-    tasks.push(taskIdForSync(task));
-    tasksBySourceId.set(sourceTaskId, tasks);
+    const sourceKey = taskSourceKeyForSync(task);
+    if (!sourceKey) continue;
+    const tasks = tasksBySourceKey.get(sourceKey) ?? [];
+    tasks.push(taskKeyForSync(task));
+    tasksBySourceKey.set(sourceKey, tasks);
   }
   const complete = new Set();
-  for (const [sourceTaskId, taskIds] of tasksBySourceId) {
-    if (taskIds.length > 0 && taskIds.every((taskId) => availableIds.has(taskId))) {
-      complete.add(sourceTaskId);
+  for (const [sourceKey, taskKeys] of tasksBySourceKey) {
+    if (taskKeys.length > 0 && taskKeys.every((taskKey) => availableKeys.has(taskKey))) {
+      complete.add(sourceKey);
     }
   }
   return complete;
@@ -10070,37 +10121,54 @@ async function readIdSetFile(file) {
   }
 }
 
-function syncPayloadTaskIds(payload) {
-  const ids = new Set();
+function syncPayloadTaskKeys(payload, plannedTasks) {
+  const tasksById = new Map();
+  for (const task of plannedTasks) {
+    const id = taskIdForSync(task);
+    const tasks = tasksById.get(id) ?? [];
+    tasks.push(task);
+    tasksById.set(id, tasks);
+  }
+  const keys = new Set();
   for (const { item } of extractSyncItems(payload)) {
     const id = item?.rawJson?.fetchTaskId;
-    if (id) ids.add(String(id));
+    if (!id) continue;
+    const normalizedId = String(id);
+    const matches = tasksById.get(normalizedId) ?? [];
+    if (matches.length === 0) keys.add(normalizedId);
+    else for (const task of matches) keys.add(taskKeyForSync(task));
   }
   for (const outcome of payload?.taskOutcomes ?? []) {
-    if (outcome?.fetchTaskId) ids.add(String(outcome.fetchTaskId));
+    const id = String(outcome?.fetchTaskId || "");
+    if (!id) continue;
+    const plannedTask = plannedTaskOutcomeForCloudSync(outcome);
+    if (plannedTask) {
+      keys.add(taskKeyForSync(plannedTask));
+      continue;
+    }
+    const matches = tasksById.get(id) ?? [];
+    if (matches.length === 0) keys.add(id);
+    else for (const task of matches) keys.add(taskKeyForSync(task));
   }
-  return ids;
-}
-
-function cloudSourceTaskIdForSync(task) {
-  return String(task?.cloudSourceTaskId || task?.builderSync?.cloudSourceTaskId || "").trim();
+  return keys;
 }
 
 function zeroPostCloudSourceTasksForSync(fetchResult) {
-  const sourceTaskIdsWithPosts = new Set();
+  const sourceKeysWithPosts = new Set();
   for (const task of extractFetchTasks(fetchResult)) {
     if (isCandidateDiscoveryFetchTask(task) || isUserActionAgentWorkType(task?.agentWorkType)) continue;
-    const sourceTaskId = cloudSourceTaskIdForSync(task);
-    if (sourceTaskId) sourceTaskIdsWithPosts.add(sourceTaskId);
+    const sourceKey = taskSourceKeyForSync(task);
+    if (sourceKey) sourceKeysWithPosts.add(sourceKey);
   }
   return extractCloudSourceTasks(fetchResult).filter((task) => {
-    const sourceTaskId = String(task?.cloudSourceTaskId || "").trim();
-    return sourceTaskId && !sourceTaskIdsWithPosts.has(sourceTaskId);
+    const sourceKey = taskSourceKeyForSync(task);
+    return sourceKey && !sourceKeysWithPosts.has(sourceKey);
   });
 }
 
 function filterFetchResultToTasks(fetchResult, tasks, options = {}) {
-  const wanted = new Set(tasks.map(taskIdForSync));
+  const wantedIds = new Set(tasks.map(taskIdForSync));
+  const wantedKeys = new Set(tasks.map(taskKeyForSync));
   const cloudSourceTasks = options.includeZeroPostCloudSourceTasks
     ? zeroPostCloudSourceTasksForSync(fetchResult)
     : [];
@@ -10111,29 +10179,37 @@ function filterFetchResultToTasks(fetchResult, tasks, options = {}) {
     ...(cloudSourceTasks.length > 0 ? { cloudSourceTasks } : {}),
     taskOutcomes: Array.isArray(fetchResult?.taskOutcomes)
       ? fetchResult.taskOutcomes.filter((outcome) =>
-          outcome?.fetchTaskId && wanted.has(String(outcome.fetchTaskId)),
+          outcomeMatchesSelectedTasks(outcome, wantedIds, wantedKeys),
         )
       : [],
     discoveryExpansions: Array.isArray(fetchResult?.discoveryExpansions)
       ? fetchResult.discoveryExpansions.filter((expansion) =>
-          expansion?.fetchTaskId && wanted.has(String(expansion.fetchTaskId)),
+          expansion?.fetchTaskId && wantedIds.has(String(expansion.fetchTaskId)),
         )
       : [],
   };
 }
 
-function filterSyncPayloadToTaskIds(payload, taskIds) {
-  const wanted = new Set([...taskIds].map(String));
+function outcomeMatchesSelectedTasks(outcome, wantedIds, wantedKeys) {
+  const fetchTaskId = String(outcome?.fetchTaskId || "");
+  if (!fetchTaskId || !wantedIds.has(fetchTaskId)) return false;
+  const plannedTask = plannedTaskOutcomeForCloudSync(outcome);
+  return !plannedTask || wantedKeys.has(taskKeyForSync(plannedTask));
+}
+
+function filterSyncPayloadToTasks(payload, tasks) {
+  const wantedIds = new Set(tasks.map(taskIdForSync));
+  const wantedKeys = new Set(tasks.map(taskKeyForSync));
   const builders = [];
   for (const builder of payload?.builders ?? []) {
     const items = (builder?.items ?? []).filter((item) => {
       const id = item?.rawJson?.fetchTaskId;
-      return id && wanted.has(String(id));
+      return id && wantedIds.has(String(id));
     });
     if (items.length > 0) builders.push({ ...builder, items });
   }
   const taskOutcomes = (payload?.taskOutcomes ?? []).filter((outcome) =>
-    outcome?.fetchTaskId && wanted.has(String(outcome.fetchTaskId)),
+    outcomeMatchesSelectedTasks(outcome, wantedIds, wantedKeys),
   );
   return { builders, taskOutcomes };
 }
@@ -10200,6 +10276,29 @@ function extractCloudSourceTasks(fetchResult) {
   return Array.isArray(fetchResult?.cloudSourceTasks) ? fetchResult.cloudSourceTasks : [];
 }
 
+function plannedTasksForQueueSync(fetchResult) {
+  const tasks = [...extractFetchTasks(fetchResult)];
+  const seen = new Set(tasks.map((task) => taskKeyForSync(task)));
+  for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
+    const task = plannedTaskOutcomeForCloudSync(outcome);
+    if (!task) continue;
+    const key = taskKeyForSync(task);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tasks.push(task);
+  }
+  return tasks;
+}
+
+function taskMatchesForOutcome(outcome, taskMatchesById) {
+  const matches = taskMatchesById.get(String(outcome?.fetchTaskId || "")) ?? [];
+  const plannedTask = plannedTaskOutcomeForCloudSync(outcome);
+  if (!plannedTask) return matches;
+  const plannedKey = taskKeyForSync(plannedTask);
+  const scopedMatches = matches.filter((match) => taskKeyForSync(match.task) === plannedKey);
+  return scopedMatches.length > 0 ? scopedMatches : matches;
+}
+
 function splitKeyForCloudSourceGranularity(task) {
   const sourceTaskId = String(task?.cloudSourceTaskId || "").trim();
   return sourceTaskId ? `cloudSource:${sourceTaskId}` : sourceGroupKey(task);
@@ -10217,7 +10316,7 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
   const taskMatchesById = new Map();
   const taskMatches = [];
   const emittedItemTaskIds = new Set();
-  const fetchTasks = extractFetchTasks(fetchResult);
+  const fetchTasks = plannedTasksForQueueSync(fetchResult);
   const cloudSourceTasks = extractCloudSourceTasks(fetchResult);
 
   for (const task of fetchTasks) {
@@ -10237,7 +10336,7 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
 
   for (const outcome of fetchResult?.taskOutcomes ?? []) {
     if (!outcome?.fetchTaskId) continue;
-    const matches = taskMatchesById.get(String(outcome.fetchTaskId)) ?? [];
+    const matches = taskMatchesForOutcome(outcome, taskMatchesById);
     const keys = matches.length > 0
       ? [...new Set(matches.map((match) => match.key))]
       : [`outcome:${outcome.fetchTaskId}`];
@@ -10297,7 +10396,7 @@ function splitSyncPayload(fetchResult, payload = {}, options = {}) {
 
   for (const outcome of payload?.taskOutcomes ?? []) {
     if (!outcome?.fetchTaskId) continue;
-    const matches = taskMatchesById.get(String(outcome.fetchTaskId)) ?? [];
+    const matches = taskMatchesForOutcome(outcome, taskMatchesById);
     const keys = matches.length > 0
       ? [...new Set(matches.map((match) => match.key))]
       : [`outcome:${outcome.fetchTaskId}`];
