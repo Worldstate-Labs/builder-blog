@@ -12,6 +12,10 @@ import {
   normalizeCloudShardBudgetPolicy,
 } from "./cloud-shard-budget.mjs";
 import { discoverNewProductLaunches } from "./new-product-launches.mjs";
+import {
+  checkManagedMediaDiskSpace,
+  configuredMediaWorkingSetBytes,
+} from "./run-storage.mjs";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -7099,6 +7103,7 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   toolPaths = null,
   workDir: requestedWorkDir = null,
   preserveWorkDir = false,
+  diskSpaceGuard = checkManagedMediaDiskSpace,
 } = {}) {
   if (requestedWorkDir) {
     const savedTranscript = cleanTranscriptText(
@@ -7169,6 +7174,35 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       updatedAt: new Date().toISOString(),
     });
   };
+  const requireDiskHeadroom = async (stage, anticipatedBytes) => {
+    let diskSpace;
+    try {
+      diskSpace = await diskSpaceGuard(workDir, { anticipatedBytes });
+    } catch (error) {
+      diskSpace = {
+        ok: false,
+        reason: "disk_space_check_failed",
+        error: errorMessage(error),
+      };
+    }
+    if (diskSpace?.ok) return null;
+    const reason = String(diskSpace?.reason || "insufficient_disk_space");
+    const attempt = {
+      method: "local-asr",
+      status: "failed",
+      reason,
+      stage,
+      ...(Number.isFinite(diskSpace?.availableBytes)
+        ? { availableBytes: diskSpace.availableBytes }
+        : {}),
+      ...(Number.isFinite(diskSpace?.requiredBytes)
+        ? { requiredBytes: diskSpace.requiredBytes }
+        : {}),
+    };
+    attempts.push(attempt);
+    await writeState({ status: "failed", stage, reason, diskSpace }).catch(() => {});
+    return { text: "", reason, diskSpace, attempts };
+  };
   try {
     const longToolOptions = (envName, fallback) => {
       const resolvedTimeoutValue = typeof longToolTimeoutMsResolver === "function"
@@ -7188,6 +7222,8 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       .map((file) => join(workDir, file))
       .find((file) => basename(file).startsWith("audio.") && basename(file) !== "audio-mono.wav");
     if (!audioFile) {
+      const diskFailure = await requireDiskHeadroom("download", configuredMediaWorkingSetBytes());
+      if (diskFailure) return diskFailure;
       const downloadOptions = longToolOptions(
         "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
         DEFAULT_YOUTUBE_ASR_TIMEOUT_MS,
@@ -7219,6 +7255,10 @@ async function fetchYouTubeLocalAsr(videoUrl, {
     }
     const monoAudio = join(workDir, "audio-mono.wav");
     if (!existsSync(monoAudio)) {
+      const audioBytes = Number((await fsStat(audioFile).catch(() => null))?.size || 0);
+      const anticipatedBytes = Math.max(512 * 1024 ** 2, audioBytes * 5);
+      const diskFailure = await requireDiskHeadroom("prepare_audio", anticipatedBytes);
+      if (diskFailure) return diskFailure;
       const convertOptions = longToolOptions(
         "BUILDER_BLOG_YOUTUBE_AUDIO_CONVERT_TIMEOUT_MS",
         DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS,

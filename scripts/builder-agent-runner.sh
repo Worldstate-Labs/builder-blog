@@ -2255,6 +2255,28 @@ process.stdout.write(String(Math.floor(value / 1000)));
 NODE
 }
 
+process_matches_start_epoch() {
+  _pmse_pid="${1:-}"
+  _pmse_expected_start="${2:-}"
+  case "$_pmse_pid" in ''|*[!0-9]*) return 1 ;; esac
+  case "$_pmse_expected_start" in ''|*[!0-9]*) return 1 ;; esac
+  kill -0 "$_pmse_pid" 2>/dev/null || return 1
+  _pmse_actual_start="$(process_start_epoch "$_pmse_pid" 2>/dev/null || true)"
+  [ -n "$_pmse_actual_start" ] || return 1
+  [ "$_pmse_actual_start" = "$_pmse_expected_start" ]
+}
+
+record_job_process_root() {
+  _rjpr_pid="${1:-}"
+  case "$_rjpr_pid" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$_rjpr_pid" != "$$" ] || return 1
+  validate_run_tmp_dir || return 1
+  _rjpr_started="$(process_start_epoch "$_rjpr_pid" 2>/dev/null || true)"
+  [ -n "$_rjpr_started" ] || return 1
+  printf '%s\t%s\n' "$_rjpr_pid" "$_rjpr_started" >> "$JOB_TMP_DIR/process-roots.tsv"
+  chmod 600 "$JOB_TMP_DIR/process-roots.tsv" 2>/dev/null || true
+}
+
 verify_followbrief_current_pid() {
   _vfcp_pid="${1:-}"
   _vfcp_expected_start="${2:-}"
@@ -2354,17 +2376,30 @@ terminate_recorded_process_ids() {
   return 1
 }
 
+recorded_job_process_pids() {
+  _rjpp_file="${JOB_TMP_DIR:-}/process-roots.tsv"
+  [ -r "$_rjpp_file" ] || return 0
+  while IFS="$(printf '\t')" read -r _rjpp_pid _rjpp_started _rjpp_extra; do
+    [ -z "$_rjpp_extra" ] || continue
+    process_matches_start_epoch "$_rjpp_pid" "$_rjpp_started" || continue
+    process_tree_pids "$_rjpp_pid"
+  done < "$_rjpp_file" | sort -u
+}
+
 job_tmp_process_pids() {
   [ -n "${JOB_TMP_DIR:-}" ] || return 0
   # Match only the current owned run directory. This catches orphaned fetch
   # tools whose command line still references output files under this run.
-  ps -axo pid=,command= 2>/dev/null | awk -v dir="$JOB_TMP_DIR" -v self="$$" '
-    index($0, "awk -v dir=") { next }
-    index($0, dir) {
-      pid = $1
-      if (pid ~ /^[0-9]+$/ && pid != self) print pid
-    }
-  ' | sort -u
+  {
+    ps -axo pid=,command= 2>/dev/null | awk -v dir="$JOB_TMP_DIR" -v self="$$" '
+      index($0, "awk -v dir=") { next }
+      index($0, dir) {
+        pid = $1
+        if (pid ~ /^[0-9]+$/ && pid != self) print pid
+      }
+    '
+    recorded_job_process_pids
+  } | sort -u
 }
 
 terminate_job_tmp_processes() {
@@ -2402,6 +2437,15 @@ cleanup_transient_job_artifacts() {
   validate_run_tmp_dir || return 0
   terminate_job_tmp_processes TERM 3 || true
   find "$JOB_TMP_DIR" -mindepth 1 -maxdepth 1 \( -name 'fetch-*' -o -name 'youtube-asr' \) -exec rm -rf {} + 2>/dev/null || true
+}
+
+cleanup_completed_managed_media_artifacts() {
+  validate_run_tmp_dir || return 1
+  [ "${_managed_media_active:-0}" -eq 0 ] || return 1
+  if [ -n "${_managed_media_pid:-}" ] && kill -0 "$_managed_media_pid" 2>/dev/null; then
+    return 1
+  fi
+  node "$AGENT_DIR/run-storage.mjs" cleanup-managed-media --run-dir "$JOB_TMP_DIR" >/dev/null
 }
 
 write_worker_control_event() {
@@ -4310,6 +4354,7 @@ start_managed_media_batch() {
       --out "$_smmb_file" \
       --artifact-root "$_smmb_artifacts" > "$_managed_media_summary" &
   _managed_media_pid="$!"
+  record_job_process_root "$_managed_media_pid" || true
   _managed_media_active=1
 }
 
@@ -5533,10 +5578,12 @@ NODE
     mv "$_slw_exit_file.tmp.$$" "$_slw_exit_file"
     exit "$_slw_exit_code"
   ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
-  _worker_entries="${_worker_entries:-} $!:$(date +%s):$_slw_shard_name:$_slw_lane_id"
+  _slw_worker_pid="$!"
+  record_job_process_root "$_slw_worker_pid" || true
+  _worker_entries="${_worker_entries:-} $_slw_worker_pid:$(date +%s):$_slw_shard_name:$_slw_lane_id"
   _started_shard_names="$_started_shard_names $_slw_shard_name"
   _started_worker_count=$(( _started_worker_count + 1 ))
-  echo "Started worker $_slw_lane_id for $_slw_shard_name (pid $!)."
+  echo "Started worker $_slw_lane_id for $_slw_shard_name (pid $_slw_worker_pid)."
 }
 
 worker_fits_remaining_outer_window() {
@@ -5991,6 +6038,9 @@ run_library_job() {
           job_run_update running "Worker host could not sync every idle result; it will keep running and retry with later progress." "worker_host_idle_flush_failed" \
             --stage "waiting_after_sync_issue"
         else
+          if ! cleanup_completed_managed_media_artifacts; then
+            echo "FollowBrief could not clean completed managed-media artifacts for $JOB_TMP_DIR." >&2
+          fi
           cleanup_transient_job_artifacts || true
           cleanup_old_job_runs
         fi

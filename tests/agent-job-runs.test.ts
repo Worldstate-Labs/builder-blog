@@ -1065,11 +1065,62 @@ test("runner cleans cloud host temp files and orphaned fetch tools", () => {
   assert.match(runner, /kill -s "\$_tjtp_signal" "\$_tjtp_pid"/);
   assert.match(runner, /kill -KILL "\$_tjtp_pid"/);
   assert.match(runner, /cleanup_transient_job_artifacts\(\)/);
+  assert.match(runner, /cleanup_completed_managed_media_artifacts\(\)/);
   assert.match(runner, /-name 'fetch-\*'/);
   assert.match(runner, /-name 'youtube-asr'/);
   assert.match(runner, /cloud_host_signal_cleanup\(\)[\s\S]*terminate_job_tmp_processes TERM 3[\s\S]*cleanup_job_tmp_dir killed "worker_host_interrupted"/);
   assert.match(runner, /run_cloud_worker_host\(\)[\s\S]*cleanup_job_tmp_dir "\$_cleanup_status" "\$_cleanup_reason"[\s\S]*cleanup_old_job_runs/);
   assert.match(runner, /cloud_host_sleep_with_heartbeat[\s\S]*cleanup_transient_job_artifacts/);
+  assert.match(
+    runner,
+    /flush_remaining_library_results[\s\S]*else[\s\S]*cleanup_completed_managed_media_artifacts[\s\S]*cleanup_transient_job_artifacts/,
+  );
+});
+
+test("runner records worker roots so cleanup can kill children without a run path in argv", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const helpersStart = runner.indexOf("process_start_epoch() {");
+  const helpersEnd = runner.indexOf("\nwrite_worker_control_event() {", helpersStart);
+  assert.ok(helpersStart >= 0 && helpersEnd > helpersStart);
+  const helpers = runner.slice(helpersStart, helpersEnd);
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-process-roots-"));
+  const scriptPath = join(tempDir, "verify.sh");
+  writeFileSync(scriptPath, `#!/bin/sh
+set -eu
+JOB_TMP_DIR=${JSON.stringify(tempDir)}
+worker_pid=""
+cleanup_test_worker() {
+  [ -z "$worker_pid" ] || kill -KILL "$worker_pid" 2>/dev/null || true
+}
+trap cleanup_test_worker EXIT
+validate_run_tmp_dir() { return 0; }
+${helpers}
+sleep 30 &
+worker_pid="$!"
+record_job_process_root "$worker_pid"
+registered=" $(job_tmp_process_pids | tr '\n' ' ') "
+case "$registered" in
+  *" $worker_pid "*) ;;
+  *) exit 41 ;;
+esac
+terminate_job_tmp_processes TERM 2
+if kill -0 "$worker_pid" 2>/dev/null; then exit 42; fi
+`, { mode: 0o755 });
+
+  try {
+    const result = spawnSync("sh", [scriptPath], { encoding: "utf8", timeout: 10_000 });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(readFileSync(join(tempDir, "process-roots.tsv"), "utf8"), /^\d+\t\d+$/m);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("runner persists managed-media and model-worker process roots", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+
+  assert.match(runner, /_managed_media_pid="\$!"\s*\n\s*record_job_process_root "\$_managed_media_pid" \|\| true/);
+  assert.match(runner, /_slw_worker_pid="\$!"\s*\n\s*record_job_process_root "\$_slw_worker_pid" \|\| true/);
 });
 
 test("runner exposes strict account-scoped cloud host lifecycle controls", () => {

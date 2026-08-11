@@ -2363,6 +2363,132 @@ test("managed ASR executes the machine profile's absolute tool paths", async () 
   }
 });
 
+test("managed ASR fails only the media item before download when disk headroom is insufficient", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-disk-guard=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-disk-guard-"));
+  const commands: string[] = [];
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode.mp3", {
+      workDir: dir,
+      preserveWorkDir: true,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      diskSpaceGuard: async () => ({
+        ok: false,
+        reason: "insufficient_disk_space",
+        availableBytes: 512 * 1024 ** 2,
+        requiredBytes: 3 * 1024 ** 3,
+        reserveBytes: 2 * 1024 ** 3,
+        anticipatedBytes: 1024 ** 3,
+      }),
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push(`${command} ${args.join(" ")}`);
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        return { ok: false, code: 1, stdout: "", stderr: "must not run", timedOut: false };
+      },
+    });
+
+    assert.equal(result.reason, "insufficient_disk_space");
+    assert.equal(result.diskSpace.availableBytes, 512 * 1024 ** 2);
+    assert.deepEqual(result.attempts, [{
+      method: "local-asr",
+      status: "failed",
+      reason: "insufficient_disk_space",
+      stage: "download",
+      availableBytes: 512 * 1024 ** 2,
+      requiredBytes: 3 * 1024 ** 3,
+    }]);
+    assert.equal(commands.some((command) => command.includes(" -f ba ")), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR checks disk headroom again before expanding downloaded audio to WAV", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-convert-disk-guard=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-convert-disk-guard-"));
+  const commands: string[] = [];
+  try {
+    await writeFile(join(dir, "audio.mp3"), "downloaded audio", "utf8");
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode.mp3", {
+      workDir: dir,
+      preserveWorkDir: true,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      diskSpaceGuard: async () => ({
+        ok: false,
+        reason: "insufficient_disk_space",
+        availableBytes: 400 * 1024 ** 2,
+        requiredBytes: 2.5 * 1024 ** 3,
+      }),
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push(`${command} ${args.join(" ")}`);
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        return { ok: false, code: 1, stdout: "", stderr: "must not run", timedOut: false };
+      },
+    });
+
+    assert.equal(result.reason, "insufficient_disk_space");
+    assert.equal(result.attempts[0].stage, "prepare_audio");
+    assert.equal(commands.some((command) => command.includes(" -y -i ")), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("insufficient disk space settles one media task without dropping other fetch work", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?prepare-media-disk-failure=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-disk-failure-"));
+  const failedMedia = {
+    id: "media-no-space",
+    type: "youtube_transcription",
+    sourceType: "youtube",
+    contentStatus: "requires_agent",
+    agentWorkType: "youtube_transcription",
+    plannedExtractionMethod: "audio_transcription",
+    item: { title: "Large video", url: "https://youtube.com/watch?v=diskspace01", rawJson: {} },
+  };
+  const ordinaryTask = {
+    id: "article-still-runs",
+    sourceType: "blog",
+    contentStatus: "requires_agent",
+    agentWorkType: "blog_article_fetch",
+    item: { title: "Article", url: "https://example.com/article" },
+  };
+  try {
+    const prepared = await cli.prepareManagedMediaTasksForTest(
+      { fetchTasks: [failedMedia, ordinaryTask], taskOutcomes: [] },
+      {
+        artifactRoot: dir,
+        transcribeTask: async () => ({
+          text: "",
+          reason: "insufficient_disk_space",
+          attempts: [{ method: "local-asr", status: "failed", reason: "insufficient_disk_space" }],
+        }),
+      },
+    );
+
+    assert.deepEqual(prepared.fetchTasks, [ordinaryTask]);
+    assert.equal(prepared.taskOutcomes.length, 1);
+    assert.equal(prepared.taskOutcomes[0].fetchTaskId, "media-no-space");
+    assert.equal(prepared.taskOutcomes[0].status, "failed");
+    assert.equal(prepared.taskOutcomes[0].reason, "insufficient_disk_space");
+    assert.equal(prepared.managedMediaPreparation.failed, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("managed ASR reuses a completed transcript artifact without running tools again", async () => {
   const cli = await import(`../scripts/builder-digest.mjs?asr-resume=${Date.now()}`);
   const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-resume-"));

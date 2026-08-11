@@ -75,6 +75,7 @@ test("server builds one deterministic bundle covering the complete installed run
     "builder-digest.mjs",
     "new-product-launches.mjs",
     "cloud-shard-budget.mjs",
+    "run-storage.mjs",
     "builder-agent-runner.sh",
     "builder-library-cron-install.sh",
     "install-agent-skill-bundle.cjs",

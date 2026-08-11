@@ -94,6 +94,12 @@ export const agentSkillFiles = {
     contentType: "text/javascript; charset=utf-8",
     mode: 0o644,
   },
+  "run-storage.mjs": {
+    sourcePath: "scripts/run-storage.mjs",
+    target: "run-storage.mjs",
+    contentType: "text/javascript; charset=utf-8",
+    mode: 0o644,
+  },
   "install-agent-skill-bundle.cjs": {
     sourcePath: "scripts/install-agent-skill-bundle.cjs",
     target: "install-agent-skill-bundle.cjs",

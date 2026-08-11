@@ -483,7 +483,7 @@ test("cloud library runner reuses the library worker pipeline with cloud fetch a
   assert.match(runner, /shard_timeout_seconds_for_file\(\)/);
   assert.match(runner, /set_initial_worker_window_deadline\(\)/);
   assert.match(runner, /current_outer_deadline_epoch_seconds\(\)/);
-  assert.match(runner, /_worker_entries="\$\{_worker_entries:-\} \$!:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id"/);
+  assert.match(runner, /_slw_worker_pid="\$!"[\s\S]*_worker_entries="\$\{_worker_entries:-\} \$_slw_worker_pid:\$\(date \+%s\):\$_slw_shard_name:\$_slw_lane_id"/);
   assert.doesNotMatch(runner, /_worker_entries=.*_slw_shard_file/);
   assert.match(runner, /for _entry in \$\{_worker_entries:-\}/);
   assert.match(runner, /case " \$\{_timed_out_worker_pids:-\} " in/);

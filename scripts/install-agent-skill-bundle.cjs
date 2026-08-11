@@ -25,6 +25,7 @@ const REQUIRED_TARGETS = Object.freeze([
   "builder-digest.mjs",
   "new-product-launches.mjs",
   "cloud-shard-budget.mjs",
+  "run-storage.mjs",
   "builder-agent-runner.sh",
   "builder-library-cron-install.sh",
   "install-agent-skill-bundle.cjs",
