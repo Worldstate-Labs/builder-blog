@@ -3913,7 +3913,7 @@ run_with_job_tracking() {
       case "$_partial_failure_count" in ''|*[!0-9]*) _partial_failure_count=0 ;; esac
       _cleanup_status="succeeded"
       _cleanup_reason="partial_task_failures"
-      job_run_update succeeded "Runtime completed; $_partial_failure_count post task(s) failed and are recorded in the fetch log." "partial_task_failures" \
+      job_run_update succeeded "Runtime completed; $_partial_failure_count task(s) failed and are recorded in the fetch log." "partial_task_failures" \
         --stage "completed" \
         --exit-code "$_code"
     else
@@ -4293,6 +4293,18 @@ normalize_library_fetch_batch() {
     job_run_update running "Discovery agent exited nonzero; validating any result it produced." "discovery_agent_exited" \
       --stage "expand_discovery" \
       --exit-code "$_nlfb_agent_code"
+    if [ "${_sync_command:-sync-builders}" != "sync-cloud-builders" ]; then
+      _discovery_runtime_failed=1
+      if [ "${_discovery_runtime_failure_code:-0}" -eq 0 ]; then
+        # Exit 65 is reserved for fully accounted partial work. A discovery
+        # runtime failure must remain fatal even when it wrote parseable JSON.
+        if [ "$_nlfb_agent_code" -eq 65 ]; then
+          _discovery_runtime_failure_code=70
+        else
+          _discovery_runtime_failure_code="$_nlfb_agent_code"
+        fi
+      fi
+    fi
   fi
   _nlfb_result_valid=0
   if node - "$_nlfb_result" <<'NODE' >/dev/null 2>&1
@@ -4333,6 +4345,43 @@ NODE
   fi
 
   mv "$_nlfb_expanded" "$_nlfb_file"
+  if [ "${_sync_command:-sync-builders}" != "sync-cloud-builders" ]; then
+    if _nlfb_discovery_failure_count="$(node - "$_nlfb_file" <<'NODE'
+const fs = require("fs");
+const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const outcomes = Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [];
+const count = outcomes.filter((outcome) => {
+  const status = String(outcome?.status || "").trim().toLowerCase();
+  if (status !== "failed" && status !== "blocked") return false;
+  const id = String(outcome?.fetchTaskId || outcome?.taskId || "");
+  const task = outcome?.plannedTask;
+  if (task?.agentWorkType === "candidate_discovery_fallback" || task?.type === "candidate_discovery") {
+    return true;
+  }
+  const hasExplicitTaskKind = Boolean(
+    String(task?.agentWorkType || "").trim() || String(task?.type || "").trim(),
+  );
+  return id.startsWith("candidate_discovery:") && !hasExplicitTaskKind;
+}).length;
+process.stdout.write(String(count));
+NODE
+    )"; then
+      case "$_nlfb_discovery_failure_count" in
+        ''|*[!0-9]*)
+          echo "Discovery normalization produced an invalid failure count for $_nlfb_scope." >&2
+          return 65
+          ;;
+      esac
+      if [ "$_nlfb_discovery_failure_count" -gt 0 ]; then
+        _discovery_failed=1
+        job_run_update running "Discovery completed with source-level failures for $_nlfb_scope." "discovery_partial" \
+          --stage "expand_discovery"
+      fi
+    else
+      echo "Discovery normalization result could not be inspected for $_nlfb_scope." >&2
+      return 65
+    fi
+  fi
   if library_has_discovery_tasks "$_nlfb_file"; then
     echo "Discovery normalization left fallback tasks in $_nlfb_scope." >&2
     job_run_update failed "Discovery normalization left unresolved fallback tasks in $_nlfb_scope." "discovery_normalization_incomplete" \
@@ -5692,6 +5741,8 @@ run_library_job() {
   job_run_update running "Fetching source candidates." "fetch_started" --stage "fetch_sources"
   _fetch_stderr="$JOB_TMP_DIR/library-fetch.err"
   _discovery_failed=0
+  _discovery_runtime_failed=0
+  _discovery_runtime_failure_code=0
   set +e
   if [ "$_fetch_command" = "fetch-cloud-library" ]; then
     _cloud_fetch_source_limit="$(cloud_fetch_source_limit)"
@@ -5756,12 +5807,6 @@ run_library_job() {
   }
 
   if [ "$_task_count" -eq 0 ]; then
-    if [ "$_discovery_failed" -ne 0 ] && [ "$_sync_command" != "sync-cloud-builders" ]; then
-      echo "Discovery failed before any post tasks could be planned." >&2
-      job_run_update failed "Discovery failed before any post tasks could be planned." "discovery_failed" \
-        --stage "expand_discovery"
-      return 65
-    fi
     patch_current_fetch_plans
     if sync_personal_terminal_outcomes "$_result_file"; then
       :
@@ -5780,6 +5825,21 @@ run_library_job() {
         --stage "sync_cloud_terminal_outcomes" \
         --exit-code "$_scto_code"
       return "$_scto_code"
+    fi
+    if [ "$_sync_command" != "sync-cloud-builders" ]; then
+      if [ "$_discovery_runtime_failed" -ne 0 ]; then
+        echo "Discovery runtime failed before any post tasks could be planned." >&2
+        job_run_update failed "Discovery runtime failed before any post tasks could be planned." "discovery_runtime_failed" \
+          --stage "expand_discovery" \
+          --exit-code "$_discovery_runtime_failure_code"
+        return "$_discovery_runtime_failure_code"
+      fi
+      if [ "$_discovery_failed" -ne 0 ]; then
+        echo "Discovery failed before any post tasks could be planned." >&2
+        job_run_update failed "Discovery failed before any post tasks could be planned." "discovery_failed" \
+          --stage "expand_discovery"
+        return 65
+      fi
     fi
     if [ "$_cloud_persistent_host" -eq 1 ]; then
       echo "No cloud source work available yet. Worker host will wait and ask again."
@@ -6171,6 +6231,10 @@ run_library_job() {
   fi
   if [ "${_managed_media_failure_code:-0}" -ne 0 ]; then
     return "$_managed_media_failure_code"
+  fi
+  if [ "$_discovery_runtime_failed" -ne 0 ]; then
+    echo "Library run completed post-task sync, but the discovery runtime failed." >&2
+    return "$_discovery_runtime_failure_code"
   fi
   if [ "$_discovery_failed" -ne 0 ]; then
     echo "Library run completed normal post-task sync, but discovery failed for at least one source." >&2

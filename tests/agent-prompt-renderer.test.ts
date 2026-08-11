@@ -420,7 +420,7 @@ test("renderAgentPrompt slices OpenClaw parent and child setup prompts independe
     setupBlock,
     /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
   );
-  assert.match(setupBlock, /FAILED_POST_DETAILS="\$\(/);
+  assert.match(setupBlock, /FAILED_TASK_DETAILS="\$\(/);
   assert.match(
     setupBlock,
     /if ! rm -- "\$RESUME_CONTRACT_PATH" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$RESUME_CONTRACT_PATH" \] \|\| \[ -L "\$RESUME_CONTRACT_PATH" \]; \}; then[\s\S]*echo "Failed to remove file: \$RESUME_CONTRACT_PATH" >&2[\s\S]*exit 1[\s\S]*fi/,

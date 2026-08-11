@@ -123,7 +123,7 @@ test("library setup verifies the current initial run before mutating scheduler s
     /verify-library-setup-verdict[\s\S]*--file "\$SETUP_VERDICT_FILE"[\s\S]*--instance-id "\$EXPECTED_INSTANCE_ID"[\s\S]*--runner-exit-code "\$RUNNER_EXIT_CODE"/,
   );
   assert.match(stepSixBlock, /node - "\$SETUP_VERDICT_JSON" <<'NODE'/);
-  assert.match(stepSixBlock, /FAILED_POST_DETAILS="\$\(/);
+  assert.match(stepSixBlock, /FAILED_TASK_DETAILS="\$\(/);
   assert.match(stepSixBlock, /Array\.isArray\(verdict\.failures\)/);
   assert.doesNotMatch(stepSixBlock, /verdict\.failedPosts/);
   assert.match(

@@ -1307,6 +1307,77 @@ grep "no_update" "$UPDATES_LOG" >/dev/null
   }
 });
 
+test("regular library runner syncs source outcomes but keeps discovery runtime failures fatal", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_personal_terminal_outcomes() {");
+  const end = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ]', start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-regular-discovery-runtime-failure-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    const syncLog = join(dir, "sync.log");
+    const updatesLog = join(dir, "updates.log");
+    const fakeResult = JSON.stringify({
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: "candidate_discovery:product_hunt",
+        status: "blocked",
+        reason: "product_hunt_discovery_blocked",
+        evidence: { blocker: "Cloudflare challenge" },
+      }],
+    });
+    await writeFile(
+      checkPath,
+      `set -eu
+SYNC_LOG="${syncLog}"
+UPDATES_LOG="${updatesLog}"
+${runner.slice(start, end)}
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+cloud_refill_limit() { printf '100\\n'; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+run_openclaw_library_preflight() { return 0; }
+job_run_update() { printf '%s\\n' "$*" >> "$UPDATES_LOG"; }
+print_compact_json_artifact_summary() { :; }
+normalize_library_fetch_batch() {
+  _discovery_failed=1
+  _discovery_runtime_failed=1
+  _discovery_runtime_failure_code=19
+}
+library_fetch_task_count() { printf '0\\n'; }
+patch_current_fetch_plans() { printf 'patch\\n' >> "$UPDATES_LOG"; }
+sync_personal_terminal_outcomes() { printf 'personal-sync\\n' >> "$SYNC_LOG"; }
+sync_cloud_terminal_outcomes() { :; }
+node() { printf '%s\\n' '${fakeResult}'; }
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+MAX_PARALLEL_WORKERS=1
+PINNED_RUNTIME=codex
+ACCOUNT_SLUG=test-account
+JOB_NAME=library-cron
+BUILDER_BLOG_FETCH_DAYS=30
+BUILDER_BLOG_FETCH_LIMIT=3
+BUILDER_BLOG_FETCH_FORCE=
+if run_library_job fetch-personal sync-builders library-fetch-result.json "source library"; then
+  run_code=0
+else
+  run_code="$?"
+fi
+[ "$run_code" -eq 19 ] || exit 31
+[ "$(grep -c '^personal-sync$' "$SYNC_LOG")" -eq 1 ] || exit 32
+grep 'discovery_runtime_failed' "$UPDATES_LOG" >/dev/null
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud library runner skips planned-only sync when zero-task result has no syncable outcomes", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const start = runner.indexOf("sync_personal_terminal_outcomes() {");
@@ -1665,6 +1736,9 @@ test("batch discovery normalization settles blocked fallbacks with scoped artifa
     const failedTasksFile = join(dir, "cloud-fetch-refill-5.json");
     const expansionFailedTasksFile = join(dir, "cloud-fetch-refill-6.json");
     const validResultAfterRuntimeFailureTasksFile = join(dir, "cloud-fetch-refill-7.json");
+    const personalBlockedTasksFile = join(dir, "personal-fetch-initial.json");
+    const personalRuntimeFailureTasksFile = join(dir, "personal-fetch-runtime-failed.json");
+    const personalMalformedPrefixTasksFile = join(dir, "personal-fetch-malformed-prefix.json");
     const envLog = join(dir, "discovery-env.log");
     const discoveryFetchResult = {
         status: "ok",
@@ -1704,6 +1778,9 @@ test("batch discovery normalization settles blocked fallbacks with scoped artifa
       JSON.stringify(discoveryFetchResult),
       "utf8",
     );
+    await writeFile(personalBlockedTasksFile, JSON.stringify(discoveryFetchResult), "utf8");
+    await writeFile(personalRuntimeFailureTasksFile, JSON.stringify(discoveryFetchResult), "utf8");
+    await writeFile(personalMalformedPrefixTasksFile, JSON.stringify(discoveryFetchResult), "utf8");
     const checkPath = join(dir, "check.sh");
     await writeFile(
       checkPath,
@@ -1731,6 +1808,7 @@ ACCOUNT_SLUG=test-account
 JOB_NAME=cloud-library-cron
 BUILDER_BLOG_ACCOUNT=test@example.com
 _discovery_failed=0
+_sync_command=sync-cloud-builders
 TEST_DISCOVERY_MODE=blocked
 export TEST_DISCOVERY_MODE
 normalize_library_fetch_batch "${tasksFile}" "refill-4"
@@ -1748,6 +1826,12 @@ node() {
   if [ "$TEST_EXPANSION_MODE" = "failed" ] && [ "$1" = "$AGENT_DIR/builder-digest.mjs" ]; then
     return 23
   fi
+  if [ "$TEST_EXPANSION_MODE" = "malformed_post_prefix" ] && [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "expand-discovery" ]; then
+    cat > "$8" <<'JSON'
+{"fetchTasks":[],"taskOutcomes":[{"fetchTaskId":"candidate_discovery:not-a-discovery","status":"blocked","reason":"post_fetch_blocked","evidence":{"blocker":"HTTP 403"},"plannedTask":{"id":"candidate_discovery:not-a-discovery","type":"fetch_post","agentWorkType":"fetch_post","builder":"Ordinary post","sourceType":"blog"}}]}
+JSON
+    return 0
+  fi
   command node "$@"
 }
 set +e
@@ -1761,6 +1845,32 @@ _discovery_failed=0
 normalize_library_fetch_batch "${validResultAfterRuntimeFailureTasksFile}" "refill-7"
 [ "$_discovery_failed" -eq 0 ] || exit 70
 command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(payload.taskOutcomes?.[0]?.status!=="blocked") process.exit(71);if(payload.taskOutcomes?.[0]?.reason!=="product_hunt_discovery_blocked") process.exit(72);' "${validResultAfterRuntimeFailureTasksFile}"
+_sync_command=sync-builders
+TEST_DISCOVERY_MODE=blocked
+_discovery_failed=0
+_discovery_runtime_failed=0
+_discovery_runtime_failure_code=0
+normalize_library_fetch_batch "${personalBlockedTasksFile}" "initial"
+[ "$_discovery_failed" -eq 1 ] || exit 73
+[ "$_discovery_runtime_failed" -eq 0 ] || exit 74
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(payload.taskOutcomes?.[0]?.status!=="blocked") process.exit(74);if(payload.taskOutcomes?.[0]?.reason!=="product_hunt_discovery_blocked") process.exit(75);' "${personalBlockedTasksFile}"
+TEST_DISCOVERY_MODE=writes_then_fails
+_discovery_failed=0
+_discovery_runtime_failed=0
+_discovery_runtime_failure_code=0
+normalize_library_fetch_batch "${personalRuntimeFailureTasksFile}" "runtime-failed"
+[ "$_discovery_failed" -eq 1 ] || exit 76
+[ "$_discovery_runtime_failed" -eq 1 ] || exit 77
+[ "$_discovery_runtime_failure_code" -eq 19 ] || exit 78
+command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(payload.taskOutcomes?.[0]?.status!=="blocked") process.exit(79);if(payload.taskOutcomes?.[0]?.reason!=="product_hunt_discovery_blocked") process.exit(80);' "${personalRuntimeFailureTasksFile}"
+TEST_DISCOVERY_MODE=blocked
+TEST_EXPANSION_MODE=malformed_post_prefix
+_discovery_failed=0
+_discovery_runtime_failed=0
+_discovery_runtime_failure_code=0
+normalize_library_fetch_batch "${personalMalformedPrefixTasksFile}" "malformed-prefix"
+[ "$_discovery_failed" -eq 0 ] || exit 81
+[ "$_discovery_runtime_failed" -eq 0 ] || exit 82
 `,
       "utf8",
     );

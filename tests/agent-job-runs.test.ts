@@ -1256,7 +1256,7 @@ test("library runs that exit 65 with durably recorded partial failures report su
   );
   assert.match(
     runner,
-    /job_run_update succeeded "Runtime completed; \$_partial_failure_count post task\(s\) failed and are recorded in the fetch log\." "partial_task_failures" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/,
+    /job_run_update succeeded "Runtime completed; \$_partial_failure_count task\(s\) failed and are recorded in the fetch log\." "partial_task_failures" \\\n\s+--stage "completed" \\\n\s+--exit-code "\$_code"/,
   );
   assert.match(runner, /job_run_update failed "Runtime exited with code \$_code\." "runtime_finished" \\\n\s+--exit-code "\$_code"/);
 

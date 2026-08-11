@@ -7,10 +7,14 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 type JsonRecord = Record<string, unknown>;
+type SetupVerdict = JsonRecord & {
+  status: string;
+  failures: Array<Record<string, unknown>>;
+};
 
 async function verdictModule() {
   return import("../scripts/builder-digest.mjs") as Promise<{
-    classifyLibrarySetupVerdictForTest?: (input: JsonRecord) => JsonRecord;
+    classifyLibrarySetupVerdictForTest?: (input: JsonRecord) => SetupVerdict;
   }>;
 }
 
@@ -222,7 +226,7 @@ test("allows a missing shard only after its synthesized terminal failure was acc
   assert.equal(verdict.status, "needs_confirmation");
 });
 
-test("keeps candidate discovery and runtime authentication failures fatal", async () => {
+test("requires confirmation for source discovery failures while keeping runtime authentication fatal", async () => {
   const cli = await verdictModule();
   const post = postTask("post-auth");
   const discovery = discoveryTask("candidate_discovery:ph");
@@ -234,6 +238,7 @@ test("keeps candidate discovery and runtime authentication failures fatal", asyn
       fetchTaskId: discovery.id,
       status: "failed",
       reason: "candidate_discovery_failed",
+      evidence: { blocker: "Provider rejected the discovery request" },
       plannedTask: discovery,
     }],
   }));
@@ -251,8 +256,190 @@ test("keeps candidate discovery and runtime authentication failures fatal", asyn
     },
   }));
 
-  assert.equal(discoveryVerdict.status, "fatal");
+  assert.equal(discoveryVerdict.status, "needs_confirmation");
+  assert.deepEqual(discoveryVerdict.failures, [{
+    fetchTaskId: discovery.id,
+    title: "Product Hunt discovery",
+    source: "Product Hunt · product_hunt",
+    stage: "read",
+    reason: "candidate_discovery_failed",
+  }]);
   assert.equal(authVerdict.status, "fatal");
+});
+
+test("keeps legacy runner exit 0 fatal when discovery failed", async () => {
+  const cli = await verdictModule();
+  const post = postTask("post-synced");
+  const discovery = discoveryTask("candidate_discovery:product_hunt");
+  const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 0,
+    tasks: [post],
+    syncPayload: syncedItem(post.id),
+    taskOutcomes: [{
+      fetchTaskId: discovery.id,
+      status: "blocked",
+      reason: "product_hunt_discovery_blocked",
+      evidence: { blocker: "HTTP 403" },
+      plannedTask: discovery,
+    }],
+  }));
+
+  assert.equal(verdict.status, "fatal");
+  assert.equal(verdict.runnerExitCode, 0);
+  assert.equal(verdict.plannedTaskCount, 1);
+  assert.equal(verdict.synchronizedTerminalTaskCount, 1);
+  assert.deepEqual(verdict.failures, [{
+    fetchTaskId: discovery.id,
+    title: "Product Hunt discovery",
+    source: "Product Hunt · product_hunt",
+    stage: "read",
+    reason: "product_hunt_discovery_blocked",
+  }]);
+});
+
+test("keeps missing discovery evidence and internal normalization failures fatal", async () => {
+  const cli = await verdictModule();
+  const post = postTask("post-synced");
+  const discovery = discoveryTask("candidate_discovery:product_hunt");
+  const missingEvidence = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 65,
+    tasks: [post],
+    syncPayload: syncedItem(post.id),
+    taskOutcomes: [{
+      fetchTaskId: discovery.id,
+      status: "blocked",
+      reason: "product_hunt_discovery_blocked",
+      plannedTask: discovery,
+    }],
+  }));
+  const missingResult = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 65,
+    tasks: [post],
+    syncPayload: syncedItem(post.id),
+    taskOutcomes: [{
+      fetchTaskId: discovery.id,
+      status: "failed",
+      reason: "candidate_discovery_result_missing",
+      evidence: { failureKind: "candidate_discovery_result_missing" },
+      plannedTask: discovery,
+    }],
+  }));
+
+  assert.equal(missingEvidence.status, "fatal");
+  assert.equal(missingResult.status, "fatal");
+  assert.equal(missingEvidence.failures[0]?.reason, "product_hunt_discovery_blocked");
+  assert.equal(missingResult.failures[0]?.reason, "candidate_discovery_result_missing");
+});
+
+test("keeps conflicting or unexpected discovery outcomes fatal", async () => {
+  const cli = await verdictModule();
+  const post = postTask("post-synced");
+  const discovery = discoveryTask("candidate_discovery:product_hunt");
+  const base = classificationInput({
+    runnerExitCode: 65,
+    tasks: [post],
+    syncPayload: {
+      ...syncedItem(post.id),
+      taskOutcomes: [{
+        fetchTaskId: discovery.id,
+        status: "blocked",
+        reason: "product_hunt_discovery_blocked",
+        evidence: { blocker: "HTTP 403" },
+      }],
+    },
+    taskOutcomes: [{
+      fetchTaskId: discovery.id,
+      status: "failed",
+      reason: "candidate_discovery_failed",
+      evidence: { blocker: "Provider error" },
+      plannedTask: discovery,
+    }],
+  });
+  const conflicting = cli.classifyLibrarySetupVerdictForTest!(base);
+  const unexpected = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 0,
+    tasks: [post],
+    syncPayload: syncedItem(post.id),
+    taskOutcomes: [{
+      fetchTaskId: discovery.id,
+      status: "synced",
+      reason: "unexpected_discovery_success_outcome",
+      evidence: { candidates: 3 },
+      plannedTask: discovery,
+    }],
+  }));
+
+  assert.equal(conflicting.status, "fatal");
+  assert.equal(unexpected.status, "fatal");
+});
+
+test("does not trust a discovery id prefix when task metadata declares a post", async () => {
+  const cli = await verdictModule();
+  const task = postTask("candidate_discovery:not-a-discovery", { type: "fetch_post" });
+  const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 65,
+    tasks: [task],
+    syncPayload: {
+      builders: [],
+      taskOutcomes: [{
+        fetchTaskId: task.id,
+        status: "blocked",
+        reason: "post_fetch_blocked",
+        evidence: { blocker: "HTTP 403" },
+        plannedTask: task,
+      }],
+    },
+  }));
+
+  assert.equal(verdict.status, "fatal");
+});
+
+test("keeps post failures fatal when the runner incorrectly exits 0", async () => {
+  const cli = await verdictModule();
+  const post = postTask("post-failed-with-zero-exit");
+  const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 0,
+    tasks: [post],
+    syncPayload: {
+      builders: [],
+      taskOutcomes: [{
+        fetchTaskId: post.id,
+        status: "failed",
+        reason: "task_validation_failed",
+      }],
+    },
+  }));
+
+  assert.equal(verdict.status, "fatal");
+});
+
+test("preserves discovery task identity when a later sync outcome omits plannedTask", async () => {
+  const cli = await verdictModule();
+  const post = postTask("post-synced");
+  const discovery = discoveryTask("candidate_discovery:product_hunt");
+  const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 65,
+    tasks: [post],
+    syncPayload: {
+      ...syncedItem(post.id),
+      taskOutcomes: [{
+        fetchTaskId: discovery.id,
+        status: "blocked",
+        reason: "product_hunt_discovery_blocked",
+      }],
+    },
+    taskOutcomes: [{
+      fetchTaskId: discovery.id,
+      status: "blocked",
+      reason: "product_hunt_discovery_blocked",
+      evidence: { blocker: "HTTP 403" },
+      plannedTask: discovery,
+    }],
+  }));
+
+  assert.equal(verdict.status, "needs_confirmation");
+  assert.equal(verdict.failures.length, 1);
+  assert.equal(verdict.failures[0]?.title, "Product Hunt discovery");
 });
 
 test("accepts only well-formed durably synchronized user actions", async () => {
@@ -328,12 +515,47 @@ test("allows the true zero-non-discovery-task path only on exit 0", async () => 
       }],
     },
   });
+  const discovery = discoveryTask("candidate_discovery:product_hunt");
+  const discoveryOnlyPartial = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 65,
+    instanceId: randomUUID(),
+    fetchResult: {
+      fetchTasks: [],
+      taskOutcomes: [{
+        fetchTaskId: discovery.id,
+        status: "blocked",
+        reason: "product_hunt_discovery_blocked",
+        evidence: { blocker: "HTTP 403" },
+        plannedTask: discovery,
+      }],
+    },
+  });
+  const tooManyDiscoveryFailures = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 65,
+    instanceId: randomUUID(),
+    fetchResult: {
+      fetchTasks: [],
+      taskOutcomes: Array.from({ length: 201 }, (_, index) => {
+        const task = discoveryTask(`candidate_discovery:source-${index}`);
+        return {
+          fetchTaskId: task.id,
+          status: "blocked",
+          reason: "candidate_discovery_blocked",
+          evidence: { blocker: "Provider unavailable" },
+          plannedTask: task,
+        };
+      }),
+    },
+  });
 
   assert.equal(ok.status, "ok");
   assert.equal(failed.status, "fatal");
   assert.equal(failedSourceOutcome.status, "fatal");
   assert.equal(malformedSourceOutcome.status, "fatal");
   assert.equal(safelySkippedSourceOutcome.status, "ok");
+  assert.equal(discoveryOnlyPartial.status, "needs_confirmation");
+  assert.equal(discoveryOnlyPartial.failures.length, 1);
+  assert.equal(tooManyDiscoveryFailures.status, "fatal");
 });
 
 test("treats skipped posts as terminal non-failures and overall timeouts as fatal", async () => {
@@ -574,6 +796,72 @@ test("verifier rejects duplicate and unknown fields before JSON.parse can overwr
       ]);
       assert.notEqual(result.status, 0, `${file} should fail verification`);
     }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("verifier rejects a discovery-only confirmation verdict after runner exit 0", async () => {
+  const root = await mkdtemp(join(tmpdir(), "followbrief-verdict-discovery-partial-"));
+  const instanceId = randomUUID();
+  const file = join(root, "verdict.json");
+  try {
+    await writeJson(file, {
+      schemaVersion: 1,
+      status: "needs_confirmation",
+      runnerExitCode: 0,
+      instanceId,
+      plannedTaskCount: 32,
+      synchronizedTerminalTaskCount: 32,
+      failures: [{
+        fetchTaskId: "candidate_discovery:product_hunt",
+        title: "Product Hunt discovery",
+        source: "Product Hunt · product_hunt",
+        stage: "read",
+        reason: "product_hunt_discovery_blocked",
+      }],
+    });
+
+    const verified = runVerdictCli([
+      "verify-library-setup-verdict",
+      "--file", file,
+      "--instance-id", instanceId,
+      "--runner-exit-code", "0",
+    ]);
+    assert.notEqual(verified.status, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("verifier rejects a post confirmation verdict after runner exit 0", async () => {
+  const root = await mkdtemp(join(tmpdir(), "followbrief-verdict-post-zero-exit-"));
+  const instanceId = randomUUID();
+  const file = join(root, "verdict.json");
+  try {
+    await writeJson(file, {
+      schemaVersion: 1,
+      status: "needs_confirmation",
+      runnerExitCode: 0,
+      instanceId,
+      plannedTaskCount: 1,
+      synchronizedTerminalTaskCount: 1,
+      failures: [{
+        fetchTaskId: "post-failed-with-zero-exit",
+        title: "Failed post",
+        source: "Example · blog",
+        stage: "summarize",
+        reason: "task_validation_failed",
+      }],
+    });
+
+    const verified = runVerdictCli([
+      "verify-library-setup-verdict",
+      "--file", file,
+      "--instance-id", instanceId,
+      "--runner-exit-code", "0",
+    ]);
+    assert.notEqual(verified.status, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

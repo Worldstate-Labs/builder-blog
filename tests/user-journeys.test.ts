@@ -1684,8 +1684,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SETUP_INITIAL=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_RUN_ID="\$EXPECTED_INSTANCE_ID"/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SETUP_VERDICT_FILE="\$SETUP_VERDICT_FILE"/);
-  assert.match(libraryCronSetupPrompt, /If the verified verdict was `"ok"`[\s\S]*validation run completed without failed post tasks/);
-  assert.match(libraryCronSetupPrompt, /If the verified verdict was `"needs_confirmation"`[\s\S]*listed every failed post/);
+  assert.match(libraryCronSetupPrompt, /If the verified verdict was `"ok"`[\s\S]*validation run completed without failed tasks/);
+  assert.match(libraryCronSetupPrompt, /If the verified verdict was `"needs_confirmation"`[\s\S]*listed every failed post or source task/);
   assert.match(libraryCronSetupPrompt, /Only\s+continue to step 8 if the user explicitly agrees/);
   assert.doesNotMatch(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
@@ -1702,7 +1702,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.ok(libraryStepSixBlockIndex >= 0, "library setup prompt must keep contract handling in step 6");
   const libraryStepSixBlock = librarySetupBlocks[libraryStepSixBlockIndex]!;
   assert.match(libraryStepSixBlock, /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/);
-  assert.match(libraryStepSixBlock, /FAILED_POST_DETAILS="\$\(/);
+  assert.match(libraryStepSixBlock, /FAILED_TASK_DETAILS="\$\(/);
   assert.match(
     libraryStepSixBlock,
     /if ! rm -- "\$RESUME_CONTRACT_PATH" 2>\/dev\/null &&[\s\S]*\{ \[ -e "\$RESUME_CONTRACT_PATH" \] \|\| \[ -L "\$RESUME_CONTRACT_PATH" \]; \}; then[\s\S]*echo "Failed to remove file: \$RESUME_CONTRACT_PATH" >&2[\s\S]*exit 1[\s\S]*fi/,

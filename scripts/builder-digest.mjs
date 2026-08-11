@@ -272,10 +272,23 @@ const SETUP_VERDICT_MAX_FAILURES = 200;
 const SETUP_VERDICT_MAX_BYTES = 64 * 1024;
 const SETUP_VERDICT_STATUSES = new Set(["ok", "needs_confirmation", "fatal"]);
 const SETUP_VERDICT_FAILURE_STAGES = new Set(["read", "summarize", "sync"]);
+const SETUP_DISCOVERY_FATAL_REASONS = new Set([
+  "candidate_discovery_result_missing",
+  "candidate_discovery_unsupported",
+  "runtime_auth_failed",
+]);
 
 function setupTaskKind(task) {
-  if (isCandidateDiscoveryFetchTask(task)) return "discovery";
   if (isUserActionAgentWorkType(task?.agentWorkType)) return "user_action";
+  if (
+    isCandidateDiscoveryAgentWorkType(task?.agentWorkType) ||
+    task?.type === "candidate_discovery"
+  ) return "discovery";
+  if (
+    isCandidateDiscoveryTaskId(task?.id) &&
+    !String(task?.agentWorkType || "").trim() &&
+    !String(task?.type || "").trim()
+  ) return "discovery";
   return "post";
 }
 
@@ -344,7 +357,19 @@ function setupSyncTerminalOutcomes(payload) {
   return outcomes;
 }
 
-function setupDiscoveryFailed(fetchResult, syncPayload, failurePayloads) {
+function setupDiscoveryFailureEntry(task, outcome) {
+  const entry = setupFailureEntry(task, outcome);
+  return {
+    ...entry,
+    title: setupVerdictBoundedText(
+      task?.builder ? `${task.builder} discovery` : entry.title,
+      240,
+      entry.fetchTaskId,
+    ),
+  };
+}
+
+function setupDiscoveryFailureState(fetchResult, syncPayload, failurePayloads) {
   const candidates = [
     ...(Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []),
     ...(Array.isArray(syncPayload?.taskOutcomes) ? syncPayload.taskOutcomes : []),
@@ -352,11 +377,80 @@ function setupDiscoveryFailed(fetchResult, syncPayload, failurePayloads) {
       Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []
     )),
   ];
-  return candidates.some((outcome) => {
-    if (!isCandidateDiscoveryOutcome(outcome)) return false;
-    const status = String(outcome?.status || "").trim().toLowerCase();
-    return status === "failed" || status === "blocked" || status === "action_needed";
-  });
+  const outcomesById = new Map();
+  let fatal = false;
+  for (const outcome of candidates) {
+    if (!isCandidateDiscoveryOutcome(outcome)) continue;
+    const id = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
+    if (!id) {
+      fatal = true;
+      continue;
+    }
+    const matching = outcomesById.get(id) ?? [];
+    matching.push(outcome);
+    outcomesById.set(id, matching);
+  }
+
+  const failures = [];
+  for (const [id, outcomes] of outcomesById) {
+    const statuses = new Set(outcomes.map((outcome) => (
+      String(outcome?.status || "").trim().toLowerCase()
+    )));
+    const reasons = new Set(outcomes.map((outcome) => (
+      String(outcome?.reason || "").trim()
+    )));
+    const tasks = outcomes
+      .map((outcome) => outcome?.plannedTask)
+      .filter((task) => task && typeof task === "object" && !Array.isArray(task));
+    const hasMalformedTask = outcomes.some((outcome) => (
+      outcome?.plannedTask != null &&
+      (!outcome.plannedTask || typeof outcome.plannedTask !== "object" || Array.isArray(outcome.plannedTask))
+    ));
+    const task = tasks[0];
+    const taskSignatures = new Set(tasks.map((candidate) => JSON.stringify({
+      id: taskIdForSync(candidate),
+      agentWorkType: candidate?.agentWorkType ?? null,
+      type: candidate?.type ?? null,
+      builderId: candidate?.builderId ?? candidate?.builderSync?.builderId ?? null,
+      sourceType: candidate?.sourceType ?? candidate?.builderSync?.sourceType ?? null,
+    })));
+    const evidence = outcomes
+      .map((outcome) => outcome?.evidence)
+      .find((value) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0);
+    const hasFatalFailureKind = outcomes.some((outcome) => (
+      SETUP_DISCOVERY_FATAL_REASONS.has(setupOutcomeFailureKind(outcome))
+    ));
+    const status = [...statuses][0] ?? "";
+    const reason = statuses.size > 1
+      ? "conflicting_discovery_statuses"
+      : reasons.size > 1
+        ? "conflicting_discovery_reasons"
+        : [...reasons][0] ?? "";
+    const validTask = (
+      task && setupTaskKind(task) === "discovery" && taskIdForSync(task) === id &&
+      taskSignatures.size === 1
+    );
+    const validFailure = (
+      statuses.size === 1 && (status === "failed" || status === "blocked") &&
+      reasons.size === 1 && Boolean(reason) && Boolean(evidence)
+    );
+    const outcome = { ...outcomes.at(-1), status, reason, evidence, plannedTask: task };
+    const outcomeIsFatal = (
+      hasMalformedTask || !validTask || !validFailure || validateTaskOutcome(outcome).length > 0 ||
+      hasFatalFailureKind ||
+      SETUP_DISCOVERY_FATAL_REASONS.has(reason)
+    );
+
+    // Fatal discovery outcomes must remain visible when their source identity is trustworthy.
+    // This keeps setup fail-closed without reducing the verdict to an unexplained `failures: []`.
+    if (validTask) failures.push(setupDiscoveryFailureEntry(task, outcome));
+    if (outcomeIsFatal) {
+      fatal = true;
+      continue;
+    }
+  }
+
+  return { fatal, failures };
 }
 
 function setupFatalVerdict(instanceId, runnerExitCode, plannedTaskCount = 0, synchronizedTerminalTaskCount = 0, failures = []) {
@@ -369,6 +463,11 @@ function setupFatalVerdict(instanceId, runnerExitCode, plannedTaskCount = 0, syn
     synchronizedTerminalTaskCount,
     failures: failures.slice(0, SETUP_VERDICT_MAX_FAILURES),
   };
+}
+
+function setupRunnerExitAllowsConfirmation(runnerExitCode, failures) {
+  if (!Array.isArray(failures) || failures.length === 0) return false;
+  return runnerExitCode === 65;
 }
 
 function setupZeroTaskOutcomesAreSafe(fetchResult) {
@@ -384,7 +483,12 @@ function setupZeroTaskOutcomesAreSafe(fetchResult) {
 
     const status = String(outcome?.status || "").trim().toLowerCase();
     const kind = setupTaskKind(task);
-    if (kind === "discovery") return false;
+    if (kind === "discovery") {
+      if ((status === "failed" || status === "blocked") && validateTaskOutcome(outcome).length === 0) {
+        continue;
+      }
+      return false;
+    }
     if (kind === "user_action") {
       if (status !== "action_needed") return false;
       continue;
@@ -431,9 +535,22 @@ function classifyLibrarySetupVerdict(input = {}) {
   const failurePayloads = Array.isArray(input.failurePayloads) ? input.failurePayloads : [];
 
   if (initialNonDiscoveryTasks.length === 0) {
-    const discoveryFailed = setupDiscoveryFailed(fetchResult, null, failurePayloads);
+    const discoveryState = setupDiscoveryFailureState(fetchResult, null, failurePayloads);
     const outcomesAreSafe = setupZeroTaskOutcomesAreSafe(fetchResult);
-    const status = runnerExitCode === 0 && !discoveryFailed && outcomesAreSafe ? "ok" : "fatal";
+    const tooManyFailures = discoveryState.failures.length > SETUP_VERDICT_MAX_FAILURES;
+    const failures = discoveryState.failures.slice(0, SETUP_VERDICT_MAX_FAILURES);
+    let status = "fatal";
+    if (
+      !discoveryState.fatal && !tooManyFailures && outcomesAreSafe &&
+      failures.length === 0 && runnerExitCode === 0
+    ) {
+      status = "ok";
+    } else if (
+      !discoveryState.fatal && !tooManyFailures && outcomesAreSafe &&
+      setupRunnerExitAllowsConfirmation(runnerExitCode, failures)
+    ) {
+      status = "needs_confirmation";
+    }
     return {
       schemaVersion: SETUP_VERDICT_SCHEMA_VERSION,
       status,
@@ -441,7 +558,7 @@ function classifyLibrarySetupVerdict(input = {}) {
       instanceId,
       plannedTaskCount: 0,
       synchronizedTerminalTaskCount: 0,
-      failures: [],
+      failures,
     };
   }
 
@@ -491,10 +608,10 @@ function classifyLibrarySetupVerdict(input = {}) {
     }
   }
 
-  let fatal = runnerExitCode !== 0 && runnerExitCode !== 65;
+  const discoveryState = setupDiscoveryFailureState(fetchResult, syncPayload, failurePayloads);
+  let fatal = (runnerExitCode !== 0 && runnerExitCode !== 65) || discoveryState.fatal;
   let synchronizedTerminalTaskCount = 0;
-  const failures = [];
-  if (setupDiscoveryFailed(fetchResult, syncPayload, failurePayloads)) fatal = true;
+  const failures = [...discoveryState.failures];
 
   for (const task of nonDiscoveryTasks) {
     const id = taskIdForSync(task);
@@ -525,7 +642,9 @@ function classifyLibrarySetupVerdict(input = {}) {
   if (failures.length > SETUP_VERDICT_MAX_FAILURES) fatal = true;
   let status = "fatal";
   if (!fatal && runnerExitCode === 0 && failures.length === 0) status = "ok";
-  else if (!fatal && runnerExitCode === 65 && failures.length > 0) status = "needs_confirmation";
+  else if (
+    !fatal && setupRunnerExitAllowsConfirmation(runnerExitCode, failures)
+  ) status = "needs_confirmation";
 
   return {
     schemaVersion: SETUP_VERDICT_SCHEMA_VERSION,
@@ -652,7 +771,10 @@ function validateSetupVerdict(value, expectedInstanceId, expectedRunnerExitCode)
   if (value.status === "ok" && (value.runnerExitCode !== 0 || value.failures.length !== 0)) {
     throw new Error("Setup verdict ok state is inconsistent.");
   }
-  if (value.status === "needs_confirmation" && (value.runnerExitCode !== 65 || value.failures.length === 0)) {
+  if (
+    value.status === "needs_confirmation" &&
+    !setupRunnerExitAllowsConfirmation(value.runnerExitCode, value.failures)
+  ) {
     throw new Error("Setup verdict confirmation state is inconsistent.");
   }
   return value;

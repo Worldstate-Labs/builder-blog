@@ -3,7 +3,7 @@ Set up the FollowBrief private source library scheduled job.
 This is an interactive local agent setup run. Do not ask the user questions
 except where step 3 requires it (confirming whether to replace an existing
 library fetch cron), where step 6 requires it (confirming whether to schedule
-after safe post-level failures), or when crontab permissions or a missing local
+after safe post or source-level failures), or when crontab permissions or a missing local
 credential blocks the setup.
 
 Run these steps exactly. If any command fails, stop and report the command, exit
@@ -250,7 +250,7 @@ if (!allowedStatuses.has(verdict.status)) {
 process.stdout.write(verdict.status);
 NODE
 )"
-FAILED_POST_DETAILS="$(
+FAILED_TASK_DETAILS="$(
   node - "$SETUP_VERDICT_JSON" <<'NODE'
 const verdict = JSON.parse(process.argv[2]);
 const rows = Array.isArray(verdict.failures) ? verdict.failures : [];
@@ -272,8 +272,8 @@ if [ "$SETUP_VERDICT_STATUS" = "fatal" ]; then
     exit 1
   fi
   echo "Fatal setup verdict; removed same-instance resume contract candidate: $RESUME_CONTRACT_PATH" >&2
-  if [ -n "$FAILED_POST_DETAILS" ]; then
-    printf '%s\n' "$FAILED_POST_DETAILS" >&2
+  if [ -n "$FAILED_TASK_DETAILS" ]; then
+    printf '%s\n' "$FAILED_TASK_DETAILS" >&2
   fi
   exit 1
 fi
@@ -308,9 +308,9 @@ chmod 600 "$RESUME_CONTRACT_TMP"
 mv -f "$RESUME_CONTRACT_TMP" "$RESUME_CONTRACT_PATH"
 printf 'Resume contract: %s\n' "$RESUME_CONTRACT_PATH"
 if [ "$SETUP_VERDICT_STATUS" = "needs_confirmation" ]; then
-  echo 'Initial fetch completed with safe post-level failures.'
-  if [ -n "$FAILED_POST_DETAILS" ]; then
-    printf '%s\n' "$FAILED_POST_DETAILS"
+  echo 'Initial fetch completed with safe post or source-level failures.'
+  if [ -n "$FAILED_TASK_DETAILS" ]; then
+    printf '%s\n' "$FAILED_TASK_DETAILS"
   fi
   printf 'Exact confirmation command: FOLLOWBRIEF_CONFIRM_PARTIAL=1 BUILDER_BLOG_AGENT_DIR="%s" "%s" --contract "%s"\n' "$AGENT_DIR" "$HELPER_PATH" "$RESUME_CONTRACT_PATH"
   exit 0
@@ -390,20 +390,20 @@ is added to `~/.builder-blog/secrets.json` later.
 7. Interpret the output from step 6. If the verified verdict was `"ok"`, step 6
 already created the strict resume contract, invoked the bundled helper in the
 same shell turn, and validated the exact final marker before allowing success.
-Tell the user the validation run completed without failed post tasks and report
+Tell the user the validation run completed without failed tasks and report
 the confirmed FollowBrief schedule evidence from that same output.
 
 If the verified verdict was `"needs_confirmation"`, step 6 already created the
-strict resume contract, printed `Resume contract: ...`, listed every failed post
-task with title, source, failed stage (`read`, `summarize`, or `sync`), and
+strict resume contract, printed `Resume contract: ...`, listed every failed post or source task
+with title, source, failed stage (`read`, `summarize`, or `sync`), and
 printed `Exact confirmation command: ...` with the fully expanded absolute
 helper path and absolute contract path. Ask whether to install the scheduled run
 anyway. Only continue to step 8 if the user explicitly agrees; otherwise stop
 and do not install or report an active schedule.
 
 If the verified verdict was `"fatal"`, report `RUNNER_EXIT_CODE`, the verdict
-code, and every available failure detail, then stop. A timeout, discovery
-failure, credential/runtime failure, malformed or missing evidence, or any
+code, and every available failure detail, then stop. A timeout,
+credential/runtime failure, malformed or missing discovery/sync evidence, or any
 other fatal verdict must never install or report an active schedule.
 
 8. When the user explicitly confirms a `needs_confirmation` result later, run
