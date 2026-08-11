@@ -2404,12 +2404,13 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-count"/);
   assert.doesNotMatch(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);
   assert.match(fetchLogPanel, /function groupedTaskStats/);
-  assert.match(fetchLogPanel, /function isPlannedPostTask/);
+  assert.match(fetchLogPanel, /isFetchRunPlannedPostTask as isPlannedPostTask/);
+  assert.match(fetchLogPanel, /isFetchRunUserActionTask/);
   assert.match(fetchLogPanel, /function discoveryTaskState/);
   assert.match(fetchLogPanel, /expandedByPosts/);
   assert.match(fetchLogPanel, /post tasks synced/);
   assert.match(fetchLogPanel, /post tasks/);
-  assert.match(fetchLogPanel, /User-action and[\s\S]*token-missing tasks still count here/);
+  assert.doesNotMatch(fetchLogPanel, /User-action and[\s\S]*token-missing tasks still count here/);
   assert.doesNotMatch(fetchLogPanel, /isCandidateDiscoveryTask\(task\) \|\| isBlocked\(task\)/);
   assert.doesNotMatch(fetchLogPanel, /function sourceIssueNote/);
   assert.doesNotMatch(fetchLogPanel, /function sourceDisplayError/);

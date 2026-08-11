@@ -802,11 +802,71 @@ test("sync lifecycle progress separates synced posts from accounted terminal out
     }),
     {
       synced: 27,
-      accounted: 37,
+      accounted: 32,
       outcome: "27 / 40 posts",
-      accountedText: "37 / 40 posts accounted",
+      accountedText: "32 / 40 posts accounted",
     },
   );
+});
+
+test("fetch run stats keep user actions outside post counts", () => {
+  const actionId = "fetch_post:builder_x:TWEET:x_token_invalid%3Abuilder_x";
+  const run: LibraryFetchRunListItem = {
+    id: "run_with_action",
+    startedAt: "2026-08-11T22:34:56.551Z",
+    finishedAt: "2026-08-11T22:35:10.000Z",
+    durationMs: 13_449,
+    status: "partial",
+    source: "manual",
+    jobRunId: "runtime_with_action",
+    cliVersion: null,
+    hostname: "cc-agent-sfo2",
+    platform: "linux",
+    buildersAttempted: 8,
+    itemsFetched: 9,
+    tasksGenerated: 3,
+    userActionsCount: 1,
+    errorCount: 1,
+    summary: "Read 9 posts from 8 sources · 3 posts planned · 1 action needed",
+    details: {},
+  };
+  const details = {
+    userActions: [{ kind: "x_token_invalid", builder: "Andrej Karpathy" }],
+    fetchTasks: [
+      { id: "fetch_post:source:one", agentWorkType: "fetch_post", status: "synced" },
+      { id: "fetch_post:source:two", agentWorkType: "fetch_post", status: "failed" },
+      {
+        id: actionId,
+        agentWorkType: "x_token_invalid",
+        contentStatus: "requires_agent",
+        status: "action_needed",
+      },
+    ],
+  };
+  const stats = fetchRunStats({
+    details,
+    liveProgress: {
+      counters: { tasksPlanned: 3, synced: 1, failed: 1, actionNeeded: 0 },
+      tasks: [
+        { id: "fetch_post:source:one", status: "synced" },
+        { id: "fetch_post:source:two", status: "failed" },
+        { id: actionId, status: "planned" },
+      ],
+    },
+    run,
+  });
+
+  assert.equal(stats.planned, 2);
+  assert.equal(stats.synced, 1);
+  assert.equal(stats.failed, 1);
+  assert.equal(stats.actionNeeded, 1);
+  assert.equal(stats.postActionNeeded, 0);
+  assert.deepEqual(fetchRunLifecycleSyncProgress(stats), {
+    synced: 1,
+    accounted: 2,
+    outcome: "1 / 2 posts",
+    accountedText: "2 / 2 posts accounted",
+  });
 });
 
 test("failed post outcomes override an ok fetch run status", () => {
@@ -1088,6 +1148,8 @@ test("action-needed post outcomes make a completed fetch run partial", () => {
 
   assert.equal(stats.synced, 3);
   assert.equal(stats.actionNeeded, 5);
+  assert.equal(stats.postActionNeeded, 5);
+  assert.equal(fetchRunLifecycleSyncProgress(stats).accounted, 8);
   assert.equal(entries[0]?.status, "partial");
   assert.equal(entries[0]?.syncSummary, "3/8 synced");
   assert.equal(activityStatus.key, "needs-attention");

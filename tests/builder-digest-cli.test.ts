@@ -8885,6 +8885,48 @@ test("candidate discovery outcomes do not count as post task progress", async ()
   );
 });
 
+test("user-action outcomes stay visible without completing post progress", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const actionId = "fetch_post:builder_x:TWEET:x_token_invalid%3Abuilder_x";
+  const progress = {
+    version: 1,
+    stage: "syncing",
+    counters: {
+      sourcesTotal: 2,
+      sourcesChecked: 2,
+      tasksPlanned: 1,
+      tasksDone: 0,
+      synced: 0,
+      skipped: 0,
+      failed: 0,
+      actionNeeded: 0,
+    },
+    tasks: [],
+    recentEvents: [],
+    completedTaskIds: [],
+  };
+  const taskOutcomes = [
+    { fetchTaskId: "fetch_post:source:one", status: "synced" },
+    {
+      fetchTaskId: actionId,
+      status: "action_needed",
+      plannedTask: { id: actionId, agentWorkType: "x_token_invalid" },
+    },
+  ];
+
+  cli.applyFetchProgressTaskOutcomes(
+    progress,
+    taskOutcomes,
+    taskOutcomes.map((outcome) => outcome.fetchTaskId),
+  );
+
+  assert.equal(progress.counters.tasksPlanned, 1);
+  assert.equal(progress.counters.tasksDone, 1);
+  assert.equal(progress.counters.synced, 1);
+  assert.equal(progress.counters.actionNeeded, 1);
+  assert.deepEqual(progress.userActionTaskIds, [actionId]);
+});
+
 test("partial task outcome progress does not shrink the canonical planned count", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const progress = {
@@ -9251,6 +9293,54 @@ test("x fetch returns action-needed task when the bearer token is rejected", asy
     assert.equal(result.agentTasks[0].type, "x_token_invalid");
     assert.match(result.agentTasks[0].agentMessage, /HTTP 401/);
   } finally {
+    if (previousToken === undefined) delete process.env.X_BEARER_TOKEN;
+    else process.env.X_BEARER_TOKEN = previousToken;
+  }
+});
+
+test("x token action notices do not increase planned post counts", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const previousToken = process.env.X_BEARER_TOKEN;
+  const previousFetch = global.fetch;
+  try {
+    process.env.X_BEARER_TOKEN = "bad-token";
+    global.fetch = async () => new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+
+    const planned = await cli.buildFetchTasksForBuilders({
+      builders: [{
+        id: "builder_x",
+        kind: "X",
+        name: "Andrej Karpathy",
+        handle: "karpathy",
+        sourceUrl: "https://x.com/karpathy",
+      }],
+      context: {
+        language: "zh",
+        subscriptions: [],
+        personalFetchedItems: [],
+        latestPersonalFetchedItems: [],
+        sources: {
+          x: {
+            label: "X/Twitter",
+            contentQuality: { minChars: 1, minContentUnits: 1 },
+            summaryPrompt: { language: "zh", body: "Summarize the supplied post." },
+          },
+        },
+      },
+      force: true,
+      limit: 3,
+      runStartedAt: new Date("2026-08-11T22:34:56.551Z"),
+    });
+
+    assert.equal(planned.fetchTasks.length, 1);
+    assert.equal(planned.fetchTasks[0]?.agentWorkType, "x_token_invalid");
+    assert.equal(planned.tasksGenerated, 0);
+    assert.equal(planned.builderStats.get("builder_x")?.tasksGenerated, 0);
+  } finally {
+    global.fetch = previousFetch;
     if (previousToken === undefined) delete process.env.X_BEARER_TOKEN;
     else process.env.X_BEARER_TOKEN = previousToken;
   }

@@ -32,6 +32,10 @@ import {
 import { decodeHtmlEntities } from "@/lib/decode-entities";
 import { fetchTaskDisplayLabel } from "@/lib/fetch-task-display";
 import {
+  isFetchRunPlannedPostTask as isPlannedPostTask,
+  isFetchRunUserActionTask,
+} from "@/lib/fetch-run-details";
+import {
   fetchFailureInfo,
   fetchFailureMessage,
   isContentFailureReason,
@@ -193,6 +197,7 @@ type FetchRunStats = {
   skipped: number;
   failed: number;
   actionNeeded: number;
+  postActionNeeded: number;
 };
 
 type FetchTaskSourceGroup = {
@@ -295,6 +300,7 @@ export type FetchTaskProgress = {
   builder?: string | null;
   builderId?: string | null;
   sourceType?: string | null;
+  agentWorkType?: string | null;
   title?: string | null;
   url?: string | null;
   workerId?: string | null;
@@ -573,8 +579,7 @@ function liveTaskWasSummarized(task: FetchTaskProgress): boolean {
 }
 
 function isLivePostTask(task: FetchTaskProgress): boolean {
-  const id = String(task.id ?? task.taskId ?? "");
-  return id.startsWith("fetch_post:");
+  return isPlannedPostTask(task);
 }
 
 export function fetchRunStats({
@@ -636,11 +641,30 @@ export function fetchRunStats({
     : hasLivePostTasks
     ? livePostTasks.filter((task) => task.status === "failed").length
     : counters.failed ?? 0;
-  const actionNeeded = hasDetailedPostTasks
-    ? plannedTasks.filter((task) => task.status === "action_needed" || isBlocked(task)).length
+  const detailedPostActionNeeded = plannedTasks.filter(
+    (task) => task.status === "action_needed" || isBlocked(task),
+  ).length;
+  const livePostActionNeeded = livePostTasks.filter(
+    (task) => task.status === "action_needed",
+  ).length;
+  const postActionNeeded = hasDetailedPostTasks
+    ? detailedPostActionNeeded
     : hasLivePostTasks
-    ? livePostTasks.filter((task) => task.status === "action_needed").length
-    : counters.actionNeeded ?? 0;
+      ? livePostActionNeeded
+      : 0;
+  const detailedActionNeeded = fetchTasks.filter(
+    (task) => task.status === "action_needed" || isBlocked(task) || isFetchRunUserActionTask(task),
+  ).length;
+  const liveActionNeeded = liveTasks.filter(
+    (task) => task.status === "action_needed" || isFetchRunUserActionTask(task),
+  ).length;
+  const actionNeeded = Math.max(
+    detailedActionNeeded,
+    liveActionNeeded,
+    counters.actionNeeded ?? 0,
+    run?.userActionsCount ?? 0,
+    Array.isArray(details.userActions) ? details.userActions.length : 0,
+  );
 
   return {
     sourcesScanned:
@@ -658,11 +682,12 @@ export function fetchRunStats({
     skipped,
     failed,
     actionNeeded,
+    postActionNeeded,
   };
 }
 
 function fetchRunHasCompletedOutcomes(stats: FetchRunStats): boolean {
-  const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  const accounted = stats.synced + stats.skipped + stats.failed + stats.postActionNeeded;
   if (stats.planned <= 0) return true;
   return accounted >= stats.planned;
 }
@@ -2051,9 +2076,10 @@ function ratioText(done: number, total: number, unit: string): string {
 }
 
 export function fetchRunLifecycleSyncProgress(
-  stats: Pick<FetchRunStats, "planned" | "synced" | "skipped" | "failed" | "actionNeeded">,
+  stats: Pick<FetchRunStats, "planned" | "synced" | "skipped" | "failed"> &
+    Partial<Pick<FetchRunStats, "postActionNeeded">>,
 ) {
-  const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  const accounted = stats.synced + stats.skipped + stats.failed + (stats.postActionNeeded ?? 0);
   return {
     synced: stats.synced,
     accounted,
@@ -2096,7 +2122,7 @@ function fetchRunVerdict({
   inflight: boolean;
   stats: FetchRunStats;
 }): { tone: "ok" | "warn" | "fail"; text: string } {
-  const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  const accounted = stats.synced + stats.skipped + stats.failed + stats.postActionNeeded;
   const unfinished = Math.max(0, stats.planned - accounted);
   if (inflight) {
     return {
@@ -2679,15 +2705,6 @@ function taskSourceKey({
   return `source:${sourceType ?? "unknown"}:${name ?? "Unknown source"}`;
 }
 
-function isPlannedPostTask(task: FetchTaskLog): boolean {
-  // Planned means "this run had a post-level task to handle." User-action and
-  // token-missing tasks still count here; they are execution blockers, not a
-  // reason to erase the post from the run's planned work.
-  if (isCandidateDiscoveryTask(task)) return false;
-  if (typeof task.id === "string" && task.id.startsWith("fetch_post:")) return true;
-  return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
-}
-
 function liveProgressTaskDetailStatus(task: FetchTaskProgress): FetchTaskLog["status"] {
   const status = String(task.status ?? "").toLowerCase();
   if (
@@ -2876,12 +2893,14 @@ function groupedTaskStats(tasks: FetchTaskLog[]) {
   const synced = tasks.filter((task) => task.status === "synced").length;
   const skipped = tasks.filter((task) => task.status === "skipped").length;
   const failed = tasks.filter((task) => task.status === "failed").length;
-  const actionNeeded = tasks.filter((task) => task.status === "action_needed" || isBlocked(task)).length;
+  const actionNeeded = tasks.filter(
+    (task) => task.status === "action_needed" || isBlocked(task) || isFetchRunUserActionTask(task),
+  ).length;
   return {
     discovery: tasks.filter(isCandidateDiscoveryTask).length,
     planned: tasks.filter(isPlannedPostTask).length,
     synced,
-    accounted: synced + skipped + failed + actionNeeded,
+    accounted: synced + skipped + failed,
     skipped,
     failed,
     actionNeeded,

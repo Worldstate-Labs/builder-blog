@@ -6,6 +6,7 @@ import {
 } from "@/lib/agent-job-runs";
 import {
   compactFetchRunDetailsForStorage,
+  countPlannedPostTasks,
   markInitialFetchRunUserActionsSynced,
 } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const plannedPosts = countPlannedPostTasks(detailsValue);
 
   const startedAt = new Date(parsed.data.startedAt);
   const finishedAt = new Date(parsed.data.finishedAt);
@@ -151,7 +153,7 @@ export async function POST(request: Request) {
           platform: parsed.data.platform ?? null,
           buildersAttempted: parsed.data.buildersAttempted,
           itemsFetched: parsed.data.itemsFetched,
-          tasksGenerated: parsed.data.tasksGenerated,
+          tasksGenerated: plannedPosts,
           userActionsCount: parsed.data.userActionsCount,
           errorCount: parsed.data.errorCount,
           summary: parsed.data.summary,

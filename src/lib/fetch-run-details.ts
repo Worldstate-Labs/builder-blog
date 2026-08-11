@@ -241,8 +241,41 @@ function isCandidateDiscoveryTask(task: FetchRunTask): boolean {
   );
 }
 
-function isPlannedPostTask(task: FetchRunTask): boolean {
+function decodedTaskId(task: FetchRunTask): string {
+  const id = typeof task.id === "string"
+    ? task.id
+    : typeof task.taskId === "string"
+      ? task.taskId
+      : "";
+  try {
+    return decodeURIComponent(id).toLowerCase();
+  } catch {
+    return id.toLowerCase();
+  }
+}
+
+export function isFetchRunUserActionTask(value: unknown): boolean {
+  const task = taskRecord(value);
+  const workType = typeof task.agentWorkType === "string"
+    ? task.agentWorkType.trim().toLowerCase()
+    : "";
+  if (
+    workType === "user_action" ||
+    workType.startsWith("user_action_") ||
+    workType === "x_token_missing" ||
+    workType === "x_token_invalid"
+  ) {
+    return true;
+  }
+  return /(?:^|:)(?:user_action(?:_[^:]*)?|x_token_(?:missing|invalid))(?::|$)/.test(
+    decodedTaskId(task),
+  );
+}
+
+export function isFetchRunPlannedPostTask(value: unknown): boolean {
+  const task = taskRecord(value);
   if (isCandidateDiscoveryTask(task)) return false;
+  if (isFetchRunUserActionTask(task)) return false;
   const id = typeof task.id === "string" ? task.id : "";
   if (id.startsWith("fetch_post:")) return true;
   return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
@@ -253,7 +286,7 @@ export function countPlannedPostTasks(detailsValue: unknown): number {
     ? (detailsValue as Record<string, unknown>)
     : {};
   return Array.isArray(details.fetchTasks)
-    ? details.fetchTasks.map(taskRecord).filter(isPlannedPostTask).length
+    ? details.fetchTasks.filter(isFetchRunPlannedPostTask).length
     : 0;
 }
 
@@ -269,7 +302,7 @@ export function deriveFetchRunStatusFromDetails(
     ? (detailsValue as Record<string, unknown>)
     : {};
   const tasks = Array.isArray(details.fetchTasks)
-    ? details.fetchTasks.map(taskRecord).filter(isPlannedPostTask)
+    ? details.fetchTasks.map(taskRecord).filter(isFetchRunPlannedPostTask)
     : [];
   if (tasks.length === 0) {
     return { status: currentStatus, errorCount: currentErrorCount };

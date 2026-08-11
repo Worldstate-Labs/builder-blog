@@ -2,11 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   compactFetchRunDetailsForStorage,
+  countPlannedPostTasks,
   deriveFetchRunStatusFromDetails,
   markInitialFetchRunUserActionsSynced,
   markFetchRunTaskOutcomesSynced,
   mergeFetchRunDetails,
 } from "../src/lib/fetch-run-details";
+
+test("user-action notices do not count as planned posts", () => {
+  assert.equal(countPlannedPostTasks({
+    fetchTasks: [
+      {
+        id: "fetch_post:builder_1:post_1",
+        agentWorkType: "fetch_post",
+        contentStatus: "requires_agent",
+        status: "pending",
+      },
+      {
+        id: "fetch_post:builder_x:TWEET:x_token_invalid%3Abuilder_x",
+        agentWorkType: "x_token_invalid",
+        contentStatus: "requires_agent",
+        status: "action_needed",
+      },
+    ],
+  }), 1);
+});
 
 test("accepted initial user actions receive durable synced receipts", () => {
   const details = {

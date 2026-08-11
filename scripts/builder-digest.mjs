@@ -244,6 +244,28 @@ export function isUserActionAgentWorkType(kind) {
   return value.startsWith("user_action_") || value === "x_token_missing" || value === "x_token_invalid";
 }
 
+function decodedFetchTaskId(id) {
+  const value = String(id || "");
+  try {
+    return decodeURIComponent(value).toLowerCase();
+  } catch {
+    return value.toLowerCase();
+  }
+}
+
+function isUserActionTaskId(id) {
+  return /(?:^|:)(?:user_action(?:_[^:]*)?|x_token_(?:missing|invalid))(?::|$)/.test(
+    decodedFetchTaskId(id),
+  );
+}
+
+function isUserActionFetchTask(task) {
+  return (
+    isUserActionAgentWorkType(task?.agentWorkType) ||
+    isUserActionTaskId(task?.id ?? task?.taskId ?? task?.fetchTaskId)
+  );
+}
+
 export function isCandidateDiscoveryAgentWorkType(kind) {
   return String(kind || "") === "candidate_discovery_fallback";
 }
@@ -258,6 +280,10 @@ function isCandidateDiscoveryFetchTask(task) {
     task?.type === "candidate_discovery" ||
     isCandidateDiscoveryTaskId(task?.id)
   );
+}
+
+function isPlannedPostFetchTask(task) {
+  return !isCandidateDiscoveryFetchTask(task) && !isUserActionFetchTask(task);
 }
 
 function isCandidateDiscoveryOutcome(outcome) {
@@ -2344,6 +2370,9 @@ function createFetchProgressState(initial = {}) {
     completedTaskIds: Array.isArray(initial.completedTaskIds)
       ? initial.completedTaskIds.map((id) => String(id)).filter(Boolean)
       : [],
+    userActionTaskIds: Array.isArray(initial.userActionTaskIds)
+      ? initial.userActionTaskIds.map((id) => String(id)).filter(Boolean)
+      : [],
   };
 }
 
@@ -2397,6 +2426,7 @@ function fetchProgressSnapshot(progress, options = {}) {
                 sourceType: compactProgressText(task.sourceType, 80),
                 title: compactProgressText(task.title, 180),
                 url: compactProgressText(task.url, 240),
+                agentWorkType: compactProgressText(task.agentWorkType, 80),
                 workerId: compactProgressText(task.workerId, 80),
                 bodyChars: task.bodyChars,
                 bodyWords: task.bodyWords,
@@ -2425,6 +2455,9 @@ function fetchProgressSnapshot(progress, options = {}) {
   };
   if (options.includeInternal && Array.isArray(progress.completedTaskIds)) {
     snapshot.completedTaskIds = progress.completedTaskIds;
+  }
+  if (options.includeInternal && Array.isArray(progress.userActionTaskIds)) {
+    snapshot.userActionTaskIds = progress.userActionTaskIds;
   }
   return snapshot;
 }
@@ -2492,6 +2525,7 @@ function upsertFetchProgressTask(progress, task) {
     sourceType: compactProgressText(task.sourceType, 80),
     title: compactProgressText(task.title, 220),
     url: compactProgressText(task.url, 500),
+    agentWorkType: compactProgressText(task.agentWorkType, 80) ?? previous.agentWorkType ?? null,
     workerId,
     bodyChars: Number.isFinite(Number(task.bodyChars)) ? Number(task.bodyChars) : previous.bodyChars ?? null,
     bodyWords: Number.isFinite(Number(task.bodyWords)) ? Number(task.bodyWords) : previous.bodyWords ?? null,
@@ -2507,6 +2541,7 @@ function upsertFetchProgressTask(progress, task) {
     previous.phase !== value.phase ||
     previous.message !== value.message ||
     previous.reason !== value.reason ||
+    previous.agentWorkType !== value.agentWorkType ||
     previous.workerId !== value.workerId ||
     previous.bodyChars !== value.bodyChars ||
     previous.headlineChars !== value.headlineChars ||
@@ -2532,11 +2567,17 @@ function seedFetchProgressPlannedTasks(progress, plannedTasks) {
     const id = String(task?.id || fetchTaskId(task));
     if (!id) continue;
     const existing = existingById.get(id);
-    if (!existing) newlyPlanned += 1;
+    if (!existing && isPlannedPostFetchTask(task)) newlyPlanned += 1;
     const keepLiveStatus = existing?.status && liveStatuses.has(String(existing.status));
     upsertFetchProgressTask(progress, {
       id,
-      status: keepLiveStatus ? existing.status : task.status === "fetched" ? "fetched" : "planned",
+      status: keepLiveStatus
+        ? existing.status
+        : isUserActionFetchTask(task)
+          ? "action_needed"
+          : task.status === "fetched"
+            ? "fetched"
+            : "planned",
       phase: keepLiveStatus ? existing.phase ?? "read" : "plan",
       message: keepLiveStatus
         ? existing.message ?? null
@@ -2548,6 +2589,7 @@ function seedFetchProgressPlannedTasks(progress, plannedTasks) {
       sourceType: task.sourceType,
       title: task.title,
       url: task.url,
+      agentWorkType: task.agentWorkType,
       workerId: task.workerId,
       bodyChars: task.bodyChars,
       bodyWords: task.bodyWords,
@@ -2649,9 +2691,23 @@ export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds =
       .map((outcome) => String(outcome?.fetchTaskId ?? ""))
       .filter(Boolean),
   );
+  const userActionTaskIds = new Set(
+    Array.isArray(progress.userActionTaskIds)
+      ? progress.userActionTaskIds.map((id) => String(id)).filter(Boolean)
+      : [],
+  );
+  for (const outcome of taskOutcomes) {
+    const id = String(outcome?.fetchTaskId ?? "");
+    if (id && isUserActionFetchTask(outcome?.plannedTask ?? outcome)) userActionTaskIds.add(id);
+  }
   const postTaskIds = taskIds
     .map((id) => String(id))
-    .filter((id) => id && !isCandidateDiscoveryTaskId(id) && !discoveryOutcomeIds.has(id));
+    .filter((id) =>
+      id &&
+      !isCandidateDiscoveryTaskId(id) &&
+      !discoveryOutcomeIds.has(id) &&
+      !userActionTaskIds.has(id) &&
+      !isUserActionTaskId(id));
   const completed = new Set(
     Array.isArray(progress.completedTaskIds)
       ? progress.completedTaskIds.map((id) => String(id)).filter(Boolean)
@@ -2665,7 +2721,7 @@ export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds =
     const alreadyCompleted = completed.has(id);
     if (!alreadyCompleted) {
       completed.add(id);
-      delta.tasksDone += 1;
+      if (!userActionTaskIds.has(id) && !isUserActionTaskId(id)) delta.tasksDone += 1;
       if (outcome.status === "synced") delta.synced += 1;
       else if (outcome.status === "skipped") delta.skipped += 1;
       else if (outcome.status === "action_needed") delta.actionNeeded += 1;
@@ -2684,6 +2740,7 @@ export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds =
       phase: "synced",
       message: `${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
       reason: outcome.failureReason,
+      agentWorkType: outcome?.plannedTask?.agentWorkType,
       workerId: outcome.workerId,
       bodyChars: outcome.bodyChars,
       bodyWords: outcome.bodyWords,
@@ -2694,12 +2751,16 @@ export function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds =
     });
   }
   const counters = progress.counters ?? {};
-  const tasksPlanned = Math.max(counters.tasksPlanned ?? 0, postTaskIds.length, completed.size);
+  const completedPostTasks = [...completed].filter(
+    (id) => !userActionTaskIds.has(id) && !isUserActionTaskId(id) && !isCandidateDiscoveryTaskId(id),
+  ).length;
+  const tasksPlanned = Math.max(counters.tasksPlanned ?? 0, postTaskIds.length, completedPostTasks);
   progress.completedTaskIds = [...completed];
+  progress.userActionTaskIds = [...userActionTaskIds];
   progress.counters = {
     ...counters,
     tasksPlanned,
-    tasksDone: Math.min(tasksPlanned, Math.max(counters.tasksDone ?? 0, completed.size)),
+    tasksDone: Math.min(tasksPlanned, Math.max(counters.tasksDone ?? 0, completedPostTasks)),
     synced: (counters.synced ?? 0) + delta.synced,
     skipped: (counters.skipped ?? 0) + delta.skipped,
     failed: (counters.failed ?? 0) + delta.failed,
@@ -2943,7 +3004,7 @@ export async function buildFetchTasksForBuilders({
           const plannedTask = finalizePlannedCloudTask(task, cloudMetadata, taskOutcomes, runStartedAt);
           if (plannedTask) fetchTasks.push(plannedTask);
           if (plannedTask && isCandidateDiscoveryFetchTask(plannedTask)) builderStat.discoveryTasksGenerated += 1;
-          else if (plannedTask) builderStat.tasksGenerated += 1;
+          else if (plannedTask && isPlannedPostFetchTask(plannedTask)) builderStat.tasksGenerated += 1;
           continue;
         }
         const filtered = filterFetchedItems(externalItems, {
@@ -2989,7 +3050,7 @@ export async function buildFetchTasksForBuilders({
       });
       const runnableFetchTasks = fetchTasksFromAgentTasks.filter(Boolean);
       fetchTasks.push(...runnableFetchTasks);
-      builderStat.tasksGenerated += runnableFetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task)).length;
+      builderStat.tasksGenerated += runnableFetchTasks.filter(isPlannedPostFetchTask).length;
       builderStat.discoveryTasksGenerated += runnableFetchTasks.filter(isCandidateDiscoveryFetchTask).length;
       readyBuilders.push({
         ...builderSync,
@@ -3027,7 +3088,7 @@ export async function buildFetchTasksForBuilders({
       const plannedTask = finalizePlannedCloudTask(task, cloudMetadata, taskOutcomes, runStartedAt);
       if (plannedTask) fetchTasks.push(plannedTask);
       if (plannedTask && isCandidateDiscoveryFetchTask(plannedTask)) builderStat.discoveryTasksGenerated += 1;
-      else if (plannedTask) builderStat.tasksGenerated += 1;
+      else if (plannedTask && isPlannedPostFetchTask(plannedTask)) builderStat.tasksGenerated += 1;
     } finally {
       if (onSourceProgress) await onSourceProgress(builderStat);
     }
@@ -3053,7 +3114,10 @@ export async function buildFetchTasksForBuilders({
   });
   fetchTasks.splice(0, fetchTasks.length, ...rewrittenFetchTasks);
 
-  const postFetchTasks = fetchTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
+  const postFetchTasks = fetchTasks.filter(isPlannedPostFetchTask);
+  const agentTasks = fetchTasks.filter(
+    (task) => !isCandidateDiscoveryFetchTask(task) && task?.contentStatus !== "ready",
+  );
   return {
     builders: readyBuilders,
     fetchTasks,
@@ -3062,7 +3126,7 @@ export async function buildFetchTasksForBuilders({
     errorCount,
     itemsFetched: readyBuilders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0),
     tasksGenerated: postFetchTasks.length,
-    agentTasks: postFetchTasks.filter((task) => task?.contentStatus !== "ready"),
+    agentTasks,
   };
 }
 
@@ -10209,6 +10273,7 @@ async function emitCheckpointProgress(args) {
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const shardPlans = await readShardPlans(resultsDir);
   const planned = fetchRunPlannedTaskPatches(fetchResult, { shardPlans });
+  const plannedPostTasks = planned.filter(isPlannedPostFetchTask);
   const workerUsages = await readShardWorkerUsages(resultsDir, planned);
   if (workerUsages.length > 0) {
     await patchFetchRunOutcomes(
@@ -10263,8 +10328,13 @@ async function emitCheckpointProgress(args) {
     changed = upsertFetchProgressTask(progress, update) || changed;
   }
   const counters = progress.counters ?? {};
-  const tasksPlanned = Math.max(counters.tasksPlanned ?? 0, planned.length);
-  const tasksDone = Math.min(tasksPlanned, Math.max(counters.tasksDone ?? 0, checkpointCompletedIds.size));
+  const checkpointCompletedPostTasks = [...checkpointCompletedIds].filter((id) =>
+    isPlannedPostFetchTask(plannedById.get(id) ?? { id }));
+  const tasksPlanned = Math.max(counters.tasksPlanned ?? 0, plannedPostTasks.length);
+  const tasksDone = Math.min(
+    tasksPlanned,
+    Math.max(counters.tasksDone ?? 0, checkpointCompletedPostTasks.length),
+  );
   if (tasksPlanned !== counters.tasksPlanned || tasksDone !== counters.tasksDone) {
     progress.counters = { ...counters, tasksPlanned, tasksDone };
     changed = true;
@@ -12298,15 +12368,16 @@ async function patchFetchRunPlan(args) {
   const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const shardPlans = resultsDir ? await readShardPlans(resultsDir) : [];
   const plannedTasks = fetchRunPlannedTaskPatches(fetchResult, { shardPlans });
+  const plannedPostTasks = plannedTasks.filter(isPlannedPostFetchTask);
   let runId = "";
   try {
     runId = (await readFile(libraryFetchRunIdFile(), "utf8")).trim();
   } catch {
-    console.log(JSON.stringify({ status: "skipped", reason: "fetch_run_id_missing", plannedTasks: plannedTasks.length }, null, 2));
+    console.log(JSON.stringify({ status: "skipped", reason: "fetch_run_id_missing", plannedTasks: plannedPostTasks.length }, null, 2));
     return;
   }
   if (!runId) {
-    console.log(JSON.stringify({ status: "skipped", reason: "fetch_run_id_missing", plannedTasks: plannedTasks.length }, null, 2));
+    console.log(JSON.stringify({ status: "skipped", reason: "fetch_run_id_missing", plannedTasks: plannedPostTasks.length }, null, 2));
     return;
   }
 
@@ -12346,12 +12417,12 @@ async function patchFetchRunPlan(args) {
     await emitFetchJobProgress(config, fetchProgress, {
       stage: "tasks_planned",
       counters: {
-        tasksPlanned: Math.max(fetchProgress.counters?.tasksPlanned ?? 0, plannedTasks.length),
+        tasksPlanned: Math.max(fetchProgress.counters?.tasksPlanned ?? 0, plannedPostTasks.length),
       },
       current: { source: null, task: null },
       event: {
         type: "tasks_planned",
-        message: `Planned ${plannedTasks.length} post task${plannedTasks.length === 1 ? "" : "s"}.`,
+        message: `Planned ${plannedPostTasks.length} post task${plannedPostTasks.length === 1 ? "" : "s"}.`,
       },
     });
   }
@@ -12360,7 +12431,7 @@ async function patchFetchRunPlan(args) {
     {
       status: patchStatus,
       runId,
-      plannedTasks: plannedTasks.length,
+      plannedTasks: plannedPostTasks.length,
       ...(errorMessage ? { error: errorMessage } : {}),
     },
     null,
@@ -12545,7 +12616,7 @@ async function syncBuilders(args) {
   payload = prepareSyncReadyPayload(payload, plannedTasks);
   payload = filterStaleSyncItemsByFetchCutoff(payload, plannedTasks);
   validateAgentSyncPayload({ fetchTasks: plannedTasks }, payload);
-  const plannedPostTasks = plannedTasks.filter((task) => !isCandidateDiscoveryFetchTask(task));
+  const plannedPostTasks = plannedTasks.filter(isPlannedPostFetchTask);
   const fetchProgress =
     (await readFetchProgressState()) ??
     createFetchProgressState({
@@ -13371,9 +13442,7 @@ async function fetchCloudLibrary(args) {
       });
     },
   });
-  const plannedPostTasks = planned.fetchTasks.filter(
-    (task) => !isCandidateDiscoveryFetchTask(task) && !isUserActionAgentWorkType(task?.agentWorkType),
-  );
+  const plannedPostTasks = planned.fetchTasks.filter(isPlannedPostFetchTask);
   const newlyPlannedTasks = seedFetchProgressPlannedTasks(fetchProgress, plannedPostTasks);
   await emitFetchJobProgress(config, fetchProgress, {
     stage: "tasks_planned",
