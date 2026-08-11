@@ -470,13 +470,24 @@ function setupRunnerExitAllowsConfirmation(runnerExitCode, failures) {
   return runnerExitCode === 65;
 }
 
-function setupZeroTaskOutcomesAreSafe(fetchResult) {
+function setupZeroPostTaskOutcomesAreSafe(fetchResult) {
+  const tasksById = new Map();
+  for (const task of plannedTasksForSetupVerdict(fetchResult)) {
+    const id = taskIdForSync(task);
+    if (!id || tasksById.has(id)) return false;
+    tasksById.set(id, task);
+  }
   const outcomes = Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [];
   const seenIds = new Set();
   for (const outcome of outcomes) {
-    const task = outcome?.plannedTask;
-    if (!task || typeof task !== "object" || Array.isArray(task)) return false;
     const outcomeId = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
+    const embeddedTask = outcome?.plannedTask;
+    if (
+      embeddedTask != null &&
+      (!embeddedTask || typeof embeddedTask !== "object" || Array.isArray(embeddedTask))
+    ) return false;
+    const task = embeddedTask ?? tasksById.get(outcomeId);
+    if (!task) return false;
     const taskId = taskIdForSync(task);
     if (!outcomeId || !taskId || outcomeId !== taskId || seenIds.has(outcomeId)) return false;
     seenIds.add(outcomeId);
@@ -531,12 +542,14 @@ function classifyLibrarySetupVerdict(input = {}) {
   } catch {
     return setupFatalVerdict(instanceId, runnerExitCode);
   }
-  const initialNonDiscoveryTasks = initialTasks.filter((task) => setupTaskKind(task) !== "discovery");
+  // User actions are fetch-log notices, not work that a scheduler must execute
+  // or synchronize. Discovery retains its separate fail-closed verification.
+  const initialPostTasks = initialTasks.filter((task) => setupTaskKind(task) === "post");
   const failurePayloads = Array.isArray(input.failurePayloads) ? input.failurePayloads : [];
 
-  if (initialNonDiscoveryTasks.length === 0) {
+  if (initialPostTasks.length === 0) {
     const discoveryState = setupDiscoveryFailureState(fetchResult, null, failurePayloads);
-    const outcomesAreSafe = setupZeroTaskOutcomesAreSafe(fetchResult);
+    const outcomesAreSafe = setupZeroPostTaskOutcomesAreSafe(fetchResult);
     const tooManyFailures = discoveryState.failures.length > SETUP_VERDICT_MAX_FAILURES;
     const failures = discoveryState.failures.slice(0, SETUP_VERDICT_MAX_FAILURES);
     let status = "fatal";
@@ -586,9 +599,9 @@ function classifyLibrarySetupVerdict(input = {}) {
   } catch {
     return setupFatalVerdict(instanceId, runnerExitCode);
   }
-  const nonDiscoveryTasks = plannedTasks.filter((task) => setupTaskKind(task) !== "discovery");
-  const initialIds = initialNonDiscoveryTasks.map((task) => taskIdForSync(task));
-  const mergedIds = nonDiscoveryTasks.map((task) => taskIdForSync(task));
+  const postTasks = plannedTasks.filter((task) => setupTaskKind(task) === "post");
+  const initialIds = initialPostTasks.map((task) => taskIdForSync(task));
+  const mergedIds = postTasks.map((task) => taskIdForSync(task));
   const validPlanIds = (
     initialIds.every(Boolean) && mergedIds.every(Boolean) &&
     new Set(initialIds).size === initialIds.length && new Set(mergedIds).size === mergedIds.length &&
@@ -612,7 +625,7 @@ function classifyLibrarySetupVerdict(input = {}) {
   let synchronizedTerminalTaskCount = 0;
   const failures = [...discoveryState.failures];
 
-  for (const task of nonDiscoveryTasks) {
+  for (const task of postTasks) {
     const id = taskIdForSync(task);
     const key = taskKeyForSync(task);
     const outcome = effectiveOutcomes.get(id);
@@ -623,10 +636,6 @@ function classifyLibrarySetupVerdict(input = {}) {
       continue;
     }
     synchronizedTerminalTaskCount += 1;
-    if (setupTaskKind(task) === "user_action") {
-      if (status !== "action_needed") fatal = true;
-      continue;
-    }
     if (status === "failed" || status === "blocked") {
       const entry = setupFailureEntry(task, outcome);
       failures.push(entry);
@@ -650,7 +659,7 @@ function classifyLibrarySetupVerdict(input = {}) {
     status,
     runnerExitCode,
     instanceId,
-    plannedTaskCount: nonDiscoveryTasks.length,
+    plannedTaskCount: postTasks.length,
     synchronizedTerminalTaskCount,
     failures: failures.slice(0, SETUP_VERDICT_MAX_FAILURES),
   };
@@ -846,9 +855,9 @@ async function classifyLibrarySetupVerdictCommand(args) {
     }
     const fetchResult = await setupVerdictRegularJson(join(runDir, "library-fetch-result.json"));
     const initialTasks = plannedTasksForSetupVerdict(fetchResult);
-    const nonDiscoveryTasks = initialTasks.filter((task) => setupTaskKind(task) !== "discovery");
+    const postTasks = initialTasks.filter((task) => setupTaskKind(task) === "post");
     const input = { runnerExitCode, instanceId, fetchResult };
-    if (nonDiscoveryTasks.length > 0) {
+    if (postTasks.length > 0) {
       input.mergedFetchResult = await setupVerdictRegularJson(join(runDir, "library-fetch-merged.json"));
       input.syncPayload = await setupVerdictRegularJson(join(runDir, "library-agent-sync.json"));
       input.mergeResult = await setupVerdictRegularJson(join(runDir, "merge-task-results.json"));

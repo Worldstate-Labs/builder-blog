@@ -442,30 +442,22 @@ test("preserves discovery task identity when a later sync outcome omits plannedT
   assert.equal(verdict.failures[0]?.title, "Product Hunt discovery");
 });
 
-test("accepts only well-formed durably synchronized user actions", async () => {
+test("does not treat user actions as scheduler fetch work", async () => {
   const cli = await verdictModule();
   const action = userActionTask("x-token");
-  const ok = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+  const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
     runnerExitCode: 0,
     tasks: [action],
+    syncedTaskIds: [],
     syncPayload: {
       builders: [],
       taskOutcomes: [{ fetchTaskId: "x-token", status: "action_needed", reason: "x_token_missing" }],
     },
   }));
-  const malformed = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
-    runnerExitCode: 65,
-    tasks: [action],
-    syncPayload: {
-      builders: [],
-      taskOutcomes: [{ fetchTaskId: "x-token", status: "failed", reason: "x_token_missing" }],
-    },
-  }));
 
-  assert.equal(ok.status, "ok");
-  assert.equal(ok.plannedTaskCount, 1);
-  assert.equal(ok.synchronizedTerminalTaskCount, 1);
-  assert.equal(malformed.status, "fatal");
+  assert.equal(verdict.status, "ok");
+  assert.equal(verdict.plannedTaskCount, 0);
+  assert.equal(verdict.synchronizedTerminalTaskCount, 0);
 });
 
 test("asks for confirmation when partial post failures coexist with a synced user action", async () => {
@@ -486,16 +478,17 @@ test("asks for confirmation when partial post failures coexist with a synced use
   const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
     runnerExitCode: 65,
     tasks: [...failedPosts, action],
+    syncedTaskIds: failedPosts.map((task) => task.id),
     syncPayload: { builders: [], taskOutcomes },
   }));
 
   assert.equal(verdict.status, "needs_confirmation");
-  assert.equal(verdict.plannedTaskCount, 4);
-  assert.equal(verdict.synchronizedTerminalTaskCount, 4);
+  assert.equal(verdict.plannedTaskCount, 3);
+  assert.equal(verdict.synchronizedTerminalTaskCount, 3);
   assert.equal(verdict.failures.length, 3);
 });
 
-test("allows the true zero-non-discovery-task path only on exit 0", async () => {
+test("allows the true zero-post-task path only on exit 0", async () => {
   const cli = await verdictModule();
   const ok = cli.classifyLibrarySetupVerdictForTest!({
     runnerExitCode: 0,
@@ -797,6 +790,48 @@ test("CLI classifies library-once partial runs print-only without writing a verd
       "--job-name", "digest-cron",
     ]);
     assert.notEqual(rejectedJob.status, 0);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("CLI setup with only a user-action notice needs no post-sync artifacts", async () => {
+  const fixture = await makeRunArtifacts();
+  try {
+    await writeJson(join(fixture.runDir, "library-fetch-result.json"), {
+      fetchTasks: [userActionTask("x-token", "x_token_invalid")],
+      taskOutcomes: [{
+        fetchTaskId: "x-token",
+        status: "action_needed",
+        reason: "x_token_invalid",
+      }],
+    });
+    for (const name of [
+      "library-fetch-merged.json",
+      "library-agent-sync.json",
+      "merge-task-results.json",
+      "merge-task-results-remaining.json",
+      "completed-checkpoint-synced-task-ids.txt",
+    ]) {
+      await rm(join(fixture.runDir, name), { force: true });
+    }
+
+    const classified = runVerdictCli([
+      "classify-library-setup-verdict",
+      "--job-state-dir", fixture.stateDir,
+      "--run-dir", fixture.runDir,
+      "--out", fixture.verdictFile,
+      "--runner-exit-code", "0",
+      "--instance-id", fixture.instanceId,
+      "--account-slug", fixture.accountSlug,
+      "--job-name", "library-cron",
+    ]);
+
+    assert.equal(classified.status, 0, classified.stderr);
+    const verdict = JSON.parse(await readFile(fixture.verdictFile, "utf8"));
+    assert.equal(verdict.status, "ok");
+    assert.equal(verdict.plannedTaskCount, 0);
+    assert.equal(verdict.synchronizedTerminalTaskCount, 0);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }
