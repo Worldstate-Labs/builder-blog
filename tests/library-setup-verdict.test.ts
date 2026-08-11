@@ -463,9 +463,36 @@ test("accepts only well-formed durably synchronized user actions", async () => {
   }));
 
   assert.equal(ok.status, "ok");
-  assert.equal(ok.plannedTaskCount, 0);
+  assert.equal(ok.plannedTaskCount, 1);
   assert.equal(ok.synchronizedTerminalTaskCount, 1);
   assert.equal(malformed.status, "fatal");
+});
+
+test("asks for confirmation when partial post failures coexist with a synced user action", async () => {
+  const cli = await verdictModule();
+  const failedPosts = [postTask("post-1"), postTask("post-2"), postTask("post-3")];
+  const action = userActionTask("x-token", "x_token_invalid");
+  const taskOutcomes = failedPosts.map((task) => ({
+    fetchTaskId: task.id,
+    status: "failed",
+    reason: "primary_content_unavailable",
+  }));
+  taskOutcomes.push({
+    fetchTaskId: action.id,
+    status: "action_needed",
+    reason: "x_token_invalid",
+  });
+
+  const verdict = cli.classifyLibrarySetupVerdictForTest!(classificationInput({
+    runnerExitCode: 65,
+    tasks: [...failedPosts, action],
+    syncPayload: { builders: [], taskOutcomes },
+  }));
+
+  assert.equal(verdict.status, "needs_confirmation");
+  assert.equal(verdict.plannedTaskCount, 4);
+  assert.equal(verdict.synchronizedTerminalTaskCount, 4);
+  assert.equal(verdict.failures.length, 3);
 });
 
 test("allows the true zero-non-discovery-task path only on exit 0", async () => {

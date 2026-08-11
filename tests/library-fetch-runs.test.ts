@@ -434,6 +434,7 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(route, /MAX_DETAILS_BYTES = 1_000_000/);
   assert.match(patchRoute, /MAX_DETAILS_BYTES = 1_000_000/);
   assert.match(route, /compactFetchRunDetailsForStorage/);
+  assert.match(route, /markInitialFetchRunUserActionsSynced/);
   assert.match(route, /details payload too large; cap at 1000 KB/);
   assert.match(patchRoute, /details payload too large; cap at 1000 KB/);
   // Server filters the GET by the caller's user id.

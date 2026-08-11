@@ -52,6 +52,21 @@ export function markFetchRunTaskOutcomesSynced(
   );
 }
 
+export function markInitialFetchRunUserActionsSynced(
+  details: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!Array.isArray(details.fetchTasks)) return { ...details };
+  return {
+    ...details,
+    fetchTasks: details.fetchTasks.map((value) => {
+      const task = taskRecord(value);
+      return taskStatus(task) === "action_needed"
+        ? { ...task, phase: "synced" }
+        : task;
+    }),
+  };
+}
+
 function taskRecord(value: unknown): FetchRunTask {
   return value && typeof value === "object" && !Array.isArray(value)
     ? { ...(value as FetchRunTask) }

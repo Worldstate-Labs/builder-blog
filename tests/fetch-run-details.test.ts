@@ -3,9 +3,44 @@ import test from "node:test";
 import {
   compactFetchRunDetailsForStorage,
   deriveFetchRunStatusFromDetails,
+  markInitialFetchRunUserActionsSynced,
   markFetchRunTaskOutcomesSynced,
   mergeFetchRunDetails,
 } from "../src/lib/fetch-run-details";
+
+test("accepted initial user actions receive durable synced receipts", () => {
+  const details = {
+    fetchTasks: [
+      {
+        id: "fetch_post:builder_1:x_token_invalid",
+        agentWorkType: "x_token_invalid",
+        status: "action_needed",
+      },
+      {
+        id: "fetch_post:builder_1:post_1",
+        agentWorkType: "fetch_post",
+        status: "pending",
+      },
+    ],
+  };
+
+  const accepted = markInitialFetchRunUserActionsSynced(details);
+
+  assert.deepEqual(accepted.fetchTasks, [
+    {
+      id: "fetch_post:builder_1:x_token_invalid",
+      agentWorkType: "x_token_invalid",
+      status: "action_needed",
+      phase: "synced",
+    },
+    {
+      id: "fetch_post:builder_1:post_1",
+      agentWorkType: "fetch_post",
+      status: "pending",
+    },
+  ]);
+  assert.equal(details.fetchTasks[0].phase, undefined);
+});
 
 test("accepted fetch-run outcomes receive durable synced receipts without mutating input", () => {
   const outcomes = [

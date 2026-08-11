@@ -595,7 +595,6 @@ function classifyLibrarySetupVerdict(input = {}) {
     initialIds.length === mergedIds.length && initialIds.every((id) => mergedIds.includes(id))
   );
   if (!validPlanIds) return setupFatalVerdict(instanceId, runnerExitCode);
-  const postTasks = nonDiscoveryTasks.filter((task) => setupTaskKind(task) === "post");
   const effectiveOutcomes = setupSyncTerminalOutcomes(syncPayload);
   for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
     const id = String(outcome?.fetchTaskId || outcome?.taskId || "").trim();
@@ -651,7 +650,7 @@ function classifyLibrarySetupVerdict(input = {}) {
     status,
     runnerExitCode,
     instanceId,
-    plannedTaskCount: postTasks.length,
+    plannedTaskCount: nonDiscoveryTasks.length,
     synchronizedTerminalTaskCount,
     failures: failures.slice(0, SETUP_VERDICT_MAX_FAILURES),
   };

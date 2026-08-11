@@ -4,7 +4,10 @@ import { getCurrentSession } from "@/lib/auth";
 import {
   loadFetchRunHistoryAgentJobs,
 } from "@/lib/agent-job-runs";
-import { compactFetchRunDetailsForStorage } from "@/lib/fetch-run-details";
+import {
+  compactFetchRunDetailsForStorage,
+  markInitialFetchRunUserActionsSynced,
+} from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -92,7 +95,10 @@ export async function POST(request: Request) {
 
   const rawDetailsValue = parsed.data.details ?? {};
   const compactedDetails = rawDetailsValue && typeof rawDetailsValue === "object" && !Array.isArray(rawDetailsValue)
-    ? compactFetchRunDetailsForStorage(rawDetailsValue as Record<string, unknown>, MAX_DETAILS_BYTES)
+    ? compactFetchRunDetailsForStorage(
+        markInitialFetchRunUserActionsSynced(rawDetailsValue as Record<string, unknown>),
+        MAX_DETAILS_BYTES,
+      )
     : { details: rawDetailsValue, bytes: 0, compacted: false };
   const detailsValue = compactedDetails.details;
   let detailsJson: string;
