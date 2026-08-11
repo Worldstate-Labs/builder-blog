@@ -2109,6 +2109,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
   const startedAt = stringOrNull(argValue(args, "--started-at", envIso("BUILDER_BLOG_JOB_STARTED_AT"))) ?? new Date().toISOString();
   const expectedAt = stringOrNull(argValue(args, "--expected-at", envIso("BUILDER_BLOG_EXPECTED_AT")));
   const finishedAt = stringOrNull(argValue(args, "--finished-at"));
+  const runtimeVersion = stringOrNull(argValue(args, "--runtime-version", null));
   const result = await emitAgentJobRunRecord(config, {
     jobType,
     trigger,
@@ -2137,6 +2138,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
       providerError: argValue(args, "--provider-error", null),
       skippedWaitPids: argValue(args, "--skipped-wait-pids", null),
       localWorkers: numberOrNull(argValue(args, "--local-workers", null)),
+      ...(runtimeVersion ? { runtimeVersion } : {}),
       ...(usage ? { usage } : {}),
     },
   });

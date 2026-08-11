@@ -431,6 +431,18 @@ process.exit(1);
 NODE
 }
 
+run_codex_exec_unattended() {
+  _rceu_model="${1:-}"
+  _rceu_effort="${2:-}"
+  shift 2
+  codex exec "$@" --model "$_rceu_model" --skip-git-repo-check \
+    --sandbox workspace-write \
+    -c 'approval_policy="never"' \
+    -c sandbox_workspace_write.network_access=true \
+    -c "model_reasoning_effort=$_rceu_effort" \
+    -C "$AGENT_DIR" -
+}
+
 probe_codex_model() {
   _pcm_model="${1:-}"
   [ -n "$_pcm_model" ] || return 1
@@ -444,9 +456,7 @@ probe_codex_model() {
   rm -f "$_pcm_output"
   (
     printf '%s\n' 'Reply with exactly OK. Do not use tools.' | \
-      codex exec --json --model "$_pcm_model" --skip-git-repo-check --sandbox read-only \
-        -c "model_reasoning_effort=$_pcm_effort" \
-        -C "$AGENT_DIR" -
+      run_codex_exec_unattended "$_pcm_model" "$_pcm_effort" --json
   ) > "$_pcm_output" 2>&1 &
   _pcm_pid="$!"
   _pcm_deadline=$(( $(date +%s) + _pcm_timeout ))
@@ -682,11 +692,8 @@ openclaw_default_session_id() {
 # the user-facing cron setup prompt (library-cron-setup.md) so users
 # know what each runtime is allowed to do.
 run_with_codex_unattended() {
-  # Codex `--full-auto` = approval_policy=never + workspace-write sandbox.
-  # workspace-write disables outbound network by default, which blocks the
-  # library fetch (FollowBrief API + content sources) and surfaces as a
-  # generic "fetch failed". Re-enable network for the workspace sandbox so the
-  # job can reach the network while keeping the filesystem sandbox intact.
+  # Keep the explicit permission contract in run_codex_exec_unattended so the
+  # preflight exercises the exact same CLI arguments as these workers.
   _codex_output="$(agent_output_file codex)"
   _codex_usage="$(agent_usage_file codex)"
   LAST_AGENT_OUTPUT_FILE="$_codex_output"
@@ -697,15 +704,11 @@ run_with_codex_unattended() {
   _codex_reasoning_effort="${BUILDER_BLOG_CODEX_REASONING_EFFORT:-$DEFAULT_CODEX_REASONING_EFFORT}"
   set +e
   if structured_usage_enabled; then
-    codex exec --json --model "$_codex_model" --skip-git-repo-check --full-auto \
-      -c sandbox_workspace_write.network_access=true \
-      -c "model_reasoning_effort=$_codex_reasoning_effort" \
-      -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+    run_codex_exec_unattended "$_codex_model" "$_codex_reasoning_effort" --json \
+      < "$PROMPT_FILE" > "$_codex_output" 2>&1
   else
-    codex exec --model "$_codex_model" --skip-git-repo-check --full-auto \
-      -c sandbox_workspace_write.network_access=true \
-      -c "model_reasoning_effort=$_codex_reasoning_effort" \
-      -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+    run_codex_exec_unattended "$_codex_model" "$_codex_reasoning_effort" \
+      < "$PROMPT_FILE" > "$_codex_output" 2>&1
   fi
   _codex_code="$?"
   set -e
@@ -1435,6 +1438,15 @@ if [ -z "$BUILDER_BLOG_RUNTIME" ] && \
   BUILDER_BLOG_RUNTIME="codex"
 fi
 export BUILDER_BLOG_RUNTIME
+BUILDER_BLOG_RUNTIME_VERSION=""
+if [ "$BUILDER_BLOG_RUNTIME" = "codex" ] && command -v codex >/dev/null 2>&1; then
+  BUILDER_BLOG_RUNTIME_VERSION="$(
+    { codex --version 2>/dev/null || true; } |
+      sed -n '1p' |
+      cut -c 1-160
+  )"
+fi
+export BUILDER_BLOG_RUNTIME_VERSION
 if [ -z "${BUILDER_BLOG_AGENT_MODEL:-}" ]; then
   case "$BUILDER_BLOG_RUNTIME" in
     codex) BUILDER_BLOG_AGENT_MODEL="${BUILDER_BLOG_CODEX_MODEL:-$DEFAULT_CODEX_MODEL}" ;;
@@ -2185,6 +2197,7 @@ job_run_update() {
       --heartbeat-at "$(iso_now)" \
       --status "$_status" \
       --runtime "${BUILDER_BLOG_RUNTIME:-}" \
+      --runtime-version "${BUILDER_BLOG_RUNTIME_VERSION:-}" \
       --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
       --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
       --local-workers "${MAX_PARALLEL_WORKERS:-}" \
@@ -2206,6 +2219,7 @@ job_run_update() {
       --heartbeat-at "$(iso_now)" \
       --status "$_status" \
       --runtime "${BUILDER_BLOG_RUNTIME:-}" \
+      --runtime-version "${BUILDER_BLOG_RUNTIME_VERSION:-}" \
       --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
       --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
       --local-workers "${MAX_PARALLEL_WORKERS:-}" \

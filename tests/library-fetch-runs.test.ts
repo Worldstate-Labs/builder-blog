@@ -74,6 +74,61 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   assert.match(schema, /regenerateDigest\s+Boolean\s+@default\(false\)/);
 });
 
+test("unattended Codex execution uses the explicit supported sandbox contract", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-unattended-"));
+  const binDir = join(tempDir, "bin");
+  const argsFile = join(tempDir, "args.txt");
+  execFileSync("mkdir", ["-p", binDir]);
+  writeFileSync(join(binDir, "codex"), `#!/bin/sh
+for arg in "$@"; do
+  printf '%s\n' "$arg" >> "$FOLLOWBRIEF_CODEX_ARGS"
+  [ "$arg" != "--full-auto" ] || exit 97
+done
+printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}'
+`, { mode: 0o755 });
+  const checkPath = join(tempDir, "check.sh");
+
+  try {
+    writeFileSync(checkPath, `set -eu
+${shellFunction(runner, "run_codex_exec_unattended")}
+AGENT_DIR="${tempDir}"
+export AGENT_DIR
+printf '%s\n' 'Reply with exactly OK.' | run_codex_exec_unattended "gpt-5.6-luna" "medium" --json
+`, "utf8");
+    execFileSync("sh", [checkPath], {
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        FOLLOWBRIEF_CODEX_ARGS: argsFile,
+      },
+      stdio: "pipe",
+    });
+    const args = readFileSync(argsFile, "utf8").trim().split("\n");
+    assert.deepEqual(args, [
+      "exec",
+      "--json",
+      "--model",
+      "gpt-5.6-luna",
+      "--skip-git-repo-check",
+      "--sandbox",
+      "workspace-write",
+      "-c",
+      'approval_policy="never"',
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "model_reasoning_effort=medium",
+      "-C",
+      tempDir,
+      "-",
+    ]);
+    assert.ok(!args.includes("--full-auto"));
+  } finally {
+    execFileSync("rm", ["-rf", tempDir]);
+  }
+});
+
 test("Codex preflight keeps Luna when the installed CLI can run it", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   const tempDir = mkdtempSync(join(tmpdir(), "followbrief-codex-preflight-luna-"));
@@ -95,6 +150,7 @@ printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens
     writeFileSync(checkPath, `set -eu
 ${shellFunction(runner, "codex_model_failure_is_compatibility")}
 ${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "run_codex_exec_unattended")}
 ${shellFunction(runner, "probe_codex_model")}
 ${shellFunction(runner, "resolve_codex_model_for_job")}
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
@@ -147,6 +203,7 @@ printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens
     writeFileSync(checkPath, `set -eu
 ${shellFunction(runner, "codex_model_failure_is_compatibility")}
 ${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "run_codex_exec_unattended")}
 ${shellFunction(runner, "probe_codex_model")}
 ${shellFunction(runner, "resolve_codex_model_for_job")}
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
@@ -196,6 +253,7 @@ exit 1
     writeFileSync(checkPath, `set -eu
 ${shellFunction(runner, "codex_model_failure_is_compatibility")}
 ${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "run_codex_exec_unattended")}
 ${shellFunction(runner, "probe_codex_model")}
 ${shellFunction(runner, "resolve_codex_model_for_job")}
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
@@ -249,6 +307,7 @@ exit 1
     writeFileSync(checkPath, `set -eu
 ${shellFunction(runner, "codex_model_failure_is_compatibility")}
 ${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "run_codex_exec_unattended")}
 ${shellFunction(runner, "probe_codex_model")}
 ${shellFunction(runner, "resolve_codex_model_for_job")}
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
@@ -290,6 +349,7 @@ exit 1
     writeFileSync(checkPath, `set -eu
 ${shellFunction(runner, "codex_model_failure_is_compatibility")}
 ${shellFunction(runner, "codex_probe_completed")}
+${shellFunction(runner, "run_codex_exec_unattended")}
 ${shellFunction(runner, "probe_codex_model")}
 ${shellFunction(runner, "resolve_codex_model_for_job")}
 ${shellFunction(runner, "run_codex_model_preflight")}

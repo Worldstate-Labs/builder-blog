@@ -270,6 +270,8 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /function exitCodeOrNull/);
   assert.match(cli, /exitCode: exitCodeOrNull\(argValue\(args, "--exit-code", ""\)\)/);
   assert.match(cli, /runtimeUsageFromFile\(argValue\(args, "--usage-file", null\)\)/);
+  assert.match(cli, /const runtimeVersion = stringOrNull\(argValue\(args, "--runtime-version", null\)\)/);
+  assert.match(cli, /\.\.\.\(runtimeVersion \? \{ runtimeVersion \} : \{\}\)/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
   assert.doesNotMatch(cli, /Hermes|HERMES_|detectedHermesModel/);
   assert.doesNotMatch(cli, /Gemini CLI|detectedGeminiModel|GEMINI_MODEL/);
@@ -301,8 +303,13 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   );
   assert.match(
     runner,
-    /run_with_codex_unattended\(\) \{[\s\S]*_codex_model="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"[\s\S]*_codex_reasoning_effort="\$\{BUILDER_BLOG_CODEX_REASONING_EFFORT:-\$DEFAULT_CODEX_REASONING_EFFORT\}"[\s\S]*codex exec --json --model "\$_codex_model"[\s\S]*-c "model_reasoning_effort=\$_codex_reasoning_effort"[\s\S]*codex exec --model "\$_codex_model"[\s\S]*-c "model_reasoning_effort=\$_codex_reasoning_effort"/,
+    /run_with_codex_unattended\(\) \{[\s\S]*_codex_model="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"[\s\S]*_codex_reasoning_effort="\$\{BUILDER_BLOG_CODEX_REASONING_EFFORT:-\$DEFAULT_CODEX_REASONING_EFFORT\}"[\s\S]*run_codex_exec_unattended "\$_codex_model" "\$_codex_reasoning_effort" --json[\s\S]*run_codex_exec_unattended "\$_codex_model" "\$_codex_reasoning_effort"/,
   );
+  assert.match(runner, /BUILDER_BLOG_RUNTIME_VERSION=""/);
+  assert.match(runner, /if \[ "\$BUILDER_BLOG_RUNTIME" = "codex" \]/);
+  assert.match(runner, /codex --version 2>\/dev\/null \|\| true/);
+  assert.match(runner, /export BUILDER_BLOG_RUNTIME_VERSION/);
+  assert.match(runner, /--runtime-version "\$\{BUILDER_BLOG_RUNTIME_VERSION:-\}"/);
   assert.match(
     runner,
     /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"/,

@@ -1948,7 +1948,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /run_with_codex_unattended/);
   assert.match(runner, /run_with_openclaw_unattended/);
   assert.match(runner, /--permission-mode acceptEdits/);
-  assert.match(runner, /--full-auto/);
+  assert.doesNotMatch(runner, /--full-auto/);
+  assert.match(runner, /--sandbox workspace-write/);
+  assert.match(runner, /approval_policy="never"/);
+  assert.match(runner, /sandbox_workspace_write\.network_access=true/);
   // OpenClaw unattended runs rely on its default non-interactive policy and
   // must not rewrite the global exec approval file from a scheduled job.
   assert.match(runner, /openclaw agent --local/);

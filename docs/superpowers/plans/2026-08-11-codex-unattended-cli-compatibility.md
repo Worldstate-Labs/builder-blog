@@ -16,7 +16,7 @@
 - Modify: `tests/library-fetch-runs.test.ts`
 - Modify: `tests/user-journeys.test.ts`
 
-- [ ] **Step 1: Write the failing fake-CLI regression test**
+- [x] **Step 1: Write the failing fake-CLI regression test**
 
 Add a test that extracts the planned `run_codex_exec_unattended` shell helper, puts a fake `codex` binary first on `PATH`, and invokes the helper. The fake binary must exit nonzero if it sees `--full-auto`, record all arguments, and otherwise succeed. Assert that the recorded arguments contain:
 
@@ -30,7 +30,7 @@ sandbox_workspace_write.network_access=true
 
 Also update the user-journey contract to reject `--full-auto` and require the explicit sandbox and approval settings.
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
@@ -45,7 +45,7 @@ Expected: FAIL because `run_codex_exec_unattended` does not exist and the runner
 **Files:**
 - Modify: `scripts/builder-agent-runner.sh`
 
-- [ ] **Step 1: Add the minimal shared helper**
+- [x] **Step 1: Add the minimal shared helper**
 
 Add a POSIX-shell function that accepts model and reasoning effort plus optional Codex flags, then executes:
 
@@ -60,11 +60,11 @@ codex exec "$@" --model "$model" --skip-git-repo-check \
 
 Use unique function-scoped variable prefixes because POSIX `sh` has no portable `local` requirement in this script.
 
-- [ ] **Step 2: Replace both divergent call sites**
+- [x] **Step 2: Replace both divergent call sites**
 
 Call the helper from `probe_codex_model` with `--json` and from both structured and plain branches of `run_with_codex_unattended`. Leave interactive `run_with_codex` unchanged.
 
-- [ ] **Step 3: Run the focused tests and verify GREEN**
+- [x] **Step 3: Run the focused tests and verify GREEN**
 
 Run:
 
@@ -81,7 +81,7 @@ Expected: PASS.
 - Modify: `scripts/builder-agent-runner.sh`
 - Modify: `scripts/builder-digest.mjs`
 
-- [ ] **Step 1: Write the failing metadata contract test**
+- [x] **Step 1: Write the failing metadata contract test**
 
 Extend the existing agent-job-run contract test to require:
 
@@ -93,7 +93,7 @@ details.runtimeVersion
 
 The test must also require that version capture is best-effort and occurs only for the resolved Codex runtime.
 
-- [ ] **Step 2: Run the focused metadata test and verify RED**
+- [x] **Step 2: Run the focused metadata test and verify RED**
 
 Run:
 
@@ -103,11 +103,11 @@ npx tsx --test tests/agent-job-runs.test.ts
 
 Expected: FAIL because the runner and builder-digest CLI do not propagate runtime version metadata.
 
-- [ ] **Step 3: Implement minimal version capture and propagation**
+- [x] **Step 3: Implement minimal version capture and propagation**
 
 After resolving `BUILDER_BLOG_RUNTIME`, capture the first bounded line of `codex --version` without allowing failure to stop the run, export it as `BUILDER_BLOG_RUNTIME_VERSION`, pass it to `job-run-update` as `--runtime-version`, and serialize it as `details.runtimeVersion` when nonempty.
 
-- [ ] **Step 4: Run the focused metadata test and verify GREEN**
+- [x] **Step 4: Run the focused metadata test and verify GREEN**
 
 Run:
 
@@ -123,7 +123,7 @@ Expected: PASS.
 - Verify: `scripts/builder-agent-runner.sh`
 - Verify: related test suites
 
-- [ ] **Step 1: Smoke-check the installed Codex parser**
+- [x] **Step 1: Smoke-check the installed Codex parser**
 
 Run:
 
@@ -138,7 +138,7 @@ codex exec --json --model gpt-5.6-luna --skip-git-repo-check \
 
 Expected: exit 0 with Codex exec help and no unexpected-argument error.
 
-- [ ] **Step 2: Run all directly related tests**
+- [x] **Step 2: Run all directly related tests**
 
 Run:
 
@@ -148,7 +148,7 @@ npx tsx --test tests/library-fetch-runs.test.ts tests/user-journeys.test.ts test
 
 Expected: PASS.
 
-- [ ] **Step 3: Run repository quality gates**
+- [x] **Step 3: Run repository quality gates**
 
 Run sequentially:
 
@@ -160,7 +160,6 @@ npm run build
 
 Expected: all commands exit 0.
 
-- [ ] **Step 4: Review the final diff and commit only task-owned hunks**
+- [x] **Step 4: Review the final diff and commit only task-owned hunks**
 
 Preserve the unrelated pre-existing modifications in the dirty worktree. Stage only the Codex compatibility hunks and use a Lore-format commit documenting the rejected unsafe bypass.
-
