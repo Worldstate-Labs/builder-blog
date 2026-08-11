@@ -4,6 +4,7 @@ import {
   compactFetchRunDetailsForStorage,
   countPlannedPostTasks,
   deriveFetchRunStatusFromDetails,
+  markFetchRunTaskOutcomesSynced,
   mergeFetchRunDetails,
 } from "@/lib/fetch-run-details";
 import { prisma } from "@/lib/prisma";
@@ -163,7 +164,7 @@ export async function PATCH(request: Request, { params }: Params) {
       // when a late plannedTasks patch arrives after terminal outcomes.
       const { details: mergedDetails, matched, planned } = mergeFetchRunDetails(run.details, {
         plannedTasks: parsed.data.plannedTasks ?? [],
-        taskOutcomes: parsed.data.taskOutcomes ?? [],
+        taskOutcomes: markFetchRunTaskOutcomesSynced(parsed.data.taskOutcomes ?? []),
         workerUsages: parsed.data.workerUsages ?? [],
       });
       const compacted = compactFetchRunDetailsForStorage(mergedDetails, MAX_DETAILS_BYTES);

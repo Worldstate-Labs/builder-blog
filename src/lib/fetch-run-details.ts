@@ -42,6 +42,16 @@ export type CompactFetchRunDetailsResult = {
   compacted: boolean;
 };
 
+export function markFetchRunTaskOutcomesSynced(
+  outcomes: FetchRunTaskOutcomePatch[],
+): FetchRunTaskOutcomePatch[] {
+  return outcomes.map((outcome) =>
+    typeof outcome.status === "string" && TERMINAL_FETCH_TASK_STATUSES.has(outcome.status)
+      ? { ...outcome, phase: "synced" }
+      : { ...outcome },
+  );
+}
+
 function taskRecord(value: unknown): FetchRunTask {
   return value && typeof value === "object" && !Array.isArray(value)
     ? { ...(value as FetchRunTask) }
@@ -175,6 +185,7 @@ function compactTask(task: FetchRunTask, level: number): FetchRunTask {
       "syncError",
       "agentRuntime",
       "agentModel",
+      "phase",
     ]);
     for (const key of Object.keys(compacted)) {
       if (!keep.has(key)) delete compacted[key];

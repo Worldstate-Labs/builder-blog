@@ -978,6 +978,17 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /--default-missing-reason \$_frlr_missing_reason/);
   assert.match(runner, /_frlr_sync_command="\$\{SYNC_BUILDERS_COMMAND:-\}"/);
   assert.match(runner, /append-fetch-run-terminal-task-ids[\s\S]*--out "\$_frlr_synced_ids_file"/);
+  const finalFlush = runner.slice(
+    runner.indexOf("flush_remaining_library_results()"),
+    runner.indexOf("cloud_fetch_heartbeat()"),
+  );
+  const receiptRefreshes = finalFlush.match(/append-fetch-run-terminal-task-ids/g) ?? [];
+  assert.equal(receiptRefreshes.length, 2);
+  const finalSync = finalFlush.indexOf(
+    'sync_payload_slices "$_frlr_remaining_tasks" "$_frlr_remaining_payload"',
+  );
+  assert.ok(finalSync > 0);
+  assert.ok(finalFlush.lastIndexOf("append-fetch-run-terminal-task-ids") > finalSync);
   assert.doesNotMatch(runner, /if \[ "\$_sync_command" = "sync-cloud-builders" \] && \[ "\$_frlr_sync_failures"/);
   assert.match(runner, /worker_no_progress_timeout/);
   assert.match(runner, /worker_no_progress_timeout_seconds/);

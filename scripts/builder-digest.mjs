@@ -14024,6 +14024,7 @@ async function patchFetchRunOutcomes(
   } catch (patchError) {
     const message = patchError instanceof Error ? patchError.message : String(patchError);
     console.error(`Failed to attach per-post info to the fetch log: ${message}`);
+    if (!partialOutcomes) throw patchError;
   }
 }
 

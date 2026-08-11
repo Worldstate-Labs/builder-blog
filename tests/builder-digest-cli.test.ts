@@ -5137,6 +5137,104 @@ test("sync-builders treats explicit empty builders payload as a successful no-op
   assert.equal(result.taskOutcomes, 0);
 });
 
+test("final fetch-log reconciliation fails closed while checkpoint reconciliation remains retryable", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-fetch-log-receipt-"));
+  const payloadFile = join(tmp, "library-agent-sync.json");
+  const tasksFile = join(tmp, "library-fetch-result.json");
+  const task = {
+    id: "fetch_post:builder_1:post_1",
+    type: "fetch_post",
+    builder: "Example source",
+    builderId: "builder_1",
+    sourceType: "blog",
+    contentStatus: "requires_agent",
+    agentWorkType: "blog_article_fetch",
+    item: {
+      kind: "BLOG_POST",
+      externalId: "post_1",
+      title: "Unavailable article",
+      url: "https://example.com/post-1",
+    },
+  };
+  await writeFile(
+    payloadFile,
+    `${JSON.stringify({
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: task.id,
+          status: "failed",
+          reason: "primary_content_unavailable",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({ status: "ok", localErrors: [], fetchTasks: [task] })}\n`,
+    "utf8",
+  );
+  await writeFile(join(tmp, "library-fetch-run-id"), "fetch_run_1\n", "utf8");
+
+  const requests: string[] = [];
+  const server = createServer((request, response) => {
+    requests.push(`${request.method} ${request.url}`);
+    request.resume();
+    response.writeHead(400, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "receipt rejected" }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address() as AddressInfo;
+  const runSync = (extraArgs: string[] = []) =>
+    execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "sync-builders",
+        "--file",
+        payloadFile,
+        "--tasks",
+        tasksFile,
+        ...extraArgs,
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          BUILDER_BLOG_AGENT_DIR: tmp,
+          BUILDER_BLOG_JOB_TMP_DIR: tmp,
+          BUILDER_BLOG_TOKEN: "test-token",
+          BUILDER_BLOG_URL: `http://127.0.0.1:${address.port}`,
+        },
+      },
+    );
+
+  try {
+    const checkpoint = await runSync(["--partial-outcomes"]);
+    assert.match(checkpoint.stdout, /"status": "ok"/);
+    assert.match(checkpoint.stderr, /Failed to attach per-post info to the fetch log/);
+
+    await assert.rejects(
+      runSync(),
+      (error: NodeJS.ErrnoException & { stderr?: string; code?: number }) => {
+        assert.equal(error.code, 1);
+        assert.match(error.stderr ?? "", /Failed to attach per-post info to the fetch log/);
+        return true;
+      },
+    );
+    assert.deepEqual(requests, [
+      "PATCH /api/skill/fetch-runs/fetch_run_1",
+      "PATCH /api/skill/fetch-runs/fetch_run_1",
+    ]);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+});
+
 test("cloud sync upload payload reuses builder sync sanitization and carries cloud task results", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const payload = cli.prepareCloudSyncPayloadForUpload(

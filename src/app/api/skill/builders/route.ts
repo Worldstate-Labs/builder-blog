@@ -15,6 +15,7 @@ import {
 } from "@/lib/builder-feed-sync";
 import {
   compactFetchRunDetailsForStorage,
+  markFetchRunTaskOutcomesSynced,
   mergeFetchRunDetails,
   type FetchRunTaskOutcomePatch,
 } from "@/lib/fetch-run-details";
@@ -363,7 +364,9 @@ async function patchFetchRunForBuilderSync({
 }) {
   if (!fetchRun?.id) return null;
 
-  const outcomes = fetchRunOutcomesForBuilderSync({ itemResults, builders, taskOutcomes });
+  const outcomes = markFetchRunTaskOutcomesSynced(
+    fetchRunOutcomesForBuilderSync({ itemResults, builders, taskOutcomes }),
+  );
   try {
     const run = existingRun ?? await client.libraryFetchRun.findFirst({
       where: { id: fetchRun.id, userId },

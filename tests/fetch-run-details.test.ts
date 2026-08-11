@@ -3,8 +3,30 @@ import test from "node:test";
 import {
   compactFetchRunDetailsForStorage,
   deriveFetchRunStatusFromDetails,
+  markFetchRunTaskOutcomesSynced,
   mergeFetchRunDetails,
 } from "../src/lib/fetch-run-details";
+
+test("accepted fetch-run outcomes receive durable synced receipts without mutating input", () => {
+  const outcomes = [
+    { fetchTaskId: "task_failed", status: "failed", failureReason: "primary_content_unavailable" },
+    { fetchTaskId: "task_synced", status: "synced", phase: "read" },
+  ];
+
+  const accepted = markFetchRunTaskOutcomesSynced(outcomes);
+
+  assert.deepEqual(accepted, [
+    {
+      fetchTaskId: "task_failed",
+      status: "failed",
+      failureReason: "primary_content_unavailable",
+      phase: "synced",
+    },
+    { fetchTaskId: "task_synced", status: "synced", phase: "synced" },
+  ]);
+  assert.equal(outcomes[0].phase, undefined);
+  assert.equal(outcomes[1].phase, "read");
+});
 
 test("late planned-task patches do not regress terminal fetch task outcomes", () => {
   const result = mergeFetchRunDetails(
@@ -263,6 +285,7 @@ test("fetch run storage compaction preserves terminal accounting under the detai
       title: `A long post title ${index} with enough text to resemble real feed data`,
       url: `https://example.com/posts/${index}?utm_source=followbrief`,
       status: "failed",
+      phase: "synced",
       failureReason: "runtime_timeout",
       evidence: {
         missingShard: {
@@ -287,6 +310,7 @@ test("fetch run storage compaction preserves terminal accounting under the detai
   const compacted = compactFetchRunDetailsForStorage(details, 100_000);
   const compactedFetchTasks = compacted.details.fetchTasks as Array<{
     status?: string;
+    phase?: string;
     evidence?: unknown;
   }>;
 
@@ -294,11 +318,33 @@ test("fetch run storage compaction preserves terminal accounting under the detai
   assert.ok(compacted.bytes <= 100_000);
   assert.equal(compactedFetchTasks.length, 98);
   assert.equal(compactedFetchTasks.filter((task) => task.status === "failed").length, 98);
+  assert.equal(compactedFetchTasks.filter((task) => task.phase === "synced").length, 98);
   assert.equal(compactedFetchTasks.some((task) => task.evidence), false);
   assert.deepEqual(
     deriveFetchRunStatusFromDetails({ status: "ok", errorCount: 0 }, compacted.details),
     { status: "failed", errorCount: 98 },
   );
+});
+
+test("maximum fetch-run compaction preserves durable receipt phase", () => {
+  const compacted = compactFetchRunDetailsForStorage(
+    {
+      fetchTasks: [
+        {
+          id: "fetch_post:builder_1:post_1",
+          builderId: "builder_1",
+          status: "failed",
+          phase: "synced",
+          failureReason: "primary_content_unavailable",
+          evidence: { verbose: "x".repeat(20_000) },
+        },
+      ],
+    },
+    1,
+  );
+
+  const task = (compacted.details.fetchTasks as Array<Record<string, unknown>>)[0];
+  assert.equal(task.phase, "synced");
 });
 
 test("fetch run storage compaction preserves minimum sync-failure lifecycle evidence", () => {

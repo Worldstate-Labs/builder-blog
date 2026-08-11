@@ -453,6 +453,7 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(patchRoute, /TERMINAL_FETCH_TASK_STATUSES/);
   assert.match(patchRoute, /MAX_FETCH_TASK_ID/);
   assert.match(patchRoute, /mergeFetchRunDetails/);
+  assert.match(patchRoute, /markFetchRunTaskOutcomesSynced/);
   assert.match(patchRoute, /countPlannedPostTasks/);
   assert.match(patchRoute, /function fetchRunPatchSummary/);
   assert.match(patchRoute, /deriveFetchRunStatusFromDetails/);
@@ -881,6 +882,7 @@ test("builder sync endpoint durably patches fetch-run outcomes server-side", () 
   assert.match(contracts, /SkillFetchRunPlannedTaskSchema/);
   assert.match(contracts, /fetchRun: z\.object/);
   assert.match(buildersRoute, /mergeFetchRunDetails/);
+  assert.match(buildersRoute, /markFetchRunTaskOutcomesSynced/);
   assert.match(buildersRoute, /parsed\.data\.fetchRun/);
   assert.match(buildersRoute, /patchFetchRunForBuilderSync/);
   assert.match(buildersRoute, /fetchRunPatch/);

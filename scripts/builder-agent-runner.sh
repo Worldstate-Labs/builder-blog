@@ -5010,6 +5010,14 @@ flush_remaining_library_results() {
     fi
   fi
 
+  if [ "$_frlr_sync_command" = "sync-builders" ] && [ "$_frlr_sync_failures" -eq 0 ] && [ -n "$_frlr_synced_ids_file" ]; then
+    if ! node "$AGENT_DIR/builder-digest.mjs" append-fetch-run-terminal-task-ids \
+      --tasks "$_frlr_result_file" \
+      --out "$_frlr_synced_ids_file"; then
+      echo "Could not refresh fetch-run terminal task ids after $_frlr_label sync; continuing with local sync receipts." >&2
+    fi
+  fi
+
   if [ "$_frlr_sync_failures" -gt 0 ]; then
     echo "$_frlr_sync_failures library result slice(s) failed to sync." >&2
     return 65
