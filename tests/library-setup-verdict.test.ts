@@ -149,6 +149,43 @@ test("classifies a durably synchronized headline failure after exit 65 as needs_
   ]);
 });
 
+test("classifies a runner-managed media failure retained as a planned outcome as needs_confirmation", async () => {
+  const cli = await verdictModule();
+  const mediaTask = postTask("youtube-media", {
+    sourceType: "youtube",
+    agentWorkType: "youtube_transcription",
+    plannedExtractionMethod: "audio_transcription",
+  });
+  const mediaOutcome = {
+    fetchTaskId: "youtube-media",
+    status: "failed",
+    reason: "audio_download:javascript_runtime_unavailable",
+    plannedTask: mediaTask,
+  };
+  const verdict = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 65,
+    instanceId: randomUUID(),
+    fetchResult: { fetchTasks: [], taskOutcomes: [mediaOutcome] },
+    mergedFetchResult: { fetchTasks: [], taskOutcomes: [mediaOutcome] },
+    syncPayload: { builders: [], taskOutcomes: [mediaOutcome] },
+    syncedTaskIds: ["youtube-media"],
+    mergeResult: { status: "ok", taskIds: ["youtube-media"], shards: [] },
+    remainingMergeResult: { status: "ok", taskIds: [], shards: [] },
+    failurePayloads: [],
+  });
+
+  assert.equal(verdict.status, "needs_confirmation");
+  assert.equal(verdict.plannedTaskCount, 1);
+  assert.equal(verdict.synchronizedTerminalTaskCount, 1);
+  assert.deepEqual(verdict.failures, [{
+    fetchTaskId: "youtube-media",
+    title: "Post youtube-media",
+    source: "Source youtube-media · youtube",
+    stage: "read",
+    reason: "audio_download:javascript_runtime_unavailable",
+  }]);
+});
+
 test("keeps exit 65 fatal when a failed post is not in the durable ledger", async () => {
   const cli = await verdictModule();
   const task = postTask("post-unsynced");

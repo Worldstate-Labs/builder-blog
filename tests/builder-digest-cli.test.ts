@@ -1816,6 +1816,7 @@ test("personal YouTube fetcher chooses Chinese captions when metadata strongly i
 
 test("personal YouTube fetcher uses yt-dlp metadata captions before agent fallback", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
+  let ytDlpMetadataArgs: string[] = [];
   const zhLine =
     "何小鹏 讨论 人形机器人 技术 组织 产品 战略 赌注 汽车 智能 驾驶 未来 市场 竞争 团队 决策 风险 机会 产业 变化";
   const vtt = [
@@ -1858,6 +1859,7 @@ test("personal YouTube fetcher uses yt-dlp metadata captions before agent fallba
           return { ok: true, code: 0, stdout: "2026.01.01", stderr: "", timedOut: false };
         }
         if (command === "yt-dlp" && args.includes("-J")) {
+          ytDlpMetadataArgs = args;
           return {
             ok: true,
             code: 0,
@@ -1909,6 +1911,10 @@ test("personal YouTube fetcher uses yt-dlp metadata captions before agent fallba
   assert.equal(result.items[0].rawJson.captionLanguageCode, "zh-Hans");
   assert.equal(result.items[0].rawJson.youtubeExtractionAttempts[0].method, "yt-dlp-captions");
   assert.equal(result.items[0].rawJson.youtubeExtractionAttempts[0].status, "ok");
+  assert.deepEqual(
+    ytDlpMetadataArgs.slice(0, 4),
+    ["-J", "--skip-download", "--js-runtimes", `node:${process.execPath}`],
+  );
 });
 
 test("personal YouTube fetcher plans worker fallback without audio download or local ASR when captions are unavailable", async () => {
@@ -2283,7 +2289,13 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
         "yt-dlp": "/opt/followbrief/bin/yt-dlp",
         ffmpeg: "/opt/followbrief/bin/ffmpeg",
         python3: "/opt/followbrief/bin/python3",
+        node: "/opt/followbrief/bin/node",
       } as Record<string, string>)[command] ?? null,
+      commandRunner: async (command: string, args: string[]) => {
+        assert.equal(command, "/opt/followbrief/bin/node");
+        assert.deepEqual(args, ["--version"]);
+        return { ok: true, code: 0, stdout: "v24.1.0\n", stderr: "", timedOut: false };
+      },
       capabilities: {
         adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
         probes: [],
@@ -2297,6 +2309,11 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
     assert.equal(profile.verifiedAt, "2026-08-04T12:00:00.000Z");
     assert.equal(profile.downloader.path, "/opt/followbrief/bin/yt-dlp");
     assert.equal(profile.decoder.path, "/opt/followbrief/bin/ffmpeg");
+    assert.deepEqual(profile.javascriptRuntime, {
+      name: "node",
+      path: "/opt/followbrief/bin/node",
+      version: "24.1.0",
+    });
     assert.equal(profile.asr.backend, "faster-whisper");
     assert.equal(profile.asr.command, "/opt/followbrief/bin/python3");
     assert.ok(profile.platform);
@@ -2312,11 +2329,16 @@ test("managed ASR executes the machine profile's absolute tool paths", async () 
   const downloader = "/opt/followbrief/bin/yt-dlp";
   const decoder = "/opt/followbrief/bin/ffmpeg";
   const python = "/opt/followbrief/asr-venv/bin/python3";
+  const javascriptRuntime = "/opt/followbrief/bin/node";
   try {
     const result = await cli.fetchYouTubeLocalAsrForTest("https://cdn.example.com/episode.mp3", {
       workDir: dir,
       preserveWorkDir: true,
-      toolPaths: { downloader, decoder },
+      toolPaths: {
+        downloader,
+        decoder,
+        javascriptRuntime: { name: "node", path: javascriptRuntime },
+      },
       asrCapabilities: {
         adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python }],
         probes: [],
@@ -2358,6 +2380,10 @@ test("managed ASR executes the machine profile's absolute tool paths", async () 
       python,
     ]);
     assert.equal(commands.some((command) => /^(yt-dlp|ffmpeg|python3)\b/.test(command)), false);
+    assert.match(
+      commands.find((command) => command.startsWith(`${downloader} -f ba `)) ?? "",
+      /--js-runtimes node:\/opt\/followbrief\/bin\/node/,
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -3943,7 +3969,10 @@ test("extract-long-media probes ffmpeg with -version so local ASR continues when
       successCommands[3],
       successCommands[4],
     ]);
-    assert.equal(successCommands[2].startsWith("yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K -o "), true);
+    assert.match(
+      successCommands[2],
+      /^yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K --js-runtimes node:.+ -o /,
+    );
     assert.equal(successCommands[3].startsWith("ffmpeg -y -i "), true);
     assert.equal(successCommands.includes("ffmpeg --version"), false);
     assert.equal(successCommands[4].startsWith("python3 -c "), true);
@@ -4022,7 +4051,10 @@ test("extract-long-media helper stops before ffmpeg once budget expires after do
       commands[2],
     ]);
     assert.deepEqual(timeouts, [10_000, 8_000, 6_000]);
-    assert.equal(commands[2].startsWith("yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K -o "), true);
+    assert.match(
+      commands[2],
+      /^yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K --js-runtimes node:.+ -o /,
+    );
     assert.equal(commands.some((command) => command.startsWith("ffmpeg -y ")), false);
   } finally {
     await execFileAsync("rm", ["-rf", dir]);
@@ -10848,15 +10880,17 @@ test("merge-task-results can exclude checkpoint-synced task ids from final sync 
   );
 });
 
-test("terminal fetch-run task exclusion ignores non-terminal fetched work", async () => {
+test("terminal fetch-run task exclusion requires server-synced terminal evidence", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const ids = cli.terminalFetchRunTaskKeysFromDetails(
     {
       fetchTasks: [
-        { id: "already-synced", status: "synced" },
-        { id: "already-failed", status: "failed" },
-        { id: "needs-user", status: "action_needed" },
-        { id: "no-content", status: "skipped" },
+        { id: "already-synced", status: "synced", phase: "synced" },
+        { id: "already-failed", status: "failed", phase: "synced" },
+        { id: "needs-user", status: "action_needed", phase: "synced" },
+        { id: "no-content", status: "skipped", phase: "synced" },
+        { id: "local-media-failure", status: "failed", phase: "completed" },
+        { id: "local-user-action", status: "action_needed", phase: "plan" },
         { id: "read-only", status: "fetched" },
         { id: "not-started", status: "pending" },
       ],
@@ -10867,6 +10901,8 @@ test("terminal fetch-run task exclusion ignores non-terminal fetched work", asyn
         { id: "already-failed" },
         { id: "needs-user" },
         { id: "no-content" },
+        { id: "local-media-failure" },
+        { id: "local-user-action" },
         { id: "read-only" },
         { id: "not-started" },
       ],

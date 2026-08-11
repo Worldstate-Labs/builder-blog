@@ -253,7 +253,7 @@ NODE
 FAILED_POST_DETAILS="$(
   node - "$SETUP_VERDICT_JSON" <<'NODE'
 const verdict = JSON.parse(process.argv[2]);
-const rows = Array.isArray(verdict.failedPosts) ? verdict.failedPosts : [];
+const rows = Array.isArray(verdict.failures) ? verdict.failures : [];
 for (const row of rows) {
   const title = typeof row?.title === "string" && row.title.trim() ? row.title.trim() : "(untitled)";
   const source = typeof row?.source === "string" && row.source.trim() ? row.source.trim() : "(unknown source)";

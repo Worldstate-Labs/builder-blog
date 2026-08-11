@@ -4,7 +4,8 @@ Installation is deliberately outside unattended runners and requires consent.
 -->
 Check this machine's managed-media capability before starting or scheduling a
 fetch. The check writes a versioned machine profile with absolute executable
-paths; unattended runs consume that profile and never install dependencies.
+paths, including a Node.js 22+ JavaScript runtime for YouTube extraction;
+unattended runs consume that profile and never install dependencies.
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
@@ -42,9 +43,9 @@ command -v python3 >/dev/null 2>&1 || {
   echo "python3 is required to install the local speech backend." >&2
   exit 69
 }
-brew install yt-dlp ffmpeg
+brew install ffmpeg
 python3 -m venv "$AGENT_DIR/asr-venv"
-"$AGENT_DIR/asr-venv/bin/python" -m pip install --upgrade pip faster-whisper
+"$AGENT_DIR/asr-venv/bin/python" -m pip install --upgrade pip "yt-dlp[default]" faster-whisper
 ```
 
 ### Linux / other
@@ -52,13 +53,13 @@ python3 -m venv "$AGENT_DIR/asr-venv"
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 command -v apt-get >/dev/null 2>&1 || {
-  echo "Automatic setup currently requires apt-get. Install ffmpeg, python3-venv, yt-dlp, and faster-whisper with this system's package manager, then re-run this setup prompt." >&2
+  echo "Automatic setup currently requires apt-get. Install Node.js 22+, ffmpeg, python3-venv, yt-dlp with its default EJS support, and faster-whisper with this system's package manager, then re-run this setup prompt." >&2
   exit 69
 }
 sudo apt-get update
 sudo apt-get install -y ffmpeg python3 python3-venv
 python3 -m venv "$AGENT_DIR/asr-venv"
-"$AGENT_DIR/asr-venv/bin/python" -m pip install --upgrade pip yt-dlp faster-whisper
+"$AGENT_DIR/asr-venv/bin/python" -m pip install --upgrade pip "yt-dlp[default]" faster-whisper
 ```
 
 Then verify the installed paths and backend. Do not continue if this still

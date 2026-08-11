@@ -394,6 +394,22 @@ function setupZeroTaskOutcomesAreSafe(fetchResult) {
   return true;
 }
 
+function plannedTasksForSetupVerdict(fetchResult) {
+  const tasks = [...extractFetchTasks(fetchResult)];
+  const seen = new Set(tasks.map((task) => taskKeyForSync(task)));
+  for (const outcome of Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []) {
+    const status = String(outcome?.status || "").trim().toLowerCase();
+    if (status !== "failed" && status !== "action_needed") continue;
+    const task = plannedTaskOutcomeForCloudSync(outcome);
+    if (!task) continue;
+    const key = taskKeyForSync(task);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tasks.push(task);
+  }
+  return tasks;
+}
+
 function classifyLibrarySetupVerdict(input = {}) {
   const runnerExitCode = Number(input.runnerExitCode);
   const instanceId = setupVerdictBoundedText(input.instanceId, 128);
@@ -407,7 +423,7 @@ function classifyLibrarySetupVerdict(input = {}) {
 
   let initialTasks;
   try {
-    initialTasks = extractFetchTasks(fetchResult);
+    initialTasks = plannedTasksForSetupVerdict(fetchResult);
   } catch {
     return setupFatalVerdict(instanceId, runnerExitCode);
   }
@@ -449,7 +465,7 @@ function classifyLibrarySetupVerdict(input = {}) {
 
   let plannedTasks;
   try {
-    plannedTasks = extractFetchTasks(mergedFetchResult);
+    plannedTasks = plannedTasksForSetupVerdict(mergedFetchResult);
   } catch {
     return setupFatalVerdict(instanceId, runnerExitCode);
   }
@@ -708,7 +724,7 @@ async function classifyLibrarySetupVerdictCommand(args) {
       throw new Error("Setup verdict run owner does not match the requested run.");
     }
     const fetchResult = await setupVerdictRegularJson(join(runDir, "library-fetch-result.json"));
-    const initialTasks = extractFetchTasks(fetchResult);
+    const initialTasks = plannedTasksForSetupVerdict(fetchResult);
     const nonDiscoveryTasks = initialTasks.filter((task) => setupTaskKind(task) !== "discovery");
     const input = { runnerExitCode, instanceId, fetchResult };
     if (nonDiscoveryTasks.length > 0) {
@@ -6873,7 +6889,13 @@ async function fetchYouTubeTranscriptWithYtDlp(videoUrl, {
     attempts.push({ method: "yt-dlp-captions", status: "skipped", reason: "yt-dlp_missing" });
     return { text: "" };
   }
-  const metadataResult = await commandRunner("yt-dlp", ["-J", "--skip-download", videoUrl], {
+  const metadataArgs = ["-J", "--skip-download"];
+  const javascriptRuntime = currentNodeJavascriptRuntime();
+  if (javascriptRuntime) {
+    metadataArgs.push("--js-runtimes", `${javascriptRuntime.name}:${javascriptRuntime.path}`);
+  }
+  metadataArgs.push(videoUrl);
+  const metadataResult = await commandRunner("yt-dlp", metadataArgs, {
     timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_METADATA_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS),
   });
   if (!metadataResult.ok) {
@@ -7144,6 +7166,7 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   }
   const ytDlpCommand = toolPaths?.downloader || "yt-dlp";
   const ffmpegCommand = toolPaths?.decoder || "ffmpeg";
+  const javascriptRuntime = toolPaths?.javascriptRuntime ?? currentNodeJavascriptRuntime();
   const ytDlpAvailable = await commandExists(ytDlpCommand, commandRunner, probeOptions);
   if (ytDlpAvailable == null) {
     attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
@@ -7161,6 +7184,14 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   if (!ffmpegAvailable) {
     attempts.push({ method: "local-asr", status: "skipped", reason: "ffmpeg_missing" });
     return { text: "", reason: "ffmpeg_missing" };
+  }
+  if (!javascriptRuntime) {
+    attempts.push({
+      method: "local-asr",
+      status: "skipped",
+      reason: "youtube_javascript_runtime_missing",
+    });
+    return { text: "", reason: "youtube_javascript_runtime_missing" };
   }
 
   const asrRoot = join(jobTmpDir("library-cron"), "youtube-asr");
@@ -7235,7 +7266,15 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       await writeState({ status: "downloading", sourceUrl: videoUrl });
       const download = await commandRunner(
         ytDlpCommand,
-        ["-f", "ba", "-x", "--audio-format", "mp3", "--audio-quality", "64K", "-o", rawTemplate, videoUrl],
+        [
+          "-f", "ba",
+          "-x",
+          "--audio-format", "mp3",
+          "--audio-quality", "64K",
+          "--js-runtimes", `${javascriptRuntime.name}:${javascriptRuntime.path}`,
+          "-o", rawTemplate,
+          videoUrl,
+        ],
         downloadOptions,
       );
       if (!download.ok) {
@@ -7313,6 +7352,34 @@ async function fetchYouTubeLocalAsr(videoUrl, {
 
 export function fetchYouTubeLocalAsrForTest(videoUrl, options) {
   return fetchYouTubeLocalAsr(videoUrl, options);
+}
+
+const MIN_YTDLP_NODE_MAJOR = 22;
+
+function parsedNodeVersion(value) {
+  const match = String(value || "").trim().match(/^v?(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    version: `${match[1]}.${match[2]}.${match[3]}`,
+  };
+}
+
+function currentNodeJavascriptRuntime() {
+  const version = parsedNodeVersion(process.versions?.node);
+  if (!version || version.major < MIN_YTDLP_NODE_MAJOR || !existsSync(process.execPath)) return null;
+  return { name: "node", path: process.execPath, version: version.version };
+}
+
+async function resolveYtDlpJavascriptRuntime({ commandPathResolver, commandRunner }) {
+  const nodePath = await commandPathResolver("node")
+    ?? (existsSync(process.execPath) ? process.execPath : null);
+  if (!nodePath) return null;
+  const result = await commandRunner(nodePath, ["--version"]);
+  if (!result?.ok) return null;
+  const version = parsedNodeVersion(result.stdout || result.stderr);
+  if (!version || version.major < MIN_YTDLP_NODE_MAJOR) return null;
+  return { name: "node", path: nodePath, version: version.version };
 }
 
 async function resolveLocalAsrCapabilities({
@@ -7408,6 +7475,10 @@ async function runAsrDoctor({
   const resolvedCapabilities = capabilities ?? await resolveLocalAsrCapabilities({ commandRunner });
   const downloaderPath = await commandPathResolver("yt-dlp");
   const decoderPath = await commandPathResolver("ffmpeg");
+  const javascriptRuntime = await resolveYtDlpJavascriptRuntime({
+    commandPathResolver,
+    commandRunner,
+  });
   const adapter = resolvedCapabilities.adapters?.[0] ?? null;
   const adapterCommand = adapter
     ? adapter.python || adapter.command || (adapter.id === "whisper-cli" ? "whisper" : null)
@@ -7416,6 +7487,7 @@ async function runAsrDoctor({
   const missing = [
     ...(!downloaderPath ? ["yt-dlp"] : []),
     ...(!decoderPath ? ["ffmpeg"] : []),
+    ...(!javascriptRuntime ? ["youtube-javascript-runtime"] : []),
     ...(!adapter || !adapterPath ? ["local-asr-backend"] : []),
   ];
   const profile = {
@@ -7426,6 +7498,7 @@ async function runAsrDoctor({
     hostname: RUN_HOSTNAME,
     downloader: downloaderPath ? { command: "yt-dlp", path: downloaderPath } : null,
     decoder: decoderPath ? { command: "ffmpeg", path: decoderPath } : null,
+    javascriptRuntime,
     asr: adapter && adapterPath
       ? {
         backend: adapter.id,
@@ -7466,8 +7539,17 @@ function capabilitiesFromAsrProfile(profile) {
   const decoder = String(profile?.decoder?.path || "").trim();
   const backend = String(profile?.asr?.backend || "").trim();
   const command = String(profile?.asr?.command || "").trim();
-  if (!downloader || !decoder || !backend || !command) return null;
-  if (![downloader, decoder, command].every((path) => existsSync(path))) return null;
+  const profiledJavascriptRuntime = profile?.javascriptRuntime;
+  const javascriptRuntime = profiledJavascriptRuntime?.name === "node"
+    && String(profiledJavascriptRuntime?.path || "").trim()
+    ? {
+      name: "node",
+      path: String(profiledJavascriptRuntime.path).trim(),
+      version: String(profiledJavascriptRuntime?.version || "").trim() || null,
+    }
+    : currentNodeJavascriptRuntime();
+  if (!downloader || !decoder || !backend || !command || !javascriptRuntime) return null;
+  if (![downloader, decoder, command, javascriptRuntime.path].every((path) => existsSync(path))) return null;
   let adapter;
   if (backend === "faster-whisper" || backend === "mlx-whisper") {
     adapter = {
@@ -7484,7 +7566,7 @@ function capabilitiesFromAsrProfile(profile) {
   }
   return {
     capabilities: { adapters: [adapter], probes: profile.probes ?? [], timedOut: false },
-    toolPaths: { downloader, decoder },
+    toolPaths: { downloader, decoder, javascriptRuntime },
   };
 }
 
@@ -7819,6 +7901,7 @@ function managedMediaCapabilityFailure(reason) {
     "python_missing",
     "yt-dlp_missing",
     "ffmpeg_missing",
+    "youtube_javascript_runtime_missing",
   ]).has(String(reason || ""));
 }
 
@@ -10256,7 +10339,8 @@ export function terminalFetchRunTaskKeysFromDetails(detailsValue, fetchResultOrT
     const id = String(task.id || task.fetchTaskId || "").trim();
     if (!id) continue;
     const status = String(task.status || "").trim();
-    if (!TERMINAL_FETCH_RUN_TASK_STATUSES.has(status)) continue;
+    const phase = String(task.phase || "").trim();
+    if (!TERMINAL_FETCH_RUN_TASK_STATUSES.has(status) || phase !== "synced") continue;
     const planned = plannedById.get(id);
     if (planned) keys.add(taskKeyForSync(planned));
     else keys.add(taskKeyForSync(task));

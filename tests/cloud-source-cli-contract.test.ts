@@ -2751,6 +2751,8 @@ test("fetch setup prompts run the ASR doctor before unattended media work", asyn
     assert.match(prompt, /builder-digest\.mjs" asr-doctor/);
     assert.match(prompt, /Do not install[\s\S]*unattended/i);
   }
+  assert.match(setup, /yt-dlp\[default\]/);
+  assert.match(setup, /JavaScript runtime/i);
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {

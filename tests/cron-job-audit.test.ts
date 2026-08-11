@@ -124,6 +124,8 @@ test("library setup verifies the current initial run before mutating scheduler s
   );
   assert.match(stepSixBlock, /node - "\$SETUP_VERDICT_JSON" <<'NODE'/);
   assert.match(stepSixBlock, /FAILED_POST_DETAILS="\$\(/);
+  assert.match(stepSixBlock, /Array\.isArray\(verdict\.failures\)/);
+  assert.doesNotMatch(stepSixBlock, /verdict\.failedPosts/);
   assert.match(
     stepSixBlock,
     /RESUME_CONTRACT_PATH="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\/resume-contract-\$EXPECTED_INSTANCE_ID\.json"/,
