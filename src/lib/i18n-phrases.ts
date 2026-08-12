@@ -1179,6 +1179,27 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "할당 대기",
     es: "En espera de asignación",
   },
+  "Failed before assignment": {
+    "zh-CN": "分配前失败",
+    "zh-TW": "分派前失敗",
+    ja: "割り当て前に失敗",
+    ko: "할당 전에 실패",
+    es: "Falló antes de la asignación",
+  },
+  "Failure reason unavailable.": {
+    "zh-CN": "无法获取失败原因。",
+    "zh-TW": "無法取得失敗原因。",
+    ja: "失敗理由を取得できません。",
+    ko: "실패 사유를 확인할 수 없습니다.",
+    es: "No se pudo obtener el motivo del fallo.",
+  },
+  "The planned extraction workload exceeded the supported four-hour execution ceiling, so the run stopped before attempting extraction.": {
+    "zh-CN": "计划的提取工作量超过了支持的四小时执行上限，因此任务在开始提取前就已停止。",
+    "zh-TW": "規劃的擷取工作量超過支援的四小時執行上限，因此任務在開始擷取前就已停止。",
+    ja: "計画された抽出処理量が対応可能な4時間の実行上限を超えたため、抽出を開始する前に停止しました。",
+    ko: "계획된 추출 작업량이 지원되는 4시간 실행 한도를 초과하여 추출을 시작하기 전에 중단되었습니다.",
+    es: "La carga de extracción planificada superó el límite de ejecución admitido de cuatro horas, por lo que se detuvo antes de iniciar la extracción.",
+  },
   "No sources waiting for lease.": {
     "zh-CN": "没有等待 source lease 的信息源。",
     "zh-TW": "沒有等待 source lease 的資訊源。",

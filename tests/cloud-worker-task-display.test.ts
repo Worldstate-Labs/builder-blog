@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   formatCloudWorkerTaskLabel,
+  formatPreAssignmentFailureMessage,
   hasWorkerAssignment,
   isCloudWorkerTerminalStatus,
   resolveCloudWorkerTaskStatus,
   resolveWorkerAssignment,
+  selectFailedBeforeAssignmentWorkerTasks,
   selectUnassignedWorkerTasks,
   summarizeCloudWorkerLaneStatuses,
 } from "@/lib/cloud-worker-task-display";
@@ -46,11 +48,51 @@ test("worker assignment resolves the first usable worker id", () => {
   assert.equal(resolveWorkerAssignment(null, ""), null);
 });
 
-test("queue selection returns only unassigned tasks", () => {
+test("queue selection returns only active unassigned tasks", () => {
   const waiting = task({ id: "waiting" });
+  const failed = task({ id: "failed", status: "failed", reason: "workload_exceeds_max_budget" });
   const assigned = task({ id: "assigned", workerId: "worker-1" });
 
-  assert.deepEqual(selectUnassignedWorkerTasks([waiting, assigned]), [waiting]);
+  assert.deepEqual(selectUnassignedWorkerTasks([waiting, failed, assigned]), [waiting]);
+  assert.deepEqual(
+    selectFailedBeforeAssignmentWorkerTasks([waiting, failed, assigned]),
+    [failed],
+  );
+});
+
+test("pre-assignment failure copy prefers taxonomy and suppresses generic messages", () => {
+  assert.equal(
+    formatPreAssignmentFailureMessage(task({
+      status: "failed",
+      reason: "workload_exceeds_max_budget",
+      message: "failed.",
+    })),
+    "The planned extraction workload exceeded the supported four-hour execution ceiling, so the run stopped before attempting extraction.",
+  );
+  assert.equal(
+    formatPreAssignmentFailureMessage(task({
+      status: "failed",
+      reason: "new_failure_code",
+      message: "failed.",
+    })),
+    "new_failure_code",
+  );
+  assert.equal(
+    formatPreAssignmentFailureMessage(task({
+      status: "failed",
+      reason: null,
+      message: "Downloader rejected the request.",
+    })),
+    "Downloader rejected the request.",
+  );
+  assert.equal(
+    formatPreAssignmentFailureMessage(task({
+      status: "failed",
+      reason: null,
+      message: "failed.",
+    })),
+    "Failure reason unavailable.",
+  );
 });
 
 test("existing task titles take precedence", () => {

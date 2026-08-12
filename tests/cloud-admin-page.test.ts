@@ -171,10 +171,20 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /workerHost/);
   assert.match(log, /leaseBatches/);
   assert.match(log, /selectUnassignedWorkerTasks/);
+  assert.match(log, /selectFailedBeforeAssignmentWorkerTasks/);
+  assert.match(log, /formatPreAssignmentFailureMessage/);
   assert.match(log, /formatCloudWorkerTaskLabel/);
   assert.match(log, /resolveWorkerAssignment/);
   assert.match(log, /Waiting for assignment/);
-  assert.match(log, /\{tasks\.length\} waiting/);
+  assert.match(log, /\{waitingTasks\.length\} waiting/);
+  assert.match(log, /Failed before assignment/);
+  assert.match(log, /\{failedBeforeAssignmentTasks\.length\} failed/);
+  assert.match(log, /failedBeforeAssignmentTasks\.length > 0/);
+  assert.match(log, /formatPreAssignmentFailureMessage\(task\)/);
+  assert.ok(
+    log.indexOf("Waiting for assignment") <
+      log.indexOf("Failed before assignment"),
+  );
   assert.doesNotMatch(
     log,
     /selectUnassignedWorkerTasks\(workerHost\.tasks\)\)\.slice/,

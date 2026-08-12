@@ -16,7 +16,7 @@
 - Modify: `tests/cloud-worker-task-display.test.ts`
 - Modify: `src/lib/cloud-worker-task-display.ts`
 
-- [ ] **Step 1: Write failing selection and copy tests**
+- [x] **Step 1: Write failing selection and copy tests**
 
 Import `selectFailedBeforeAssignmentWorkerTasks` and `formatPreAssignmentFailureMessage`. Extend the queue-selection test with an unassigned failed task and assert:
 
@@ -50,7 +50,7 @@ assert.equal(
 );
 ```
 
-- [ ] **Step 2: Run the focused unit test and verify RED**
+- [x] **Step 2: Run the focused unit test and verify RED**
 
 Run:
 
@@ -60,7 +60,7 @@ npx tsx --test tests/cloud-worker-task-display.test.ts
 
 Expected: FAIL because terminal failed tasks remain in `selectUnassignedWorkerTasks` and the new helpers do not exist.
 
-- [ ] **Step 3: Implement minimal pure helpers**
+- [x] **Step 3: Implement minimal pure helpers**
 
 In `src/lib/cloud-worker-task-display.ts`:
 
@@ -95,7 +95,7 @@ export function formatPreAssignmentFailureMessage(task: CloudWorkerHostTask): st
 }
 ```
 
-- [ ] **Step 4: Run the focused unit test and verify GREEN**
+- [x] **Step 4: Run the focused unit test and verify GREEN**
 
 Run:
 
@@ -111,11 +111,11 @@ Expected: PASS.
 - Modify: `tests/cloud-admin-page.test.ts`
 - Modify: `src/components/AdminCloudFetchLog.tsx`
 
-- [ ] **Step 1: Write a failing component contract test**
+- [x] **Step 1: Write a failing component contract test**
 
 Require the component to import and use both new helpers, to declare `waitingTasks` and `failedBeforeAssignmentTasks`, and to render `Waiting for assignment` before a conditional `Failed before assignment` section. Require the failure section to call `formatPreAssignmentFailureMessage(task)` and to use its own row count.
 
-- [ ] **Step 2: Run the focused component contract and verify RED**
+- [x] **Step 2: Run the focused component contract and verify RED**
 
 Run:
 
@@ -125,7 +125,7 @@ npx tsx --test tests/cloud-admin-page.test.ts
 
 Expected: FAIL because the monitor still has one broad unassigned task list and no failure section.
 
-- [ ] **Step 3: Implement the monitor split**
+- [x] **Step 3: Implement the monitor split**
 
 In `WorkerHostPanel`, derive both memoized subsets:
 
@@ -142,7 +142,7 @@ const failedBeforeAssignmentTasks = useMemo(
 
 Update the existing waiting section to use `waitingTasks`. Immediately after it, render a second `cloud-worker-task-section` only when `failedBeforeAssignmentTasks.length > 0`. Reuse the current task row and status chip markup, use the heading/count `Failed before assignment` / `${failedBeforeAssignmentTasks.length} failed`, and render `formatPreAssignmentFailureMessage(task)` for the message.
 
-- [ ] **Step 4: Run both focused suites and verify GREEN**
+- [x] **Step 4: Run both focused suites and verify GREEN**
 
 Run:
 
@@ -157,7 +157,7 @@ Expected: PASS.
 **Files:**
 - Verify all modified files.
 
-- [ ] **Step 1: Run directly related suites**
+- [x] **Step 1: Run directly related suites**
 
 ```bash
 npx tsx --test \
@@ -169,7 +169,7 @@ npx tsx --test \
 
 Expected: PASS.
 
-- [ ] **Step 2: Run repository quality gates**
+- [x] **Step 2: Run repository quality gates**
 
 ```bash
 npm test
@@ -179,6 +179,6 @@ npm run build
 
 Expected: all commands exit 0. If the isolated worktree lacks `.env`, load the main workspace environment into the build process without copying or printing secrets.
 
-- [ ] **Step 3: Review and commit only task-owned changes**
+- [x] **Step 3: Review and commit only task-owned changes**
 
 Run `git diff --check`, inspect the complete diff, and commit the helper, component, tests, and this plan with a Lore-format message. Do not change cloud execution budgets or persisted task data.

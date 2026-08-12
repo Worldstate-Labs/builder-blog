@@ -1,4 +1,5 @@
 import type { CloudWorkerHostTask } from "@/lib/cloud-fetch-run-log";
+import { fetchFailureInfo } from "@/lib/fetch-failure-taxonomy";
 
 const FETCH_POST_ID = /^fetch_post:[^:]+:([^:]+):(.+)$/;
 const TERMINAL_TASK_STATUSES = new Set([
@@ -175,7 +176,34 @@ export function hasWorkerAssignment(
 export function selectUnassignedWorkerTasks(
   tasks: CloudWorkerHostTask[],
 ): CloudWorkerHostTask[] {
-  return tasks.filter((task) => !hasWorkerAssignment(task.workerId));
+  return tasks.filter(
+    (task) =>
+      !hasWorkerAssignment(task.workerId) &&
+      !isCloudWorkerTerminalStatus(task.status),
+  );
+}
+
+export function selectFailedBeforeAssignmentWorkerTasks(
+  tasks: CloudWorkerHostTask[],
+): CloudWorkerHostTask[] {
+  return tasks.filter(
+    (task) =>
+      !hasWorkerAssignment(task.workerId) &&
+      normalizeCloudWorkerTaskStatus(task.status) === "failed",
+  );
+}
+
+export function formatPreAssignmentFailureMessage(
+  task: CloudWorkerHostTask,
+): string {
+  const reason = task.reason?.trim() ?? "";
+  const failure = fetchFailureInfo(reason);
+  if (reason && failure.known) return failure.operatorMessage;
+
+  const message = task.message?.trim() ?? "";
+  if (message && !/^failed[.!?]?$/iu.test(message)) return message;
+  if (reason) return reason;
+  return "Failure reason unavailable.";
 }
 
 export function formatCloudWorkerTaskLabel(

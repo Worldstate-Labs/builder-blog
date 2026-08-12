@@ -30,10 +30,12 @@ import type {
 } from "@/lib/cloud-fetch-run-log";
 import {
   formatCloudWorkerTaskLabel,
+  formatPreAssignmentFailureMessage,
   isCloudWorkerTerminalStatus,
   normalizeCloudWorkerTaskStatus,
   resolveCloudWorkerTaskStatus,
   resolveWorkerAssignment,
+  selectFailedBeforeAssignmentWorkerTasks,
   selectUnassignedWorkerTasks,
   summarizeCloudWorkerLaneStatuses,
   type CloudWorkerLaneStatus,
@@ -663,8 +665,15 @@ function WorkerHostPanel({
   usage: UsageSummary | null;
 }) {
   const progress = workerHost.progress;
-  const tasks = useMemo(
+  const waitingTasks = useMemo(
     () => sortedWorkerTasks(selectUnassignedWorkerTasks(workerHost.tasks)),
+    [workerHost.tasks],
+  );
+  const failedBeforeAssignmentTasks = useMemo(
+    () =>
+      sortedWorkerTasks(
+        selectFailedBeforeAssignmentWorkerTasks(workerHost.tasks),
+      ),
     [workerHost.tasks],
   );
   const events = workerHost.recentEvents.slice(-5).reverse();
@@ -832,9 +841,9 @@ function WorkerHostPanel({
       <div className="cloud-worker-task-section">
         <div className="cloud-worker-task-section-head">
           <h5>Waiting for assignment</h5>
-          <span>{tasks.length} waiting</span>
+          <span>{waitingTasks.length} waiting</span>
         </div>
-        {tasks.length === 0 ? (
+        {waitingTasks.length === 0 ? (
           <p className="cron-field-hint">
             {runningWithoutHeartbeat
               ? "No post task heartbeat yet."
@@ -842,7 +851,7 @@ function WorkerHostPanel({
           </p>
         ) : (
           <ul className="cloud-worker-task-list">
-            {tasks.map((task) => (
+            {waitingTasks.map((task) => (
               <li key={task.id} className="cloud-worker-task-row">
                 <span className={`cloud-status-chip ${statusClass(task.status)}`}>
                   {task.status ?? "queued"}
@@ -871,6 +880,42 @@ function WorkerHostPanel({
           </ul>
         )}
       </div>
+
+      {failedBeforeAssignmentTasks.length > 0 ? (
+        <div className="cloud-worker-task-section">
+          <div className="cloud-worker-task-section-head">
+            <h5>Failed before assignment</h5>
+            <span>{failedBeforeAssignmentTasks.length} failed</span>
+          </div>
+          <ul className="cloud-worker-task-list">
+            {failedBeforeAssignmentTasks.map((task) => (
+              <li key={task.id} className="cloud-worker-task-row">
+                <span className={`cloud-status-chip ${statusClass(task.status)}`}>
+                  {task.status ?? "failed"}
+                </span>
+                <span className="cloud-worker-task-main">
+                  <span className="cloud-worker-task-title">
+                    {formatCloudWorkerTaskLabel(task)}
+                  </span>
+                  <span className="cloud-worker-task-meta">
+                    <InlineParts
+                      parts={[
+                        task.builder,
+                        task.sourceType,
+                        task.updatedAt ? <RelativeTime value={task.updatedAt} /> : null,
+                        formatWorkerTaskStats(task),
+                      ]}
+                    />
+                  </span>
+                  <span className="cloud-worker-task-message">
+                    {formatPreAssignmentFailureMessage(task)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {events.length > 0 ? (
         <div className="cloud-worker-events">
