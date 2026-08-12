@@ -193,8 +193,9 @@ function defaultDigestContextFile() {
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 const MAX_DIGEST_CONTENT_CHARS = 200_000;
-const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 1200;
+const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 5_000;
 const MAX_DIGEST_ITEMS = 5_000;
+const MAX_POST_SUMMARY_CHARS = 1_200;
 const MAX_POST_HEADLINE_CHARS = 180;
 const MAX_POST_HEADLINE_WORDS = 20;
 const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
@@ -9514,7 +9515,7 @@ function normalizeSyncItemSummary(item) {
   }
   if (typeof item.summary !== "string") return { item, normalized: false };
   const summary = normalizeContentText(item.summary);
-  if (summary.length <= MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
+  if (summary.length <= MAX_POST_SUMMARY_CHARS) {
     return { item, normalized: false };
   }
   const rawJson = item.rawJson && typeof item.rawJson === "object" && !Array.isArray(item.rawJson)
@@ -9523,12 +9524,12 @@ function normalizeSyncItemSummary(item) {
   return {
     item: {
       ...item,
-      summary: syncExcerpt(summary, MAX_DIGEST_HEADLINE_SUMMARY_CHARS),
+      summary: syncExcerpt(summary, MAX_POST_SUMMARY_CHARS),
       rawJson: {
         ...rawJson,
         summaryNormalizedReason: rawJson.summaryNormalizedReason ?? "summary_too_long",
         summaryOriginalChars: rawJson.summaryOriginalChars ?? summary.length,
-        summaryMaxChars: rawJson.summaryMaxChars ?? MAX_DIGEST_HEADLINE_SUMMARY_CHARS,
+        summaryMaxChars: rawJson.summaryMaxChars ?? MAX_POST_SUMMARY_CHARS,
       },
     },
     normalized: true,

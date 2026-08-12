@@ -290,9 +290,9 @@ Rules:
   combined line such as \`GitHub Trending and Product Hunt Top Products: ...\`.
 - Use the same source order as the brief: follow \`context.digest.order\` when provided; otherwise use Podcast / Audio Feed, YouTube, Blog / Article Feed, X/Twitter, GitHub Trending, Product Hunt Top Products, then Website. Within each source type, order sources by source name.
 - Keep each source summary to 50 characters or fewer for Chinese/Japanese/Korean output, or 50 words or fewer for word-delimited languages.
-- Keep the entire \`headlineSummary\` at 1200 characters or fewer. Before writing
+- Keep the entire \`headlineSummary\` at 5000 characters or fewer. Before writing
   the JSON, count or conservatively estimate the final string length and
-  shorten or merge lines until it fits. Prefer 900 characters or fewer when
+  shorten or merge lines until it fits. Prefer 4500 characters or fewer when
   there are many sources.
 - Summarize all candidate posts from that source together instead of listing each post.
 - Use only facts already present in the candidate post summaries and metadata.

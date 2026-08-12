@@ -7779,13 +7779,25 @@ test("render-digest requires an existing summary on every context item", async (
 test("render-digest enforces sync payload size limits before upload", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
 
+  assert.doesNotThrow(() =>
+    cli.renderStructuredDigest(digestRenderContext(), {
+      headlineSummary: "x".repeat(1208),
+      sourceSummaries: [],
+    }),
+  );
+  assert.doesNotThrow(() =>
+    cli.renderStructuredDigest(digestRenderContext(), {
+      headlineSummary: "x".repeat(5000),
+      sourceSummaries: [],
+    }),
+  );
   assert.throws(
     () =>
       cli.renderStructuredDigest(digestRenderContext(), {
-        headlineSummary: "x".repeat(1201),
+        headlineSummary: "x".repeat(5001),
         sourceSummaries: [],
       }),
-    /headlineSummary must be 1200 characters or fewer/,
+    /headlineSummary must be 5000 characters or fewer/,
   );
 
   // Post summaries are copied from the context item, so an oversized payload is

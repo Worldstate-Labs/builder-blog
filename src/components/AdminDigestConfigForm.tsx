@@ -22,7 +22,7 @@ const HEADLINE_PROMPT_PLACEHOLDER = [
   "Example:",
   "Write headlineSummary in context.language as compact source lines.",
   "Prefer '- Source name: one sentence summary'.",
-  "Combine sources as '- Source A and Source B: one sentence summary' only when needed to stay under 1200 characters.",
+  "Combine sources as '- Source A and Source B: one sentence summary' only when needed to stay under 5000 characters.",
   "Keep each source summary to 50 CJK characters or 50 words.",
   "Use only facts from the candidate post summaries. Do not include raw URLs.",
 ].join("\n");

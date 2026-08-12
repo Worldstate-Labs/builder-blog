@@ -2131,7 +2131,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE|\{\{TMP_JOB\}\}/);
   assert.match(digestCronExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestCronExpanded, /context\.digest\.headlinePrompt/);
-  assert.match(digestCronExpanded, /1200 characters or fewer/);
+  assert.match(digestCronExpanded, /5000 characters or fewer/);
   assert.match(digestCronExpanded, /Source A and Source B/);
   assert.match(digestCronExpanded, /runner invokes this contract only after it has already verified/);
   assert.doesNotMatch(digestCronExpanded, /Do not write a no-updates brief JSON/);
@@ -2284,10 +2284,17 @@ test("digest sync user path requires structured digest items and derives digeste
     );
   }
 
+  const maximumHeadlineSummary = parseSkillDigestPayload({
+    title: "Digest",
+    items: parsed.data.items,
+    headlineSummary: "x".repeat(5000),
+  });
+  assert.equal(maximumHeadlineSummary.success, true);
+
   const tooLongHeadlineSummary = parseSkillDigestPayload({
     title: "Digest",
     items: parsed.data.items,
-    headlineSummary: "x".repeat(1201),
+    headlineSummary: "x".repeat(5001),
   });
   assert.equal(tooLongHeadlineSummary.success, false);
 
@@ -2883,13 +2890,24 @@ date. Separate confirmed facts from inference and preserve direct URLs.`,
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Source A and Source B: one sentence summary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /same source order/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /50 characters or fewer/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /1200 characters or fewer/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /5000 characters or fewer/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /shorten or merge lines until it fits/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.headline, /Chinese characters|Mandarin|simplified Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /context\.language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
+});
+
+test("headline summary limit migration updates stored default and user prompts", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000093_digest_headline_summary_limit_5000/migration.sql",
+    "utf8",
+  );
+  assert.match(migration, /UPDATE "DigestConfig"/);
+  assert.match(migration, /UPDATE "UserDigestConfig"/);
+  assert.match(migration, /1200 characters or fewer/);
+  assert.match(migration, /5000 characters or fewer/);
 });
 
 test("search user path exact mode matches literal text across builders, feeds, and digests", () => {

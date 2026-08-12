@@ -1170,7 +1170,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /if \(canEditDigestAssemblyPrompts\)/);
   assert.match(adminDigestConfig, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /Source A and Source B: one sentence summary/);
-  assert.match(adminDigestConfig, /1200 characters/);
+  assert.match(adminDigestConfig, /5000 characters/);
   assert.match(adminDigestConfig, /50 CJK characters or 50 words/);
   assert.doesNotMatch(adminDigestConfig, /50 Chinese\/Japanese\/Korean characters or 50 words for word-delimited languages|50 characters or 50 words/);
   assert.match(adminDigestConfig, /function clearSavedStatus\(\)/);

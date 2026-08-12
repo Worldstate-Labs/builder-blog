@@ -32,7 +32,7 @@ Rules:
   language of that source group's supplied post summaries, and write
   `headlineSummary` in the dominant language of all supplied post summaries.
 - `headlineSummary`: follow `context.digest.headlinePrompt`. It must be a
-  non-empty string and must be 1200 characters or fewer. Before writing the JSON,
+  non-empty string and must be 5000 characters or fewer. Before writing the JSON,
   count or conservatively estimate the final string length. If the headline
   would be too long, shorten lines or combine related / lower-priority sources
   into one line such as `- Source A and Source B: one sentence summary`. Current
@@ -45,12 +45,12 @@ Rules:
   Use `item.entityId` exactly as each `sourceSummaries[].entityId`.
 - Do not add URLs to the JSON fields. The CLI adds the original source link from
   `item.url`.
-- If `headlineSummary` is empty or longer than 1200 characters, or a non-empty
+- If `headlineSummary` is empty or longer than 5000 characters, or a non-empty
   source summary references an unknown `entityId`, the job fails instead of
   syncing a partial brief.
 
 Before finishing, reopen
 `$TMP_DIR/builder-blog-digest-agent-output.json` and self-check the saved JSON.
-If `headlineSummary` is empty or over 1200 characters, revise and save the JSON
+If `headlineSummary` is empty or over 5000 characters, revise and save the JSON
 again. A later validation step rejects oversized headlines and unknown
 `sourceSummaries[]` entity IDs.
