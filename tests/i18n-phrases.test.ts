@@ -339,6 +339,31 @@ test("Not completed phrase translations cover every supported non-English locale
   assert.equal(translateUiPhrase("es", "Not completed"), "No completado");
 });
 
+test("six-hour extraction ceiling copy is translated in every supported locale", () => {
+  const phrase = "The planned extraction workload exceeded the supported six-hour execution ceiling, so the run stopped before attempting extraction.";
+
+  assert.equal(
+    translateUiPhrase("zh-CN", phrase),
+    "计划的提取工作量超过了支持的六小时执行上限，因此任务在开始提取前就已停止。",
+  );
+  assert.equal(
+    translateUiPhrase("zh-TW", phrase),
+    "規劃的擷取工作量超過支援的六小時執行上限，因此任務在開始擷取前就已停止。",
+  );
+  assert.equal(
+    translateUiPhrase("ja", phrase),
+    "計画された抽出処理量が対応可能な6時間の実行上限を超えたため、抽出を開始する前に停止しました。",
+  );
+  assert.equal(
+    translateUiPhrase("ko", phrase),
+    "계획된 추출 작업량이 지원되는 6시간 실행 한도를 초과하여 추출을 시작하기 전에 중단되었습니다.",
+  );
+  assert.equal(
+    translateUiPhrase("es", phrase),
+    "La carga de extracción planificada superó el límite de ejecución admitido de seis horas, por lo que se detuvo antes de iniciar la extracción.",
+  );
+});
+
 function initializerText(node: ts.StringLiteralLike) {
   return node.text;
 }

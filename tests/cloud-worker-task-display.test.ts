@@ -67,7 +67,7 @@ test("pre-assignment failure copy prefers taxonomy and suppresses generic messag
       reason: "workload_exceeds_max_budget",
       message: "failed.",
     })),
-    "The planned extraction workload exceeded the supported four-hour execution ceiling, so the run stopped before attempting extraction.",
+    "The planned extraction workload exceeded the supported six-hour execution ceiling, so the run stopped before attempting extraction.",
   );
   assert.equal(
     formatPreAssignmentFailureMessage(task({

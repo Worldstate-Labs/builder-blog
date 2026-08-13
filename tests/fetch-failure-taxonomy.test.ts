@@ -104,7 +104,7 @@ test("fetch failure taxonomy classifies budgeted extraction terminals as content
     category: "content",
     stage: "read",
     userMessage: "This source exceeded the maximum supported extraction workload",
-    operatorMessage: "The planned extraction workload exceeded the supported four-hour execution ceiling, so the run stopped before attempting extraction.",
+    operatorMessage: "The planned extraction workload exceeded the supported six-hour execution ceiling, so the run stopped before attempting extraction.",
     retryable: false,
     visibility: "user",
     contentFailure: true,
