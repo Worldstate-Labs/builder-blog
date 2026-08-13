@@ -17,7 +17,7 @@
   "cloudShardBudget": {
     "minimumSeconds": 3600,
     "standardMaximumSeconds": 7200,
-    "longMediaMaximumSeconds": 14400,
+    "longMediaMaximumSeconds": 21600,
     "safetyMultiplier": 1.5,
     "completionAllowanceSeconds": 600,
     "roundingSeconds": 300,

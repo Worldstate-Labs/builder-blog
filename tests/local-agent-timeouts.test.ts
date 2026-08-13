@@ -56,11 +56,13 @@ test("cloud shard execution budget caps standard workloads at 2 hours", () => {
   assert.equal(budget.budgetReason, "capped_standard_maximum");
 });
 
-test("cloud shard execution budget caps long-media workloads at 4 hours", () => {
+test("cloud shard execution budget caps long-media workloads at 6 hours", () => {
   const budget = cloudShardExecutionBudget({ estimatedWorkSeconds: 20_000, sourceType: "podcast" });
 
-  assert.equal(budget.executionBudgetSeconds, 4 * 60 * 60);
+  assert.equal(timeoutPolicy.cloudShardBudget.longMediaMaximumSeconds, 6 * 60 * 60);
+  assert.equal(budget.executionBudgetSeconds, 6 * 60 * 60);
   assert.equal(budget.workloadClass, "long_media");
+  assert.equal(budget.budgetReason, "capped_long_media_maximum");
 });
 
 test("cloud shard execution budget normalizes invalid estimates to deterministic integer seconds", () => {

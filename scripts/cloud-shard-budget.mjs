@@ -1,7 +1,7 @@
 export const DEFAULT_CLOUD_SHARD_BUDGET_POLICY = {
   minimumSeconds: 3_600,
   standardMaximumSeconds: 7_200,
-  longMediaMaximumSeconds: 14_400,
+  longMediaMaximumSeconds: 21_600,
   safetyMultiplier: 1.5,
   completionAllowanceSeconds: 600,
   roundingSeconds: 300,

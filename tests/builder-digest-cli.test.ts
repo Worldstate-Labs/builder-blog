@@ -11399,6 +11399,19 @@ test("merge-task-results keeps zero-post cloud sources scoped to their lease run
 
 test("cloud planning keeps final execution budgets on planned media tasks and converts over-cap work into planned outcomes", async () => {
   const originalFetch = global.fetch;
+  const originalAgentDir = process.env.BUILDER_BLOG_AGENT_DIR;
+  const isolatedAgentDir = await mkdtemp(join(tmpdir(), "fb-cloud-media-plan-agent-"));
+  await writeFile(
+    join(isolatedAgentDir, "sources.json"),
+    await readFile("config/sources.json", "utf8"),
+    "utf8",
+  );
+  await writeFile(
+    join(isolatedAgentDir, "local-agent-timeouts.json"),
+    await readFile("config/local-agent-timeouts.json", "utf8"),
+    "utf8",
+  );
+  process.env.BUILDER_BLOG_AGENT_DIR = isolatedAgentDir;
   const cli = await import(`../scripts/builder-digest.mjs?cloud-media-plan=${Date.now()}`);
   const builders = [
     {
@@ -11409,6 +11422,15 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
       name: "Short Podcast",
       sourceUrl: "https://pod.example.com/short.xml",
       fetchUrl: "https://pod.example.com/short.xml",
+    },
+    {
+      id: "podcast_observed",
+      scope: "PERSONAL",
+      kind: "PODCAST",
+      sourceType: "podcast",
+      name: "Observed Podcast",
+      sourceUrl: "https://pod.example.com/observed.xml",
+      fetchUrl: "https://pod.example.com/observed.xml",
     },
     {
       id: "podcast_long",
@@ -11449,6 +11471,21 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
             <description>Brief teaser only.</description>
             <itunes:duration>05:30:00</itunes:duration>
             <enclosure url="https://cdn.example.com/long.mp3" type="audio/mpeg" />
+          </item>
+        </channel></rss>
+      `);
+    }
+    if (url === "https://pod.example.com/observed.xml") {
+      return new Response(`
+        <rss><channel>
+          <item>
+            <title>Observed audio</title>
+            <guid>observed-episode</guid>
+            <link>https://pod.example.com/observed-episode</link>
+            <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+            <description>Brief teaser only.</description>
+            <itunes:duration>03:48:04</itunes:duration>
+            <enclosure url="https://cdn.example.com/observed.mp3" type="audio/mpeg" />
           </item>
         </channel></rss>
       `);
@@ -11495,6 +11532,17 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
           },
         ],
         [
+          "podcast_observed",
+          {
+            cloudRunId: "cloud_run_1",
+            cloudSourceTaskId: "cloud_observed",
+            builderId: "podcast_observed",
+            summaryLanguage: "zh",
+            mustSucceedBy: "2026-07-19T09:30:00.000Z",
+            provisionalExecutionBudgetSeconds: 3600,
+          },
+        ],
+        [
           "podcast_long",
           {
             cloudRunId: "cloud_run_1",
@@ -11518,6 +11566,16 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
     assert.equal(shortTask.estimateEvidence.backend, "fallback");
     assert.equal(shortTask.deadlineState, "at_risk");
 
+    const observedTask = planned.fetchTasks.find(
+      (task: { builderId: string }) => task.builderId === "podcast_observed",
+    );
+    assert.ok(observedTask);
+    assert.equal(observedTask.mediaDurationSeconds, 13_684);
+    assert.equal(observedTask.estimatedWorkSeconds, 19_248);
+    assert.equal(observedTask.executionBudgetSeconds, 21_600);
+    assert.equal(observedTask.workloadClass, "long_media");
+    assert.equal(observedTask.budgetReason, "capped_long_media_maximum");
+
     assert.equal(
       planned.fetchTasks.some((task: { builderId: string }) => task.builderId === "podcast_long"),
       false,
@@ -11526,11 +11584,17 @@ test("cloud planning keeps final execution budgets on planned media tasks and co
     assert.equal(planned.taskOutcomes[0].status, "failed");
     assert.equal(planned.taskOutcomes[0].reason, "workload_exceeds_max_budget");
     assert.equal(planned.taskOutcomes[0].plannedTask.builderId, "podcast_long");
-    assert.equal(planned.taskOutcomes[0].evidence.maximumBudgetSeconds, 14400);
+    assert.equal(planned.taskOutcomes[0].evidence.maximumBudgetSeconds, 21600);
     assert.equal(planned.taskOutcomes[0].evidence.mediaDurationSeconds, 19800);
-    assert.equal(planned.taskOutcomes[0].evidence.uncappedEstimatedWorkSeconds > 14400, true);
+    assert.equal(planned.taskOutcomes[0].evidence.uncappedEstimatedWorkSeconds > 21600, true);
   } finally {
     global.fetch = originalFetch;
+    if (originalAgentDir === undefined) {
+      delete process.env.BUILDER_BLOG_AGENT_DIR;
+    } else {
+      process.env.BUILDER_BLOG_AGENT_DIR = originalAgentDir;
+    }
+    await rm(isolatedAgentDir, { recursive: true, force: true });
   }
 });
 
