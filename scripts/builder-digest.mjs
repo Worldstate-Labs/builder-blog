@@ -8127,7 +8127,7 @@ function processIsAlive(pid) {
 
 async function withMachineAsrLock(action, {
   lockDir = join(agentDir(), "tmp", "managed-asr.lock"),
-  timeoutMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_TIMEOUT_MS || 4 * 60 * 60 * 1000),
+  timeoutMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_TIMEOUT_MS || 6 * 60 * 60 * 1000),
   staleAfterMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_STALE_MS || 10 * 60 * 1000),
   heartbeatIntervalMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_HEARTBEAT_MS || 30_000),
   onWait = null,
@@ -8781,7 +8781,7 @@ function shardGroupKey(task) {
 }
 
 const MIN_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS = 3_600;
-const MAX_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS = 14_400;
+const MAX_CLOUD_SHARD_EXECUTION_BUDGET_SECONDS = 21_600;
 
 function taskCloudBudgetIdentity(task) {
   return Boolean(

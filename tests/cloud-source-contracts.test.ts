@@ -178,3 +178,28 @@ test("cloud fetch plan preserves server-verifiable post identity", () => {
   assert.equal(parsed.data.plans[0].posts[0].externalId, "post_1");
   assert.equal(parsed.data.plans[0].posts[0].agentWorkType, "fetch_post");
 });
+
+test("cloud fetch plan accepts six-hour long-media budgets but rejects larger values", () => {
+  const sixHourPost = {
+    postTaskId: "fetch_post:six-hour",
+    estimatedWorkSeconds: 19_248,
+    executionBudgetSeconds: 21_600,
+    workloadClass: "long_media" as const,
+    budgetReason: "capped_long_media_maximum" as const,
+    deadlineState: "on_time" as const,
+  };
+  const accepted = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [{ cloudSourceTaskId: "source_task_1", posts: [sixHourPost] }],
+  });
+  const rejected = parseCloudFetchPlanPatchPayload({
+    runId: "run_1",
+    plans: [{
+      cloudSourceTaskId: "source_task_1",
+      posts: [{ ...sixHourPost, executionBudgetSeconds: 21_601 }],
+    }],
+  });
+
+  assert.equal(accepted.success, true);
+  assert.equal(rejected.success, false);
+});

@@ -103,7 +103,7 @@ test("assign-fetch-tasks stamps each cloud shard with its validated execution bu
             agentWorkType: "fetch_post",
             contentStatus: "requires_agent",
             sourceType: "podcast",
-            executionBudgetSeconds: 14_400,
+            executionBudgetSeconds: 21_600,
             builderSync: { builderId: "b1", sourceUrl: "https://long.example/feed.xml" },
             item: { url: "https://long.example/posts/1" },
           },
@@ -125,7 +125,7 @@ test("assign-fetch-tasks stamps each cloud shard with its validated execution bu
             agentWorkType: "fetch_post",
             contentStatus: "requires_agent",
             sourceType: "blog",
-            executionBudgetSeconds: 17_000,
+            executionBudgetSeconds: 21_601,
             builderSync: { builderId: "b3", sourceUrl: "https://invalid.example/feed.xml" },
             item: { url: "https://invalid.example/posts/1" },
           },
@@ -158,12 +158,12 @@ test("assign-fetch-tasks stamps each cloud shard with its validated execution bu
     assert.equal(shard0.fetchTasks.length, 1);
     assert.equal(shard1.fetchTasks.length, 1);
     assert.equal(shard2.fetchTasks.length, 1);
-    assert.equal(shard0.executionBudgetSeconds, 14_400);
+    assert.equal(shard0.executionBudgetSeconds, 21_600);
     assert.equal(shard1.executionBudgetSeconds, 3_600);
     assert.equal(shard2.executionBudgetSeconds, 3_600);
-    assert.equal(shard0.fetchTasks[0].executionBudgetSeconds, 14_400);
+    assert.equal(shard0.fetchTasks[0].executionBudgetSeconds, 21_600);
     assert.equal(shard1.fetchTasks[0].executionBudgetSeconds, 3_600);
-    assert.equal(shard2.fetchTasks[0].executionBudgetSeconds, 17_000);
+    assert.equal(shard2.fetchTasks[0].executionBudgetSeconds, 21_601);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -191,7 +191,7 @@ test("merge-task-results prefers shard budgets over the shared timeout fallback 
             agentWorkType: "fetch_post",
             contentStatus: "requires_agent",
             sourceType: "podcast",
-            executionBudgetSeconds: 14_400,
+            executionBudgetSeconds: 21_600,
             builderSync: { builderId: "b1", sourceUrl: "https://long.example/feed.xml" },
             item: { url: "https://long.example/posts/1" },
           },
@@ -216,7 +216,7 @@ test("merge-task-results prefers shard budgets over the shared timeout fallback 
         shardIndex: 0,
         dynamicAssignment: true,
         workerId: "worker-0",
-        executionBudgetSeconds: 14_400,
+        executionBudgetSeconds: 21_600,
         fetchTasks: [
           {
             id: "cloud-long",
@@ -225,7 +225,7 @@ test("merge-task-results prefers shard budgets over the shared timeout fallback 
             agentWorkType: "fetch_post",
             contentStatus: "requires_agent",
             sourceType: "podcast",
-            executionBudgetSeconds: 14_400,
+            executionBudgetSeconds: 21_600,
             workerId: "worker-0",
             builderSync: { builderId: "b1", sourceUrl: "https://long.example/feed.xml" },
             item: { url: "https://long.example/posts/1" },
@@ -290,7 +290,7 @@ test("merge-task-results prefers shard budgets over the shared timeout fallback 
         outcome,
       ]),
     );
-    assert.equal(outcomesById.get("cloud-long")?.evidence?.shardTimeoutSeconds, 14_400);
+    assert.equal(outcomesById.get("cloud-long")?.evidence?.shardTimeoutSeconds, 21_600);
     assert.equal(outcomesById.get("cloud-fallback")?.evidence?.shardTimeoutSeconds, 3_600);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -515,8 +515,12 @@ test("cloud library runner emits bounded summaries instead of full fetch and ass
   assert.doesNotMatch(runner, /cat "\$_adfw_out"/);
 });
 
-test("cloud-library-cron fixes the worker window deadline after planning so the initial 4h shard gets the full buffer", async () => {
+test("cloud-library-cron fixes the worker window deadline after planning so the initial 6h shard gets the full buffer", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  assert.match(
+    runner,
+    /cloud-library-cron\) _max=\$\(\( \( 6 \* 60 \* 60 \) \+ \( 15 \* 60 \) \)\) ;;/,
+  );
   const start = runner.indexOf("timeout_seconds_for_job() {");
   const end = runner.indexOf("\nrun_library_job() {", start);
   assert.notEqual(start, -1);
@@ -539,10 +543,10 @@ test("cloud-library-cron fixes the worker window deadline after planning so the 
         minSeconds: 1200,
         defaultMaxSeconds: 2700,
         jobDefaultSeconds: {
-          "cloud-library-cron": 15_300,
+          "cloud-library-cron": 22_500,
         },
         jobMaxSeconds: {
-          "cloud-library-cron": 15_300,
+          "cloud-library-cron": 22_500,
           "cloud-library-host": 7_200,
         },
         shardFraction: {
@@ -555,13 +559,13 @@ test("cloud-library-cron fixes the worker window deadline after planning so the 
     await writeFile(
       shardPath,
       JSON.stringify({
-        executionBudgetSeconds: 14_400,
+        executionBudgetSeconds: 21_600,
         cloudRunId: "run_1",
         cloudSourceTaskId: "source_1",
         fetchTasks: [
           {
             id: "cloud-1",
-            executionBudgetSeconds: 14_400,
+            executionBudgetSeconds: 21_600,
             cloudRunId: "run_1",
             cloudSourceTaskId: "source_1",
           },
@@ -615,13 +619,13 @@ reset_cloud_refill_window
 stop_at_second="$_cloud_refill_stop_at"
 deadline_file="$(worker_window_deadline_epoch_file)"
 deadline_value="$(cat "$deadline_file")"
-[ "$before" = "15300" ] || exit 11
-[ "$after" = "16300" ] || exit 12
-[ "$deadline_value" = "16300" ] || exit 13
+[ "$before" = "22500" ] || exit 11
+[ "$after" = "23500" ] || exit 12
+[ "$deadline_value" = "23500" ] || exit 13
 [ "$fit_initial" = "1" ] || exit 14
 [ "$fit_late" = "0" ] || exit 15
-[ "$stop_at_first" = "15400" ] || exit 16
-[ "$stop_at_second" = "15400" ] || exit 17
+[ "$stop_at_first" = "22600" ] || exit 16
+[ "$stop_at_second" = "22600" ] || exit 17
 `,
       "utf8",
     );
@@ -678,7 +682,7 @@ test("cloud fetch plan patch payload groups cloud tasks by source and ignores pe
           id: "cloud_post_3",
           cloudSourceTaskId: "source_a",
           estimatedWorkSeconds: 8_000,
-          executionBudgetSeconds: 14_400,
+          executionBudgetSeconds: 21_600,
           workloadClass: "long_media",
           budgetReason: "capped_long_media_maximum",
           deadlineState: "missed",
@@ -713,7 +717,7 @@ test("cloud fetch plan patch payload groups cloud tasks by source and ignores pe
           {
             postTaskId: "cloud_post_3",
             estimatedWorkSeconds: 8_000,
-            executionBudgetSeconds: 14_400,
+            executionBudgetSeconds: 21_600,
             workloadClass: "long_media",
             budgetReason: "capped_long_media_maximum",
             deadlineState: "missed",
@@ -2339,10 +2343,10 @@ test("cloud worker entry parsing and budget lookup ignore spaces and colons in J
         minSeconds: 1200,
         defaultMaxSeconds: 2700,
         jobDefaultSeconds: {
-          "cloud-library-cron": 15_300,
+          "cloud-library-cron": 22_500,
         },
         jobMaxSeconds: {
-          "cloud-library-cron": 15_300,
+          "cloud-library-cron": 22_500,
         },
         shardFraction: {
           numerator: 3,
@@ -2354,14 +2358,14 @@ test("cloud worker entry parsing and budget lookup ignore spaces and colons in J
     await writeFile(
       shardPath,
       JSON.stringify({
-        executionBudgetSeconds: 14_400,
+        executionBudgetSeconds: 21_600,
         cloudRunId: "run_1",
         cloudSourceTaskId: "source_1",
         fetchTasks: [
           {
             id: "cloud-1",
             workerId: "worker-2",
-            executionBudgetSeconds: 14_400,
+            executionBudgetSeconds: 21_600,
             cloudRunId: "run_1",
             cloudSourceTaskId: "source_1",
           },
@@ -2387,7 +2391,7 @@ name="$(worker_entry_shard_name "$_worker_entries")"
 timeout="$(shard_timeout_seconds_for_file "$_shards_dir/$name.json" 5400)"
 [ "$lane" = "worker-2" ] || exit 21
 [ "$name" = "shard-9" ] || exit 22
-[ "$timeout" = "14400" ] || exit 23
+[ "$timeout" = "21600" ] || exit 23
 `,
       "utf8",
     );

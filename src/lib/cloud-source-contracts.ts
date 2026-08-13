@@ -116,7 +116,7 @@ const CloudFetchPlanPostSchema = z.object({
   agentWorkType: z.string().trim().min(1).max(120).nullable().optional(),
   workerId: z.string().trim().min(1).max(160).nullable().optional(),
   estimatedWorkSeconds: z.number().int().min(0).max(7 * 24 * 60 * 60),
-  executionBudgetSeconds: z.number().int().min(60 * 60).max(4 * 60 * 60),
+  executionBudgetSeconds: z.number().int().min(60 * 60).max(6 * 60 * 60),
   workloadClass: z.enum(["standard", "long_media"]),
   budgetReason: z.enum([
     "minimum_budget",

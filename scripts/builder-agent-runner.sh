@@ -1639,7 +1639,7 @@ NODE
   case "$_job" in
     library-once|digest-once) printf '%s\n' "43200"; return 0 ;;
     library-cron) _max=$(( 120 * 60 )) ;;
-    cloud-library-cron) _max=$(( ( 4 * 60 * 60 ) + ( 15 * 60 ) )) ;;
+    cloud-library-cron) _max=$(( ( 6 * 60 * 60 ) + ( 15 * 60 ) )) ;;
     digest-cron) _max=$(( 45 * 60 )) ;;
     *) _max=$(( 45 * 60 )) ;;
   esac
@@ -1704,7 +1704,7 @@ function asInt(value) {
 }
 function validCloudBudget(value) {
   const seconds = asInt(value);
-  return seconds >= 3600 && seconds <= 14400 ? seconds : 0;
+  return seconds >= 3600 && seconds <= 21600 ? seconds : 0;
 }
 try {
   const payload = JSON.parse(fs.readFileSync(file, "utf8"));

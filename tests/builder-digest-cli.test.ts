@@ -2242,6 +2242,10 @@ test("runner-owned ASR supplies runTool's structured heartbeat contract", async 
 
   assert.match(managedTranscription, /heartbeat:\s*\{[\s\S]*intervalMs:[\s\S]*onHeartbeat:/);
   assert.doesNotMatch(managedTranscription, /heartbeat:\s*\(\)\s*=>/);
+  assert.match(
+    cli,
+    /BUILDER_BLOG_ASR_LOCK_TIMEOUT_MS \|\| 6 \* 60 \* 60 \* 1000/,
+  );
 });
 
 test("machine ASR lock reclaims a stale lease even when the PID has been reused", async () => {
