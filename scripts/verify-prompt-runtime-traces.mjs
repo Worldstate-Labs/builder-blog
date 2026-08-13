@@ -32,6 +32,7 @@ const completeAgentRuntimeAssetRelativePaths = [
   "scripts/builder-library-cron-install.sh",
   "scripts/cloud-shard-budget.mjs",
   "scripts/run-storage.mjs",
+  "scripts/media-tool-failures.mjs",
   "scripts/install-agent-skill-bundle.cjs",
   "config/sources.json",
   "config/local-agent-timeouts.json",

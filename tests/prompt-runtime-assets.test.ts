@@ -17,6 +17,9 @@ const PROMPT_RUNTIME_ASSETS = [
   "./skills/builder-blog-digest/jobs/*.md",
   "./config/local-agent-timeouts.json",
 ] as const;
+const REQUIRED_COMPLETE_AGENT_RUNTIME_HELPERS = [
+  "./scripts/media-tool-failures.mjs",
+] as const;
 const COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS = Object.values(agentSkillFiles)
   .map(({ sourcePath }) => sourcePath)
   .filter(
@@ -25,8 +28,11 @@ const COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS = Object.values(agentSkillFiles)
   )
   .map((sourcePath) => `./${sourcePath}`);
 const COMPLETE_AGENT_RUNTIME_ASSETS = [
-  ...COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS,
-  ...PROMPT_RUNTIME_ASSETS,
+  ...new Set([
+    ...COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS,
+    ...REQUIRED_COMPLETE_AGENT_RUNTIME_HELPERS,
+    ...PROMPT_RUNTIME_ASSETS,
+  ]),
 ] as const;
 
 const tracing = nextConfig.outputFileTracingIncludes as
@@ -106,7 +112,12 @@ test("trace verifier explicitly tracks every non-prompt runtime asset from the c
 
   assert.deepEqual(
     verifierAssets.sort(),
-    [...COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS].sort(),
+    [
+      ...new Set([
+        ...COMPLETE_AGENT_RUNTIME_MANIFEST_ASSETS,
+        ...REQUIRED_COMPLETE_AGENT_RUNTIME_HELPERS,
+      ]),
+    ].sort(),
     "scripts/verify-prompt-runtime-traces.mjs must explicitly expect every non-prompt agent runtime asset from agentSkillFiles",
   );
 });

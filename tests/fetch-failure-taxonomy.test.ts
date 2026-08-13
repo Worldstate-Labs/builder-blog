@@ -33,6 +33,15 @@ const REQUIRED_CODES = [
   "task_sync_failed",
   "slice_sync_failed",
   "cloud_feed_sync_rejected",
+  "media_download_forbidden",
+  "media_download_rate_limited",
+  "media_download_temporarily_unavailable",
+  "media_download_access_required",
+  "media_download_unavailable",
+  "media_download_output_missing",
+  "media_download_failed",
+  "media_convert_failed",
+  "media_transcription_failed",
   "worker_missing_result",
   "worker_runtime_failed",
   "worker_shard_timeout",
@@ -138,6 +147,74 @@ test("fetch failure taxonomy classifies interrupted runtime terminals as retryab
     visibility: "user",
     notCompleted: true,
   });
+});
+
+test("fetch failure taxonomy classifies managed media read-stage failures with stable stage semantics", () => {
+  assert.deepEqual(fetchFailureInfo("media_download_forbidden"), {
+    code: "media_download_forbidden",
+    known: true,
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download returned 403 Forbidden",
+    operatorMessage: "The managed media downloader received HTTP 403 without a durable access marker.",
+    retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("media_download_access_required"), {
+    code: "media_download_access_required",
+    known: true,
+    category: "content",
+    stage: "read",
+    userMessage: "Media download requires access",
+    operatorMessage: "The managed media downloader reported that the source requires login, membership, a token, or another access grant that FollowBrief does not provide.",
+    retryable: false,
+    visibility: "user",
+    contentFailure: true,
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("media_download_unavailable"), {
+    code: "media_download_unavailable",
+    known: true,
+    category: "content",
+    stage: "read",
+    userMessage: "Media is unavailable",
+    operatorMessage: "The managed media downloader reported that the source media was removed, blocked, or did not expose a supported format.",
+    retryable: false,
+    visibility: "user",
+    contentFailure: true,
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("media_transcription_failed"), {
+    code: "media_transcription_failed",
+    known: true,
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media transcription failed",
+    operatorMessage: "The managed media pipeline could not produce a transcript from the prepared audio artifact.",
+    retryable: false,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.equal(isNotCompletedFailureReason("media_download_rate_limited"), true);
+  assert.equal(isNotCompletedFailureReason("media_convert_failed"), true);
+  assert.equal(isContentFailureReason("media_download_forbidden"), false);
+  assert.equal(isContentFailureReason("media_download_access_required"), true);
+  assert.equal(isContentFailureReason("media_download_unavailable"), true);
+  assert.equal(isNotCompletedFailureReason("asr_capability_missing"), true);
+  assert.equal(fetchFailureMessage("managed_media_preparation_failed"), "Local media preparation failed");
+});
+
+test("fetch failure taxonomy normalizes only the approved legacy media failure strings", () => {
+  assert.equal(fetchFailureInfo("audio_download_missing_file").code, "media_download_output_missing");
+  assert.equal(
+    fetchFailureInfo("audio_download: ERROR: unable to download video data: HTTP Error 403: Forbidden").code,
+    "media_download_forbidden",
+  );
+  assert.equal(fetchFailureInfo("audio_download: javascript runtime unavailable").code, "media_download_failed");
+  assert.equal(fetchFailureInfo("audio_convert: ffmpeg exited 1").code, "media_convert_failed");
+  assert.equal(fetchFailureInfo("video_download: HTTP Error 403: Forbidden").code, "video_download: HTTP Error 403: Forbidden");
+  assert.equal(fetchFailureInfo("audio download: HTTP Error 403: Forbidden").code, "audio download: HTTP Error 403: Forbidden");
 });
 
 test("FetchLogPanel uses the central failure taxonomy instead of local labels", async () => {

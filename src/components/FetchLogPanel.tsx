@@ -3312,6 +3312,14 @@ function failureReasonText(task: FetchTaskLog): string | null {
   return fetchTaskFailureReasonText(task);
 }
 
+type MediaFailureEvidence = {
+  httpStatus?: unknown;
+  processAttempts?: unknown;
+  tool?: unknown;
+  toolVersion?: unknown;
+  maintenanceWarnings?: unknown;
+};
+
 // Compact one-line render of per-task skip evidence, e.g.
 // "meanVolumeDb: -91 · hasCaptions: false".
 function formatEvidence(evidence: Record<string, unknown> | null | undefined): string | null {
@@ -3320,6 +3328,30 @@ function formatEvidence(evidence: Record<string, unknown> | null | undefined): s
     ([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`,
   );
   return parts.length ? parts.join(" · ") : null;
+}
+
+function mediaFailureEvidence(task: FetchTaskLog): MediaFailureEvidence | null {
+  const mediaFailure = task.evidence?.mediaFailure;
+  return mediaFailure && typeof mediaFailure === "object" && !Array.isArray(mediaFailure)
+    ? mediaFailure as MediaFailureEvidence
+    : null;
+}
+
+function mediaFailureToolText(task: FetchTaskLog): string | null {
+  const mediaFailure = mediaFailureEvidence(task);
+  const tool = typeof mediaFailure?.tool === "string" ? mediaFailure.tool.trim() : "";
+  const version = typeof mediaFailure?.toolVersion === "string" ? mediaFailure.toolVersion.trim() : "";
+  if (!tool && !version) return null;
+  return [tool, version].filter(Boolean).join(" ");
+}
+
+function mediaFailureMaintenanceText(task: FetchTaskLog): string | null {
+  const warnings = mediaFailureEvidence(task)?.maintenanceWarnings;
+  if (!Array.isArray(warnings)) return null;
+  const values = warnings
+    .map((warning) => (typeof warning === "string" ? warning.trim() : ""))
+    .filter(Boolean);
+  return values.length > 0 ? values.join(", ") : null;
 }
 
 function isSummarized(task: FetchTaskLog): boolean {
@@ -3383,6 +3415,7 @@ function summarizeOutcome(
   task: FetchTaskLog,
   liveTask?: FetchTaskProgress | null,
 ): { label: string; tone: Tone } {
+  const failureStage = task.failureReason ? fetchFailureInfo(task.failureReason).stage : null;
   if (isCandidateDiscoveryTask(task)) {
     if (task.status === "synced") return { label: "Expanded", tone: "ok" };
     if (task.status === "failed") return { label: "Failed", tone: "fail" };
@@ -3398,6 +3431,7 @@ function summarizeOutcome(
   // Skipped (no content) or a content failure means summarize never ran.
   if (task.status === "skipped") return { label: "Skipped", tone: "idle" };
   if (isContentFailure(task)) return { label: "Not reached", tone: "idle" };
+  if (task.status === "failed" && failureStage === "read") return { label: "Not reached", tone: "idle" };
   // A task is successful only when it ends with a summary; a missing summary is
   // a failure, not a benign "pending".
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
@@ -3412,6 +3446,9 @@ function syncTaskOutcome(
 ): { label: string; tone: Tone } {
   const liveStatus = String(liveTask?.status ?? "").toLowerCase();
   if (task.status === "synced" || liveStatus === "synced") return { label: "Synced", tone: "ok" };
+  if (task.status === "failed" && fetchFailureInfo(task.failureReason).stage === "read") {
+    return { label: "Not reached", tone: "idle" };
+  }
   if (task.status === "failed" || liveStatus === "failed") return { label: "Failed", tone: "fail" };
   if (task.status === "skipped" || liveStatus === "skipped") return { label: "Skipped", tone: "idle" };
   if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
@@ -3838,6 +3875,9 @@ export function TaskRow({
   const workerWatchdog = workerWatchdogText(task);
   const shardSummary = shardSummaryText(task);
   const discoveryExpansion = discoveryState?.expansionText ?? discoveryExpansionText(task.evidence);
+  const mediaFailure = mediaFailureEvidence(task);
+  const mediaFailureTool = mediaFailureToolText(task);
+  const mediaFailureMaintenance = mediaFailureMaintenanceText(task);
   const syncOutcome = discoveryState?.synced
     && !useNeutralNotCompletedPresentation
     ? { label: "Synced", tone: "ok" as Tone }
@@ -3847,6 +3887,11 @@ export function TaskRow({
   const hasReadDetail =
     bodySize ||
     liveBodySize ||
+    (failureStage === "read" && failureReasonText(task)) ||
+    (typeof mediaFailure?.processAttempts === "number" && Number.isFinite(mediaFailure.processAttempts)) ||
+    (typeof mediaFailure?.httpStatus === "number" && Number.isFinite(mediaFailure.httpStatus)) ||
+    mediaFailureTool ||
+    mediaFailureMaintenance ||
     isContentFailure(task) ||
     task.status === "skipped" ||
     task.url;
@@ -3876,6 +3921,7 @@ export function TaskRow({
     if (discoveryState?.expanded && !useNeutralNotCompletedPresentation) {
       return `${formatCount(discoveryState.syncedPostTaskCount)} of ${formatCount(discoveryState.postTaskCount)} post tasks synced`;
     }
+    if (failureStage === "read") return "Not reached";
     return task.status?.replace(/_/g, " ") ?? displayLiveTask?.status?.replace(/_/g, " ") ?? "Pending";
   })();
   const lifecycleSteps: LifecycleStep[] = [
@@ -3917,7 +3963,7 @@ export function TaskRow({
           <FactRow label="Method" value={<span>{work.label}</span>} />
           {bodySize ? <FactRow label="Content size" value={bodySize} /> : null}
           {!bodySize && liveBodySize ? <FactRow label="Live content size" value={liveBodySize} /> : null}
-          {isContentFailure(task) && failureReasonText(task) ? (
+          {failureStage === "read" && failureReasonText(task) ? (
             <FactRow
               label="Reason"
               value={
@@ -3925,6 +3971,14 @@ export function TaskRow({
               }
             />
           ) : null}
+          {typeof mediaFailure?.processAttempts === "number" && Number.isFinite(mediaFailure.processAttempts) ? (
+            <FactRow label="Process attempts" value={<span>{mediaFailure.processAttempts}</span>} />
+          ) : null}
+          {typeof mediaFailure?.httpStatus === "number" && Number.isFinite(mediaFailure.httpStatus) ? (
+            <FactRow label="HTTP status" value={<span>{mediaFailure.httpStatus}</span>} />
+          ) : null}
+          {mediaFailureTool ? <FactRow label="Downloader" value={<span>{mediaFailureTool}</span>} /> : null}
+          {mediaFailureMaintenance ? <FactRow label="Maintenance" value={<span>{mediaFailureMaintenance}</span>} /> : null}
           {task.status === "skipped" && failureReasonText(task) ? (
             <FactRow
               label="Skipped"
@@ -3981,7 +4035,7 @@ export function TaskRow({
           {!headlineSize && liveHeadlineSize ? <FactRow label="Live headline size" value={liveHeadlineSize} /> : null}
           {compression ? <FactRow label="Compression" value={compression} /> : null}
           {!isSummarized(task) &&
-          !isContentFailure(task) &&
+          failureStage !== "read" &&
           failureStage !== "sync" &&
           failureReasonText(task) ? (
             <FactRow

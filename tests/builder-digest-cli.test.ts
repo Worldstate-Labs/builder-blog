@@ -2296,9 +2296,19 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
         node: "/opt/followbrief/bin/node",
       } as Record<string, string>)[command] ?? null,
       commandRunner: async (command: string, args: string[]) => {
-        assert.equal(command, "/opt/followbrief/bin/node");
-        assert.deepEqual(args, ["--version"]);
-        return { ok: true, code: 0, stdout: "v24.1.0\n", stderr: "", timedOut: false };
+        if (command === "/opt/followbrief/bin/node") {
+          assert.deepEqual(args, ["--version"]);
+          return { ok: true, code: 0, stdout: "v24.1.0\n", stderr: "", timedOut: false };
+        }
+        if (command === "/opt/followbrief/bin/yt-dlp") {
+          assert.deepEqual(args, ["--version"]);
+          return { ok: true, code: 0, stdout: "2026.03.17\n", stderr: "", timedOut: false };
+        }
+        if (command === "/opt/followbrief/bin/ffmpeg") {
+          assert.deepEqual(args, ["-version"]);
+          return { ok: true, code: 0, stdout: "ffmpeg version 8.0\n", stderr: "", timedOut: false };
+        }
+        throw new Error(`Unexpected doctor command: ${command} ${args.join(" ")}`);
       },
       capabilities: {
         adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
@@ -2312,7 +2322,11 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
     assert.equal(profile.version, 1);
     assert.equal(profile.verifiedAt, "2026-08-04T12:00:00.000Z");
     assert.equal(profile.downloader.path, "/opt/followbrief/bin/yt-dlp");
+    assert.equal(profile.downloader.version, "2026.03.17");
+    assert.equal(profile.downloader.outdated, true);
     assert.equal(profile.decoder.path, "/opt/followbrief/bin/ffmpeg");
+    assert.equal(profile.decoder.version, "8.0");
+    assert.deepEqual(profile.maintenanceWarnings, ["yt_dlp_outdated"]);
     assert.deepEqual(profile.javascriptRuntime, {
       name: "node",
       path: "/opt/followbrief/bin/node",
@@ -2321,6 +2335,237 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
     assert.equal(profile.asr.backend, "faster-whisper");
     assert.equal(profile.asr.command, "/opt/followbrief/bin/python3");
     assert.ok(profile.platform);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("old ready ASR profiles remain compatible without downloader version metadata", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-old-profile=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-old-profile-"));
+  try {
+    const executable = join(dir, "tool");
+    await writeFile(executable, "#!/bin/sh\n", { mode: 0o700 });
+    const result = cli.capabilitiesFromAsrProfileForTest({
+      version: 1,
+      status: "ready",
+      downloader: { command: "yt-dlp", path: executable },
+      decoder: { command: "ffmpeg", path: executable },
+      javascriptRuntime: { name: "node", path: executable, version: "24.1.0" },
+      asr: { backend: "faster-whisper", command: executable },
+      probes: [],
+    });
+
+    assert.equal(result.toolPaths.downloader, executable);
+    assert.equal(result.toolPaths.downloaderVersion, null);
+    assert.equal(result.toolPaths.decoderVersion, null);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR retries one ambiguous 403 with bounded yt-dlp retries and then succeeds", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-download-retry=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-download-retry-"));
+  const commands: Array<{ command: string; args: string[] }> = [];
+  const delays: number[] = [];
+  let downloadAttempt = 0;
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://www.youtube.com/watch?v=retry403", {
+      workDir: dir,
+      preserveWorkDir: true,
+      sleepImpl: async (delayMs: number) => delays.push(delayMs),
+      longToolTimeoutMsResolver: () => 120_000,
+      toolPaths: {
+        downloader: "/opt/followbrief/bin/yt-dlp",
+        downloaderVersion: "2026.03.17",
+        decoder: "/opt/followbrief/bin/ffmpeg",
+        javascriptRuntime: { name: "node", path: process.execPath },
+      },
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "/opt/followbrief/bin/python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        commands.push({ command, args });
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command.endsWith("yt-dlp")) {
+          downloadAttempt += 1;
+          if (downloadAttempt === 1) {
+            return {
+              ok: false,
+              code: 1,
+              stdout: "",
+              stderr: "WARNING: Your yt-dlp version is older than 90 days!\nHTTP Error 403: https://cdn.example.test/audio?token=secret",
+              timedOut: false,
+            };
+          }
+          const outputIndex = args.indexOf("-o");
+          await writeFile(args[outputIndex + 1].replace("%(ext)s", "mp3"), "audio", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command.endsWith("ffmpeg")) {
+          await writeFile(args[args.length - 1], "wav", "utf8");
+          return { ok: true, code: 0, stdout: "", stderr: "", timedOut: false };
+        }
+        if (command.endsWith("python3")) {
+          return {
+            ok: true,
+            code: 0,
+            stdout: JSON.stringify({ text: "Recovered transcript after one fresh download attempt." }),
+            stderr: "",
+            timedOut: false,
+          };
+        }
+        throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(result.text, "Recovered transcript after one fresh download attempt.");
+    assert.equal(downloadAttempt, 2);
+    assert.deepEqual(delays, [2_000]);
+    const downloadCommands = commands.filter(({ command, args }) => command.endsWith("yt-dlp") && args[0] !== "--version");
+    assert.equal(downloadCommands.length, 2);
+    for (const { args } of downloadCommands) {
+      assert.deepEqual(args.slice(args.indexOf("--retries"), args.indexOf("--retries") + 2), ["--retries", "3"]);
+      assert.deepEqual(args.slice(args.indexOf("--fragment-retries"), args.indexOf("--fragment-retries") + 2), ["--fragment-retries", "3"]);
+      assert.deepEqual(args.slice(args.indexOf("--extractor-retries"), args.indexOf("--extractor-retries") + 2), ["--extractor-retries", "2"]);
+    }
+    assert.equal(result.attempts[0].reason, "media_download_forbidden");
+    assert.equal(result.attempts[0].stage, "download");
+    assert.equal(result.attempts[0].evidence.httpStatus, 403);
+    assert.doesNotMatch(JSON.stringify(result.attempts[0]), /token=secret/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR does not retry an explicit YouTube access requirement", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-download-access=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-download-access-"));
+  let downloads = 0;
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://www.youtube.com/watch?v=private1", {
+      workDir: dir,
+      preserveWorkDir: true,
+      sleepImpl: async () => assert.fail("durable access failures must not sleep or retry"),
+      longToolTimeoutMsResolver: () => 120_000,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp") {
+          downloads += 1;
+          return {
+            ok: false,
+            code: 1,
+            stdout: "",
+            stderr: "Sign in to confirm you're not a bot. A PO Token is required. HTTP Error 403",
+            timedOut: false,
+          };
+        }
+        throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(result.reason, "media_download_access_required");
+    assert.equal(downloads, 1);
+    assert.equal(result.failure.retryable, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR skips its outer retry when less than thirty seconds remain", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-download-budget=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-download-budget-"));
+  let downloads = 0;
+  const budgetMs = [120_000, 120_000, 20_000];
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://www.youtube.com/watch?v=budget403", {
+      workDir: dir,
+      preserveWorkDir: true,
+      sleepImpl: async () => assert.fail("insufficient remaining budget must not sleep or retry"),
+      longToolTimeoutMsResolver: () => budgetMs.shift() ?? 20_000,
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp") {
+          downloads += 1;
+          return {
+            ok: false,
+            code: 1,
+            stdout: "",
+            stderr: "HTTP Error 403: Forbidden",
+            timedOut: false,
+          };
+        }
+        throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(result.reason, "media_download_forbidden");
+    assert.equal(downloads, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed media task outcomes persist stable codes with sanitized evidence", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?prepare-media-evidence=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-managed-media-evidence-"));
+  const mediaTask = {
+    id: "youtube-download-failure",
+    type: "youtube_transcription",
+    sourceType: "youtube",
+    contentStatus: "requires_agent",
+    agentWorkType: "youtube_transcription",
+    plannedExtractionMethod: "audio_transcription",
+    item: { title: "Video", url: "https://youtube.com/watch?v=failure123", rawJson: {} },
+  };
+  try {
+    const prepared = await cli.prepareManagedMediaTasksForTest(
+      { fetchTasks: [mediaTask], taskOutcomes: [] },
+      {
+        artifactRoot: dir,
+        transcribeTask: async () => ({
+          text: "",
+          reason: "media_download_forbidden",
+          failure: {
+            code: "media_download_forbidden",
+            stage: "download",
+            retryable: true,
+            httpStatus: 403,
+            processAttempts: 2,
+            tool: "yt-dlp",
+            toolVersion: "2026.03.17",
+            diagnostic: "HTTP Error 403: https://cdn.example.test/audio?token=secret Cookie: SID=private",
+            maintenanceWarnings: ["yt_dlp_outdated"],
+          },
+          attempts: [],
+        }),
+      },
+    );
+
+    assert.deepEqual(prepared.fetchTasks, []);
+    assert.equal(prepared.taskOutcomes[0].reason, "media_download_forbidden");
+    assert.equal(prepared.taskOutcomes[0].evidence.mediaFailure.processAttempts, 2);
+    assert.equal(prepared.taskOutcomes[0].evidence.mediaFailure.httpStatus, 403);
+    assert.doesNotMatch(JSON.stringify(prepared.taskOutcomes[0]), /token=secret|SID=private/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -3975,8 +4220,11 @@ test("extract-long-media probes ffmpeg with -version so local ASR continues when
     ]);
     assert.match(
       successCommands[2],
-      /^yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K --js-runtimes node:.+ -o /,
+      /^yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K .+--js-runtimes node:.+ -o /,
     );
+    assert.match(successCommands[2], /--retries 3/);
+    assert.match(successCommands[2], /--fragment-retries 3/);
+    assert.match(successCommands[2], /--extractor-retries 2/);
     assert.equal(successCommands[3].startsWith("ffmpeg -y -i "), true);
     assert.equal(successCommands.includes("ffmpeg --version"), false);
     assert.equal(successCommands[4].startsWith("python3 -c "), true);
@@ -4057,7 +4305,7 @@ test("extract-long-media helper stops before ffmpeg once budget expires after do
     assert.deepEqual(timeouts, [10_000, 8_000, 6_000]);
     assert.match(
       commands[2],
-      /^yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K --js-runtimes node:.+ -o /,
+      /^yt-dlp -f ba -x --audio-format mp3 --audio-quality 64K .+--js-runtimes node:.+ -o /,
     );
     assert.equal(commands.some((command) => command.startsWith("ffmpeg -y ")), false);
   } finally {

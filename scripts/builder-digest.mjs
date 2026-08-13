@@ -16,6 +16,13 @@ import {
   checkManagedMediaDiskSpace,
   configuredMediaWorkingSetBytes,
 } from "./run-storage.mjs";
+import {
+  classifyMediaToolFailure,
+  mediaFailureEvidence,
+  sanitizeMediaDiagnostic,
+  shouldRetryMediaToolFailure,
+  ytDlpMaintenanceWarnings,
+} from "./media-tool-failures.mjs";
 
 // Best-effort machine identity reported to the server on every call so
 // the user can recognize which laptop / VM / container is using which
@@ -44,7 +51,7 @@ const MACHINE_HEADERS = (() => {
 // Bump when the CLI emits a meaningfully different fetch-run record
 // shape or behavior. The server stores this verbatim so the user can
 // see which CLI build produced a given run.
-const CLI_VERSION = "0.8.0";
+const CLI_VERSION = "0.9.0";
 
 // Cached for fetch-run logging so a single CLI run shares one host /
 // platform identity across success and failure paths.
@@ -7323,6 +7330,7 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   workDir: requestedWorkDir = null,
   preserveWorkDir = false,
   diskSpaceGuard = checkManagedMediaDiskSpace,
+  sleepImpl = sleep,
 } = {}) {
   if (requestedWorkDir) {
     const savedTranscript = cleanTranscriptText(
@@ -7452,42 +7460,88 @@ async function fetchYouTubeLocalAsr(videoUrl, {
     if (!audioFile) {
       const diskFailure = await requireDiskHeadroom("download", configuredMediaWorkingSetBytes());
       if (diskFailure) return diskFailure;
-      const downloadOptions = longToolOptions(
-        "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
-        DEFAULT_YOUTUBE_ASR_TIMEOUT_MS,
-      );
-      if (!downloadOptions) {
-        attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
-        return { text: "", reason: "extraction_exceeds_shard_timeout" };
+      const removePartialDownloads = async () => {
+        const currentFiles = await readdir(workDir).catch(() => []);
+        await Promise.all(currentFiles
+          .filter((file) => file.startsWith("audio.") && file !== "audio-mono.wav")
+          .map((file) => rm(join(workDir, file), { force: true }).catch(() => {})));
+      };
+      for (let downloadAttempt = 1; downloadAttempt <= 2 && !audioFile; downloadAttempt += 1) {
+        const downloadOptions = longToolOptions(
+          "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
+          DEFAULT_YOUTUBE_ASR_TIMEOUT_MS,
+        );
+        if (!downloadOptions) {
+          attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
+          return { text: "", reason: "extraction_exceeds_shard_timeout" };
+        }
+        await writeState({ status: "downloading", sourceUrl: videoUrl, attempt: downloadAttempt });
+        const download = await commandRunner(
+          ytDlpCommand,
+          [
+            "-f", "ba",
+            "-x",
+            "--audio-format", "mp3",
+            "--audio-quality", "64K",
+            "--retries", "3",
+            "--fragment-retries", "3",
+            "--extractor-retries", "2",
+            "--retry-sleep", "http:linear=1:3:1",
+            "--retry-sleep", "fragment:linear=1:3:1",
+            "--retry-sleep", "extractor:linear=1:3:1",
+            "--js-runtimes", `${javascriptRuntime.name}:${javascriptRuntime.path}`,
+            "-o", rawTemplate,
+            videoUrl,
+          ],
+          downloadOptions,
+        );
+        files = await readdir(workDir);
+        audioFile = files
+          .map((file) => join(workDir, file))
+          .find((file) => basename(file).startsWith("audio.") && basename(file) !== "audio-mono.wav");
+        if (download.ok && audioFile) break;
+
+        const failure = classifyMediaToolFailure({
+          stage: "download",
+          result: { ...download, outputMissing: download.ok && !audioFile },
+          toolVersion: toolPaths?.downloaderVersion || "",
+        });
+        failure.processAttempts = downloadAttempt;
+        failure.tool = "yt-dlp";
+        failure.toolVersion = toolPaths?.downloaderVersion || null;
+        const evidence = mediaFailureEvidence(failure);
+        attempts.push({
+          method: "local-asr",
+          status: "failed",
+          reason: failure.code,
+          stage: "download",
+          attempt: downloadAttempt,
+          evidence,
+        });
+        await writeState({
+          status: "failed",
+          stage: "download",
+          reason: failure.code,
+          failure: evidence,
+        });
+        const remainingBudgetMs = typeof longToolTimeoutMsResolver === "function"
+          ? Number(longToolTimeoutMsResolver())
+          : Number.POSITIVE_INFINITY;
+        if (!shouldRetryMediaToolFailure({ failure, attempt: downloadAttempt, remainingBudgetMs })) {
+          return { text: "", reason: failure.code, failure, attempts };
+        }
+        await removePartialDownloads();
+        audioFile = undefined;
+        await sleepImpl(2_000);
       }
-      await writeState({ status: "downloading", sourceUrl: videoUrl });
-      const download = await commandRunner(
-        ytDlpCommand,
-        [
-          "-f", "ba",
-          "-x",
-          "--audio-format", "mp3",
-          "--audio-quality", "64K",
-          "--js-runtimes", `${javascriptRuntime.name}:${javascriptRuntime.path}`,
-          "-o", rawTemplate,
-          videoUrl,
-        ],
-        downloadOptions,
-      );
-      if (!download.ok) {
-        const reason = `audio_download:${commandFailureReason(download)}`;
-        attempts.push({ method: "local-asr", status: "failed", reason });
-        await writeState({ status: "failed", stage: "download", reason });
-        return { text: "", reason };
-      }
-      files = await readdir(workDir);
-      audioFile = files
-        .map((file) => join(workDir, file))
-        .find((file) => basename(file).startsWith("audio.") && basename(file) !== "audio-mono.wav");
     }
     if (!audioFile) {
-      attempts.push({ method: "local-asr", status: "failed", reason: "audio_download_missing_file" });
-      return { text: "", reason: "audio_download_missing_file" };
+      const failure = classifyMediaToolFailure({
+        stage: "download",
+        result: { ok: true, code: 0, stdout: "", stderr: "", outputMissing: true },
+        toolVersion: toolPaths?.downloaderVersion || "",
+      });
+      return { text: "", reason: failure.code, failure, attempts };
     }
     const monoAudio = join(workDir, "audio-mono.wav");
     if (!existsSync(monoAudio)) {
@@ -7506,10 +7560,14 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       await writeState({ status: "preparing_audio", sourceUrl: videoUrl });
       const convert = await commandRunner(ffmpegCommand, ["-y", "-i", audioFile, "-ac", "1", "-ar", "16000", monoAudio], convertOptions);
       if (!convert.ok) {
-        const reason = `audio_convert:${commandFailureReason(convert)}`;
-        attempts.push({ method: "local-asr", status: "failed", reason });
-        await writeState({ status: "failed", stage: "prepare_audio", reason });
-        return { text: "", reason };
+        const failure = classifyMediaToolFailure({ stage: "prepare_audio", result: convert });
+        failure.processAttempts = 1;
+        failure.tool = "ffmpeg";
+        failure.toolVersion = toolPaths?.decoderVersion || null;
+        const evidence = mediaFailureEvidence(failure);
+        attempts.push({ method: "local-asr", status: "failed", reason: failure.code, stage: "prepare_audio", evidence });
+        await writeState({ status: "failed", stage: "prepare_audio", reason: failure.code, failure: evidence });
+        return { text: "", reason: failure.code, failure, attempts };
       }
     }
 
@@ -7519,15 +7577,38 @@ async function fetchYouTubeLocalAsr(videoUrl, {
       heartbeat,
       capabilities: resolvedAsrCapabilities,
     });
+    const capabilityFailure = managedMediaCapabilityFailure(asr.reason);
+    const transcriptionFailure = !asr.text && !capabilityFailure && asr.reason !== "extraction_exceeds_shard_timeout"
+      ? classifyMediaToolFailure({
+        stage: "transcribe",
+        result: { ok: false, code: null, stdout: "", stderr: asr.reason || "", timedOut: false },
+      })
+      : null;
+    if (transcriptionFailure) {
+      transcriptionFailure.processAttempts = 1;
+      transcriptionFailure.tool = asr.backend || "local-asr";
+    }
+    const asrReason = transcriptionFailure?.code || asr.reason;
     attempts.push({
       method: "local-asr",
-      status: asr.text ? "ok" : (asr.reason === "extraction_exceeds_shard_timeout" ? "failed" : "skipped"),
-      reason: asr.reason,
+      status: asr.text ? "ok" : (asrReason === "extraction_exceeds_shard_timeout" || transcriptionFailure ? "failed" : "skipped"),
+      reason: asrReason,
       backend: asr.backend || null,
+      ...(transcriptionFailure ? { stage: "transcribe", evidence: mediaFailureEvidence(transcriptionFailure) } : {}),
     });
     if (!asr.text) {
-      await writeState({ status: "failed", stage: "transcribe", reason: asr.reason || "asr_transcription_failed" });
-      return { text: "", reason: asr.reason };
+      await writeState({
+        status: "failed",
+        stage: "transcribe",
+        reason: asrReason || "media_transcription_failed",
+        ...(transcriptionFailure ? { failure: mediaFailureEvidence(transcriptionFailure) } : {}),
+      });
+      return {
+        text: "",
+        reason: asrReason || "media_transcription_failed",
+        ...(transcriptionFailure ? { failure: transcriptionFailure } : {}),
+        attempts,
+      };
     }
     const transcript = cleanTranscriptText(asr.text);
     await writeFile(join(workDir, "transcript.txt"), `${transcript}\n`, { encoding: "utf8", mode: 0o600 });
@@ -7676,6 +7757,24 @@ async function runAsrDoctor({
     commandPathResolver,
     commandRunner,
   });
+  const downloaderVersionResult = downloaderPath
+    ? await commandRunner(downloaderPath, ["--version"])
+    : null;
+  const decoderVersionResult = decoderPath
+    ? await commandRunner(decoderPath, ["-version"])
+    : null;
+  const downloaderVersion = downloaderVersionResult?.ok
+    ? String(downloaderVersionResult.stdout || downloaderVersionResult.stderr || "").trim().split(/\s+/)[0] || null
+    : null;
+  const decoderVersionMatch = decoderVersionResult?.ok
+    ? String(decoderVersionResult.stdout || decoderVersionResult.stderr || "").match(/ffmpeg version\s+([^\s]+)/i)
+    : null;
+  const decoderVersion = decoderVersionMatch?.[1] || null;
+  const maintenanceWarnings = ytDlpMaintenanceWarnings({
+    result: downloaderVersionResult,
+    toolVersion: downloaderVersion || "",
+    now,
+  });
   const adapter = resolvedCapabilities.adapters?.[0] ?? null;
   const adapterCommand = adapter
     ? adapter.python || adapter.command || (adapter.id === "whisper-cli" ? "whisper" : null)
@@ -7693,8 +7792,17 @@ async function runAsrDoctor({
     verifiedAt: now.toISOString(),
     platform: RUN_PLATFORM || platform(),
     hostname: RUN_HOSTNAME,
-    downloader: downloaderPath ? { command: "yt-dlp", path: downloaderPath } : null,
-    decoder: decoderPath ? { command: "ffmpeg", path: decoderPath } : null,
+    downloader: downloaderPath
+      ? {
+        command: "yt-dlp",
+        path: downloaderPath,
+        version: downloaderVersion,
+        outdated: maintenanceWarnings.includes("yt_dlp_outdated"),
+      }
+      : null,
+    decoder: decoderPath
+      ? { command: "ffmpeg", path: decoderPath, version: decoderVersion }
+      : null,
     javascriptRuntime,
     asr: adapter && adapterPath
       ? {
@@ -7705,6 +7813,7 @@ async function runAsrDoctor({
       }
       : null,
     missing,
+    maintenanceWarnings,
     probes: Array.isArray(resolvedCapabilities.probes) ? resolvedCapabilities.probes : [],
   };
   await writeJsonAtomically(profilePath, profile);
@@ -7763,8 +7872,18 @@ function capabilitiesFromAsrProfile(profile) {
   }
   return {
     capabilities: { adapters: [adapter], probes: profile.probes ?? [], timedOut: false },
-    toolPaths: { downloader, decoder, javascriptRuntime },
+    toolPaths: {
+      downloader,
+      downloaderVersion: String(profile?.downloader?.version || "").trim() || null,
+      decoder,
+      decoderVersion: String(profile?.decoder?.version || "").trim() || null,
+      javascriptRuntime,
+    },
   };
+}
+
+export function capabilitiesFromAsrProfileForTest(profile) {
+  return capabilitiesFromAsrProfile(profile);
 }
 
 async function readReadyAsrMachineProfile(
@@ -8375,8 +8494,11 @@ async function prepareManagedMediaTasks(fetchResult, {
       });
       preparedCount += 1;
     } else {
-      const reason = String(result?.reason || "managed_media_preparation_failed").slice(0, 400);
+      const reason = String(result?.reason || "managed_media_preparation_failed").slice(0, 160);
       const blocked = managedMediaCapabilityFailure(reason);
+      const mediaFailure = result?.failure
+        ? mediaFailureEvidence(result.failure)
+        : null;
       taskOutcomes.push({
         fetchTaskId: String(task?.id || fetchTaskId(task)),
         status: blocked ? "blocked" : "failed",
@@ -8386,7 +8508,8 @@ async function prepareManagedMediaTasks(fetchResult, {
           sourceReason: reason,
           attemptedMethods: result?.attempts || [],
           artifactDirectory: basename(artifactDir),
-          ...(result?.error ? { error: String(result.error).slice(0, 500) } : {}),
+          ...(mediaFailure ? { mediaFailure } : {}),
+          ...(result?.error ? { error: sanitizeMediaDiagnostic(result.error) } : {}),
         },
         plannedTask: task,
       });

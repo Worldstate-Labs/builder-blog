@@ -1993,6 +1993,51 @@ test("sync failure with completed lifecycle evidence only fails the Sync stage",
   assert.equal(fetchTaskFailureReasonText(task), task.syncError);
 });
 
+test("managed media read failures stay on Read and render concise media evidence", () => {
+  const task = {
+    id: "fetch_post:youtube:managed-media-403",
+    title: "Managed media failed",
+    status: "failed",
+    failureReason: "media_download_forbidden",
+    agentWorkType: "youtube_transcription",
+    plannedExtractionMethod: "audio_transcription",
+    evidence: {
+      mediaFailure: {
+        stage: "download",
+        httpStatus: 403,
+        retryable: true,
+        processAttempts: 2,
+        tool: "yt-dlp",
+        toolVersion: "2026.03.17",
+        maintenanceWarnings: ["yt_dlp_outdated"],
+        diagnostic: "ERROR: unable to download video data: HTTP Error 403: Forbidden",
+      },
+    },
+  };
+
+  assert.deepEqual(fetchTaskLifecycleOutcomes(task), {
+    read: { label: "Not completed", tone: "fail" },
+    summarize: { label: "Not reached", tone: "idle" },
+    sync: { label: "Not reached", tone: "idle" },
+    failureStage: "read",
+  });
+  assert.equal(fetchTaskFailureReasonText(task), "Media download returned 403 Forbidden");
+
+  const html = renderTaskRow(task);
+  assert.match(html, /<div class="sync-panel-task-banner is-fail">Failed<span class="sync-panel-task-banner-blurb">: Media download returned 403 Forbidden<\/span><\/div>/);
+  assert.match(html, /<span class="sync-panel-lifecycle-label">Read<\/span><span class="mono sync-panel-lifecycle-outcome">Not completed<\/span>/);
+  assert.match(html, /<span class="sync-panel-lifecycle-label">Summarize<\/span><span class="mono sync-panel-lifecycle-outcome">Not reached<\/span>/);
+  assert.match(html, /<span class="sync-panel-lifecycle-label">Sync<\/span><span class="mono sync-panel-lifecycle-outcome">Not reached<\/span>/);
+  assert.match(html, /Process attempts<\/dt><dd class="sync-panel-task-fact-value"><span>2<\/span><\/dd>/);
+  assert.match(html, /HTTP status<\/dt><dd class="sync-panel-task-fact-value"><span>403<\/span><\/dd>/);
+  assert.match(html, /Downloader<\/dt><dd class="sync-panel-task-fact-value"><span>yt-dlp 2026\.03\.17<\/span><\/dd>/);
+  assert.match(html, /Maintenance<\/dt><dd class="sync-panel-task-fact-value"><span>yt_dlp_outdated<\/span><\/dd>/);
+  assert.match(html, /<dt class="sync-panel-task-fact-label">Status<\/dt><dd class="sync-panel-task-fact-value"><span>Not reached<\/span><\/dd>/);
+  assert.doesNotMatch(html, /<dt class="sync-panel-task-fact-label">Reason<\/dt>[\s\S]*?>Summarize[\s\S]*?Media download returned 403 Forbidden/);
+  assert.doesNotMatch(html, /mediaFailure/);
+  assert.equal(html.match(/Media download returned 403 Forbidden/g)?.length, 2);
+});
+
 test("fetch run stats do not count summary translation as source read", () => {
   const stats = fetchRunStats({
     details: {

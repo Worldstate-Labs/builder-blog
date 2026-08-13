@@ -8,6 +8,20 @@ type PhraseTemplate = {
 };
 
 const phraseTranslations: Record<string, LocalePhraseMap> = {
+  "Process attempts": {
+    "zh-CN": "进程尝试次数",
+    "zh-TW": "程序嘗試次數",
+    ja: "プロセス試行回数",
+    ko: "프로세스 시도 횟수",
+    es: "Intentos del proceso",
+  },
+  "HTTP status": {
+    "zh-CN": "HTTP 状态",
+    "zh-TW": "HTTP 狀態",
+    ja: "HTTP ステータス",
+    ko: "HTTP 상태",
+    es: "Estado HTTP",
+  },
   "Generated data": {
     "zh-CN": "生成的数据",
     "zh-TW": "產生的資料",

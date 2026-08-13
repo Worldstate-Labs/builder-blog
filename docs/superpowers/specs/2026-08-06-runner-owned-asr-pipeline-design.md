@@ -32,6 +32,10 @@ The runner treats managed-media preparation as a producer feeding the existing d
 
 If preparation of one media task fails, its terminal outcome is persisted and preparation proceeds to the next media task. If the outer job is terminated, already persisted ready tasks and terminal outcomes remain recoverable; only the currently running or not-yet-processed media tasks remain pending. The runner reports producer command failure separately from individual task outcomes.
 
+Managed media acquisition remains a deterministic shared runner responsibility for both regular and Cloud fetches. Download retries stay bounded within the existing task budget, and terminal media-preparation failures persist stable failure codes rather than host-specific subprocess text.
+
 ## Scope
 
 This replaces only the batch-wide scheduling barrier from the 2026-08-04 runner-owned ASR design. Deterministic discovery, runner-owned ASR, the machine lock, transcript artifacts, dynamic one-task assignments, and checkpoint synchronization remain unchanged.
+
+Cloud scheduling semantics are unchanged: the same runner-owned media producer prepares tasks, ready non-media work can still start immediately, and this resilience work does not reintroduce a batch-wide barrier or move download/ffmpeg/ASR execution into model workers.

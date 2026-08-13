@@ -76,6 +76,7 @@ test("server builds one deterministic bundle covering the complete installed run
     "new-product-launches.mjs",
     "cloud-shard-budget.mjs",
     "run-storage.mjs",
+    "media-tool-failures.mjs",
     "builder-agent-runner.sh",
     "builder-library-cron-install.sh",
     "install-agent-skill-bundle.cjs",
@@ -233,6 +234,10 @@ test("installer validates every file before changing an existing installation", 
   assert.ok(
     REQUIRED_TARGETS.includes("builder-library-cron-install.sh"),
     "transactional installer must require builder-library-cron-install.sh",
+  );
+  assert.ok(
+    REQUIRED_TARGETS.includes("media-tool-failures.mjs"),
+    "transactional installer must require media-tool-failures.mjs",
   );
   const agentDir = mkdtempSync(join(tmpdir(), "followbrief-bundle-corrupt-"));
   const existingPath = join(agentDir, "builder-digest.mjs");

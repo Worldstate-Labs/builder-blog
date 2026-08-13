@@ -190,6 +190,50 @@ test("classifies a runner-managed media failure retained as a planned outcome as
   }]);
 });
 
+test("classifies a stable runner-managed download failure as needs_confirmation", async () => {
+  const cli = await verdictModule();
+  const mediaTask = postTask("youtube-download", {
+    sourceType: "youtube",
+    agentWorkType: "youtube_transcription",
+    plannedExtractionMethod: "audio_transcription",
+  });
+  const mediaOutcome = {
+    fetchTaskId: "youtube-download",
+    status: "failed",
+    reason: "media_download_forbidden",
+    evidence: {
+      mediaFailure: {
+        code: "media_download_forbidden",
+        stage: "download",
+        processAttempts: 2,
+        httpStatus: 403,
+      },
+    },
+    plannedTask: mediaTask,
+  };
+  const verdict = cli.classifyLibrarySetupVerdictForTest!({
+    runnerExitCode: 65,
+    instanceId: randomUUID(),
+    fetchResult: { fetchTasks: [], taskOutcomes: [mediaOutcome] },
+    mergedFetchResult: { fetchTasks: [], taskOutcomes: [mediaOutcome] },
+    syncPayload: { builders: [], taskOutcomes: [mediaOutcome] },
+    syncedTaskIds: ["youtube-download"],
+    mergeResult: { status: "ok", taskIds: ["youtube-download"], shards: [] },
+    remainingMergeResult: { status: "ok", taskIds: [], shards: [] },
+    failurePayloads: [],
+  });
+
+  assert.equal(verdict.status, "needs_confirmation");
+  assert.equal(verdict.synchronizedTerminalTaskCount, 1);
+  assert.deepEqual(verdict.failures, [{
+    fetchTaskId: "youtube-download",
+    title: "Post youtube-download",
+    source: "Source youtube-download · youtube",
+    stage: "read",
+    reason: "media_download_forbidden",
+  }]);
+});
+
 test("keeps exit 65 fatal when a failed post is not in the durable ledger", async () => {
   const cli = await verdictModule();
   const task = postTask("post-unsynced");

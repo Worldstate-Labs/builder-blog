@@ -159,6 +159,80 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: true,
     notCompleted: true,
   },
+  media_download_forbidden: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download returned 403 Forbidden",
+    operatorMessage: "The managed media downloader received HTTP 403 without a durable access marker.",
+    retryable: true,
+    notCompleted: true,
+  },
+  media_download_rate_limited: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download was rate limited",
+    operatorMessage: "The managed media downloader received HTTP 429 and stopped after the bounded retry policy.",
+    retryable: true,
+    notCompleted: true,
+  },
+  media_download_temporarily_unavailable: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download was temporarily unavailable",
+    operatorMessage: "The managed media downloader hit a transient timeout, network failure, or upstream 5xx response.",
+    retryable: true,
+    notCompleted: true,
+  },
+  media_download_access_required: {
+    category: "content",
+    stage: "read",
+    userMessage: "Media download requires access",
+    operatorMessage: "The managed media downloader reported that the source requires login, membership, a token, or another access grant that FollowBrief does not provide.",
+    retryable: false,
+    contentFailure: true,
+    notCompleted: true,
+  },
+  media_download_unavailable: {
+    category: "content",
+    stage: "read",
+    userMessage: "Media is unavailable",
+    operatorMessage: "The managed media downloader reported that the source media was removed, blocked, or did not expose a supported format.",
+    retryable: false,
+    contentFailure: true,
+    notCompleted: true,
+  },
+  media_download_output_missing: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download did not produce a file",
+    operatorMessage: "The managed media downloader exited successfully but did not write the expected output artifact.",
+    retryable: true,
+    notCompleted: true,
+  },
+  media_download_failed: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download failed",
+    operatorMessage: "The managed media downloader failed with an unclassified error after bounded retry handling.",
+    retryable: true,
+    notCompleted: true,
+  },
+  media_convert_failed: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media audio conversion failed",
+    operatorMessage: "The managed media pipeline could not create the normalized audio artifact for transcription.",
+    retryable: false,
+    notCompleted: true,
+  },
+  media_transcription_failed: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media transcription failed",
+    operatorMessage: "The managed media pipeline could not produce a transcript from the prepared audio artifact.",
+    retryable: false,
+    notCompleted: true,
+  },
   runtime_auth_failed: {
     category: "runtime",
     stage: "runtime",
@@ -343,7 +417,13 @@ const FETCH_FAILURE_TAXONOMY = {
 export const KNOWN_FETCH_FAILURE_CODES = Object.keys(FETCH_FAILURE_TAXONOMY);
 
 function normalizedCode(value: string | null | undefined): string {
-  return String(value ?? "").trim();
+  const code = String(value ?? "").trim();
+  if (code === "audio_download_missing_file") return "media_download_output_missing";
+  if (code.startsWith("audio_download:")) {
+    return code.includes("403") ? "media_download_forbidden" : "media_download_failed";
+  }
+  if (code.startsWith("audio_convert:")) return "media_convert_failed";
+  return code;
 }
 
 function humanizeCode(code: string): string {

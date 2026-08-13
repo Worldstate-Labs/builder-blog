@@ -533,7 +533,7 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   const cli = source("scripts/builder-digest.mjs");
   const runner = source("scripts/builder-agent-runner.sh");
   // CLI_VERSION is bumped for this change.
-  assert.match(cli, /const CLI_VERSION = "0\.8\.0";/);
+  assert.match(cli, /const CLI_VERSION = "0\.9\.0";/);
   // The CLI POSTs to the new endpoint with the bearer token.
   assert.match(cli, /\/api\/skill\/fetch-runs/);
   assert.match(cli, /BUILDER_BLOG_DISABLE_WEB_SYNC/);

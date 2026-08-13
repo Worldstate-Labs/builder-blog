@@ -31,6 +31,7 @@ type TerminalTaskOutcome = {
   fetchTaskId: string;
   status: "skipped" | "failed" | "blocked" | "action_needed";
   reason: string;
+  evidence?: JsonRecord;
 };
 
 type PlanPost = JsonRecord & {
@@ -148,6 +149,7 @@ export function reconcileCloudFetchTerminalResult(params: {
     const status = outcome?.status ?? "failed";
     return {
       ...terminalEvidence(clientPost),
+      ...(outcome?.evidence ? { evidence: outcome.evidence } : {}),
       ...identity,
       status,
       failureReason: outcome?.reason?.trim() || "cloud_source_terminal_outcome_missing",

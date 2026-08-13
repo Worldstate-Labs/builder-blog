@@ -100,6 +100,12 @@ export const agentSkillFiles = {
     contentType: "text/javascript; charset=utf-8",
     mode: 0o644,
   },
+  "media-tool-failures.mjs": {
+    sourcePath: "scripts/media-tool-failures.mjs",
+    target: "media-tool-failures.mjs",
+    contentType: "text/javascript; charset=utf-8",
+    mode: 0o644,
+  },
   "install-agent-skill-bundle.cjs": {
     sourcePath: "scripts/install-agent-skill-bundle.cjs",
     target: "install-agent-skill-bundle.cjs",

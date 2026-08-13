@@ -175,6 +175,63 @@ test("terminal reconciliation preserves per-post validation evidence", () => {
   });
 });
 
+test("terminal reconciliation keeps a synced sibling plus media failure partial", () => {
+  const result = reconcileCloudFetchTerminalResult({
+    cloudSourceTaskId: "source_media_partial",
+    executionPlanPosts: {
+      post_1: planPosts.post_1,
+      post_2: planPosts.post_2,
+    },
+    clientResult: {
+      cloudSourceTaskId: "source_media_partial",
+      status: "partial",
+      plannedPosts: 2,
+      syncedPosts: 1,
+      failedPosts: 1,
+      failureReason: "media_download_forbidden",
+      details: {},
+    },
+    submittedItems: [{
+      fetchTaskId: "post_1",
+      title: "Accepted post",
+      url: "https://example.com/accepted",
+      body: "Original body",
+      summary: "A complete accepted summary.",
+      headline: "Accepted headline",
+    }],
+    itemResults: [{
+      fetchTaskId: "post_1",
+      kind: "BLOG_POST",
+      externalId: "accepted",
+      status: "synced",
+    }],
+    taskOutcomes: [{
+      fetchTaskId: "post_2",
+      status: "failed",
+      reason: "media_download_forbidden",
+      evidence: {
+        mediaFailure: {
+          code: "media_download_forbidden",
+          stage: "download",
+          processAttempts: 2,
+          httpStatus: 403,
+        },
+      },
+    }],
+  });
+
+  assert.equal(result.status, "partial");
+  assert.equal(result.syncedPosts, 1);
+  assert.equal(result.failedPosts, 1);
+  assert.equal(result.deferredPosts, 0);
+  assert.equal(result.failureReason, "media_download_forbidden");
+  assert.deepEqual(result.details.posts.map((post) => post.status), ["synced", "failed"]);
+  const failedEvidence = result.details.posts[1].evidence as {
+    mediaFailure: { httpStatus: number };
+  };
+  assert.equal(failedEvidence.mediaFailure.httpStatus, 403);
+});
+
 test("terminal reconciliation defers an all-ASR-capability-blocked source", () => {
   const result = reconcileCloudFetchTerminalResult({
     cloudSourceTaskId: "source_asr",

@@ -11,17 +11,39 @@ unattended runs consume that profile and never install dependencies.
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 ASR_PATH="$AGENT_DIR/asr-venv/bin:$PATH"
 set +e
-PATH="$ASR_PATH" node "$AGENT_DIR/builder-digest.mjs" asr-doctor
+ASR_DOCTOR_OUTPUT="$(PATH="$ASR_PATH" node "$AGENT_DIR/builder-digest.mjs" asr-doctor)"
 ASR_DOCTOR_CODE="$?"
 set -e
+printf '%s\n' "$ASR_DOCTOR_OUTPUT"
 case "$ASR_DOCTOR_CODE" in
-  0) echo "FOLLOWBRIEF_ASR_READY" ;;
+  0)
+    if printf '%s' "$ASR_DOCTOR_OUTPUT" | node -e '
+      let input = "";
+      process.stdin.setEncoding("utf8");
+      process.stdin.on("data", (chunk) => { input += chunk; });
+      process.stdin.on("end", () => {
+        const profile = JSON.parse(input);
+        process.exit(Array.isArray(profile.maintenanceWarnings) && profile.maintenanceWarnings.length > 0 ? 0 : 1);
+      });
+    '; then
+      echo "FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED"
+    else
+      echo "FOLLOWBRIEF_ASR_READY"
+    fi
+    ;;
   2) echo "FOLLOWBRIEF_ASR_SETUP_NEEDED" ;;
   *) exit "$ASR_DOCTOR_CODE" ;;
 esac
 ```
 
 If it prints `FOLLOWBRIEF_ASR_READY`, continue. If it prints
+`FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED`, report the `maintenanceWarnings`
+and ask whether the user wants to update the listed media tool before the
+initial fetch. This is maintenance, not missing capability: if the user
+declines, continue without updating and do not block the fetch or scheduler
+setup. Never update tools unattended.
+
+If it prints
 `FOLLOWBRIEF_ASR_SETUP_NEEDED`, report the `missing` entries and ask whether the
 user wants to install the local media dependencies. **Do not install
 unattended.** If the user declines during a private one-time or scheduled fetch

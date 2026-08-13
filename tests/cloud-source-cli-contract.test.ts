@@ -2867,6 +2867,10 @@ test("fetch setup prompts run the ASR doctor before unattended media work", asyn
   }
   assert.match(setup, /yt-dlp\[default\]/);
   assert.match(setup, /JavaScript runtime/i);
+  assert.match(setup, /FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED/);
+  assert.match(setup, /maintenanceWarnings/);
+  assert.match(setup, /ask whether the user wants to update/i);
+  assert.match(setup, /If the user declines[\s\S]*continue/i);
 });
 
 test("cloud copy prompt settings flow into the local cloud runner command", async () => {
