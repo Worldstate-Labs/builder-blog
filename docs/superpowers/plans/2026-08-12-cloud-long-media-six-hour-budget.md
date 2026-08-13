@@ -18,7 +18,7 @@
 - Modify: `scripts/cloud-shard-budget.mjs`
 - Modify: `config/local-agent-timeouts.json`
 
-- [ ] **Step 1: Write failing shared-policy assertions**
+- [x] **Step 1: Write failing shared-policy assertions**
 
 In `tests/local-agent-timeouts.test.ts`, change the long-media test to require a six-hour cap and assert the shipped JSON policy agrees:
 
@@ -33,7 +33,7 @@ test("cloud shard execution budget caps long-media workloads at 6 hours", () => 
 });
 ```
 
-- [ ] **Step 2: Extend media planning coverage with the observed estimate**
+- [x] **Step 2: Extend media planning coverage with the observed estimate**
 
 In the existing `cloud planning keeps final execution budgets...` test in `tests/builder-digest-cli.test.ts`, add a `podcast_observed` builder/feed with `<itunes:duration>03:48:04</itunes:duration>` and matching cloud metadata. Assert:
 
@@ -50,7 +50,7 @@ assert.equal(observedTask.budgetReason, "capped_long_media_maximum");
 
 Keep the existing 5.5-hour media fixture as the over-cap case, but update its maximum evidence assertions to `21_600`.
 
-- [ ] **Step 3: Run focused tests and verify RED**
+- [x] **Step 3: Run focused tests and verify RED**
 
 Run:
 
@@ -60,7 +60,7 @@ npx tsx --test tests/local-agent-timeouts.test.ts tests/builder-digest-cli.test.
 
 Expected: FAIL because the shared and shipped policies still cap long media at `14,400`, and the observed fixture is rejected during planning.
 
-- [ ] **Step 4: Implement the shared six-hour policy**
+- [x] **Step 4: Implement the shared six-hour policy**
 
 Change only these policy values:
 
@@ -76,7 +76,7 @@ longMediaMaximumSeconds: 21_600,
 
 Do not change the estimator, multiplier, allowance, rounding, standard maximum, or planning comparison.
 
-- [ ] **Step 5: Run focused tests and verify GREEN**
+- [x] **Step 5: Run focused tests and verify GREEN**
 
 Run:
 
@@ -86,7 +86,7 @@ npx tsx --test tests/local-agent-timeouts.test.ts tests/builder-digest-cli.test.
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the policy and planning behavior**
+- [x] **Step 6: Commit the policy and planning behavior**
 
 Commit the four files with a Lore-format message explaining that 19,248-second work is now eligible while estimates above 21,600 remain rejected.
 
@@ -102,7 +102,7 @@ Commit the four files with a Lore-format message explaining that 19,248-second w
 - Modify: `scripts/builder-agent-runner.sh`
 - Modify: `config/local-agent-timeouts.json`
 
-- [ ] **Step 1: Add failing API boundary tests**
+- [x] **Step 1: Add failing API boundary tests**
 
 In `tests/cloud-source-contracts.test.ts`, add a valid long-media plan at exactly `21_600` and a clone at `21_601`. Assert the first parse succeeds and the second fails:
 
@@ -117,7 +117,7 @@ const sixHourPost = {
 };
 ```
 
-- [ ] **Step 2: Change CLI and runner test fixtures to exercise the new boundary**
+- [x] **Step 2: Change CLI and runner test fixtures to exercise the new boundary**
 
 In `tests/cloud-source-cli-contract.test.ts`:
 
@@ -129,7 +129,7 @@ In `tests/cloud-source-cli-contract.test.ts`:
 - In `tests/local-agent-timeouts.test.ts`, update every `cloud-library-cron` policy and computed-timeout assertion from `15_300`/`"15300"` to `22_500`/`"22500"`.
 - In `tests/builder-digest-cli.test.ts`, require the default `BUILDER_BLOG_ASR_LOCK_TIMEOUT_MS` fallback expression to use `6 * 60 * 60 * 1000` while leaving explicit lock-timeout overrides intact.
 
-- [ ] **Step 3: Run boundary suites and verify RED**
+- [x] **Step 3: Run boundary suites and verify RED**
 
 Run:
 
@@ -139,7 +139,7 @@ npx tsx --test tests/cloud-source-contracts.test.ts tests/cloud-source-cli-contr
 
 Expected: FAIL because the Zod schema, CLI shard validator, runner validator, and outer timeout still reject or shorten six-hour work.
 
-- [ ] **Step 4: Implement all widened boundaries**
+- [x] **Step 4: Implement all widened boundaries**
 
 Apply these exact production changes:
 
@@ -175,7 +175,7 @@ timeoutMs = Number(process.env.BUILDER_BLOG_ASR_LOCK_TIMEOUT_MS || 6 * 60 * 60 *
 
 Update both `jobDefaultSeconds` and `jobMaxSeconds`. Do not change `cloud-library-host` or the legacy shard-fraction fallback.
 
-- [ ] **Step 5: Run boundary suites and verify GREEN**
+- [x] **Step 5: Run boundary suites and verify GREEN**
 
 Run:
 
@@ -185,7 +185,7 @@ npx tsx --test tests/cloud-source-contracts.test.ts tests/cloud-source-cli-contr
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the synchronized boundaries**
+- [x] **Step 6: Commit the synchronized boundaries**
 
 Commit the contract, runner, config, and tests with a Lore-format message. Record that `22,500 = 21,600 + 900` preserves the existing finalization allowance.
 
@@ -198,7 +198,7 @@ Commit the contract, runner, config, and tests with a Lore-format message. Recor
 - Modify: `src/lib/fetch-failure-taxonomy.ts`
 - Modify: `src/lib/i18n-phrases.ts`
 
-- [ ] **Step 1: Change copy expectations to six hours**
+- [x] **Step 1: Change copy expectations to six hours**
 
 Update both focused tests to expect:
 
@@ -208,7 +208,7 @@ The planned extraction workload exceeded the supported six-hour execution ceilin
 
 Add a focused `tests/i18n-phrases.test.ts` case that calls `translateUiPhrase` for this exact English phrase and asserts the complete expected `zh-CN`, `zh-TW`, `ja`, `ko`, and `es` translations. This proves each locale changes rather than merely proving that a translation key exists.
 
-- [ ] **Step 2: Run copy and i18n suites and verify RED**
+- [x] **Step 2: Run copy and i18n suites and verify RED**
 
 Run:
 
@@ -218,11 +218,11 @@ npx tsx --test tests/fetch-failure-taxonomy.test.ts tests/cloud-worker-task-disp
 
 Expected: FAIL because the taxonomy still emits “four-hour”.
 
-- [ ] **Step 3: Update taxonomy and every locale phrase key/value**
+- [x] **Step 3: Update taxonomy and every locale phrase key/value**
 
 Change the taxonomy operator message to “six-hour”. Replace the corresponding phrase key in `src/lib/i18n-phrases.ts`, and change the hour value in all five translations (`zh-CN`, `zh-TW`, `ja`, `ko`, `es`). Do not change the stable failure code or user-facing generic message.
 
-- [ ] **Step 4: Run copy and i18n suites and verify GREEN**
+- [x] **Step 4: Run copy and i18n suites and verify GREEN**
 
 Run:
 
@@ -232,7 +232,7 @@ npx tsx --test tests/fetch-failure-taxonomy.test.ts tests/cloud-worker-task-disp
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the operator copy**
+- [x] **Step 5: Commit the operator copy**
 
 Commit taxonomy, translations, and tests with a Lore-format message.
 
@@ -242,7 +242,7 @@ Commit taxonomy, translations, and tests with a Lore-format message.
 - Modify: `docs/superpowers/plans/2026-08-12-cloud-long-media-six-hour-budget.md` (mark completed steps)
 - Verify all task-owned files.
 
-- [ ] **Step 1: Check for stale active-policy literals**
+- [x] **Step 1: Check for stale active-policy literals**
 
 Run:
 
@@ -258,7 +258,7 @@ rg -n '14_400|14400|15_300|15300|four-hour|4-hour|4 hours' \
 
 Expected: no stale four-hour policy/copy literals in active limits or assertions. Historical fixture values may remain only when they intentionally test a valid budget below the new maximum and are not described as the maximum.
 
-- [ ] **Step 2: Run directly related suites**
+- [x] **Step 2: Run directly related suites**
 
 Run:
 
@@ -275,7 +275,7 @@ npx tsx --test \
 
 Expected: PASS.
 
-- [ ] **Step 3: Run repository quality gates**
+- [x] **Step 3: Run repository quality gates**
 
 Run:
 
@@ -292,6 +292,6 @@ node -e 'const { loadEnvConfig } = require("@next/env"); const { spawnSync } = r
 
 Expected: all commands exit `0`.
 
-- [ ] **Step 4: Review and commit completion evidence**
+- [x] **Step 4: Review and commit completion evidence**
 
 Run `git diff --check`, inspect `git status`, mark this plan complete, and commit only task-owned changes. Do not modify persisted cloud task records or unrelated workspace files.
