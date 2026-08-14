@@ -464,6 +464,8 @@ model FeedItem {
   publishedAt                 DateTime?
   sourceName                  String?
   fetchTool                   String?
+  contentLanguage             String?
+  summaryContentLanguage      String?
   rawJson                     String?
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
@@ -478,6 +480,7 @@ model FeedItem {
   @@index([builderId, publishedAt])
   @@index([builderId, updatedAt])
   @@index([canonicalPostId])
+  @@index([canonicalPostId, summaryContentLanguage])
   @@index([publishedAt])
 }
 

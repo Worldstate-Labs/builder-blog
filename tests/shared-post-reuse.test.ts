@@ -23,7 +23,8 @@ test("shared post reuse resolver is scoped to Hub-shared feed items", () => {
   assert.doesNotMatch(route, /ownerUserId:\s*user\.id/);
   assert.doesNotMatch(route, /ownerUserId:\s*\{\s*in:/);
   assert.match(route, /checkBodyContentQuality/);
-  assert.match(route, /summaryLanguageMatches/);
+  assert.match(route, /planSharedPostReuse/);
+  assert.match(route, /summaryContentLanguage/);
   assert.match(route, /title:\s*z\.string\(\)\.max\(500\)\.nullable\(\)\.optional\(\)/);
   assert.match(route, /function reusableSourceSummaryIsValid/);
   assert.match(route, /function finalReusableSummaryIsValid/);
@@ -72,12 +73,13 @@ test("canonical post migration creates a unique URL identity without making feed
   assert.doesNotMatch(migration, /CREATE UNIQUE INDEX .*FeedItem.*url/);
 });
 
-test("builder sync records summaryLanguage for future same-language reuse", () => {
+test("builder sync records concrete content languages for future same-language reuse", () => {
   const route = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
   const feedSync = readFileSync("src/lib/builder-feed-sync.ts", "utf8");
-  assert.match(feedSync, /rawJsonWithSummaryLanguage/);
+  assert.match(feedSync, /resolveFeedItemLanguageMetadata/);
+  assert.match(feedSync, /summaryContentLanguage/);
   assert.match(route, /normalizeSummaryLanguagePreference/);
-  assert.match(feedSync, /summaryLanguage/);
+  assert.doesNotMatch(feedSync, /rawJsonWithSummaryLanguage/);
 });
 
 test("summary language matching treats original as its own language", () => {
@@ -209,7 +211,7 @@ function baseFetchTask() {
   };
 }
 
-test("CLI shared-summary fallback keeps original distinct from fixed languages", async () => {
+test("CLI translates an old Chinese summary to English for Original mode", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = baseFetchTask();
   const fixedLanguageReuse = cli.applySharedPostReuseToTask(task, {
@@ -219,6 +221,16 @@ test("CLI shared-summary fallback keeps original distinct from fixed languages",
     summary: "A source-language summary that should not count as English.",
     headline: "Source language summary needs translation",
     summaryLanguage: "source",
+    contentLanguage: "en",
+    summaryContentLanguage: "zh-Hans",
+    reusePlan: {
+      version: 2,
+      mode: "translate_summary_fixed",
+      requestedSummaryLanguage: "English",
+      contentLanguage: "en",
+      sourceSummaryLanguage: "zh-Hans",
+      targetLanguage: "en",
+    },
     source: {
       feedItemId: "feed_shared",
       builderId: "builder_shared",
@@ -229,15 +241,26 @@ test("CLI shared-summary fallback keeps original distinct from fixed languages",
 
   assert.equal(fixedLanguageReuse.agentWorkType, "translate_summary_only");
   assert.equal(fixedLanguageReuse.deterministicSync, false);
-  assert.equal(fixedLanguageReuse.summaryTranslation.sourceLanguage, "source");
+  assert.equal(fixedLanguageReuse.summaryTranslation.sourceLanguage, "zh-Hans");
+  assert.equal(fixedLanguageReuse.summaryTranslation.targetLanguage, "en");
 
   const originalLanguageReuse = cli.applySharedPostReuseToTask(task, {
     id: task.id,
     body: null,
     bodyReused: false,
-    summary: "A source-language summary that can be reused for original mode.",
-    headline: "Source language summary can be reused",
-    summaryLanguage: "source",
+    summary: "这是一条错误保留下来的中文摘要，需要被翻译回英文原文语言，而不是继续当成 Original 内容复用。",
+    headline: null,
+    summaryLanguage: "zh-Hans",
+    contentLanguage: "en",
+    summaryContentLanguage: "zh-Hans",
+    reusePlan: {
+      version: 2,
+      mode: "translate_summary_to_content_language",
+      requestedSummaryLanguage: "source",
+      contentLanguage: "en",
+      sourceSummaryLanguage: "zh-Hans",
+      targetLanguage: "en",
+    },
     source: {
       feedItemId: "feed_shared",
       builderId: "builder_shared",
@@ -246,10 +269,38 @@ test("CLI shared-summary fallback keeps original distinct from fixed languages",
     },
   }, { summaryLanguage: "original" });
 
+  assert.equal(originalLanguageReuse.agentWorkType, "translate_summary_to_content_language");
   assert.equal(originalLanguageReuse.contentStatus, "ready");
-  assert.equal(originalLanguageReuse.deterministicSync, true);
-  assert.equal(originalLanguageReuse.item.rawJson.hubSharedReuse.summaryReused, true);
-  assert.equal(originalLanguageReuse.item.rawJson.hubSharedReuse.headlineReused, true);
+  assert.equal(originalLanguageReuse.deterministicSync, false);
+  assert.equal(originalLanguageReuse.summaryTranslation.sourceLanguage, "zh-Hans");
+  assert.equal(originalLanguageReuse.summaryTranslation.targetLanguage, "en");
+  assert.doesNotMatch(originalLanguageReuse.summaryInstructions.prompt, /into source/i);
+
+  const merged = cli.mergeShardSyncPayloads(
+    { status: "ok", summaryLanguage: "source", fetchTasks: [originalLanguageReuse] },
+    [{
+      name: "shard-0-result.json",
+      payload: {
+        builders: [{
+          ...originalLanguageReuse.builderSync,
+          items: [{
+            kind: originalLanguageReuse.item.kind,
+            externalId: originalLanguageReuse.item.externalId,
+            title: originalLanguageReuse.item.title,
+            url: originalLanguageReuse.item.url,
+            publishedAt: originalLanguageReuse.item.publishedAt,
+            sourceName: originalLanguageReuse.item.sourceName,
+            summary: "This translated summary explains the launch, its main change, the audience impact, and the practical next steps for readers.",
+            headline: "Launch impact and next steps",
+            rawJson: { fetchTaskId: originalLanguageReuse.id },
+          }],
+        }],
+        taskOutcomes: [],
+      },
+    }],
+  );
+  assert.equal(merged.payload.builders[0].items[0].contentLanguage, "en");
+  assert.equal(merged.payload.builders[0].items[0].summaryContentLanguage, "en");
 });
 
 test("same-language Hub summary can sync without copying a reusable body", async () => {

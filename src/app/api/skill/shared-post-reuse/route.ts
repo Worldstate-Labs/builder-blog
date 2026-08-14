@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canonicalPostUrl, postUrlLookupVariants } from "@/lib/canonical-url";
+import { detectTextLanguage, normalizeConcreteLanguageTag } from "@/lib/content-language";
 import { checkBodyContentQuality } from "@/lib/content-quality";
-import {
-  normalizeSummaryLanguagePreference,
-  summaryLanguagesMatch,
-} from "@/lib/language-preference";
+import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getAllSourceConfigs } from "@/lib/source-config-store";
+import { planSharedPostReuse, type SharedPostReuseMode } from "@/lib/shared-post-reuse-plan";
 import { getUserFromBearer } from "@/lib/tokens";
 import { formatZodError } from "@/lib/zod-error";
 
@@ -97,10 +96,27 @@ function reusableHeadlineIsValid(headline: unknown, { title = "", summary = "" }
   return true;
 }
 
-function summaryLanguageMatches(value: unknown, targetLanguage: string) {
-  const stored = rawString(value);
-  if (!stored) return false;
-  return summaryLanguagesMatch(stored, targetLanguage);
+function firstConcreteLanguage(...values: unknown[]) {
+  for (const value of values) {
+    const normalized = normalizeConcreteLanguageTag(rawString(value));
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function detectedLanguage(...values: unknown[]) {
+  for (const value of values) {
+    const detection = detectTextLanguage(rawString(value));
+    if (detection.confidence === "high" && detection.language) return detection.language;
+  }
+  return null;
+}
+
+function reuseModeScore(mode: SharedPostReuseMode) {
+  if (mode === "copy_summary") return 4;
+  if (mode === "translate_summary_to_content_language" || mode === "translate_summary_fixed") return 3;
+  if (mode === "summarize_reused_body") return 2;
+  return 0;
 }
 
 function sourceTypeKey(value: unknown) {
@@ -125,6 +141,7 @@ function storedBodyCanBeReused(rawJson: Record<string, unknown>) {
 }
 
 function matchScore(match: {
+  reuseMode: SharedPostReuseMode;
   summary: string | null;
   summaryMatchesTarget: boolean;
   body: string | null;
@@ -132,7 +149,7 @@ function matchScore(match: {
   createdAt: Date;
 }) {
   return [
-    match.summaryMatchesTarget ? 1 : 0,
+    reuseModeScore(match.reuseMode),
     match.summary ? 1 : 0,
     match.bodyReused ? 1 : 0,
     match.body?.length ?? 0,
@@ -142,6 +159,7 @@ function matchScore(match: {
 
 function compareMatches(
   left: {
+    reuseMode: SharedPostReuseMode;
     summary: string | null;
     summaryMatchesTarget: boolean;
     body: string | null;
@@ -150,6 +168,7 @@ function compareMatches(
     feedItemId: string;
   },
   right: {
+    reuseMode: SharedPostReuseMode;
     summary: string | null;
     summaryMatchesTarget: boolean;
     body: string | null;
@@ -231,6 +250,8 @@ export async function POST(request: Request) {
       body: true,
       summary: true,
       headline: true,
+      contentLanguage: true,
+      summaryContentLanguage: true,
       publishedAt: true,
       sourceName: true,
       fetchTool: true,
@@ -262,7 +283,11 @@ export async function POST(request: Request) {
     summary: string | null;
     headline: string | null;
     summaryLanguage: string | null;
+    contentLanguage: string | null;
+    summaryContentLanguage: string | null;
     summaryMatchesTarget: boolean;
+    reuseMode: SharedPostReuseMode;
+    reusePlan: ReturnType<typeof planSharedPostReuse>;
     createdAt: Date;
   }>();
 
@@ -275,7 +300,11 @@ export async function POST(request: Request) {
     const reusableStoredBody = storedBodyCanBeReused(rawJson);
     const rowSummary = rawString(row.summary);
     const rowHeadline = rawString(row.headline);
-    const rowSummaryLanguage = rawString(rawJson.summaryLanguage);
+    const rowSummaryContentLanguage = firstConcreteLanguage(
+      row.summaryContentLanguage,
+      rawJson.summaryContentLanguage,
+      rawJson.summaryLanguage,
+    ) ?? detectedLanguage(rowSummary);
 
     for (const candidate of matchingCandidates) {
       const bodyReused =
@@ -283,27 +312,35 @@ export async function POST(request: Request) {
         row.body.trim().length > 0 &&
         candidateBodyIsUsable(row.body, candidate.sourceType, standardsBySourceId);
       const candidateTitle = rawString(candidate.title) || row.title || "";
+      const rowContentLanguage = firstConcreteLanguage(
+        row.contentLanguage,
+        rawJson.contentLanguage,
+        rawJson.sourceLanguage,
+      ) ?? detectedLanguage(row.body, candidateTitle, row.title);
       const rowSummaryCanBeReused = rowSummary
         ? reusableSourceSummaryIsValid(rowSummary, { title: candidateTitle })
         : false;
-      const rowSummaryMatchesTarget = rowSummaryCanBeReused
-        ? summaryLanguageMatches(rowSummaryLanguage, targetLanguage)
-        : false;
-      const summary =
-        rowSummaryCanBeReused && (
-          rowSummaryMatchesTarget
-            ? finalReusableSummaryIsValid(rowSummary, { title: candidateTitle, body: bodyReused ? row.body : "" })
-            : true
-        )
-          ? rowSummary
-          : null;
-      const headline = summary && rowSummaryMatchesTarget && reusableHeadlineIsValid(rowHeadline, {
+      const finalSummaryCanBeCopied = rowSummaryCanBeReused && finalReusableSummaryIsValid(
+        rowSummary,
+        { title: candidateTitle, body: bodyReused ? row.body : "" },
+      );
+      const reusableHeadline = rowSummaryCanBeReused && reusableHeadlineIsValid(rowHeadline, {
         title: candidateTitle,
-        summary,
-      })
-        ? rowHeadline
+        summary: rowSummary,
+      });
+      const reusePlan = planSharedPostReuse({
+        requestedSummaryLanguage: targetLanguage,
+        contentLanguage: rowContentLanguage,
+        summaryContentLanguage: rowSummaryContentLanguage,
+        hasUsableSummary: rowSummaryCanBeReused,
+        hasUsableHeadline: Boolean(reusableHeadline && finalSummaryCanBeCopied),
+        hasUsableBody: bodyReused,
+      });
+      const summary = reusePlan.mode === "copy_summary" || reusePlan.mode.startsWith("translate_summary")
+        ? rowSummary
         : null;
-      if (!bodyReused && !summary) continue;
+      const headline = reusePlan.mode === "copy_summary" ? rowHeadline : null;
+      if (reusePlan.mode === "none") continue;
       const match = {
         candidate,
         feedItemId: row.id,
@@ -314,8 +351,12 @@ export async function POST(request: Request) {
         bodyReused,
         summary,
         headline,
-        summaryLanguage: summary ? rowSummaryLanguage || null : null,
-        summaryMatchesTarget: summary ? rowSummaryMatchesTarget : false,
+        summaryLanguage: summary ? rowSummaryContentLanguage : null,
+        contentLanguage: rowContentLanguage,
+        summaryContentLanguage: summary ? rowSummaryContentLanguage : null,
+        summaryMatchesTarget: reusePlan.mode === "copy_summary",
+        reuseMode: reusePlan.mode,
+        reusePlan,
         createdAt: row.createdAt,
       };
       const existing = bestByCandidateId.get(candidate.id);
@@ -338,7 +379,10 @@ export async function POST(request: Request) {
       url: match.url,
     },
     summaryLanguage: match.summaryLanguage,
+    contentLanguage: match.contentLanguage,
+    summaryContentLanguage: match.summaryContentLanguage,
     summaryMatchesTarget: match.summaryMatchesTarget,
+    reusePlan: match.reusePlan,
   }));
 
   return NextResponse.json({ status: "ok", matches });

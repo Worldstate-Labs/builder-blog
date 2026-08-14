@@ -32,6 +32,8 @@ export const SkillFeedItemSchema = z.object({
   publishedAt: z.string().datetime().nullable().optional(),
   sourceName: z.string().max(MAX_SOURCE_NAME).nullable().optional(),
   fetchTool: z.string().min(1).max(160).nullable().optional(),
+  contentLanguage: z.string().max(40).nullable().optional(),
+  summaryContentLanguage: z.string().max(40).nullable().optional(),
   rawJson: z.unknown().optional(),
 });
 

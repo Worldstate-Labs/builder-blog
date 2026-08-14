@@ -3,6 +3,13 @@ import type { z } from "zod";
 import { isAdminFetchOnlySourceType } from "@/lib/admin-fetch-only-sources";
 import { canonicalPostUrl } from "@/lib/canonical-url";
 import { checkBodyContentQuality } from "@/lib/content-quality";
+import {
+  actualContentLanguagesMatch,
+  detectTextLanguage,
+  normalizeConcreteLanguageTag,
+  resolveSummaryTargetLanguage,
+} from "@/lib/content-language";
+import { isOriginalContentLanguagePreference } from "@/lib/language-preference";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
 import { SkillBuilderSchema } from "@/lib/skill-contracts";
 import { prepareFeedItemStorage } from "@/lib/source-content-policy";
@@ -374,7 +381,29 @@ export async function syncBuilderFeedItems({
         continue;
       }
 
-      const itemRawJson = rawJsonWithSummaryLanguage(item.rawJson, summaryLanguage, summary);
+      const languageMetadata = resolveFeedItemLanguageMetadata({
+        item,
+        requestedSummaryLanguage: summaryLanguage,
+        summary,
+      });
+      if (languageMetadata.error) {
+        result.skippedFeedItems += 1;
+        if (fetchTaskId) {
+          result.itemResults.push({
+            fetchTaskId,
+            kind: item.kind,
+            externalId: item.externalId,
+            status: "failed",
+            reason: languageMetadata.error,
+          });
+        }
+        continue;
+      }
+      const itemRawJson = rawJsonWithLanguageMetadata(
+        item.rawJson,
+        summaryLanguage,
+        languageMetadata,
+      );
       const storage = prepareFeedItemStorage({
         sourceType: input.sourceType,
         body: item.body,
@@ -422,6 +451,8 @@ export async function syncBuilderFeedItems({
           headline,
           summary,
           body: storage.body,
+          contentLanguage: languageMetadata.contentLanguage,
+          summaryContentLanguage: languageMetadata.summaryContentLanguage,
           rawJson: JSON.stringify(storage.rawJson),
           ...(canonicalPostId ? { canonicalPostId } : {}),
         };
@@ -466,6 +497,8 @@ export async function syncBuilderFeedItems({
           headline,
           body: storage.body,
           summary,
+          contentLanguage: languageMetadata.contentLanguage,
+          summaryContentLanguage: languageMetadata.summaryContentLanguage,
           url: item.url,
           ...(canonicalPostId ? { canonicalPostId } : {}),
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : undefined,
@@ -481,6 +514,8 @@ export async function syncBuilderFeedItems({
           headline,
           body: storage.body,
           summary,
+          contentLanguage: languageMetadata.contentLanguage,
+          summaryContentLanguage: languageMetadata.summaryContentLanguage,
           url: item.url,
           ...(canonicalPostId ? { canonicalPostId } : {}),
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : new Date(),
@@ -693,7 +728,10 @@ export function rawJsonRecord(rawJson: unknown): Record<string, unknown> {
 export function itemCanSyncWithoutBody(durableRawMode: string, rawJson: unknown) {
   if (durableRawMode === "none") return true;
   const record = rawJsonRecord(rawJson);
-  if (record.agentWorkType === "translate_summary_only") return true;
+  if (
+    record.agentWorkType === "translate_summary_only" ||
+    record.agentWorkType === "translate_summary_to_content_language"
+  ) return true;
   const hubSharedReuse = rawJsonRecord(record.hubSharedReuse);
   return (
     hubSharedReuse.bodyReused === false &&
@@ -701,14 +739,127 @@ export function itemCanSyncWithoutBody(durableRawMode: string, rawJson: unknown)
   );
 }
 
-export function rawJsonWithSummaryLanguage(rawJson: unknown, summaryLanguage: string, summary: string) {
+type FeedItemLanguageMetadata = {
+  contentLanguage: string | null;
+  summaryContentLanguage: string | null;
+  contentResolution: string | null;
+  summaryResolution: string | null;
+  error?: string;
+};
+
+export function rawJsonWithLanguageMetadata(
+  rawJson: unknown,
+  requestedSummaryLanguage: string,
+  metadata: FeedItemLanguageMetadata,
+) {
   const record = rawJsonRecord(rawJson);
-  if (!summary.trim()) return record;
   return {
     ...record,
-    summaryLanguage: typeof record.summaryLanguage === "string" && record.summaryLanguage.trim()
-      ? record.summaryLanguage
-      : summaryLanguage,
+    requestedSummaryLanguage,
+    languageResolution: {
+      content: metadata.contentResolution,
+      summary: metadata.summaryResolution,
+    },
+  };
+}
+
+export function resolveFeedItemLanguageMetadata({
+  item,
+  requestedSummaryLanguage,
+  summary,
+}: {
+  item: BuilderFeedSyncInput["items"][number];
+  requestedSummaryLanguage: string;
+  summary: string;
+}): FeedItemLanguageMetadata {
+  const rawJson = rawJsonRecord(item.rawJson);
+  const explicitContent = firstRawLanguage(
+    item.contentLanguage,
+    rawJson.contentLanguage,
+    rawJson.captionLanguageCode,
+    rawJsonRecord(rawJson.tweet).lang,
+  );
+  if (hasInvalidConcreteLanguage(item.contentLanguage)) {
+    return languageError("invalid_content_language");
+  }
+  const detectedContent = detectTextLanguage(item.body);
+  const contentLanguage = explicitContent ?? detectedContent.language;
+  if (
+    explicitContent &&
+    detectedContent.language &&
+    !actualContentLanguagesMatch(explicitContent, detectedContent.language)
+  ) {
+    return languageError("content_language_mismatch");
+  }
+
+  const explicitSummary = firstRawLanguage(
+    item.summaryContentLanguage,
+    rawJson.summaryContentLanguage,
+  );
+  if (hasInvalidConcreteLanguage(item.summaryContentLanguage)) {
+    return languageError("invalid_summary_content_language");
+  }
+  const legacySummary = !isOriginalContentLanguagePreference(rawJson.summaryLanguage as string | undefined)
+    ? normalizeConcreteLanguageTag(rawJson.summaryLanguage as string | undefined)
+    : null;
+  const detectedSummary = detectTextLanguage(summary);
+  const fixedTarget = isOriginalContentLanguagePreference(requestedSummaryLanguage)
+    ? null
+    : resolveSummaryTargetLanguage(requestedSummaryLanguage, contentLanguage);
+  const summaryContentLanguage = explicitSummary ?? detectedSummary.language ?? legacySummary ?? fixedTarget;
+  if (
+    explicitSummary &&
+    detectedSummary.language &&
+    !actualContentLanguagesMatch(explicitSummary, detectedSummary.language)
+  ) {
+    return languageError("summary_language_mismatch");
+  }
+
+  const resolvedTarget = resolveSummaryTargetLanguage(requestedSummaryLanguage, contentLanguage);
+  if (
+    resolvedTarget &&
+    summaryContentLanguage &&
+    !actualContentLanguagesMatch(summaryContentLanguage, resolvedTarget)
+  ) {
+    return languageError("summary_language_mismatch");
+  }
+
+  return {
+    contentLanguage,
+    summaryContentLanguage,
+    contentResolution: explicitContent ? "explicit" : detectedContent.language ? "text" : null,
+    summaryResolution: explicitSummary
+      ? "explicit"
+      : detectedSummary.language
+        ? "text"
+        : legacySummary
+          ? "legacy_fixed"
+          : fixedTarget
+            ? "requested_fixed"
+            : null,
+  };
+}
+
+function firstRawLanguage(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value !== "string" || !value.trim()) continue;
+    const normalized = normalizeConcreteLanguageTag(value);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function hasInvalidConcreteLanguage(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0 && !normalizeConcreteLanguageTag(value);
+}
+
+function languageError(error: string): FeedItemLanguageMetadata {
+  return {
+    contentLanguage: null,
+    summaryContentLanguage: null,
+    contentResolution: null,
+    summaryResolution: null,
+    error,
   };
 }
 

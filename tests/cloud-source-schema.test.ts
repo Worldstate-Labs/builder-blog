@@ -37,6 +37,26 @@ test("Prisma schema declares cloud language libraries and source fetch tasks", (
   assert.match(schema, /model CloudSourceSubmission \{[\s\S]*@@unique\(\[userId, cloudBuilderId\]\)/);
 });
 
+test("FeedItem stores concrete body and summary languages independently", () => {
+  const schema = source("prisma/schema.prisma");
+  const migration = source(
+    "prisma/migrations/000094_feed_item_content_languages/migration.sql",
+  );
+
+  assert.match(schema, /model FeedItem \{[\s\S]*contentLanguage\s+String\?/);
+  assert.match(schema, /model FeedItem \{[\s\S]*summaryContentLanguage\s+String\?/);
+  assert.match(
+    schema,
+    /model FeedItem \{[\s\S]*@@index\(\[canonicalPostId, summaryContentLanguage\]\)/,
+  );
+  assert.match(migration, /ADD COLUMN "contentLanguage" TEXT/);
+  assert.match(migration, /ADD COLUMN "summaryContentLanguage" TEXT/);
+  assert.match(
+    migration,
+    /CREATE INDEX "FeedItem_canonicalPostId_summaryContentLanguage_idx"/,
+  );
+});
+
 test("cloud fetch config and tasks include duration-aware scheduling safeguards", () => {
   const schema = source("prisma/schema.prisma");
 

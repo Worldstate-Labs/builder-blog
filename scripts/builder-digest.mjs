@@ -3622,6 +3622,10 @@ const HUB_SHARED_REUSE_READ_METHOD = "Copied body from a Hub-shared post with th
 const HUB_SHARED_REUSE_SUMMARY_METHOD = "Copied matching-language summary from a Hub-shared post";
 const HUB_SHARED_REUSE_TRANSLATE_SUMMARY_METHOD = "Translated summary from a Hub-shared post";
 
+function isSummaryTranslationAgentWorkType(value) {
+  return value === "translate_summary_only" || value === "translate_summary_to_content_language";
+}
+
 function sharedPostReuseCandidate(task) {
   if (!task || isCandidateDiscoveryFetchTask(task)) return null;
   if (isUserActionAgentWorkType(task?.agentWorkType)) return null;
@@ -3683,6 +3687,39 @@ function sharedPostSummaryMatchesTarget(match, targetLanguage) {
   return Boolean(stored && target && stored === target);
 }
 
+function sharedPostReusePlan(match, targetLanguage) {
+  const supplied = match?.reusePlan;
+  if (supplied?.version === 2 && typeof supplied?.mode === "string") return supplied;
+
+  const contentLanguage = String(match?.contentLanguage || "").trim() || null;
+  const sourceSummaryLanguage = String(
+    match?.summaryContentLanguage || match?.summaryLanguage || "",
+  ).trim() || null;
+  const requestedSummaryLanguage = String(targetLanguage || "").trim();
+  const concreteTargetLanguage = isOriginalContentLanguageAlias(requestedSummaryLanguage)
+    ? contentLanguage
+    : requestedSummaryLanguage || null;
+  const summaryMatchesTarget = sharedPostSummaryMatchesTarget(match, concreteTargetLanguage);
+  let mode = "none";
+  if (match?.summary && match?.headline && summaryMatchesTarget) {
+    mode = "copy_summary";
+  } else if (match?.summary && sourceSummaryLanguage && concreteTargetLanguage && !summaryMatchesTarget) {
+    mode = isOriginalContentLanguageAlias(requestedSummaryLanguage)
+      ? "translate_summary_to_content_language"
+      : "translate_summary_fixed";
+  } else if (match?.body && match?.bodyReused !== false) {
+    mode = "summarize_reused_body";
+  }
+  return {
+    version: 2,
+    mode,
+    requestedSummaryLanguage,
+    contentLanguage,
+    sourceSummaryLanguage,
+    targetLanguage: concreteTargetLanguage,
+  };
+}
+
 function translateSummaryOnlyInstructions(task, match, targetLanguage) {
   const sourceLanguage = String(match?.summaryLanguage || "source language").trim();
   const target = String(targetLanguage || task?.summaryInstructions?.language || "zh").trim();
@@ -3715,7 +3752,14 @@ function translateSummaryOnlyInstructions(task, match, targetLanguage) {
   };
 }
 
-function sharedPostReuseRawJson(task, match, { summaryReused, headlineReused = false, bodyReused, summaryTranslated = false }) {
+function sharedPostReuseRawJson(task, match, {
+  summaryReused,
+  headlineReused = false,
+  bodyReused,
+  summaryTranslated = false,
+  agentWorkType = null,
+  reusePlan = null,
+}) {
   const rawJson = objectRecord(task?.item?.rawJson);
   return {
     ...rawJson,
@@ -3723,7 +3767,7 @@ function sharedPostReuseRawJson(task, match, { summaryReused, headlineReused = f
     ...(bodyReused ? { readMethod: HUB_SHARED_REUSE_READ_METHOD } : {}),
     ...(summaryReused ? { summaryMethod: HUB_SHARED_REUSE_SUMMARY_METHOD } : {}),
     ...(summaryTranslated ? { summaryMethod: HUB_SHARED_REUSE_TRANSLATE_SUMMARY_METHOD } : {}),
-    ...(summaryTranslated ? { agentWorkType: "translate_summary_only" } : {}),
+    ...(summaryTranslated && agentWorkType ? { agentWorkType } : {}),
     hubSharedReuse: {
       source: "hub_shared_post",
       bodyReused,
@@ -3735,11 +3779,16 @@ function sharedPostReuseRawJson(task, match, { summaryReused, headlineReused = f
       builderName: match?.source?.builderName ?? null,
       url: match?.source?.url ?? null,
       summaryLanguage: match?.summaryLanguage ?? null,
+      contentLanguage: reusePlan?.contentLanguage ?? match?.contentLanguage ?? null,
+      summaryContentLanguage: reusePlan?.sourceSummaryLanguage ?? match?.summaryContentLanguage ?? null,
+      targetLanguage: reusePlan?.targetLanguage ?? null,
+      reusePlanVersion: reusePlan?.version ?? null,
     },
   };
 }
 
 export function applySharedPostReuseToTask(task, match, options = {}) {
+  const reusePlan = sharedPostReusePlan(match, options.summaryLanguage);
   const reusableBody = typeof match?.body === "string" && match.body.trim()
     ? match.body
     : "";
@@ -3757,21 +3806,30 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
     ? rawHeadline
     : null;
   const summaryCanBeCopied = Boolean(
+    reusePlan.mode === "copy_summary" &&
     reusableSummary &&
     reusableHeadline &&
-    sharedPostSummaryMatchesTarget(match, options.summaryLanguage) &&
     validateFinalSummary(reusableSummary, { title, body: bodyReused ? reusableBody : task?.item?.body || "" }).length === 0,
   );
   const summaryCanBeTranslated = Boolean(
     reusableSummary &&
-    !sharedPostSummaryMatchesTarget(match, options.summaryLanguage),
+    (
+      reusePlan.mode === "translate_summary_fixed" ||
+      reusePlan.mode === "translate_summary_to_content_language"
+    ) &&
+    reusePlan.targetLanguage &&
+    !isOriginalContentLanguageAlias(reusePlan.targetLanguage),
   );
   const summary = summaryCanBeCopied || summaryCanBeTranslated ? reusableSummary : null;
   if (!bodyReused && !summary) return task;
-  const targetLanguage = options.summaryLanguage ?? task?.summaryInstructions?.language ?? null;
+  const targetLanguage = reusePlan.targetLanguage;
+  const translationWorkType = reusePlan.mode === "translate_summary_to_content_language"
+    ? "translate_summary_to_content_language"
+    : "translate_summary_only";
   const baseItem = {
     ...(task.item ?? {}),
     body: bodyReused ? reusableBody : "",
+    ...(reusePlan.contentLanguage ? { contentLanguage: reusePlan.contentLanguage } : {}),
   };
   if (summaryCanBeCopied) {
     return {
@@ -3784,10 +3842,14 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
         ...baseItem,
         summary,
         headline: reusableHeadline,
+        ...(reusePlan.sourceSummaryLanguage
+          ? { summaryContentLanguage: reusePlan.sourceSummaryLanguage }
+          : {}),
         rawJson: sharedPostReuseRawJson(task, match, {
           summaryReused: true,
           headlineReused: true,
           bodyReused,
+          reusePlan,
         }),
       },
     };
@@ -3795,14 +3857,14 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
   if (summaryCanBeTranslated && summary) {
     return {
       ...task,
-      agentWorkType: "translate_summary_only",
+      agentWorkType: translationWorkType,
       contentStatus: "ready",
       deterministicSync: false,
       readMethod: bodyReused ? HUB_SHARED_REUSE_READ_METHOD : task?.readMethod,
       summaryMethod: HUB_SHARED_REUSE_TRANSLATE_SUMMARY_METHOD,
       summaryTranslation: {
         sourceSummary: summary,
-        sourceLanguage: match?.summaryLanguage ?? null,
+        sourceLanguage: reusePlan.sourceSummaryLanguage,
         targetLanguage,
         sourceFeedItemId: match?.source?.feedItemId ?? null,
       },
@@ -3813,6 +3875,8 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
           summaryReused: false,
           bodyReused,
           summaryTranslated: true,
+          agentWorkType: translationWorkType,
+          reusePlan,
         }),
       },
     };
@@ -3827,6 +3891,7 @@ export function applySharedPostReuseToTask(task, match, options = {}) {
       rawJson: sharedPostReuseRawJson(task, match, {
         summaryReused: false,
         bodyReused: true,
+        reusePlan,
       }),
     },
   };
@@ -4282,7 +4347,8 @@ function singlePostSummaryPrompt(source) {
     source.commonSummaryRules,
     "",
     "Ready-task output rule:",
-    "- If task.agentWorkType is `translate_summary_only`, do not fetch task.item.url, download media, transcribe audio/video, or use task.item.body as source content. Translate only task.summaryTranslation.sourceSummary into the requested language, and leave item.body empty or omit it.",
+    "- If task.agentWorkType is `translate_summary_only` or `translate_summary_to_content_language`, do not fetch task.item.url, download media, transcribe audio/video, or summarize task.item.body. Translate only task.summaryTranslation.sourceSummary into the concrete task.summaryTranslation.targetLanguage, and leave item.body empty or omit it.",
+    "- Never treat `source`, `original`, or `Original content language` as an output language. Translation tasks always provide a concrete target language such as `en`, `zh-Hans`, or `ja`.",
     "- If task.contentStatus is `ready`, do not fetch task.item.url, download media, transcribe audio/video, or rewrite task.item.body. The supplied task.item.body is already the fetched source body. To save tokens, omit `item.body` from your shard result for ready tasks; the runner restores the original body before sync. Write only the `summary` and `headline` from task.item.body.",
     "",
     "Hard validation rules for the output `summary` string:",
@@ -8838,7 +8904,7 @@ function shardTaskWeight(task) {
     const bodyChars = typeof task?.item?.body === "string" ? task.item.body.length : 0;
     return Math.max(1, Math.min(8, 1 + Math.ceil(bodyChars / 3000)));
   }
-  if (task?.agentWorkType === "translate_summary_only") return 1;
+  if (isSummaryTranslationAgentWorkType(task?.agentWorkType)) return 1;
   const sourceType = String(task?.sourceType || "").toLowerCase();
   if (sourceType === "youtube" || sourceType === "podcast") return 4;
   return 2;
@@ -8889,7 +8955,7 @@ function urlDomainKey(value) {
 
 function shardGroupKey(task) {
   const taskId = String(task?.id || fetchTaskId(task));
-  if (task?.contentStatus === "ready" || task?.agentWorkType === "translate_summary_only") {
+  if (task?.contentStatus === "ready" || isSummaryTranslationAgentWorkType(task?.agentWorkType)) {
     return `summary-task:${taskId}`;
   }
   const sync = task?.builderSync ?? {};
@@ -9622,6 +9688,11 @@ function canonicalizePlannedTaskItem(item, task, taskId, workerId) {
       : item?.description,
     body: task?.contentStatus === "ready" ? original.body ?? item?.body : item?.body,
     headline: item?.headline ?? original.headline,
+    contentLanguage: original.contentLanguage ?? item?.contentLanguage,
+    summaryContentLanguage:
+      task?.summaryTranslation?.targetLanguage ??
+      item?.summaryContentLanguage ??
+      original.summaryContentLanguage,
     rawJson: {
       ...rawJson,
       fetchTaskId: taskId,
@@ -9697,6 +9768,8 @@ function deterministicSyncItemFromFetchTask(task) {
     body: item.body,
     headline: item.headline,
     summary: item.summary,
+    ...(item.contentLanguage ? { contentLanguage: item.contentLanguage } : {}),
+    ...(item.summaryContentLanguage ? { summaryContentLanguage: item.summaryContentLanguage } : {}),
     rawJson: {
       ...rawJson,
       fetchTaskId: rawJson.fetchTaskId ?? id,
@@ -11855,9 +11928,9 @@ function validateFetchTaskItem(task, candidate) {
 }
 
 function itemCanSyncWithoutBodyForValidation(task, candidate) {
-  if (task?.agentWorkType === "translate_summary_only") return true;
+  if (isSummaryTranslationAgentWorkType(task?.agentWorkType)) return true;
   const rawJson = objectRecord(candidate?.item?.rawJson);
-  if (rawJson.agentWorkType === "translate_summary_only") return true;
+  if (isSummaryTranslationAgentWorkType(rawJson.agentWorkType)) return true;
   const hubSharedReuse = objectRecord(rawJson.hubSharedReuse);
   if (
     hubSharedReuse.bodyReused === false &&

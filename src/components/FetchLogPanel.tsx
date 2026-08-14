@@ -3174,6 +3174,7 @@ function describeWork(task: FetchTaskLog): WorkInfo {
         fix: null,
       };
     case "translate_summary_only":
+    case "translate_summary_to_content_language":
       return {
         label: "Translate Hub summary",
         blurb: "The Local Agent translates an existing Hub summary without fetching the source again.",
@@ -3210,6 +3211,7 @@ function isCandidateDiscoveryTask(task: FetchTaskLog): boolean {
 function isSummaryTranslationTask(task: FetchTaskLog): boolean {
   return (
     task.agentWorkType === "translate_summary_only" ||
+    task.agentWorkType === "translate_summary_to_content_language" ||
     task.hubSharedReuse?.summaryTranslated === true ||
     task.summaryMethod === "Translated summary from a Hub-shared post"
   );

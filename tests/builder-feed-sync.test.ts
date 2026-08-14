@@ -73,9 +73,15 @@ test("cloud feed sync writes items to an existing cloud-owned builder without pe
   assert.equal(prisma.feedItem.upsertCalls[0].create.headline, "既有英文摘要已翻译成中文");
   assert.equal(prisma.feedItem.upsertCalls[0].create.summary, "这是一条从已有英文摘要翻译来的中文摘要。");
   assert.equal(prisma.feedItem.upsertCalls[0].create.fetchTool, "claude (model claude-sonnet)");
+  assert.equal(prisma.feedItem.upsertCalls[0].create.contentLanguage, null);
+  assert.equal(prisma.feedItem.upsertCalls[0].create.summaryContentLanguage, "zh-Hans");
+  assert.equal(
+    JSON.parse(String(prisma.feedItem.upsertCalls[0].create.rawJson)).requestedSummaryLanguage,
+    "zh",
+  );
   assert.equal(
     JSON.parse(String(prisma.feedItem.upsertCalls[0].create.rawJson)).summaryLanguage,
-    "zh",
+    undefined,
   );
 
   assert.deepEqual(prisma.builder.updateCalls[0], {
@@ -88,6 +94,73 @@ test("cloud feed sync writes items to an existing cloud-owned builder without pe
     },
   });
 });
+
+test("Original sync infers and persists matching concrete body and summary languages", async () => {
+  const prisma = fakeBuilderFeedSyncPrisma();
+
+  const result = await syncBuilderFeedItems({
+    prisma,
+    builders: [englishOriginalBuilder("This summary explains the new model and why its release matters to developers and researchers.")],
+    force: false,
+    fetchTool: "Cloud Agent sync",
+    summaryLanguage: "source",
+    mode: { type: "existing", allowedBuilderIds: new Set(["cloud_builder_zh"]) },
+    contentStandardsBySourceId: new Map([["blog", { minChars: 20, minContentUnits: 4 }]]),
+  });
+
+  assert.equal(result.feedItems, 1);
+  assert.equal(prisma.feedItem.upsertCalls.length, 1);
+  assert.equal(prisma.feedItem.upsertCalls[0].create.contentLanguage, "en");
+  assert.equal(prisma.feedItem.upsertCalls[0].create.summaryContentLanguage, "en");
+});
+
+test("Original sync rejects a summary whose actual language differs from the retained body", async () => {
+  const prisma = fakeBuilderFeedSyncPrisma();
+
+  const result = await syncBuilderFeedItems({
+    prisma,
+    builders: [englishOriginalBuilder("这是一条错误保留为中文的摘要，正文原始语言其实是英文。")],
+    force: false,
+    fetchTool: "Cloud Agent sync",
+    summaryLanguage: "source",
+    mode: { type: "existing", allowedBuilderIds: new Set(["cloud_builder_zh"]) },
+    contentStandardsBySourceId: new Map([["blog", { minChars: 20, minContentUnits: 4 }]]),
+  });
+
+  assert.equal(result.feedItems, 0);
+  assert.equal(result.skippedFeedItems, 1);
+  assert.equal(prisma.feedItem.upsertCalls.length, 0);
+  assert.deepEqual(result.itemResults, [{
+    fetchTaskId: "fetch_post:cloud_builder_zh:original-post",
+    kind: FeedItemKind.BLOG_POST,
+    externalId: "original-post",
+    status: "failed",
+    reason: "summary_language_mismatch",
+  }]);
+});
+
+function englishOriginalBuilder(summary: string) {
+  return {
+    builderId: "cloud_builder_zh",
+    kind: BuilderKind.BLOG,
+    sourceType: "blog",
+    name: "English Source",
+    sourceUrl: "https://example.com/feed.xml",
+    fetchUrl: "https://example.com/feed.xml",
+    subscribe: false,
+    items: [{
+      kind: FeedItemKind.BLOG_POST,
+      externalId: "original-post",
+      title: "An English post",
+      body: "This is the complete original English body with enough primary content for reliable language detection and validation.",
+      headline: summary.startsWith("这") ? "错误的中文标题" : "Why the new model matters",
+      summary,
+      url: "https://example.com/posts/original-post",
+      publishedAt: "2026-08-14T10:00:00.000Z",
+      rawJson: { fetchTaskId: "fetch_post:cloud_builder_zh:original-post" },
+    }],
+  };
+}
 
 function fakeBuilderFeedSyncPrisma() {
   return {
