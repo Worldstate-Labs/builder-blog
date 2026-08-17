@@ -4047,6 +4047,7 @@ test("builders page avoids a global fetched-content query", () => {
 
 test("builders page exposes per-builder fetched posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const importedLibraryDisclosure = source("src/components/ImportedLibraryDisclosure.tsx");
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderEditDialog = source("src/components/BuilderEditDialog.tsx");
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
@@ -4080,7 +4081,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
   assert.doesNotMatch(buildersPage, /<PageHeader[^>]*actions=/);
-  assert.match(buildersPage, /CountMeta/);
+  assert.doesNotMatch(buildersPage, /CountMeta/);
   assert.doesNotMatch(buildersPage, /CountChip/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /className="sources-sync-section sources-sync-panel library-section-panel"/);
@@ -4300,11 +4301,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /data\.importedLibrarySections\.length > 0 \? \(/);
   assert.match(buildersPage, /className="fb-btn light compact" href="\/library-hub\?tab=source-library"[\s\S]*Import from Hub/);
   assert.doesNotMatch(buildersPage, /className="imported-libraries-head at-desktop"/);
-  assert.match(buildersPage, /className="library-section-summary-copy"/);
-  assert.match(buildersPage, /<h3 className="fb-section-heading">\{title\}<\/h3>/);
-  assert.doesNotMatch(buildersPage, /<h2 className="fb-section-heading">\{title\}<\/h2>/);
-  assert.match(buildersPage, /detail=\{<ImportedLibraryCollapsedMeta builders=\{library\.builders\} \/>\}/);
-  assert.match(buildersPage, /showCount=\{false\}/);
+  assert.match(importedLibraryDisclosure, /className="library-section-summary-copy"/);
+  assert.match(importedLibraryDisclosure, /<h3 className="fb-section-heading">\{title\}<\/h3>/);
+  assert.doesNotMatch(importedLibraryDisclosure, /<h2 className="fb-section-heading">\{title\}<\/h2>/);
+  assert.match(buildersPage, /toggle=\{<ImportedLibraryCollapsedMeta builders=\{library\.builders\} \/>\}/);
   assert.match(buildersPage, /function ImportedLibraryCollapsedMeta/);
   assert.match(buildersPage, /const visibleBuilders = builders\.slice\(0, 4\)/);
   assert.match(buildersPage, /`View \$\{formatCount\(builders\.length\)\} \$\{builders\.length === 1 \? "source" : "sources"\}`/);
@@ -4315,18 +4315,18 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /className="imported-library-source-count"/);
   assert.match(buildersPage, /className="imported-library-chevron"/);
   assert.doesNotMatch(buildersPage, /className="imported-library-count-row"/);
-  assert.match(buildersPage, /className=\{`library-section-panel\$\{indented \? " library-section-panel-indented" : ""\}\$\{summaryClassName \? ` \$\{summaryClassName\}` : ""\}`\}/);
-  assert.match(buildersPage, /summaryClassName="library-section-panel-imported"/);
+  assert.match(importedLibraryDisclosure, /const panelClassName = `library-section-panel library-section-panel-imported\$\{indented \? " library-section-panel-indented" : ""\}`/);
+  assert.match(importedLibraryDisclosure, /className=\{panelClassName\}/);
   assert.match(buildersPage, /aria-label=\{sourceLabel\}/);
   assert.doesNotMatch(buildersPage, /className="imported-library-post-count"|const postLabel = `\$\{formatCount\(postCount\)\}/);
   assert.doesNotMatch(buildersPage, /importedLibraryDetail/);
   assert.doesNotMatch(buildersPage, /detail=\{importedLibraryDetail\(library\)\}/);
   assert.match(globals, /\.imported-library-stack \.library-section-summary h3\s*{[\s\S]*font-size:\s*0\.9375rem/);
   assert.doesNotMatch(globals, /\.imported-library-stack \.library-section-summary h2\s*{/);
-  assert.match(buildersPage, /className="library-section-copy"/);
+  assert.match(importedLibraryDisclosure, /className="library-section-copy"/);
   assert.doesNotMatch(buildersPage, /className="grid gap-3"/);
   assert.doesNotMatch(buildersPage, /mt-1 text-sm text-\[var\(--muted-strong\)\]/);
-  assert.match(buildersPage, /library-section-panel-indented/);
+  assert.match(importedLibraryDisclosure, /library-section-panel-indented/);
   assert.match(cssRule(globals, ".library-section-panel-indented"), /margin-inline:\s*var\(--hierarchy-inset\)/);
   assert.doesNotMatch(cssRule(globals, ".library-section-panel-indented"), /margin-left/);
   assert.doesNotMatch(globals, /\.library-section-panel\[open\] \.library-section-copy:has\(\.imported-library-collapsed-meta\)\s*{[\s\S]*display:\s*none/);
@@ -4338,7 +4338,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.imported-library-avatar-stack\s*{[\s\S]*display:\s*inline-flex/);
   assert.doesNotMatch(globals, /\.imported-library-count-row\s*{/);
   assert.match(globals, /\.imported-library-chevron\s*{[\s\S]*height:\s*1rem[\s\S]*justify-self:\s*end/);
-  assert.match(globals, /\.library-section-panel-imported\[open\] \.imported-library-chevron\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
+  assert.match(globals, /\.library-section-imported-toggle\[aria-expanded="true"\] \.imported-library-chevron\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(globals, /\.imported-library-avatar\.fb-src-icon,[\s\S]*\.imported-library-avatar-more\s*{[\s\S]*height:\s*2rem/);
   assert.match(globals, /\.imported-library-avatar\.fb-src-icon \+ \.imported-library-avatar\.fb-src-icon,[\s\S]*margin-left:\s*-0\.62rem/);
   assert.match(globals, /\.imported-library-source-count\s*{[\s\S]*font-size:\s*var\(--text-role-control-size\)[\s\S]*font-weight:\s*var\(--text-role-value-weight\)[\s\S]*letter-spacing:\s*var\(--text-role-tracking\)[\s\S]*white-space:\s*nowrap/);
@@ -4546,8 +4546,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
       privateLibraryPanel.indexOf("<SourceLibraryItemsArea"),
     "The source list should remain directly after the Add source controls.",
   );
-  assert.match(buildersPage, /import \{ SourceLibraryItemsArea \}/);
-  assert.match(buildersPage, /<SourceLibraryItemsArea>\{children\}<\/SourceLibraryItemsArea>/);
+  assert.match(importedLibraryDisclosure, /import \{ SourceLibraryItemsArea \}/);
+  assert.match(importedLibraryDisclosure, /<SourceLibraryItemsArea>\{children\}<\/SourceLibraryItemsArea>/);
   const sourceLibraryItemsArea = source("src/components/SourceLibraryItemsArea.tsx");
   assert.match(sourceLibraryItemsArea, /className="source-library-items-area"/);
   assert.match(sourceLibraryItemsArea, /className="source-library-items-toolbar"/);
@@ -5511,6 +5511,7 @@ test("library hub exposes share and multi-import flows", () => {
 
 test("imported source library metadata", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const importedLibraryDisclosure = source("src/components/ImportedLibraryDisclosure.tsx");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const globals = source("src/app/globals.css");
@@ -5565,7 +5566,7 @@ test("imported source library metadata", () => {
   );
   assert.match(
     buildersPage,
-    /import \{\s*getSourceLibraryMetadataByLibraries,\s*type SourceLibraryMetadata as SourceLibraryMetadataValue,\s*\} from "@\/lib\/source-library-metadata"/,
+    /import \{\s*getSourceLibraryMetadataByLibraries,\s*\} from "@\/lib\/source-library-metadata"/,
   );
   assert.equal((buildersPage.match(/getSourceLibraryMetadataByLibraries\(/g) ?? []).length, 1);
   assert.match(
@@ -5582,19 +5583,19 @@ test("imported source library metadata", () => {
   );
   assert.match(
     buildersPage,
-    /<LibrarySection[\s\S]*importedMetadata=\{library\.metadata\}[\s\S]*action=\{[\s\S]*<LibraryImportRemoveButton/,
+    /<ImportedLibraryDisclosure[\s\S]*metadata=\{[\s\S]*<SourceLibraryMetadataRow metadata=\{library\.metadata\} \/>[\s\S]*action=\{[\s\S]*<LibraryImportRemoveButton/,
   );
   assert.match(
-    buildersPage,
-    /importedMetadata\?: SourceLibraryMetadataValue \| null;/,
+    importedLibraryDisclosure,
+    /metadata\?: ReactNode;/,
   );
   assert.match(
-    buildersPage,
-    /const importedMetadataRow = importedMetadata \|\| action \? \([\s\S]*className="library-section-meta library-section-meta--imported"[\s\S]*className="library-section-imported-metadata"[\s\S]*importedMetadata \? <SourceLibraryMetadataRow metadata=\{importedMetadata\} \/> : null[\s\S]*\{action\}[\s\S]*\) : null;/,
+    importedLibraryDisclosure,
+    /className="library-section-meta library-section-meta--imported"[\s\S]*className="library-section-imported-metadata">\{metadata\}<\/div>[\s\S]*\{action\}/,
   );
   assert.match(
-    buildersPage,
-    /<div className="library-section-summary-copy">[\s\S]*<h3 className="fb-section-heading">\{title\}<\/h3>[\s\S]*\{importedMetadataRow\}[\s\S]*<div className="library-section-copy">\{detail\}<\/div>/,
+    importedLibraryDisclosure,
+    /<div className="library-section-summary-copy">[\s\S]*<h3 className="fb-section-heading">\{title\}<\/h3>[\s\S]*className="library-section-imported-metadata">\{metadata\}<\/div>[\s\S]*className="library-section-imported-toggle"[\s\S]*<div className="library-section-copy">\{toggle\}<\/div>/,
   );
 
   assert.match(globals, /\.hub-card-imported-meta-row\s*{[\s\S]*align-items:\s*flex-start/);

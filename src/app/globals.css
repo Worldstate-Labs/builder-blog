@@ -2861,6 +2861,16 @@ details:not([open]) > :not(summary) {
   width: 100%;
 }
 
+.library-section-panel-imported .library-section-summary--imported-header {
+  padding-bottom: 0.75rem;
+}
+
+.library-section-panel-imported .library-section-summary--imported-header .library-section-summary-copy {
+  grid-template-areas:
+    "title title"
+    "meta meta";
+}
+
 .library-section-panel-imported .library-section-summary-copy > .fb-section-heading {
   grid-area: title;
 }
@@ -2887,6 +2897,38 @@ details:not([open]) > :not(summary) {
   grid-template-columns: minmax(0, 1fr) auto;
   margin-top: 0;
   max-width: none;
+}
+
+.library-section-imported-toggle {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  list-style: none;
+  min-height: 2.75rem;
+  outline: none;
+  padding: 0 1.25rem 1.125rem;
+  text-align: left;
+  transition: background-color 140ms ease;
+  width: 100%;
+}
+
+.library-section-imported-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.library-section-imported-toggle:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+.library-section-imported-toggle:hover .imported-library-source-count,
+.library-section-imported-toggle:focus-visible .imported-library-source-count {
+  color: var(--accent-strong);
 }
 
 .library-section-summary::-webkit-details-marker {
@@ -2935,6 +2977,10 @@ summary.library-section-summary::after {
   display: grid;
   gap: 0;
   padding: 0;
+}
+
+.library-section-body[hidden] {
+  display: none;
 }
 
 .source-library-items-area {
@@ -8700,7 +8746,7 @@ summary.library-section-summary::after {
   width: 1rem;
 }
 
-.library-section-panel-imported[open] .imported-library-chevron {
+.library-section-imported-toggle[aria-expanded="true"] .imported-library-chevron {
   transform: rotate(180deg);
 }
 
@@ -14558,6 +14604,10 @@ body {
     padding-inline: 0.875rem;
   }
 
+  .library-section-imported-toggle {
+    padding: 0 0.875rem 1rem;
+  }
+
   .library-section-summary {
     gap: 0.75rem;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -15814,6 +15864,10 @@ body {
   }
 
   .library-section-panel-imported > .library-section-summary {
+    padding-inline: 0.625rem;
+  }
+
+  .library-section-imported-toggle {
     padding-inline: 0.625rem;
   }
 

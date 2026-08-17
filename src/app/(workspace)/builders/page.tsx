@@ -2,10 +2,10 @@ import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { ChevronDown } from "lucide-react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
-import { CountMeta, formatCount } from "@/components/Count";
+import { formatCount } from "@/components/Count";
 import { type OwnDigestPipeline } from "@/components/DigestPipelineImportForm";
 import { EmptyState } from "@/components/EmptyState";
 import { FollowBriefLibraryIdentity } from "@/components/FollowBriefLibraryIdentity";
@@ -15,6 +15,7 @@ import {
 } from "@/components/FetchLogPanel";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
+import { ImportedLibraryDisclosure } from "@/components/ImportedLibraryDisclosure";
 import { OwnDigestPipelineUpdatesCard } from "@/components/OwnDigestPipelineUpdatesCard";
 import { I18nText } from "@/components/I18nProvider";
 import { PageHeader } from "@/components/PageHeader";
@@ -23,7 +24,6 @@ import {
   SkillPromptActions,
   type CloudSubmissionSource,
 } from "@/components/SkillPromptActions";
-import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
 import { SourceLibraryMetadata as SourceLibraryMetadataRow } from "@/components/SourceLibraryMetadata";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourcesTabShell } from "@/components/SourcesTabShell";
@@ -69,7 +69,6 @@ import { prisma } from "@/lib/prisma";
 import { ensureSourceCandidateLibraryFromAdminSources } from "@/lib/source-candidate-library";
 import {
   getSourceLibraryMetadataByLibraries,
-  type SourceLibraryMetadata as SourceLibraryMetadataValue,
 } from "@/lib/source-library-metadata";
 import { isPlatformMaintainedSourceType } from "@/lib/platform-maintained-sources";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
@@ -936,8 +935,8 @@ async function SourceLibrarySections({
         ) : null}
       </div>
       <div className="imported-library-stack">
-        {data.importedLibrarySections.map((library) => (
-          <LibrarySection
+        {data.importedLibrarySections.map((library, index) => (
+          <ImportedLibraryDisclosure
             key={library.id}
             title={
               library.isFollowBrief ? (
@@ -946,12 +945,14 @@ async function SourceLibrarySections({
                 library.name
               )
             }
-            detail={<ImportedLibraryCollapsedMeta builders={library.builders} />}
-            count={library.builders.length}
-            showCount={false}
-            indented
-            importedMetadata={library.metadata}
-            summaryClassName="library-section-panel-imported"
+            defaultOpen={index === 0}
+            indented={index > 0}
+            metadata={
+              library.metadata ? (
+                <SourceLibraryMetadataRow metadata={library.metadata} />
+              ) : null
+            }
+            toggle={<ImportedLibraryCollapsedMeta builders={library.builders} />}
             action={
               <LibraryImportRemoveButton
                 libraryId={library.id}
@@ -973,7 +974,7 @@ async function SourceLibrarySections({
               emptyBody="This imported source library has no active sources."
               emptyTitle="No active sources"
             />
-          </LibrarySection>
+          </ImportedLibraryDisclosure>
         ))}
         {data.importedLibrarySections.length === 0 ? (
           <EmptyState
@@ -1104,66 +1105,6 @@ function builderListItem({
     subscribed,
     allowRemove,
   };
-}
-
-function LibrarySection({
-  title,
-  detail,
-  badge,
-  count,
-  defaultOpen = false,
-  indented = false,
-  summaryClassName,
-  showCount = true,
-  action,
-  importedMetadata,
-  children,
-}: {
-  title: ReactNode;
-  detail: ReactNode;
-  badge?: string;
-  count: number;
-  defaultOpen?: boolean;
-  indented?: boolean;
-  summaryClassName?: string;
-  showCount?: boolean;
-  action?: ReactNode;
-  importedMetadata?: SourceLibraryMetadataValue | null;
-  children: ReactNode;
-}) {
-  const importedMetadataRow = importedMetadata || action ? (
-    <div className="library-section-meta library-section-meta--imported">
-      <div className="library-section-imported-metadata">
-        {importedMetadata ? <SourceLibraryMetadataRow metadata={importedMetadata} /> : null}
-      </div>
-      {action}
-    </div>
-  ) : null;
-
-  return (
-    <details
-      className={`library-section-panel${indented ? " library-section-panel-indented" : ""}${summaryClassName ? ` ${summaryClassName}` : ""}`}
-      open={defaultOpen}
-    >
-      <summary className="library-section-summary">
-        <div className="library-section-summary-copy">
-          <h3 className="fb-section-heading">{title}</h3>
-          {importedMetadataRow}
-          <div className="library-section-copy">{detail}</div>
-        </div>
-        {!importedMetadataRow ? (
-          <div className={`library-section-meta${badge ? "" : " library-section-meta--no-badge"}`}>
-            {badge ? <span className="fb-kind-pill">{badge}</span> : null}
-            {showCount ? <CountMeta label={count === 1 ? "source" : "sources"} value={count} /> : null}
-            {action}
-          </div>
-        ) : null}
-      </summary>
-      <div className="library-section-body">
-        <SourceLibraryItemsArea>{children}</SourceLibraryItemsArea>
-      </div>
-    </details>
-  );
 }
 
 function ImportedLibraryCollapsedMeta({
