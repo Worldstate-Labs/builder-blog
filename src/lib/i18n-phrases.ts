@@ -2836,12 +2836,12 @@ const phraseTranslations: Record<string, LocalePhraseMap> = {
     ko: "설정 열기",
     es: "Abrir Ajustes",
   },
-  "Source libraries imported from Hub.": {
-    "zh-CN": "从 Hub 导入的信息源库。",
-    "zh-TW": "從 Hub 匯入的資訊源庫。",
-    ja: "Hub からインポートしたソースライブラリ。",
-    ko: "Hub에서 가져온 소스 라이브러리입니다.",
-    es: "Bibliotecas de fuentes importadas desde Hub.",
+  "Source libraries imported from Hub are fetched and summarized by others.": {
+    "zh-CN": "从 Hub 导入的信息源库由其他人抓取并生成摘要。",
+    "zh-TW": "從 Hub 匯入的資訊源庫由其他人擷取並產生摘要。",
+    ja: "Hub からインポートしたソースライブラリは、他のユーザーによって取得・要約されています。",
+    ko: "Hub에서 가져온 소스 라이브러리는 다른 사용자가 가져오고 요약한 것입니다.",
+    es: "Las bibliotecas de fuentes importadas desde Hub son obtenidas y resumidas por otras personas.",
   },
   "Import from Hub": {
     "zh-CN": "从 Hub 导入",

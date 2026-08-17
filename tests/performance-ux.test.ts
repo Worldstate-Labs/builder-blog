@@ -4290,7 +4290,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Source libraries imported from Hub\./);
+  assert.match(buildersPage, /Source libraries imported from Hub are fetched and summarized by others\./);
   assert.doesNotMatch(buildersPage, /Source libraries you've imported from Hub\.|Shared source libraries imported from Hub\.|Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
@@ -5515,19 +5515,19 @@ test("imported source library metadata", () => {
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const globals = source("src/app/globals.css");
 
-  assert.match(hubPage, /getSourceLibraryMetadataByOwnerIds/);
-  assert.equal((hubPage.match(/getSourceLibraryMetadataByOwnerIds\(/g) ?? []).length, 1);
+  assert.match(hubPage, /getSourceLibraryMetadataByLibraries/);
+  assert.equal((hubPage.match(/getSourceLibraryMetadataByLibraries\(/g) ?? []).length, 1);
   assert.match(
     hubPage,
-    /const ownerUserIds = libraries[\s\S]*filter\(\(library\) => library\.ownerUserId\)[\s\S]*map\(\(library\) => library\.ownerUserId as string\)/,
+    /const libraryMetadataTargets = libraries\.map\(\(library\) => \(\{[\s\S]*id: library\.id,[\s\S]*ownerUserId: library\.ownerUserId,[\s\S]*builderIds: library\.items\.map\(\(item\) => item\.builderId\)/,
   );
   assert.match(
     hubPage,
-    /const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds\(ownerUserIds\);/,
+    /const metadataByLibraryId = await getSourceLibraryMetadataByLibraries\(libraryMetadataTargets\);/,
   );
   assert.match(
     hubPage,
-    /metadata:\s*library\.ownerUserId[\s\S]*metadataByOwnerUserId\[library\.ownerUserId\] \?\? null[\s\S]*: null,/,
+    /metadata:\s*metadataByLibraryId\[library\.id\] \?\? null,/,
   );
 
   assert.match(
@@ -5565,20 +5565,20 @@ test("imported source library metadata", () => {
   );
   assert.match(
     buildersPage,
-    /import \{\s*getSourceLibraryMetadataByOwnerIds,\s*type SourceLibraryMetadata as SourceLibraryMetadataValue,\s*\} from "@\/lib\/source-library-metadata"/,
+    /import \{\s*getSourceLibraryMetadataByLibraries,\s*type SourceLibraryMetadata as SourceLibraryMetadataValue,\s*\} from "@\/lib\/source-library-metadata"/,
   );
-  assert.equal((buildersPage.match(/getSourceLibraryMetadataByOwnerIds\(/g) ?? []).length, 1);
+  assert.equal((buildersPage.match(/getSourceLibraryMetadataByLibraries\(/g) ?? []).length, 1);
   assert.match(
     buildersPage,
-    /const importedLibraryOwnerUserIds = importedLibraries[\s\S]*map\(\(libraryImport\) => libraryImport\.hubEntry\.ownerUserId \?\? ""\)[\s\S]*filter\(Boolean\);/,
-  );
-  assert.match(
-    buildersPage,
-    /const importedLibraryMetadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds\(importedLibraryOwnerUserIds\);/,
+    /const importedLibraryMetadataTargets = importedLibraries\.map\(\(libraryImport\) => \(\{[\s\S]*id: libraryImport\.hubEntryId,[\s\S]*ownerUserId: libraryImport\.hubEntry\.ownerUserId,[\s\S]*builderIds: libraryImport\.hubEntry\.items\.map\(\(item\) => item\.builderId\)/,
   );
   assert.match(
     buildersPage,
-    /metadata:\s*libraryImport\.hubEntry\.ownerUserId[\s\S]*importedLibraryMetadataByOwnerUserId\[libraryImport\.hubEntry\.ownerUserId\] \?\? null[\s\S]*: null,/,
+    /const importedLibraryMetadataByLibraryId = await getSourceLibraryMetadataByLibraries\(\s*importedLibraryMetadataTargets,?\s*\);/,
+  );
+  assert.match(
+    buildersPage,
+    /metadata:\s*importedLibraryMetadataByLibraryId\[libraryImport\.hubEntryId\] \?\? null,/,
   );
   assert.match(
     buildersPage,

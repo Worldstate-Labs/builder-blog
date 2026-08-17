@@ -14,7 +14,7 @@ import {
   userImportableLibraryHubEntryWhere,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
-import { getSourceLibraryMetadataByOwnerIds } from "@/lib/source-library-metadata";
+import { getSourceLibraryMetadataByLibraries } from "@/lib/source-library-metadata";
 
 export const metadata: Metadata = { title: "Hub" };
 
@@ -82,10 +82,12 @@ async function loadSourceLibraryHubPageData() {
   await recordLibraryHubViews(libraries.map((library) => library.id));
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
-  const ownerUserIds = libraries
-    .filter((library) => library.ownerUserId)
-    .map((library) => library.ownerUserId as string);
-  const metadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds(ownerUserIds);
+  const libraryMetadataTargets = libraries.map((library) => ({
+    id: library.id,
+    ownerUserId: library.ownerUserId,
+    builderIds: library.items.map((item) => item.builderId),
+  }));
+  const metadataByLibraryId = await getSourceLibraryMetadataByLibraries(libraryMetadataTargets);
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
     const isCommunityLibrary = library.isFeatured || isAdminEmail(library.owner?.email);
     return {
@@ -105,10 +107,7 @@ async function loadSourceLibraryHubPageData() {
           lastFetchedAt: item.builder.lastFetchedAt?.toISOString() ?? null,
         },
       })),
-      metadata:
-        library.ownerUserId
-          ? metadataByOwnerUserId[library.ownerUserId] ?? null
-          : null,
+      metadata: metadataByLibraryId[library.id] ?? null,
       imported: importedLibraryIds.has(library.id),
       owned: library.ownerUserId === session.user.id,
     };

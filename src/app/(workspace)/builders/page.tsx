@@ -68,7 +68,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { ensureSourceCandidateLibraryFromAdminSources } from "@/lib/source-candidate-library";
 import {
-  getSourceLibraryMetadataByOwnerIds,
+  getSourceLibraryMetadataByLibraries,
   type SourceLibraryMetadata as SourceLibraryMetadataValue,
 } from "@/lib/source-library-metadata";
 import { isPlatformMaintainedSourceType } from "@/lib/platform-maintained-sources";
@@ -409,10 +409,14 @@ async function loadSourceLibraryData(user: {
     )
     .map((entry) => entry.builder)
     .sort(builderSort);
-  const importedLibraryOwnerUserIds = importedLibraries
-    .map((libraryImport) => libraryImport.hubEntry.ownerUserId ?? "")
-    .filter(Boolean);
-  const importedLibraryMetadataByOwnerUserId = await getSourceLibraryMetadataByOwnerIds(importedLibraryOwnerUserIds);
+  const importedLibraryMetadataTargets = importedLibraries.map((libraryImport) => ({
+    id: libraryImport.hubEntryId,
+    ownerUserId: libraryImport.hubEntry.ownerUserId,
+    builderIds: libraryImport.hubEntry.items.map((item) => item.builderId),
+  }));
+  const importedLibraryMetadataByLibraryId = await getSourceLibraryMetadataByLibraries(
+    importedLibraryMetadataTargets,
+  );
   const importedLibrarySections = importedLibraries.map((libraryImport) => {
     const isCommunityLibrary =
       libraryImport.hubEntry.isFeatured ||
@@ -427,9 +431,7 @@ async function loadSourceLibraryData(user: {
         : libraryImport.hubEntry.owner?.name ||
           libraryImport.hubEntry.owner?.email ||
           "FollowBrief",
-      metadata: libraryImport.hubEntry.ownerUserId
-        ? importedLibraryMetadataByOwnerUserId[libraryImport.hubEntry.ownerUserId] ?? null
-        : null,
+      metadata: importedLibraryMetadataByLibraryId[libraryImport.hubEntryId] ?? null,
       builders: libraryImport.hubEntry.items
         .flatMap((item) => {
           const entry = activeEntryByBuilderId.get(item.builderId);
@@ -924,7 +926,7 @@ async function SourceLibrarySections({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            {"Source libraries imported from Hub."}
+            {"Source libraries imported from Hub are fetched and summarized by others."}
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (

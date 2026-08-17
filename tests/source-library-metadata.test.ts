@@ -67,12 +67,26 @@ test("resolveSourceLibraryMetadata maps cron cadence and display language", asyn
   assert.deepEqual(
     resolveSourceLibraryMetadata({
       cronJob: { status: "stopped", frequencyLabel: "Every hour" },
-      feedPreference: { summaryLanguage: "ja" },
+      feedPreference: { summaryLanguage: "en" },
+      cloudFetch: { frequencyLabel: "Daily", summaryLanguage: "ja" },
     }),
     {
-      cadenceLabel: "Stopped",
-      cadenceState: "stopped",
+      cadenceLabel: "Daily",
+      cadenceState: "active",
       languageLabel: "日本語",
+    },
+  );
+
+  assert.deepEqual(
+    resolveSourceLibraryMetadata({
+      cronJob: { status: "active", frequencyLabel: "Every hour" },
+      feedPreference: { summaryLanguage: "en" },
+      cloudFetch: { frequencyLabel: "Daily", summaryLanguage: "ja" },
+    }),
+    {
+      cadenceLabel: "Every hour",
+      cadenceState: "active",
+      languageLabel: "English",
     },
   );
 
@@ -101,11 +115,31 @@ test("resolveSourceLibraryMetadata maps cron cadence and display language", asyn
   );
 });
 
-test("getSourceLibraryMetadataByOwnerIds dedupes ids and uses exactly two batch findMany queries", async () => {
-  const { getSourceLibraryMetadataByOwnerIds } = await import("../src/lib/source-library-metadata");
+test("getSourceLibraryMetadataByLibraries resolves Cloud fetch through Hub library builders", async () => {
+  const metadataModule = await import("../src/lib/source-library-metadata");
+  const getSourceLibraryMetadataByLibraries = (
+    metadataModule as unknown as {
+      getSourceLibraryMetadataByLibraries?: (
+        libraries: Array<{ id: string; ownerUserId: string | null; builderIds: string[] }>,
+        prisma: unknown,
+      ) => Promise<Record<string, unknown>>;
+    }
+  ).getSourceLibraryMetadataByLibraries ?? (async () => ({}));
 
   const cronQuery = deferred<Array<{ userId: string; status: string; frequencyLabel: string }>>();
   const preferenceQuery = deferred<Array<{ userId: string; summaryLanguage: string | null }>>();
+  const cloudSubmissionQuery = deferred<Array<{
+    userBuilderId: string | null;
+    cloudBuilderId: string;
+    submittedAt: Date;
+    cloudBuilder: {
+      cloudSourceTask: {
+        status: string;
+        effectiveFrequency: "DAILY" | "WEEKLY";
+        summaryLanguage: string;
+      } | null;
+    };
+  }>>();
   const prisma = {
     libraryCronJob: {
       findManyCalls: [] as unknown[],
@@ -121,15 +155,27 @@ test("getSourceLibraryMetadataByOwnerIds dedupes ids and uses exactly two batch 
         return preferenceQuery.promise;
       },
     },
+    cloudSourceSubmission: {
+      findManyCalls: [] as unknown[],
+      findMany(args: unknown) {
+        this.findManyCalls.push(args);
+        return cloudSubmissionQuery.promise;
+      },
+    },
   };
 
-  const pending = getSourceLibraryMetadataByOwnerIds(
-    ["owner-1", "owner-2", "owner-1", ""],
+  const pending = getSourceLibraryMetadataByLibraries(
+    [
+      { id: "library-local", ownerUserId: "owner-1", builderIds: ["builder-1"] },
+      { id: "library-cloud", ownerUserId: "owner-2", builderIds: ["builder-2"] },
+      { id: "library-cloud-copy", ownerUserId: null, builderIds: ["cloud-builder-3"] },
+    ],
     prisma as never,
   );
 
   assert.equal(prisma.libraryCronJob.findManyCalls.length, 1);
   assert.equal(prisma.userFeedPreference.findManyCalls.length, 1);
+  assert.equal(prisma.cloudSourceSubmission.findManyCalls.length, 1);
   assert.deepEqual(prisma.libraryCronJob.findManyCalls[0], {
     where: { userId: { in: ["owner-1", "owner-2"] } },
     select: { userId: true, status: true, frequencyLabel: true },
@@ -137,6 +183,32 @@ test("getSourceLibraryMetadataByOwnerIds dedupes ids and uses exactly two batch 
   assert.deepEqual(prisma.userFeedPreference.findManyCalls[0], {
     where: { userId: { in: ["owner-1", "owner-2"] } },
     select: { userId: true, summaryLanguage: true },
+  });
+  assert.deepEqual(prisma.cloudSourceSubmission.findManyCalls[0], {
+    where: {
+      active: true,
+      OR: [
+        { userBuilderId: { in: ["builder-1", "builder-2", "cloud-builder-3"] } },
+        { cloudBuilderId: { in: ["builder-1", "builder-2", "cloud-builder-3"] } },
+      ],
+      cloudBuilder: { cloudSourceTask: { status: "ACTIVE" } },
+    },
+    select: {
+      userBuilderId: true,
+      cloudBuilderId: true,
+      submittedAt: true,
+      cloudBuilder: {
+        select: {
+          cloudSourceTask: {
+            select: {
+              status: true,
+              effectiveFrequency: true,
+              summaryLanguage: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   cronQuery.resolve([
@@ -147,28 +219,79 @@ test("getSourceLibraryMetadataByOwnerIds dedupes ids and uses exactly two batch 
     { userId: "owner-1", summaryLanguage: "zh-TW" },
     { userId: "owner-2", summaryLanguage: "ja" },
   ]);
+  cloudSubmissionQuery.resolve([
+    {
+      userBuilderId: "builder-1",
+      cloudBuilderId: "cloud-builder-1",
+      submittedAt: new Date("2026-08-15T00:00:00Z"),
+      cloudBuilder: {
+        cloudSourceTask: {
+          status: "ACTIVE",
+          effectiveFrequency: "DAILY",
+          summaryLanguage: "ja",
+        },
+      },
+    },
+    {
+      userBuilderId: "builder-2",
+      cloudBuilderId: "cloud-builder-2",
+      submittedAt: new Date("2026-08-16T00:00:00Z"),
+      cloudBuilder: {
+        cloudSourceTask: {
+          status: "ACTIVE",
+          effectiveFrequency: "WEEKLY",
+          summaryLanguage: "ko",
+        },
+      },
+    },
+    {
+      userBuilderId: null,
+      cloudBuilderId: "cloud-builder-3",
+      submittedAt: new Date("2026-08-17T00:00:00Z"),
+      cloudBuilder: {
+        cloudSourceTask: {
+          status: "ACTIVE",
+          effectiveFrequency: "DAILY",
+          summaryLanguage: "source",
+        },
+      },
+    },
+  ]);
 
-  const metadataByOwnerId = await pending;
+  const metadataByLibraryId = await pending;
 
-  assert.deepEqual(metadataByOwnerId, {
-    "owner-1": {
+  assert.deepEqual(metadataByLibraryId, {
+    "library-local": {
       cadenceLabel: "Every day",
       cadenceState: "active",
       languageLabel: "繁體中文",
     },
-    "owner-2": {
-      cadenceLabel: "Stopped",
-      cadenceState: "stopped",
-      languageLabel: "日本語",
+    "library-cloud": {
+      cadenceLabel: "Weekly",
+      cadenceState: "active",
+      languageLabel: "한국어",
+    },
+    "library-cloud-copy": {
+      cadenceLabel: "Daily",
+      cadenceState: "active",
+      languageLabel: "Original",
     },
   });
 });
 
-test("getSourceLibraryMetadataByOwnerIds skips queries for empty owner ids", async () => {
-  const { getSourceLibraryMetadataByOwnerIds } = await import("../src/lib/source-library-metadata");
+test("getSourceLibraryMetadataByLibraries skips queries for empty input", async () => {
+  const metadataModule = await import("../src/lib/source-library-metadata");
+  const getSourceLibraryMetadataByLibraries = (
+    metadataModule as unknown as {
+      getSourceLibraryMetadataByLibraries?: (
+        libraries: never[],
+        prisma: unknown,
+      ) => Promise<Record<string, unknown>>;
+    }
+  ).getSourceLibraryMetadataByLibraries ?? (async () => ({}));
 
   let queried = false;
-  const metadataByOwnerId = await getSourceLibraryMetadataByOwnerIds(["", "  "], {
+  const metadataByLibraryId = await getSourceLibraryMetadataByLibraries([], {
     libraryCronJob: {
       async findMany() {
         queried = true;
@@ -181,10 +304,16 @@ test("getSourceLibraryMetadataByOwnerIds skips queries for empty owner ids", asy
         return [];
       },
     },
+    cloudSourceSubmission: {
+      async findMany() {
+        queried = true;
+        return [];
+      },
+    },
   } as never);
 
   assert.equal(queried, false);
-  assert.deepEqual(metadataByOwnerId, {});
+  assert.deepEqual(metadataByLibraryId, {});
 });
 
 test("SourceLibraryMetadata renders icon-only labels with accessible wrappers", async () => {

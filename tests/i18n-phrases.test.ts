@@ -60,7 +60,10 @@ test("Sources page UI phrases translate while product and source names stay stab
     ["Historical estimate", "历史估算"],
     ["Historical P(success)", "历史成功率"],
     ["Initial budget", "初始预算"],
-    ["Source libraries imported from Hub.", "从 Hub 导入的信息源库。"],
+    [
+      "Source libraries imported from Hub are fetched and summarized by others.",
+      "从 Hub 导入的信息源库由其他人抓取并生成摘要。",
+    ],
     ["No imported source libraries", "还没有导入的信息源库"],
     ["Import source libraries from Hub.", "从 Hub 导入信息源库。"],
     ["Import from Hub", "从 Hub 导入"],
