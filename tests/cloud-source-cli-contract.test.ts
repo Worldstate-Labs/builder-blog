@@ -2869,7 +2869,8 @@ test("fetch setup prompts run the ASR doctor before unattended media work", asyn
   assert.match(setup, /JavaScript runtime/i);
   assert.match(setup, /FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED/);
   assert.match(setup, /maintenanceWarnings/);
-  assert.match(setup, /ask whether the user wants to act on them/i);
+  assert.match(setup, /stop and ask the\s+user before running anything else/i);
+  assert.match(setup, /the question itself is never optional/i);
   assert.match(setup, /pot_provider_missing/);
   assert.match(setup, /PO token provider \(any OS, after explicit consent\)/);
   assert.match(setup, /If the user declines[\s\S]*continue/i);

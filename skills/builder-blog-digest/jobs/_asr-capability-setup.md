@@ -37,19 +37,24 @@ case "$ASR_DOCTOR_CODE" in
 esac
 ```
 
-If it prints `FOLLOWBRIEF_ASR_READY`, continue. If it prints
-`FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED`, report the `maintenanceWarnings`
-and ask whether the user wants to act on them before the initial fetch.
-This is maintenance, not missing capability: if the user declines, continue
-without updating and do not block the fetch or scheduler setup. Never update
+If it prints `FOLLOWBRIEF_ASR_READY`, continue.
+
+If it prints `FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED`, **stop and ask the
+user before running anything else.** Do not skip this question because the
+profile status is `ready` and do not defer it until after the fetch: for
+each entry in `maintenanceWarnings`, state the warning and its consequence
+in one sentence, then ask a yes/no question. Wait for the answer. If the
+user declines, continue without updating and do not block the fetch or
+scheduler setup — but the question itself is never optional. Never update
 or install tools unattended.
 
-- `yt_dlp_outdated`: offer to update the media downloader.
-- `pot_provider_missing`: YouTube now demands a proof-of-origin (PO) token
-  for many media downloads; without a local PO token provider those posts
-  fail with Action needed while everything else still runs. Offer to install
-  the provider with the "PO token provider" block below (any OS). If the
-  user declines, continue.
+- `yt_dlp_outdated`: "The media downloader is more than 90 days old. Update
+  it now?" — on yes, update it.
+- `pot_provider_missing`: "YouTube now requires a proof-of-origin token for
+  most media downloads. Without the local PO token provider, YouTube posts
+  that need audio transcription will fail as Action needed while everything
+  else still runs. Install the provider now (a few minutes)?" — on yes, run
+  the "PO token provider" block below (any OS).
 
 If it prints
 `FOLLOWBRIEF_ASR_SETUP_NEEDED`, report the `missing` entries and ask whether the
@@ -108,6 +113,9 @@ running between fetches:
 Requires `git` and `npm` (npm ships with the Node.js runtime this skill
 already requires). The dependency download is ~60MB, so this can take a
 few minutes on slow networks; it honors the usual npm registry overrides.
+Native build scripts are skipped and the optional `canvas` module removed:
+token generation does not need it, and compiling it needs Xcode/system
+libraries that end-user machines rarely have.
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
@@ -124,9 +132,10 @@ rm -rf "$POT_DIR"
 git clone --depth 1 --single-branch --branch 1.3.1 \
   https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git "$POT_DIR"
 cd "$POT_DIR/server"
-npm ci
+npm ci --ignore-scripts
 npx tsc
-npm prune --omit=dev
+npm prune --omit=dev --ignore-scripts
+rm -rf "$POT_DIR/server/node_modules/canvas"
 test -f "$POT_DIR/server/build/generate_once.js" || {
   echo "PO token provider build did not produce build/generate_once.js." >&2
   exit 70
