@@ -4,8 +4,9 @@ Installation is deliberately outside unattended runners and requires consent.
 -->
 Check this machine's managed-media capability before starting or scheduling a
 fetch. The check writes a versioned machine profile with absolute executable
-paths, including a Node.js 22+ JavaScript runtime for YouTube extraction;
-unattended runs consume that profile and never install dependencies.
+paths, including a Node.js 22+ JavaScript runtime for YouTube extraction and,
+when installed, the YouTube PO token provider; unattended runs consume that
+profile and never install dependencies.
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
@@ -38,10 +39,17 @@ esac
 
 If it prints `FOLLOWBRIEF_ASR_READY`, continue. If it prints
 `FOLLOWBRIEF_ASR_MAINTENANCE_RECOMMENDED`, report the `maintenanceWarnings`
-and ask whether the user wants to update the listed media tool before the
-initial fetch. This is maintenance, not missing capability: if the user
-declines, continue without updating and do not block the fetch or scheduler
-setup. Never update tools unattended.
+and ask whether the user wants to act on them before the initial fetch.
+This is maintenance, not missing capability: if the user declines, continue
+without updating and do not block the fetch or scheduler setup. Never update
+or install tools unattended.
+
+- `yt_dlp_outdated`: offer to update the media downloader.
+- `pot_provider_missing`: YouTube now demands a proof-of-origin (PO) token
+  for many media downloads; without a local PO token provider those posts
+  fail with Action needed while everything else still runs. Offer to install
+  the provider with the "PO token provider" block below (any OS). If the
+  user declines, continue.
 
 If it prints
 `FOLLOWBRIEF_ASR_SETUP_NEEDED`, report the `missing` entries and ask whether the
@@ -84,8 +92,54 @@ python3 -m venv "$AGENT_DIR/asr-venv"
 "$AGENT_DIR/asr-venv/bin/python" -m pip install --upgrade pip "yt-dlp[default]" faster-whisper
 ```
 
+### PO token provider (any OS, after explicit consent)
+
+Installs the bgutil PO token provider so YouTube downloads behind the
+proof-of-origin wall stop failing with 403. Two parts, both consumed on
+demand by the media downloader — the runner starts the provider only for
+the duration of a media download and stops it afterwards, so nothing stays
+running between fetches:
+
+- the provider runtime, built into `$AGENT_DIR/pot-provider` (pinned
+  version; the yt-dlp invocation points at it explicitly), and
+- the yt-dlp plugin, copied into yt-dlp's user plugin directory so it is
+  loaded regardless of how yt-dlp itself was installed.
+
+Requires `git` and `npm` (npm ships with the Node.js runtime this skill
+already requires). The dependency download is ~60MB, so this can take a
+few minutes on slow networks; it honors the usual npm registry overrides.
+
+```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+command -v git >/dev/null 2>&1 || {
+  echo "git is required to install the FollowBrief PO token provider." >&2
+  exit 69
+}
+command -v npm >/dev/null 2>&1 || {
+  echo "npm (bundled with Node.js 22+) is required to install the FollowBrief PO token provider." >&2
+  exit 69
+}
+POT_DIR="$AGENT_DIR/pot-provider"
+rm -rf "$POT_DIR"
+git clone --depth 1 --single-branch --branch 1.3.1 \
+  https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git "$POT_DIR"
+cd "$POT_DIR/server"
+npm ci
+npx tsc
+npm prune --omit=dev
+test -f "$POT_DIR/server/build/generate_once.js" || {
+  echo "PO token provider build did not produce build/generate_once.js." >&2
+  exit 70
+}
+PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/yt-dlp/plugins/bgutil"
+mkdir -p "$PLUGIN_DIR"
+rm -rf "$PLUGIN_DIR/yt_dlp_plugins"
+cp -R "$POT_DIR/plugin/yt_dlp_plugins" "$PLUGIN_DIR/"
+```
+
 Then verify the installed paths and backend. Do not continue if this still
-reports setup needed:
+reports setup needed, and after a consented PO token provider install the
+`pot_provider_missing` maintenance warning must be gone:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"

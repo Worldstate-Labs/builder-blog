@@ -110,7 +110,13 @@ function baseFailure(code, stage, retryable, result, options = {}) {
 }
 
 /**
- * @param {{stage?: string, result?: MediaToolResult | null, toolVersion?: string, now?: Date}} [options]
+ * @param {{
+ *   stage?: string,
+ *   result?: MediaToolResult | null,
+ *   toolVersion?: string,
+ *   now?: Date,
+ *   potProviderAvailable?: boolean | null,
+ * }} [options]
  * @returns {MediaToolFailure | null}
  */
 export function classifyMediaToolFailure({
@@ -118,6 +124,7 @@ export function classifyMediaToolFailure({
   result,
   toolVersion = "",
   now = new Date(),
+  potProviderAvailable = null,
 } = {}) {
   const normalizedStage = String(stage || "").trim();
   if (result?.ok && !result?.outputMissing) return null;
@@ -153,6 +160,33 @@ export function classifyMediaToolFailure({
       "media_download_access_required",
       "download",
       false,
+      result,
+      { httpStatus, maintenanceWarnings },
+    );
+  }
+
+  // YouTube's PO-token wall. yt-dlp phrases it as "formats require a GVS PO
+  // Token which was not provided" and then fails with either a format error or
+  // a plain 403. On a machine without the local PO token provider the fix is
+  // installing the provider, not retrying — and the check must run before the
+  // `unavailable` patterns because the same output usually also says
+  // "Requested format is not available". Callers that do not report provider
+  // availability (potProviderAvailable == null) keep the legacy classification.
+  const potTokenRequired = /requires? a GVS PO Token/i.test(text);
+  if (potProviderAvailable === false && (potTokenRequired || httpStatus === 403)) {
+    return baseFailure(
+      "media_download_pot_provider_missing",
+      "download",
+      false,
+      result,
+      { httpStatus, maintenanceWarnings },
+    );
+  }
+  if (potProviderAvailable === true && potTokenRequired) {
+    return baseFailure(
+      "media_download_forbidden",
+      "download",
+      true,
       result,
       { httpStatus, maintenanceWarnings },
     );

@@ -34,6 +34,7 @@ const REQUIRED_CODES = [
   "slice_sync_failed",
   "cloud_feed_sync_rejected",
   "media_download_forbidden",
+  "media_download_pot_provider_missing",
   "media_download_rate_limited",
   "media_download_temporarily_unavailable",
   "media_download_access_required",
@@ -158,6 +159,17 @@ test("fetch failure taxonomy classifies managed media read-stage failures with s
     userMessage: "Media download returned 403 Forbidden",
     operatorMessage: "The managed media downloader received HTTP 403 without a durable access marker.",
     retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("media_download_pot_provider_missing"), {
+    code: "media_download_pot_provider_missing",
+    known: true,
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download needs a one-time media setup on this machine",
+    operatorMessage: "YouTube demanded a proof-of-origin token and this machine has no PO token provider installed. Re-run the FollowBrief media capability setup and consent to installing the PO token provider, then retry the fetch.",
+    retryable: false,
     visibility: "user",
     notCompleted: true,
   });

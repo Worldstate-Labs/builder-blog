@@ -80,6 +80,85 @@ test("durable access failures are not retried even when they also include HTTP 4
   );
 });
 
+test("a PO-token wall on a machine without the provider is a capability failure, not missing content", () => {
+  const result = {
+    ok: false,
+    code: 1,
+    stdout: "",
+    stderr: [
+      "WARNING: [youtube] abc123: tv_simply client https formats require a GVS PO Token which was not provided. They will be skipped as they may yield HTTP Error 403.",
+      "ERROR: [youtube] abc123: Requested format is not available. Use --list-formats for a list of available formats",
+    ].join("\n"),
+    timedOut: false,
+  };
+
+  const failure = classifyMediaToolFailure({
+    stage: "download",
+    result,
+    potProviderAvailable: false,
+  });
+  assert.ok(failure);
+  assert.equal(failure.code, "media_download_pot_provider_missing");
+  assert.equal(failure.retryable, false);
+  assert.equal(
+    shouldRetryMediaToolFailure({ failure, attempt: 1, remainingBudgetMs: 60_000 }),
+    false,
+  );
+
+  // Same text with the provider installed means YouTube rejected or bypassed the
+  // token — a systemic 403-class failure, not a per-video content failure.
+  const withProvider = classifyMediaToolFailure({
+    stage: "download",
+    result,
+    potProviderAvailable: true,
+  });
+  assert.ok(withProvider);
+  assert.equal(withProvider.code, "media_download_forbidden");
+  assert.equal(withProvider.retryable, true);
+
+  // Legacy callers that do not report provider availability keep today's
+  // classification exactly.
+  const legacy = classifyMediaToolFailure({ stage: "download", result });
+  assert.ok(legacy);
+  assert.equal(legacy.code, "media_download_unavailable");
+});
+
+test("a plain 403 on a machine without the provider points at the provider install", () => {
+  const failure = classifyMediaToolFailure({
+    stage: "download",
+    result: {
+      ok: false,
+      code: 1,
+      stdout: "",
+      stderr: "ERROR: unable to download video data: HTTP Error 403: Forbidden",
+      timedOut: false,
+    },
+    potProviderAvailable: false,
+  });
+
+  assert.ok(failure);
+  assert.equal(failure.code, "media_download_pot_provider_missing");
+  assert.equal(failure.retryable, false);
+  assert.equal(failure.httpStatus, 403);
+});
+
+test("durable access markers keep precedence over the pot-provider classification", () => {
+  const failure = classifyMediaToolFailure({
+    stage: "download",
+    result: {
+      ok: false,
+      code: 1,
+      stdout: "",
+      stderr: "ERROR: Join this channel to get access to members-only content. HTTP Error 403",
+      timedOut: false,
+    },
+    potProviderAvailable: false,
+  });
+
+  assert.ok(failure);
+  assert.equal(failure.code, "media_download_access_required");
+});
+
 test("download classifier distinguishes rate limits, temporary failures, missing output, and unavailable media", () => {
   const cases = [
     ["HTTP Error 429: Too Many Requests", "media_download_rate_limited", true],

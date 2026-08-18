@@ -7438,6 +7438,28 @@ async function fetchYouTubeLocalAsr(videoUrl, {
   const ytDlpCommand = toolPaths?.downloader || "yt-dlp";
   const ffmpegCommand = toolPaths?.decoder || "ffmpeg";
   const javascriptRuntime = toolPaths?.javascriptRuntime ?? currentNodeJavascriptRuntime();
+  // PO tokens are a YouTube-only concern: direct media URLs (podcast CDNs)
+  // must keep their legacy 403 classification and never grow youtube extractor
+  // args. Explicit toolPaths are trusted as-is (profile-driven runs and tests
+  // stay hermetic); only the profile-less adhoc path probes the machine.
+  const isYouTubeSource = /(?:youtube\.com|youtu\.be)\//i.test(videoUrl);
+  const potProviderServerHome = toolPaths
+    ? toolPaths.potProviderServerHome || null
+    : resolvePotProviderServerHome();
+  // With the PO token provider available, pin a WebPO-capable player client so
+  // yt-dlp does not pick a format from a client whose media URLs 403 without a
+  // token (android_vr today). "default" opts out of the pin while keeping the
+  // provider wired up; the env override survives YouTube's next client shuffle
+  // without a release.
+  const youtubePlayerClient = process.env.BUILDER_BLOG_YOUTUBE_PLAYER_CLIENT?.trim() || "tv_simply";
+  const potProviderArgs = isYouTubeSource && potProviderServerHome
+    ? [
+      ...(youtubePlayerClient === "default"
+        ? []
+        : ["--extractor-args", `youtube:player_client=${youtubePlayerClient}`]),
+      "--extractor-args", `youtubepot-bgutilscript:server_home=${potProviderServerHome}`,
+    ]
+    : [];
   const ytDlpAvailable = await commandExists(ytDlpCommand, commandRunner, probeOptions);
   if (ytDlpAvailable == null) {
     attempts.push({ method: "local-asr", status: "failed", reason: "extraction_exceeds_shard_timeout" });
@@ -7532,6 +7554,19 @@ async function fetchYouTubeLocalAsr(videoUrl, {
           .filter((file) => file.startsWith("audio.") && file !== "audio-mono.wav")
           .map((file) => rm(join(workDir, file), { force: true }).catch(() => {})));
       };
+      // Run the HTTP provider for the duration of this download so BotGuard
+      // attestation happens once and is reused across retries; the one-shot
+      // script provider stays wired up as a fallback via potProviderArgs.
+      const potProviderServer = potProviderArgs.length > 0
+        ? await startPotProviderHttpServer({
+          serverHome: potProviderServerHome,
+          nodePath: javascriptRuntime?.path,
+        })
+        : null;
+      const downloadPotProviderArgs = potProviderServer
+        ? [...potProviderArgs, "--extractor-args", `youtubepot-bgutilhttp:base_url=${potProviderServer.baseUrl}`]
+        : potProviderArgs;
+      try {
       for (let downloadAttempt = 1; downloadAttempt <= 2 && !audioFile; downloadAttempt += 1) {
         const downloadOptions = longToolOptions(
           "BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS",
@@ -7556,6 +7591,7 @@ async function fetchYouTubeLocalAsr(videoUrl, {
             "--retry-sleep", "fragment:linear=1:3:1",
             "--retry-sleep", "extractor:linear=1:3:1",
             "--js-runtimes", `${javascriptRuntime.name}:${javascriptRuntime.path}`,
+            ...downloadPotProviderArgs,
             "-o", rawTemplate,
             videoUrl,
           ],
@@ -7571,6 +7607,7 @@ async function fetchYouTubeLocalAsr(videoUrl, {
           stage: "download",
           result: { ...download, outputMissing: download.ok && !audioFile },
           toolVersion: toolPaths?.downloaderVersion || "",
+          potProviderAvailable: isYouTubeSource ? Boolean(potProviderServerHome) : null,
         });
         failure.processAttempts = downloadAttempt;
         failure.tool = "yt-dlp";
@@ -7599,6 +7636,9 @@ async function fetchYouTubeLocalAsr(videoUrl, {
         await removePartialDownloads();
         audioFile = undefined;
         await sleepImpl(2_000);
+      }
+      } finally {
+        potProviderServer?.stop();
       }
     }
     if (!audioFile) {
@@ -7809,12 +7849,122 @@ export function resolveLocalAsrCapabilitiesForTest(options) {
   return resolveLocalAsrCapabilities(options);
 }
 
+// The bgutil PO token provider unlocks YouTube downloads behind the GVS
+// proof-of-origin wall. It is consent-installed by the capability setup prompt
+// (never unattended) into a fixed location under the agent dir; yt-dlp's
+// bgutil plugin then invokes it per download via the already-passed
+// --js-runtimes Node path, so no daemon and no PATH surgery are needed.
+function potProviderServerHomePath() {
+  return join(agentDir(), "pot-provider", "server");
+}
+
+function resolvePotProviderServerHome() {
+  const serverHome = potProviderServerHomePath();
+  return existsSync(join(serverHome, "build", "generate_once.js")) ? serverHome : null;
+}
+
+const POT_PROVIDER_PLUGIN_RELATIVE_PATH = join(
+  "yt_dlp_plugins",
+  "extractor",
+  "getpot_bgutil_script.py",
+);
+
+// Filesystem-only probe: the plugin counts as installed when its module is
+// visible either to the venv that owns the resolved yt-dlp (pip install into
+// asr-venv) or in one of yt-dlp's default user plugin directories.
+async function potProviderPluginInstalled({ downloaderPath = "" } = {}) {
+  const candidates = [];
+  const resolvedDownloader = String(downloaderPath || "").trim();
+  if (resolvedDownloader) {
+    const venvLibDir = join(dirname(dirname(resolvedDownloader)), "lib");
+    const entries = await readdir(venvLibDir).catch(() => []);
+    for (const entry of entries) {
+      if (!entry.startsWith("python")) continue;
+      candidates.push(join(venvLibDir, entry, "site-packages", POT_PROVIDER_PLUGIN_RELATIVE_PATH));
+    }
+  }
+  const configHome = process.env.XDG_CONFIG_HOME?.trim() || join(homedir(), ".config");
+  for (const pluginRoot of [join(configHome, "yt-dlp", "plugins"), join(homedir(), "yt-dlp-plugins")]) {
+    const entries = await readdir(pluginRoot).catch(() => []);
+    for (const entry of entries) {
+      candidates.push(join(pluginRoot, entry, POT_PROVIDER_PLUGIN_RELATIVE_PATH));
+    }
+  }
+  return candidates.some((candidate) => existsSync(candidate));
+}
+
+async function resolvePotProviderCapability({ downloaderPath = "" } = {}) {
+  const serverHome = resolvePotProviderServerHome();
+  if (!serverHome) return null;
+  if (!(await potProviderPluginInstalled({ downloaderPath }))) return null;
+  return { serverHome };
+}
+
+const DEFAULT_POT_PROVIDER_PORT = 41416;
+
+function potProviderPort() {
+  const configured = Number(process.env.BUILDER_BLOG_POT_PROVIDER_PORT);
+  return Number.isInteger(configured) && configured > 0 && configured < 65536
+    ? configured
+    : DEFAULT_POT_PROVIDER_PORT;
+}
+
+async function potProviderServerResponds(baseUrl, fetchImpl = fetch) {
+  try {
+    const response = await fetchImpl(`${baseUrl}/ping`, { signal: AbortSignal.timeout(1_000) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// BotGuard attestation — the slow, occasionally-failing step of PO token
+// generation — runs once per provider process and is then reused for every
+// binding. The one-shot script provider pays (and can flake on) that cold
+// start per yt-dlp invocation, so downloads run the HTTP provider instead:
+// started on demand for the duration of one download, stopped in `finally`,
+// nothing left running between fetches. An already-listening provider on the
+// same port (concurrent shard, user-managed daemon) is reused and never
+// stopped by us.
+async function startPotProviderHttpServer({
+  serverHome,
+  nodePath,
+  port = potProviderPort(),
+  fetchImpl = fetch,
+  sleepImpl = sleep,
+} = {}) {
+  const mainJs = join(String(serverHome || ""), "build", "main.js");
+  if (!existsSync(mainJs) || !nodePath) return null;
+  const baseUrl = `http://127.0.0.1:${port}`;
+  if (await potProviderServerResponds(baseUrl, fetchImpl)) {
+    return { baseUrl, stop: () => {} };
+  }
+  const child = spawn(nodePath, [mainJs, "--port", String(port)], {
+    detached: process.platform !== "win32",
+    stdio: "ignore",
+  });
+  child.on("error", () => {});
+  const stop = () => terminateToolChild(child, "SIGTERM");
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (child.exitCode !== null) break;
+    if (await potProviderServerResponds(baseUrl, fetchImpl)) return { baseUrl, stop };
+    await sleepImpl(500);
+  }
+  stop();
+  return null;
+}
+
+export function startPotProviderHttpServerForTest(options) {
+  return startPotProviderHttpServer(options);
+}
+
 async function runAsrDoctor({
   capabilities = null,
   commandRunner = runTool,
   commandPathResolver = resolveCommandPath,
   now = new Date(),
   profilePath = join(agentDir(), "asr-machine-profile.json"),
+  potProviderResolver = resolvePotProviderCapability,
 } = {}) {
   const resolvedCapabilities = capabilities ?? await resolveLocalAsrCapabilities({ commandRunner });
   const downloaderPath = await commandPathResolver("yt-dlp");
@@ -7836,11 +7986,19 @@ async function runAsrDoctor({
     ? String(decoderVersionResult.stdout || decoderVersionResult.stderr || "").match(/ffmpeg version\s+([^\s]+)/i)
     : null;
   const decoderVersion = decoderVersionMatch?.[1] || null;
-  const maintenanceWarnings = ytDlpMaintenanceWarnings({
-    result: downloaderVersionResult,
-    toolVersion: downloaderVersion || "",
-    now,
-  });
+  const potProvider = await potProviderResolver({ downloaderPath });
+  // Deliberately a maintenance warning, NOT a `missing` entry: flipping the
+  // profile out of "ready" would disable managed media entirely on machines
+  // that still download token-free videos today. The setup gate surfaces the
+  // warning and offers the consent-gated install; unattended runs continue.
+  const maintenanceWarnings = [
+    ...ytDlpMaintenanceWarnings({
+      result: downloaderVersionResult,
+      toolVersion: downloaderVersion || "",
+      now,
+    }),
+    ...(potProvider ? [] : ["pot_provider_missing"]),
+  ];
   const adapter = resolvedCapabilities.adapters?.[0] ?? null;
   const adapterCommand = adapter
     ? adapter.python || adapter.command || (adapter.id === "whisper-cli" ? "whisper" : null)
@@ -7870,6 +8028,7 @@ async function runAsrDoctor({
       ? { command: "ffmpeg", path: decoderPath, version: decoderVersion }
       : null,
     javascriptRuntime,
+    potProvider,
     asr: adapter && adapterPath
       ? {
         backend: adapter.id,
@@ -7936,6 +8095,9 @@ function capabilitiesFromAsrProfile(profile) {
   } else {
     return null;
   }
+  // Optional capability: absence must never invalidate the whole profile —
+  // token-free videos still download without the PO token provider.
+  const potProviderServerHome = String(profile?.potProvider?.serverHome || "").trim();
   return {
     capabilities: { adapters: [adapter], probes: profile.probes ?? [], timedOut: false },
     toolPaths: {
@@ -7944,6 +8106,10 @@ function capabilitiesFromAsrProfile(profile) {
       decoder,
       decoderVersion: String(profile?.decoder?.version || "").trim() || null,
       javascriptRuntime,
+      potProviderServerHome:
+        potProviderServerHome && existsSync(join(potProviderServerHome, "build", "generate_once.js"))
+          ? potProviderServerHome
+          : null,
     },
   };
 }

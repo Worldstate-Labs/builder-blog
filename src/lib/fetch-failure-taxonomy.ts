@@ -167,6 +167,14 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: true,
     notCompleted: true,
   },
+  media_download_pot_provider_missing: {
+    category: "runtime",
+    stage: "read",
+    userMessage: "Media download needs a one-time media setup on this machine",
+    operatorMessage: "YouTube demanded a proof-of-origin token and this machine has no PO token provider installed. Re-run the FollowBrief media capability setup and consent to installing the PO token provider, then retry the fetch.",
+    retryable: false,
+    notCompleted: true,
+  },
   media_download_rate_limited: {
     category: "runtime",
     stage: "read",

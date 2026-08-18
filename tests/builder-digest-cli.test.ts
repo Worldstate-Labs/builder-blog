@@ -2315,6 +2315,7 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
         probes: [],
         timedOut: false,
       },
+      potProviderResolver: async () => null,
     });
 
     assert.equal(result.status, "ready");
@@ -2326,7 +2327,13 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
     assert.equal(profile.downloader.outdated, true);
     assert.equal(profile.decoder.path, "/opt/followbrief/bin/ffmpeg");
     assert.equal(profile.decoder.version, "8.0");
-    assert.deepEqual(profile.maintenanceWarnings, ["yt_dlp_outdated"]);
+    // A missing PO token provider is advisory: it must stay OUT of `missing`
+    // (status remains ready, unattended media keeps running) and surface only
+    // as a maintenance warning for the consent-gated setup prompt.
+    assert.equal(profile.status, "ready");
+    assert.deepEqual(profile.missing, []);
+    assert.equal(profile.potProvider, null);
+    assert.deepEqual(profile.maintenanceWarnings, ["yt_dlp_outdated", "pot_provider_missing"]);
     assert.deepEqual(profile.javascriptRuntime, {
       name: "node",
       path: "/opt/followbrief/bin/node",
@@ -2335,6 +2342,78 @@ test("ASR doctor writes a versioned absolute-path machine profile", async () => 
     assert.equal(profile.asr.backend, "faster-whisper");
     assert.equal(profile.asr.command, "/opt/followbrief/bin/python3");
     assert.ok(profile.platform);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("ASR doctor records the PO token provider and ready profiles hand its path to downloads", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-pot-provider=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-pot-"));
+  const profilePath = join(dir, "asr-machine-profile.json");
+  const serverHome = join(dir, "pot-provider", "server");
+  try {
+    await mkdir(join(serverHome, "build"), { recursive: true });
+    await writeFile(join(serverHome, "build", "generate_once.js"), "// stub\n", "utf8");
+
+    await cli.runAsrDoctorForTest({
+      profilePath,
+      now: new Date("2026-08-18T12:00:00.000Z"),
+      commandPathResolver: async (command: string) => ({
+        "yt-dlp": "/opt/followbrief/bin/yt-dlp",
+        ffmpeg: "/opt/followbrief/bin/ffmpeg",
+        node: "/opt/followbrief/bin/node",
+      } as Record<string, string>)[command] ?? null,
+      commandRunner: async (command: string) => {
+        if (command === "/opt/followbrief/bin/node") {
+          return { ok: true, code: 0, stdout: "v24.1.0\n", stderr: "", timedOut: false };
+        }
+        if (command === "/opt/followbrief/bin/yt-dlp") {
+          return { ok: true, code: 0, stdout: "2026.08.10\n", stderr: "", timedOut: false };
+        }
+        return { ok: true, code: 0, stdout: "ffmpeg version 8.0\n", stderr: "", timedOut: false };
+      },
+      capabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      potProviderResolver: async () => ({ serverHome }),
+    });
+
+    const profile = JSON.parse(await readFile(profilePath, "utf8"));
+    assert.deepEqual(profile.potProvider, { serverHome });
+    assert.deepEqual(profile.maintenanceWarnings, []);
+
+    const executable = join(dir, "tool");
+    await writeFile(executable, "#!/bin/sh\n", { mode: 0o700 });
+    const ready = cli.capabilitiesFromAsrProfileForTest({
+      version: 1,
+      status: "ready",
+      downloader: { command: "yt-dlp", path: executable },
+      decoder: { command: "ffmpeg", path: executable },
+      javascriptRuntime: { name: "node", path: executable, version: "24.1.0" },
+      asr: { backend: "faster-whisper", command: executable },
+      potProvider: { serverHome },
+      probes: [],
+    });
+    assert.equal(ready.toolPaths.potProviderServerHome, serverHome);
+
+    // A provider path that no longer exists degrades to null without
+    // invalidating the rest of the profile.
+    const stale = cli.capabilitiesFromAsrProfileForTest({
+      version: 1,
+      status: "ready",
+      downloader: { command: "yt-dlp", path: executable },
+      decoder: { command: "ffmpeg", path: executable },
+      javascriptRuntime: { name: "node", path: executable, version: "24.1.0" },
+      asr: { backend: "faster-whisper", command: executable },
+      potProvider: { serverHome: join(dir, "gone", "server") },
+      probes: [],
+    });
+    assert.ok(stale);
+    assert.equal(stale.toolPaths.potProviderServerHome, null);
+    assert.equal(stale.toolPaths.downloader, executable);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -2381,6 +2460,9 @@ test("managed ASR retries one ambiguous 403 with bounded yt-dlp retries and then
         downloaderVersion: "2026.03.17",
         decoder: "/opt/followbrief/bin/ffmpeg",
         javascriptRuntime: { name: "node", path: process.execPath },
+        // Provider installed: an ambiguous 403 stays retryable. Without it the
+        // 403 reclassifies to the non-retryable pot-provider capability code.
+        potProviderServerHome: "/opt/followbrief/pot-provider/server",
       },
       asrCapabilities: {
         adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "/opt/followbrief/bin/python3" }],
@@ -2433,6 +2515,8 @@ test("managed ASR retries one ambiguous 403 with bounded yt-dlp retries and then
       assert.deepEqual(args.slice(args.indexOf("--retries"), args.indexOf("--retries") + 2), ["--retries", "3"]);
       assert.deepEqual(args.slice(args.indexOf("--fragment-retries"), args.indexOf("--fragment-retries") + 2), ["--fragment-retries", "3"]);
       assert.deepEqual(args.slice(args.indexOf("--extractor-retries"), args.indexOf("--extractor-retries") + 2), ["--extractor-retries", "2"]);
+      assert.ok(args.includes("youtube:player_client=tv_simply"));
+      assert.ok(args.includes("youtubepot-bgutilscript:server_home=/opt/followbrief/pot-provider/server"));
     }
     assert.equal(result.attempts[0].reason, "media_download_forbidden");
     assert.equal(result.attempts[0].stage, "download");
@@ -2495,6 +2579,7 @@ test("managed ASR skips its outer retry when less than thirty seconds remain", a
       preserveWorkDir: true,
       sleepImpl: async () => assert.fail("insufficient remaining budget must not sleep or retry"),
       longToolTimeoutMsResolver: () => budgetMs.shift() ?? 20_000,
+      toolPaths: { potProviderServerHome: "/opt/followbrief/pot-provider/server" },
       asrCapabilities: {
         adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
         probes: [],
@@ -2519,6 +2604,57 @@ test("managed ASR skips its outer retry when less than thirty seconds remain", a
     });
 
     assert.equal(result.reason, "media_download_forbidden");
+    assert.equal(downloads, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("managed ASR reports the missing PO token provider on a YouTube 403 without retrying", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?asr-download-pot-missing=${Date.now()}`);
+  const dir = await mkdtemp(join(tmpdir(), "followbrief-asr-pot-missing-"));
+  let downloads = 0;
+  try {
+    const result = await cli.fetchYouTubeLocalAsrForTest("https://www.youtube.com/watch?v=potwall1", {
+      workDir: dir,
+      preserveWorkDir: true,
+      sleepImpl: async () => assert.fail("a missing PO token provider must not sleep or retry"),
+      longToolTimeoutMsResolver: () => 120_000,
+      toolPaths: {
+        downloader: "/opt/followbrief/bin/yt-dlp",
+        decoder: "/opt/followbrief/bin/ffmpeg",
+        javascriptRuntime: { name: "node", path: process.execPath },
+        potProviderServerHome: null,
+      },
+      asrCapabilities: {
+        adapters: [{ id: "faster-whisper", moduleName: "faster_whisper", python: "python3" }],
+        probes: [],
+        timedOut: false,
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        if (args[0] === "--version" || args[0] === "-version") {
+          return { ok: true, code: 0, stdout: "version\n", stderr: "", timedOut: false };
+        }
+        if (command.endsWith("yt-dlp")) {
+          downloads += 1;
+          // Without the provider the downloader must not receive PO-token
+          // extractor args.
+          assert.ok(!args.some((arg) => arg.includes("youtubepot-bgutilscript")));
+          assert.ok(!args.some((arg) => arg.includes("player_client")));
+          return {
+            ok: false,
+            code: 1,
+            stdout: "",
+            stderr: "ERROR: unable to download video data: HTTP Error 403: Forbidden",
+            timedOut: false,
+          };
+        }
+        throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
+      },
+    });
+
+    assert.equal(result.reason, "media_download_pot_provider_missing");
+    assert.equal(result.failure.retryable, false);
     assert.equal(downloads, 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
