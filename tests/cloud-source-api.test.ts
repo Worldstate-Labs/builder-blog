@@ -64,6 +64,7 @@ function buildLeaseBatch(id: string, startedAt: string): CloudFetchRunLogItem {
     requestedLimit: 20,
     tasksClaimed: 1,
     tasksSucceeded: 0,
+    tasksPartial: 0,
     tasksFailed: 0,
     tasksRunning: 1,
     plannedPosts: 2,

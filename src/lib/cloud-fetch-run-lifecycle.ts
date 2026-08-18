@@ -97,11 +97,18 @@ export async function recomputeCloudFetchRun(
     select: { status: true, usageTokens: true, usageCostUsd: true },
   });
   const tasksSucceeded = tasks.filter((task) => task.status === CloudFetchRunStatus.SUCCEEDED).length;
-  const tasksFailed = tasks.filter((task) =>
-    task.status === CloudFetchRunStatus.FAILED || task.status === CloudFetchRunStatus.PARTIAL
-  ).length;
+  const tasksPartial = tasks.filter((task) => task.status === CloudFetchRunStatus.PARTIAL).length;
+  const tasksStrictlyFailed = tasks.filter((task) => task.status === CloudFetchRunStatus.FAILED).length;
+  // The persisted counter has no partial column, so it keeps meaning
+  // "sources that did not fully succeed"; run status uses the breakdown.
+  const tasksFailed = tasksStrictlyFailed + tasksPartial;
   const tasksRunning = tasks.filter((task) => task.status === CloudFetchRunStatus.RUNNING).length;
-  const runStatus = cloudRunStatus({ tasksSucceeded, tasksFailed, tasksRunning });
+  const runStatus = cloudRunStatus({
+    tasksSucceeded,
+    tasksPartial,
+    tasksFailed: tasksStrictlyFailed,
+    tasksRunning,
+  });
   const usageTokens = sumNullableNumbers(tasks.map((task) => task.usageTokens));
   const usageCostUsd = sumNullableNumbers(tasks.map((task) => numericValue(task.usageCostUsd)));
   await prisma.cloudFetchRun.update({
@@ -127,10 +134,12 @@ export async function recomputeCloudFetchRun(
 
 function cloudRunStatus(params: {
   tasksSucceeded: number;
+  tasksPartial: number;
   tasksFailed: number;
   tasksRunning: number;
 }) {
   if (params.tasksRunning > 0) return CloudFetchRunStatus.RUNNING;
+  if (params.tasksPartial > 0) return CloudFetchRunStatus.PARTIAL;
   if (params.tasksSucceeded > 0 && params.tasksFailed > 0) return CloudFetchRunStatus.PARTIAL;
   if (params.tasksFailed > 0) return CloudFetchRunStatus.FAILED;
   return CloudFetchRunStatus.SUCCEEDED;

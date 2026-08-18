@@ -148,6 +148,9 @@ export type CloudFetchRunLogItem = {
   requestedLimit: number;
   tasksClaimed: number;
   tasksSucceeded: number;
+  // Sources that synced some but not all of their posts. Kept apart from
+  // tasksFailed so a batch of partial sources does not read as a total loss.
+  tasksPartial: number;
   tasksFailed: number;
   tasksRunning: number;
   // Aggregate post lifecycle across the run's per-source tasks.
@@ -323,6 +326,7 @@ export function serializeCloudFetchRun(run: CloudFetchRunRow): CloudFetchRunLogI
     requestedLimit: run.requestedLimit,
     tasksClaimed: taskState.tasksClaimed,
     tasksSucceeded: taskState.tasksSucceeded,
+    tasksPartial: taskState.tasksPartial,
     tasksFailed: taskState.tasksFailed,
     tasksRunning: taskState.tasksRunning,
     plannedPosts: sumBy(tasks, (t) => t.plannedPosts),
@@ -344,10 +348,13 @@ function deriveRunTaskState(run: CloudFetchRunRow, tasks: CloudFetchRunLogTask[]
   if (!hasCompleteTaskRows) {
     const tasksSucceeded = nonNegativeInteger(run.tasksSucceeded);
     const tasksFailed = nonNegativeInteger(run.tasksFailed);
+    // Without complete task rows the persisted counters are all we have, and
+    // they fold partial sources into tasksFailed.
     return {
       status: run.status,
       tasksClaimed,
       tasksSucceeded,
+      tasksPartial: 0,
       tasksFailed,
       tasksRunning: Math.max(0, tasksClaimed - tasksSucceeded - tasksFailed),
       finishedAt: null,
@@ -355,12 +362,14 @@ function deriveRunTaskState(run: CloudFetchRunRow, tasks: CloudFetchRunLogTask[]
   }
 
   const tasksSucceeded = tasks.filter((task) => task.status === "SUCCEEDED").length;
-  const tasksFailed = tasks.filter((task) => task.status === "FAILED" || task.status === "PARTIAL").length;
-  const tasksRunning = Math.max(0, tasksClaimed - tasksSucceeded - tasksFailed);
+  const tasksPartial = tasks.filter((task) => task.status === "PARTIAL").length;
+  const tasksFailed = tasks.filter((task) => task.status === "FAILED").length;
+  const tasksRunning = Math.max(0, tasksClaimed - tasksSucceeded - tasksPartial - tasksFailed);
   return {
-    status: runStatusFromTaskCounts({ tasksSucceeded, tasksFailed, tasksRunning }),
+    status: runStatusFromTaskCounts({ tasksSucceeded, tasksPartial, tasksFailed, tasksRunning }),
     tasksClaimed,
     tasksSucceeded,
+    tasksPartial,
     tasksFailed,
     tasksRunning,
     finishedAt: tasksRunning === 0 ? latestTaskFinishedAt(tasks) : null,
@@ -369,14 +378,17 @@ function deriveRunTaskState(run: CloudFetchRunRow, tasks: CloudFetchRunLogTask[]
 
 function runStatusFromTaskCounts({
   tasksSucceeded,
+  tasksPartial,
   tasksFailed,
   tasksRunning,
 }: {
   tasksSucceeded: number;
+  tasksPartial: number;
   tasksFailed: number;
   tasksRunning: number;
 }): string {
   if (tasksRunning > 0) return "RUNNING";
+  if (tasksPartial > 0) return "PARTIAL";
   if (tasksSucceeded > 0 && tasksFailed > 0) return "PARTIAL";
   if (tasksFailed > 0) return "FAILED";
   return "SUCCEEDED";

@@ -318,6 +318,7 @@ function formatDeliveryCounts(batch: CloudFetchRunLogItem): string {
   const parts = [pluralize(batch.tasksClaimed, "source", "sources") + " delivered"];
   if (batch.tasksRunning > 0) parts.push(`${batch.tasksRunning.toLocaleString()} running`);
   if (batch.tasksSucceeded > 0) parts.push(`${batch.tasksSucceeded.toLocaleString()} finished`);
+  if (batch.tasksPartial > 0) parts.push(`${batch.tasksPartial.toLocaleString()} partial`);
   if (batch.tasksFailed > 0) parts.push(`${batch.tasksFailed.toLocaleString()} failed`);
   return parts.join(" · ");
 }
@@ -684,7 +685,7 @@ function WorkerHostPanel({
     const skippedPosts = leaseBatches.reduce((sum, batch) => sum + batch.skippedPosts, 0);
     const sourcesTotal = leaseBatches.reduce((sum, batch) => sum + batch.tasksClaimed, 0);
     const sourcesChecked = leaseBatches.reduce(
-      (sum, batch) => sum + batch.tasksSucceeded + batch.tasksFailed,
+      (sum, batch) => sum + batch.tasksSucceeded + batch.tasksPartial + batch.tasksFailed,
       0,
     );
     return {

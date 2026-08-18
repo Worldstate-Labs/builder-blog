@@ -362,6 +362,7 @@ function cloudBatch(
     requestedLimit: 10,
     tasksClaimed: 1,
     tasksSucceeded: 0,
+    tasksPartial: 0,
     tasksFailed: 0,
     tasksRunning: 1,
     plannedPosts: posts.length,

@@ -873,3 +873,83 @@ test("serializeCloudWorkerHost marks stale and missing hosts clearly", () => {
   assert.equal(offline.statusLabel, "No host heartbeat");
   assert.deepEqual(offline.tasks, []);
 });
+
+test("serializeCloudFetchRun reports a partial-only batch as PARTIAL, not FAILED", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "FAILED",
+    tasksClaimed: 1,
+    tasksSucceeded: 0,
+    tasksFailed: 1,
+    tasks: [
+      {
+        id: "rt_partial",
+        builderId: "cb_ph",
+        summaryLanguage: "original",
+        status: "PARTIAL",
+        plannedPosts: 5,
+        syncedPosts: 4,
+        failedPosts: 1,
+        startedAt: new Date("2026-08-16T10:00:00.000Z"),
+        finishedAt: new Date("2026-08-16T10:18:23.000Z"),
+        actualDurationSeconds: 1103,
+        failureReason: null,
+        details: { posts: [] },
+        builder: { name: "Product Hunt Top Products", sourceType: "product_hunt" },
+      },
+    ],
+  });
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.tasksSucceeded, 0);
+  assert.equal(result.tasksPartial, 1);
+  assert.equal(result.tasksFailed, 0);
+  assert.equal(result.tasksRunning, 0);
+});
+
+test("serializeCloudFetchRun keeps a mixed partial+failed batch at PARTIAL", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "FAILED",
+    tasksClaimed: 2,
+    tasksSucceeded: 0,
+    tasksFailed: 2,
+    tasks: [
+      {
+        id: "rt_partial_2",
+        builderId: "cb_ph",
+        summaryLanguage: "original",
+        status: "PARTIAL",
+        plannedPosts: 5,
+        syncedPosts: 4,
+        failedPosts: 1,
+        startedAt: new Date("2026-08-16T10:00:00.000Z"),
+        finishedAt: new Date("2026-08-16T10:18:00.000Z"),
+        actualDurationSeconds: 1080,
+        failureReason: null,
+        details: { posts: [] },
+        builder: { name: "Product Hunt Top Products", sourceType: "product_hunt" },
+      },
+      {
+        id: "rt_failed_2",
+        builderId: "cb_x",
+        summaryLanguage: "zh",
+        status: "FAILED",
+        plannedPosts: 2,
+        syncedPosts: 0,
+        failedPosts: 2,
+        startedAt: new Date("2026-08-16T10:00:00.000Z"),
+        finishedAt: new Date("2026-08-16T10:04:00.000Z"),
+        actualDurationSeconds: 240,
+        failureReason: "cloud_lease_expired",
+        details: { posts: [] },
+        builder: { name: "Failing Source", sourceType: "x" },
+      },
+    ],
+  });
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.tasksPartial, 1);
+  assert.equal(result.tasksFailed, 1);
+  assert.equal(result.tasksRunning, 0);
+});
