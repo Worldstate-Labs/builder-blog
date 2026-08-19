@@ -23,6 +23,8 @@ function variant(overrides: Partial<ChannelVariant> & { builderId: string }): Ch
     lastFetchedAt: overrides.lastFetchedAt ?? null,
     publishedAt: overrides.publishedAt ?? null,
     createdAt: overrides.createdAt ?? now,
+    summaryContentLanguage: overrides.summaryContentLanguage ?? null,
+    fromOriginalLanguageLibrary: overrides.fromOriginalLanguageLibrary ?? false,
     builderId: overrides.builderId,
   };
 }
@@ -97,6 +99,100 @@ test("channel resolution / pin overrides own channel", () => {
   ];
   const picked = pickPrimaryVariant(variants, "user_x", "b_pinned");
   assert.equal(picked.builderId, "b_pinned");
+});
+
+test("digest picks the copy already written in the requested language", () => {
+  const yesterday = new Date(now.getTime() - 86400000);
+  const variants = [
+    variant({
+      builderId: "b_en",
+      ownerUserId: "cloud_en",
+      itemUpdatedAt: now,
+      summaryContentLanguage: "en",
+    }),
+    variant({
+      builderId: "b_zh",
+      ownerUserId: "cloud_zh",
+      itemUpdatedAt: yesterday,
+      summaryContentLanguage: "zh-Hans",
+    }),
+  ];
+  // The English copy is newer; the requested language still wins.
+  const picked = pickPrimaryVariant(variants, "user_x", null, "zh-CN");
+  assert.equal(picked.builderId, "b_zh");
+});
+
+test("digest falls back to the original-language library when no copy matches", () => {
+  const yesterday = new Date(now.getTime() - 86400000);
+  const variants = [
+    variant({
+      builderId: "b_en",
+      ownerUserId: "cloud_en",
+      itemUpdatedAt: now,
+      summaryContentLanguage: "en",
+    }),
+    variant({
+      builderId: "b_original",
+      ownerUserId: "cloud_source",
+      itemUpdatedAt: yesterday,
+      summaryContentLanguage: "ja",
+      fromOriginalLanguageLibrary: true,
+    }),
+  ];
+  const picked = pickPrimaryVariant(variants, "user_x", null, "zh-CN");
+  assert.equal(picked.builderId, "b_original");
+});
+
+test("a run set to the original language prefers the original library outright", () => {
+  const variants = [
+    variant({ builderId: "b_zh", itemUpdatedAt: now, summaryContentLanguage: "zh-Hans" }),
+    variant({
+      builderId: "b_original",
+      itemUpdatedAt: new Date(now.getTime() - 86400000),
+      fromOriginalLanguageLibrary: true,
+    }),
+  ];
+  const picked = pickPrimaryVariant(variants, "user_x", null, "source");
+  assert.equal(picked.builderId, "b_original");
+});
+
+test("language preference outranks the user's own copy", () => {
+  const variants = [
+    variant({
+      builderId: "b_mine",
+      ownerUserId: "user_x",
+      itemUpdatedAt: now,
+      summaryContentLanguage: "en",
+    }),
+    variant({
+      builderId: "b_zh",
+      ownerUserId: "cloud_zh",
+      itemUpdatedAt: new Date(now.getTime() - 86400000),
+      summaryContentLanguage: "zh-Hans",
+    }),
+  ];
+  assert.equal(pickPrimaryVariant(variants, "user_x", null, "zh-CN").builderId, "b_zh");
+  // Without a language preference the own-channel rule still decides.
+  assert.equal(pickPrimaryVariant(variants, "user_x").builderId, "b_mine");
+});
+
+test("freshness breaks the tie among several copies in the requested language", () => {
+  const variants = [
+    variant({ builderId: "b_zh_old", itemUpdatedAt: new Date(now.getTime() - 86400000), summaryContentLanguage: "zh-Hans" }),
+    variant({ builderId: "b_zh_new", itemUpdatedAt: now, summaryContentLanguage: "zh-Hans" }),
+    variant({ builderId: "b_en", itemUpdatedAt: now, summaryContentLanguage: "en" }),
+  ];
+  const picked = pickPrimaryVariant(variants, "user_x", null, "zh-CN");
+  assert.equal(picked.builderId, "b_zh_new");
+});
+
+test("a pinned channel still overrides the language preference", () => {
+  const variants = [
+    variant({ builderId: "b_en", itemUpdatedAt: now, summaryContentLanguage: "en" }),
+    variant({ builderId: "b_zh", itemUpdatedAt: now, summaryContentLanguage: "zh-Hans" }),
+  ];
+  const picked = pickPrimaryVariant(variants, "user_x", "b_en", "zh-CN");
+  assert.equal(picked.builderId, "b_en");
 });
 
 test("library key is per-owner; canonical key is shared", () => {

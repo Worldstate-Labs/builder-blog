@@ -304,6 +304,10 @@ export async function GET(request: Request) {
         publishedAfter: lookbackCutoff,
         limit: digestCandidateLimit,
         excludeDigestedForUserId: regenerate ? null : user.id,
+        // The brief copies each post's stored summary verbatim, so the copy we
+        // hand the agent decides what language that paragraph reads in. Prefer
+        // the copy already written in the run's language before falling back.
+        preferSummaryLanguage: summaryLanguage,
       })
     : [];
 

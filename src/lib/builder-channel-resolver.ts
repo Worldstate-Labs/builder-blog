@@ -1,6 +1,7 @@
 import type { FeedItem, FeedItemKind } from "@prisma/client";
 
 import { pickPrimaryVariant } from "@/lib/builder-entities";
+import { isOriginalContentLanguagePreference } from "@/lib/language-preference";
 import { prioritizeSourceCoverage } from "@/lib/feed-candidate-ordering";
 import { prisma } from "@/lib/prisma";
 
@@ -17,6 +18,7 @@ export type FeedItemWithBuilder = FeedItem & {
     sourceUrl: string | null;
     fetchUrl: string | null;
     bio: string | null;
+    cloudSourceTask?: { summaryLanguage: string } | null;
   } | null;
 };
 
@@ -34,6 +36,7 @@ export type DedupedFeedItem = FeedItemWithBuilder & {
 export async function dedupeFeedItemsByEntity(params: {
   userId: string;
   items: FeedItemWithBuilder[];
+  preferSummaryLanguage?: string | null;
 }): Promise<DedupedFeedItem[]> {
   const groups = new Map<string, FeedItemWithBuilder[]>();
   const entitiesSeen = new Set<string>();
@@ -61,10 +64,15 @@ export async function dedupeFeedItemsByEntity(params: {
         lastFetchedAt: v.builder?.lastFetchedAt ?? null,
         publishedAt: v.publishedAt,
         createdAt: v.createdAt,
+        summaryContentLanguage: v.summaryContentLanguage,
+        fromOriginalLanguageLibrary: isOriginalContentLanguagePreference(
+          v.builder?.cloudSourceTask?.summaryLanguage,
+        ),
         __raw: v,
       })),
       params.userId,
       pinned,
+      params.preferSummaryLanguage ?? null,
     );
     const pickedItem = picked.__raw;
     deduped.push({
@@ -128,6 +136,7 @@ export async function fetchDedupedFeedForEntities(params: {
   publishedAfter?: Date | null;
   limit?: number;
   excludeDigestedForUserId?: string | null;
+  preferSummaryLanguage?: string | null;
 }): Promise<DedupedFeedItem[]> {
   if (params.entityIds.length === 0) return [];
   if (params.builderIds && params.builderIds.length === 0) return [];
@@ -154,6 +163,7 @@ export async function fetchDedupedFeedForEntities(params: {
           sourceUrl: true,
           fetchUrl: true,
           bio: true,
+          cloudSourceTask: { select: { summaryLanguage: true } },
         },
       },
     },
@@ -162,7 +172,11 @@ export async function fetchDedupedFeedForEntities(params: {
     // excluding digested rows so exclusion happens against the full set.
     take: !excludeDigested && params.limit ? params.limit * 3 : undefined,
   })) as FeedItemWithBuilder[];
-  let deduped = await dedupeFeedItemsByEntity({ userId: params.userId, items: rawItems });
+  let deduped = await dedupeFeedItemsByEntity({
+    userId: params.userId,
+    items: rawItems,
+    preferSummaryLanguage: params.preferSummaryLanguage ?? null,
+  });
   if (excludeDigested) {
     const digested = await loadDigestedContentKeys(
       params.excludeDigestedForUserId!,
