@@ -3,6 +3,7 @@ import {
   defaultRecommendationSortMode,
   type RecommendationSortMode,
 } from "@/lib/recommendation-sort";
+import { pickPrimaryVariant } from "@/lib/builder-channel-picker";
 import { canonicalPostUrl } from "@/lib/canonical-url";
 import { resolveUserContentBuilderIds } from "@/lib/user-content-builders";
 
@@ -468,6 +469,9 @@ type CandidateList = Array<
   RecommendationCandidate & {
     builderId: string | null;
     externalId: string;
+    // When this copy of the post was last written by a sync. Carried so the
+    // primary-variant pick can rank copies by their own freshness.
+    updatedAt?: Date | null;
   }
 >;
 
@@ -526,20 +530,21 @@ function pickPrimaryVariants(
       .filter((entityId): entityId is string => Boolean(entityId))
       .map((entityId) => pinnedMap.get(entityId))
       .find((builderId): builderId is string => Boolean(builderId));
-    let pick: CandidateList[number] | undefined;
-    if (variants.length === 1) {
-      pick = variants[0]!;
-    } else {
-      const byBuilder = new Map(variants.map((v) => [v.builderId, v]));
-      pick =
-        (pinned ? byBuilder.get(pinned) : undefined) ||
-        variants.find((v) => v.builder?.ownerUserId === userId) ||
-        [...variants].sort((a, b) => {
-          const aT = (a.builder?.lastFetchedAt ?? a.publishedAt ?? a.createdAt).getTime();
-          const bT = (b.builder?.lastFetchedAt ?? b.publishedAt ?? b.createdAt).getTime();
-          return bT - aT;
-        })[0]!;
-    }
+    const pick = variants.length === 1
+      ? variants[0]!
+      : pickPrimaryVariant(
+          variants.map((variant) => ({
+            builderId: variant.builderId ?? "",
+            ownerUserId: variant.builder?.ownerUserId ?? "",
+            itemUpdatedAt: variant.updatedAt ?? null,
+            lastFetchedAt: variant.builder?.lastFetchedAt ?? null,
+            publishedAt: variant.publishedAt,
+            createdAt: variant.createdAt,
+            __raw: variant,
+          })),
+          userId,
+          pinned ?? null,
+        ).__raw;
     candidates.push(pick);
   }
   return candidates;
@@ -687,7 +692,170 @@ async function loadRecommendationSnapshots({
     take: snapshotLimit,
   });
 
-  return snapshots.map((snapshot) => formatSnapshot(snapshot));
+  const replacements = await resolveSnapshotPrimaryVariants({
+    prisma,
+    rows: snapshots.flatMap((snapshot) => snapshot.items.map((item) => item.feedItem)),
+    userId,
+  });
+
+  return snapshots.map((snapshot) => formatSnapshot({
+    ...snapshot,
+    items: snapshot.items.map((item) => ({
+      ...item,
+      feedItem: replacements.get(item.feedItem.id) ?? item.feedItem,
+    })),
+  }));
+}
+
+/**
+ * The shape `formatSnapshot` consumes, which is also what the variant lookup
+ * returns — the swap only has to satisfy this, not Prisma's full payload type.
+ */
+export type SnapshotFeedItem = RecommendationCandidate & SnapshotVariantRow & {
+  reads?: { readAt: Date }[];
+  favorites?: { favoritedAt: Date }[];
+};
+
+export type SnapshotVariantRow = {
+  id: string;
+  kind: FeedItemKind;
+  externalId: string;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  builderId: string | null;
+  builder: {
+    entityId: string | null;
+    ownerUserId: string | null;
+    lastFetchedAt: Date | null;
+  } | null;
+  reads?: { readAt: Date }[];
+  favorites?: { favoritedAt: Date }[];
+};
+
+function variantGroupKey(row: SnapshotVariantRow) {
+  return `${row.builder?.entityId ?? ""}:${row.kind}:${row.externalId}`;
+}
+
+/**
+ * A snapshot row pins one specific copy of a post — whichever copy won the
+ * primary-variant pick on the day the snapshot was written. Later syncs can land
+ * a newer copy of the same post in another source library, and the stored pin
+ * would keep serving the stale one forever, since a snapshotted post is never
+ * re-picked. So re-run the same rule at read time and swap the copy in for
+ * display only; the stored row keeps its feedItemId, so nothing is migrated and
+ * the behaviour can be reverted by dropping this step.
+ *
+ * Read and favorite state is merged across the group before the swap — those are
+ * canonical-content state, not per-copy state, so a post must not resurface as
+ * unread just because a different copy of it is now on top.
+ */
+async function resolveSnapshotPrimaryVariants(params: {
+  prisma: PrismaClient;
+  rows: SnapshotVariantRow[];
+  userId: string;
+}): Promise<Map<string, SnapshotFeedItem>> {
+  const pinnedRows = params.rows.filter((row) => row.builder?.entityId);
+  if (pinnedRows.length === 0) return new Map();
+
+  const entityIds = uniqueIds(pinnedRows.map((row) => row.builder!.entityId!));
+  const subscriptions = await params.prisma.subscription.findMany({
+    where: { userId: params.userId },
+    select: { builderId: true },
+  });
+  // Only copies from libraries this user actually has may be swapped in — the
+  // same visibility rule the candidate query applies.
+  const visibleBuilderIds = await resolveUserContentBuilderIds({
+    userId: params.userId,
+    logicalBuilderIds: subscriptions.map((subscription) => subscription.builderId),
+  });
+  if (visibleBuilderIds.length === 0) return new Map();
+
+  const [variants, channelPrefs] = await Promise.all([
+    params.prisma.feedItem.findMany({
+      where: {
+        builderId: { in: visibleBuilderIds },
+        builder: { entityId: { in: entityIds } },
+        OR: uniqueIds(pinnedRows.map((row) => `${row.kind}\u0000${row.externalId}`)).map((key) => {
+          const [kind, externalId] = key.split("\u0000");
+          return { kind: kind as FeedItemKind, externalId: externalId! };
+        }),
+      },
+      include: snapshotFeedItemInclude(params.userId),
+    }),
+    params.prisma.userChannelPreference.findMany({
+      where: { userId: params.userId, entityId: { in: entityIds } },
+      select: { entityId: true, primaryBuilderId: true },
+    }),
+  ]);
+
+  return resolveVariantReplacements({
+    pinByEntityId: new Map(channelPrefs.map((pref) => [pref.entityId, pref.primaryBuilderId])),
+    pinnedRows,
+    userId: params.userId,
+    variants,
+  });
+}
+
+/**
+ * Pure half of the swap: given the pinned rows and every visible copy of the same
+ * posts, return the replacements keyed by the pinned row id. Rows that already
+ * hold the winning copy, or that have no sibling copy at all, are left alone.
+ */
+export function resolveVariantReplacements(params: {
+  pinByEntityId: Map<string, string>;
+  pinnedRows: SnapshotVariantRow[];
+  userId: string;
+  variants: SnapshotFeedItem[];
+}): Map<string, SnapshotFeedItem> {
+  const groups = new Map<string, SnapshotFeedItem[]>();
+  for (const variant of params.variants) {
+    if (!variant.builder?.entityId) continue;
+    const key = variantGroupKey(variant);
+    groups.set(key, [...(groups.get(key) ?? []), variant]);
+  }
+
+  const replacements = new Map<string, SnapshotFeedItem>();
+  for (const pinnedRow of params.pinnedRows) {
+    const entityId = pinnedRow.builder?.entityId;
+    if (!entityId) continue;
+    const group = groups.get(variantGroupKey(pinnedRow));
+    if (!group || group.length < 2) continue;
+    const picked = pickPrimaryVariant(
+      group.map((variant) => ({
+        builderId: variant.builderId ?? "",
+        ownerUserId: variant.builder?.ownerUserId ?? "",
+        itemUpdatedAt: variant.updatedAt ?? null,
+        lastFetchedAt: variant.builder?.lastFetchedAt ?? null,
+        publishedAt: variant.publishedAt,
+        createdAt: variant.createdAt,
+        __raw: variant,
+      })),
+      params.userId,
+      params.pinByEntityId.get(entityId) ?? null,
+    ).__raw;
+    if (picked.id === pinnedRow.id) continue;
+    replacements.set(pinnedRow.id, {
+      ...picked,
+      reads: latestStamped(group.flatMap((variant) => variant.reads ?? []), "readAt"),
+      favorites: latestStamped(
+        group.flatMap((variant) => variant.favorites ?? []),
+        "favoritedAt",
+      ),
+    });
+  }
+  return replacements;
+}
+
+function latestStamped<Key extends string, Entry extends Record<Key, Date>>(
+  entries: Entry[],
+  key: Key,
+): Entry[] {
+  const latest = entries.reduce<Entry | null>(
+    (best, entry) => (!best || entry[key] > best[key] ? entry : best),
+    null,
+  );
+  return latest ? [latest] : [];
 }
 
 function snapshotWhere(
@@ -748,40 +916,42 @@ function recentCursorWhere({
   return { publishedAt: { not: null } };
 }
 
+function snapshotFeedItemInclude(userId: string) {
+  return {
+    builder: {
+      include: {
+        hubItems: {
+          include: {
+            hubEntry: {
+              select: {
+                name: true,
+                description: true,
+                importCount: true,
+                viewCount: true,
+              },
+            },
+          },
+        },
+      },
+    },
+    reads: {
+      where: { userId },
+      select: { readAt: true },
+      take: 1,
+    },
+    favorites: {
+      where: { userId },
+      select: { favoritedAt: true },
+      take: 1,
+    },
+  };
+}
+
 function snapshotInclude(userId: string) {
   return {
     items: {
       include: {
-        feedItem: {
-          include: {
-            builder: {
-              include: {
-                hubItems: {
-                  include: {
-                    hubEntry: {
-                      select: {
-                        name: true,
-                        description: true,
-                        importCount: true,
-                        viewCount: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            reads: {
-              where: { userId },
-              select: { readAt: true },
-              take: 1,
-            },
-            favorites: {
-              where: { userId },
-              select: { favoritedAt: true },
-              take: 1,
-            },
-          },
-        },
+        feedItem: { include: snapshotFeedItemInclude(userId) },
       },
       orderBy: { rank: "asc" as const },
     },

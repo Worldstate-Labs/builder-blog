@@ -57,6 +57,7 @@ export async function dedupeFeedItemsByEntity(params: {
       variants.map((v) => ({
         builderId: v.builderId!,
         ownerUserId: v.builder?.ownerUserId ?? "",
+        itemUpdatedAt: v.updatedAt ?? null,
         lastFetchedAt: v.builder?.lastFetchedAt ?? null,
         publishedAt: v.publishedAt,
         createdAt: v.createdAt,

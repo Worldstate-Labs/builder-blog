@@ -19,6 +19,7 @@ const now = new Date("2026-05-24T12:00:00.000Z");
 function variant(overrides: Partial<ChannelVariant> & { builderId: string }): ChannelVariant {
   return {
     ownerUserId: overrides.ownerUserId ?? "stranger",
+    itemUpdatedAt: overrides.itemUpdatedAt ?? null,
     lastFetchedAt: overrides.lastFetchedAt ?? null,
     publishedAt: overrides.publishedAt ?? null,
     createdAt: overrides.createdAt ?? now,
@@ -52,6 +53,41 @@ test("channel resolution / falls back to most recently fetched when no pin or ow
   ];
   const picked = pickPrimaryVariant(variants, "user_x");
   assert.equal(picked.builderId, "b_fresh");
+});
+
+test("channel resolution / newest copy of the post wins when no channel is the user's own", () => {
+  // Every cloud-library channel belongs to a per-language system user, so the
+  // own-channel rule never fires for the reader. The tie must be broken by when
+  // this specific post was last fetched and summarized, not by when the channel
+  // last ran.
+  const yesterday = new Date(now.getTime() - 86400000);
+  const variants = [
+    variant({
+      builderId: "b_en",
+      ownerUserId: "cloud_en",
+      itemUpdatedAt: yesterday,
+      lastFetchedAt: now,
+    }),
+    variant({
+      builderId: "b_zh",
+      ownerUserId: "cloud_zh",
+      itemUpdatedAt: now,
+      lastFetchedAt: yesterday,
+    }),
+  ];
+  const picked = pickPrimaryVariant(variants, "user_x");
+  assert.equal(picked.builderId, "b_zh");
+});
+
+test("channel resolution / newest copy wins among several own channels", () => {
+  const yesterday = new Date(now.getTime() - 86400000);
+  const variants = [
+    variant({ builderId: "b_mine_stale", ownerUserId: "user_x", itemUpdatedAt: yesterday }),
+    variant({ builderId: "b_mine_fresh", ownerUserId: "user_x", itemUpdatedAt: now }),
+    variant({ builderId: "b_other_freshest", ownerUserId: "stranger", itemUpdatedAt: now }),
+  ];
+  const picked = pickPrimaryVariant(variants, "user_x");
+  assert.equal(picked.builderId, "b_mine_fresh");
 });
 
 test("channel resolution / pin overrides own channel", () => {
