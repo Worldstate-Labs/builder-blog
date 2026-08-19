@@ -4598,7 +4598,7 @@ async function fetchPersonalYouTubeBuilder(
   if (!sourceUrl) return { items: [], agentTasks: [] };
   const { videos: fetchedVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl, fetcher);
   const eligibleVideos = fetchedVideos
-    .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
+    .filter((video) => youtubeVideoIsAfterCutoff(video, cutoff))
     .filter((video) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)));
   const videos = selectNewestChronologicalCandidates(
     eligibleVideos,
@@ -6898,7 +6898,7 @@ export async function fetchYouTubeVideos(sourceUrl, fetcher = timedSourceFetch, 
   const pageVideos = await fetchYouTubePageVideos(sourceUrl, fetcher);
   if (pageVideos.length > 0) {
     return {
-      videos: pageVideos,
+      videos: withApproximatePublishedAt(pageVideos, options.now ?? new Date()),
       sourceDetail: "YouTube channel page",
     };
   }
@@ -7032,11 +7032,68 @@ function collectYouTubeVideosFromData(data) {
       title,
       url: `https://www.youtube.com/watch?v=${videoId}`,
       publishedAt: null,
+      publishedText: youtubeRendererPublishedText(renderer),
       description: youtubeRendererMetadataText(renderer),
     });
   });
 
   return dedupeByUrl(videos);
+}
+
+const YOUTUBE_RELATIVE_UNIT_MS = {
+  second: 1_000,
+  minute: 60_000,
+  hour: 3_600_000,
+  day: 86_400_000,
+  week: 7 * 86_400_000,
+  month: 30 * 86_400_000,
+  year: 365 * 86_400_000,
+};
+
+// Channel pages only expose relative publish text ("3 weeks ago",
+// "Streamed 5 hours ago"). Turn it into an approximate absolute date so the
+// fetch window can be applied; anything unparseable stays undated.
+export function parseYouTubeRelativePublishedAt(text, now = new Date()) {
+  const match = String(text || "")
+    .trim()
+    .match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s+ago\b/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unitMs = YOUTUBE_RELATIVE_UNIT_MS[match[2].toLowerCase()];
+  if (!Number.isFinite(amount) || amount < 0 || !unitMs) return null;
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  if (Number.isNaN(nowMs)) return null;
+  return new Date(nowMs - amount * unitMs);
+}
+
+function youtubeRendererPublishedText(renderer) {
+  const rows = renderer.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows;
+  const parts = Array.isArray(rows)
+    ? rows.flatMap((row) => row?.metadataParts ?? []).map((part) => formattedYouTubeText(part?.text))
+    : [];
+  // Legacy videoRenderer / gridVideoRenderer carry publishedTimeText directly.
+  const legacy = formattedYouTubeText(renderer.publishedTimeText);
+  return [...parts, legacy].find((value) => /\bago\b/i.test(String(value || ""))) || "";
+}
+
+// The 30-day (or per-builder) window is enforced against RSS dates and
+// against approximate channel-page dates alike; a video that has neither is
+// not "new", it is unknown, and unknown must not flood the plan with a
+// channel's back catalog whenever RSS blinks. No cutoff (force runs) admits
+// everything.
+export function youtubeVideoIsAfterCutoff(video, cutoff) {
+  if (!cutoff) return true;
+  if (!video?.publishedAt) return false;
+  return isAfterCutoff(video.publishedAt, cutoff);
+}
+
+function withApproximatePublishedAt(videos, now = new Date()) {
+  return videos.map((video) => {
+    if (video.publishedAt) return video;
+    const approximate = parseYouTubeRelativePublishedAt(video.publishedText, now);
+    if (!approximate) return video;
+    return { ...video, publishedAt: approximate.toISOString(), publishedAtApproximate: true };
+  });
 }
 
 function walkYouTubeData(value, visitor) {

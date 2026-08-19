@@ -1524,8 +1524,114 @@ test("personal YouTube fetcher parses modern channel lockup view models", async 
     title: "Workspace agents in ChatGPT: Admin and builder controls",
     url: "https://www.youtube.com/watch?v=HaaKUFAOi84",
     publishedAt: null,
+    publishedText: "1 day ago",
     description: "8.3K views · 1 day ago",
   });
+});
+
+test("YouTube relative publish text parses into a conservative absolute date", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const now = new Date("2026-08-19T06:00:00.000Z");
+  const parse = (text: string) => cli.parseYouTubeRelativePublishedAt(text, now)?.toISOString() ?? null;
+
+  assert.equal(parse("1 day ago"), "2026-08-18T06:00:00.000Z");
+  assert.equal(parse("3 weeks ago"), "2026-07-29T06:00:00.000Z");
+  assert.equal(parse("Streamed 5 hours ago"), "2026-08-19T01:00:00.000Z");
+  // Months/years are fixed 30/365-day spans, not calendar arithmetic — an
+  // approximation is all the channel page offers anyway.
+  assert.equal(parse("Premiered 2 months ago"), "2026-06-20T06:00:00.000Z");
+  assert.equal(parse("1 year ago"), "2025-08-19T06:00:00.000Z");
+  assert.equal(parse("8.3K views"), null);
+  assert.equal(parse(""), null);
+  assert.equal(parse("Scheduled for tomorrow"), null);
+});
+
+test("personal YouTube page fallback keeps only videos inside the cutoff and drops undated ones", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const now = new Date("2026-08-19T06:00:00.000Z");
+  const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const html = `
+    <script>
+      var ytInitialData = ${JSON.stringify({
+        contents: {
+          richGridRenderer: {
+            contents: [
+              {
+                richItemRenderer: {
+                  content: {
+                    lockupViewModel: {
+                      contentImage: { thumbnailViewModel: { image: { sources: [{ url: "https://i.ytimg.com/vi/newvideo01/hqdefault.jpg" }] } } },
+                      metadata: {
+                        lockupMetadataViewModel: {
+                          title: { content: "New video" },
+                          metadata: { contentMetadataViewModel: { metadataRows: [{ metadataParts: [{ text: { content: "1K views" } }, { text: { content: "3 days ago" } }] }] } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                richItemRenderer: {
+                  content: {
+                    lockupViewModel: {
+                      contentImage: { thumbnailViewModel: { image: { sources: [{ url: "https://i.ytimg.com/vi/oldvideo001/hqdefault.jpg" }] } } },
+                      metadata: {
+                        lockupMetadataViewModel: {
+                          title: { content: "Old video" },
+                          metadata: { contentMetadataViewModel: { metadataRows: [{ metadataParts: [{ text: { content: "2M views" } }, { text: { content: "1 year ago" } }] }] } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                richItemRenderer: {
+                  content: {
+                    lockupViewModel: {
+                      contentImage: { thumbnailViewModel: { image: { sources: [{ url: "https://i.ytimg.com/vi/undated0001/hqdefault.jpg" }] } } },
+                      metadata: {
+                        lockupMetadataViewModel: {
+                          title: { content: "Undated video" },
+                          metadata: { contentMetadataViewModel: { metadataRows: [{ metadataParts: [{ text: { content: "500 views" } }] }] } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      })};
+    </script>
+  `;
+  const fetcher = async (url: string) => {
+    if (url.includes("/feeds/videos.xml")) {
+      return { ok: false, status: 503, text: async () => "" } as Response;
+    }
+    if (url.includes("/@karpathy")) {
+      if (url.endsWith("/videos")) return { ok: true, status: 200, text: async () => html } as Response;
+      return { ok: true, status: 200, text: async () => '<script>{"externalId":"UCkarpathy00000000000000"}</script>' } as Response;
+    }
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  const { videos, sourceDetail } = await cli.fetchYouTubeVideos("https://www.youtube.com/@karpathy", fetcher, { retryDelays: [] });
+  assert.equal(sourceDetail, "YouTube channel page");
+  const eligible = videos.filter((video: { publishedAt: string | null }) =>
+    cli.youtubeVideoIsAfterCutoff(video, cutoff),
+  );
+  assert.deepEqual(eligible.map((video: { videoId: string }) => video.videoId), ["newvideo01"]);
+  const newVideo = videos.find((video: { videoId: string }) => video.videoId === "newvideo01");
+  assert.ok(newVideo);
+  assert.equal(newVideo.publishedAtApproximate, true);
+  assert.equal(new Date(newVideo.publishedAt).toISOString().slice(0, 10), "2026-08-16");
+  // RSS-derived dates keep passing the same predicate untouched.
+  assert.equal(cli.youtubeVideoIsAfterCutoff({ publishedAt: "2026-08-18T00:00:00.000Z" }, cutoff), true);
+  assert.equal(cli.youtubeVideoIsAfterCutoff({ publishedAt: "2026-06-01T00:00:00.000Z" }, cutoff), false);
+  // No cutoff (force run) admits everything, dated or not.
+  assert.equal(cli.youtubeVideoIsAfterCutoff({ publishedAt: null }, null), true);
 });
 
 test("personal YouTube content quality rejects title and description as primary content", async () => {
