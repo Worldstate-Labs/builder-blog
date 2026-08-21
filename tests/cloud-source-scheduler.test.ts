@@ -2260,6 +2260,14 @@ test("leaseCloudFetchTasks reconciles terminal linked cloud worker runs before c
       orderBy: [{ id: "asc" }],
       select: { id: true },
     },
+    {
+      where: {
+        id: "run_terminal",
+        status: "RUNNING",
+      },
+      orderBy: [{ id: "asc" }],
+      select: { id: true },
+    },
   ]);
   assert.match(lockQueries[0]!.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
   assert.equal(runTasks.find((task) => task.cloudSourceTaskId === "task_terminal_done")?.status, "SUCCEEDED");

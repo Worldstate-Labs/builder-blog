@@ -3,8 +3,7 @@ import {
   CloudFetchRunStatus,
 } from "@prisma/client";
 
-import { recomputeCloudFetchRun } from "@/lib/cloud-fetch-run-lifecycle";
-import { lockCloudFetchRunTaskRows } from "@/lib/cloud-fetch-run-task-lock";
+import { finalizeRunningCloudFetchRuns } from "@/lib/cloud-fetch-run-lifecycle";
 import { lockResetFenceForWorker } from "@/lib/reset-fence";
 
 const CLOUD_WORKER_RELEASE_TRANSACTION_OPTIONS = {
@@ -191,83 +190,14 @@ export async function releaseCloudFetchWorkerLeasesInTransaction(params: {
     orderBy: [{ id: "asc" }],
     select: { id: true },
   });
+  const finalized = await finalizeRunningCloudFetchRuns({
+    prisma: params.tx,
+    runs,
+    now: params.now,
+    failureReason: params.reason,
+  });
 
-  let releasedRuns = 0;
-  let releasedSourceTasks = 0;
-  let requeuedQueueItems = 0;
-
-  for (const run of runs) {
-    const runningTaskRows = await params.tx.cloudFetchRunTask.findMany({
-      where: {
-        runId: run.id,
-        status: CloudFetchRunStatus.RUNNING,
-      },
-      orderBy: [{ cloudSourceTaskId: "asc" }],
-      select: { cloudSourceTaskId: true },
-    });
-    const taskIds = runningTaskRows.map((task) => task.cloudSourceTaskId);
-    if (taskIds.length === 0) continue;
-
-    await lockCloudFetchRunTaskRows(params.tx, {
-      runId: run.id,
-      cloudSourceTaskIds: taskIds,
-    });
-
-    const lockedRunningTasks = await params.tx.cloudFetchRunTask.findMany({
-      where: {
-        runId: run.id,
-        status: CloudFetchRunStatus.RUNNING,
-        cloudSourceTaskId: { in: taskIds },
-      },
-      orderBy: [{ cloudSourceTaskId: "asc" }],
-      select: { cloudSourceTaskId: true, status: true },
-    });
-
-    let runReleasedSourceTasks = 0;
-    for (const task of lockedRunningTasks) {
-      const releasedTask = await params.tx.cloudFetchRunTask.updateMany({
-        where: {
-          runId: run.id,
-          cloudSourceTaskId: task.cloudSourceTaskId,
-          status: CloudFetchRunStatus.RUNNING,
-        },
-        data: {
-          status: CloudFetchRunStatus.FAILED,
-          finishedAt: params.now,
-          failureReason: params.reason,
-        },
-      });
-      if (releasedTask.count === 0) continue;
-
-      runReleasedSourceTasks += releasedTask.count;
-      releasedSourceTasks += releasedTask.count;
-
-      const requeuedItem = await params.tx.cloudFetchQueueItem.updateMany({
-        where: {
-          runId: run.id,
-          cloudSourceTaskId: task.cloudSourceTaskId,
-          status: CloudFetchQueueStatus.LEASED,
-        },
-        data: {
-          status: CloudFetchQueueStatus.QUEUED,
-          leasedAt: null,
-          leaseExpiresAt: null,
-          leaseOwner: null,
-          runId: null,
-        },
-      });
-      requeuedQueueItems += requeuedItem.count;
-    }
-
-    if (runReleasedSourceTasks === 0) continue;
-    releasedRuns += 1;
-    await recomputeCloudFetchRun(params.tx, {
-      runId: run.id,
-      finishedAt: params.now,
-    });
-  }
-
-  if (releasedSourceTasks === 0) {
+  if (finalized.finalizedTasks === 0) {
     return {
       outcome: CLOUD_WORKER_RELEASE_OUTCOME.alreadyReleased,
       releasedRuns: 0,
@@ -278,9 +208,9 @@ export async function releaseCloudFetchWorkerLeasesInTransaction(params: {
 
   return {
     outcome: CLOUD_WORKER_RELEASE_OUTCOME.released,
-    releasedRuns,
-    releasedSourceTasks,
-    requeuedQueueItems,
+    releasedRuns: finalized.finalizedRuns,
+    releasedSourceTasks: finalized.finalizedTasks,
+    requeuedQueueItems: finalized.requeuedQueueItems,
   };
 }
 

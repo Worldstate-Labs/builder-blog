@@ -654,15 +654,21 @@ function createReleaseFixture(input: {
     },
     cloudFetchRun: {
       async findMany(args: {
-        where: { createdByUserId: string; agentJobRunId: string; status: CloudFetchRunStatus };
+        where: {
+          createdByUserId?: string;
+          agentJobRunId?: string;
+          id?: string;
+          status: CloudFetchRunStatus;
+        };
         orderBy: Array<{ id: "asc" }>;
         select: { id: true };
       }) {
         operations.push("cloudFetchRun.findMany");
         return runs
           .filter((run) =>
-            run.createdByUserId === args.where.createdByUserId &&
-            run.agentJobRunId === args.where.agentJobRunId &&
+            (args.where.createdByUserId == null || run.createdByUserId === args.where.createdByUserId) &&
+            (args.where.agentJobRunId == null || run.agentJobRunId === args.where.agentJobRunId) &&
+            (args.where.id == null || run.id === args.where.id) &&
             run.status === args.where.status
           )
           .sort((left, right) => left.id.localeCompare(right.id))

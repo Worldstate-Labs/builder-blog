@@ -106,36 +106,17 @@ export async function expireLeasedCloudFetchRuns(params: {
   };
 }
 
-export async function reconcileTerminalCloudWorkerRuns(params: {
+export async function finalizeRunningCloudFetchRuns(params: {
   prisma: CloudFetchRunLifecyclePrisma;
+  runs: Array<{ id: string }>;
   now: Date;
+  failureReason: string;
 }) {
-  const emptyResult = {
-    reconciledRuns: 0,
-    finalizedTasks: 0,
-    requeuedQueueItems: 0,
-  };
-  const cloudFetchRun = (params.prisma as Partial<CloudFetchRunLifecyclePrisma>).cloudFetchRun;
-  if (!cloudFetchRun || typeof cloudFetchRun.findMany !== "function") return emptyResult;
-
-  const runs = await cloudFetchRun.findMany({
-    where: {
-      status: CloudFetchRunStatus.RUNNING,
-      agentJobRun: {
-        is: {
-          status: { in: [...TERMINAL_CLOUD_WORKER_JOB_STATUSES] },
-        },
-      },
-    },
-    orderBy: [{ id: "asc" }],
-    select: { id: true },
-  });
-
-  const reconciledRunIds = new Set<string>();
+  let finalizedRuns = 0;
   let finalizedTasks = 0;
   let requeuedQueueItems = 0;
 
-  for (const run of runs) {
+  for (const run of params.runs) {
     const runningTaskRows = await params.prisma.cloudFetchRunTask.findMany({
       where: {
         runId: run.id,
@@ -164,6 +145,7 @@ export async function reconcileTerminalCloudWorkerRuns(params: {
       select: { cloudSourceTaskId: true },
     });
 
+    let runFinalizedTasks = 0;
     for (const task of lockedRunningTasks) {
       const finalizedTask = await params.prisma.cloudFetchRunTask.updateMany({
         where: {
@@ -174,13 +156,13 @@ export async function reconcileTerminalCloudWorkerRuns(params: {
         data: {
           status: CloudFetchRunStatus.FAILED,
           finishedAt: params.now,
-          failureReason: "cloud_worker_stopped",
+          failureReason: params.failureReason,
         },
       });
       if (finalizedTask.count === 0) continue;
 
+      runFinalizedTasks += finalizedTask.count;
       finalizedTasks += finalizedTask.count;
-      reconciledRunIds.add(run.id);
 
       const requeuedItem = await params.prisma.cloudFetchQueueItem.updateMany({
         where: {
@@ -198,16 +180,64 @@ export async function reconcileTerminalCloudWorkerRuns(params: {
       });
       requeuedQueueItems += requeuedItem.count;
     }
-  }
+    if (runFinalizedTasks === 0) continue;
+    finalizedRuns += 1;
 
-  for (const runId of reconciledRunIds) {
-    await recomputeCloudFetchRun(params.prisma, { runId, finishedAt: params.now });
+    const runStillRunning = await params.prisma.cloudFetchRun.findMany({
+      where: {
+        id: run.id,
+        status: CloudFetchRunStatus.RUNNING,
+      },
+      orderBy: [{ id: "asc" }],
+      select: { id: true },
+    });
+    if (runStillRunning.length === 0) continue;
+
+    await recomputeCloudFetchRun(params.prisma, { runId: run.id, finishedAt: params.now });
   }
 
   return {
-    reconciledRuns: reconciledRunIds.size,
+    finalizedRuns,
     finalizedTasks,
     requeuedQueueItems,
+  };
+}
+
+export async function reconcileTerminalCloudWorkerRuns(params: {
+  prisma: CloudFetchRunLifecyclePrisma;
+  now: Date;
+}) {
+  const emptyResult = {
+    reconciledRuns: 0,
+    finalizedTasks: 0,
+    requeuedQueueItems: 0,
+  };
+  const cloudFetchRun = (params.prisma as Partial<CloudFetchRunLifecyclePrisma>).cloudFetchRun;
+  if (!cloudFetchRun || typeof cloudFetchRun.findMany !== "function") return emptyResult;
+
+  const runs = await cloudFetchRun.findMany({
+    where: {
+      status: CloudFetchRunStatus.RUNNING,
+      agentJobRun: {
+        is: {
+          status: { in: [...TERMINAL_CLOUD_WORKER_JOB_STATUSES] },
+        },
+      },
+    },
+    orderBy: [{ id: "asc" }],
+    select: { id: true },
+  });
+  const finalized = await finalizeRunningCloudFetchRuns({
+    prisma: params.prisma,
+    runs,
+    now: params.now,
+    failureReason: "cloud_worker_stopped",
+  });
+
+  return {
+    reconciledRuns: finalized.finalizedRuns,
+    finalizedTasks: finalized.finalizedTasks,
+    requeuedQueueItems: finalized.requeuedQueueItems,
   };
 }
 
