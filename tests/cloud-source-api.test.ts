@@ -849,7 +849,13 @@ test("admin cloud fetch release endpoint only accepts public jobRunId and preser
   assert.match(route, /NextResponse\.json\(\{ error: "Unauthorized" \}/);
   assert.match(route, /const jobRunId = typeof body\?\.jobRunId === "string"/);
   assert.match(route, /body\.jobRunId\.trim\(\)\.slice\(0, 160\)/);
-  assert.match(route, /releaseCloudFetchWorkerLeases\(\{\s*userId: admin\.user\.id,\s*instanceId: jobRunId,\s*\}\)/);
+  assert.match(route, /const reason = /);
+  assert.match(route, /body\?\.reason/);
+  assert.match(route, /CLOUD_WORKER_RELEASE_REASONS/);
+  assert.match(route, /cloud_worker_replaced/);
+  assert.match(route, /Invalid cloud worker release reason/);
+  assert.match(route, /return NextResponse\.json\(\{ error: "Invalid cloud worker release reason" \}, \{ status: 400 \}\)/);
+  assert.match(route, /releaseCloudFetchWorkerLeases\(\{\s*userId: admin\.user\.id,\s*instanceId: jobRunId,\s*reason,\s*\}\)/);
   assert.doesNotMatch(route, /body\?\.runId|body\.runId/);
   assert.doesNotMatch(route, /body\?\.agentJobRunId|body\.agentJobRunId/);
   assert.doesNotMatch(route, /body\?\.createdByUserId|body\.createdByUserId/);

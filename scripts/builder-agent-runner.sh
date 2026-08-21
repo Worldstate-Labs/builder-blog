@@ -3304,6 +3304,7 @@ NODE
 
 release_cloud_worker_leases_for_instance() {
   _rclfi_instance="${1:-}"
+  _rclfi_reason="${2:-cloud_worker_replaced}"
   _rclfi_stdout=""
   _rclfi_stderr=""
   if [ -z "$_rclfi_instance" ]; then
@@ -3327,7 +3328,7 @@ release_cloud_worker_leases_for_instance() {
   umask "$_rclfi_saved_umask"
 
   _rclfi_exit=0
-  node "$AGENT_DIR/builder-digest.mjs" release-cloud-fetch --job-run-id "$_rclfi_instance" \
+  node "$AGENT_DIR/builder-digest.mjs" release-cloud-fetch --job-run-id "$_rclfi_instance" --reason "$_rclfi_reason" \
     >"$_rclfi_stdout" 2>"$_rclfi_stderr" || _rclfi_exit=$?
 
   if [ "$_rclfi_exit" -ne 0 ] && job_update_error_is_reset_fenced "$_rclfi_stderr"; then

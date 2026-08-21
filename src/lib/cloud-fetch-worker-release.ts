@@ -22,6 +22,20 @@ export const CLOUD_WORKER_RELEASE_ERROR = {
   resetFenced: "agent_job_reset_fenced",
 } as const;
 
+export const CLOUD_WORKER_RELEASE_REASONS = [
+  "cloud_worker_replaced",
+  "cloud_worker_stopped",
+  "runtime_installation_failed",
+  "runtime_auth_failed",
+  "runtime_model_incompatible",
+] as const;
+
+export type CloudWorkerReleaseReason =
+  typeof CLOUD_WORKER_RELEASE_REASONS[number];
+
+export const DEFAULT_CLOUD_WORKER_RELEASE_REASON: CloudWorkerReleaseReason =
+  "cloud_worker_replaced";
+
 type CloudWorkerReleaseOutcome =
   typeof CLOUD_WORKER_RELEASE_OUTCOME[keyof typeof CLOUD_WORKER_RELEASE_OUTCOME];
 
@@ -95,7 +109,7 @@ type CloudWorkerReleaseTx = {
       data: {
         status: CloudFetchRunStatus;
         finishedAt: Date;
-        failureReason: "cloud_worker_replaced";
+        failureReason: CloudWorkerReleaseReason;
       };
     }): Promise<{ count: number }>;
   };
@@ -131,6 +145,7 @@ export class CloudWorkerReleaseJobNotFoundError extends Error {
 export async function releaseCloudFetchWorkerLeases(params: {
   userId: string;
   instanceId: string;
+  reason?: CloudWorkerReleaseReason;
   prisma?: CloudWorkerReleaseDb;
   now?: Date;
 }): Promise<CloudWorkerReleaseResult> {
@@ -140,6 +155,7 @@ export async function releaseCloudFetchWorkerLeases(params: {
     (tx) => releaseCloudFetchWorkerLeasesInTransaction({
       userId: params.userId,
       instanceId: String(params.instanceId ?? "").trim(),
+      reason: params.reason ?? DEFAULT_CLOUD_WORKER_RELEASE_REASON,
       now,
       tx,
     }),
@@ -150,6 +166,7 @@ export async function releaseCloudFetchWorkerLeases(params: {
 export async function releaseCloudFetchWorkerLeasesInTransaction(params: {
   userId: string;
   instanceId: string;
+  reason: CloudWorkerReleaseReason;
   now: Date;
   tx: CloudWorkerReleaseTx;
 }): Promise<CloudWorkerReleaseResult> {
@@ -217,7 +234,7 @@ export async function releaseCloudFetchWorkerLeasesInTransaction(params: {
         data: {
           status: CloudFetchRunStatus.FAILED,
           finishedAt: params.now,
-          failureReason: "cloud_worker_replaced",
+          failureReason: params.reason,
         },
       });
       if (releasedTask.count === 0) continue;

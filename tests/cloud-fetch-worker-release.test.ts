@@ -9,6 +9,7 @@ import {
 import {
   CLOUD_WORKER_RELEASE_ERROR,
   CLOUD_WORKER_RELEASE_OUTCOME,
+  CLOUD_WORKER_RELEASE_REASONS,
   CloudWorkerReleaseJobNotFoundError,
   releaseCloudFetchWorkerLeases,
 } from "../src/lib/cloud-fetch-worker-release";
@@ -475,6 +476,64 @@ test("releaseCloudFetchWorkerLeases returns already_released when the owned job 
   assert.equal(fixture.cloudFetchRunTaskUpdateManyCalls.length, 0);
   assert.equal(fixture.cloudFetchQueueItemUpdateManyCalls.length, 0);
   assert.equal(fixture.cloudFetchRunUpdateCalls.length, 0);
+});
+
+test("releaseCloudFetchWorkerLeases finalizes owned running work with any allowed release reason and defaults omitted reasons to cloud_worker_replaced", async () => {
+  assert.deepEqual(CLOUD_WORKER_RELEASE_REASONS, [
+    "cloud_worker_replaced",
+    "cloud_worker_stopped",
+    "runtime_installation_failed",
+    "runtime_auth_failed",
+    "runtime_model_incompatible",
+  ]);
+
+  const now = new Date("2026-08-05T12:00:00.000Z");
+  for (const reason of [...CLOUD_WORKER_RELEASE_REASONS, undefined] as const) {
+    const fixture = createReleaseFixture({
+      lastResetAt: new Date("2026-08-05T11:00:00.000Z"),
+      jobs: [
+        {
+          id: "job_owned",
+          userId: "user_a",
+          jobType: "cloud-library-fetch",
+          instanceId: "worker_a",
+          createdAt: new Date("2026-08-05T11:30:00.000Z"),
+        },
+      ],
+      runs: [emptyRun({ id: "run_1", createdByUserId: "user_a", agentJobRunId: "job_owned" })],
+      tasks: [runningTask("run_1", "task_a"), finalizedTask("run_1", "task_b", CloudFetchRunStatus.SUCCEEDED)],
+      queueItems: [leasedQueueItem("queue_a", "run_1", "task_a")],
+      sourceTasks: [sourceTaskSnapshot("task_a")],
+    });
+
+    const result = await releaseCloudFetchWorkerLeases({
+      userId: "user_a",
+      instanceId: "worker_a",
+      reason,
+      now,
+      prisma: fixture.prisma as never,
+    });
+
+    assert.deepEqual(result, {
+      outcome: CLOUD_WORKER_RELEASE_OUTCOME.released,
+      releasedRuns: 1,
+      releasedSourceTasks: 1,
+      requeuedQueueItems: 1,
+    });
+    assert.equal(fixture.cloudFetchRunTaskUpdateManyCalls.length, 1);
+    assert.deepEqual(fixture.cloudFetchRunTaskUpdateManyCalls[0]?.data, {
+      status: CloudFetchRunStatus.FAILED,
+      finishedAt: now,
+      failureReason: reason ?? "cloud_worker_replaced",
+    });
+    assert.equal(findTask(fixture.tasks, "run_1", "task_a").failureReason, reason ?? "cloud_worker_replaced");
+    assert.equal(findTask(fixture.tasks, "run_1", "task_b").status, CloudFetchRunStatus.SUCCEEDED);
+    assert.deepEqual(fixture.cloudFetchQueueItemUpdateManyCalls[0]?.where, {
+      runId: "run_1",
+      cloudSourceTaskId: "task_a",
+      status: CloudFetchQueueStatus.LEASED,
+    });
+  }
 });
 
 test("duplicate release requests lock runs and task rows in the same deterministic order", async () => {

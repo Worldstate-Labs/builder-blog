@@ -1296,7 +1296,7 @@ function usage() {
   lease-cloud-builders [--limit 10] [--lease-owner local-cloud-runner]
   fetch-cloud-library [--limit 10] [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--post-limit 5] [--force] [--agent-model gpt-5.5]
   heartbeat-cloud-fetch --cloud-run-id <id> [--lease-owner local-cloud-runner]
-  release-cloud-fetch --job-run-id <id>
+  release-cloud-fetch --job-run-id <id> [--reason <cloud_worker_replaced|cloud_worker_stopped|runtime_installation_failed|runtime_auth_failed|runtime_model_incompatible>]
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5] [--partial-outcomes]
   sync-cloud-builders --file personal-builders.json --cloud-run-id <id> [--agent-model gpt-5.5]
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out builder-blog-digest.json --summary-out digest-headlines.txt
@@ -1458,6 +1458,21 @@ function argValue(args, name, fallback = undefined) {
   const index = args.indexOf(name);
   if (index === -1) return fallback;
   return args[index + 1] ?? fallback;
+}
+
+const CLOUD_WORKER_RELEASE_REASONS = [
+  "cloud_worker_replaced",
+  "cloud_worker_stopped",
+  "runtime_installation_failed",
+  "runtime_auth_failed",
+  "runtime_model_incompatible",
+];
+const DEFAULT_CLOUD_WORKER_RELEASE_REASON = "cloud_worker_replaced";
+
+function normalizeCloudWorkerReleaseReason(reason) {
+  const normalized = String(reason || "").trim();
+  if (!normalized) return DEFAULT_CLOUD_WORKER_RELEASE_REASON;
+  return CLOUD_WORKER_RELEASE_REASONS.includes(normalized) ? normalized : null;
 }
 
 function webSyncDisabled() {
@@ -13989,10 +14004,15 @@ async function releaseCloudFetch(args) {
   requireLoggedIn(config);
   const jobRunId = String(argValue(args, "--job-run-id") || "").trim();
   if (!jobRunId) throw new Error("Missing --job-run-id <id> for release-cloud-fetch.");
+  const reasonArg = argValue(args, "--reason", "cloud_worker_replaced");
+  const reason = normalizeCloudWorkerReleaseReason(reasonArg);
+  if (!reason) {
+    throw new Error(`Invalid --reason for release-cloud-fetch: ${String(reasonArg).trim()}`);
+  }
   try {
     const result = await postJson(
       `${config.appUrl}/api/admin/cloud-fetch/release`,
-      { jobRunId },
+      { jobRunId, reason },
       config.token,
       { label: "cloud fetch release", retries: 0, timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS },
     );

@@ -4073,6 +4073,41 @@ grep -E 'mktemp|temp|release' "${dir}/case.err" >/dev/null || exit 46
   }
 });
 
+test("release helper defaults the release reason and forwards explicit allowed reasons to the CLI", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-release-helper-reason-"));
+  try {
+    const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+    const script = join(dir, "check.sh");
+    await writeFile(
+      script,
+      `set -eu
+JOB_STATE_DIR="${dir}/state"
+AGENT_DIR="${dir}/agent"
+mkdir -p "$JOB_STATE_DIR" "$AGENT_DIR"
+JOB_UPDATE_RESET_FENCED=78
+${shellFunction(runner, "json_get_number")}
+${shellFunction(runner, "json_get_string")}
+${shellFunction(runner, "job_update_error_is_reset_fenced")}
+${shellFunction(runner, "parse_cloud_worker_release_result")}
+${shellFunction(runner, "release_cloud_worker_leases_for_instance")}
+node() {
+  if [ "$1" = "-" ]; then command node "$@"; return "$?"; fi
+  printf '%s\\n' "$*" >> "${dir}/args.log"
+  printf '{"outcome":"released","releasedRuns":1,"releasedSourceTasks":1,"requeuedQueueItems":1}\\n'
+}
+release_cloud_worker_leases_for_instance host-1 >/dev/null 2>/dev/null
+release_cloud_worker_leases_for_instance host-2 runtime_model_incompatible >/dev/null 2>/dev/null
+grep -F 'builder-digest.mjs release-cloud-fetch --job-run-id host-1 --reason cloud_worker_replaced' "${dir}/args.log" >/dev/null || exit 61
+grep -F 'builder-digest.mjs release-cloud-fetch --job-run-id host-2 --reason runtime_model_incompatible' "${dir}/args.log" >/dev/null || exit 62
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [script]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cloud host control escalates the cached descendant set after the runner root exits", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-control-descendants-"));
   try {

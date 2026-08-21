@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cloudFetchConflictBody } from "@/lib/cloud-fetch-conflict";
 import {
+  CLOUD_WORKER_RELEASE_REASONS,
   CloudWorkerReleaseJobNotFoundError,
   releaseCloudFetchWorkerLeases,
 } from "@/lib/cloud-fetch-worker-release";
@@ -17,11 +18,23 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const jobRunId = typeof body?.jobRunId === "string" ? body.jobRunId.trim().slice(0, 160) : "";
+  const reasonValue = typeof body?.reason === "string" ? body.reason.trim() : "";
+  const reason = !reasonValue
+    ? "cloud_worker_replaced"
+    : CLOUD_WORKER_RELEASE_REASONS.includes(
+        reasonValue as typeof CLOUD_WORKER_RELEASE_REASONS[number],
+      )
+      ? reasonValue
+      : null;
+  if (!reason) {
+    return NextResponse.json({ error: "Invalid cloud worker release reason" }, { status: 400 });
+  }
 
   try {
     const result = await releaseCloudFetchWorkerLeases({
       userId: admin.user.id,
       instanceId: jobRunId,
+      reason,
     });
     return NextResponse.json(result);
   } catch (error) {
