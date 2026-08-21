@@ -11794,6 +11794,32 @@ function validateTaskOutcome(outcome) {
   return errors;
 }
 
+function validateCandidateDiscoveryOutcome(outcome, task) {
+  const errors = validateTaskOutcome(outcome);
+  if (!isCandidateDiscoveryOutcome(outcome)) {
+    errors.push("outcome.fetchTaskId_must_be_candidate_discovery");
+  }
+  const taskId = taskIdForSync(task);
+  if (String(outcome?.fetchTaskId || "").trim() !== taskId) {
+    errors.push("outcome.fetchTaskId_must_match_fetch_task");
+  }
+  const plannedTask = outcome?.plannedTask;
+  if (plannedTask == null) return errors;
+  if (!plannedTask || typeof plannedTask !== "object" || Array.isArray(plannedTask)) {
+    errors.push("outcome.plannedTask_must_be_object");
+    return errors;
+  }
+  if (taskIdForSync(plannedTask) !== taskId) {
+    errors.push("outcome.plannedTask_must_match_fetch_task");
+  }
+  const sourceTaskId = taskSourceTaskIdForSync(task);
+  if (!sourceTaskId) return errors;
+  if (taskSourceTaskIdForSync(plannedTask) !== sourceTaskId) {
+    errors.push("outcome.plannedTask_must_match_source_task");
+  }
+  return errors;
+}
+
 export function validateAgentSyncPayload(fetchResult, payload) {
   const fetchTasks = extractFetchTasks(fetchResult);
   const syncReadyPayload = prepareSyncReadyPayload(payload, fetchTasks);
@@ -11830,6 +11856,25 @@ export function validateAgentSyncPayload(fetchResult, payload) {
       continue;
     }
     if (isCandidateDiscoveryFetchTask(task)) {
+      const taskOutcomes = outcomesById.get(String(id)) ?? [];
+      for (const outcome of taskOutcomes) consumedOutcomes.add(outcome);
+      if (taskOutcomes.length === 0) {
+        continue;
+      }
+      if (taskOutcomes.length > 1) {
+        errors.push({
+          fetchTaskId: id,
+          builder: task.builder,
+          errors: ["task_must_have_exactly_one_terminal_outcome"],
+        });
+        continue;
+      }
+      const outcomeErrors = validateCandidateDiscoveryOutcome(taskOutcomes[0], task);
+      if (outcomeErrors.length > 0) {
+        errors.push({ fetchTaskId: id, builder: task.builder, errors: outcomeErrors });
+      } else {
+        accountedOutcomes.push({ fetchTaskId: id, status: taskOutcomes[0].status });
+      }
       continue;
     }
     const matches =

@@ -5210,6 +5210,112 @@ test("candidate discovery tasks do not require synced post items", async () => {
   assert.equal(result.accountedOutcomes, 0);
 });
 
+test("candidate discovery tasks accept a single structured terminal outcome tied to their source task", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?candidate-discovery-outcome=${Date.now()}`);
+  const discoveryTask = {
+    id: "candidate_discovery:builder_product_hunt:product_hunt_top_products",
+    type: "candidate_discovery",
+    agentWorkType: "candidate_discovery_fallback",
+    builder: "Product Hunt Top Products",
+    builderId: "builder_product_hunt",
+    cloudSourceTaskId: "source_product_hunt",
+    sourceType: "product_hunt_top_products",
+    builderSync: {
+      builderId: "builder_product_hunt",
+      cloudSourceTaskId: "source_product_hunt",
+      sourceType: "product_hunt_top_products",
+    },
+  };
+
+  const result = cli.validateAgentSyncPayload(
+    { fetchTasks: [discoveryTask] },
+    {
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: discoveryTask.id,
+          status: "failed",
+          reason: "candidate_discovery_result_missing",
+          plannedTask: discoveryTask,
+          evidence: { failureKind: "candidate_discovery_result_missing" },
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.validatedFetchTasks, 0);
+  assert.equal(result.accountedOutcomes, 1);
+});
+
+test("candidate discovery terminal outcomes reject malformed planned tasks, mismatched ids, and wrong source ownership", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?candidate-discovery-invalid=${Date.now()}`);
+  const discoveryTask = {
+    id: "candidate_discovery:builder_product_hunt:product_hunt_top_products",
+    type: "candidate_discovery",
+    agentWorkType: "candidate_discovery_fallback",
+    builder: "Product Hunt Top Products",
+    builderId: "builder_product_hunt",
+    cloudSourceTaskId: "source_product_hunt",
+    sourceType: "product_hunt_top_products",
+    builderSync: {
+      builderId: "builder_product_hunt",
+      cloudSourceTaskId: "source_product_hunt",
+      sourceType: "product_hunt_top_products",
+    },
+  };
+
+  for (const [label, outcome, expectedErrors] of [
+    [
+      "malformed planned task",
+      {
+        fetchTaskId: discoveryTask.id,
+        status: "failed",
+        reason: "candidate_discovery_result_missing",
+        plannedTask: "not-an-object",
+      },
+      ["outcome.plannedTask_must_be_object"],
+    ],
+    [
+      "mismatched planned task id",
+      {
+        fetchTaskId: discoveryTask.id,
+        status: "failed",
+        reason: "candidate_discovery_result_missing",
+        plannedTask: { ...discoveryTask, id: "candidate_discovery:builder_product_hunt:other" },
+      },
+      ["outcome.plannedTask_must_match_fetch_task"],
+    ],
+    [
+      "wrong source ownership",
+      {
+        fetchTaskId: discoveryTask.id,
+        status: "failed",
+        reason: "candidate_discovery_result_missing",
+        plannedTask: {
+          ...discoveryTask,
+          cloudSourceTaskId: "source_other",
+          builderSync: { ...discoveryTask.builderSync, cloudSourceTaskId: "source_other" },
+        },
+      },
+      ["outcome.plannedTask_must_match_source_task"],
+    ],
+  ] as const) {
+    assert.throws(
+      () =>
+        cli.validateAgentSyncPayload(
+          { fetchTasks: [discoveryTask] },
+          { builders: [], taskOutcomes: [outcome] },
+        ),
+      (error: unknown) => {
+        assert.match(String((error as Error).message), /Agent sync validation failed/);
+        assert.deepEqual((error as Error & { details?: unknown[] }).details?.[0]?.errors, expectedErrors, label);
+        return true;
+      },
+    );
+  }
+});
+
 test("failed / blocked outcomes require a reason", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const failTask = youtubePlannedTask(cli, "vid_failed_noreason");
@@ -6075,6 +6181,117 @@ test("cloud sync settles failed candidate discovery at source level without uplo
   );
   assert.equal(payload.taskResults[0].details.noGeneratedFetchTasks, true);
   assert.equal(payload.taskResults[0].details.discoveryFailure.status, "failed");
+});
+
+test("cloud sync keeps successful zero-post sources and converts one discovery failure to a source-level result", async () => {
+  const cli = await import(`../scripts/builder-digest.mjs?mixed-zero-post-sources=${Date.now()}`);
+  const discoveryTask = {
+    id: "candidate_discovery:cloud_builder_3:product_hunt_top_products",
+    type: "candidate_discovery",
+    agentWorkType: "candidate_discovery_fallback",
+    cloudRunId: "cloud_run_1",
+    cloudSourceTaskId: "cloud_task_3",
+    builder: "Product Hunt Top Products",
+    builderId: "cloud_builder_3",
+    sourceType: "product_hunt_top_products",
+    builderSync: {
+      cloudSourceTaskId: "cloud_task_3",
+      builderId: "cloud_builder_3",
+      sourceType: "product_hunt_top_products",
+    },
+  };
+  const payload = cli.prepareCloudSyncPayloadForUpload(
+    {
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: discoveryTask.id,
+          status: "failed",
+          reason: "candidate_discovery_result_missing",
+          plannedTask: discoveryTask,
+        },
+      ],
+    },
+    "cloud_run_1",
+    [discoveryTask],
+    [
+      {
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_1",
+        builderId: "cloud_builder_1",
+        name: "No New Posts One",
+        sourceType: "blog",
+      },
+      {
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_2",
+        builderId: "cloud_builder_2",
+        name: "No New Posts Two",
+        sourceType: "rss",
+      },
+      {
+        cloudRunId: "cloud_run_1",
+        cloudSourceTaskId: "cloud_task_3",
+        builderId: "cloud_builder_3",
+        name: "Product Hunt Top Products",
+        sourceType: "product_hunt_top_products",
+      },
+    ],
+  );
+
+  assert.deepEqual(payload.taskOutcomes, []);
+  assert.deepEqual(
+    payload.taskResults.map((result: {
+      cloudSourceTaskId: string;
+      status: string;
+      plannedPosts: number;
+      syncedPosts: number;
+      failedPosts: number;
+      failureReason: string | null;
+      details: { noGeneratedFetchTasks?: boolean; discoveryFailure?: { status?: string; reason?: string } };
+    }) => ({
+      cloudSourceTaskId: result.cloudSourceTaskId,
+      status: result.status,
+      plannedPosts: result.plannedPosts,
+      syncedPosts: result.syncedPosts,
+      failedPosts: result.failedPosts,
+      failureReason: result.failureReason,
+      noGeneratedFetchTasks: result.details.noGeneratedFetchTasks ?? false,
+      discoveryFailureStatus: result.details.discoveryFailure?.status ?? null,
+    })),
+    [
+      {
+        cloudSourceTaskId: "cloud_task_1",
+        status: "succeeded",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        failureReason: undefined,
+        noGeneratedFetchTasks: true,
+        discoveryFailureStatus: null,
+      },
+      {
+        cloudSourceTaskId: "cloud_task_2",
+        status: "succeeded",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        failureReason: undefined,
+        noGeneratedFetchTasks: true,
+        discoveryFailureStatus: null,
+      },
+      {
+        cloudSourceTaskId: "cloud_task_3",
+        status: "failed",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        failureReason: "candidate_discovery_result_missing",
+        noGeneratedFetchTasks: true,
+        discoveryFailureStatus: "failed",
+      },
+    ],
+  );
 });
 
 test("cloud sync task results include planned-only failed outcomes and keep explicit planned tasks authoritative", async () => {
