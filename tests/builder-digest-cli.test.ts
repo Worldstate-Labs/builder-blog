@@ -5308,8 +5308,9 @@ test("candidate discovery terminal outcomes reject malformed planned tasks, mism
           { builders: [], taskOutcomes: [outcome] },
         ),
       (error: unknown) => {
-        assert.match(String((error as Error).message), /Agent sync validation failed/);
-        assert.deepEqual((error as Error & { details?: unknown[] }).details?.[0]?.errors, expectedErrors, label);
+        const typedError = error as Error & { details?: Array<{ errors?: unknown[] }> };
+        assert.match(String(typedError.message), /Agent sync validation failed/);
+        assert.deepEqual(typedError.details?.[0]?.errors, expectedErrors, label);
         return true;
       },
     );
