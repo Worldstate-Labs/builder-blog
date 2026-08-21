@@ -5446,9 +5446,6 @@ cloud_refill_limit() {
 fetch_more_cloud_sources() {
   [ "$_sync_command" = "sync-cloud-builders" ] || return 0
   [ "${_cloud_refill_exhausted:-0}" -eq 0 ] || return 0
-  if ! wait_for_cloud_runtime_ready; then
-    return "$?"
-  fi
   [ "$_cloud_refill_count" -lt "$_cloud_refill_limit" ] || {
     _cloud_refill_exhausted=1
     return 0
@@ -5457,6 +5454,9 @@ fetch_more_cloud_sources() {
   if [ "$_fmcs_now" -ge "$_cloud_refill_stop_at" ]; then
     _cloud_refill_exhausted=1
     return 0
+  fi
+  if ! wait_for_cloud_runtime_ready; then
+    return "$?"
   fi
 
   _cloud_refill_count=$(( _cloud_refill_count + 1 ))

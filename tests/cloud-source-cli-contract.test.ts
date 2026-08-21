@@ -1709,6 +1709,51 @@ command node -e 'const fs=require("fs");const payload=JSON.parse(fs.readFileSync
   }
 });
 
+test("cloud refill skips runtime probing when exhausted, limit-capped, or past stop-at", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const start = runner.indexOf("sync_cloud_terminal_outcomes() {");
+  const end = runner.indexOf("\npatch_current_fetch_plans() {", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-refill-skip-runtime-"));
+  try {
+    const probeLog = join(dir, "probe.log");
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runner.slice(start, end)}
+job_run_update() { :; }
+wait_for_cloud_runtime_ready() {
+  printf '%s\\n' called >> "${probeLog}"
+  return 99
+}
+AGENT_DIR="${dir}"
+JOB_TMP_DIR="${dir}"
+_sync_command=sync-cloud-builders
+_cloud_refill_limit=10
+_cloud_refill_count=0
+_cloud_refill_exhausted=1
+_cloud_refill_stop_at=9999999999
+fetch_more_cloud_sources
+_cloud_refill_exhausted=0
+_cloud_refill_count=10
+fetch_more_cloud_sources
+_cloud_refill_count=0
+_cloud_refill_stop_at=0
+fetch_more_cloud_sources
+[ ! -e "${probeLog}" ] || exit 71
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("discovery pre-pass uses explicit batch input and output paths", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const prompt = await readFile("skills/builder-blog-digest/jobs/library-discovery.md", "utf8");
@@ -1932,7 +1977,7 @@ test("cloud worker host gates initial and refill leases on persistent runtime he
   );
   assert.match(
     runner,
-    /fetch_more_cloud_sources\(\) \{[\s\S]*wait_for_cloud_runtime_ready/,
+    /fetch_more_cloud_sources\(\) \{[\s\S]*_cloud_refill_count"\s+-lt "\$_cloud_refill_limit"[\s\S]*_fmcs_now="\$\(date \+%s\)"[\s\S]*if \[ "\$_fmcs_now" -ge "\$_cloud_refill_stop_at" \]; then[\s\S]*if ! wait_for_cloud_runtime_ready; then/,
   );
   assert.match(
     runner,
