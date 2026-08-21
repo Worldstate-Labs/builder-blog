@@ -454,6 +454,52 @@ test("runtime smoke check probes the selected executable before launching the sm
   assert.match(runner, /run_runtime_smoke_check\(\) \{[\s\S]*probe_selected_runtime_executable/);
 });
 
+test("cloud host runtime recovery smoke uses the unattended path and restores runner state", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  assert.match(runner, /cloud_host_runtime_recovery_smoke\(\) \{/);
+  assert.match(
+    runner,
+    /cloud_host_runtime_recovery_smoke\(\) \{[\s\S]*_chrrs_previous_prompt="\$PROMPT_FILE"[\s\S]*_chrrs_previous_is_cron="\$IS_CRON_JOB"[\s\S]*_chrrs_previous_run_source="\$\{BUILDER_BLOG_RUN_SOURCE:-\}"[\s\S]*_chrrs_previous_stage="\$\{BUILDER_BLOG_LIBRARY_AGENT_STAGE:-\}"/,
+  );
+  assert.match(
+    runner,
+    /cloud_host_runtime_recovery_smoke\(\) \{[\s\S]*_chrrs_timeout="\$\{BUILDER_BLOG_CLOUD_RUNTIME_SMOKE_TIMEOUT_SECONDS:-120\}"[\s\S]*BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS="\$_chrrs_timeout"/,
+  );
+  assert.match(
+    runner,
+    /cloud_host_runtime_recovery_smoke\(\) \{[\s\S]*IS_CRON_JOB=1[\s\S]*BUILDER_BLOG_RUN_SOURCE=smoke[\s\S]*unset BUILDER_BLOG_LIBRARY_AGENT_STAGE[\s\S]*run_runtime_smoke_check/,
+  );
+  assert.match(
+    runner,
+    /cloud_host_runtime_recovery_smoke\(\) \{[\s\S]*PROMPT_FILE="\$_chrrs_previous_prompt"[\s\S]*IS_CRON_JOB="\$_chrrs_previous_is_cron"[\s\S]*BUILDER_BLOG_RUN_SOURCE="\$_chrrs_previous_run_source"/,
+  );
+});
+
+test("cloud worker host keeps the same runner pid across recoverable runtime and lease cycles", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  assert.match(runner, /clear_runtime_circuit_markers\(\) \{/);
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*while :; do[\s\S]*run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result\.json "cloud library host"/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*if \[ "\$_code" -eq 78 \] && runtime_circuit_marker_exists; then[\s\S]*cloud_host_retry_pending_runtime_release/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*runtime_installation_failed[\s\S]*wait_for_cloud_runtime_ready[\s\S]*clear_runtime_circuit_markers[\s\S]*continue/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*runtime_auth_failed\|runtime_model_incompatible[\s\S]*cloud_host_runtime_recovery_smoke[\s\S]*clear_runtime_circuit_markers[\s\S]*continue/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*elif \[ "\$_code" -eq "\$CLOUD_HEARTBEAT_LEASE_LOST" \]; then[\s\S]*BUILDER_BLOG_CLOUD_LOST_LEASE_RETRY_SECONDS:-5[\s\S]*cloud_host_sleep_with_heartbeat[\s\S]*continue/,
+  );
+});
+
 test("cloud runtime gate waits in-process while blocked, then resumes only after a healthy probe", () => {
   const result = runCloudRuntimeReadyHarness();
   assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);

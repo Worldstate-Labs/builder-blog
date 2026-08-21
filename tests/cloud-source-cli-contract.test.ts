@@ -3020,6 +3020,400 @@ run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json 
   }
 });
 
+test("cloud worker host keeps one pid while runtime installation recovers and only clears current on final exit", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const host = shellFunction(runner, "run_cloud_worker_host");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-install-recovery-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${host}
+JOB_STATE_DIR="${dir}/state"
+JOB_TMP_DIR="${dir}/job"
+HEARTBEAT_INTERVAL_SECONDS=1
+CLOUD_HEARTBEAT_LEASE_LOST=79
+mkdir -p "$JOB_STATE_DIR" "$JOB_TMP_DIR"
+json_get_number() { return 1; }
+json_get_string() { return 1; }
+verify_followbrief_pid() { return 1; }
+iso_now() { printf '%s\\n' '2026-08-21T00:00:00Z'; }
+write_current_file() {
+  printf 'current-write|pid=%s|instance=%s\\n' "$$" "$2" >> "${dir}/calls.log"
+}
+clear_current_file() {
+  printf 'current-clear|pid=%s|instance=%s\\n' "$$" "$2" >> "${dir}/calls.log"
+}
+prepare_run_tmp_dir() { :; }
+job_file_component() { printf 'host-1\\n'; }
+cleanup_old_job_runs() { printf 'cleanup-old|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+cleanup_job_tmp_dir() {
+  printf 'cleanup|%s|%s|pid=%s\\n' "$1" "$2" "$$" >> "${dir}/calls.log"
+}
+job_run_update() {
+  printf 'job-update|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$$" >> "${dir}/calls.log"
+  return 0
+}
+cloud_host_sleep_with_heartbeat() {
+  printf 'sleep|%s|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$4" "$$" >> "${dir}/calls.log"
+}
+runtime_circuit_marker_exists() {
+  [ -s "$JOB_TMP_DIR/runtime-circuit.txt" ] || [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]
+}
+runtime_circuit_reason() {
+  if [ -s "$JOB_TMP_DIR/runtime-circuit.txt" ]; then
+    sed -n '1p' "$JOB_TMP_DIR/runtime-circuit.txt"
+    return 0
+  fi
+  if [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]; then
+    sed -n '1p' "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+    return 0
+  fi
+  return 1
+}
+report_runtime_circuit_failure() {
+  printf 'report|%s|pid=%s\\n' "$(runtime_circuit_reason)" "$$" >> "${dir}/calls.log"
+}
+wait_for_cloud_runtime_ready() {
+  _count=1
+  if [ -r "${dir}/wait.count" ]; then
+    _count="$(( $(cat "${dir}/wait.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/wait.count"
+  printf 'ready|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  return 0
+}
+cloud_host_retry_pending_runtime_release() {
+  printf 'retry-release|pid=%s\\n' "$$" >> "${dir}/calls.log"
+}
+cloud_host_runtime_recovery_smoke() {
+  printf 'smoke|pid=%s\\n' "$$" >> "${dir}/calls.log"
+  return 0
+}
+clear_runtime_circuit_markers() {
+  rm -f "$JOB_TMP_DIR/runtime-circuit.txt" "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+  printf 'clear-markers|pid=%s\\n' "$$" >> "${dir}/calls.log"
+}
+run_library_job() {
+  _count=1
+  if [ -r "${dir}/library.count" ]; then
+    _count="$(( $(cat "${dir}/library.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/library.count"
+  printf 'library|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  if [ "$_count" -eq 1 ]; then
+    printf 'runtime_installation_failed\\ninstall detail\\n' > "$JOB_TMP_DIR/runtime-circuit.txt"
+    return 78
+  fi
+  return 0
+}
+run_cloud_worker_host
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const calls = (await readFile(join(dir, "calls.log"), "utf8")).trim().split("\n");
+    const pids = new Set(calls.map((line) => line.match(/pid=(\d+)/)?.[1]).filter(Boolean));
+    assert.equal(pids.size, 1, calls.join("\n"));
+    assert.deepEqual(
+      calls.filter((line) => /^(ready|library|clear-markers|current-clear)/.test(line)).map((line) => line.split("|")[0]),
+      ["ready", "library", "ready", "clear-markers", "library", "current-clear"],
+    );
+    assert.equal(calls.filter((line) => line.startsWith("current-clear|")).length, 1, calls.join("\n"));
+    assert.equal(calls.filter((line) => line.startsWith("cleanup|")).length, 1, calls.join("\n"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud worker host stays blocked on runtime auth smoke failure and resumes in the same pid after smoke succeeds", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const host = shellFunction(runner, "run_cloud_worker_host");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-auth-recovery-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${host}
+JOB_STATE_DIR="${dir}/state"
+JOB_TMP_DIR="${dir}/job"
+HEARTBEAT_INTERVAL_SECONDS=1
+CLOUD_HEARTBEAT_LEASE_LOST=79
+mkdir -p "$JOB_STATE_DIR" "$JOB_TMP_DIR"
+json_get_number() { return 1; }
+json_get_string() { return 1; }
+verify_followbrief_pid() { return 1; }
+iso_now() { printf '%s\\n' '2026-08-21T00:00:00Z'; }
+write_current_file() { printf 'current-write|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+clear_current_file() { printf 'current-clear|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+prepare_run_tmp_dir() { :; }
+job_file_component() { printf 'host-1\\n'; }
+cleanup_old_job_runs() { :; }
+cleanup_job_tmp_dir() { printf 'cleanup|%s|%s|pid=%s\\n' "$1" "$2" "$$" >> "${dir}/calls.log"; }
+job_run_update() {
+  printf 'job-update|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$$" >> "${dir}/calls.log"
+  return 0
+}
+cloud_host_sleep_with_heartbeat() {
+  printf 'sleep|%s|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$4" "$$" >> "${dir}/calls.log"
+}
+runtime_circuit_marker_exists() {
+  [ -s "$JOB_TMP_DIR/runtime-circuit.txt" ] || [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]
+}
+runtime_circuit_reason() {
+  sed -n '1p' "$JOB_TMP_DIR/runtime-circuit.txt"
+}
+report_runtime_circuit_failure() { return 0; }
+wait_for_cloud_runtime_ready() {
+  printf 'ready|pid=%s\\n' "$$" >> "${dir}/calls.log"
+  return 0
+}
+cloud_host_retry_pending_runtime_release() {
+  printf 'retry-release|pid=%s\\n' "$$" >> "${dir}/calls.log"
+}
+cloud_host_runtime_recovery_smoke() {
+  _count=1
+  if [ -r "${dir}/smoke.count" ]; then
+    _count="$(( $(cat "${dir}/smoke.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/smoke.count"
+  printf 'smoke|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  if [ "$_count" -eq 1 ]; then
+    return 78
+  fi
+  return 0
+}
+clear_runtime_circuit_markers() {
+  rm -f "$JOB_TMP_DIR/runtime-circuit.txt" "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+  printf 'clear-markers|pid=%s\\n' "$$" >> "${dir}/calls.log"
+}
+run_library_job() {
+  _count=1
+  if [ -r "${dir}/library.count" ]; then
+    _count="$(( $(cat "${dir}/library.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/library.count"
+  printf 'library|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  if [ "$_count" -eq 1 ]; then
+    printf 'runtime_auth_failed\\nauth detail\\n' > "$JOB_TMP_DIR/runtime-circuit.txt"
+    return 78
+  fi
+  return 0
+}
+run_cloud_worker_host
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const calls = (await readFile(join(dir, "calls.log"), "utf8")).trim().split("\n");
+    const pids = new Set(calls.map((line) => line.match(/pid=(\d+)/)?.[1]).filter(Boolean));
+    assert.equal(pids.size, 1, calls.join("\n"));
+    assert.deepEqual(
+      calls
+        .filter((line) => /^(library|smoke|sleep|clear-markers|current-clear)/.test(line))
+        .map((line) =>
+          line.startsWith("sleep|")
+            ? "sleep|1"
+            : line.replace(/\|pid=\d+$/, ""),
+        ),
+      ["library|1", "smoke|1", "sleep|1", "smoke|2", "clear-markers", "library|2", "current-clear"],
+    );
+    assert.equal(calls.filter((line) => line.startsWith("current-clear|")).length, 1, calls.join("\n"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud worker host waits briefly after lost lease and restarts work in the same pid", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const host = shellFunction(runner, "run_cloud_worker_host");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-lost-lease-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${host}
+JOB_STATE_DIR="${dir}/state"
+JOB_TMP_DIR="${dir}/job"
+CLOUD_HEARTBEAT_LEASE_LOST=79
+mkdir -p "$JOB_STATE_DIR" "$JOB_TMP_DIR"
+json_get_number() { return 1; }
+json_get_string() { return 1; }
+verify_followbrief_pid() { return 1; }
+iso_now() { printf '%s\\n' '2026-08-21T00:00:00Z'; }
+write_current_file() { printf 'current-write|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+clear_current_file() { printf 'current-clear|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+prepare_run_tmp_dir() { :; }
+job_file_component() { printf 'host-1\\n'; }
+cleanup_old_job_runs() { :; }
+cleanup_job_tmp_dir() { printf 'cleanup|%s|%s|pid=%s\\n' "$1" "$2" "$$" >> "${dir}/calls.log"; }
+job_run_update() {
+  printf 'job-update|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$$" >> "${dir}/calls.log"
+  return 0
+}
+wait_for_cloud_runtime_ready() {
+  printf 'ready|pid=%s\\n' "$$" >> "${dir}/calls.log"
+  return 0
+}
+runtime_circuit_marker_exists() { return 1; }
+runtime_circuit_reason() { return 1; }
+report_runtime_circuit_failure() { return 0; }
+cloud_host_retry_pending_runtime_release() { return 0; }
+cloud_host_runtime_recovery_smoke() { return 0; }
+clear_runtime_circuit_markers() { :; }
+cloud_host_sleep_with_heartbeat() {
+  printf 'sleep|%s|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$4" "$$" >> "${dir}/calls.log"
+}
+run_library_job() {
+  _count=1
+  if [ -r "${dir}/library.count" ]; then
+    _count="$(( $(cat "${dir}/library.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/library.count"
+  printf 'library|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  if [ "$_count" -eq 1 ]; then
+    return 79
+  fi
+  return 0
+}
+run_cloud_worker_host
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const calls = (await readFile(join(dir, "calls.log"), "utf8")).trim().split("\n");
+    const pids = new Set(calls.map((line) => line.match(/pid=(\d+)/)?.[1]).filter(Boolean));
+    assert.equal(pids.size, 1, calls.join("\n"));
+    assert.deepEqual(
+      calls
+        .filter((line) => /^(ready|library|sleep|current-clear)/.test(line))
+        .map((line) =>
+          line.startsWith("sleep|")
+            ? "sleep|5"
+            : line.replace(/\|pid=\d+$/, ""),
+        ),
+      ["ready", "library|1", "sleep|5", "library|2", "current-clear"],
+    );
+    assert.equal(calls.filter((line) => line.startsWith("current-clear|")).length, 1, calls.join("\n"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud worker host retries pending release before any recovery probe or new lease", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const host = shellFunction(runner, "run_cloud_worker_host");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-host-release-blocks-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${host}
+JOB_STATE_DIR="${dir}/state"
+JOB_TMP_DIR="${dir}/job"
+HEARTBEAT_INTERVAL_SECONDS=1
+BUILDER_BLOG_JOB_RUN_ID="host-1"
+CLOUD_HEARTBEAT_LEASE_LOST=79
+mkdir -p "$JOB_STATE_DIR" "$JOB_TMP_DIR"
+json_get_number() { return 1; }
+json_get_string() { return 1; }
+verify_followbrief_pid() { return 1; }
+iso_now() { printf '%s\\n' '2026-08-21T00:00:00Z'; }
+write_current_file() { printf 'current-write|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+clear_current_file() { printf 'current-clear|pid=%s\\n' "$$" >> "${dir}/calls.log"; }
+prepare_run_tmp_dir() { :; }
+job_file_component() { printf 'host-1\\n'; }
+cleanup_old_job_runs() { :; }
+cleanup_job_tmp_dir() { printf 'cleanup|%s|%s|pid=%s\\n' "$1" "$2" "$$" >> "${dir}/calls.log"; }
+job_run_update() {
+  printf 'job-update|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$$" >> "${dir}/calls.log"
+  return 0
+}
+runtime_circuit_marker_exists() {
+  [ -s "$JOB_TMP_DIR/runtime-circuit.txt" ]
+}
+runtime_circuit_reason() {
+  sed -n '1p' "$JOB_TMP_DIR/runtime-circuit.txt"
+}
+report_runtime_circuit_failure() { return 0; }
+wait_for_cloud_runtime_ready() {
+  printf 'ready|pid=%s\\n' "$$" >> "${dir}/calls.log"
+  return 0
+}
+release_cloud_worker_leases_for_instance() {
+  _count=1
+  if [ -r "${dir}/release.count" ]; then
+    _count="$(( $(cat "${dir}/release.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/release.count"
+  printf 'release|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  if [ "$_count" -lt 3 ]; then
+    return 19
+  fi
+  return 0
+}
+cloud_host_retry_pending_runtime_release() {
+  while :; do
+    if release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" "runtime_auth_failed"; then
+      return 0
+    fi
+    cloud_host_sleep_with_heartbeat 1 "release pending" "runtime_release_pending" "waiting_for_runtime"
+  done
+}
+cloud_host_runtime_recovery_smoke() {
+  printf 'smoke|pid=%s\\n' "$$" >> "${dir}/calls.log"
+  return 0
+}
+clear_runtime_circuit_markers() {
+  rm -f "$JOB_TMP_DIR/runtime-circuit.txt"
+  printf 'clear-markers|pid=%s\\n' "$$" >> "${dir}/calls.log"
+}
+cloud_host_sleep_with_heartbeat() {
+  printf 'sleep|%s|%s|%s|%s|pid=%s\\n' "$1" "$2" "$3" "$4" "$$" >> "${dir}/calls.log"
+}
+run_library_job() {
+  _count=1
+  if [ -r "${dir}/library.count" ]; then
+    _count="$(( $(cat "${dir}/library.count") + 1 ))"
+  fi
+  printf '%s' "$_count" > "${dir}/library.count"
+  printf 'library|%s|pid=%s\\n' "$_count" "$$" >> "${dir}/calls.log"
+  if [ "$_count" -eq 1 ]; then
+    printf 'runtime_auth_failed\\nauth detail\\n' > "$JOB_TMP_DIR/runtime-circuit.txt"
+    return 78
+  fi
+  return 0
+}
+run_cloud_worker_host
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const calls = (await readFile(join(dir, "calls.log"), "utf8")).trim().split("\n");
+    const releaseIndex = calls.findIndex((line) => line.startsWith("release|3|"));
+    const smokeIndex = calls.findIndex((line) => line.startsWith("smoke|"));
+    const secondLibraryIndex = calls.findIndex((line) => line.startsWith("library|2|"));
+    assert.ok(releaseIndex >= 0, calls.join("\n"));
+    assert.ok(smokeIndex > releaseIndex, calls.join("\n"));
+    assert.ok(secondLibraryIndex > smokeIndex, calls.join("\n"));
+    assert.equal(calls.filter((line) => line.startsWith("release|")).length, 3, calls.join("\n"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("shared library runner finalizes dead workers before assigning their lanes again", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const startWorker = shellFunction(runner, "start_library_worker");

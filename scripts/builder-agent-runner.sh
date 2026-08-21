@@ -564,6 +564,10 @@ runtime_circuit_marker_exists() {
   [ -s "$(runtime_circuit_marker_file)" ] || [ -s "$(legacy_runtime_model_marker_file)" ]
 }
 
+clear_runtime_circuit_markers() {
+  rm -f "$(runtime_circuit_marker_file)" "$(legacy_runtime_model_marker_file)" 2>/dev/null || true
+}
+
 runtime_circuit_reason() {
   _rcr_marker="$(runtime_circuit_marker_file)"
   if [ -s "$_rcr_marker" ]; then
@@ -1491,7 +1495,10 @@ Do not browse the web.
 EOF
   PROMPT_FILE="$SMOKE_PROMPT_FILE"
   export BUILDER_BLOG_RUN_SOURCE=smoke
-  _timeout="$(job_timeout_seconds)"
+  _timeout="${BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS:-$(job_timeout_seconds)}"
+  case "$_timeout" in
+    ''|*[!0-9]*|0) _timeout="$(job_timeout_seconds)" ;;
+  esac
   echo "Running FollowBrief runtime smoke check for $JOB_NAME with ${PINNED_RUNTIME:-auto} (timeout ${_timeout}s)." >&2
   set +e
   run_selected_runtime &
@@ -1512,6 +1519,56 @@ EOF
   _code="$?"
   set -e
   return "$_code"
+}
+
+cloud_host_runtime_recovery_smoke() {
+  _chrrs_previous_prompt="$PROMPT_FILE"
+  _chrrs_previous_is_cron="$IS_CRON_JOB"
+  _chrrs_previous_run_source="${BUILDER_BLOG_RUN_SOURCE:-}"
+  _chrrs_previous_stage="${BUILDER_BLOG_LIBRARY_AGENT_STAGE:-}"
+  _chrrs_had_stage=0
+  if [ "${BUILDER_BLOG_LIBRARY_AGENT_STAGE+x}" = "x" ]; then
+    _chrrs_had_stage=1
+  fi
+  _chrrs_previous_smoke_timeout="${BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS:-}"
+  _chrrs_had_smoke_timeout=0
+  if [ "${BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS+x}" = "x" ]; then
+    _chrrs_had_smoke_timeout=1
+  fi
+  _chrrs_timeout="${BUILDER_BLOG_CLOUD_RUNTIME_SMOKE_TIMEOUT_SECONDS:-120}"
+  case "$_chrrs_timeout" in
+    ''|*[!0-9]*|0) _chrrs_timeout=120 ;;
+  esac
+
+  IS_CRON_JOB=1
+  BUILDER_BLOG_RUN_SOURCE=smoke
+  BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS="$_chrrs_timeout"
+  unset BUILDER_BLOG_LIBRARY_AGENT_STAGE
+
+  set +e
+  run_runtime_smoke_check
+  _chrrs_code="$?"
+  set -e
+
+  PROMPT_FILE="$_chrrs_previous_prompt"
+  IS_CRON_JOB="$_chrrs_previous_is_cron"
+  BUILDER_BLOG_RUN_SOURCE="$_chrrs_previous_run_source"
+  if [ "$_chrrs_had_stage" -eq 1 ]; then
+    BUILDER_BLOG_LIBRARY_AGENT_STAGE="$_chrrs_previous_stage"
+  else
+    unset BUILDER_BLOG_LIBRARY_AGENT_STAGE
+  fi
+  if [ "$_chrrs_had_smoke_timeout" -eq 1 ]; then
+    BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS="$_chrrs_previous_smoke_timeout"
+  else
+    unset BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS
+  fi
+
+  export BUILDER_BLOG_RUN_SOURCE BUILDER_BLOG_RUNTIME_SMOKE_TIMEOUT_SECONDS
+  if [ "$_chrrs_had_stage" -eq 1 ]; then
+    export BUILDER_BLOG_LIBRARY_AGENT_STAGE
+  fi
+  return "$_chrrs_code"
 }
 
 # Cron-setup pins config in per-account, per-job files so two FollowBrief
@@ -4024,6 +4081,29 @@ wait_for_cloud_runtime_ready() {
   done
 }
 
+cloud_host_retry_pending_runtime_release() {
+  while [ "${CLOUD_HOST_RUNTIME_RELEASE_PENDING:-0}" = "1" ]; do
+    _chrr_reason="${CLOUD_HOST_RUNTIME_RELEASE_REASON:-$(runtime_circuit_reason)}"
+    if [ -z "${BUILDER_BLOG_JOB_RUN_ID:-}" ] || [ -z "$_chrr_reason" ]; then
+      echo "Cloud worker lease release is still pending, but the host no longer has enough state to retry it safely." >&2
+      return 1
+    fi
+    if release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" "$_chrr_reason"; then
+      CLOUD_HOST_RUNTIME_RELEASE_PENDING=0
+      CLOUD_HOST_RUNTIME_RELEASE_REASON=""
+      return 0
+    fi
+    job_run_update running "Trusted runtime circuit cleanup is waiting for cloud lease release before recovery." "runtime_circuit_release_pending" \
+      --stage "waiting_for_runtime"
+    cloud_host_sleep_with_heartbeat \
+      "$HEARTBEAT_INTERVAL_SECONDS" \
+      "Trusted runtime circuit cleanup is waiting for cloud lease release before recovery." \
+      "runtime_circuit_release_pending" \
+      "waiting_for_runtime"
+  done
+  return 0
+}
+
 run_cloud_worker_host() {
   INSTANCE_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-host-$$}"
   STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
@@ -4087,10 +4167,61 @@ run_cloud_worker_host() {
 
   BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1
   export BUILDER_BLOG_CLOUD_PERSISTENT_HOST
-  set +e
-  run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host"
-  _code="$?"
-  set -e
+  while :; do
+    set +e
+    run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host"
+    _code="$?"
+    set -e
+    if [ "$_code" -eq 78 ] && runtime_circuit_marker_exists; then
+      _runtime_recovery_reason="$(runtime_circuit_reason)"
+      case "$_runtime_recovery_reason" in
+        runtime_installation_failed|runtime_auth_failed|runtime_model_incompatible)
+          if ! cloud_host_retry_pending_runtime_release; then
+            _code=78
+            break
+          fi
+          case "$_runtime_recovery_reason" in
+            runtime_installation_failed)
+              if ! wait_for_cloud_runtime_ready; then
+                _code="$?"
+                break
+              fi
+              ;;
+            runtime_auth_failed|runtime_model_incompatible)
+              while :; do
+                if cloud_host_runtime_recovery_smoke; then
+                  break
+                fi
+                job_run_update running "Runtime recovery smoke failed; worker host remains blocked before resuming cloud work." "$_runtime_recovery_reason" \
+                  --stage "waiting_for_runtime"
+                cloud_host_sleep_with_heartbeat \
+                  "$HEARTBEAT_INTERVAL_SECONDS" \
+                  "Runtime recovery smoke failed; worker host remains blocked before resuming cloud work." \
+                  "$_runtime_recovery_reason" \
+                  "waiting_for_runtime"
+              done
+              ;;
+          esac
+          clear_runtime_circuit_markers
+          continue
+          ;;
+      esac
+    elif [ "$_code" -eq "$CLOUD_HEARTBEAT_LEASE_LOST" ]; then
+      _lost_lease_wait="${BUILDER_BLOG_CLOUD_LOST_LEASE_RETRY_SECONDS:-5}"
+      case "$_lost_lease_wait" in
+        ''|*[!0-9]*|0) _lost_lease_wait=5 ;;
+      esac
+      job_run_update running "Worker host lost its cloud lease; waiting briefly before retrying." "cloud_lease_lost" \
+        --stage "waiting_for_cloud_sources"
+      cloud_host_sleep_with_heartbeat \
+        "$_lost_lease_wait" \
+        "Worker host lost its cloud lease; waiting briefly before retrying." \
+        "cloud_lease_lost" \
+        "waiting_for_cloud_sources"
+      continue
+    fi
+    break
+  done
   clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
   if [ "$_code" -eq 0 ]; then
     job_run_update succeeded "Worker host stopped." "worker_host_stopped" --stage "stopped"
@@ -6278,6 +6409,8 @@ run_library_job() {
   if [ "$_sync_command" = "sync-cloud-builders" ] && [ "${BUILDER_BLOG_CLOUD_PERSISTENT_HOST:-0}" = "1" ]; then
     _cloud_persistent_host=1
   fi
+  CLOUD_HOST_RUNTIME_RELEASE_PENDING=0
+  CLOUD_HOST_RUNTIME_RELEASE_REASON=""
   : > "$_cloud_run_ids_file"
 
   echo "FollowBrief $_job_label run: $MAX_PARALLEL_WORKERS worker(s)."
@@ -6753,40 +6886,60 @@ run_library_job() {
   fi
   case "$_runtime_circuit_reason" in
     runtime_installation_failed|runtime_auth_failed|runtime_model_incompatible)
-    _circuit_terminalization_ok=1
-    if ! finalize_runtime_circuit_workers "$_runtime_circuit_reason"; then
-      _circuit_terminalization_ok=0
-      echo "Could not terminalize every worker in the trusted runtime circuit; cloud leases will not be released early." >&2
-    fi
-    if managed_media_batch_running; then
-      terminate_process_tree "$_managed_media_pid" TERM 5 || terminate_process_tree "$_managed_media_pid" KILL 3 || true
-      wait "$_managed_media_pid" 2>/dev/null || true
-      _managed_media_active=0
-    fi
-    write_runtime_circuit_marker "$_runtime_circuit_reason" "$_runtime_circuit_provider_error"
-    sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
-    _circuit_flush_ok=1
-    if ! flush_remaining_library_results \
-      "$_result_file" \
-      "$_results_dir" \
-      "$_checkpoint_synced_ids_file" \
-      "$_shard_timeout" \
-      "runtime-circuit" \
-      "$_runtime_circuit_reason"; then
-      _circuit_flush_ok=0
-      echo "Could not sync every trusted runtime circuit failure before stopping the run." >&2
-    fi
-    if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "${BUILDER_BLOG_JOB_RUN_ID:-}" ]; then
-      if [ "$_circuit_terminalization_ok" -eq 1 ] && [ "$_circuit_flush_ok" -eq 1 ]; then
-        if ! release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" "$_runtime_circuit_reason"; then
-          echo "Could not release cloud worker leases for trusted runtime circuit $_runtime_circuit_reason." >&2
+      write_runtime_circuit_marker "$_runtime_circuit_reason" "$_runtime_circuit_provider_error"
+      while :; do
+        _circuit_terminalization_ok=1
+        if ! finalize_runtime_circuit_workers "$_runtime_circuit_reason"; then
+          _circuit_terminalization_ok=0
+          echo "Could not terminalize every worker in the trusted runtime circuit; cloud recovery remains blocked." >&2
         fi
-      else
-        echo "Cloud leases remain server-owned for safe expiry because local terminalization or sync did not complete." >&2
+        if managed_media_batch_running; then
+          terminate_process_tree "$_managed_media_pid" TERM 5 || terminate_process_tree "$_managed_media_pid" KILL 3 || true
+          wait "$_managed_media_pid" 2>/dev/null || true
+          _managed_media_active=0
+        fi
+        sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
+        _circuit_flush_ok=1
+        if ! flush_remaining_library_results \
+          "$_result_file" \
+          "$_results_dir" \
+          "$_checkpoint_synced_ids_file" \
+          "$_shard_timeout" \
+          "runtime-circuit" \
+          "$_runtime_circuit_reason"; then
+          _circuit_flush_ok=0
+          echo "Could not sync every trusted runtime circuit failure before stopping the run." >&2
+        fi
+        if [ "$_cloud_persistent_host" -eq 0 ] || { [ "$_circuit_terminalization_ok" -eq 1 ] && [ "$_circuit_flush_ok" -eq 1 ]; }; then
+          break
+        fi
+        job_run_update running "Trusted runtime circuit cleanup is incomplete; worker host remains blocked before recovery." "runtime_circuit_reconciliation_pending" \
+          --stage "waiting_for_runtime"
+        cloud_host_sleep_with_heartbeat \
+          "$HEARTBEAT_INTERVAL_SECONDS" \
+          "Trusted runtime circuit cleanup is incomplete; worker host remains blocked before recovery." \
+          "runtime_circuit_reconciliation_pending" \
+          "waiting_for_runtime"
+      done
+      if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "${BUILDER_BLOG_JOB_RUN_ID:-}" ]; then
+        if [ "$_circuit_terminalization_ok" -eq 1 ] && [ "$_circuit_flush_ok" -eq 1 ]; then
+          if ! release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" "$_runtime_circuit_reason"; then
+            if [ "$_cloud_persistent_host" -eq 1 ]; then
+              CLOUD_HOST_RUNTIME_RELEASE_PENDING=1
+              CLOUD_HOST_RUNTIME_RELEASE_REASON="$_runtime_circuit_reason"
+            else
+              echo "Could not release cloud worker leases for trusted runtime circuit $_runtime_circuit_reason." >&2
+            fi
+          else
+            CLOUD_HOST_RUNTIME_RELEASE_PENDING=0
+            CLOUD_HOST_RUNTIME_RELEASE_REASON=""
+          fi
+        elif [ "$_cloud_persistent_host" -eq 0 ]; then
+          echo "Cloud leases remain server-owned for safe expiry because local terminalization or sync did not complete." >&2
+        fi
       fi
-    fi
-    return 78
-    ;;
+      return 78
+      ;;
   esac
   poll_managed_media_batch
   sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
