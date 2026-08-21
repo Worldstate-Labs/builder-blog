@@ -651,11 +651,21 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   );
   assert.match(
     runner,
-    /elif \[ "\$_code" -eq 78 \] && \[ -s "\$JOB_TMP_DIR\/runtime-model-incompatible\.txt" \]; then[\s\S]*report_runtime_model_failure/,
+    /runtime-circuit\.txt[\s\S]*runtime_installation_failed[\s\S]*runtime_auth_failed[\s\S]*runtime_model_incompatible/,
+  );
+  assert.match(runner, /runtime_circuit_marker_file\(\) \{[\s\S]*runtime-circuit\.txt/);
+  assert.match(runner, /legacy_runtime_model_marker_file\(\) \{[\s\S]*runtime-model-incompatible\.txt/);
+  assert.match(
+    runner,
+    /elif \[ "\$_code" -eq 78 \] && runtime_circuit_marker_exists; then[\s\S]*report_runtime_circuit_failure/,
   );
   assert.match(
     runner,
-    /report_runtime_model_failure\(\) \{[\s\S]*runtime_model_incompatible\|runtime_model_preflight_failed[\s\S]*job_run_update failed "\$_rrmf_summary" "\$_rrmf_reason"/,
+    /report_runtime_circuit_failure\(\) \{[\s\S]*runtime_installation_failed[\s\S]*runtime_auth_failed[\s\S]*runtime_model_incompatible[\s\S]*runtime_model_preflight_failed[\s\S]*job_run_update failed "\$_rrcf_summary" "\$_rrcf_reason"[\s\S]*--provider-error "\$_rrcf_provider_error"/,
+  );
+  assert.match(
+    runner,
+    /write_runtime_circuit_marker\(\) \{[\s\S]*runtime_circuit_marker_file[\s\S]*runtime_model_incompatible[\s\S]*runtime_model_preflight_failed[\s\S]*legacy_runtime_model_marker_file/,
   );
   assert.match(runner, /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CLAUDE_MODEL:-sonnet\}"/);
   assert.match(runner, /export BUILDER_BLOG_AGENT_MODEL/);

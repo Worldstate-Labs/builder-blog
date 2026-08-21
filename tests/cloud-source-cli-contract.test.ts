@@ -2624,7 +2624,8 @@ test("worker runtime installation detection trusts process errors, not fetched c
   const dir = await mkdtemp(join(tmpdir(), "fb-worker-installation-error-classifier-"));
   try {
     const contentLog = join(dir, "content.log");
-    const failedLog = join(dir, "failed.log");
+    const plainLog = join(dir, "plain.log");
+    const eventLog = join(dir, "event.log");
     await writeFile(
       contentLog,
       `${JSON.stringify({
@@ -2634,10 +2635,18 @@ test("worker runtime installation detection trusts process errors, not fetched c
       "utf8",
     );
     await writeFile(
-      failedLog,
+      plainLog,
+      "Error: claude native binary not installed\n",
+      "utf8",
+    );
+    await writeFile(
+      eventLog,
       `${JSON.stringify({
-        type: "turn.failed",
-        error: { message: "Error: claude native binary not installed" },
+        type: "followbrief_worker_event",
+        reason: "runtime_installation_failed",
+        worker: "worker-0",
+        shard: "shard-0",
+        message: "The selected agent runtime executable is missing or not fully installed.",
       })}\n`,
       "utf8",
     );
@@ -2647,7 +2656,43 @@ test("worker runtime installation detection trusts process errors, not fetched c
       `set -eu
 ${classifier}
 if worker_log_has_runtime_installation_failure "${contentLog}"; then exit 91; fi
-worker_log_has_runtime_installation_failure "${failedLog}"
+if worker_log_has_runtime_installation_failure "${plainLog}"; then exit 92; fi
+worker_log_has_runtime_installation_failure "${eventLog}"
+`,
+      "utf8",
+    );
+    await execFileAsync("sh", [checkPath]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("worker runtime installation event is emitted only for exact process-level runtime failures", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const emitBoundaryEvent = shellFunction(runner, "record_worker_runtime_installation_failure_event_if_trusted");
+  const writeEvent = shellFunction(runner, "write_worker_control_event");
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-installation-boundary-event-"));
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${writeEvent}
+${emitBoundaryEvent}
+trusted_worker_log="${dir}/trusted-worker.log"
+trusted_agent_log="${dir}/trusted-agent.log"
+plain_worker_log="${dir}/plain-worker.log"
+plain_agent_log="${dir}/plain-agent.log"
+printf '%s\\n' 'Error: claude native binary not installed' > "$trusted_agent_log"
+printf '%s\\n' 'The fetched post text says claude native binary not installed.' > "$plain_agent_log"
+: > "$trusted_worker_log"
+: > "$plain_worker_log"
+record_worker_runtime_installation_failure_event_if_trusted "$trusted_worker_log" "$trusted_agent_log" worker-0 shard-0 1
+if record_worker_runtime_installation_failure_event_if_trusted "$plain_worker_log" "$plain_agent_log" worker-1 shard-1 1; then
+  :
+fi
+grep -F '"reason":"runtime_installation_failed"' "$trusted_worker_log" >/dev/null || exit 31
+if grep -F '"reason":"runtime_installation_failed"' "$plain_worker_log" >/dev/null; then exit 32; fi
 `,
       "utf8",
     );

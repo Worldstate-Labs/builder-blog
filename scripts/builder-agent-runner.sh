@@ -525,10 +525,7 @@ run_codex_model_preflight() {
   if codex_model_failure_is_compatibility "$_rcmp_output"; then
     _rcmp_reason="runtime_model_incompatible"
   fi
-  {
-    printf '%s\n' "$_rcmp_reason"
-    printf '%s\n' "$_rcmp_provider_error"
-  } > "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+  write_runtime_circuit_marker "$_rcmp_reason" "$_rcmp_provider_error"
   if [ "$_rcmp_reason" = "runtime_model_incompatible" ]; then
     echo "The installed Codex could not run the selected economical model." >&2
   else
@@ -537,24 +534,92 @@ run_codex_model_preflight() {
   return 78
 }
 
-report_runtime_model_failure() {
-  _rrmf_marker="$JOB_TMP_DIR/runtime-model-incompatible.txt"
-  [ -s "$_rrmf_marker" ] || return 1
-  _rrmf_reason="$(sed -n '1p' "$_rrmf_marker")"
-  case "$_rrmf_reason" in
-    runtime_model_incompatible|runtime_model_preflight_failed) ;;
-    *) _rrmf_reason="runtime_model_preflight_failed" ;;
-  esac
-  _rrmf_provider_error="$(sed -n '2,$p' "$_rrmf_marker" | tr '\n' ' ' | cut -c 1-1200)"
-  if [ "$_rrmf_reason" = "runtime_model_incompatible" ]; then
-    _rrmf_summary="The installed Codex could not run the selected economical model."
-  else
-    _rrmf_summary="Codex model preflight failed before work started."
+runtime_circuit_marker_file() {
+  printf '%s\n' "$JOB_TMP_DIR/runtime-circuit.txt"
+}
+
+legacy_runtime_model_marker_file() {
+  printf '%s\n' "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+}
+
+write_runtime_circuit_marker() {
+  _wrcm_reason="${1:-}"
+  _wrcm_provider_error="${2:-}"
+  [ -n "$_wrcm_reason" ] || return 1
+  _wrcm_marker="$(runtime_circuit_marker_file)"
+  {
+    printf '%s\n' "$_wrcm_reason"
+    printf '%s\n' "$_wrcm_provider_error"
+  } > "$_wrcm_marker"
+  if [ "$_wrcm_reason" = "runtime_model_incompatible" ] || [ "$_wrcm_reason" = "runtime_model_preflight_failed" ]; then
+    _wrcm_legacy_marker="$(legacy_runtime_model_marker_file)"
+    {
+      printf '%s\n' "$_wrcm_reason"
+      printf '%s\n' "$_wrcm_provider_error"
+    } > "$_wrcm_legacy_marker"
   fi
-  job_run_update failed "$_rrmf_summary" "$_rrmf_reason" \
-    --stage "runtime_preflight" \
+}
+
+runtime_circuit_marker_exists() {
+  [ -s "$(runtime_circuit_marker_file)" ] || [ -s "$(legacy_runtime_model_marker_file)" ]
+}
+
+runtime_circuit_reason() {
+  _rcr_marker="$(runtime_circuit_marker_file)"
+  if [ -s "$_rcr_marker" ]; then
+    sed -n '1p' "$_rcr_marker"
+    return 0
+  fi
+  _rcr_legacy_marker="$(legacy_runtime_model_marker_file)"
+  if [ -s "$_rcr_legacy_marker" ]; then
+    sed -n '1p' "$_rcr_legacy_marker"
+  fi
+}
+
+runtime_circuit_provider_error() {
+  _rcpe_marker="$(runtime_circuit_marker_file)"
+  if [ -s "$_rcpe_marker" ]; then
+    sed -n '2,$p' "$_rcpe_marker" | tr '\n' ' ' | cut -c 1-1200
+    return 0
+  fi
+  _rcpe_legacy_marker="$(legacy_runtime_model_marker_file)"
+  if [ -s "$_rcpe_legacy_marker" ]; then
+    sed -n '2,$p' "$_rcpe_legacy_marker" | tr '\n' ' ' | cut -c 1-1200
+  fi
+}
+
+report_runtime_circuit_failure() {
+  _rrcf_reason="$(runtime_circuit_reason)"
+  case "$_rrcf_reason" in
+    runtime_installation_failed)
+      _rrcf_summary="The selected agent runtime executable is missing or not fully installed."
+      _rrcf_stage="run_fetch_workers"
+      ;;
+    runtime_auth_failed)
+      _rrcf_summary="The selected agent runtime could not refresh its authentication token."
+      _rrcf_stage="run_fetch_workers"
+      ;;
+    runtime_model_incompatible)
+      _rrcf_summary="The installed Codex could not continue with the selected model."
+      _rrcf_stage="run_fetch_workers"
+      ;;
+    runtime_model_preflight_failed)
+      _rrcf_summary="Codex model preflight failed before work started."
+      _rrcf_stage="runtime_preflight"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  _rrcf_provider_error="$(runtime_circuit_provider_error)"
+  job_run_update failed "$_rrcf_summary" "$_rrcf_reason" \
+    --stage "$_rrcf_stage" \
     --exit-code "78" \
-    --provider-error "$_rrmf_provider_error"
+    --provider-error "$_rrcf_provider_error"
+}
+
+report_runtime_model_failure() {
+  report_runtime_circuit_failure
 }
 
 run_with_codex() {
@@ -2661,53 +2726,68 @@ worker_log_has_runtime_installation_failure() {
   [ -r "$_wlhrif_log" ] || return 1
   node - "$_wlhrif_log" <<'NODE'
 const fs = require("fs");
-const text = fs.readFileSync(process.argv[2], "utf8");
-const processLevelPatterns = [
-  /claude native binary not installed/i,
-  /Selected runtime '[^']+' is not on PATH/i,
-  /\b(?:codex|claude|openclaw)\b.*(?:command not found|not found|No such file or directory)/i,
-  /exec: .*?(?:codex|claude|openclaw).*? not found/i,
-  /spawn (?:codex|claude|openclaw) ENOENT/i,
-];
-const contentEventTypes = new Set(["agent_message", "command_execution"]);
-for (const rawLine of text.split(/\r?\n/)) {
-  const line = String(rawLine || "");
-  if (!line.trim()) continue;
+for (const rawLine of fs.readFileSync(process.argv[2], "utf8").split(/\r?\n/)) {
+  if (!String(rawLine || "").trim()) continue;
   let event = null;
-  try {
-    event = JSON.parse(line);
-  } catch {
-    if (processLevelPatterns.some((pattern) => pattern.test(line))) process.exit(0);
-    continue;
-  }
+  try { event = JSON.parse(rawLine); } catch { continue; }
   if (event?.type === "followbrief_worker_event" && event?.reason === "runtime_installation_failed") {
     process.exit(0);
   }
-  const itemType = typeof event?.item?.type === "string" ? event.item.type : null;
-  const eventType = typeof event?.type === "string" ? event.type : null;
-  if (contentEventTypes.has(itemType || "") || contentEventTypes.has(eventType || "")) continue;
-  if (eventType !== "turn.failed" && eventType !== "error") continue;
-  const payload = event?.error ?? event?.message ?? event;
-  if (processLevelPatterns.some((pattern) => pattern.test(JSON.stringify(payload)))) process.exit(0);
 }
 process.exit(1);
 NODE
 }
 
-record_worker_runtime_installation_failure() {
-  _wrrif_name="${1:-}"
-  _wrrif_lane="${2:-}"
-  _wrrif_worker_log="$_results_dir/$_wrrif_name-worker.log"
-  _wrrif_agent_log="$_results_dir/$_wrrif_name-agent-output.log"
-  grep -q '"reason":"runtime_installation_failed"' "$_wrrif_worker_log" 2>/dev/null && return 0
-  if worker_log_has_runtime_installation_failure "$_wrrif_worker_log" || worker_log_has_runtime_installation_failure "$_wrrif_agent_log"; then
-    write_worker_control_event \
-      "$_wrrif_worker_log" \
-      "runtime_installation_failed" \
-      "$_wrrif_lane" \
-      "$_wrrif_name" \
-      "The selected agent runtime executable is missing or not fully installed."
-  fi
+record_worker_runtime_installation_failure_event_if_trusted() {
+  _wrrifeit_worker_log="${1:-}"
+  _wrrifeit_agent_log="${2:-}"
+  _wrrifeit_lane="${3:-}"
+  _wrrifeit_name="${4:-}"
+  _wrrifeit_exit_code="${5:-0}"
+  [ -n "$_wrrifeit_worker_log" ] || return 1
+  [ "$_wrrifeit_exit_code" -ne 0 ] || return 1
+  grep -q '"reason":"runtime_installation_failed"' "$_wrrifeit_worker_log" 2>/dev/null && return 0
+  _wrrifeit_first_line="$(
+    node - "$_wrrifeit_agent_log" "$_wrrifeit_worker_log" <<'NODE' 2>/dev/null || true
+const fs = require("fs");
+for (const file of process.argv.slice(2)) {
+  if (!file) continue;
+  let text = "";
+  try { text = fs.readFileSync(file, "utf8"); } catch { continue; }
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = String(rawLine || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+    if (!line) continue;
+    console.log(line.slice(0, 200));
+    process.exit(0);
+  }
+}
+process.exit(1);
+NODE
+  )"
+  case "$_wrrifeit_first_line" in
+    "Error: claude native binary not installed"|\
+    "spawn codex ENOENT"|\
+    "spawn claude ENOENT"|\
+    "spawn openclaw ENOENT"|\
+    "Pinned runtime 'claude' not on PATH for cron."|\
+    "Pinned runtime 'codex' not on PATH for cron."|\
+    "Pinned runtime 'openclaw' not on PATH for cron."|\
+    *": claude: command not found"|\
+    *": codex: command not found"|\
+    *": openclaw: command not found"|\
+    "exec: claude: not found"|\
+    "exec: codex: not found"|\
+    "exec: openclaw: not found")
+      write_worker_control_event \
+        "$_wrrifeit_worker_log" \
+        "runtime_installation_failed" \
+        "$_wrrifeit_lane" \
+        "$_wrrifeit_name" \
+        "The selected agent runtime executable is missing or not fully installed."
+      return 0
+      ;;
+  esac
+  return 1
 }
 
 record_worker_runtime_auth_failure() {
@@ -2779,7 +2859,6 @@ finalize_dead_library_worker() {
         "The installed Codex could not run the selected model."
     fi
   else
-    record_worker_runtime_installation_failure "$_fdlw_name" "$_fdlw_lane"
     if grep -q '"reason":"runtime_installation_failed"' "$_fdlw_worker_log" 2>/dev/null; then
       _fdlw_trusted_runtime_reason="runtime_installation_failed"
     else
@@ -4017,10 +4096,10 @@ run_cloud_worker_host() {
     job_run_update succeeded "Worker host stopped." "worker_host_stopped" --stage "stopped"
     _cleanup_status="succeeded"
     _cleanup_reason="worker_host_stopped"
-  elif [ "$_code" -eq 78 ] && [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]; then
-    report_runtime_model_failure || true
+  elif [ "$_code" -eq 78 ] && runtime_circuit_marker_exists; then
+    report_runtime_circuit_failure || true
     _cleanup_status="failed"
-    _cleanup_reason="runtime_model_incompatible"
+    _cleanup_reason="$(runtime_circuit_reason)"
   else
     job_run_update failed "Worker host exited with code $_code." "worker_host_failed" \
       --stage "failed" \
@@ -4234,10 +4313,10 @@ run_with_job_tracking() {
     _cleanup_reason="runtime_reported_timeout"
     job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout" \
       --exit-code "$_code"
-  elif [ "$_code" -eq 78 ] && [ -s "$JOB_TMP_DIR/runtime-model-incompatible.txt" ]; then
+  elif [ "$_code" -eq 78 ] && runtime_circuit_marker_exists; then
     _cleanup_status="failed"
-    _cleanup_reason="runtime_model_incompatible"
-    report_runtime_model_failure || true
+    _cleanup_reason="$(runtime_circuit_reason)"
+    report_runtime_circuit_failure || true
   else
     _partial_verdict=""
     if [ "$_code" -eq 65 ]; then
@@ -6064,6 +6143,7 @@ NODE
   _worker_timeout="$(shard_timeout_seconds_for_file "$_slw_shard_file")"
   _slw_checkpoint_dir="$_results_dir/$_slw_shard_name-checkpoints"
   _slw_agent_output_file="$_results_dir/$_slw_shard_name-agent-output.log"
+  _slw_worker_log="$_results_dir/$_slw_shard_name-worker.log"
   mkdir -p "$_slw_checkpoint_dir"
   (
     BUILDER_BLOG_SHARD_FILE="$_slw_shard_file"
@@ -6092,11 +6172,17 @@ NODE
     run_selected_runtime
     _slw_exit_code="$?"
     set -e
+    record_worker_runtime_installation_failure_event_if_trusted \
+      "$_slw_worker_log" \
+      "$_slw_agent_output_file" \
+      "$_slw_lane_id" \
+      "$_slw_shard_name" \
+      "$_slw_exit_code" || true
     _slw_exit_file="$_results_dir/$_slw_shard_name-worker-exit-code"
     printf '%s\n' "$_slw_exit_code" > "$_slw_exit_file.tmp.$$"
     mv "$_slw_exit_file.tmp.$$" "$_slw_exit_file"
     exit "$_slw_exit_code"
-  ) > "$_results_dir/$_slw_shard_name-worker.log" 2>&1 &
+  ) > "$_slw_worker_log" 2>&1 &
   _slw_worker_pid="$!"
   record_job_process_root "$_slw_worker_pid" || true
   _worker_entries="${_worker_entries:-} $_slw_worker_pid:$(date +%s):$_slw_shard_name:$_slw_lane_id"
@@ -6677,12 +6763,7 @@ run_library_job() {
       wait "$_managed_media_pid" 2>/dev/null || true
       _managed_media_active=0
     fi
-    if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
-      {
-        printf '%s\n' "runtime_model_incompatible"
-        printf '%s\n' "$_runtime_circuit_provider_error"
-      } > "$JOB_TMP_DIR/runtime-model-incompatible.txt"
-    fi
+    write_runtime_circuit_marker "$_runtime_circuit_reason" "$_runtime_circuit_provider_error"
     sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
     _circuit_flush_ok=1
     if ! flush_remaining_library_results \
