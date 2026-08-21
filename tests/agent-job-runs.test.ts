@@ -261,6 +261,25 @@ exit 0
   assert.match(result.diagnostic, /claude native binary not installed/i);
 });
 
+test("runtime executable probe fails closed with a sanitized diagnostic when --version exits nonzero", () => {
+  const result = runRuntimeProbeHarness({
+    runtime: "claude",
+    runtimeScript: `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  printf '%s\n' 'SECRET_TOKEN=topsecret runtime exploded' >&2
+  exit 1
+fi
+exit 0
+`,
+  });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.probeCode, 78, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.classification, "runtime_version_failed");
+  assert.match(result.diagnostic, /failed its --version check/i);
+  assert.doesNotMatch(result.diagnostic, /SECRET_TOKEN=topsecret/);
+  assert.doesNotMatch(result.diagnostic, /runtime exploded/);
+});
+
 test("runtime executable probe fails closed when runtime version probing times out", () => {
   const result = runRuntimeProbeHarness({
     runtime: "claude",
@@ -275,6 +294,22 @@ exit 0
   assert.equal(result.probeCode, 124, `${result.stderr}\n${result.stdout}`);
   assert.equal(result.classification, "runtime_version_timeout");
   assert.match(result.diagnostic, /timed out after 2s/i);
+});
+
+test("runtime executable probe fails closed when --version succeeds with empty output", () => {
+  const result = runRuntimeProbeHarness({
+    runtime: "claude",
+    runtimeScript: `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  exit 0
+fi
+exit 0
+`,
+  });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.probeCode, 78, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.classification, "runtime_version_empty");
+  assert.match(result.diagnostic, /returned no version output/i);
 });
 
 test("runtime executable probe accepts a healthy semver-style version response", () => {

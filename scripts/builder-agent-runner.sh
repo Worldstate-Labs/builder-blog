@@ -1358,11 +1358,7 @@ probe_selected_runtime_executable() {
       return 78
     fi
     RUNTIME_PROBE_CLASSIFICATION="runtime_version_failed"
-    if [ -n "$_psre_summary" ]; then
-      RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' failed its --version check: $_psre_summary"
-    else
-      RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' failed its --version check."
-    fi
+    RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' failed its --version check."
     return 78
   fi
   if [ -z "$_psre_summary" ]; then
