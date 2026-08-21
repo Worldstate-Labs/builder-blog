@@ -6494,12 +6494,13 @@ run_library_job() {
         ''|*[!0-9]*) _cloud_heartbeat_interval=60 ;;
       esac
       if [ $(( _now - _last_cloud_heartbeat )) -ge "$_cloud_heartbeat_interval" ]; then
-        if ! cloud_fetch_heartbeat_all; then
-          _cloud_heartbeat_code="$?"
-          if [ "$_cloud_heartbeat_code" -eq "$CLOUD_HEARTBEAT_LEASE_LOST" ]; then
-            _cloud_lease_lost=1
-            break
-          fi
+        set +e
+        cloud_fetch_heartbeat_all
+        _cloud_heartbeat_code="$?"
+        set -e
+        if [ "$_cloud_heartbeat_code" -eq "$CLOUD_HEARTBEAT_LEASE_LOST" ]; then
+          _cloud_lease_lost=1
+          break
         fi
         _last_cloud_heartbeat="$_now"
       fi

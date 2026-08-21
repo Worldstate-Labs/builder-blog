@@ -257,6 +257,94 @@ printf 'refills=%s\\n' "\${_cloud_refill_count:-unset}" >> "${dir}/calls.log"
   }
 });
 
+test("cloud heartbeat lost-lease code propagates through the worker loop and stops the current run", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const runStart = runner.indexOf("run_library_job() {");
+  const runEnd = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then', runStart);
+  assert.notEqual(runStart, -1);
+  assert.notEqual(runEnd, -1);
+  const runLibraryJob = runner.slice(runStart, runEnd);
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-heartbeat-loop-lost-lease-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+${runLibraryJob}
+CLOUD_HEARTBEAT_LEASE_LOST=79
+MAX_PARALLEL_WORKERS=1
+AGENT_DIR="${dir}/agent"
+JOB_TMP_DIR="${dir}/job"
+mkdir -p "$AGENT_DIR" "$JOB_TMP_DIR"
+job_run_update() { :; }
+run_openclaw_library_preflight() { return 0; }
+print_compact_json_artifact_summary() { :; }
+append_cloud_run_id() { printf 'append-run\\n' >> "${dir}/calls.log"; }
+cloud_run_id_from_result() { printf 'run-1\\n'; }
+cloud_fetch_heartbeat() { printf 'initial-heartbeat\\n' >> "${dir}/calls.log"; return 0; }
+cloud_fetch_heartbeat_all() { printf 'loop-heartbeat\\n' >> "${dir}/calls.log"; return 79; }
+normalize_library_fetch_batch() { return 0; }
+library_fetch_task_count() { printf '1\\n'; }
+start_managed_media_batch() { return 0; }
+patch_current_fetch_plans() { :; }
+set_initial_worker_window_deadline() { :; }
+reset_cloud_refill_window() { :; }
+sync_completed_checkpoints() { :; }
+poll_managed_media_batch() { _managed_media_reaped_this_poll=0; }
+managed_media_batch_running() { return 1; }
+assign_dynamic_fetch_workers() { :; }
+start_pending_library_workers() {
+  if [ "\${WORKER_STARTED:-0}" = "1" ]; then
+    return 0
+  fi
+  (sleep 30) &
+  worker_pid="$!"
+  _worker_entries="$worker_pid:1700000000:shard-0:worker-0"
+  _started_worker_count=1
+  WORKER_STARTED=1
+}
+worker_entry_lane() { printf 'worker-0\\n'; }
+worker_result_covers_shard_tasks() { return 1; }
+worker_progress_mtime_seconds() { printf '0\\n'; }
+worker_no_progress_timeout_seconds() { printf '600\\n'; }
+worker_stall_timeout_seconds() { printf '600\\n'; }
+shard_timeout_seconds_for_file() { printf '3600\\n'; }
+fetch_more_cloud_sources() { printf 'refill\\n' >> "${dir}/calls.log"; return 0; }
+terminate_process_tree() { printf 'terminate|%s|%s|%s\\n' "$1" "$2" "$3" >> "${dir}/calls.log"; kill "$1" 2>/dev/null || true; return 0; }
+cloud_refill_limit() { printf '10\\n'; }
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "fetch-cloud-library" ]; then
+    printf '%s\\n' '{"cloudRunId":"run-1","fetchTasks":[{"id":"task-a"}],"taskOutcomes":[]}'
+    return 0
+  fi
+  command node "$@"
+}
+code=0
+if run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host"; then
+  code=0
+else
+  code="$?"
+fi
+printf 'code=%s\\n' "$code" >> "${dir}/calls.log"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const calls = await readFile(join(dir, "calls.log"), "utf8");
+    assert.match(calls, /initial-heartbeat/);
+    assert.match(calls, /loop-heartbeat/);
+    assert.match(calls, /terminate\|[0-9]+\|TERM\|5/);
+    assert.match(calls, /code=79/);
+    assert.doesNotMatch(calls, /refill/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("assign-fetch-tasks stamps each cloud shard with its validated execution budget", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-shard-budgets-"));
   try {
