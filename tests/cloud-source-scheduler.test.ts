@@ -1923,6 +1923,8 @@ test("leaseCloudFetchTasks reconciles terminal linked cloud worker runs before c
   const runTaskUpdates: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
   const queueUpdates: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
   const runUpdates: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
+  const cloudFetchRunFindManyCalls: Array<Record<string, unknown>> = [];
+  const agentJobRunFindManyCalls: Array<Record<string, unknown>> = [];
   const runs = [
     {
       id: "run_active",
@@ -2040,12 +2042,10 @@ test("leaseCloudFetchTasks reconciles terminal linked cloud worker runs before c
     },
     cloudFetchConfig: { findUnique: async () => null },
     agentJobRun: {
-      findMany: async (args: { where?: { status?: { in?: string[] } } }) => [
-        { id: "job_succeeded", status: "succeeded" },
-        { id: "job_running", status: "running" },
-      ]
-        .filter((job) => args.where?.status?.in == null || args.where.status.in.includes(job.status))
-        .map((job) => ({ id: job.id })),
+      findMany: async (args: Record<string, unknown>) => {
+        agentJobRunFindManyCalls.push(args);
+        return [];
+      },
     },
     cloudFetchQueueItem: {
       updateMany: async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
@@ -2088,16 +2088,28 @@ test("leaseCloudFetchTasks reconciles terminal linked cloud worker runs before c
       update: async () => ({}),
     },
     cloudFetchRun: {
-      findMany: async (args: { where?: { status?: string; agentJobRunId?: { in?: string[] } } }) => runs
+      findMany: async (args: {
+        where?: {
+          status?: string;
+          agentJobRun?: {
+            is?: {
+              status?: { in?: string[] };
+            };
+          };
+        };
+      }) => {
+        cloudFetchRunFindManyCalls.push(args as Record<string, unknown>);
+        return runs
         .filter((run) =>
           (args.where?.status == null || run.status === args.where.status) &&
-          (args.where?.agentJobRunId?.in == null || (
-            run.agentJobRunId != null &&
-            args.where.agentJobRunId.in.includes(run.agentJobRunId)
+          (args.where?.agentJobRun?.is?.status?.in == null || (
+            run.agentJobRunId === "job_succeeded" &&
+            args.where.agentJobRun.is.status.in.includes("succeeded")
           ))
         )
         .sort((left, right) => left.id.localeCompare(right.id))
-        .map((run) => ({ id: run.id, agentJobRunId: run.agentJobRunId })),
+        .map((run) => ({ id: run.id }));
+      },
       create: async (args: { data: Record<string, unknown> }) => ({
         id: "run_new_terminal_reconciled",
         ...args.data,
@@ -2232,6 +2244,23 @@ test("leaseCloudFetchTasks reconciles terminal linked cloud worker runs before c
     cloudSourceTaskIds: ["task_terminal_live"],
     query: lockQueries[0]?.query,
   });
+  assert.deepEqual(agentJobRunFindManyCalls, []);
+  assert.deepEqual(cloudFetchRunFindManyCalls, [
+    {
+      where: {
+        status: "RUNNING",
+        agentJobRun: {
+          is: {
+            status: {
+              in: ["succeeded", "failed", "timed_out", "killed", "replaced", "stale"],
+            },
+          },
+        },
+      },
+      orderBy: [{ id: "asc" }],
+      select: { id: true },
+    },
+  ]);
   assert.match(lockQueries[0]!.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
   assert.equal(runTasks.find((task) => task.cloudSourceTaskId === "task_terminal_done")?.status, "SUCCEEDED");
   assert.equal(runTasks.find((task) => task.cloudSourceTaskId === "task_active_live")?.status, "RUNNING");

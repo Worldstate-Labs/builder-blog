@@ -25,9 +25,6 @@ type CloudFetchRunAggregatePrisma = {
 
 type CloudFetchRunLifecyclePrisma = CloudFetchRunAggregatePrisma & {
   $queryRawUnsafe(query: string, ...values: unknown[]): Promise<LockedCloudFetchRunTaskRow[]>;
-  agentJobRun: {
-    findMany(args: unknown): Promise<Array<{ id: string }>>;
-  };
   cloudFetchRun: CloudFetchRunAggregatePrisma["cloudFetchRun"] & {
     findMany(args: unknown): Promise<Array<{ id: string }>>;
   };
@@ -118,23 +115,17 @@ export async function reconcileTerminalCloudWorkerRuns(params: {
     finalizedTasks: 0,
     requeuedQueueItems: 0,
   };
-  const agentJobRun = (params.prisma as Partial<CloudFetchRunLifecyclePrisma>).agentJobRun;
   const cloudFetchRun = (params.prisma as Partial<CloudFetchRunLifecyclePrisma>).cloudFetchRun;
-  if (!agentJobRun || !cloudFetchRun) return emptyResult;
-
-  const terminalJobs = await agentJobRun.findMany({
-    where: {
-      status: { in: [...TERMINAL_CLOUD_WORKER_JOB_STATUSES] },
-    },
-    select: { id: true },
-  });
-  const terminalJobIds = terminalJobs.map((job) => job.id);
-  if (terminalJobIds.length === 0) return emptyResult;
+  if (!cloudFetchRun || typeof cloudFetchRun.findMany !== "function") return emptyResult;
 
   const runs = await cloudFetchRun.findMany({
     where: {
       status: CloudFetchRunStatus.RUNNING,
-      agentJobRunId: { in: terminalJobIds },
+      agentJobRun: {
+        is: {
+          status: { in: [...TERMINAL_CLOUD_WORKER_JOB_STATUSES] },
+        },
+      },
     },
     orderBy: [{ id: "asc" }],
     select: { id: true },
