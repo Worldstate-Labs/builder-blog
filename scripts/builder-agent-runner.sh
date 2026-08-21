@@ -53,6 +53,7 @@ if [ "${BUILDER_BLOG_JOB_TMP_IS_RUN_DIR:-0}" = "1" ] && [ -n "${BUILDER_BLOG_JOB
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
 JOB_UPDATE_RESET_FENCED=78
+CLOUD_HEARTBEAT_LEASE_LOST=79
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
 DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
 DEFAULT_CODEX_REASONING_EFFORT="medium"
@@ -5281,9 +5282,72 @@ flush_remaining_library_results() {
 
 cloud_fetch_heartbeat() {
   _cfh_run_id="${1:-}"
+  _cfh_lease_lost_code="${CLOUD_HEARTBEAT_LEASE_LOST:-79}"
   [ -n "$_cfh_run_id" ] || return 0
   [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-}" = "1" ] && return 0
-  node "$AGENT_DIR/builder-digest.mjs" heartbeat-cloud-fetch --cloud-run-id "$_cfh_run_id" >/dev/null 2>&1 || true
+  _cfh_tmp_root="${JOB_TMP_DIR:-${TMPDIR:-/tmp}}"
+  mkdir -p "$_cfh_tmp_root"
+  _cfh_stdout="$(mktemp "$_cfh_tmp_root/cloud-heartbeat.stdout.XXXXXX")"
+  _cfh_stderr="$(mktemp "$_cfh_tmp_root/cloud-heartbeat.stderr.XXXXXX")"
+  _cfh_code=0
+  set +e
+  node "$AGENT_DIR/builder-digest.mjs" heartbeat-cloud-fetch --cloud-run-id "$_cfh_run_id" >"$_cfh_stdout" 2>"$_cfh_stderr"
+  _cfh_code="$?"
+  set -e
+  _cfh_diagnostic="$(
+    grep '^FOLLOWBRIEF_ERROR ' "$_cfh_stderr" 2>/dev/null | tail -n 1 | cut -c 1-300
+  )"
+  _cfh_lost_reason="$(
+    node - "$_cfh_stderr" <<'NODE' 2>/dev/null || true
+const fs = require("fs");
+const file = process.argv[2];
+const lostLeaseReasons = new Set(["reset_fenced", "cloud_run_not_running", "cloud_lease_expired"]);
+try {
+  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+    if (!line.startsWith("FOLLOWBRIEF_ERROR ")) continue;
+    const payload = JSON.parse(line.slice("FOLLOWBRIEF_ERROR ".length));
+    if (payload?.retryable === false && lostLeaseReasons.has(String(payload?.responseCode || ""))) {
+      process.stdout.write(String(payload.responseCode));
+      process.exit(0);
+    }
+  }
+} catch {}
+process.exit(0);
+NODE
+  )"
+  if [ "$_cfh_code" -eq 0 ]; then
+    CLOUD_HEARTBEAT_STATE="success"
+    CLOUD_HEARTBEAT_REASON=""
+    CLOUD_HEARTBEAT_DIAGNOSTIC=""
+    CLOUD_HEARTBEAT_PAUSED=0
+    CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=0
+    CLOUD_HEARTBEAT_LOST_LEASE=0
+    rm -f "$_cfh_stdout" "$_cfh_stderr"
+    return 0
+  fi
+  if [ -n "$_cfh_lost_reason" ]; then
+    CLOUD_HEARTBEAT_STATE="lost_lease"
+    CLOUD_HEARTBEAT_REASON="$_cfh_lost_reason"
+    CLOUD_HEARTBEAT_DIAGNOSTIC="$_cfh_diagnostic"
+    CLOUD_HEARTBEAT_PAUSED=1
+    CLOUD_HEARTBEAT_LOST_LEASE=1
+    rm -f "$_cfh_stdout" "$_cfh_stderr"
+    return "$_cfh_lease_lost_code"
+  fi
+  CLOUD_HEARTBEAT_STATE="retryable"
+  CLOUD_HEARTBEAT_REASON=""
+  CLOUD_HEARTBEAT_DIAGNOSTIC="$_cfh_diagnostic"
+  CLOUD_HEARTBEAT_LOST_LEASE=0
+  CLOUD_HEARTBEAT_RETRYABLE_ROUNDS="${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}"
+  case "$CLOUD_HEARTBEAT_RETRYABLE_ROUNDS" in ''|*[!0-9]*) CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=0 ;; esac
+  CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=$(( CLOUD_HEARTBEAT_RETRYABLE_ROUNDS + 1 ))
+  if [ "$CLOUD_HEARTBEAT_RETRYABLE_ROUNDS" -ge 2 ]; then
+    CLOUD_HEARTBEAT_PAUSED=1
+  else
+    CLOUD_HEARTBEAT_PAUSED=0
+  fi
+  rm -f "$_cfh_stdout" "$_cfh_stderr"
+  return 0
 }
 
 append_cloud_run_id() {
@@ -5333,6 +5397,8 @@ assign_dynamic_fetch_workers() {
     ''|*[!0-9]*) _adfw_slots=0 ;;
   esac
   [ "$_adfw_slots" -gt 0 ] || return 0
+  [ "${CLOUD_HEARTBEAT_PAUSED:-0}" = "1" ] && return 0
+  [ "${CLOUD_HEARTBEAT_LOST_LEASE:-0}" = "1" ] && return 0
   _dynamic_assignment_count=$(( _dynamic_assignment_count + 1 ))
   _adfw_out="$JOB_TMP_DIR/assign-fetch-tasks-$_dynamic_assignment_count.json"
   _adfw_worker_ids_file="$JOB_TMP_DIR/available-worker-ids-$_dynamic_assignment_count.txt"
@@ -5445,6 +5511,8 @@ cloud_refill_limit() {
 
 fetch_more_cloud_sources() {
   [ "$_sync_command" = "sync-cloud-builders" ] || return 0
+  [ "${CLOUD_HEARTBEAT_PAUSED:-0}" = "1" ] && return 0
+  [ "${CLOUD_HEARTBEAT_LOST_LEASE:-0}" = "1" ] && return 0
   [ "${_cloud_refill_exhausted:-0}" -eq 0 ] || return 0
   [ "$_cloud_refill_count" -lt "$_cloud_refill_limit" ] || {
     _cloud_refill_exhausted=1
@@ -5486,7 +5554,12 @@ fetch_more_cloud_sources() {
   cat "$_fmcs_file"
   _fmcs_run_id="$(cloud_run_id_from_result "$_fmcs_file")"
   append_cloud_run_id "$_fmcs_run_id"
-  cloud_fetch_heartbeat "$_fmcs_run_id"
+  if ! cloud_fetch_heartbeat "$_fmcs_run_id"; then
+    _fmcs_heartbeat_code="$?"
+    if [ "$_fmcs_heartbeat_code" -eq "$CLOUD_HEARTBEAT_LEASE_LOST" ]; then
+      return "$_fmcs_heartbeat_code"
+    fi
+  fi
   if normalize_library_fetch_batch "$_fmcs_file" "refill-$_cloud_refill_count"; then
     _fmcs_normalize_code=0
   else
@@ -5978,8 +6051,15 @@ run_library_job() {
   _cloud_refill_count=0
   _cloud_refill_limit="$(cloud_refill_limit)"
   _cloud_refill_exhausted=0
+  CLOUD_HEARTBEAT_STATE="success"
+  CLOUD_HEARTBEAT_REASON=""
+  CLOUD_HEARTBEAT_DIAGNOSTIC=""
+  CLOUD_HEARTBEAT_PAUSED=0
+  CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=0
+  CLOUD_HEARTBEAT_LOST_LEASE=0
   _runtime_circuit_reason=""
   _runtime_circuit_provider_error=""
+  _cloud_lease_lost=0
   _cloud_persistent_host=0
   if [ "$_sync_command" = "sync-cloud-builders" ] && [ "${BUILDER_BLOG_CLOUD_PERSISTENT_HOST:-0}" = "1" ]; then
     _cloud_persistent_host=1
@@ -6026,7 +6106,12 @@ run_library_job() {
     _cloud_run_id="$(cloud_run_id_from_result "$_result_file")"
     if [ -n "$_cloud_run_id" ]; then
       append_cloud_run_id "$_cloud_run_id"
-      cloud_fetch_heartbeat "$_cloud_run_id"
+      if ! cloud_fetch_heartbeat "$_cloud_run_id"; then
+        _cloud_heartbeat_code="$?"
+        if [ "$_cloud_heartbeat_code" -eq "$CLOUD_HEARTBEAT_LEASE_LOST" ]; then
+          return "$_cloud_heartbeat_code"
+        fi
+      fi
     fi
   fi
   SYNC_BUILDERS_COMMAND="$_sync_command"
@@ -6409,7 +6494,13 @@ run_library_job() {
         ''|*[!0-9]*) _cloud_heartbeat_interval=60 ;;
       esac
       if [ $(( _now - _last_cloud_heartbeat )) -ge "$_cloud_heartbeat_interval" ]; then
-        cloud_fetch_heartbeat_all
+        if ! cloud_fetch_heartbeat_all; then
+          _cloud_heartbeat_code="$?"
+          if [ "$_cloud_heartbeat_code" -eq "$CLOUD_HEARTBEAT_LEASE_LOST" ]; then
+            _cloud_lease_lost=1
+            break
+          fi
+        fi
         _last_cloud_heartbeat="$_now"
       fi
     fi
@@ -6429,6 +6520,21 @@ run_library_job() {
     sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
     sleep 5
   done
+  if [ "$_cloud_lease_lost" -eq 1 ]; then
+    if managed_media_batch_running; then
+      terminate_process_tree "$_managed_media_pid" TERM 5 || terminate_process_tree "$_managed_media_pid" KILL 3 || true
+      wait "$_managed_media_pid" 2>/dev/null || true
+      _managed_media_active=0
+    fi
+    for _entry in ${_worker_entries:-}; do
+      _pid="${_entry%%:*}"
+      if kill -0 "$_pid" 2>/dev/null; then
+        terminate_process_tree "$_pid" TERM 5 || terminate_process_tree "$_pid" KILL 3 || true
+      fi
+      wait "$_pid" 2>/dev/null || true
+    done
+    return "$CLOUD_HEARTBEAT_LEASE_LOST"
+  fi
   if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
     _circuit_terminalization_ok=1
     if ! finalize_model_incompatible_workers; then

@@ -86,6 +86,177 @@ assert_retryable 'HTTP POST failed with cloud_run_not_running but no structured 
   }
 });
 
+test("cloud heartbeat success resets a prior retryable pause after two failed rounds", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const heartbeat = shellFunction(runner, "cloud_fetch_heartbeat");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-heartbeat-reset-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+AGENT_DIR="${dir}/agent"
+mkdir -p "$AGENT_DIR"
+${heartbeat}
+_heartbeat_round=0
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "heartbeat-cloud-fetch" ]; then
+    _heartbeat_round=$(( _heartbeat_round + 1 ))
+    case "$_heartbeat_round" in
+      1|2)
+        printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":503,"syncCode":"http_status","responseCode":"lease_busy","retryable":true}' >&2
+        return 17
+        ;;
+      3)
+        printf '%s\\n' '{"status":"ok"}'
+        return 0
+        ;;
+    esac
+  fi
+  command node "$@"
+}
+cloud_fetch_heartbeat run-1 || exit 31
+printf 'after1:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
+cloud_fetch_heartbeat run-1 || exit 32
+printf 'after2:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
+cloud_fetch_heartbeat run-1 || exit 33
+printf 'after3:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const lines = (await readFile(join(dir, "state.log"), "utf8")).trim().split("\n");
+    assert.equal(
+      lines[0],
+      'after1:retryable:0:1:FOLLOWBRIEF_ERROR {"type":"http_sync","status":503,"syncCode":"http_status","responseCode":"lease_busy","retryable":true}',
+    );
+    assert.equal(
+      lines[1],
+      'after2:retryable:1:2:FOLLOWBRIEF_ERROR {"type":"http_sync","status":503,"syncCode":"http_status","responseCode":"lease_busy","retryable":true}',
+    );
+    assert.equal(lines[2], "after3:success:0:0:");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud heartbeat immediately marks lost lease for structured nonretryable ownership conflicts", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const heartbeat = shellFunction(runner, "cloud_fetch_heartbeat");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-heartbeat-lost-lease-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+AGENT_DIR="${dir}/agent"
+mkdir -p "$AGENT_DIR"
+${heartbeat}
+for reason in reset_fenced cloud_run_not_running cloud_lease_expired; do
+  node() {
+    if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "heartbeat-cloud-fetch" ]; then
+      printf 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"%s","retryable":false}\\n' "$reason" >&2
+      return 19
+    fi
+    command node "$@"
+  }
+  code=0
+  if cloud_fetch_heartbeat run-1; then
+    code=0
+  else
+    code="$?"
+  fi
+  printf '%s|%s|%s|%s|%s\\n' "$reason" "$code" "\${CLOUD_HEARTBEAT_STATE:-}" "\${CLOUD_HEARTBEAT_LOST_LEASE:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
+done
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const lines = (await readFile(join(dir, "state.log"), "utf8")).trim().split("\n");
+    assert.deepEqual(lines, [
+      'reset_fenced|79|lost_lease|1|FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"reset_fenced","retryable":false}',
+      'cloud_run_not_running|79|lost_lease|1|FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_run_not_running","retryable":false}',
+      'cloud_lease_expired|79|lost_lease|1|FOLLOWBRIEF_ERROR {"type":"http_sync","status":409,"syncCode":"http_status","responseCode":"cloud_lease_expired","retryable":false}',
+    ]);
+    assert.doesNotMatch(lines.join("\n"), /token=|Authorization:|https?:\/\//);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud heartbeat pause prevents new dynamic assignment and refill", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const assignDynamic = shellFunction(runner, "assign_dynamic_fetch_workers");
+  const refillStart = runner.indexOf("fetch_more_cloud_sources() {");
+  const refillEnd = runner.indexOf("\npatch_current_fetch_plans() {", refillStart);
+  assert.notEqual(refillStart, -1);
+  assert.notEqual(refillEnd, -1);
+  const refill = runner.slice(refillStart, refillEnd);
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-heartbeat-pause-gates-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+AGENT_DIR="${dir}/agent"
+JOB_TMP_DIR="${dir}"
+mkdir -p "$AGENT_DIR"
+${assignDynamic}
+${refill}
+write_available_worker_ids() { printf 'worker-0\\n' > "$1"; }
+write_active_fetch_group_keys() { :; }
+job_run_update() { :; }
+wait_for_cloud_runtime_ready() { printf 'runtime-check\\n' >> "${dir}/calls.log"; return 0; }
+cloud_fetch_source_limit() { printf '10\\n'; }
+append_cloud_run_id() { printf 'append-run\\n' >> "${dir}/calls.log"; }
+cloud_fetch_heartbeat() { printf 'heartbeat\\n' >> "${dir}/calls.log"; }
+cloud_run_id_from_result() { printf 'run-1\\n'; }
+library_fetch_task_count() { printf '1\\n'; }
+normalize_library_fetch_batch() { printf 'normalize\\n' >> "${dir}/calls.log"; }
+sync_cloud_terminal_outcomes() { printf 'terminal-sync\\n' >> "${dir}/calls.log"; }
+start_managed_media_batch() { printf 'managed-media\\n' >> "${dir}/calls.log"; }
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ]; then
+    printf '%s\\n' "$2" >> "${dir}/calls.log"
+    exit 91
+  fi
+  command node "$@"
+}
+_sync_command=sync-cloud-builders
+_result_file="${dir}/result.json"
+_shards_dir="${dir}/shards"
+_assigned_fetch_task_ids_file="${dir}/assigned.txt"
+_active_fetch_group_keys_file="${dir}/groups.txt"
+_dynamic_assignment_count=0
+_dynamic_queue_drained=1
+_cloud_refill_exhausted=0
+_cloud_refill_count=0
+_cloud_refill_limit=10
+_cloud_refill_stop_at=9999999999
+CLOUD_HEARTBEAT_PAUSED=1
+assign_dynamic_fetch_workers 2
+fetch_more_cloud_sources
+printf 'assignments=%s\\n' "\${_dynamic_assignment_count:-unset}" >> "${dir}/calls.log"
+printf 'refills=%s\\n' "\${_cloud_refill_count:-unset}" >> "${dir}/calls.log"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const calls = await readFile(join(dir, "calls.log"), "utf8");
+    assert.doesNotMatch(calls, /assign-fetch-tasks|fetch-cloud-library|runtime-check/);
+    assert.match(calls, /assignments=0/);
+    assert.match(calls, /refills=0/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("assign-fetch-tasks stamps each cloud shard with its validated execution budget", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-shard-budgets-"));
   try {
