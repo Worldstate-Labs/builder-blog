@@ -1277,6 +1277,12 @@ for (const rawLine of text.split(/\r?\n/)) {
 NODE
 }
 
+cleanup_runtime_probe_output() {
+  _crpo_file="${1:-${RUNTIME_PROBE_OUTPUT_FILE:-}}"
+  [ -n "$_crpo_file" ] || return 0
+  rm -f -- "$_crpo_file" 2>/dev/null || true
+}
+
 runtime_probe_output_is_stub_not_installed() {
   _rpoisni_file="${1:-}"
   [ -r "$_rpoisni_file" ] || return 1
@@ -1337,6 +1343,7 @@ probe_selected_runtime_executable() {
       wait "$_psre_pid" 2>/dev/null || true
       RUNTIME_PROBE_CLASSIFICATION="runtime_version_timeout"
       RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' timed out after ${_psre_timeout}s during --version."
+      cleanup_runtime_probe_output "$_psre_output"
       return 124
     fi
     sleep 1
@@ -1355,15 +1362,18 @@ probe_selected_runtime_executable() {
       else
         RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' is a placeholder install without a working native binary."
       fi
+      cleanup_runtime_probe_output "$_psre_output"
       return 78
     fi
     RUNTIME_PROBE_CLASSIFICATION="runtime_version_failed"
     RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' failed its --version check."
+    cleanup_runtime_probe_output "$_psre_output"
     return 78
   fi
   if [ -z "$_psre_summary" ]; then
     RUNTIME_PROBE_CLASSIFICATION="runtime_version_empty"
     RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' returned no version output."
+    cleanup_runtime_probe_output "$_psre_output"
     return 78
   fi
 
@@ -1372,6 +1382,7 @@ probe_selected_runtime_executable() {
   export BUILDER_BLOG_RUNTIME BUILDER_BLOG_RUNTIME_VERSION
   RUNTIME_PROBE_CLASSIFICATION="runtime_ready"
   RUNTIME_PROBE_DIAGNOSTIC="$_psre_summary"
+  cleanup_runtime_probe_output "$_psre_output"
 }
 
 run_runtime_smoke_check() {

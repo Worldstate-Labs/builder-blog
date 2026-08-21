@@ -42,6 +42,7 @@ JOB_TMP_DIR="${join(tempDir, "job")}"
 mkdir -p "$JOB_TMP_DIR"
 PATH="${probePath}"
 ${shellFunction(runner, "runtime_probe_output_summary")}
+${shellFunction(runner, "cleanup_runtime_probe_output")}
 ${shellFunction(runner, "runtime_probe_output_is_stub_not_installed")}
 ${shellFunction(runner, "normalize_runtime")}
 ${shellFunction(runner, "resolve_runtime_probe_candidate")}
@@ -57,6 +58,12 @@ printf 'probe_code=%s\\n' "$probe_code"
 printf 'classification=%s\\n' "\${RUNTIME_PROBE_CLASSIFICATION:-}"
 printf 'diagnostic=%s\\n' "\${RUNTIME_PROBE_DIAGNOSTIC:-}"
 printf 'version=%s\\n' "\${BUILDER_BLOG_RUNTIME_VERSION:-}"
+printf 'output_file=%s\\n' "\${RUNTIME_PROBE_OUTPUT_FILE:-}"
+if [ -n "\${RUNTIME_PROBE_OUTPUT_FILE:-}" ] && [ -e "\${RUNTIME_PROBE_OUTPUT_FILE:-}" ]; then
+  printf 'output_exists=yes\\n'
+else
+  printf 'output_exists=no\\n'
+fi
 `,
     "utf8",
   );
@@ -84,6 +91,7 @@ printf 'version=%s\\n' "\${BUILDER_BLOG_RUNTIME_VERSION:-}"
       ...result,
       classification: values.get("classification") ?? "",
       diagnostic: values.get("diagnostic") ?? "",
+      outputExists: values.get("output_exists") ?? "",
       probeCode: Number(values.get("probe_code") ?? "-1"),
       version: values.get("version") ?? "",
     };
@@ -259,6 +267,7 @@ exit 0
   assert.equal(result.probeCode, 78, `${result.stderr}\n${result.stdout}`);
   assert.equal(result.classification, "runtime_stub_not_installed");
   assert.match(result.diagnostic, /claude native binary not installed/i);
+  assert.equal(result.outputExists, "no", `${result.stderr}\n${result.stdout}`);
 });
 
 test("runtime executable probe fails closed with a sanitized diagnostic when --version exits nonzero", () => {
@@ -278,6 +287,7 @@ exit 0
   assert.match(result.diagnostic, /failed its --version check/i);
   assert.doesNotMatch(result.diagnostic, /SECRET_TOKEN=topsecret/);
   assert.doesNotMatch(result.diagnostic, /runtime exploded/);
+  assert.equal(result.outputExists, "no", `${result.stderr}\n${result.stdout}`);
 });
 
 test("runtime executable probe fails closed when runtime version probing times out", () => {
@@ -294,6 +304,7 @@ exit 0
   assert.equal(result.probeCode, 124, `${result.stderr}\n${result.stdout}`);
   assert.equal(result.classification, "runtime_version_timeout");
   assert.match(result.diagnostic, /timed out after 2s/i);
+  assert.equal(result.outputExists, "no", `${result.stderr}\n${result.stdout}`);
 });
 
 test("runtime executable probe fails closed when --version succeeds with empty output", () => {
@@ -310,6 +321,7 @@ exit 0
   assert.equal(result.probeCode, 78, `${result.stderr}\n${result.stdout}`);
   assert.equal(result.classification, "runtime_version_empty");
   assert.match(result.diagnostic, /returned no version output/i);
+  assert.equal(result.outputExists, "no", `${result.stderr}\n${result.stdout}`);
 });
 
 test("runtime executable probe accepts a healthy semver-style version response", () => {
@@ -327,6 +339,7 @@ exit 0
   assert.equal(result.probeCode, 0, `${result.stderr}\n${result.stdout}`);
   assert.equal(result.classification, "runtime_ready");
   assert.equal(result.version, "1.2.3-beta.4");
+  assert.equal(result.outputExists, "no", `${result.stderr}\n${result.stdout}`);
 });
 
 test("runtime smoke check probes the selected executable before launching the smoke prompt", () => {
