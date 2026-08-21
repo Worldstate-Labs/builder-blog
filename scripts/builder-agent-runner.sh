@@ -2656,6 +2656,60 @@ worker_log_has_runtime_auth_failure() {
   worker_log_has_failed_turn "$_wlhrf_log"
 }
 
+worker_log_has_runtime_installation_failure() {
+  _wlhrif_log="${1:-}"
+  [ -r "$_wlhrif_log" ] || return 1
+  node - "$_wlhrif_log" <<'NODE'
+const fs = require("fs");
+const text = fs.readFileSync(process.argv[2], "utf8");
+const processLevelPatterns = [
+  /claude native binary not installed/i,
+  /Selected runtime '[^']+' is not on PATH/i,
+  /\b(?:codex|claude|openclaw)\b.*(?:command not found|not found|No such file or directory)/i,
+  /exec: .*?(?:codex|claude|openclaw).*? not found/i,
+  /spawn (?:codex|claude|openclaw) ENOENT/i,
+];
+const contentEventTypes = new Set(["agent_message", "command_execution"]);
+for (const rawLine of text.split(/\r?\n/)) {
+  const line = String(rawLine || "");
+  if (!line.trim()) continue;
+  let event = null;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    if (processLevelPatterns.some((pattern) => pattern.test(line))) process.exit(0);
+    continue;
+  }
+  if (event?.type === "followbrief_worker_event" && event?.reason === "runtime_installation_failed") {
+    process.exit(0);
+  }
+  const itemType = typeof event?.item?.type === "string" ? event.item.type : null;
+  const eventType = typeof event?.type === "string" ? event.type : null;
+  if (contentEventTypes.has(itemType || "") || contentEventTypes.has(eventType || "")) continue;
+  if (eventType !== "turn.failed" && eventType !== "error") continue;
+  const payload = event?.error ?? event?.message ?? event;
+  if (processLevelPatterns.some((pattern) => pattern.test(JSON.stringify(payload)))) process.exit(0);
+}
+process.exit(1);
+NODE
+}
+
+record_worker_runtime_installation_failure() {
+  _wrrif_name="${1:-}"
+  _wrrif_lane="${2:-}"
+  _wrrif_worker_log="$_results_dir/$_wrrif_name-worker.log"
+  _wrrif_agent_log="$_results_dir/$_wrrif_name-agent-output.log"
+  grep -q '"reason":"runtime_installation_failed"' "$_wrrif_worker_log" 2>/dev/null && return 0
+  if worker_log_has_runtime_installation_failure "$_wrrif_worker_log" || worker_log_has_runtime_installation_failure "$_wrrif_agent_log"; then
+    write_worker_control_event \
+      "$_wrrif_worker_log" \
+      "runtime_installation_failed" \
+      "$_wrrif_lane" \
+      "$_wrrif_name" \
+      "The selected agent runtime executable is missing or not fully installed."
+  fi
+}
+
 record_worker_runtime_auth_failure() {
   _wrraf_name="${1:-}"
   _wrraf_lane="${2:-}"
@@ -2705,15 +2759,17 @@ finalize_dead_library_worker() {
   _fdlw_worker_log="$_results_dir/$_fdlw_name-worker.log"
   _fdlw_agent_log="$_results_dir/$_fdlw_name-agent-output.log"
   _fdlw_exit_file="$_results_dir/$_fdlw_name-worker-exit-code"
+  FINALIZE_DEAD_LIBRARY_WORKER_REASON=""
+  FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR=""
   [ -e "$_fdlw_shard" ] || return 0
   if worker_result_covers_shard_tasks "$_fdlw_result" "$_fdlw_shard"; then
     return 0
   fi
 
-  _fdlw_model_incompatible=0
+  _fdlw_trusted_runtime_reason=""
   if worker_log_has_runtime_model_incompatibility "$_fdlw_worker_log" || \
      worker_log_has_runtime_model_incompatibility "$_fdlw_agent_log"; then
-    _fdlw_model_incompatible=1
+    _fdlw_trusted_runtime_reason="runtime_model_incompatible"
     if ! grep -q '"reason":"runtime_model_incompatible"' "$_fdlw_worker_log" 2>/dev/null; then
       write_worker_control_event \
         "$_fdlw_worker_log" \
@@ -2723,8 +2779,16 @@ finalize_dead_library_worker() {
         "The installed Codex could not run the selected model."
     fi
   else
-    record_worker_runtime_auth_failure "$_fdlw_name" "$_fdlw_lane"
-    if ! grep -q '"type":"followbrief_worker_event"' "$_fdlw_worker_log" 2>/dev/null; then
+    record_worker_runtime_installation_failure "$_fdlw_name" "$_fdlw_lane"
+    if grep -q '"reason":"runtime_installation_failed"' "$_fdlw_worker_log" 2>/dev/null; then
+      _fdlw_trusted_runtime_reason="runtime_installation_failed"
+    else
+      record_worker_runtime_auth_failure "$_fdlw_name" "$_fdlw_lane"
+      if grep -q '"reason":"runtime_auth_failed"' "$_fdlw_worker_log" 2>/dev/null; then
+        _fdlw_trusted_runtime_reason="runtime_auth_failed"
+      fi
+    fi
+    if [ -z "$_fdlw_trusted_runtime_reason" ] && ! grep -q '"type":"followbrief_worker_event"' "$_fdlw_worker_log" 2>/dev/null; then
       _fdlw_exit_code="unknown"
       if [ -r "$_fdlw_exit_file" ]; then
         _fdlw_exit_code="$(tr -cd '0-9' < "$_fdlw_exit_file")"
@@ -2746,52 +2810,80 @@ finalize_dead_library_worker() {
     echo "Failed to finalize dead worker $_fdlw_lane ($_fdlw_name)." >&2
     return 1
   fi
-  if [ "$_fdlw_model_incompatible" -eq 1 ]; then
+  if [ -n "$_fdlw_trusted_runtime_reason" ]; then
+    FINALIZE_DEAD_LIBRARY_WORKER_REASON="$_fdlw_trusted_runtime_reason"
+    FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR="$(
+      { tail -n 12 "$_fdlw_agent_log" 2>/dev/null || tail -n 12 "$_fdlw_worker_log" 2>/dev/null || true; } | \
+        tr '\n' ' ' | cut -c 1-1200
+    )"
     return 78
   fi
   return 0
 }
 
-finalize_model_incompatible_workers() {
-  _fmiw_failures=0
-  for _fmiw_entry in ${_worker_entries:-}; do
-    _fmiw_pid="${_fmiw_entry%%:*}"
-    _fmiw_rest="${_fmiw_entry#*:}"
-    _fmiw_after_started="${_fmiw_rest#*:}"
-    _fmiw_name="${_fmiw_after_started%%:*}"
-    _fmiw_lane="$(worker_entry_lane "$_fmiw_entry")"
-    _fmiw_shard="$_shards_dir/$_fmiw_name.json"
-    _fmiw_result="$_results_dir/$_fmiw_name-result.json"
-    [ -e "$_fmiw_shard" ] || continue
-    if worker_result_covers_shard_tasks "$_fmiw_result" "$_fmiw_shard"; then
+finalize_runtime_circuit_workers() {
+  _frcw_reason="${1:-}"
+  case "$_frcw_reason" in
+    runtime_installation_failed)
+      _frcw_message="The selected agent runtime executable is missing or not fully installed."
+      _frcw_label="installation-failed"
+      ;;
+    runtime_auth_failed)
+      _frcw_message="The selected agent runtime could not refresh its authentication token."
+      _frcw_label="auth-failed"
+      ;;
+    runtime_model_incompatible)
+      _frcw_message="The installed Codex could not continue with the selected model."
+      _frcw_label="incompatible"
+      ;;
+    *)
+      echo "Refusing to terminalize workers for untrusted runtime circuit reason $_frcw_reason." >&2
+      return 1
+      ;;
+  esac
+  _frcw_failures=0
+  for _frcw_entry in ${_worker_entries:-}; do
+    _frcw_pid="${_frcw_entry%%:*}"
+    _frcw_rest="${_frcw_entry#*:}"
+    _frcw_after_started="${_frcw_rest#*:}"
+    _frcw_name="${_frcw_after_started%%:*}"
+    _frcw_lane="$(worker_entry_lane "$_frcw_entry")"
+    _frcw_shard="$_shards_dir/$_frcw_name.json"
+    _frcw_result="$_results_dir/$_frcw_name-result.json"
+    [ -e "$_frcw_shard" ] || continue
+    if worker_result_covers_shard_tasks "$_frcw_result" "$_frcw_shard"; then
       continue
     fi
-    if kill -0 "$_fmiw_pid" 2>/dev/null; then
-      terminate_process_tree "$_fmiw_pid" TERM 5 || terminate_process_tree "$_fmiw_pid" KILL 3 || true
-      if kill -0 "$_fmiw_pid" 2>/dev/null; then
-        echo "Could not stop incompatible worker $_fmiw_lane ($_fmiw_name)." >&2
-        _fmiw_failures=$(( _fmiw_failures + 1 ))
+    if kill -0 "$_frcw_pid" 2>/dev/null; then
+      terminate_process_tree "$_frcw_pid" TERM 5 || terminate_process_tree "$_frcw_pid" KILL 3 || true
+      if kill -0 "$_frcw_pid" 2>/dev/null; then
+        echo "Could not stop $_frcw_label worker $_frcw_lane ($_frcw_name)." >&2
+        _frcw_failures=$(( _frcw_failures + 1 ))
         continue
       fi
     fi
-    wait "$_fmiw_pid" 2>/dev/null || true
-    if worker_result_covers_shard_tasks "$_fmiw_result" "$_fmiw_shard"; then
+    wait "$_frcw_pid" 2>/dev/null || true
+    if worker_result_covers_shard_tasks "$_frcw_result" "$_frcw_shard"; then
       continue
     fi
     write_worker_control_event \
-      "$_results_dir/$_fmiw_name-worker.log" \
-      "runtime_model_incompatible" \
-      "$_fmiw_lane" \
-      "$_fmiw_name" \
-      "The installed Codex could not continue with the selected model."
-    _fmiw_finalize_code=0
-    finalize_dead_library_worker "$_fmiw_name" "$_fmiw_lane" || _fmiw_finalize_code="$?"
-    case "$_fmiw_finalize_code" in
+      "$_results_dir/$_frcw_name-worker.log" \
+      "$_frcw_reason" \
+      "$_frcw_lane" \
+      "$_frcw_name" \
+      "$_frcw_message"
+    _frcw_finalize_code=0
+    finalize_dead_library_worker "$_frcw_name" "$_frcw_lane" || _frcw_finalize_code="$?"
+    case "$_frcw_finalize_code" in
       0|78) ;;
-      *) _fmiw_failures=$(( _fmiw_failures + 1 )) ;;
+      *) _frcw_failures=$(( _frcw_failures + 1 )) ;;
     esac
   done
-  [ "$_fmiw_failures" -eq 0 ]
+  [ "$_frcw_failures" -eq 0 ]
+}
+
+finalize_model_incompatible_workers() {
+  finalize_runtime_circuit_workers "runtime_model_incompatible"
 }
 
 worker_log_has_backgrounded_tool() {
@@ -6425,19 +6517,20 @@ run_library_job() {
         _dead_worker_code="$?"
         set -e
         if [ "$_dead_worker_code" -eq 78 ]; then
-          _runtime_circuit_reason="runtime_model_incompatible"
-          _runtime_circuit_provider_error="$(
-            { tail -n 12 "$_results_dir/$_name-agent-output.log" 2>/dev/null || \
-              tail -n 12 "$_results_dir/$_name-worker.log" 2>/dev/null || true; } | \
-              tr '\n' ' ' | cut -c 1-1200
-          )"
-          break
+          _runtime_circuit_reason="${FINALIZE_DEAD_LIBRARY_WORKER_REASON:-}"
+          _runtime_circuit_provider_error="${FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR:-}"
+          case "$_runtime_circuit_reason" in
+            runtime_installation_failed|runtime_auth_failed|runtime_model_incompatible) break ;;
+            *) _runtime_circuit_reason="" ;;
+          esac
         fi
       fi
     done
-    if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
-      break
-    fi
+    case "$_runtime_circuit_reason" in
+      runtime_installation_failed|runtime_auth_failed|runtime_model_incompatible)
+        break
+        ;;
+    esac
     if [ "$_dynamic_queue_enabled" -eq 1 ]; then
       _free_slots=$(( MAX_PARALLEL_WORKERS - _alive ))
       if [ "$_free_slots" -gt 0 ]; then
@@ -6572,21 +6665,24 @@ run_library_job() {
     done
     return "$CLOUD_HEARTBEAT_LEASE_LOST"
   fi
-  if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
+  case "$_runtime_circuit_reason" in
+    runtime_installation_failed|runtime_auth_failed|runtime_model_incompatible)
     _circuit_terminalization_ok=1
-    if ! finalize_model_incompatible_workers; then
+    if ! finalize_runtime_circuit_workers "$_runtime_circuit_reason"; then
       _circuit_terminalization_ok=0
-      echo "Could not terminalize every incompatible worker; cloud leases will not be released early." >&2
+      echo "Could not terminalize every worker in the trusted runtime circuit; cloud leases will not be released early." >&2
     fi
     if managed_media_batch_running; then
       terminate_process_tree "$_managed_media_pid" TERM 5 || terminate_process_tree "$_managed_media_pid" KILL 3 || true
       wait "$_managed_media_pid" 2>/dev/null || true
       _managed_media_active=0
     fi
-    {
-      printf '%s\n' "runtime_model_incompatible"
-      printf '%s\n' "$_runtime_circuit_provider_error"
-    } > "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+    if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then
+      {
+        printf '%s\n' "runtime_model_incompatible"
+        printf '%s\n' "$_runtime_circuit_provider_error"
+      } > "$JOB_TMP_DIR/runtime-model-incompatible.txt"
+    fi
     sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
     _circuit_flush_ok=1
     if ! flush_remaining_library_results \
@@ -6594,20 +6690,23 @@ run_library_job() {
       "$_results_dir" \
       "$_checkpoint_synced_ids_file" \
       "$_shard_timeout" \
-      "runtime-model-incompatible" \
-      "runtime_model_incompatible"; then
+      "runtime-circuit" \
+      "$_runtime_circuit_reason"; then
       _circuit_flush_ok=0
-      echo "Could not sync every runtime-model failure before stopping the run." >&2
+      echo "Could not sync every trusted runtime circuit failure before stopping the run." >&2
     fi
     if [ "$_sync_command" = "sync-cloud-builders" ] && [ -n "${BUILDER_BLOG_JOB_RUN_ID:-}" ]; then
       if [ "$_circuit_terminalization_ok" -eq 1 ] && [ "$_circuit_flush_ok" -eq 1 ]; then
-        release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" || true
+        if ! release_cloud_worker_leases_for_instance "$BUILDER_BLOG_JOB_RUN_ID" "$_runtime_circuit_reason"; then
+          echo "Could not release cloud worker leases for trusted runtime circuit $_runtime_circuit_reason." >&2
+        fi
       else
         echo "Cloud leases remain server-owned for safe expiry because local terminalization or sync did not complete." >&2
       fi
     fi
     return 78
-  fi
+    ;;
+  esac
   poll_managed_media_batch
   sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
   for _entry in ${_worker_entries:-}; do

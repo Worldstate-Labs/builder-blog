@@ -2618,79 +2618,358 @@ worker_log_has_runtime_model_incompatibility "${failedLog}"
   }
 });
 
-test("model incompatibility circuit terminalizes every assigned worker", async () => {
+test("worker runtime installation detection trusts process errors, not fetched content", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const workerLane = shellFunction(runner, "worker_entry_lane");
-  const finalizeWorkers = shellFunction(runner, "finalize_model_incompatible_workers");
-  const dir = await mkdtemp(join(tmpdir(), "fb-worker-model-circuit-"));
+  const classifier = shellFunction(runner, "worker_log_has_runtime_installation_failure");
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-installation-error-classifier-"));
   try {
-    const shardsDir = join(dir, "shards");
-    const resultsDir = join(shardsDir, "results");
-    const eventsFile = join(dir, "events.txt");
-    const finalizedFile = join(dir, "finalized.txt");
-    await mkdir(resultsDir, { recursive: true });
-    await writeFile(join(shardsDir, "shard-0.json"), '{"fetchTasks":[{"id":"a"}]}\n');
-    await writeFile(join(shardsDir, "shard-1.json"), '{"fetchTasks":[{"id":"b"}]}\n');
+    const contentLog = join(dir, "content.log");
+    const failedLog = join(dir, "failed.log");
+    await writeFile(
+      contentLog,
+      `${JSON.stringify({
+        type: "item.completed",
+        item: { type: "agent_message", text: "This fetched post mentions that a native binary is not installed." },
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      failedLog,
+      `${JSON.stringify({
+        type: "turn.failed",
+        error: { message: "Error: claude native binary not installed" },
+      })}\n`,
+      "utf8",
+    );
     const checkPath = join(dir, "check.sh");
     await writeFile(
       checkPath,
       `set -eu
-${workerLane}
-${finalizeWorkers}
-worker_result_covers_shard_tasks() { return 1; }
-terminate_process_tree() { return 0; }
-write_worker_control_event() { printf '%s:%s:%s\n' "$2" "$3" "$4" >> "${eventsFile}"; }
-finalize_dead_library_worker() { printf '%s:%s\n' "$1" "$2" >> "${finalizedFile}"; return 78; }
-_shards_dir="${shardsDir}"
-_results_dir="${resultsDir}"
-_worker_entries="999991:1700000000:shard-0:worker-0 999992:1700000000:shard-1:worker-1"
-finalize_model_incompatible_workers
+${classifier}
+if worker_log_has_runtime_installation_failure "${contentLog}"; then exit 91; fi
+worker_log_has_runtime_installation_failure "${failedLog}"
 `,
       "utf8",
     );
     await execFileAsync("sh", [checkPath]);
-    assert.deepEqual((await readFile(eventsFile, "utf8")).trim().split("\n"), [
-      "runtime_model_incompatible:worker-0:shard-0",
-      "runtime_model_incompatible:worker-1:shard-1",
-    ]);
-    assert.deepEqual((await readFile(finalizedFile, "utf8")).trim().split("\n"), [
-      "shard-0:worker-0",
-      "shard-1:worker-1",
-    ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
 });
 
-test("model incompatibility circuit fails closed when a worker cannot be terminalized", async () => {
+test("trusted runtime circuits terminalize workers, flush results, and release exact reasons without refilling", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
-  const workerLane = shellFunction(runner, "worker_entry_lane");
-  const finalizeWorkers = shellFunction(runner, "finalize_model_incompatible_workers");
-  const dir = await mkdtemp(join(tmpdir(), "fb-worker-model-circuit-failed-"));
+  const runStart = runner.indexOf("run_library_job() {");
+  const runEnd = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then', runStart);
+  assert.notEqual(runStart, -1);
+  assert.notEqual(runEnd, -1);
+  const runLibraryJob = runner.slice(runStart, runEnd);
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-runtime-circuit-"));
   try {
-    const shardsDir = join(dir, "shards");
-    const resultsDir = join(shardsDir, "results");
-    await mkdir(resultsDir, { recursive: true });
-    await writeFile(join(shardsDir, "shard-0.json"), '{"fetchTasks":[{"id":"a"}]}\n');
+    for (const reason of [
+      "runtime_installation_failed",
+      "runtime_auth_failed",
+      "runtime_model_incompatible",
+    ]) {
+      const reasonDir = join(dir, reason);
+      await mkdir(reasonDir, { recursive: true });
+      const checkPath = join(reasonDir, "check.sh");
+      await writeFile(
+        checkPath,
+        `set -eu
+${runLibraryJob}
+MAX_PARALLEL_WORKERS=1
+AGENT_DIR="${reasonDir}/agent"
+JOB_TMP_DIR="${reasonDir}/job"
+BUILDER_BLOG_JOB_RUN_ID="host-1"
+RUNTIME_CIRCUIT_REASON="${reason}"
+TERMINALIZE_CODE=0
+FLUSH_CODE=0
+RELEASE_CODE=0
+_shard_timeout=3600
+mkdir -p "$AGENT_DIR" "$JOB_TMP_DIR"
+job_run_update() { :; }
+run_openclaw_library_preflight() { return 0; }
+print_compact_json_artifact_summary() { :; }
+cloud_fetch_source_limit() { printf '1\\n'; }
+append_cloud_run_id() { :; }
+cloud_run_id_from_result() { printf 'run-1\\n'; }
+cloud_fetch_heartbeat() { return 0; }
+cloud_fetch_heartbeat_all() { return 0; }
+normalize_library_fetch_batch() { return 0; }
+library_fetch_task_count() { printf '1\\n'; }
+start_managed_media_batch() { return 0; }
+patch_current_fetch_plans() { :; }
+set_initial_worker_window_deadline() { :; }
+reset_cloud_refill_window() { :; }
+sync_completed_checkpoints() { :; }
+poll_managed_media_batch() { _managed_media_reaped_this_poll=0; }
+managed_media_batch_running() { return 1; }
+assign_dynamic_fetch_workers() { printf 'assign|%s\\n' "$1" >> "${reasonDir}/calls.log"; }
+start_pending_library_workers() {
+  if [ "\${WORKER_STARTED:-0}" = "1" ]; then
+    _started_worker_count=0
+    return 0
+  fi
+  (exit 9) &
+  worker_pid="$!"
+  _worker_entries="$worker_pid:1700000000:shard-0:worker-0"
+  _started_worker_count=1
+  WORKER_STARTED=1
+}
+worker_entry_lane() { printf 'worker-0\\n'; }
+worker_result_covers_shard_tasks() { return 1; }
+worker_progress_mtime_seconds() { printf '0\\n'; }
+worker_no_progress_timeout_seconds() { printf '600\\n'; }
+worker_stall_timeout_seconds() { printf '600\\n'; }
+shard_timeout_seconds_for_file() { printf '3600\\n'; }
+fetch_more_cloud_sources() { printf 'refill\\n' >> "${reasonDir}/calls.log"; return 0; }
+terminate_process_tree() { kill "$1" 2>/dev/null || true; return 0; }
+cloud_refill_limit() { printf '10\\n'; }
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+finalize_dead_library_worker() {
+  FINALIZE_DEAD_LIBRARY_WORKER_REASON="$RUNTIME_CIRCUIT_REASON"
+  FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR="$RUNTIME_CIRCUIT_REASON detail"
+  export FINALIZE_DEAD_LIBRARY_WORKER_REASON FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR
+  printf 'finalize-dead\\n' >> "${reasonDir}/calls.log"
+  return 78
+}
+finalize_model_incompatible_workers() { printf 'legacy-terminalize\\n' >> "${reasonDir}/calls.log"; return 0; }
+finalize_runtime_circuit_workers() { printf 'terminalize|%s\\n' "$1" >> "${reasonDir}/calls.log"; return "$TERMINALIZE_CODE"; }
+flush_remaining_library_results() { printf 'flush|%s|%s\\n' "$5" "$6" >> "${reasonDir}/calls.log"; return "$FLUSH_CODE"; }
+release_cloud_worker_leases_for_instance() { printf 'release|%s|%s\\n' "$1" "$2" >> "${reasonDir}/calls.log"; return "$RELEASE_CODE"; }
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "fetch-cloud-library" ]; then
+    printf '%s\\n' '{"cloudRunId":"run-1","fetchTasks":[{"id":"task-a"}],"taskOutcomes":[]}'
+    return 0
+  fi
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "checkpoint-progress" ]; then
+    return 0
+  fi
+  command node "$@"
+}
+code=0
+if run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host"; then
+  code=0
+else
+  code="$?"
+fi
+printf 'code=%s\\n' "$code" >> "${reasonDir}/calls.log"
+`,
+        "utf8",
+      );
+      await execFileAsync("sh", [checkPath]);
+      const calls = await readFile(join(reasonDir, "calls.log"), "utf8");
+      assert.match(calls, /assign\|1/);
+      assert.match(calls, /finalize-dead/);
+      assert.match(calls, new RegExp(`terminalize\\|${reason}`));
+      assert.match(calls, new RegExp(`flush\\|runtime-circuit\\|${reason}`));
+      assert.match(calls, new RegExp(`release\\|host-1\\|${reason}`));
+      assert.match(calls, /code=78/);
+      assert.doesNotMatch(calls, /legacy-terminalize/);
+      assert.doesNotMatch(calls, /refill/);
+      assert.equal(calls.match(/^assign\|/gm)?.length ?? 0, 1);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("trusted runtime circuit release waits for both terminalization and flush success", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const runStart = runner.indexOf("run_library_job() {");
+  const runEnd = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then', runStart);
+  assert.notEqual(runStart, -1);
+  assert.notEqual(runEnd, -1);
+  const runLibraryJob = runner.slice(runStart, runEnd);
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-runtime-circuit-gates-"));
+  try {
+    for (const [name, terminalizeCode, flushCode] of [
+      ["terminalize-fails", 1, 0],
+      ["flush-fails", 0, 1],
+    ] as const) {
+      const caseDir = join(dir, name);
+      await mkdir(caseDir, { recursive: true });
+      const checkPath = join(caseDir, "check.sh");
+      await writeFile(
+        checkPath,
+        `set -eu
+${runLibraryJob}
+MAX_PARALLEL_WORKERS=1
+AGENT_DIR="${caseDir}/agent"
+JOB_TMP_DIR="${caseDir}/job"
+BUILDER_BLOG_JOB_RUN_ID="host-1"
+_shard_timeout=3600
+mkdir -p "$AGENT_DIR" "$JOB_TMP_DIR"
+job_run_update() { :; }
+run_openclaw_library_preflight() { return 0; }
+print_compact_json_artifact_summary() { :; }
+cloud_fetch_source_limit() { printf '1\\n'; }
+append_cloud_run_id() { :; }
+cloud_run_id_from_result() { printf 'run-1\\n'; }
+cloud_fetch_heartbeat() { return 0; }
+cloud_fetch_heartbeat_all() { return 0; }
+normalize_library_fetch_batch() { return 0; }
+library_fetch_task_count() { printf '1\\n'; }
+start_managed_media_batch() { return 0; }
+patch_current_fetch_plans() { :; }
+set_initial_worker_window_deadline() { :; }
+reset_cloud_refill_window() { :; }
+sync_completed_checkpoints() { :; }
+poll_managed_media_batch() { _managed_media_reaped_this_poll=0; }
+managed_media_batch_running() { return 1; }
+assign_dynamic_fetch_workers() { :; }
+start_pending_library_workers() {
+  if [ "\${WORKER_STARTED:-0}" = "1" ]; then
+    _started_worker_count=0
+    return 0
+  fi
+  (exit 9) &
+  worker_pid="$!"
+  _worker_entries="$worker_pid:1700000000:shard-0:worker-0"
+  _started_worker_count=1
+  WORKER_STARTED=1
+}
+worker_entry_lane() { printf 'worker-0\\n'; }
+worker_result_covers_shard_tasks() { return 1; }
+worker_progress_mtime_seconds() { printf '0\\n'; }
+worker_no_progress_timeout_seconds() { printf '600\\n'; }
+worker_stall_timeout_seconds() { printf '600\\n'; }
+shard_timeout_seconds_for_file() { printf '3600\\n'; }
+fetch_more_cloud_sources() { printf 'refill\\n' >> "${caseDir}/calls.log"; return 0; }
+terminate_process_tree() { kill "$1" 2>/dev/null || true; return 0; }
+cloud_refill_limit() { printf '10\\n'; }
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+finalize_dead_library_worker() {
+  FINALIZE_DEAD_LIBRARY_WORKER_REASON="runtime_installation_failed"
+  FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR="install detail"
+  export FINALIZE_DEAD_LIBRARY_WORKER_REASON FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR
+  return 78
+}
+finalize_model_incompatible_workers() { return 0; }
+finalize_runtime_circuit_workers() { printf 'terminalize\\n' >> "${caseDir}/calls.log"; return "${terminalizeCode}"; }
+flush_remaining_library_results() { printf 'flush\\n' >> "${caseDir}/calls.log"; return "${flushCode}"; }
+release_cloud_worker_leases_for_instance() { printf 'release\\n' >> "${caseDir}/calls.log"; return 0; }
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "fetch-cloud-library" ]; then
+    printf '%s\\n' '{"cloudRunId":"run-1","fetchTasks":[{"id":"task-a"}],"taskOutcomes":[]}'
+    return 0
+  fi
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "checkpoint-progress" ]; then
+    return 0
+  fi
+  command node "$@"
+}
+run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host" || test "$?" -eq 78
+`,
+        "utf8",
+      );
+      await execFileAsync("sh", [checkPath]);
+      const calls = await readFile(join(caseDir, "calls.log"), "utf8");
+      assert.match(calls, /terminalize/);
+      assert.match(calls, /flush/);
+      assert.doesNotMatch(calls, /release/);
+      assert.doesNotMatch(calls, /refill/);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("trusted runtime circuit release failure blocks completion and stops before refill", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const runStart = runner.indexOf("run_library_job() {");
+  const runEnd = runner.indexOf('\nif [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then', runStart);
+  assert.notEqual(runStart, -1);
+  assert.notEqual(runEnd, -1);
+  const runLibraryJob = runner.slice(runStart, runEnd);
+  const dir = await mkdtemp(join(tmpdir(), "fb-worker-runtime-circuit-release-fail-"));
+  try {
     const checkPath = join(dir, "check.sh");
     await writeFile(
       checkPath,
       `set -eu
-${workerLane}
-${finalizeWorkers}
+${runLibraryJob}
+MAX_PARALLEL_WORKERS=1
+AGENT_DIR="${dir}/agent"
+JOB_TMP_DIR="${dir}/job"
+BUILDER_BLOG_JOB_RUN_ID="host-1"
+_shard_timeout=3600
+mkdir -p "$AGENT_DIR" "$JOB_TMP_DIR"
+job_run_update() { :; }
+run_openclaw_library_preflight() { return 0; }
+print_compact_json_artifact_summary() { :; }
+cloud_fetch_source_limit() { printf '1\\n'; }
+append_cloud_run_id() { :; }
+cloud_run_id_from_result() { printf 'run-1\\n'; }
+cloud_fetch_heartbeat() { return 0; }
+cloud_fetch_heartbeat_all() { return 0; }
+normalize_library_fetch_batch() { return 0; }
+library_fetch_task_count() { printf '1\\n'; }
+start_managed_media_batch() { return 0; }
+patch_current_fetch_plans() { :; }
+set_initial_worker_window_deadline() { :; }
+reset_cloud_refill_window() { :; }
+sync_completed_checkpoints() { :; }
+poll_managed_media_batch() { _managed_media_reaped_this_poll=0; }
+managed_media_batch_running() { return 1; }
+assign_dynamic_fetch_workers() { printf 'assign\\n' >> "${dir}/calls.log"; }
+start_pending_library_workers() {
+  if [ "\${WORKER_STARTED:-0}" = "1" ]; then
+    _started_worker_count=0
+    return 0
+  fi
+  (exit 9) &
+  worker_pid="$!"
+  _worker_entries="$worker_pid:1700000000:shard-0:worker-0"
+  _started_worker_count=1
+  WORKER_STARTED=1
+}
+worker_entry_lane() { printf 'worker-0\\n'; }
 worker_result_covers_shard_tasks() { return 1; }
-write_worker_control_event() { return 0; }
-finalize_dead_library_worker() { return 1; }
-_shards_dir="${shardsDir}"
-_results_dir="${resultsDir}"
-_worker_entries="999991:1700000000:shard-0:worker-0"
-code=0
-finalize_model_incompatible_workers || code="$?"
-test "$code" -eq 1
+worker_progress_mtime_seconds() { printf '0\\n'; }
+worker_no_progress_timeout_seconds() { printf '600\\n'; }
+worker_stall_timeout_seconds() { printf '600\\n'; }
+shard_timeout_seconds_for_file() { printf '3600\\n'; }
+fetch_more_cloud_sources() { printf 'refill\\n' >> "${dir}/calls.log"; return 0; }
+terminate_process_tree() { kill "$1" 2>/dev/null || true; return 0; }
+cloud_refill_limit() { printf '10\\n'; }
+job_timeout_seconds() { printf '7200\\n'; }
+shard_timeout_seconds() { printf '3600\\n'; }
+finalize_dead_library_worker() {
+  FINALIZE_DEAD_LIBRARY_WORKER_REASON="runtime_auth_failed"
+  FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR="auth detail"
+  export FINALIZE_DEAD_LIBRARY_WORKER_REASON FINALIZE_DEAD_LIBRARY_WORKER_PROVIDER_ERROR
+  return 78
+}
+finalize_model_incompatible_workers() { return 0; }
+finalize_runtime_circuit_workers() { printf 'terminalize\\n' >> "${dir}/calls.log"; return 0; }
+flush_remaining_library_results() { printf 'flush\\n' >> "${dir}/calls.log"; return 0; }
+release_cloud_worker_leases_for_instance() { printf 'release\\n' >> "${dir}/calls.log"; return 19; }
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "fetch-cloud-library" ]; then
+    printf '%s\\n' '{"cloudRunId":"run-1","fetchTasks":[{"id":"task-a"}],"taskOutcomes":[]}'
+    return 0
+  fi
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "checkpoint-progress" ]; then
+    return 0
+  fi
+  command node "$@"
+}
+run_library_job fetch-cloud-library sync-cloud-builders cloud-fetch-result.json "cloud library host" || test "$?" -eq 78
 `,
       "utf8",
     );
     await execFileAsync("sh", [checkPath]);
+    const calls = await readFile(join(dir, "calls.log"), "utf8");
+    assert.match(calls, /assign/);
+    assert.match(calls, /terminalize/);
+    assert.match(calls, /flush/);
+    assert.match(calls, /release/);
+    assert.doesNotMatch(calls, /refill/);
+    assert.equal(calls.match(/^assign$/gm)?.length ?? 0, 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -2711,14 +2990,15 @@ test("shared library runner finalizes dead workers before assigning their lanes 
   );
   assert.match(
     library,
-    /runtime_model_incompatible[\s\S]*finalize_model_incompatible_workers[\s\S]*flush_remaining_library_results[\s\S]*release_cloud_worker_leases_for_instance/,
+    /runtime_installation_failed\|runtime_auth_failed\|runtime_model_incompatible[\s\S]*finalize_runtime_circuit_workers[\s\S]*flush_remaining_library_results[\s\S]*release_cloud_worker_leases_for_instance/,
   );
   assert.match(
     library,
-    /_circuit_terminalization_ok[\s\S]*_circuit_flush_ok[\s\S]*if \[ "\$_circuit_terminalization_ok" -eq 1 \] && \[ "\$_circuit_flush_ok" -eq 1 \]; then[\s\S]*release_cloud_worker_leases_for_instance/,
+    /_circuit_terminalization_ok[\s\S]*_circuit_flush_ok[\s\S]*if \[ "\$_circuit_terminalization_ok" -eq 1 \] && \[ "\$_circuit_flush_ok" -eq 1 \]; then[\s\S]*release_cloud_worker_leases_for_instance "\$BUILDER_BLOG_JOB_RUN_ID" "\$_runtime_circuit_reason"/,
   );
-  const circuit = library.slice(library.indexOf('if [ "$_runtime_circuit_reason" = "runtime_model_incompatible" ]; then'));
+  const circuit = library.slice(library.indexOf('case "$_runtime_circuit_reason" in'));
   assert.doesNotMatch(circuit, /job_run_update failed/);
+  assert.doesNotMatch(circuit, /worker_runtime_failed[\s\S]*release_cloud_worker_leases_for_instance/);
   assert.match(flush, /cloud-host-idle\*\|runtime-timeout\*\|runtime-model-incompatible\*/);
 });
 
