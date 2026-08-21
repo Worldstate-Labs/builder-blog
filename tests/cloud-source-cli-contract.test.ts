@@ -89,6 +89,7 @@ assert_retryable 'HTTP POST failed with cloud_run_not_running but no structured 
 test("cloud heartbeat success resets a prior retryable pause after two failed rounds", async () => {
   const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
   const heartbeat = shellFunction(runner, "cloud_fetch_heartbeat");
+  const heartbeatAll = shellFunction(runner, "cloud_fetch_heartbeat_all");
   const dir = await mkdtemp(join(tmpdir(), "fb-cloud-heartbeat-reset-"));
 
   try {
@@ -97,8 +98,12 @@ test("cloud heartbeat success resets a prior retryable pause after two failed ro
       checkPath,
       `set -eu
 AGENT_DIR="${dir}/agent"
-mkdir -p "$AGENT_DIR"
+JOB_TMP_DIR="${dir}/job"
+mkdir -p "$AGENT_DIR" "$JOB_TMP_DIR"
+_cloud_run_ids_file="${dir}/cloud-run-ids.txt"
+printf 'run-1\\n' > "$_cloud_run_ids_file"
 ${heartbeat}
+${heartbeatAll}
 _heartbeat_round=0
 node() {
   if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "heartbeat-cloud-fetch" ]; then
@@ -116,11 +121,11 @@ node() {
   fi
   command node "$@"
 }
-cloud_fetch_heartbeat run-1 || exit 31
+cloud_fetch_heartbeat_all || exit 31
 printf 'after1:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
-cloud_fetch_heartbeat run-1 || exit 32
+cloud_fetch_heartbeat_all || exit 32
 printf 'after2:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
-cloud_fetch_heartbeat run-1 || exit 33
+cloud_fetch_heartbeat_all || exit 33
 printf 'after3:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" "\${CLOUD_HEARTBEAT_DIAGNOSTIC:-}" >> "${dir}/state.log"
 `,
       "utf8",
@@ -137,6 +142,56 @@ printf 'after3:%s:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUS
       'after2:retryable:1:2:FOLLOWBRIEF_ERROR {"type":"http_sync","status":503,"syncCode":"http_status","responseCode":"lease_busy","retryable":true}',
     );
     assert.equal(lines[2], "after3:success:0:0:");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cloud heartbeat counts retryable failures once per polling round across multiple run ids", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+  const heartbeat = shellFunction(runner, "cloud_fetch_heartbeat");
+  const heartbeatAll = shellFunction(runner, "cloud_fetch_heartbeat_all");
+  const dir = await mkdtemp(join(tmpdir(), "fb-cloud-heartbeat-rounds-"));
+
+  try {
+    const checkPath = join(dir, "check.sh");
+    await writeFile(
+      checkPath,
+      `set -eu
+AGENT_DIR="${dir}/agent"
+JOB_TMP_DIR="${dir}/job"
+mkdir -p "$AGENT_DIR" "$JOB_TMP_DIR"
+_cloud_run_ids_file="${dir}/cloud-run-ids.txt"
+printf 'run-1\\nrun-2\\n' > "$_cloud_run_ids_file"
+${heartbeat}
+${heartbeatAll}
+_heartbeat_round=0
+node() {
+  if [ "$1" = "$AGENT_DIR/builder-digest.mjs" ] && [ "$2" = "heartbeat-cloud-fetch" ]; then
+    _heartbeat_round=$(( _heartbeat_round + 1 ))
+    case "$_heartbeat_round" in
+      1|2|3|4)
+        printf '%s\\n' 'FOLLOWBRIEF_ERROR {"type":"http_sync","status":503,"syncCode":"http_status","responseCode":"lease_busy","retryable":true}' >&2
+        return 17
+        ;;
+    esac
+  fi
+  command node "$@"
+}
+cloud_fetch_heartbeat_all || exit 41
+printf 'round1:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" >> "${dir}/state.log"
+cloud_fetch_heartbeat_all || exit 42
+printf 'round2:%s:%s:%s\\n' "$CLOUD_HEARTBEAT_STATE" "\${CLOUD_HEARTBEAT_PAUSED:-0}" "\${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}" >> "${dir}/state.log"
+`,
+      "utf8",
+    );
+
+    await execFileAsync("sh", [checkPath]);
+    const lines = (await readFile(join(dir, "state.log"), "utf8")).trim().split("\n");
+    assert.deepEqual(lines, [
+      "round1:retryable:0:1",
+      "round2:retryable:1:2",
+    ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

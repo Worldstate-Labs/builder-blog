@@ -5338,14 +5338,6 @@ NODE
   CLOUD_HEARTBEAT_REASON=""
   CLOUD_HEARTBEAT_DIAGNOSTIC="$_cfh_diagnostic"
   CLOUD_HEARTBEAT_LOST_LEASE=0
-  CLOUD_HEARTBEAT_RETRYABLE_ROUNDS="${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}"
-  case "$CLOUD_HEARTBEAT_RETRYABLE_ROUNDS" in ''|*[!0-9]*) CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=0 ;; esac
-  CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=$(( CLOUD_HEARTBEAT_RETRYABLE_ROUNDS + 1 ))
-  if [ "$CLOUD_HEARTBEAT_RETRYABLE_ROUNDS" -ge 2 ]; then
-    CLOUD_HEARTBEAT_PAUSED=1
-  else
-    CLOUD_HEARTBEAT_PAUSED=0
-  fi
   rm -f "$_cfh_stdout" "$_cfh_stderr"
   return 0
 }
@@ -5359,10 +5351,54 @@ append_cloud_run_id() {
 
 cloud_fetch_heartbeat_all() {
   [ -s "$_cloud_run_ids_file" ] || return 0
+  _cfha_round_start_retryable="${CLOUD_HEARTBEAT_RETRYABLE_ROUNDS:-0}"
+  case "$_cfha_round_start_retryable" in ''|*[!0-9]*) _cfha_round_start_retryable=0 ;; esac
+  _cfha_round_retryable=0
+  _cfha_round_success=1
+  _cfha_round_lost_code="${CLOUD_HEARTBEAT_LEASE_LOST:-79}"
   while IFS= read -r _cfha_run_id; do
     [ -n "$_cfha_run_id" ] || continue
+    set +e
     cloud_fetch_heartbeat "$_cfha_run_id"
+    _cfha_code="$?"
+    set -e
+    if [ "$_cfha_code" -eq "$_cfha_round_lost_code" ]; then
+      return "$_cfha_code"
+    fi
+    if [ "$_cfha_code" -ne 0 ]; then
+      return "$_cfha_code"
+    fi
+    case "${CLOUD_HEARTBEAT_STATE:-success}" in
+      retryable)
+        _cfha_round_retryable=1
+        _cfha_round_success=0
+        ;;
+      success)
+        ;;
+      *)
+        _cfha_round_success=0
+        ;;
+    esac
   done < "$_cloud_run_ids_file"
+  if [ "$_cfha_round_retryable" -eq 1 ]; then
+    CLOUD_HEARTBEAT_STATE="retryable"
+    CLOUD_HEARTBEAT_REASON=""
+    CLOUD_HEARTBEAT_LOST_LEASE=0
+    CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=$(( _cfha_round_start_retryable + 1 ))
+    if [ "$CLOUD_HEARTBEAT_RETRYABLE_ROUNDS" -ge 2 ]; then
+      CLOUD_HEARTBEAT_PAUSED=1
+    else
+      CLOUD_HEARTBEAT_PAUSED=0
+    fi
+  elif [ "$_cfha_round_success" -eq 1 ]; then
+    CLOUD_HEARTBEAT_STATE="success"
+    CLOUD_HEARTBEAT_REASON=""
+    CLOUD_HEARTBEAT_DIAGNOSTIC=""
+    CLOUD_HEARTBEAT_PAUSED=0
+    CLOUD_HEARTBEAT_RETRYABLE_ROUNDS=0
+    CLOUD_HEARTBEAT_LOST_LEASE=0
+  fi
+  return 0
 }
 
 write_active_fetch_group_keys() {
