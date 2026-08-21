@@ -67,8 +67,9 @@ type CloudWorkerReleaseTx = {
   cloudFetchRun: {
     findMany(args: {
       where: {
-        createdByUserId: string;
-        agentJobRunId: string;
+        id?: string;
+        createdByUserId?: string;
+        agentJobRunId?: string;
         status: CloudFetchRunStatus;
       };
       orderBy: Array<{ id: "asc" }>;

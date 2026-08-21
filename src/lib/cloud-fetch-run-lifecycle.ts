@@ -37,6 +37,19 @@ type CloudFetchRunLifecyclePrisma = CloudFetchRunAggregatePrisma & {
   };
 };
 
+type CloudFetchRunFinalizerPrisma = CloudFetchRunAggregatePrisma & {
+  $queryRawUnsafe(query: string, ...values: unknown[]): Promise<LockedCloudFetchRunTaskRow[]>;
+  cloudFetchRun: CloudFetchRunAggregatePrisma["cloudFetchRun"] & {
+    findMany(args: unknown): Promise<Array<{ id: string }>>;
+  };
+  cloudFetchQueueItem: {
+    updateMany(args: unknown): Promise<{ count: number }>;
+  };
+  cloudFetchRunTask: CloudFetchRunAggregatePrisma["cloudFetchRunTask"] & {
+    updateMany(args: unknown): Promise<{ count: number }>;
+  };
+};
+
 const TERMINAL_CLOUD_WORKER_JOB_STATUSES = [
   "succeeded",
   "failed",
@@ -107,7 +120,7 @@ export async function expireLeasedCloudFetchRuns(params: {
 }
 
 export async function finalizeRunningCloudFetchRuns(params: {
-  prisma: CloudFetchRunLifecyclePrisma;
+  prisma: CloudFetchRunFinalizerPrisma;
   runs: Array<{ id: string }>;
   now: Date;
   failureReason: string;
