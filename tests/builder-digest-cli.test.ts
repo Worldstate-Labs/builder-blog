@@ -8292,6 +8292,20 @@ test("builder digest CLI exposes release-cloud-fetch command", () => {
   assert.match(releaseCommandSource, /timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS/);
 });
 
+test("release-cloud-fetch CLI allowlist matches the server release contract exactly", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const server = await import("../src/lib/cloud-fetch-worker-release");
+
+  assert.deepEqual(
+    cli.CLOUD_WORKER_RELEASE_REASONS,
+    server.CLOUD_WORKER_RELEASE_REASONS,
+  );
+  assert.equal(
+    cli.DEFAULT_CLOUD_WORKER_RELEASE_REASON,
+    server.DEFAULT_CLOUD_WORKER_RELEASE_REASON,
+  );
+});
+
 test("schedule-spec emits anchor-aligned cron, launchd, and server schedule values", async () => {
   const tmp = await mkdtemp(join(tmpdir(), "followbrief-schedule-spec-"));
   const anchorFile = join(tmp, "schedule-anchor-library-cron-user");

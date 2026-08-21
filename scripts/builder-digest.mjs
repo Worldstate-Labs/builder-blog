@@ -1460,14 +1460,14 @@ function argValue(args, name, fallback = undefined) {
   return args[index + 1] ?? fallback;
 }
 
-const CLOUD_WORKER_RELEASE_REASONS = [
+export const CLOUD_WORKER_RELEASE_REASONS = [
   "cloud_worker_replaced",
   "cloud_worker_stopped",
   "runtime_installation_failed",
   "runtime_auth_failed",
   "runtime_model_incompatible",
 ];
-const DEFAULT_CLOUD_WORKER_RELEASE_REASON = "cloud_worker_replaced";
+export const DEFAULT_CLOUD_WORKER_RELEASE_REASON = "cloud_worker_replaced";
 
 function normalizeCloudWorkerReleaseReason(reason) {
   const normalized = String(reason || "").trim();
