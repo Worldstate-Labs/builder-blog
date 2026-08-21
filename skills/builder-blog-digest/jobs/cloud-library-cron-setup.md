@@ -21,13 +21,22 @@ Execution contract:
 
 {{INCLUDE:install-skill}}
 
-2. Verify the selected unattended runtime is available on PATH:
+2. Verify the selected unattended runtime before touching the shared host.
+The runner first probes the selected unattended runtime with `--version`, then
+runs one harmless unattended smoke check. It fails closed on
+`runtime_missing_command`, `runtime_stub_not_installed`,
+`runtime_version_failed`, `runtime_version_empty`, and
+`runtime_version_timeout`. It must not install, repair, or update Claude,
+Codex, or OpenClaw.
 
 ```bash
-command -v "${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" || {
-  echo "runtime not found on PATH: ${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" >&2
-  exit 69
-}
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" \
+BUILDER_BLOG_AGENT_RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME-{{AGENT_RUNTIME}}}" \
+BUILDER_BLOG_RUNTIME_PROBE_TIMEOUT_SECONDS="${BUILDER_BLOG_RUNTIME_PROBE_TIMEOUT_SECONDS:-30}" \
+BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH=1 \
+BUILDER_BLOG_SMOKE_CHECK=1 \
+  "$AGENT_DIR/builder-agent-runner.sh" cloud-library-cron
 ```
 
 Before inspecting or replacing the shared Cloud host, check its runner-owned

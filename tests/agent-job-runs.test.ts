@@ -1,12 +1,96 @@
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
+
+const shellFunction = (text: string, name: string) => {
+  const start = text.indexOf(`${name}() {`);
+  assert.notEqual(start, -1, `missing shell function ${name}`);
+  const end = text.indexOf("\n}\n\n", start);
+  assert.notEqual(end, -1, `missing end of shell function ${name}`);
+  return text.slice(start, end + 3);
+};
+
+function runRuntimeProbeHarness({
+  runtime = "claude",
+  runtimeScript = null,
+  runtimeVersionTimeoutSeconds = "2",
+}: {
+  runtime?: "claude" | "codex" | "openclaw";
+  runtimeScript?: string | null;
+  runtimeVersionTimeoutSeconds?: string;
+}) {
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-runtime-smoke-probe-"));
+  const binDir = join(tempDir, "bin");
+  mkdirSync(binDir, { recursive: true });
+  if (runtimeScript) {
+    writeFileSync(join(binDir, runtime), runtimeScript, { mode: 0o755 });
+  }
+  const runner = source("scripts/builder-agent-runner.sh");
+  const scriptPath = join(tempDir, "probe.sh");
+  const nodeBinDir = dirname(process.execPath);
+  const probePath = runtimeScript ? `${binDir}:${nodeBinDir}:/usr/bin:/bin` : `${nodeBinDir}:/usr/bin:/bin`;
+  writeFileSync(
+    scriptPath,
+    `set -eu
+JOB_TMP_DIR="${join(tempDir, "job")}"
+mkdir -p "$JOB_TMP_DIR"
+PATH="${probePath}"
+${shellFunction(runner, "runtime_probe_output_summary")}
+${shellFunction(runner, "runtime_probe_output_is_stub_not_installed")}
+${shellFunction(runner, "normalize_runtime")}
+${shellFunction(runner, "resolve_runtime_probe_candidate")}
+${shellFunction(runner, "process_tree_pids")}
+${shellFunction(runner, "terminate_process_tree")}
+${shellFunction(runner, "probe_selected_runtime_executable")}
+if probe_selected_runtime_executable "${runtime}"; then
+  probe_code=0
+else
+  probe_code="$?"
+fi
+printf 'probe_code=%s\\n' "$probe_code"
+printf 'classification=%s\\n' "\${RUNTIME_PROBE_CLASSIFICATION:-}"
+printf 'diagnostic=%s\\n' "\${RUNTIME_PROBE_DIAGNOSTIC:-}"
+printf 'version=%s\\n' "\${BUILDER_BLOG_RUNTIME_VERSION:-}"
+`,
+    "utf8",
+  );
+
+  try {
+    const result = spawnSync("sh", [scriptPath], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        BUILDER_BLOG_RUNTIME_PROBE_TIMEOUT_SECONDS: runtimeVersionTimeoutSeconds,
+      },
+    });
+    const values = new Map(
+      result.stdout
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const index = line.indexOf("=");
+          return [line.slice(0, index), line.slice(index + 1)];
+        }),
+    );
+    return {
+      ...result,
+      classification: values.get("classification") ?? "",
+      diagnostic: values.get("diagnostic") ?? "",
+      probeCode: Number(values.get("probe_code") ?? "-1"),
+      version: values.get("version") ?? "",
+    };
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
 
 function runWithRemovedRuntime(source: "env" | "pin") {
   const agentDir = mkdtempSync(join(tmpdir(), "followbrief-removed-runtime-"));
@@ -150,6 +234,69 @@ printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+test("runtime executable probe fails closed when the selected runtime command is missing", () => {
+  const result = runRuntimeProbeHarness({ runtime: "claude" });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.probeCode, 78, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.classification, "runtime_missing_command");
+  assert.match(result.diagnostic, /Selected runtime 'claude' is not on PATH|No selected FollowBrief runtime is available on PATH/);
+});
+
+test("runtime executable probe fails closed when a PATH-visible Claude stub reports no native binary", () => {
+  const result = runRuntimeProbeHarness({
+    runtime: "claude",
+    runtimeScript: `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  printf '%s\n' 'Error: claude native binary not installed' >&2
+  exit 1
+fi
+exit 0
+`,
+  });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.probeCode, 78, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.classification, "runtime_stub_not_installed");
+  assert.match(result.diagnostic, /claude native binary not installed/i);
+});
+
+test("runtime executable probe fails closed when runtime version probing times out", () => {
+  const result = runRuntimeProbeHarness({
+    runtime: "claude",
+    runtimeScript: `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  while :; do sleep 5; done
+fi
+exit 0
+`,
+  });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.probeCode, 124, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.classification, "runtime_version_timeout");
+  assert.match(result.diagnostic, /timed out after 2s/i);
+});
+
+test("runtime executable probe accepts a healthy semver-style version response", () => {
+  const result = runRuntimeProbeHarness({
+    runtime: "claude",
+    runtimeScript: `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  printf '%s\n' '1.2.3-beta.4'
+  exit 0
+fi
+exit 0
+`,
+  });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.probeCode, 0, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.classification, "runtime_ready");
+  assert.equal(result.version, "1.2.3-beta.4");
+});
+
+test("runtime smoke check probes the selected executable before launching the smoke prompt", () => {
+  const runner = source("scripts/builder-agent-runner.sh");
+  assert.match(runner, /run_runtime_smoke_check\(\) \{[\s\S]*probe_selected_runtime_executable/);
 });
 
 async function loadAgentJobRunsModule() {

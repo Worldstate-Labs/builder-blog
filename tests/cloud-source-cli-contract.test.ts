@@ -2952,10 +2952,16 @@ test("cloud copy prompt settings flow into the local cloud runner command", asyn
   assert.match(setupPrompt, /Check whether a local cloud worker host or active cloud worker is already running/);
   assert.match(setupPrompt, /ACTIVE_CLOUD_WORKER/);
   assert.match(setupPrompt, /NO_ACTIVE_CLOUD_WORKER/);
+  assert.match(setupPrompt, /runner first probes the selected unattended runtime with `--version`/i);
+  assert.match(
+    setupPrompt,
+    /BUILDER_BLOG_AGENT_DIR="\$AGENT_DIR"[\s\S]*BUILDER_BLOG_AGENT_RUNTIME="\$\{BUILDER_BLOG_AGENT_RUNTIME-\{\{AGENT_RUNTIME\}\}\}"[\s\S]*BUILDER_BLOG_RUNTIME_PROBE_TIMEOUT_SECONDS="\$\{BUILDER_BLOG_RUNTIME_PROBE_TIMEOUT_SECONDS:-30\}"[\s\S]*BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH=1[\s\S]*BUILDER_BLOG_SMOKE_CHECK=1[\s\S]*"\$AGENT_DIR\/builder-agent-runner\.sh" cloud-library-cron/,
+  );
   assert.match(setupPrompt, /ask the user whether to replace that active/);
   assert.match(setupPrompt, /cloud-library-host\/current\.json/);
   assert.match(setupPrompt, /cloud-library-cron\/current\.json/);
   assert.doesNotMatch(setupPrompt, /CLOUD_LIMIT=/);
+  assert.doesNotMatch(setupPrompt, /brew install|npm install|postinstall|claude doctor|codex update|openclaw install/i);
   assert.match(setupPrompt, /FETCH_DAYS="\$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\}"/);
   assert.match(setupPrompt, /WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/);
   assert.match(
@@ -3008,16 +3014,22 @@ test("admin cloud host prompts coordinate account-safe replacement and stop befo
   const setupPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-setup.md", "utf8");
   const stopPrompt = await readFile("skills/builder-blog-digest/jobs/cloud-library-cron-stop.md", "utf8");
 
-  const setupInspect = setupPrompt.indexOf("ACTIVE_CLOUD_WORKER");
+  const setupSmoke = setupPrompt.indexOf("BUILDER_BLOG_SMOKE_CHECK=1");
+  const setupInspect = setupPrompt.indexOf("3. Check whether a local cloud worker host or active cloud worker is already running.");
   const setupMark = setupPrompt.indexOf("BUILDER_BLOG_CLOUD_HOST_CONTROL=mark-replaced");
   const setupStop = setupPrompt.indexOf("BUILDER_BLOG_CLOUD_HOST_CONTROL=stop-current");
   const setupPin = setupPrompt.indexOf('runtime-cloud-library-host-$ACCOUNT_SLUG');
+  assert.ok(setupSmoke >= 0, "setup must validate the selected unattended runtime before touching the shared host");
+  assert.ok(setupInspect > setupSmoke, "setup must run the shared runtime smoke check before inspecting the host");
   assert.ok(setupInspect >= 0, "setup must inspect the existing host");
   assert.ok(setupMark > setupInspect, "setup must mark the old host only after inspection/confirmation");
   assert.ok(setupStop > setupMark, "setup must stop the confirmed old host after marking replacement");
   assert.ok(setupPin > setupStop, "setup must not write runtime pins before replacement succeeds");
   assert.match(setupPrompt, /loaded service owner cannot be proven/i);
   assert.match(setupPrompt, /BLOCKED_CLOUD_WORKER: systemctl is unavailable; service state cannot be proven/i);
+  assert.match(setupPrompt, /runtime_missing_command/);
+  assert.match(setupPrompt, /runtime_stub_not_installed/);
+  assert.match(setupPrompt, /runtime_version_timeout/);
   assert.match(setupPrompt, /BUILDER_BLOG_ACCOUNT="\$EXISTING_ACCT"[\s\S]*BUILDER_BLOG_CLOUD_HOST_CONTROL=mark-replaced/);
   assert.match(setupPrompt, /launchctl kickstart[\s\S]*launchctl print/);
   assert.match(setupPrompt, /systemctl --user restart[\s\S]*systemctl --user is-active --quiet/);

@@ -1256,7 +1256,139 @@ if (fetchTasks > 0) {
 NODE
 }
 
+runtime_probe_output_summary() {
+  _rpos_file="${1:-}"
+  [ -r "$_rpos_file" ] || return 0
+  node - "$_rpos_file" <<'NODE'
+const fs = require("node:fs");
+const file = process.argv[2];
+let text = "";
+try {
+  text = fs.readFileSync(file, "utf8");
+} catch {
+  process.exit(0);
+}
+for (const rawLine of text.split(/\r?\n/)) {
+  const line = String(rawLine || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  if (!line) continue;
+  process.stdout.write(line.slice(0, 200));
+  process.exit(0);
+}
+NODE
+}
+
+runtime_probe_output_is_stub_not_installed() {
+  _rpoisni_file="${1:-}"
+  [ -r "$_rpoisni_file" ] || return 1
+  node - "$_rpoisni_file" <<'NODE'
+const fs = require("node:fs");
+const text = fs.readFileSync(process.argv[2], "utf8");
+const patterns = [
+  /claude native binary not installed/i,
+];
+process.exit(patterns.some((pattern) => pattern.test(text)) ? 0 : 1);
+NODE
+}
+
+resolve_runtime_probe_candidate() {
+  _rrpc_selected="${1:-${PINNED_RUNTIME:-${BUILDER_BLOG_RUNTIME:-}}}"
+  _rrpc_selected="$(normalize_runtime "$_rrpc_selected")"
+  if [ -n "$_rrpc_selected" ]; then
+    printf '%s\n' "$_rrpc_selected"
+    return 0
+  fi
+  if command -v codex >/dev/null 2>&1; then
+    printf '%s\n' "codex"
+  elif command -v claude >/dev/null 2>&1; then
+    printf '%s\n' "claude"
+  elif command -v openclaw >/dev/null 2>&1; then
+    printf '%s\n' "openclaw"
+  fi
+}
+
+probe_selected_runtime_executable() {
+  RUNTIME_PROBE_CLASSIFICATION=""
+  RUNTIME_PROBE_DIAGNOSTIC=""
+  RUNTIME_PROBE_OUTPUT_FILE=""
+  _psre_runtime="$(resolve_runtime_probe_candidate "${1:-}")"
+  if [ -z "$_psre_runtime" ]; then
+    RUNTIME_PROBE_CLASSIFICATION="runtime_missing_command"
+    RUNTIME_PROBE_DIAGNOSTIC="No selected FollowBrief runtime is available on PATH."
+    return 78
+  fi
+  if ! command -v "$_psre_runtime" >/dev/null 2>&1; then
+    RUNTIME_PROBE_CLASSIFICATION="runtime_missing_command"
+    RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' is not on PATH."
+    return 78
+  fi
+
+  mkdir -p "$JOB_TMP_DIR"
+  _psre_output="$JOB_TMP_DIR/runtime-version-$(printf '%s' "$_psre_runtime" | tr -c 'a-zA-Z0-9_.@+-' '_').log"
+  RUNTIME_PROBE_OUTPUT_FILE="$_psre_output"
+  _psre_timeout="${BUILDER_BLOG_RUNTIME_PROBE_TIMEOUT_SECONDS:-30}"
+  case "$_psre_timeout" in ''|*[!0-9]*|0) _psre_timeout=30 ;; esac
+  rm -f "$_psre_output"
+  "$_psre_runtime" --version >"$_psre_output" 2>&1 &
+  _psre_pid="$!"
+  _psre_deadline=$(( $(date +%s) + _psre_timeout ))
+  while kill -0 "$_psre_pid" 2>/dev/null; do
+    if [ "$(date +%s)" -ge "$_psre_deadline" ]; then
+      terminate_process_tree "$_psre_pid" TERM 10 || terminate_process_tree "$_psre_pid" KILL 3 || true
+      wait "$_psre_pid" 2>/dev/null || true
+      RUNTIME_PROBE_CLASSIFICATION="runtime_version_timeout"
+      RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' timed out after ${_psre_timeout}s during --version."
+      return 124
+    fi
+    sleep 1
+  done
+
+  set +e
+  wait "$_psre_pid"
+  _psre_code="$?"
+  set -e
+  _psre_summary="$(runtime_probe_output_summary "$_psre_output")"
+  if [ "$_psre_code" -ne 0 ]; then
+    if runtime_probe_output_is_stub_not_installed "$_psre_output"; then
+      RUNTIME_PROBE_CLASSIFICATION="runtime_stub_not_installed"
+      if [ -n "$_psre_summary" ]; then
+        RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' is a placeholder install: $_psre_summary"
+      else
+        RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' is a placeholder install without a working native binary."
+      fi
+      return 78
+    fi
+    RUNTIME_PROBE_CLASSIFICATION="runtime_version_failed"
+    if [ -n "$_psre_summary" ]; then
+      RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' failed its --version check: $_psre_summary"
+    else
+      RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' failed its --version check."
+    fi
+    return 78
+  fi
+  if [ -z "$_psre_summary" ]; then
+    RUNTIME_PROBE_CLASSIFICATION="runtime_version_empty"
+    RUNTIME_PROBE_DIAGNOSTIC="Selected runtime '$_psre_runtime' returned no version output."
+    return 78
+  fi
+
+  BUILDER_BLOG_RUNTIME="$_psre_runtime"
+  BUILDER_BLOG_RUNTIME_VERSION="$_psre_summary"
+  export BUILDER_BLOG_RUNTIME BUILDER_BLOG_RUNTIME_VERSION
+  RUNTIME_PROBE_CLASSIFICATION="runtime_ready"
+  RUNTIME_PROBE_DIAGNOSTIC="$_psre_summary"
+}
+
 run_runtime_smoke_check() {
+  _runtime_probe_code=0
+  if probe_selected_runtime_executable "${PINNED_RUNTIME:-${BUILDER_BLOG_RUNTIME:-}}"; then
+    :
+  else
+    _runtime_probe_code="$?"
+  fi
+  if [ "$_runtime_probe_code" -ne 0 ]; then
+    echo "FollowBrief runtime probe failed (${RUNTIME_PROBE_CLASSIFICATION:-runtime_probe_failed}): ${RUNTIME_PROBE_DIAGNOSTIC:-Selected runtime probe failed.}" >&2
+    return "$_runtime_probe_code"
+  fi
   if [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] && [ "${BUILDER_BLOG_RUNTIME:-}" = "codex" ]; then
     if ! resolve_codex_model_for_job; then
       _rsmc_output="${CODEX_MODEL_PREFLIGHT_OUTPUT_FILE:-}"
