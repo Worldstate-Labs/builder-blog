@@ -125,6 +125,113 @@ function runWithRemovedRuntime(source: "env" | "pin") {
   }
 }
 
+function runCloudRuntimeReadyHarness() {
+  const tempDir = mkdtempSync(join(tmpdir(), "followbrief-cloud-runtime-ready-"));
+  const runner = source("scripts/builder-agent-runner.sh");
+  const scriptPath = join(tempDir, "runtime-ready.sh");
+  const initialSequence = join(tempDir, "initial-sequence.txt");
+  const refillSequence = join(tempDir, "refill-sequence.txt");
+  const blockedSequence = join(tempDir, "blocked-sequence.txt");
+  const eventsPath = join(tempDir, "events.log");
+  const updatesPath = join(tempDir, "updates.log");
+  const stopPath = join(tempDir, "stop");
+  writeFileSync(initialSequence, "78\truntime_missing_command\tSelected runtime 'claude' is not on PATH.\t\n0\truntime_ready\tclaude 1.2.3\t1.2.3\n");
+  writeFileSync(refillSequence, "78\truntime_missing_command\tSelected runtime 'claude' is not on PATH.\t\n0\truntime_ready\tclaude 1.2.3\t1.2.3\n");
+  writeFileSync(blockedSequence, "78\truntime_missing_command\tSelected runtime 'claude' is not on PATH.\t\n78\truntime_missing_command\tSelected runtime 'claude' is not on PATH.\t\n");
+  writeFileSync(
+    scriptPath,
+    `set -eu
+JOB_TMP_DIR="${join(tempDir, "job")}"
+mkdir -p "$JOB_TMP_DIR"
+HEARTBEAT_INTERVAL_SECONDS=1
+BUILDER_BLOG_CLOUD_RUNTIME_RETRY_SECONDS=0
+BUILDER_BLOG_CLOUD_RUNTIME_RETRY_JITTER_SECONDS=0
+RUNTIME_TEST_EVENTS="${eventsPath}"
+RUNTIME_TEST_UPDATES="${updatesPath}"
+RUNTIME_TEST_STOP="${stopPath}"
+TEST_RUNTIME_PROBE_STATE_FILE=""
+TEST_RUNTIME_PROBE_SEQUENCE_FILE=""
+trap 'printf "%s\\n" "term" >> "$RUNTIME_TEST_EVENTS"; exit 130' TERM
+${shellFunction(runner, "cloud_runtime_retry_seconds")}
+${shellFunction(runner, "cloud_runtime_retry_jitter_seconds")}
+${shellFunction(runner, "cloud_runtime_retry_wait_seconds")}
+${shellFunction(runner, "cloud_runtime_retry_at_iso")}
+${shellFunction(runner, "cloud_runtime_provider_error")}
+${shellFunction(runner, "wait_for_cloud_runtime_ready")}
+set_runtime_probe_sequence() {
+  TEST_RUNTIME_PROBE_SEQUENCE_FILE="$1"
+  TEST_RUNTIME_PROBE_STATE_FILE="$1.state"
+  : > "$TEST_RUNTIME_PROBE_STATE_FILE"
+}
+probe_selected_runtime_executable() {
+  _state_file="$TEST_RUNTIME_PROBE_STATE_FILE"
+  _sequence_file="$TEST_RUNTIME_PROBE_SEQUENCE_FILE"
+  _line_number=1
+  if [ -r "$_state_file" ]; then
+    _line_number="$(( $(tr -cd '0-9' < "$_state_file") + 1 ))"
+  fi
+  printf '%s' "$_line_number" > "$_state_file"
+  _line="$(sed -n "\${_line_number}p" "$_sequence_file")"
+  [ -n "$_line" ] || _line="$(sed -n '$p' "$_sequence_file")"
+  _probe_code="$(printf '%s' "$_line" | cut -f1)"
+  RUNTIME_PROBE_CLASSIFICATION="$(printf '%s' "$_line" | cut -f2)"
+  RUNTIME_PROBE_DIAGNOSTIC="$(printf '%s' "$_line" | cut -f3)"
+  BUILDER_BLOG_RUNTIME_VERSION="$(printf '%s' "$_line" | cut -f4)"
+  export RUNTIME_PROBE_CLASSIFICATION RUNTIME_PROBE_DIAGNOSTIC BUILDER_BLOG_RUNTIME_VERSION
+  if [ "$_probe_code" = "0" ]; then
+    return 0
+  fi
+  return "$_probe_code"
+}
+job_run_update() {
+  _status="$1"
+  _summary="$2"
+  _reason="$3"
+  shift 3
+  printf '%s|%s|%s|%s\\n' "$_status" "$_summary" "$_reason" "$*" >> "$RUNTIME_TEST_UPDATES"
+}
+cloud_host_sleep_with_heartbeat() {
+  printf '%s\\n' "sleep" >> "$RUNTIME_TEST_EVENTS"
+  if [ -e "$RUNTIME_TEST_STOP" ]; then
+    while [ ! -e "$RUNTIME_TEST_STOP.release" ]; do :; done
+  fi
+}
+fetch_cloud_library() {
+  printf '%s\\n' "fetch" >> "$RUNTIME_TEST_EVENTS"
+}
+set_runtime_probe_sequence "${initialSequence}"
+wait_for_cloud_runtime_ready
+fetch_cloud_library
+set_runtime_probe_sequence "${refillSequence}"
+wait_for_cloud_runtime_ready
+fetch_cloud_library
+set_runtime_probe_sequence "${blockedSequence}"
+: > "$RUNTIME_TEST_STOP"
+wait_for_cloud_runtime_ready &
+helper_pid=$!
+while ! grep -q '^sleep$' "$RUNTIME_TEST_EVENTS" 2>/dev/null; do :; done
+kill -TERM "$helper_pid"
+: > "$RUNTIME_TEST_STOP.release"
+wait "$helper_pid" || helper_code="$?"
+printf 'helper_code=%s\\n' "\${helper_code:-0}"
+`,
+    "utf8",
+  );
+
+  try {
+    const result = spawnSync("sh", [scriptPath], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    const updates = readFileSync(updatesPath, "utf8").trim().split("\n").filter(Boolean);
+    const events = readFileSync(eventsPath, "utf8").trim().split("\n").filter(Boolean);
+    const helperCode = Number((result.stdout.match(/helper_code=(\d+)/) ?? [])[1] ?? "-1");
+    return { ...result, updates, events, helperCode };
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 test("removed runtimes fail closed from both environment overrides and persisted pins", () => {
   for (const source of ["env", "pin"] as const) {
     const result = runWithRemovedRuntime(source);
@@ -347,6 +454,26 @@ test("runtime smoke check probes the selected executable before launching the sm
   assert.match(runner, /run_runtime_smoke_check\(\) \{[\s\S]*probe_selected_runtime_executable/);
 });
 
+test("cloud runtime gate waits in-process while blocked, then resumes only after a healthy probe", () => {
+  const result = runCloudRuntimeReadyHarness();
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.ok(result.helperCode === 130 || result.helperCode === 143, `${result.stderr}\n${result.stdout}`);
+  assert.equal(result.events.filter((value) => value === "fetch").length, 2);
+  assert.ok(result.events.filter((value) => value === "sleep").length >= 2);
+  assert.equal(result.events[0], "sleep");
+  assert.equal(result.events[1], "fetch");
+  assert.equal(result.events[3], "fetch");
+  const blockedUpdates = result.updates.filter((line) =>
+    /^running\|Runtime unavailable; waiting before asking cloud for sources again\.\|runtime_missing_command\|.*--stage waiting_for_runtime/.test(line),
+  );
+  const healthyUpdates = result.updates.filter((line) =>
+    /^running\|Runtime probe succeeded; cloud source leasing resumed\.\|runtime_ready\|.*--stage waiting_for_runtime/.test(line),
+  );
+  assert.ok(blockedUpdates.length >= 2);
+  assert.equal(healthyUpdates.length, 2);
+  assert.ok(!result.events.slice(0, -1).includes("term"));
+});
+
 async function loadAgentJobRunsModule() {
   process.env.DATABASE_URL ??= "postgresql://postgres:postgres@127.0.0.1:5432/builder_blog_test";
   return import("../src/lib/agent-job-runs");
@@ -466,8 +593,13 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /exitCode: exitCodeOrNull\(argValue\(args, "--exit-code", ""\)\)/);
   assert.match(cli, /runtimeUsageFromFile\(argValue\(args, "--usage-file", null\)\)/);
   assert.match(cli, /const runtimeVersion = stringOrNull\(argValue\(args, "--runtime-version", null\)\)/);
+  assert.match(cli, /const runtimeHealthState = stringOrNull\(argValue\(args, "--runtime-health-state", null\)\)/);
+  assert.match(cli, /const runtimeRetryAt = stringOrNull\(argValue\(args, "--runtime-retry-at", null\)\)/);
   assert.match(cli, /\.\.\.\(runtimeVersion \? \{ runtimeVersion \} : \{\}\)/);
+  assert.match(cli, /\.\.\.\(normalizedRuntimeHealthState \? \{ runtimeHealthState: normalizedRuntimeHealthState \} : \{\}\)/);
+  assert.match(cli, /\.\.\.\(runtimeRetryAt \? \{ runtimeRetryAt \} : \{\}\)/);
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
+  assert.match(cli, /providerError: sanitizeMediaDiagnostic\(argValue\(args, "--provider-error", null\)\)/);
   assert.doesNotMatch(cli, /Hermes|HERMES_|detectedHermesModel/);
   assert.doesNotMatch(cli, /Gemini CLI|detectedGeminiModel|GEMINI_MODEL/);
 
@@ -505,6 +637,8 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(runner, /codex --version 2>\/dev\/null \|\| true/);
   assert.match(runner, /export BUILDER_BLOG_RUNTIME_VERSION/);
   assert.match(runner, /--runtime-version "\$\{BUILDER_BLOG_RUNTIME_VERSION:-\}"/);
+  assert.match(runner, /--runtime-health-state "\$\{BUILDER_BLOG_RUNTIME_HEALTH_STATE:-\}"/);
+  assert.match(runner, /--runtime-retry-at "\$\{BUILDER_BLOG_RUNTIME_RETRY_AT:-\}"/);
   assert.match(
     runner,
     /BUILDER_BLOG_AGENT_MODEL="\$\{BUILDER_BLOG_CODEX_MODEL:-\$DEFAULT_CODEX_MODEL\}"/,

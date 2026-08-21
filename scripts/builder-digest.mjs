@@ -2289,6 +2289,12 @@ async function jobRunCommand(args, defaultStatus = "running") {
   const expectedAt = stringOrNull(argValue(args, "--expected-at", envIso("BUILDER_BLOG_EXPECTED_AT")));
   const finishedAt = stringOrNull(argValue(args, "--finished-at"));
   const runtimeVersion = stringOrNull(argValue(args, "--runtime-version", null));
+  const runtimeHealthState = stringOrNull(argValue(args, "--runtime-health-state", null));
+  const runtimeRetryAt = stringOrNull(argValue(args, "--runtime-retry-at", null));
+  const normalizedRuntimeHealthState =
+    runtimeHealthState === "healthy" || runtimeHealthState === "blocked"
+      ? runtimeHealthState
+      : null;
   const result = await emitAgentJobRunRecord(config, {
     jobType,
     trigger,
@@ -2314,10 +2320,12 @@ async function jobRunCommand(args, defaultStatus = "running") {
       timedOutWorker: argValue(args, "--timed-out-worker", null),
       timedOutWorkerPid: numberOrNull(argValue(args, "--timed-out-worker-pid", null)),
       termination: argValue(args, "--termination", null),
-      providerError: argValue(args, "--provider-error", null),
+      providerError: sanitizeMediaDiagnostic(argValue(args, "--provider-error", null)),
       skippedWaitPids: argValue(args, "--skipped-wait-pids", null),
       localWorkers: numberOrNull(argValue(args, "--local-workers", null)),
       ...(runtimeVersion ? { runtimeVersion } : {}),
+      ...(normalizedRuntimeHealthState ? { runtimeHealthState: normalizedRuntimeHealthState } : {}),
+      ...(runtimeRetryAt ? { runtimeRetryAt } : {}),
       ...(usage ? { usage } : {}),
     },
   });

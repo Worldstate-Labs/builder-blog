@@ -74,6 +74,10 @@ export type CloudWorkerHostStatus = {
   hostname: string | null;
   platform: string | null;
   runtime: string | null;
+  runtimeHealthState: "healthy" | "blocked" | null;
+  runtimeRetryAt: string | null;
+  runtimeReason: string | null;
+  providerError: string | null;
   model: string | null;
   stage: string | null;
   summary: string | null;
@@ -231,6 +235,10 @@ export function serializeCloudWorkerHost(
       hostname: null,
       platform: null,
       runtime: null,
+      runtimeHealthState: null,
+      runtimeRetryAt: null,
+      runtimeReason: null,
+      providerError: null,
       model: null,
       stage: null,
       summary: null,
@@ -277,6 +285,13 @@ export function serializeCloudWorkerHost(
     hostname: str(job.hostname),
     platform: str(job.platform),
     runtime: str(job.runtime),
+    runtimeHealthState:
+      str(details?.runtimeHealthState) === "healthy" || str(details?.runtimeHealthState) === "blocked"
+        ? (str(details?.runtimeHealthState) as "healthy" | "blocked")
+        : null,
+    runtimeRetryAt: iso(details?.runtimeRetryAt),
+    runtimeReason: str(details?.reason),
+    providerError: str(details?.providerError),
     model: str(details?.agentModel ?? details?.model),
     stage: str(progress?.stage) ?? str(job.stage),
     summary: str(job.summary),

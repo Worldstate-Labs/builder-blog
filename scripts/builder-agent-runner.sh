@@ -56,6 +56,8 @@ JOB_UPDATE_RESET_FENCED=78
 DEFAULT_CODEX_MODEL="gpt-5.6-luna"
 DEFAULT_CODEX_FALLBACK_MODEL="gpt-5.4-mini"
 DEFAULT_CODEX_REASONING_EFFORT="medium"
+BUILDER_BLOG_RUNTIME_HEALTH_STATE="${BUILDER_BLOG_RUNTIME_HEALTH_STATE:-}"
+BUILDER_BLOG_RUNTIME_RETRY_AT="${BUILDER_BLOG_RUNTIME_RETRY_AT:-}"
 
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
 # runner so the per-user fetch log can distinguish scheduled jobs from
@@ -2337,6 +2339,8 @@ job_run_update() {
       --status "$_status" \
       --runtime "${BUILDER_BLOG_RUNTIME:-}" \
       --runtime-version "${BUILDER_BLOG_RUNTIME_VERSION:-}" \
+      --runtime-health-state "${BUILDER_BLOG_RUNTIME_HEALTH_STATE:-}" \
+      --runtime-retry-at "${BUILDER_BLOG_RUNTIME_RETRY_AT:-}" \
       --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
       --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
       --local-workers "${MAX_PARALLEL_WORKERS:-}" \
@@ -2359,6 +2363,8 @@ job_run_update() {
       --status "$_status" \
       --runtime "${BUILDER_BLOG_RUNTIME:-}" \
       --runtime-version "${BUILDER_BLOG_RUNTIME_VERSION:-}" \
+      --runtime-health-state "${BUILDER_BLOG_RUNTIME_HEALTH_STATE:-}" \
+      --runtime-retry-at "${BUILDER_BLOG_RUNTIME_RETRY_AT:-}" \
       --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
       --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
       --local-workers "${MAX_PARALLEL_WORKERS:-}" \
@@ -3721,6 +3727,68 @@ cloud_host_idle_seconds() {
   printf '%s\n' "$_value"
 }
 
+cloud_runtime_retry_seconds() {
+  _value="${BUILDER_BLOG_CLOUD_RUNTIME_RETRY_SECONDS:-300}"
+  case "$_value" in
+    ''|*[!0-9]*) _value=300 ;;
+  esac
+  if [ "$_value" -lt 0 ]; then _value=0; fi
+  if [ "$_value" -gt 3600 ]; then _value=3600; fi
+  printf '%s\n' "$_value"
+}
+
+cloud_runtime_retry_jitter_seconds() {
+  _base="${1:-$(cloud_runtime_retry_seconds)}"
+  _value="${BUILDER_BLOG_CLOUD_RUNTIME_RETRY_JITTER_SECONDS:-30}"
+  case "$_base" in
+    ''|*[!0-9]*) _base=300 ;;
+  esac
+  case "$_value" in
+    ''|*[!0-9]*) _value=30 ;;
+  esac
+  if [ "$_value" -lt 0 ]; then _value=0; fi
+  _max=$(( _base / 4 ))
+  if [ "$_max" -gt 60 ]; then _max=60; fi
+  if [ "$_value" -gt "$_max" ]; then _value="$_max"; fi
+  printf '%s\n' "$_value"
+}
+
+cloud_runtime_retry_wait_seconds() {
+  _base="$(cloud_runtime_retry_seconds)"
+  _jitter_max="$(cloud_runtime_retry_jitter_seconds "$_base")"
+  if [ "$_jitter_max" -le 0 ]; then
+    printf '%s\n' "$_base"
+    return 0
+  fi
+  node - "$_base" "$_jitter_max" <<'NODE'
+const base = Number(process.argv[2] || 0);
+const jitterMax = Number(process.argv[3] || 0);
+const jitter = jitterMax > 0 ? Math.floor(Math.random() * (jitterMax + 1)) : 0;
+console.log(String(base + jitter));
+NODE
+}
+
+cloud_runtime_retry_at_iso() {
+  _wait_seconds="${1:-0}"
+  case "$_wait_seconds" in
+    ''|*[!0-9]*) _wait_seconds=0 ;;
+  esac
+  node - "$_wait_seconds" <<'NODE'
+const waitSeconds = Number(process.argv[2] || 0);
+console.log(new Date(Date.now() + waitSeconds * 1000).toISOString());
+NODE
+}
+
+cloud_runtime_provider_error() {
+  node - "${1:-}" <<'NODE'
+const text = String(process.argv[2] || "")
+  .replace(/[\u0000-\u001f\u007f]+/g, " ")
+  .replace(/[ \t]+/g, " ")
+  .trim();
+process.stdout.write(text.slice(0, 240));
+NODE
+}
+
 cloud_host_signal_cleanup() {
   _signal="${1:-TERM}"
   terminate_job_tmp_processes TERM 3 || true
@@ -3738,6 +3806,9 @@ cloud_host_signal_cleanup() {
 
 cloud_host_sleep_with_heartbeat() {
   _remaining="${1:-$(cloud_host_idle_seconds)}"
+  _summary="${2:-Worker host idle; waiting before asking cloud for more sources.}"
+  _reason="${3:-worker_host_idle}"
+  _stage="${4:-waiting_for_cloud_sources}"
   case "$_remaining" in
     ''|*[!0-9]*) _remaining="$(cloud_host_idle_seconds)" ;;
   esac
@@ -3746,8 +3817,38 @@ cloud_host_sleep_with_heartbeat() {
     if [ "$_chunk" -gt "$_remaining" ]; then _chunk="$_remaining"; fi
     sleep "$_chunk"
     _remaining=$(( _remaining - _chunk ))
-    job_run_update running "Worker host idle; waiting before asking cloud for more sources." "worker_host_idle" \
-      --stage "waiting_for_cloud_sources"
+    job_run_update running "$_summary" "$_reason" \
+      --stage "$_stage"
+  done
+}
+
+wait_for_cloud_runtime_ready() {
+  while :; do
+    if probe_selected_runtime_executable "${PINNED_RUNTIME:-${BUILDER_BLOG_RUNTIME:-}}"; then
+      BUILDER_BLOG_RUNTIME_HEALTH_STATE="healthy"
+      BUILDER_BLOG_RUNTIME_RETRY_AT=""
+      export BUILDER_BLOG_RUNTIME_HEALTH_STATE BUILDER_BLOG_RUNTIME_RETRY_AT
+      job_run_update running "Runtime probe succeeded; cloud source leasing resumed." "runtime_ready" \
+        --stage "waiting_for_runtime"
+      return 0
+    fi
+    _probe_code="$?"
+    _reason="${RUNTIME_PROBE_CLASSIFICATION:-runtime_probe_failed}"
+    _provider_error="$(cloud_runtime_provider_error "${RUNTIME_PROBE_DIAGNOSTIC:-Selected runtime probe failed.}")"
+    _wait_seconds="$(cloud_runtime_retry_wait_seconds)"
+    _retry_at="$(cloud_runtime_retry_at_iso "$_wait_seconds")"
+    BUILDER_BLOG_RUNTIME_HEALTH_STATE="blocked"
+    BUILDER_BLOG_RUNTIME_RETRY_AT="$_retry_at"
+    export BUILDER_BLOG_RUNTIME_HEALTH_STATE BUILDER_BLOG_RUNTIME_RETRY_AT
+    job_run_update running "Runtime unavailable; waiting before asking cloud for sources again." "$_reason" \
+      --stage "waiting_for_runtime" \
+      --provider-error "$_provider_error" \
+      --exit-code "$_probe_code"
+    cloud_host_sleep_with_heartbeat \
+      "$_wait_seconds" \
+      "Runtime unavailable; waiting before asking cloud for sources again." \
+      "$_reason" \
+      "waiting_for_runtime"
   done
 }
 
@@ -3807,6 +3908,9 @@ run_cloud_worker_host() {
     clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
     cleanup_job_tmp_dir killed "worker_host_lease_rejected"
     return 1
+  fi
+  if ! wait_for_cloud_runtime_ready; then
+    return "$?"
   fi
 
   BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1
@@ -5342,6 +5446,9 @@ cloud_refill_limit() {
 fetch_more_cloud_sources() {
   [ "$_sync_command" = "sync-cloud-builders" ] || return 0
   [ "${_cloud_refill_exhausted:-0}" -eq 0 ] || return 0
+  if ! wait_for_cloud_runtime_ready; then
+    return "$?"
+  fi
   [ "$_cloud_refill_count" -lt "$_cloud_refill_limit" ] || {
     _cloud_refill_exhausted=1
     return 0

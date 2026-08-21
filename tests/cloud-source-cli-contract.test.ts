@@ -1579,6 +1579,7 @@ esac
       `set -eu
 ${runner.slice(start, end)}
 job_run_update() { :; }
+wait_for_cloud_runtime_ready() { return 0; }
 cloud_fetch_source_limit() { printf '10\\n'; }
 append_cloud_run_id() { :; }
 cloud_fetch_heartbeat() { :; }
@@ -1667,6 +1668,7 @@ esac
       `set -eu
 ${runner.slice(start, end)}
 job_run_update() { :; }
+wait_for_cloud_runtime_ready() { return 0; }
 cloud_fetch_source_limit() { printf '10\\n'; }
 append_cloud_run_id() { :; }
 cloud_fetch_heartbeat() { :; }
@@ -1894,6 +1896,48 @@ test("cloud worker host keeps its job heartbeat fresh while fetch workers run", 
     /job_run_update running "Running source fetch workers\." "heartbeat"[\s\S]*--stage "run_fetch_workers"/,
   );
   assert.match(runner, /_last_job_run_heartbeat="\$_now"/);
+});
+
+test("cloud worker host gates initial and refill leases on persistent runtime health", async () => {
+  const runner = await readFile("scripts/builder-agent-runner.sh", "utf8");
+
+  assert.match(runner, /wait_for_cloud_runtime_ready\(\) \{/);
+  assert.match(
+    runner,
+    /wait_for_cloud_runtime_ready\(\) \{[\s\S]*probe_selected_runtime_executable/,
+  );
+  assert.match(
+    runner,
+    /wait_for_cloud_runtime_ready\(\) \{[\s\S]*job_run_update running "Runtime unavailable; waiting before asking cloud for sources again\." "\$_reason"[\s\S]*--stage "waiting_for_runtime"/,
+  );
+  assert.match(
+    runner,
+    /wait_for_cloud_runtime_ready\(\) \{[\s\S]*cloud_host_sleep_with_heartbeat[\s\S]*"waiting_for_runtime"/,
+  );
+  assert.match(
+    runner,
+    /wait_for_cloud_runtime_ready\(\) \{[\s\S]*job_run_update running "Runtime probe succeeded; cloud source leasing resumed\." "runtime_ready"[\s\S]*--stage "waiting_for_runtime"/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*job_run_update starting "Worker host accepted by local runner\." "worker_host_started"/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*wait_for_cloud_runtime_ready/,
+  );
+  assert.match(
+    runner,
+    /run_cloud_worker_host\(\) \{[\s\S]*BUILDER_BLOG_CLOUD_PERSISTENT_HOST=1[\s\S]*run_library_job fetch-cloud-library/,
+  );
+  assert.match(
+    runner,
+    /fetch_more_cloud_sources\(\) \{[\s\S]*wait_for_cloud_runtime_ready/,
+  );
+  assert.match(
+    runner,
+    /fetch_more_cloud_sources\(\) \{[\s\S]*node "\$AGENT_DIR\/builder-digest\.mjs" fetch-cloud-library/,
+  );
 });
 
 test("cloud worker launch exports an immutable shard start epoch for each worker", async () => {

@@ -874,6 +874,33 @@ test("serializeCloudWorkerHost marks stale and missing hosts clearly", () => {
   assert.deepEqual(offline.tasks, []);
 });
 
+test("serializeCloudWorkerHost exposes degraded runtime state and bounded diagnostics", () => {
+  const result = serializeCloudWorkerHost(
+    {
+      status: "running",
+      startedAt: "2026-06-28T10:00:00.000Z",
+      heartbeatAt: "2026-06-28T10:01:30.000Z",
+      runtime: "claude",
+      stage: "waiting_for_runtime",
+      summary: "Runtime unavailable; waiting before asking cloud for sources again.",
+      details: {
+        runtimeHealthState: "blocked",
+        runtimeRetryAt: "2026-06-28T10:06:30.000Z",
+        reason: "runtime_missing_command",
+        providerError: "Selected runtime 'claude' is not on PATH.",
+      },
+    },
+    new Date("2026-06-28T10:02:00.000Z"),
+  );
+
+  assert.equal(result.status, "online");
+  assert.equal(result.stage, "waiting_for_runtime");
+  assert.equal(result.runtimeHealthState, "blocked");
+  assert.equal(result.runtimeRetryAt, "2026-06-28T10:06:30.000Z");
+  assert.equal(result.runtimeReason, "runtime_missing_command");
+  assert.equal(result.providerError, "Selected runtime 'claude' is not on PATH.");
+});
+
 test("serializeCloudFetchRun reports a partial-only batch as PARTIAL, not FAILED", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,
