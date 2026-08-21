@@ -2,8 +2,13 @@ import {
   CloudFetchQueueStatus,
   CloudFetchRunStatus,
 } from "@prisma/client";
+import {
+  lockCloudFetchRunTaskRows,
+  type LockedCloudFetchRunTaskRow,
+} from "@/lib/cloud-fetch-run-task-lock";
 
 type CloudFetchRunTaskStateRow = {
+  cloudSourceTaskId?: string;
   status: string;
   usageTokens?: number | null;
   usageCostUsd?: number | string | { toString(): string } | null;
@@ -19,6 +24,13 @@ type CloudFetchRunAggregatePrisma = {
 };
 
 type CloudFetchRunLifecyclePrisma = CloudFetchRunAggregatePrisma & {
+  $queryRawUnsafe(query: string, ...values: unknown[]): Promise<LockedCloudFetchRunTaskRow[]>;
+  agentJobRun: {
+    findMany(args: unknown): Promise<Array<{ id: string }>>;
+  };
+  cloudFetchRun: CloudFetchRunAggregatePrisma["cloudFetchRun"] & {
+    findMany(args: unknown): Promise<Array<{ id: string }>>;
+  };
   cloudFetchQueueItem: {
     findMany(args: unknown): Promise<Array<{ runId: string | null; cloudSourceTaskId: string }>>;
     updateMany(args: unknown): Promise<{ count: number }>;
@@ -27,6 +39,15 @@ type CloudFetchRunLifecyclePrisma = CloudFetchRunAggregatePrisma & {
     updateMany(args: unknown): Promise<{ count: number }>;
   };
 };
+
+const TERMINAL_CLOUD_WORKER_JOB_STATUSES = [
+  "succeeded",
+  "failed",
+  "timed_out",
+  "killed",
+  "replaced",
+  "stale",
+] as const;
 
 export async function expireLeasedCloudFetchRuns(params: {
   prisma: CloudFetchRunLifecyclePrisma;
@@ -85,6 +106,117 @@ export async function expireLeasedCloudFetchRuns(params: {
   return {
     expiredLeases,
     expiredRuns: expiredRunIds.size,
+  };
+}
+
+export async function reconcileTerminalCloudWorkerRuns(params: {
+  prisma: CloudFetchRunLifecyclePrisma;
+  now: Date;
+}) {
+  const emptyResult = {
+    reconciledRuns: 0,
+    finalizedTasks: 0,
+    requeuedQueueItems: 0,
+  };
+  const agentJobRun = (params.prisma as Partial<CloudFetchRunLifecyclePrisma>).agentJobRun;
+  const cloudFetchRun = (params.prisma as Partial<CloudFetchRunLifecyclePrisma>).cloudFetchRun;
+  if (!agentJobRun || !cloudFetchRun) return emptyResult;
+
+  const terminalJobs = await agentJobRun.findMany({
+    where: {
+      status: { in: [...TERMINAL_CLOUD_WORKER_JOB_STATUSES] },
+    },
+    select: { id: true },
+  });
+  const terminalJobIds = terminalJobs.map((job) => job.id);
+  if (terminalJobIds.length === 0) return emptyResult;
+
+  const runs = await cloudFetchRun.findMany({
+    where: {
+      status: CloudFetchRunStatus.RUNNING,
+      agentJobRunId: { in: terminalJobIds },
+    },
+    orderBy: [{ id: "asc" }],
+    select: { id: true },
+  });
+
+  const reconciledRunIds = new Set<string>();
+  let finalizedTasks = 0;
+  let requeuedQueueItems = 0;
+
+  for (const run of runs) {
+    const runningTaskRows = await params.prisma.cloudFetchRunTask.findMany({
+      where: {
+        runId: run.id,
+        status: CloudFetchRunStatus.RUNNING,
+      },
+      orderBy: [{ cloudSourceTaskId: "asc" }],
+      select: { cloudSourceTaskId: true },
+    });
+    const taskIds = runningTaskRows
+      .map((task) => task.cloudSourceTaskId)
+      .filter((taskId): taskId is string => typeof taskId === "string" && taskId.length > 0);
+    if (taskIds.length === 0) continue;
+
+    await lockCloudFetchRunTaskRows(params.prisma, {
+      runId: run.id,
+      cloudSourceTaskIds: taskIds,
+    });
+
+    const lockedRunningTasks = await params.prisma.cloudFetchRunTask.findMany({
+      where: {
+        runId: run.id,
+        status: CloudFetchRunStatus.RUNNING,
+        cloudSourceTaskId: { in: taskIds },
+      },
+      orderBy: [{ cloudSourceTaskId: "asc" }],
+      select: { cloudSourceTaskId: true },
+    });
+
+    for (const task of lockedRunningTasks) {
+      const finalizedTask = await params.prisma.cloudFetchRunTask.updateMany({
+        where: {
+          runId: run.id,
+          cloudSourceTaskId: task.cloudSourceTaskId,
+          status: CloudFetchRunStatus.RUNNING,
+        },
+        data: {
+          status: CloudFetchRunStatus.FAILED,
+          finishedAt: params.now,
+          failureReason: "cloud_worker_stopped",
+        },
+      });
+      if (finalizedTask.count === 0) continue;
+
+      finalizedTasks += finalizedTask.count;
+      reconciledRunIds.add(run.id);
+
+      const requeuedItem = await params.prisma.cloudFetchQueueItem.updateMany({
+        where: {
+          runId: run.id,
+          cloudSourceTaskId: task.cloudSourceTaskId,
+          status: CloudFetchQueueStatus.LEASED,
+        },
+        data: {
+          status: CloudFetchQueueStatus.QUEUED,
+          leasedAt: null,
+          leaseExpiresAt: null,
+          leaseOwner: null,
+          runId: null,
+        },
+      });
+      requeuedQueueItems += requeuedItem.count;
+    }
+  }
+
+  for (const runId of reconciledRunIds) {
+    await recomputeCloudFetchRun(params.prisma, { runId, finishedAt: params.now });
+  }
+
+  return {
+    reconciledRuns: reconciledRunIds.size,
+    finalizedTasks,
+    requeuedQueueItems,
   };
 }
 

@@ -1747,7 +1747,11 @@ test("leaseCloudFetchTasks marks expired leased run tasks failed before requeuei
         queueUpdates.push(args);
         return { count: 1 };
       },
-      findMany: async (args: { where?: Record<string, unknown>; include?: unknown; select?: unknown }) => {
+      findMany: async (args: {
+        where?: { status?: string; leaseExpiresAt?: { gt?: Date } | Record<string, unknown> };
+        include?: unknown;
+        select?: unknown;
+      }) => {
         if (
           args.where?.status === "LEASED" &&
           args.where?.leaseExpiresAt &&
@@ -1911,6 +1915,339 @@ test("leaseCloudFetchTasks does not requeue an expired lease after the run task 
   assert.equal(runTaskUpdates.length, 1);
   assert.equal(queueUpdates.length, 0);
   assert.equal(runUpdates.length, 0);
+});
+
+test("leaseCloudFetchTasks reconciles terminal linked cloud worker runs before computing a new lease budget", async () => {
+  const events: string[] = [];
+  const lockQueries: Array<{ runId: string; cloudSourceTaskIds: string[]; query: string }> = [];
+  const runTaskUpdates: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
+  const queueUpdates: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
+  const runUpdates: Array<{ where: Record<string, unknown>; data: Record<string, unknown> }> = [];
+  const runs = [
+    {
+      id: "run_active",
+      status: "RUNNING",
+      agentJobRunId: "job_running",
+      finishedAt: null,
+      tasksSucceeded: 0,
+      tasksFailed: 0,
+    },
+    {
+      id: "run_legacy",
+      status: "RUNNING",
+      agentJobRunId: null,
+      finishedAt: null,
+      tasksSucceeded: 0,
+      tasksFailed: 0,
+    },
+    {
+      id: "run_terminal",
+      status: "RUNNING",
+      agentJobRunId: "job_succeeded",
+      finishedAt: null,
+      tasksSucceeded: 0,
+      tasksFailed: 0,
+    },
+  ];
+  const runTasks = [
+    {
+      runId: "run_terminal",
+      cloudSourceTaskId: "task_terminal_done",
+      status: "SUCCEEDED",
+      finishedAt: new Date("2026-06-27T11:30:00.000Z"),
+      failureReason: null,
+      usageTokens: null,
+      usageCostUsd: null,
+    },
+    {
+      runId: "run_terminal",
+      cloudSourceTaskId: "task_terminal_live",
+      status: "RUNNING",
+      finishedAt: null,
+      failureReason: null,
+      usageTokens: null,
+      usageCostUsd: null,
+    },
+    {
+      runId: "run_active",
+      cloudSourceTaskId: "task_active_live",
+      status: "RUNNING",
+      finishedAt: null,
+      failureReason: null,
+      usageTokens: null,
+      usageCostUsd: null,
+    },
+    {
+      runId: "run_legacy",
+      cloudSourceTaskId: "task_legacy_live",
+      status: "RUNNING",
+      finishedAt: null,
+      failureReason: null,
+      usageTokens: null,
+      usageCostUsd: null,
+    },
+  ];
+  const queueItems = [
+    {
+      id: "queue_terminal",
+      runId: "run_terminal",
+      cloudSourceTaskId: "task_terminal_live",
+      status: "LEASED",
+      leaseOwner: "local-cloud-runner:test",
+      leasedAt: new Date("2026-06-27T11:45:00.000Z"),
+      leaseExpiresAt: new Date("2026-06-27T12:15:00.000Z"),
+    },
+    {
+      id: "queue_active",
+      runId: "run_active",
+      cloudSourceTaskId: "task_active_live",
+      status: "LEASED",
+      leaseOwner: "local-cloud-runner:test",
+      leasedAt: new Date("2026-06-27T11:45:00.000Z"),
+      leaseExpiresAt: new Date("2026-06-27T12:15:00.000Z"),
+    },
+    {
+      id: "queue_legacy",
+      runId: "run_legacy",
+      cloudSourceTaskId: "task_legacy_live",
+      status: "LEASED",
+      leaseOwner: "local-cloud-runner:test",
+      leasedAt: new Date("2026-06-27T11:45:00.000Z"),
+      leaseExpiresAt: new Date("2026-06-27T12:15:00.000Z"),
+    },
+  ];
+  const prisma = {
+    async $transaction(callback: (tx: unknown) => Promise<unknown>) { return callback(this); },
+    async $queryRawUnsafe(query: string, ...values: unknown[]) {
+      if (query.includes('FROM "ResetFence"') || query.includes("clock_timestamp")) {
+        return resetFenceQuery(query);
+      }
+      if (query.includes('FROM "CloudFetchRunTask"')) {
+        const runId = String(values[0]);
+        const cloudSourceTaskIds = values.slice(1).map((value) => String(value));
+        events.push(`lock:${runId}`);
+        lockQueries.push({ runId, cloudSourceTaskIds, query });
+        return runTasks
+          .filter((task) => task.runId === runId && cloudSourceTaskIds.includes(task.cloudSourceTaskId))
+          .sort((left, right) => left.cloudSourceTaskId.localeCompare(right.cloudSourceTaskId))
+          .map((task) => ({
+            cloudSourceTaskId: task.cloudSourceTaskId,
+            status: task.status,
+            details: {},
+          }));
+      }
+      return [];
+    },
+    cloudFetchConfig: { findUnique: async () => null },
+    agentJobRun: {
+      findMany: async (args: { where?: { status?: { in?: string[] } } }) => [
+        { id: "job_succeeded", status: "succeeded" },
+        { id: "job_running", status: "running" },
+      ]
+        .filter((job) => args.where?.status?.in == null || args.where.status.in.includes(job.status))
+        .map((job) => ({ id: job.id })),
+    },
+    cloudFetchQueueItem: {
+      updateMany: async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        events.push("queueUpdate");
+        queueUpdates.push(args);
+        const where = args.where as {
+          runId: string;
+          cloudSourceTaskId: string;
+          status: string;
+        };
+        const row = queueItems.find((item) =>
+          item.runId === where.runId &&
+          item.cloudSourceTaskId === where.cloudSourceTaskId &&
+          item.status === where.status
+        );
+        if (!row) return { count: 0 };
+        Object.assign(row, args.data);
+        return { count: 1 };
+      },
+      findMany: async (args: { where?: Record<string, unknown>; include?: unknown; select?: unknown }) => {
+        const where = args.where as {
+          status?: string;
+          leaseExpiresAt?: { gt?: Date } | Record<string, unknown>;
+        } | undefined;
+        if (
+          where?.status === "LEASED" &&
+          where.leaseExpiresAt &&
+          args.select &&
+          "runId" in (args.select as Record<string, unknown>)
+        ) {
+          return [];
+        }
+        if (where?.status === "LEASED" && "gt" in (where.leaseExpiresAt ?? {})) {
+          return [];
+        }
+        return [];
+      },
+      count: async () => 0,
+      create: async () => ({}),
+      update: async () => ({}),
+    },
+    cloudFetchRun: {
+      findMany: async (args: { where?: { status?: string; agentJobRunId?: { in?: string[] } } }) => runs
+        .filter((run) =>
+          (args.where?.status == null || run.status === args.where.status) &&
+          (args.where?.agentJobRunId?.in == null || (
+            run.agentJobRunId != null &&
+            args.where.agentJobRunId.in.includes(run.agentJobRunId)
+          ))
+        )
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .map((run) => ({ id: run.id, agentJobRunId: run.agentJobRunId })),
+      create: async (args: { data: Record<string, unknown> }) => ({
+        id: "run_new_terminal_reconciled",
+        ...args.data,
+      }),
+      update: async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        runUpdates.push(args);
+        const row = runs.find((run) => run.id === args.where.id);
+        if (row) Object.assign(row, args.data);
+        return {};
+      },
+    },
+    cloudSourceTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+      update: async () => ({}),
+    },
+    cloudFetchRunTask: {
+      updateMany: async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        events.push("runTaskUpdate");
+        runTaskUpdates.push(args);
+        const where = args.where as {
+          runId: string;
+          cloudSourceTaskId: string;
+          status: string;
+        };
+        const row = runTasks.find((task) =>
+          task.runId === where.runId &&
+          task.cloudSourceTaskId === where.cloudSourceTaskId &&
+          task.status === where.status
+        );
+        if (!row) return { count: 0 };
+        Object.assign(row, args.data);
+        return { count: 1 };
+      },
+      findMany: async (args: { where?: Record<string, unknown>; orderBy?: unknown; select?: Record<string, unknown> }) => {
+        if (args.where?.startedAt) return [];
+        if (args.where?.runId) {
+          const where = args.where as {
+            runId: string;
+            status?: string;
+            cloudSourceTaskId?: { in?: string[] };
+          };
+          const selectedIds = where.cloudSourceTaskId?.in;
+          return runTasks
+            .filter((task) =>
+              task.runId === where.runId &&
+              (where.status == null || task.status === where.status) &&
+              (selectedIds == null || selectedIds.includes(task.cloudSourceTaskId))
+            )
+            .sort((left, right) => left.cloudSourceTaskId.localeCompare(right.cloudSourceTaskId))
+            .map((task) => {
+              const row: Record<string, unknown> = {};
+              if (args.select?.cloudSourceTaskId) row.cloudSourceTaskId = task.cloudSourceTaskId;
+              if (args.select?.status) row.status = task.status;
+              if (args.select?.usageTokens) row.usageTokens = task.usageTokens;
+              if (args.select?.usageCostUsd) row.usageCostUsd = task.usageCostUsd;
+              if (Object.keys(args.select ?? {}).length === 0) {
+                row.cloudSourceTaskId = task.cloudSourceTaskId;
+                row.status = task.status;
+                row.usageTokens = task.usageTokens;
+                row.usageCostUsd = task.usageCostUsd;
+              }
+              return row;
+            });
+        }
+        return [];
+      },
+      create: async () => ({}),
+    },
+    cloudSourceSubmission: { groupBy: async () => [] },
+    feedItem: { findMany: async () => [] },
+  };
+
+  const first = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(first.status, "empty");
+  assert.deepEqual(runTaskUpdates, [
+    {
+      where: {
+        runId: "run_terminal",
+        cloudSourceTaskId: "task_terminal_live",
+        status: "RUNNING",
+      },
+      data: {
+        status: "FAILED",
+        finishedAt: now,
+        failureReason: "cloud_worker_stopped",
+      },
+    },
+  ]);
+  assert.deepEqual(queueUpdates, [
+    {
+      where: {
+        runId: "run_terminal",
+        cloudSourceTaskId: "task_terminal_live",
+        status: "LEASED",
+      },
+      data: {
+        status: "QUEUED",
+        leasedAt: null,
+        leaseExpiresAt: null,
+        leaseOwner: null,
+        runId: null,
+      },
+    },
+  ]);
+  assert.deepEqual(runUpdates, [
+    {
+      where: { id: "run_terminal" },
+      data: {
+        status: "PARTIAL",
+        finishedAt: now,
+        tasksSucceeded: 1,
+        tasksFailed: 1,
+        usageTokens: null,
+        usageCostUsd: null,
+      },
+    },
+  ]);
+  assert.deepEqual(
+    events.slice(0, 3),
+    ["lock:run_terminal", "runTaskUpdate", "queueUpdate"],
+  );
+  assert.equal(lockQueries.length, 1);
+  assert.deepEqual(lockQueries[0], {
+    runId: "run_terminal",
+    cloudSourceTaskIds: ["task_terminal_live"],
+    query: lockQueries[0]?.query,
+  });
+  assert.match(lockQueries[0]!.query, /ORDER BY "cloudSourceTaskId" ASC\s+FOR UPDATE/);
+  assert.equal(runTasks.find((task) => task.cloudSourceTaskId === "task_terminal_done")?.status, "SUCCEEDED");
+  assert.equal(runTasks.find((task) => task.cloudSourceTaskId === "task_active_live")?.status, "RUNNING");
+  assert.equal(runTasks.find((task) => task.cloudSourceTaskId === "task_legacy_live")?.status, "RUNNING");
+
+  const repeat = await leaseCloudFetchTasks({
+    prisma: prisma as never,
+    now,
+    limit: 2,
+    leaseOwner: "local-cloud-runner:test",
+  });
+
+  assert.equal(repeat.status, "empty");
+  assert.equal(runTaskUpdates.length, 1);
+  assert.equal(queueUpdates.length, 1);
+  assert.equal(runUpdates.length, 1);
 });
 
 test("leaseCloudFetchTasks returns fetched post keys for leased cloud builders", async () => {

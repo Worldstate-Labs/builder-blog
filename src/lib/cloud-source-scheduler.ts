@@ -5,7 +5,10 @@ import {
   type Prisma,
   type PrismaClient,
 } from "@prisma/client";
-import { expireLeasedCloudFetchRuns } from "@/lib/cloud-fetch-run-lifecycle";
+import {
+  expireLeasedCloudFetchRuns,
+  reconcileTerminalCloudWorkerRuns,
+} from "@/lib/cloud-fetch-run-lifecycle";
 import type { CloudFetchExecutionPlan } from "@/lib/cloud-source-contracts";
 import { cloudDeadlineState, cloudShardExecutionBudget } from "@/lib/local-agent-timeouts";
 import { databaseClockNow, lockResetFenceForWorker } from "@/lib/reset-fence";
@@ -441,6 +444,7 @@ async function leaseCloudFetchTasksInTransaction(params: {
   await lockResetFenceForWorker(prisma, params.workerStartedAt);
   const config = await loadCloudFetchConfig(prisma);
   await expireStaleCloudFetchLeases({ prisma, now });
+  await reconcileTerminalCloudWorkerRuns({ prisma, now });
 
   const budget = await computeLeaseBudget({ prisma, now, config, requestedLimit: params.limit });
   if (budget.limit <= 0) {
