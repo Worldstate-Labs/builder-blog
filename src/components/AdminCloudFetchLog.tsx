@@ -289,12 +289,15 @@ function sourceTaskFailure(task: CloudFetchRunLogTask) {
 
 function runtimeBlockedSummary(workerHost: CloudWorkerHostStatus): string | null {
   if (workerHost.runtimeHealthState !== "blocked") return null;
-  if (workerHost.providerError) return workerHost.providerError;
   if (workerHost.runtimeReason) {
     const failure = fetchFailureInfo(workerHost.runtimeReason);
     if (failure.known) return failure.operatorMessage;
   }
-  return workerHost.summary;
+  return "Runtime unavailable; waiting before asking cloud for sources again.";
+}
+
+export function runtimeBlockedSummaryForTest(workerHost: CloudWorkerHostStatus): string | null {
+  return runtimeBlockedSummary(workerHost);
 }
 
 function skippedReasonSummary(

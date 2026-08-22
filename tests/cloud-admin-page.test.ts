@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { buildWorkerShardGroupsForTest } from "../src/components/AdminCloudFetchLog";
+import { runtimeBlockedSummaryForTest } from "../src/components/AdminCloudFetchLog";
 import { classifyCloudSourceLifecycleForTest } from "../src/components/CloudSourceLogItem";
 import type {
   CloudFetchPostOutcome,
   CloudFetchRunLogItem,
   CloudFetchRunLogTask,
+  CloudWorkerHostStatus,
   CloudWorkerHostTask,
 } from "../src/lib/cloud-fetch-run-log";
 
@@ -43,6 +45,33 @@ function cloudSourceTask(overrides: Partial<CloudFetchRunLogTask> = {}): CloudFe
     posts: [],
     workerUsages: [],
     noGeneratedFetchTasks: false,
+    ...overrides,
+  };
+}
+
+function cloudWorkerHost(overrides: Partial<CloudWorkerHostStatus> = {}): CloudWorkerHostStatus {
+  return {
+    status: "online",
+    statusLabel: "Online",
+    hostname: "worker-host",
+    platform: "darwin",
+    runtime: "codex",
+    runtimeHealthState: "healthy",
+    runtimeRetryAt: null,
+    runtimeReason: null,
+    providerError: null,
+    model: "gpt-5.4-mini",
+    stage: "workers_running",
+    summary: "Worker host is healthy.",
+    startedAt: "2026-08-22T10:00:00.000Z",
+    heartbeatAt: "2026-08-22T10:01:00.000Z",
+    updatedAt: "2026-08-22T10:01:00.000Z",
+    localWorkers: 4,
+    runnerPid: 123,
+    workerPid: 456,
+    progress: null,
+    tasks: [],
+    recentEvents: [],
     ...overrides,
   };
 }
@@ -672,6 +701,24 @@ test("worker host panel shows blocked runtimes as online runtime blockers with r
   assert.match(log, /workerHost\.runtimeRetryAt/);
   assert.match(log, /Next retry <RelativeTime value=\{workerHost\.runtimeRetryAt\}/);
   assert.match(log, /workerHost\.status === "offline"/);
+});
+
+test("worker host blocked summary never exposes raw provider errors in the main card", () => {
+  const summary = runtimeBlockedSummaryForTest(
+    cloudWorkerHost({
+      runtimeHealthState: "blocked",
+      runtimeReason: "runtime_installation_failed",
+      providerError: "OPENAI_API_KEY=sk-live-secret selected runtime failed to install",
+      summary: "Runtime unavailable; waiting before asking cloud for sources again.",
+    }),
+  );
+
+  assert.equal(
+    summary,
+    "The cloud worker host could not prepare the selected runtime before source planning began.",
+  );
+  assert.equal(summary?.includes("OPENAI_API_KEY"), false);
+  assert.equal(summary?.includes("sk-live-secret"), false);
 });
 
 test("cloud source detail reuses source-level budget and deadline facts without exposing internal budget reason copy", () => {
