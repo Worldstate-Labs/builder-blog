@@ -297,6 +297,39 @@ test("serializeCloudFetchRun does not hide expired zero-post source leases", () 
   assert.equal(result.tasks[0]?.failureReason, "cloud_lease_expired");
 });
 
+test("serializeCloudFetchRun keeps discovery-missing zero-post sources partial instead of no-post success", () => {
+  const result = serializeCloudFetchRun({
+    ...baseRun,
+    status: "PARTIAL",
+    tasksClaimed: 1,
+    tasksSucceeded: 0,
+    tasksFailed: 1,
+    tasks: [
+      {
+        id: "rt_discovery_missing",
+        builderId: "cb_discovery",
+        summaryLanguage: "source",
+        status: "PARTIAL",
+        plannedPosts: 0,
+        syncedPosts: 0,
+        failedPosts: 0,
+        startedAt: new Date("2026-08-18T10:00:00.000Z"),
+        finishedAt: new Date("2026-08-18T10:03:00.000Z"),
+        actualDurationSeconds: 180,
+        failureReason: "candidate_discovery_result_missing",
+        details: { posts: [] },
+        builder: { name: "Discovery Source", sourceType: "product_hunt" },
+      },
+    ],
+  });
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.tasksPartial, 1);
+  assert.equal(result.tasksFailed, 0);
+  assert.equal(result.tasks[0]?.status, "PARTIAL");
+  assert.equal(result.tasks[0]?.failureReason, "candidate_discovery_result_missing");
+});
+
 test("task duration falls back to finished-started when actualDurationSeconds is null", () => {
   const result = serializeCloudFetchRun({
     ...baseRun,

@@ -165,6 +165,7 @@ test("cloud run actions expose host settings without a cadence selector", () => 
 test("cloud fetch log component reads the admin runs endpoint", () => {
   const log = source("src/components/AdminCloudFetchLog.tsx");
 
+  assert.match(log, /from "@\/lib\/fetch-failure-taxonomy"/);
   assert.match(log, /\/api\/admin\/cloud-fetch\/runs/);
   assert.match(log, /initialWorkerHost/);
   assert.match(log, /initialLeaseBatches/);
@@ -226,6 +227,7 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.match(log, /task\.plannedPosts === 0 &&[\s\S]*!task\.noGeneratedFetchTasks[\s\S]*!task\.finishedAt/);
   assert.match(log, /function formatPostOutcomeSummary\(\{[\s\S]*status/);
   assert.match(log, /planned > 0[\s\S]*Running without post tasks/);
+  assert.match(log, /Failed before post planning/);
   assert.doesNotMatch(log, /entry\.liveTask\?\.status \?\? entry\.task\.status/);
   assert.match(log, /resolveCloudWorkerTaskStatus/);
   assert.match(log, /summarizeCloudWorkerLaneStatuses/);
@@ -252,6 +254,17 @@ test("cloud fetch log component reads the admin runs endpoint", () => {
   assert.doesNotMatch(log, /disabled=\{!hasPosts\}/);
   assert.doesNotMatch(log, /<strong>Estimated<\/strong>/);
   assert.doesNotMatch(log, /<strong>P\(success\)<\/strong>/);
+});
+
+test("cloud fetch log surfaces zero-post failure facts instead of treating them as no-post success", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+
+  assert.match(log, /emptySourceTaskMessage\(task: CloudFetchRunLogTask\)/);
+  assert.match(log, /fetchFailureInfo\(task\.failureReason\)/);
+  assert.match(log, /const failedBeforePostPlanning =/);
+  assert.match(log, /Failed before post planning/);
+  assert.match(log, /<strong>Failure<\/strong>/);
+  assert.match(log, /<strong>Code<\/strong>/);
 });
 
 test("cloud fetch log renders pending source lease diagnostics before waiting assignment", () => {
@@ -565,9 +578,36 @@ test("cloud source lifecycle does not treat a running zero-count task as no-post
   const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
 
   assert.match(sourceLogItem, /const stillAwaitingPostResults = running && task\.plannedPosts === 0 && !task\.noGeneratedFetchTasks/);
-  assert.match(sourceLogItem, /const noPosts = task\.noGeneratedFetchTasks \|\| \(!running && task\.plannedPosts === 0\)/);
+  assert.match(sourceLogItem, /const zeroPostFailure = task\.plannedPosts === 0 && !running && failed/);
+  assert.match(sourceLogItem, /const noPosts = task\.noGeneratedFetchTasks \|\| \(!running && task\.plannedPosts === 0 && !zeroPostFailure\)/);
   assert.match(sourceLogItem, /stillAwaitingPostResults \? "Waiting for results"/);
   assert.match(sourceLogItem, /function postOutcomeSummary\(task: CloudFetchRunLogTask\) \{[\s\S]*return "Waiting for results"/);
+});
+
+test("cloud source lifecycle treats failed zero-post sources as failed before post planning and hides admin-only raw details from users", () => {
+  const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
+
+  assert.match(sourceLogItem, /from "@\/lib\/fetch-failure-taxonomy"/);
+  assert.match(sourceLogItem, /const zeroPostFailure = task\.plannedPosts === 0 && !running && failed/);
+  assert.match(sourceLogItem, /outcome: zeroPostFailure \? "Failed" : noPosts \? "No posts planned" : failed \? "Failed" : running \? "Running" : "Fetched"/);
+  assert.match(sourceLogItem, /outcome: noPosts \|\| zeroPostFailure[\s\S]*"Not reached"/);
+  assert.match(sourceLogItem, /showAdminCopy[\s\S]*failure\.operatorMessage/);
+  assert.match(sourceLogItem, /<FactRow label="Failure" value=\{failure\.userMessage\} \/>/);
+  assert.match(sourceLogItem, /<FactRow label="Code" value=\{failure\.code\} \/>/);
+  assert.match(sourceLogItem, /No summary exists because source planning failed before any posts were fetched\./);
+  assert.match(sourceLogItem, /function postOutcomeSummary\(task: CloudFetchRunLogTask\) \{[\s\S]*"Failed before post planning"/);
+  assert.doesNotMatch(sourceLogItem, /providerError/);
+});
+
+test("worker host panel shows blocked runtimes as online runtime blockers with retry timing", () => {
+  const log = source("src/components/AdminCloudFetchLog.tsx");
+
+  assert.match(log, /workerHost\.runtimeHealthState === "blocked"/);
+  assert.match(log, /Runtime blocked/);
+  assert.match(log, /waiting_for_runtime/);
+  assert.match(log, /workerHost\.runtimeRetryAt/);
+  assert.match(log, /Next retry <RelativeTime value=\{workerHost\.runtimeRetryAt\}/);
+  assert.match(log, /workerHost\.status === "offline"/);
 });
 
 test("cloud source detail reuses source-level budget and deadline facts without exposing internal budget reason copy", () => {

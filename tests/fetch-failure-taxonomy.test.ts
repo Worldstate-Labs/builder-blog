@@ -22,6 +22,7 @@ const REQUIRED_CODES = [
   "primary_content_unavailable",
   "workload_exceeds_max_budget",
   "extraction_exceeds_shard_timeout",
+  "runtime_installation_failed",
   "runtime_auth_failed",
   "runtime_model_incompatible",
   "runtime_interrupted",
@@ -49,9 +50,12 @@ const REQUIRED_CODES = [
   "worker_no_progress_timeout",
   "worker_stalled_timeout",
   "worker_stopped_before_task_started",
+  "cloud_worker_stopped",
   "worker_incomplete_result",
   "worker_backgrounded_tool",
   "discovery_not_expanded",
+  "cloud_lease_expired",
+  "candidate_discovery_result_missing",
 ];
 
 test("fetch failure taxonomy covers known CLI and sync failure codes", () => {
@@ -148,6 +152,58 @@ test("fetch failure taxonomy classifies interrupted runtime terminals as retryab
     visibility: "user",
     notCompleted: true,
   });
+});
+
+test("fetch failure taxonomy classifies cloud runtime and discovery failures with stable zero-post semantics", () => {
+  assert.deepEqual(fetchFailureInfo("runtime_installation_failed"), {
+    code: "runtime_installation_failed",
+    known: true,
+    category: "runtime",
+    stage: "runtime",
+    userMessage: "Cloud runtime setup failed before this source could be fetched",
+    operatorMessage: "The cloud worker host could not prepare the selected runtime before source planning began.",
+    retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("cloud_lease_expired"), {
+    code: "cloud_lease_expired",
+    known: true,
+    category: "worker",
+    stage: "runtime",
+    userMessage: "Cloud worker lease expired before this source finished",
+    operatorMessage: "The source lease expired before the cloud worker could finish planning or syncing this source.",
+    retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("cloud_worker_stopped"), {
+    code: "cloud_worker_stopped",
+    known: true,
+    category: "worker",
+    stage: "runtime",
+    userMessage: "Cloud worker stopped before this source finished",
+    operatorMessage: "The assigned cloud worker stopped before this source reached a terminal result.",
+    retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.deepEqual(fetchFailureInfo("candidate_discovery_result_missing"), {
+    code: "candidate_discovery_result_missing",
+    known: true,
+    category: "discovery",
+    stage: "read",
+    userMessage: "Candidate discovery did not return a required result",
+    operatorMessage: "The source planning step finished without the required candidate discovery result, so no post tasks were generated.",
+    retryable: true,
+    visibility: "user",
+    notCompleted: true,
+  });
+  assert.equal(isNotCompletedFailureReason("runtime_installation_failed"), true);
+  assert.equal(isNotCompletedFailureReason("cloud_lease_expired"), true);
+  assert.equal(isNotCompletedFailureReason("cloud_worker_stopped"), true);
+  assert.equal(isNotCompletedFailureReason("candidate_discovery_result_missing"), true);
+  assert.equal(isContentFailureReason("candidate_discovery_result_missing"), false);
 });
 
 test("fetch failure taxonomy classifies managed media read-stage failures with stable stage semantics", () => {

@@ -241,6 +241,14 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: false,
     notCompleted: true,
   },
+  runtime_installation_failed: {
+    category: "runtime",
+    stage: "runtime",
+    userMessage: "Cloud runtime setup failed before this source could be fetched",
+    operatorMessage: "The cloud worker host could not prepare the selected runtime before source planning began.",
+    retryable: true,
+    notCompleted: true,
+  },
   runtime_auth_failed: {
     category: "runtime",
     stage: "runtime",
@@ -325,6 +333,14 @@ const FETCH_FAILURE_TAXONOMY = {
     operatorMessage: "The cloud feed sync result rejected a post that the worker expected to sync.",
     retryable: false,
   },
+  cloud_lease_expired: {
+    category: "worker",
+    stage: "runtime",
+    userMessage: "Cloud worker lease expired before this source finished",
+    operatorMessage: "The source lease expired before the cloud worker could finish planning or syncing this source.",
+    retryable: true,
+    notCompleted: true,
+  },
   worker_missing_result: {
     category: "worker",
     stage: "runtime",
@@ -373,6 +389,14 @@ const FETCH_FAILURE_TAXONOMY = {
     retryable: true,
     notCompleted: true,
   },
+  cloud_worker_stopped: {
+    category: "worker",
+    stage: "runtime",
+    userMessage: "Cloud worker stopped before this source finished",
+    operatorMessage: "The assigned cloud worker stopped before this source reached a terminal result.",
+    retryable: true,
+    notCompleted: true,
+  },
   worker_incomplete_result: {
     category: "worker",
     stage: "runtime",
@@ -395,6 +419,14 @@ const FETCH_FAILURE_TAXONOMY = {
     userMessage: "Candidate discovery did not complete",
     operatorMessage: "A discovery task did not expand into concrete post tasks.",
     retryable: true,
+  },
+  candidate_discovery_result_missing: {
+    category: "discovery",
+    stage: "read",
+    userMessage: "Candidate discovery did not return a required result",
+    operatorMessage: "The source planning step finished without the required candidate discovery result, so no post tasks were generated.",
+    retryable: true,
+    notCompleted: true,
   },
   heartbeat: {
     category: "internal",

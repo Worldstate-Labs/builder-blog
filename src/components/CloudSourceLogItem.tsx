@@ -14,6 +14,7 @@ import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import type { CloudFetchPostOutcome, CloudFetchRunLogTask } from "@/lib/cloud-fetch-run-log";
+import { fetchFailureInfo } from "@/lib/fetch-failure-taxonomy";
 
 type BuilderKind = "X" | "BLOG" | "PODCAST" | "WEBSITE";
 type Tone = "ok" | "warn" | "fail" | "idle";
@@ -231,18 +232,20 @@ function CloudSourceLifecycle({
   task: CloudFetchRunLogTask;
 }) {
   const status = task.status.toLowerCase();
-  const failed = status === "failed";
+  const failed = status === "failed" || status === "partial";
   const running = status === "running";
   const stillAwaitingPostResults = running && task.plannedPosts === 0 && !task.noGeneratedFetchTasks;
-  const noPosts = task.noGeneratedFetchTasks || (!running && task.plannedPosts === 0);
+  const zeroPostFailure = task.plannedPosts === 0 && !running && failed;
+  const noPosts = task.noGeneratedFetchTasks || (!running && task.plannedPosts === 0 && !zeroPostFailure);
+  const failure = task.failureReason ? fetchFailureInfo(task.failureReason) : null;
   const fetchTone: Tone = failed ? "fail" : running ? "warn" : "ok";
-  const summarizeTone: Tone = noPosts
+  const summarizeTone: Tone = noPosts || zeroPostFailure
     ? "idle"
     : failed
       ? "fail"
       : running
         ? "warn"
-        : task.pendingPosts > 0
+          : task.pendingPosts > 0
           ? "warn"
           : "ok";
   const syncTone: Tone = failed ? "fail" : running ? "warn" : "ok";
@@ -269,10 +272,20 @@ function CloudSourceLifecycle({
     {
       key: "fetch",
       label: "Fetch",
-      outcome: noPosts ? "No posts planned" : failed ? "Failed" : running ? "Running" : "Fetched",
+      outcome: zeroPostFailure ? "Failed" : noPosts ? "No posts planned" : failed ? "Failed" : running ? "Running" : "Fetched",
       tone: fetchTone,
       meta: task.durationMs != null ? formatDuration(task.durationMs) : undefined,
-      children: noPosts ? (
+      children: zeroPostFailure && failure ? (
+        <>
+          <p className="sync-panel-task-note">
+            {showAdminCopy ? failure.operatorMessage : failure.userMessage}
+          </p>
+          <dl className="sync-panel-task-fact-list">
+            <FactRow label="Failure" value={failure.userMessage} />
+            <FactRow label="Code" value={failure.code} />
+          </dl>
+        </>
+      ) : noPosts ? (
         <p className="sync-panel-task-note">
           {showAdminCopy
             ? "Cloud worker fetched this source but generated 0 post tasks."
@@ -283,7 +296,7 @@ function CloudSourceLifecycle({
     {
       key: "summarize",
       label: "Summarize",
-      outcome: noPosts
+      outcome: noPosts || zeroPostFailure
         ? "Not reached"
         : failed
           ? "Failed"
@@ -293,7 +306,11 @@ function CloudSourceLifecycle({
               ? "Pending"
               : "Completed",
       tone: summarizeTone,
-      children: noPosts ? (
+      children: zeroPostFailure ? (
+        <p className="sync-panel-task-note">
+          No summary exists because source planning failed before any posts were fetched.
+        </p>
+      ) : noPosts ? (
         <p className="sync-panel-task-note">
           No summary exists because there were no fetched posts to summarize or sync.
         </p>
@@ -302,7 +319,7 @@ function CloudSourceLifecycle({
     {
       key: "sync",
       label: "Sync",
-      outcome: failed ? "Failed" : running ? "Running" : "Synced",
+      outcome: zeroPostFailure ? "Failed" : failed ? "Failed" : running ? "Running" : "Synced",
       tone: syncTone,
       meta: stillAwaitingPostResults ? "Waiting for results" : postOutcomeSummary(task),
     },
@@ -387,8 +404,12 @@ function frequencyLabel(frequency: string | null): string {
 }
 
 function postOutcomeSummary(task: CloudFetchRunLogTask) {
-  if (task.status.toLowerCase() === "running" && task.plannedPosts === 0 && !task.noGeneratedFetchTasks) {
+  const status = task.status.toLowerCase();
+  if (status === "running" && task.plannedPosts === 0 && !task.noGeneratedFetchTasks) {
     return "Waiting for results";
+  }
+  if (task.plannedPosts === 0 && (status === "failed" || status === "partial")) {
+    return "Failed before post planning";
   }
   const parts = [`${task.syncedPosts}/${task.plannedPosts} synced`];
   if (task.pendingPosts > 0) parts.push(`${task.pendingPosts} pending`);

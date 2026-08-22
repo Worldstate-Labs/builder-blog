@@ -92,6 +92,27 @@ test("deriveCloudFetchOutcomeSummary preserves zero-post source failures", () =>
   });
 });
 
+test("deriveCloudFetchOutcomeSummary preserves partial zero-post source failures", () => {
+  const summary = deriveCloudFetchOutcomeSummary({
+    status: "partial",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    failedPosts: 0,
+    failureReason: "candidate_discovery_result_missing",
+    posts: [],
+  });
+
+  assert.deepEqual(summary, {
+    status: "PARTIAL",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    skippedPosts: 0,
+    failedPosts: 0,
+    pendingPosts: 0,
+    failureReason: "candidate_discovery_result_missing",
+  });
+});
+
 test("deriveCloudFetchOutcomeSummary preserves successful zero-post discovery", () => {
   const summary = deriveCloudFetchOutcomeSummary({
     status: "succeeded",
@@ -103,4 +124,18 @@ test("deriveCloudFetchOutcomeSummary preserves successful zero-post discovery", 
 
   assert.equal(summary.status, "SUCCEEDED");
   assert.equal(summary.failureReason, null);
+});
+
+test("deriveCloudFetchOutcomeSummary prefers the source failure reason for zero-post failures", () => {
+  const summary = deriveCloudFetchOutcomeSummary({
+    status: "failed",
+    plannedPosts: 0,
+    syncedPosts: 0,
+    failedPosts: 0,
+    failureReason: "runtime_installation_failed",
+    posts: [{ status: "skipped", failureReason: "no_primary_content" }],
+  });
+
+  assert.equal(summary.status, "FAILED");
+  assert.equal(summary.failureReason, "runtime_installation_failed");
 });

@@ -40,6 +40,7 @@ import {
   summarizeCloudWorkerLaneStatuses,
   type CloudWorkerLaneStatus,
 } from "@/lib/cloud-worker-task-display";
+import { fetchFailureInfo } from "@/lib/fetch-failure-taxonomy";
 import type {
   CloudPendingSource,
   CloudPendingSourceReason,
@@ -111,6 +112,7 @@ function formatStage(value: string | null, fallback = "idle"): string {
     waiting_after_sync_issue: "Waiting after sync issue",
     waiting_for_cloud_sources: "Waiting for cloud sources",
     waiting_for_heartbeat: "Waiting for heartbeat",
+    waiting_for_runtime: "Waiting for runtime",
     worker_host_starting: "Starting host",
     workers_running: "Running workers",
   };
@@ -151,11 +153,14 @@ function formatPostOutcomeSummary({
   actionNeeded?: number;
   status?: string | null;
 }): string {
-  const running = String(status ?? "").toLowerCase() === "running";
+  const normalizedStatus = String(status ?? "").toLowerCase();
+  const running = normalizedStatus === "running";
+  const failedBeforePostPlanning =
+    planned === 0 && (normalizedStatus === "failed" || normalizedStatus === "partial");
   const parts =
     planned > 0
       ? [`${synced.toLocaleString()}/${planned.toLocaleString()} synced`]
-      : [running ? "Running without post tasks" : "No posts planned"];
+      : [running ? "Running without post tasks" : failedBeforePostPlanning ? "Failed before post planning" : "No posts planned"];
   if (pending > 0) parts.push(`${pending.toLocaleString()} pending`);
   if (actionNeeded > 0) parts.push(`${actionNeeded.toLocaleString()} action needed`);
   if (skipped > 0) parts.push(`${skipped.toLocaleString()} skipped`);
@@ -271,6 +276,27 @@ function runtimeLabel(workerHost: CloudWorkerHostStatus): string | null {
   return workerHost.runtime ?? workerHost.model;
 }
 
+function sourceTaskFailure(task: CloudFetchRunLogTask) {
+  if (
+    task.plannedPosts !== 0 ||
+    (task.status !== "FAILED" && task.status !== "PARTIAL") ||
+    !task.failureReason
+  ) {
+    return null;
+  }
+  return fetchFailureInfo(task.failureReason);
+}
+
+function runtimeBlockedSummary(workerHost: CloudWorkerHostStatus): string | null {
+  if (workerHost.runtimeHealthState !== "blocked") return null;
+  if (workerHost.providerError) return workerHost.providerError;
+  if (workerHost.runtimeReason) {
+    const failure = fetchFailureInfo(workerHost.runtimeReason);
+    if (failure.known) return failure.operatorMessage;
+  }
+  return workerHost.summary;
+}
+
 function skippedReasonSummary(
   tasks: CloudWorkerHostTask[],
   events: CloudWorkerHostStatus["recentEvents"],
@@ -368,6 +394,7 @@ function statusClass(status: string | null): string {
 }
 
 function emptySourceTaskMessage(task: CloudFetchRunLogTask): string {
+  const failure = sourceTaskFailure(task);
   const status = String(task.status ?? "").toLowerCase();
   if (
     task.plannedPosts === 0 &&
@@ -379,6 +406,7 @@ function emptySourceTaskMessage(task: CloudFetchRunLogTask): string {
   ) {
     return "This source is still running. Post task outcomes appear after its worker shard sends the first synced result.";
   }
+  if (failure) return failure.operatorMessage;
   if (task.plannedPosts === 0) return "No post tasks were generated for this source.";
   if (task.finishedAt || status === "succeeded" || status === "failed" || status === "partial") {
     return "No per-post outcomes were recorded for this source.";
@@ -649,6 +677,13 @@ function workerHostMeta(workerHost: CloudWorkerHostStatus): InlinePart[] {
   } else if (parts.length > 0) {
     parts.push("heartbeat missing");
   }
+  if (workerHost.runtimeHealthState === "blocked" && workerHost.runtimeRetryAt) {
+    parts.push(
+      <>
+        Next retry <RelativeTime value={workerHost.runtimeRetryAt} />
+      </>,
+    );
+  }
   return parts.length > 0 ? parts : ["No host heartbeat yet"];
 }
 
@@ -666,6 +701,7 @@ function WorkerHostPanel({
   usage: UsageSummary | null;
 }) {
   const progress = workerHost.progress;
+  const runtimeBlocked = workerHost.runtimeHealthState === "blocked";
   const waitingTasks = useMemo(
     () => sortedWorkerTasks(selectUnassignedWorkerTasks(workerHost.tasks)),
     [workerHost.tasks],
@@ -699,10 +735,18 @@ function WorkerHostPanel({
     };
   }, [leaseBatches]);
   const runningWithoutHeartbeat = workerHost.startedAt == null && runningSourceDeliveries > 0;
-  const statusLabel = runningWithoutHeartbeat ? "No host heartbeat" : workerHost.statusLabel;
-  const stage = progress?.stage ?? workerHost.stage ?? (runningWithoutHeartbeat ? "waiting_for_heartbeat" : null);
+  const statusLabel = runningWithoutHeartbeat
+    ? "No host heartbeat"
+    : runtimeBlocked
+      ? "Runtime blocked"
+      : workerHost.statusLabel;
+  const stage = runtimeBlocked
+    ? "waiting_for_runtime"
+    : progress?.stage ?? workerHost.stage ?? (runningWithoutHeartbeat ? "waiting_for_heartbeat" : null);
   const summary = runningWithoutHeartbeat
     ? `${runningSourceDeliveries} source ${runningSourceDeliveries === 1 ? "delivery is" : "deliveries are"} still running without a worker heartbeat.`
+    : runtimeBlocked
+      ? runtimeBlockedSummary(workerHost)
     : workerHost.status === "offline" && workerHost.summary
       ? `Last reported: ${workerHost.summary}`
       : workerHost.summary;
@@ -1259,6 +1303,7 @@ export function AdminCloudFetchLog({
                         {batch.tasks.map((task) => {
                           const taskOpen = expandedTask === task.id;
                           const hasPosts = task.posts.length > 0;
+                          const failure = sourceTaskFailure(task);
                           const taskUsage = formatUsage(task.usageTokens, task.usageCostUsd);
                           const mappedPosts = task.posts.map((post, index) =>
                             postToFetchTaskLog(post, task, index),
@@ -1330,6 +1375,18 @@ export function AdminCloudFetchLog({
                                       <span>
                                         <strong>Must succeed by</strong>
                                         <RelativeTime value={task.mustSucceedBy} fallback={task.mustSucceedBy} />
+                                      </span>
+                                    ) : null}
+                                    {failure ? (
+                                      <span>
+                                        <strong>Failure</strong>
+                                        {failure.userMessage}
+                                      </span>
+                                    ) : null}
+                                    {failure ? (
+                                      <span>
+                                        <strong>Code</strong>
+                                        {failure.code}
                                       </span>
                                     ) : null}
                                   </div>
