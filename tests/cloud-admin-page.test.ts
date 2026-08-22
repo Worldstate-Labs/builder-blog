@@ -3,14 +3,49 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { buildWorkerShardGroupsForTest } from "../src/components/AdminCloudFetchLog";
+import { classifyCloudSourceLifecycleForTest } from "../src/components/CloudSourceLogItem";
 import type {
   CloudFetchPostOutcome,
   CloudFetchRunLogItem,
+  CloudFetchRunLogTask,
   CloudWorkerHostTask,
 } from "../src/lib/cloud-fetch-run-log";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
+
+function cloudSourceTask(overrides: Partial<CloudFetchRunLogTask> = {}): CloudFetchRunLogTask {
+  return {
+    id: "source_task",
+    builderId: "builder_1",
+    sourceName: "Source",
+    sourceType: "blog",
+    summaryLanguage: "source",
+    status: "SUCCEEDED",
+    startedAt: "2026-08-21T10:00:00.000Z",
+    finishedAt: "2026-08-21T10:05:00.000Z",
+    plannedPosts: 2,
+    syncedPosts: 1,
+    failedPosts: 1,
+    skippedPosts: 0,
+    pendingPosts: 0,
+    durationMs: 300000,
+    estimatedDurationSeconds: null,
+    mustSucceedBy: null,
+    provisionalExecutionBudgetSeconds: null,
+    workloadClass: null,
+    budgetReason: null,
+    deadlineState: null,
+    successProbability: null,
+    usageTokens: null,
+    usageCostUsd: null,
+    failureReason: "task_sync_failed",
+    posts: [],
+    workerUsages: [],
+    noGeneratedFetchTasks: false,
+    ...overrides,
+  };
+}
 
 test("admin cloud fetch runs route is admin-gated and serializes worker host plus source deliveries", () => {
   const route = source("src/app/api/admin/cloud-fetch/runs/route.ts");
@@ -578,9 +613,9 @@ test("cloud source lifecycle does not treat a running zero-count task as no-post
   const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
 
   assert.match(sourceLogItem, /const stillAwaitingPostResults = running && task\.plannedPosts === 0 && !task\.noGeneratedFetchTasks/);
-  assert.match(sourceLogItem, /const zeroPostFailure = task\.plannedPosts === 0 && !running && failed/);
+  assert.match(sourceLogItem, /const zeroPostFailure = task\.plannedPosts === 0 && !running && \(failed \|\| partial\)/);
   assert.match(sourceLogItem, /const noPosts = task\.noGeneratedFetchTasks \|\| \(!running && task\.plannedPosts === 0 && !zeroPostFailure\)/);
-  assert.match(sourceLogItem, /stillAwaitingPostResults \? "Waiting for results"/);
+  assert.match(sourceLogItem, /meta: stillAwaitingPostResults \? "Waiting for results" : postOutcomeSummary\(task\)/);
   assert.match(sourceLogItem, /function postOutcomeSummary\(task: CloudFetchRunLogTask\) \{[\s\S]*return "Waiting for results"/);
 });
 
@@ -588,15 +623,44 @@ test("cloud source lifecycle treats failed zero-post sources as failed before po
   const sourceLogItem = source("src/components/CloudSourceLogItem.tsx");
 
   assert.match(sourceLogItem, /from "@\/lib\/fetch-failure-taxonomy"/);
-  assert.match(sourceLogItem, /const zeroPostFailure = task\.plannedPosts === 0 && !running && failed/);
+  assert.match(sourceLogItem, /const failed = status === "failed"/);
+  assert.match(sourceLogItem, /const partial = status === "partial"/);
+  assert.match(sourceLogItem, /const zeroPostFailure = task\.plannedPosts === 0 && !running && \(failed \|\| partial\)/);
   assert.match(sourceLogItem, /outcome: zeroPostFailure \? "Failed" : noPosts \? "No posts planned" : failed \? "Failed" : running \? "Running" : "Fetched"/);
   assert.match(sourceLogItem, /outcome: noPosts \|\| zeroPostFailure[\s\S]*"Not reached"/);
-  assert.match(sourceLogItem, /showAdminCopy[\s\S]*failure\.operatorMessage/);
-  assert.match(sourceLogItem, /<FactRow label="Failure" value=\{failure\.userMessage\} \/>/);
-  assert.match(sourceLogItem, /<FactRow label="Code" value=\{failure\.code\} \/>/);
+  assert.match(sourceLogItem, /showAdminCopy \? lifecycle\.failure\.operatorMessage : lifecycle\.failure\.userMessage/);
+  assert.match(sourceLogItem, /<FactRow label="Failure" value=\{lifecycle\.failure\.userMessage\} \/>/);
+  assert.match(sourceLogItem, /<FactRow label="Code" value=\{lifecycle\.failure\.code\} \/>/);
   assert.match(sourceLogItem, /No summary exists because source planning failed before any posts were fetched\./);
   assert.match(sourceLogItem, /function postOutcomeSummary\(task: CloudFetchRunLogTask\) \{[\s\S]*"Failed before post planning"/);
   assert.doesNotMatch(sourceLogItem, /providerError/);
+});
+
+test("partial source tasks with planned posts keep mixed lifecycle states instead of collapsing to full failure", () => {
+  const lifecycle = classifyCloudSourceLifecycleForTest(
+    cloudSourceTask({
+      status: "PARTIAL",
+      plannedPosts: 3,
+      syncedPosts: 2,
+      failedPosts: 1,
+      pendingPosts: 0,
+      noGeneratedFetchTasks: false,
+      failureReason: "task_sync_failed",
+    }),
+  );
+
+  assert.equal(lifecycle.failed, false);
+  assert.equal(lifecycle.partial, true);
+  assert.equal(lifecycle.zeroPostFailure, false);
+  assert.deepEqual(
+    lifecycle.steps.map((step) => [step.key, step.outcome, step.tone]),
+    [
+      ["planned", "Source task", "ok"],
+      ["fetch", "Fetched", "ok"],
+      ["summarize", "Completed", "ok"],
+      ["sync", "Synced", "ok"],
+    ],
+  );
 });
 
 test("worker host panel shows blocked runtimes as online runtime blockers with retry timing", () => {

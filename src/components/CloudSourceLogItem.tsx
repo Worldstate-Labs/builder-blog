@@ -18,6 +18,13 @@ import { fetchFailureInfo } from "@/lib/fetch-failure-taxonomy";
 
 type BuilderKind = "X" | "BLOG" | "PODCAST" | "WEBSITE";
 type Tone = "ok" | "warn" | "fail" | "idle";
+type LifecycleStepState = {
+  key: "planned" | "fetch" | "summarize" | "sync";
+  label: string;
+  outcome: string;
+  tone: Tone;
+  meta?: string;
+};
 
 const EMPTY_LIVE_TASKS = new Map<string, FetchTaskProgress>();
 
@@ -231,24 +238,7 @@ function CloudSourceLifecycle({
   showAdminCopy: boolean;
   task: CloudFetchRunLogTask;
 }) {
-  const status = task.status.toLowerCase();
-  const failed = status === "failed" || status === "partial";
-  const running = status === "running";
-  const stillAwaitingPostResults = running && task.plannedPosts === 0 && !task.noGeneratedFetchTasks;
-  const zeroPostFailure = task.plannedPosts === 0 && !running && failed;
-  const noPosts = task.noGeneratedFetchTasks || (!running && task.plannedPosts === 0 && !zeroPostFailure);
-  const failure = task.failureReason ? fetchFailureInfo(task.failureReason) : null;
-  const fetchTone: Tone = failed ? "fail" : running ? "warn" : "ok";
-  const summarizeTone: Tone = noPosts || zeroPostFailure
-    ? "idle"
-    : failed
-      ? "fail"
-      : running
-        ? "warn"
-          : task.pendingPosts > 0
-          ? "warn"
-          : "ok";
-  const syncTone: Tone = failed ? "fail" : running ? "warn" : "ok";
+  const lifecycle = classifyCloudSourceLifecycle(task);
   const steps: Array<{
     children?: ReactNode;
     key: string;
@@ -272,20 +262,20 @@ function CloudSourceLifecycle({
     {
       key: "fetch",
       label: "Fetch",
-      outcome: zeroPostFailure ? "Failed" : noPosts ? "No posts planned" : failed ? "Failed" : running ? "Running" : "Fetched",
-      tone: fetchTone,
-      meta: task.durationMs != null ? formatDuration(task.durationMs) : undefined,
-      children: zeroPostFailure && failure ? (
+      outcome: lifecycle.steps[1].outcome,
+      tone: lifecycle.steps[1].tone,
+      meta: lifecycle.steps[1].meta,
+      children: lifecycle.zeroPostFailure && lifecycle.failure ? (
         <>
           <p className="sync-panel-task-note">
-            {showAdminCopy ? failure.operatorMessage : failure.userMessage}
+            {showAdminCopy ? lifecycle.failure.operatorMessage : lifecycle.failure.userMessage}
           </p>
           <dl className="sync-panel-task-fact-list">
-            <FactRow label="Failure" value={failure.userMessage} />
-            <FactRow label="Code" value={failure.code} />
+            <FactRow label="Failure" value={lifecycle.failure.userMessage} />
+            <FactRow label="Code" value={lifecycle.failure.code} />
           </dl>
         </>
-      ) : noPosts ? (
+      ) : lifecycle.noPosts ? (
         <p className="sync-panel-task-note">
           {showAdminCopy
             ? "Cloud worker fetched this source but generated 0 post tasks."
@@ -296,21 +286,13 @@ function CloudSourceLifecycle({
     {
       key: "summarize",
       label: "Summarize",
-      outcome: noPosts || zeroPostFailure
-        ? "Not reached"
-        : failed
-          ? "Failed"
-          : running
-            ? "Pending"
-            : task.pendingPosts > 0
-              ? "Pending"
-              : "Completed",
-      tone: summarizeTone,
-      children: zeroPostFailure ? (
+      outcome: lifecycle.steps[2].outcome,
+      tone: lifecycle.steps[2].tone,
+      children: lifecycle.zeroPostFailure ? (
         <p className="sync-panel-task-note">
           No summary exists because source planning failed before any posts were fetched.
         </p>
-      ) : noPosts ? (
+      ) : lifecycle.noPosts ? (
         <p className="sync-panel-task-note">
           No summary exists because there were no fetched posts to summarize or sync.
         </p>
@@ -319,9 +301,9 @@ function CloudSourceLifecycle({
     {
       key: "sync",
       label: "Sync",
-      outcome: zeroPostFailure ? "Failed" : failed ? "Failed" : running ? "Running" : "Synced",
-      tone: syncTone,
-      meta: stillAwaitingPostResults ? "Waiting for results" : postOutcomeSummary(task),
+      outcome: lifecycle.steps[3].outcome,
+      tone: lifecycle.steps[3].tone,
+      meta: lifecycle.steps[3].meta,
     },
   ];
 
@@ -401,6 +383,76 @@ function frequencyLabel(frequency: string | null): string {
   if (frequency === "DAILY") return "Daily";
   if (frequency === "WEEKLY") return "Weekly";
   return frequency ?? "N/A";
+}
+
+function classifyCloudSourceLifecycle(task: CloudFetchRunLogTask) {
+  const status = task.status.toLowerCase();
+  const failed = status === "failed";
+  const partial = status === "partial";
+  const running = status === "running";
+  const stillAwaitingPostResults = running && task.plannedPosts === 0 && !task.noGeneratedFetchTasks;
+  const zeroPostFailure = task.plannedPosts === 0 && !running && (failed || partial);
+  const noPosts = task.noGeneratedFetchTasks || (!running && task.plannedPosts === 0 && !zeroPostFailure);
+  const failure = task.failureReason ? fetchFailureInfo(task.failureReason) : null;
+  const steps: LifecycleStepState[] = [
+    {
+      key: "planned",
+      label: "Planned",
+      outcome: "Source task",
+      tone: "ok",
+    },
+    {
+      key: "fetch",
+      label: "Fetch",
+      outcome: zeroPostFailure ? "Failed" : noPosts ? "No posts planned" : failed ? "Failed" : running ? "Running" : "Fetched",
+      tone: zeroPostFailure || failed ? "fail" : running ? "warn" : "ok",
+      meta: task.durationMs != null ? formatDuration(task.durationMs) : undefined,
+    },
+    {
+      key: "summarize",
+      label: "Summarize",
+      outcome: noPosts || zeroPostFailure
+        ? "Not reached"
+        : failed
+          ? "Failed"
+          : running
+            ? "Pending"
+            : task.pendingPosts > 0
+              ? "Pending"
+              : "Completed",
+      tone: noPosts || zeroPostFailure
+        ? "idle"
+        : failed
+          ? "fail"
+          : running
+            ? "warn"
+            : task.pendingPosts > 0
+              ? "warn"
+              : "ok",
+    },
+    {
+      key: "sync",
+      label: "Sync",
+      outcome: zeroPostFailure ? "Failed" : failed ? "Failed" : running ? "Running" : "Synced",
+      tone: zeroPostFailure || failed ? "fail" : running ? "warn" : "ok",
+      meta: stillAwaitingPostResults ? "Waiting for results" : postOutcomeSummary(task),
+    },
+  ];
+
+  return {
+    failed,
+    partial,
+    running,
+    stillAwaitingPostResults,
+    zeroPostFailure,
+    noPosts,
+    failure,
+    steps,
+  };
+}
+
+export function classifyCloudSourceLifecycleForTest(task: CloudFetchRunLogTask) {
+  return classifyCloudSourceLifecycle(task);
 }
 
 function postOutcomeSummary(task: CloudFetchRunLogTask) {
